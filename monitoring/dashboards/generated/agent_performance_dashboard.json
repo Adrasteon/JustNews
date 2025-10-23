@@ -1,0 +1,151 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Agent Performance Dashboard",
+    "description": "Detailed performance metrics for all JustNewsAgent services",
+    "tags": [
+      "agents",
+      "performance",
+      "monitoring"
+    ],
+    "timezone": "UTC",
+    "refresh": "15m",
+    "time": {
+      "from": "now-30m",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": []
+    },
+    "panels": [
+      {
+        "id": null,
+        "title": "Agent Response Times",
+        "type": "graph",
+        "description": "95th percentile response times by agent",
+        "gridPos": {
+          "h": 8,
+          "w": 16,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(agent_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{agent}} P95"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Agent Throughput",
+        "type": "graph",
+        "description": "Request throughput by agent",
+        "gridPos": {
+          "h": 8,
+          "w": 16,
+          "x": 0,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(agent_requests_total[5m])",
+            "legendFormat": "{{agent}} req/sec"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Agent Error Rates",
+        "type": "graph",
+        "description": "Error rates by agent as percentage",
+        "gridPos": {
+          "h": 8,
+          "w": 16,
+          "x": 0,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "rate(agent_errors_total[5m]) / rate(agent_requests_total[5m]) * 100",
+            "legendFormat": "{{agent}} error %"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "GPU Memory Usage",
+        "type": "graph",
+        "description": "GPU memory utilization by agent",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 24
+        },
+        "targets": [
+          {
+            "expr": "gpu_memory_used_bytes / gpu_memory_total_bytes * 100",
+            "legendFormat": "{{gpu}} {{agent}}"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Agent Health Status",
+        "type": "table",
+        "description": "Current health status of all agents",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 12,
+          "y": 24
+        },
+        "targets": [
+          {
+            "expr": "up{job=~\"justnews-.*\"}",
+            "legendFormat": "{{job}}"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      }
+    ],
+    "version": 1,
+    "schemaVersion": 36,
+    "style": "dark"
+  },
+  "overwrite": false
+}

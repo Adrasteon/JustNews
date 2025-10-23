@@ -1,0 +1,4 @@
+# Ignore backup and generated files that cause false positives
+agents/**/tools_backup.py
+archive_obsolete_files/
+**/__pycache__/

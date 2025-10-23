@@ -1,0 +1,187 @@
+# JustNews Alert Rules for Prometheus
+# Comprehensive alerting configuration for production monitoring
+
+groups:
+  - name: justnews_service_alerts
+    rules:
+      # Critical Alerts - Immediate Response Required
+      - alert: JustNewsServiceDown
+        expr: up{job=~"justnews-.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "JustNews service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} has been down for more than 1 minute."
+          runbook_url: "https://justnews.internal/runbooks/service-down"
+
+      - alert: JustNewsHighErrorRate
+        expr: rate(justnews_requests_total{status=~"5.."}[5m]) / rate(justnews_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "High error rate on {{ $labels.job }}"
+          description: "Error rate > 5% for {{ $labels.job }} over last 5 minutes"
+          runbook_url: "https://justnews.internal/runbooks/high-error-rate"
+
+      - alert: JustNewsCriticalQueueDepth
+        expr: justnews_processing_queue_size > 1000
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Critical queue depth on {{ $labels.job }}"
+          description: "Processing queue depth > 1000 for {{ $labels.job }}"
+          runbook_url: "https://justnews.internal/runbooks/queue-depth"
+
+      # Warning Alerts - Investigation Required
+      - alert: JustNewsHighCPUUsage
+        expr: justnews_cpu_usage_percent > 90
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High CPU usage on {{ $labels.job }}"
+          description: "CPU usage > 90% for {{ $labels.job }} for 10 minutes"
+          runbook_url: "https://justnews.internal/runbooks/high-cpu"
+
+      - alert: JustNewsHighMemoryUsage
+        expr: justnews_memory_usage_bytes{type="rss"} / 1024 / 1024 / 1024 > 8
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High memory usage on {{ $labels.job }}"
+          description: "Memory usage > 8GB for {{ $labels.job }}"
+          runbook_url: "https://justnews.internal/runbooks/high-memory"
+
+      - alert: JustNewsSlowResponseTime
+        expr: histogram_quantile(0.95, rate(justnews_request_duration_seconds_bucket[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Slow response times on {{ $labels.job }}"
+          description: "95th percentile response time > 10s for {{ $labels.job }}"
+          runbook_url: "https://justnews.internal/runbooks/slow-response"
+
+      - alert: JustNewsGPUHighMemoryUsage
+        expr: justnews_gpu_memory_used_bytes / 1024 / 1024 / 1024 > 20
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High GPU memory usage on {{ $labels.job }}"
+          description: "GPU memory usage > 20GB for {{ $labels.job }}"
+          runbook_url: "https://justnews.internal/runbooks/gpu-memory"
+
+      - alert: JustNewsLowQualityScore
+        expr: histogram_quantile(0.5, rate(justnews_quality_score_bucket[10m])) < 0.7
+        for: 10m
+        labels:
+          severity: warning
+          team: content
+        annotations:
+          summary: "Low quality scores on {{ $labels.job }}"
+          description: "Median quality score < 0.7 for {{ $labels.job }}"
+          runbook_url: "https://justnews.internal/runbooks/low-quality"
+
+      - alert: JustNewsSourceReliabilityLow
+        expr: justnews_source_reliability_score < 0.6
+        for: 15m
+        labels:
+          severity: warning
+          team: content
+        annotations:
+          summary: "Low source reliability on {{ $labels.job }}"
+          description: "Source reliability score < 0.6 for {{ $labels.job }}"
+          runbook_url: "https://justnews.internal/runbooks/source-reliability"
+
+      - alert: JustNewsModelAccuracyDegraded
+        expr: justnews_model_accuracy < 0.8
+        for: 10m
+        labels:
+          severity: warning
+          team: content
+        annotations:
+          summary: "Model accuracy degraded on {{ $labels.job }}"
+          description: "Model accuracy < 0.8 for {{ $labels.job }}"
+          runbook_url: "https://justnews.internal/runbooks/model-accuracy"
+
+      - alert: JustNewsDataIntegrityIssues
+        expr: increase(justnews_data_corruption_events_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          team: content
+        annotations:
+          summary: "Data integrity issues detected on {{ $labels.job }}"
+          description: "Data corruption events detected for {{ $labels.job }}"
+          runbook_url: "https://justnews.internal/runbooks/data-integrity"
+
+      # Info Alerts - Monitoring Only
+      - alert: JustNewsServiceRestart
+        expr: increase(justnews_requests_total[1m]) > 0 and increase(justnews_requests_total[1m] offset 1m) == 0
+        for: 1m
+        labels:
+          severity: info
+          team: platform
+        annotations:
+          summary: "Service restart detected on {{ $labels.job }}"
+          description: "Service {{ $labels.job }} appears to have restarted"
+
+  - name: justnews_business_alerts
+    rules:
+      - alert: JustNewsContentProcessingStalled
+        expr: rate(justnews_requests_total{job=~"justnews-scout|justnews-analyst|justnews-synthesizer"}[15m]) < 1
+        for: 15m
+        labels:
+          severity: warning
+          team: content
+        annotations:
+          summary: "Content processing appears stalled"
+          description: "Content processing rate < 1 req/min for 15 minutes"
+          runbook_url: "https://justnews.internal/runbooks/processing-stalled"
+
+      - alert: JustNewsHighRejectionRate
+        expr: rate(justnews_requests_total{status=~"4.."}[10m]) / rate(justnews_requests_total[10m]) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+          team: content
+        annotations:
+          summary: "High request rejection rate"
+          description: "Request rejection rate > 20% for 10 minutes"
+          runbook_url: "https://justnews.internal/runbooks/high-rejections"
+
+  - name: justnews_infrastructure_alerts
+    rules:
+      - alert: JustNewsDiskSpaceLow
+        expr: (1 - node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Disk usage > 85% on {{ $labels.instance }}"
+          runbook_url: "https://justnews.internal/runbooks/disk-space"
+
+      - alert: JustNewsPrometheusTargetsDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Prometheus target down"
+          description: "Prometheus target {{ $labels.instance }} is down"
+          runbook_url: "https://justnews.internal/runbooks/prometheus-targets"

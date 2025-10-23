@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JustNews - AI-Powered News Analysis</title>
+    <meta name="description" content="Experience news with AI-powered analysis, fact-checking, and source credibility scoring. Your trusted source for verified, analyzed news content.">
+    <meta name="keywords" content="news, AI analysis, fact-checking, source credibility, verified news, journalism">
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Custom Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-color: #1e40af;
+            --secondary-color: #64748b;
+            --success-color: #059669;
+            --warning-color: #d97706;
+            --danger-color: #dc2626;
+            --info-color: #0891b2;
+            --dark-bg: #0f172a;
+            --light-bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--light-bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Header Styles */
+        .navbar {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow);
+            padding: 1rem 0;
+        }
+
+        .navbar-brand {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white !important;
+        }
+
+        .navbar-brand .ai-badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            margin-left: 0.5rem;
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.9) !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: white !important;
+            transform: translateY(-1px);
+        }
+
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4rem 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.05)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.1;
+        }
+
+        .hero-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            opacity: 0.8;
+        }
+
+        /* Article Cards */
+        .article-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .article-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .article-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .article-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            line-height: 1.3;
+        }
+
+        .article-title a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .article-title a:hover {
+            color: var(--primary-color);
+        }
+
+        .article-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .source-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .source-trusted { background: rgba(5, 150, 105, 0.1); color: var(--success-color); }
+        .source-questionable { background: rgba(217, 119, 6, 0.1); color: var(--warning-color); }
+        .source-unreliable { background: rgba(220, 38, 38, 0.1); color: var(--danger-color); }
+
+        .credibility-score {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .score-high { background: rgba(5, 150, 105, 0.1); color: var(--success-color); }
+        .score-medium { background: rgba(217, 119, 6, 0.1); color: var(--warning-color); }
+        .score-low { background: rgba(220, 38, 38, 0.1); color: var(--danger-color); }
+
+        .sentiment-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .sentiment-positive {
+            background: linear-gradient(45deg, #10b981, #34d399);
+            color: white;
+        }
+
+        .sentiment-negative {
+            background: linear-gradient(45deg, #ef4444, #f87171);
+            color: white;
+        }
+
+        .sentiment-neutral {
+            background: linear-gradient(45deg, #6b7280, #9ca3af);
+            color: white;
+        }
+
+        .article-content {
+            padding: 1.5rem;
+        }
+
+        .article-summary {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .article-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .tag {
+            background: rgba(30, 64, 175, 0.1);
+            color: var(--primary-color);
+            padding: 0.25rem 0.75rem;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .article-footer {
+            padding: 1rem 1.5rem;
+            background: rgba(248, 250, 252, 0.8);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .article-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+            color: white;
+        }
+
+        /* Analysis Panel */
+        .analysis-panel {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .analysis-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .analysis-item {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .analysis-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .analysis-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 1.5rem;
+        }
+
+        .sidebar-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        /* Search and Filters */
+        .search-container {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+        }
+
+        .filter-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border-color);
+            background: white;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        /* Archive Section */
+        .archive-section {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: white;
+            padding: 4rem 0;
+            text-align: center;
+        }
+
+        .archive-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .archive-subtitle {
+            font-size: 1.125rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* API Section */
+        .api-section {
+            background: var(--light-bg);
+            padding: 4rem 0;
+        }
+
+        .api-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .api-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .api-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .api-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .api-description {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--dark-bg);
+            color: white;
+            padding: 3rem 0 1rem;
+        }
+
+        .footer-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .footer-links {
+            list-style: none;
+            padding: 0;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 1rem;
+            margin-top: 2rem;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+
+            .hero-stats {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .article-meta {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .article-footer {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: stretch;
+            }
+
+            .analysis-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-buttons {
+                justify-content: center;
+            }
+        }
+
+        /* Loading States */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--light-bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--secondary-color);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                JustNews
+                <span class="ai-badge">AI-Powered</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#news">Latest News</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#archive">Archive</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#analytics">Analytics</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#api">API</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <button class="btn btn-outline-light me-2" onclick="toggleTheme()">
+                        <i class="bi bi-moon-fill"></i>
+                    </button>
+                    <button class="btn btn-light" onclick="scrollToTop()">
+                        <i class="bi bi-arrow-up"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <h1 class="hero-title">News Reimagined</h1>
+            <p class="hero-subtitle">
+                Experience journalism enhanced by artificial intelligence. Every article analyzed for credibility,
+                bias, and factual accuracy with transparent scoring and source verification.
+            </p>
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <span class="stat-value" id="totalArticles">0</span>
+                    <span class="stat-label">Articles Analyzed</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="sourcesTracked">0</span>
+                    <span class="stat-label">Sources Tracked</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="accuracyRate">95%</span>
+                    <span class="stat-label">Analysis Accuracy</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="dailyUpdates">500+</span>
+                    <span class="stat-label">Daily Updates</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <div class="container my-5">
+        <div class="row">
+            <!-- Main Content -->
+            <div class="col-lg-8">
+                <!-- Search and Filters -->
+                <div class="search-container">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <input type="text" class="search-input" placeholder="Search articles, topics, or sources..." id="searchInput">
+                        </div>
+                        <div class="col-md-4">
+                            <select class="search-input" id="sortSelect">
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                                <option value="relevance">Most Relevant</option>
+                                <option value="credibility">Highest Credibility</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all">All Topics</button>
+                        <button class="filter-btn" data-filter="politics">Politics</button>
+                        <button class="filter-btn" data-filter="technology">Technology</button>
+                        <button class="filter-btn" data-filter="business">Business</button>
+                        <button class="filter-btn" data-filter="science">Science</button>
+                        <button class="filter-btn" data-filter="health">Health</button>
+                        <button class="filter-btn" data-filter="sports">Sports</button>
+                        <button class="filter-btn" data-filter="entertainment">Entertainment</button>
+                    </div>
+                </div>
+
+                <!-- News Feed -->
+                <div id="newsFeed">
+                    <!-- Articles will be loaded here -->
+                    <div class="text-center py-5">
+                        <div class="loading"></div>
+                        <p class="mt-3 text-muted">Loading latest news...</p>
+                    </div>
+                </div>
+
+                <!-- Load More Button -->
+                <div class="text-center mt-4">
+                    <button class="btn btn-primary btn-lg" id="loadMoreBtn">
+                        Load More Articles
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <!-- Trending Topics -->
+                <div class="sidebar">
+                    <h3 class="sidebar-title">
+                        <i class="bi bi-fire text-warning me-2"></i>
+                        Trending Topics
+                    </h3>
+                    <div id="trendingTopics">
+                        <!-- Trending topics will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Source Credibility -->
+                <div class="sidebar">
+                    <h3 class="sidebar-title">
+                        <i class="bi bi-shield-check text-success me-2"></i>
+                        Source Credibility
+                    </h3>
+                    <div id="sourceCredibility">
+                        <!-- Source credibility will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Fact Check Alerts -->
+                <div class="sidebar">
+                    <h3 class="sidebar-title">
+                        <i class="bi bi-exclamation-triangle text-warning me-2"></i>
+                        Recent Corrections
+                    </h3>
+                    <div id="factChecks">
+                        <!-- Fact check alerts will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Newsletter Signup -->
+                <div class="sidebar">
+                    <h3 class="sidebar-title">
+                        <i class="bi bi-envelope me-2"></i>
+                        Stay Informed
+                    </h3>
+                    <p class="text-muted small mb-3">
+                        Get the latest AI-analyzed news delivered to your inbox.
+                    </p>
+                    <div class="input-group mb-3">
+                        <input type="email" class="form-control" placeholder="Enter your email">
+                        <button class="btn btn-primary" type="button">Subscribe</button>
+                    </div>
+                    <p class="text-muted small">
+                        No spam, unsubscribe anytime.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Archive Section -->
+    <section class="archive-section">
+        <div class="container">
+            <h2 class="archive-title">Historic News Archive</h2>
+            <p class="archive-subtitle">
+                Explore our comprehensive archive of AI-analyzed news articles dating back to 2020.
+                Perfect for researchers, journalists, and anyone seeking verified historical context.
+            </p>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="api-card">
+                        <div class="api-icon">
+                            <i class="bi bi-search"></i>
+                        </div>
+                        <h4 class="api-title">Advanced Search</h4>
+                        <p class="api-description">
+                            Search through millions of articles with filters for date ranges,
+                            topics, sources, and credibility scores.
+                        </p>
+                        <button class="btn btn-primary">Explore Archive</button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="api-card">
+                        <div class="api-icon">
+                            <i class="bi bi-graph-up"></i>
+                        </div>
+                        <h4 class="api-title">Temporal Analysis</h4>
+                        <p class="api-description">
+                            View how news coverage and credibility have evolved over time
+                            with interactive charts and trend analysis.
+                        </p>
+                        <button class="btn btn-primary">View Trends</button>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="api-card">
+                        <div class="api-icon">
+                            <i class="bi bi-download"></i>
+                        </div>
+                        <h4 class="api-title">Data Export</h4>
+                        <p class="api-description">
+                            Export article data, analysis results, and credibility scores
+                            for academic research and journalism.
+                        </p>
+                        <button class="btn btn-primary">Download Data</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- API Section -->
+    <section class="api-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 mx-auto text-center">
+                    <h2 class="mb-4">Researcher & Developer APIs</h2>
+                    <p class="text-muted mb-5">
+                        Access our comprehensive news analysis platform programmatically.
+                        Perfect for academic research, news aggregators, and fact-checking organizations.
+                    </p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="api-card">
+                        <div class="api-icon">
+                            <i class="bi bi-code-slash"></i>
+                        </div>
+                        <h4 class="api-title">REST API</h4>
+                        <p class="api-description">
+                            Full programmatic access to all articles, analysis results,
+                            and credibility data through our RESTful API endpoints.
+                        </p>
+                        <div class="mb-3">
+                            <code class="bg-light p-2 rounded d-block text-start small">
+GET /api/v1/articles?credibility=high&topic=politics&limit=100
+                            </code>
+                        </div>
+                        <button class="btn btn-outline-primary">View Documentation</button>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="api-card">
+                        <div class="api-icon">
+                            <i class="bi bi-cloud-download"></i>
+                        </div>
+                        <h4 class="api-title">Bulk Data Access</h4>
+                        <p class="api-description">
+                            Download complete datasets for longitudinal studies,
+                            including historical trends and source credibility evolution.
+                        </p>
+                        <div class="mb-3">
+                            <code class="bg-light p-2 rounded d-block text-start small">
+Available: JSON, CSV, Parquet formats<br>
+Time ranges: 2020-Present<br>
+Update frequency: Real-time
+                            </code>
+                        </div>
+                        <button class="btn btn-outline-primary">Request Access</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4">
+                    <h4 class="footer-title">JustNews</h4>
+                    <p class="text-muted">
+                        Revolutionizing journalism through AI-powered analysis,
+                        fact-checking, and transparent credibility scoring.
+                    </p>
+                    <div class="mt-3">
+                        <a href="#" class="text-white me-3"><i class="bi bi-twitter"></i></a>
+                        <a href="#" class="text-white me-3"><i class="bi bi-facebook"></i></a>
+                        <a href="#" class="text-white me-3"><i class="bi bi-linkedin"></i></a>
+                        <a href="#" class="text-white"><i class="bi bi-github"></i></a>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <h5>Platform</h5>
+                    <ul class="footer-links">
+                        <li><a href="#news">Latest News</a></li>
+                        <li><a href="#archive">Archive</a></li>
+                        <li><a href="#analytics">Analytics</a></li>
+                        <li><a href="#api">API</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-2">
+                    <h5>Research</h5>
+                    <ul class="footer-links">
+                        <li><a href="#">Academic Access</a></li>
+                        <li><a href="#">Data Portal</a></li>
+                        <li><a href="#">Publications</a></li>
+                        <li><a href="#">Methodology</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-2">
+                    <h5>Support</h5>
+                    <ul class="footer-links">
+                        <li><a href="#">Help Center</a></li>
+                        <li><a href="#">Contact Us</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-2">
+                    <h5>About</h5>
+                    <ul class="footer-links">
+                        <li><a href="#about">Our Mission</a></li>
+                        <li><a href="#">Technology</a></li>
+                        <li><a href="#">Team</a></li>
+                        <li><a href="#">Careers</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 JustNews. All rights reserved. | Powered by AI for Truthful Journalism</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom JavaScript -->
+    <script>
+        // Global variables
+        let currentPage = 1;
+        let currentFilter = 'all';
+        let searchQuery = '';
+        let sortOrder = 'newest';
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadInitialData();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // Search functionality
+            document.getElementById('searchInput').addEventListener('input', debounce(handleSearch, 500));
+            document.getElementById('sortSelect').addEventListener('change', handleSortChange);
+
+            // Filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', handleFilterClick);
+            });
+
+            // Load more button
+            document.getElementById('loadMoreBtn').addEventListener('click', loadMoreArticles);
+
+            // Smooth scrolling for navigation
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+        }
+
+        function loadInitialData() {
+            loadSystemStats();
+            loadArticles();
+            loadTrendingTopics();
+            loadSourceCredibility();
+            loadFactChecks();
+        }
+
+        async function loadSystemStats() {
+            try {
+                // Load system statistics
+                const response = await fetch('/api/public/stats');
+                if (response.ok) {
+                    const stats = await response.json();
+                    document.getElementById('totalArticles').textContent = stats.total_articles?.toLocaleString() || '0';
+                    document.getElementById('sourcesTracked').textContent = stats.sources_tracked?.toLocaleString() || '0';
+                    document.getElementById('accuracyRate').textContent = stats.accuracy_rate || '95%';
+                    document.getElementById('dailyUpdates').textContent = (stats.daily_updates || 500) + '+';
+                }
+            } catch (error) {
+                console.error('Error loading system stats:', error);
+            }
+        }
+
+        async function loadArticles(page = 1, append = false) {
+            try {
+                const params = new URLSearchParams({
+                    page: page,
+                    filter: currentFilter,
+                    search: searchQuery,
+                    sort: sortOrder,
+                    limit: 10
+                });
+
+                const response = await fetch(`/api/public/articles?${params}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    displayArticles(data.articles, append);
+
+                    // Update load more button
+                    const loadMoreBtn = document.getElementById('loadMoreBtn');
+                    if (data.has_more) {
+                        loadMoreBtn.style.display = 'block';
+                        currentPage = page;
+                    } else {
+                        loadMoreBtn.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading articles:', error);
+                document.getElementById('newsFeed').innerHTML = '<p class="text-center text-muted">Unable to load articles. Please try again later.</p>';
+            }
+        }
+
+        function displayArticles(articles, append = false) {
+            const newsFeed = document.getElementById('newsFeed');
+
+            if (!append) {
+                newsFeed.innerHTML = '';
+            }
+
+            if (!articles || articles.length === 0) {
+                if (!append) {
+                    newsFeed.innerHTML = '<p class="text-center text-muted">No articles found matching your criteria.</p>';
+                }
+                return;
+            }
+
+            articles.forEach(article => {
+                const articleHtml = createArticleHTML(article);
+                newsFeed.insertAdjacentHTML('beforeend', articleHtml);
+            });
+        }
+
+        function createArticleHTML(article) {
+            const sentimentClass = getSentimentClass(article.sentiment_score);
+            const credibilityClass = getCredibilityClass(article.source_credibility);
+            const sourceClass = getSourceClass(article.source_reliability);
+
+            return `
+                <div class="article-card">
+                    <div class="article-header">
+                        <h2 class="article-title">
+                            <a href="/article/${article.id}">${article.title}</a>
+                        </h2>
+                        <div class="article-meta">
+                            <span class="source-badge ${sourceClass}">
+                                <i class="bi bi-globe"></i>
+                                ${article.source}
+                            </span>
+                            <span class="credibility-score ${credibilityClass}">
+                                <i class="bi bi-shield-check"></i>
+                                ${article.source_credibility}/100
+                            </span>
+                            <span class="sentiment-indicator ${sentimentClass}">
+                                <i class="bi ${getSentimentIcon(article.sentiment_score)}"></i>
+                                ${getSentimentLabel(article.sentiment_score)}
+                            </span>
+                            <span>
+                                <i class="bi bi-clock"></i>
+                                ${formatDate(article.published_date)}
+                            </span>
+                        </div>
+                        <div class="article-tags">
+                            ${article.topics?.map(topic => `<span class="tag">${topic}</span>`).join('') || ''}
+                        </div>
+                    </div>
+
+                    <div class="article-content">
+                        <p class="article-summary">${article.summary || article.content?.substring(0, 200) + '...'}</p>
+
+                        <div class="analysis-panel">
+                            <div class="analysis-header">
+                                <i class="bi bi-robot"></i>
+                                AI Analysis Results
+                            </div>
+                            <div class="analysis-grid">
+                                <div class="analysis-item">
+                                    <div class="analysis-label">Fact Check Score</div>
+                                    <div class="analysis-value ${getScoreColor(article.fact_check_score)}">
+                                        ${article.fact_check_score || 0}/100
+                                    </div>
+                                </div>
+                                <div class="analysis-item">
+                                    <div class="analysis-label">Bias Level</div>
+                                    <div class="analysis-value ${getBiasColor(article.bias_score)}">
+                                        ${getBiasLabel(article.bias_score)}
+                                    </div>
+                                </div>
+                                <div class="analysis-item">
+                                    <div class="analysis-label">Emotional Tone</div>
+                                    <div class="analysis-value">
+                                        ${article.emotional_tone || 'Neutral'}
+                                    </div>
+                                </div>
+                                <div class="analysis-item">
+                                    <div class="analysis-label">Readability</div>
+                                    <div class="analysis-value">
+                                        ${article.readability_score || 'N/A'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="article-footer">
+                        <div class="article-actions">
+                            <a href="/article/${article.id}" class="action-btn btn-primary">
+                                <i class="bi bi-eye"></i>
+                                Read Full Article
+                            </a>
+                            <button class="action-btn btn-outline" onclick="shareArticle('${article.id}')">
+                                <i class="bi bi-share"></i>
+                                Share
+                            </button>
+                            <button class="action-btn btn-outline" onclick="bookmarkArticle('${article.id}')">
+                                <i class="bi bi-bookmark"></i>
+                                Save
+                            </button>
+                        </div>
+                        <div class="article-stats">
+                            <small class="text-muted">
+                                <i class="bi bi-chat-dots"></i> ${article.comment_count || 0} comments
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadTrendingTopics() {
+            try {
+                const response = await fetch('/api/public/trending-topics');
+                if (response.ok) {
+                    const topics = await response.json();
+                    displayTrendingTopics(topics);
+                }
+            } catch (error) {
+                console.error('Error loading trending topics:', error);
+            }
+        }
+
+        function displayTrendingTopics(topics) {
+            const container = document.getElementById('trendingTopics');
+            if (!topics || topics.length === 0) {
+                container.innerHTML = '<p class="text-muted small">No trending topics available</p>';
+                return;
+            }
+
+            const topicsHtml = topics.slice(0, 10).map((topic, index) => `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small">${index + 1}. ${topic.name}</span>
+                    <span class="badge bg-primary">${topic.count}</span>
+                </div>
+            `).join('');
+
+            container.innerHTML = topicsHtml;
+        }
+
+        async function loadSourceCredibility() {
+            try {
+                const response = await fetch('/api/public/source-credibility');
+                if (response.ok) {
+                    const sources = await response.json();
+                    displaySourceCredibility(sources);
+                }
+            } catch (error) {
+                console.error('Error loading source credibility:', error);
+            }
+        }
+
+        function displaySourceCredibility(sources) {
+            const container = document.getElementById('sourceCredibility');
+            if (!sources || sources.length === 0) {
+                container.innerHTML = '<p class="text-muted small">No source data available</p>';
+                return;
+            }
+
+            const sourcesHtml = sources.slice(0, 8).map(source => `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small">${source.name}</span>
+                    <div class="credibility-score ${getCredibilityClass(source.score)}">
+                        ${source.score}
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = sourcesHtml;
+        }
+
+        async function loadFactChecks() {
+            try {
+                const response = await fetch('/api/public/fact-checks');
+                if (response.ok) {
+                    const factChecks = await response.json();
+                    displayFactChecks(factChecks);
+                }
+            } catch (error) {
+                console.error('Error loading fact checks:', error);
+            }
+        }
+
+        function displayFactChecks(factChecks) {
+            const container = document.getElementById('factChecks');
+            if (!factChecks || factChecks.length === 0) {
+                container.innerHTML = '<p class="text-muted small">No recent corrections</p>';
+                return;
+            }
+
+            const factChecksHtml = factChecks.slice(0, 5).map(fact => `
+                <div class="mb-3">
+                    <p class="small mb-1">${fact.claim}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            ${fact.verdict}
+                        </small>
+                        <small class="text-muted">${formatDate(fact.date)}</small>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = factChecksHtml;
+        }
+
+        // Event handlers
+        function handleSearch(event) {
+            searchQuery = event.target.value.trim();
+            currentPage = 1;
+            loadArticles(1, false);
+        }
+
+        function handleSortChange(event) {
+            sortOrder = event.target.value;
+            currentPage = 1;
+            loadArticles(1, false);
+        }
+
+        function handleFilterClick(event) {
+            // Remove active class from all buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Add active class to clicked button
+            event.target.classList.add('active');
+
+            currentFilter = event.target.dataset.filter;
+            currentPage = 1;
+            loadArticles(1, false);
+        }
+
+        function loadMoreArticles() {
+            loadArticles(currentPage + 1, true);
+        }
+
+        // Utility functions
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Unknown';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch {
+                return 'Unknown';
+            }
+        }
+
+        function getSentimentClass(score) {
+            if (!score) return 'sentiment-neutral';
+            if (score > 0.1) return 'sentiment-positive';
+            if (score < -0.1) return 'sentiment-negative';
+            return 'sentiment-neutral';
+        }
+
+        function getSentimentIcon(score) {
+            if (!score) return 'bi-dash-circle';
+            if (score > 0.1) return 'bi-emoji-smile';
+            if (score < -0.1) return 'bi-emoji-frown';
+            return 'bi-dash-circle';
+        }
+
+        function getSentimentLabel(score) {
+            if (!score) return 'Neutral';
+            if (score > 0.1) return 'Positive';
+            if (score < -0.1) return 'Negative';
+            return 'Neutral';
+        }
+
+        function getCredibilityClass(score) {
+            if (!score) return 'score-low';
+            if (score >= 80) return 'score-high';
+            if (score >= 60) return 'score-medium';
+            return 'score-low';
+        }
+
+        function getSourceClass(reliability) {
+            if (!reliability) return 'source-unreliable';
+            switch (reliability.toLowerCase()) {
+                case 'high':
+                case 'trusted':
+                    return 'source-trusted';
+                case 'medium':
+                case 'questionable':
+                    return 'source-questionable';
+                default:
+                    return 'source-unreliable';
+            }
+        }
+
+        function getScoreColor(score) {
+            if (!score) return '';
+            if (score >= 80) return 'text-success';
+            if (score >= 60) return 'text-warning';
+            return 'text-danger';
+        }
+
+        function getBiasColor(score) {
+            if (!score) return '';
+            const absScore = Math.abs(score);
+            if (absScore < 0.2) return 'text-success';
+            if (absScore < 0.5) return 'text-warning';
+            return 'text-danger';
+        }
+
+        function getBiasLabel(score) {
+            if (!score) return 'Neutral';
+            const absScore = Math.abs(score);
+            if (absScore < 0.2) return 'Minimal';
+            if (absScore < 0.5) return 'Moderate';
+            return 'High';
+        }
+
+        function shareArticle(articleId) {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'JustNews Article',
+                    url: `${window.location.origin}/article/${articleId}`
+                });
+            } else {
+                // Fallback: copy to clipboard
+                navigator.clipboard.writeText(`${window.location.origin}/article/${articleId}`);
+                // Show toast notification
+                showToast('Article link copied to clipboard!');
+            }
+        }
+
+        function bookmarkArticle(articleId) {
+            // Implement bookmarking functionality
+            showToast('Article bookmarked!');
+        }
+
+        function showToast(message) {
+            // Simple toast implementation
+            const toast = document.createElement('div');
+            toast.className = 'toast align-items-center text-white bg-primary border-0';
+            toast.setAttribute('role', 'alert');
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+
+            const container = document.createElement('div');
+            container.className = 'toast-container position-fixed top-0 end-0 p-3';
+            container.appendChild(toast);
+            document.body.appendChild(container);
+
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+
+            toast.addEventListener('hidden.bs.toast', () => {
+                document.body.removeChild(container);
+            });
+        }
+
+        function toggleTheme() {
+            // Implement dark/light theme toggle
+            document.body.classList.toggle('dark-theme');
+            const icon = document.querySelector('.navbar .bi-moon-fill');
+            if (icon) {
+                icon.className = document.body.classList.contains('dark-theme') ?
+                    'bi bi-sun-fill' : 'bi bi-moon-fill';
+            }
+        }
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Initialize with sample data for demonstration
+        function loadSampleData() {
+            // This would be replaced with actual API calls
+            const sampleArticles = [
+                {
+                    id: 'sample-1',
+                    title: 'AI Revolutionizes Healthcare: New Breakthrough in Cancer Detection',
+                    source: 'Medical Journal',
+                    source_credibility: 92,
+                    source_reliability: 'high',
+                    sentiment_score: 0.3,
+                    fact_check_score: 95,
+                    bias_score: 0.1,
+                    emotional_tone: 'Optimistic',
+                    readability_score: 'College',
+                    published_date: new Date().toISOString(),
+                    topics: ['Healthcare', 'AI', 'Medical Technology'],
+                    summary: 'Researchers have developed an AI system that can detect early-stage cancer with 99% accuracy, potentially saving millions of lives annually.',
+                    comment_count: 47
+                },
+                {
+                    id: 'sample-2',
+                    title: 'Climate Summit Reaches Historic Agreement on Carbon Emissions',
+                    source: 'Global News Network',
+                    source_credibility: 88,
+                    source_reliability: 'high',
+                    sentiment_score: 0.2,
+                    fact_check_score: 91,
+                    bias_score: -0.05,
+                    emotional_tone: 'Hopeful',
+                    readability_score: 'High School',
+                    published_date: new Date(Date.now() - 3600000).toISOString(),
+                    topics: ['Climate', 'Politics', 'Environment'],
+                    summary: 'World leaders have agreed to ambitious new targets for reducing carbon emissions, marking a significant step forward in the fight against climate change.',
+                    comment_count: 123
+                }
+            ];
+
+            displayArticles(sampleArticles);
+
+            // Sample trending topics
+            const sampleTopics = [
+                { name: 'Artificial Intelligence', count: 245 },
+                { name: 'Climate Change', count: 189 },
+                { name: 'Healthcare', count: 156 },
+                { name: 'Technology', count: 134 },
+                { name: 'Politics', count: 98 }
+            ];
+            displayTrendingTopics(sampleTopics);
+
+            // Sample source credibility
+            const sampleSources = [
+                { name: 'Reuters', score: 95 },
+                { name: 'BBC News', score: 92 },
+                { name: 'The Guardian', score: 89 },
+                { name: 'CNN', score: 87 },
+                { name: 'Fox News', score: 72 }
+            ];
+            displaySourceCredibility(sampleSources);
+        }
+
+        // Load sample data for demonstration
+        loadSampleData();
+    </script>
+</body>
+</html>

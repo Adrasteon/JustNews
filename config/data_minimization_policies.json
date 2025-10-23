@@ -1,0 +1,59 @@
+{
+  "policies": [
+    {
+      "purpose": "contract_fulfillment",
+      "categories": [
+        "identifiers",
+        "financial"
+      ],
+      "retention_period_days": 2555,
+      "required_fields": [
+        "email",
+        "name"
+      ],
+      "optional_fields": [
+        "phone",
+        "address"
+      ],
+      "justification": "Required for service delivery and billing",
+      "legal_basis": "Article 6(1)(b) GDPR - Contract fulfillment",
+      "created_at": "2025-09-02T11:32:11.765634",
+      "updated_at": "2025-09-02T11:32:11.765634"
+    },
+    {
+      "purpose": "legitimate_interest",
+      "categories": [
+        "behavioral",
+        "communications"
+      ],
+      "retention_period_days": 365,
+      "required_fields": [],
+      "optional_fields": [
+        "usage_patterns",
+        "preferences"
+      ],
+      "justification": "Improve service quality and user experience",
+      "legal_basis": "Article 6(1)(f) GDPR - Legitimate interests",
+      "created_at": "2025-09-02T11:32:11.765638",
+      "updated_at": "2025-09-02T11:32:11.765638"
+    },
+    {
+      "purpose": "consent",
+      "categories": [
+        "identifiers",
+        "communications"
+      ],
+      "retention_period_days": 365,
+      "required_fields": [],
+      "optional_fields": [
+        "email",
+        "phone"
+      ],
+      "justification": "Marketing communications with user consent",
+      "legal_basis": "Article 6(1)(a) GDPR - Consent",
+      "created_at": "2025-09-02T11:32:11.765640",
+      "updated_at": "2025-09-02T11:32:11.765640"
+    }
+  ],
+  "last_updated": "2025-09-02T11:32:11.765742"
+}

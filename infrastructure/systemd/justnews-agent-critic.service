@@ -1,0 +1,16 @@
+[Unit]
+Description=JustNews Critic Agent
+After=network.target mcp.service
+
+[Service]
+Type=simple
+User=justnews
+Group=justnews
+WorkingDirectory=/opt/justnews
+ExecStart=/usr/local/bin/justnews-agent-critic
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

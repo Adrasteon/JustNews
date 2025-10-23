@@ -1,0 +1,272 @@
+{
+  "id": null,
+  "title": "JustNews Content Processing Pipeline",
+  "tags": [
+    "justnews",
+    "content",
+    "pipeline",
+    "processing"
+  ],
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Content Discovery Rate (Scout)",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(justnews_scout_content_discovered_total[5m])",
+          "legendFormat": "Content Discovered/min",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(justnews_scout_content_filtered_total[5m])",
+          "legendFormat": "Content Filtered/min",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": 2,
+      "title": "Analysis Performance (Analyst)",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(justnews_analyst_processing_total[5m])",
+          "legendFormat": "Articles Processed/min",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(justnews_analyst_inference_time_seconds_bucket[5m]))",
+          "legendFormat": "95th percentile inference time",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      }
+    },
+    {
+      "id": 3,
+      "title": "Synthesis Quality (Synthesizer)",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(justnews_synthesizer_processing_total[5m])",
+          "legendFormat": "Articles Synthesized/min",
+          "refId": "A"
+        },
+        {
+          "expr": "justnews_synthesizer_quality_score",
+          "legendFormat": "Synthesis Quality Score",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      }
+    },
+    {
+      "id": 4,
+      "title": "Quality Assessment (Critic)",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(justnews_critic_assessment_total[5m])",
+          "legendFormat": "Assessments/min",
+          "refId": "A"
+        },
+        {
+          "expr": "justnews_critic_quality_score",
+          "legendFormat": "Quality Score",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      }
+    },
+    {
+      "id": 5,
+      "title": "Pipeline Throughput",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(justnews_pipeline_input_total[5m])",
+          "legendFormat": "Pipeline Input",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(justnews_pipeline_output_total[5m])",
+          "legendFormat": "Pipeline Output",
+          "refId": "B"
+        },
+        {
+          "expr": "rate(justnews_pipeline_rejected_total[5m])",
+          "legendFormat": "Rejected Content",
+          "refId": "C"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      }
+    },
+    {
+      "id": 6,
+      "title": "Content Quality Distribution",
+      "type": "histogram",
+      "targets": [
+        {
+          "expr": "justnews_content_quality_score",
+          "legendFormat": "Quality Scores",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      }
+    },
+    {
+      "id": 7,
+      "title": "Processing Latency by Stage",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(justnews_scout_processing_time_seconds_bucket[5m]))",
+          "legendFormat": "Scout (95th percentile)",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(justnews_analyst_processing_time_seconds_bucket[5m]))",
+          "legendFormat": "Analyst (95th percentile)",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(justnews_synthesizer_processing_time_seconds_bucket[5m]))",
+          "legendFormat": "Synthesizer (95th percentile)",
+          "refId": "C"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(justnews_critic_processing_time_seconds_bucket[5m]))",
+          "legendFormat": "Critic (95th percentile)",
+          "refId": "D"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      }
+    },
+    {
+      "id": 8,
+      "title": "Pipeline Health Status",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "up{job=~\"justnews-(scout|analyst|synthesizer|critic)\"}",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "UP",
+                  "color": "green"
+                }
+              },
+              "type": "value"
+            }
+          ]
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 32
+      }
+    },
+    {
+      "id": 9,
+      "title": "Content Success Rate",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "(rate(justnews_pipeline_output_total[5m]) / rate(justnews_pipeline_input_total[5m])) * 100",
+          "legendFormat": "Success Rate %",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 32
+      }
+    },
+    {
+      "id": 10,
+      "title": "Average Processing Time",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "rate(justnews_pipeline_total_processing_time_seconds[5m]) / rate(justnews_pipeline_input_total[5m])",
+          "legendFormat": "Avg Processing Time (s)",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 32
+      }
+    }
+  ],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "refresh": "30s",
+  "schemaVersion": 27,
+  "version": 0,
+  "links": []
+}

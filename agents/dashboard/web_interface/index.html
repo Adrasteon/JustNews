@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JustNews Crawler Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #1e1e1e; color: #ffffff; }
+        .navbar { background-color: #2d3748; }
+        .card { background-color: #2d3748; border: 1px solid #4a5568; margin-bottom: 20px; }
+        .card-header { background-color: #4a5568; color: #ffffff; }
+        .card-body { color: #ffffff; }
+        .form-control, .form-select { background-color: #2d3748; color: #ffffff; border: 1px solid #4a5568; }
+        .form-control:focus, .form-select:focus { background-color: #2d3748; color: #ffffff; border-color: #63b3ed; }
+        .form-label { color: #ffffff; }
+        .form-check-label { color: #ffffff; }
+        .btn-primary { background-color: #3182ce; border-color: #3182ce; }
+        .btn-primary:hover { background-color: #2c5282; border-color: #2c5282; }
+        .btn-secondary { background-color: #4a5568; border-color: #4a5568; }
+        .btn-secondary:hover { background-color: #2d3748; border-color: #2d3748; }
+        .tab-content { padding: 20px; }
+        .metric-card { height: 300px; margin-bottom: 20px; }
+        .crawl-form-card { margin-bottom: 20px; }
+        .status-card { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">JustNews Crawler Dashboard</a>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="crawl-tab" data-bs-toggle="tab" data-bs-target="#crawl" type="button" role="tab">Crawl Control</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="metrics-tab" data-bs-toggle="tab" data-bs-target="#metrics" type="button" role="tab">Metrics Dashboards</button>
+            </li>
+        </ul>
+        <div class="tab-content" id="dashboardTabsContent">
+            <div class="tab-pane fade show active" id="crawl" role="tabpanel">
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card crawl-form-card">
+                            <div class="card-header">
+                                <h5 class="card-title">Crawl Configuration</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="crawlForm">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label for="domains" class="form-label">Domains or Database Query</label>
+                                            <input type="text" class="form-control" id="domains" placeholder="e.g., bbc.com, cnn.com or 'sources 10' or 'all'" value="sources 5">
+                                            <div class="form-text" style="color: #a0aec0;">Use comma-separated domains, 'sources &lt;number&gt;' for database sources, or 'all' for all sources</div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label for="maxSites" class="form-label">Max Sites</label>
+                                            <input type="number" class="form-control" id="maxSites" value="5" min="1" max="50">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label for="maxArticlesPerSite" class="form-label">Max Articles per Site</label>
+                                            <input type="number" class="form-control" id="maxArticlesPerSite" value="10" min="1" max="100">
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-md-4">
+                                            <label for="concurrentSites" class="form-label">Concurrent Sites</label>
+                                            <input type="number" class="form-control" id="concurrentSites" value="3" min="1" max="10">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="strategy" class="form-label">Crawl Type</label>
+                                            <select class="form-select" id="strategy">
+                                                <option value="auto">Auto (Recommended)</option>
+                                                <option value="ultra_fast">Ultra Fast (8.14+ art/sec)</option>
+                                                <option value="ai_enhanced">AI Enhanced (0.86+ art/sec)</option>
+                                                <option value="generic">Generic (Universal)</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="enableAI" class="form-label">Enable AI Analysis</label>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="enableAI" checked>
+                                                <label class="form-check-label" for="enableAI">
+                                                    Apply AI analysis to articles
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-md-6">
+                                            <label for="timeout" class="form-label">Timeout (seconds)</label>
+                                            <input type="number" class="form-control" id="timeout" value="300" min="30" max="3600">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="userAgent" class="form-label">User Agent</label>
+                                            <input type="text" class="form-control" id="userAgent" value="JustNewsAgent/1.0">
+                                        </div>
+                                    </div>
+                                    <button type="button" id="crawlButton" class="btn btn-primary mt-3">Start Crawl</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card status-card">
+                            <div class="card-header">
+                                <h5 class="card-title">Crawl Status</h5>
+                            </div>
+                            <div class="card-body" style="height: 600px; overflow-y: auto;">
+                                <div id="crawlStatus">No active crawl</div>
+                                <div class="mt-2">
+                                    <button id="refreshStatus" class="btn btn-secondary btn-sm me-2">Refresh</button>
+                                    <button id="clearStatus" class="btn btn-outline-secondary btn-sm me-2">Clear Status</button>
+                                    <button id="resetCrawler" class="btn btn-outline-danger btn-sm">Reset Crawler</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="metrics" role="tabpanel">
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card metric-card">
+                            <div class="card-header">
+                                <h5 class="card-title">Crawler Performance</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="crawlerChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card metric-card">
+                            <div class="card-header">
+                                <h5 class="card-title">Analyst Metrics</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="analystChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card metric-card">
+                            <div class="card-header">
+                                <h5 class="card-title">Memory Usage</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="memoryChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card metric-card">
+                            <div class="card-header">
+                                <h5 class="card-title">System Health</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="systemHealth">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let isCrawling = false;
+
+        // Initialize button state
+        function updateButtonState() {
+            const button = document.getElementById('crawlButton');
+            if (isCrawling) {
+                button.textContent = 'Stop Crawl';
+                button.className = 'btn btn-danger mt-3';
+            } else {
+                button.textContent = 'Start Crawl';
+                button.className = 'btn btn-primary mt-3';
+            }
+        }
+
+        // Check crawl status and update button (but don't override local state)
+        function checkCrawlStatus() {
+            fetch('/api/crawl/status')
+            .then(response => response.json())
+            .then(data => {
+                // Only update isCrawling if we successfully got status and there are no active jobs
+                const hasActiveJobs = Object.values(data).some(job => 
+                    job.status === 'running' || job.status === 'pending'
+                );
+                
+                // If we think we're crawling but there are no active jobs, update state
+                if (isCrawling && !hasActiveJobs) {
+                    isCrawling = false;
+                    updateButtonState();
+                }
+                // If we don't think we're crawling but there are active jobs, update state
+                else if (!isCrawling && hasActiveJobs) {
+                    isCrawling = true;
+                    updateButtonState();
+                }
+            })
+            .catch(error => {
+                console.error('Error checking crawl status:', error);
+                // Don't change state on error - keep current state
+            });
+        }
+
+        // Start crawl function
+        function startCrawl() {
+            // Clear the status panel for a new crawl
+            document.getElementById('crawlStatus').innerHTML = '<div style="color: #ffffff;">Initializing crawl...</div>';
+            
+            const formData = {
+                domains: document.getElementById('domains').value,
+                max_sites: parseInt(document.getElementById('maxSites').value),
+                max_articles_per_site: parseInt(document.getElementById('maxArticlesPerSite').value),
+                concurrent_sites: parseInt(document.getElementById('concurrentSites').value),
+                strategy: document.getElementById('strategy').value,
+                enable_ai: document.getElementById('enableAI').checked,
+                timeout: parseInt(document.getElementById('timeout').value),
+                user_agent: document.getElementById('userAgent').value
+            };
+            
+            fetch('/api/crawl/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('crawlStatus').innerHTML = `<div style="color: #38a169; font-weight: bold;">Crawl started successfully!</div><div style="color: #ffffff; margin-top: 10px;">Job ID: ${data.job_id || 'Unknown'}</div>`;
+                // Don't set isCrawling here - let checkCrawlStatus handle it
+                // This ensures the state is accurate
+                setTimeout(checkCrawlStatus, 1000); // Check status after 1 second
+            })
+            .catch(error => {
+                document.getElementById('crawlStatus').innerHTML = `<div style="color: #e53e3e; font-weight: bold;">Error starting crawl:</div><div style="color: #ffffff; margin-top: 10px;">${error.message}</div>`;
+            });
+        }
+
+        // Stop crawl function
+        function stopCrawl() {
+            fetch('/api/crawl/stop', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('crawlStatus').innerHTML = `<div style="color: #38a169; font-weight: bold;">Crawl stopped successfully!</div><div style="color: #ffffff; margin-top: 10px;">${data.message}</div>`;
+                // Don't set isCrawling here - let checkCrawlStatus handle it
+                setTimeout(checkCrawlStatus, 1000); // Check status after 1 second
+            })
+            .catch(error => {
+                document.getElementById('crawlStatus').innerHTML = `<div style="color: #e53e3e; font-weight: bold;">Error stopping crawl:</div><div style="color: #ffffff; margin-top: 10px;">${error.message}</div>`;
+            });
+        }
+
+        // Button click handler
+        document.getElementById('crawlButton').addEventListener('click', function() {
+            if (isCrawling) {
+                stopCrawl();
+            } else {
+                startCrawl();
+            }
+        });
+
+        // Refresh status
+        document.getElementById('refreshStatus').addEventListener('click', function() {
+            fetch('/api/crawl/status')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('crawlStatus').innerHTML = `<pre style="color: #ffffff; background-color: #2d3748; padding: 10px; border-radius: 5px;">${JSON.stringify(data, null, 2)}</pre>`;
+                // Update button state based on status
+                checkCrawlStatus();
+            })
+            .catch(error => {
+                document.getElementById('crawlStatus').innerHTML = `<div style="color: #e53e3e; font-weight: bold;">Error refreshing status:</div><div style="color: #ffffff; margin-top: 10px;">${error.message}</div>`;
+            });
+        });
+
+        // Clear status
+        document.getElementById('clearStatus').addEventListener('click', function() {
+            // Clear old jobs from server
+            fetch('/api/crawl/clear_jobs', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Cleared jobs:', data);
+            })
+            .catch(error => {
+                console.error('Error clearing jobs:', error);
+            })
+            .finally(() => {
+                // Always clear the display
+                document.getElementById('crawlStatus').innerHTML = '<div style="color: #ffffff;">Status cleared</div>';
+            });
+        });
+
+        // Reset crawler
+        document.getElementById('resetCrawler').addEventListener('click', function() {
+            if (confirm('This will completely reset the crawler state, clearing all jobs and metrics. Continue?')) {
+                // Completely reset crawler
+                fetch('/api/crawl/reset', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Reset crawler:', data);
+                    // Clear the display and reset button state
+                    document.getElementById('crawlStatus').innerHTML = '<div style="color: #38a169; font-weight: bold;">Crawler reset successfully</div>';
+                    isCrawling = false;
+                    updateButtonState();
+                })
+                .catch(error => {
+                    console.error('Error resetting crawler:', error);
+                    document.getElementById('crawlStatus').innerHTML = `<div style="color: #e53e3e; font-weight: bold;">Error resetting crawler:</div><div style="color: #ffffff; margin-top: 10px;">${error.message}</div>`;
+                });
+            }
+        });
+
+        // Load metrics on tab change
+        document.getElementById('metrics-tab').addEventListener('click', function() {
+            loadMetrics();
+        });
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkCrawlStatus();
+            // Check status every 30 seconds
+            setInterval(checkCrawlStatus, 30000);
+        });
+
+        // Load metrics on tab change
+        document.getElementById('metrics-tab').addEventListener('click', function() {
+            loadMetrics();
+        });
+
+        function loadMetrics() {
+            // Fetch and display metrics from various agents
+            fetch('/api/metrics/crawler')
+            .then(response => response.json())
+            .then(data => {
+                // Update crawler chart
+                const ctx = document.getElementById('crawlerChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['1', '2', '3', '4', '5'],
+                        datasets: [{
+                            label: 'Articles Processed',
+                            data: [data.articles_processed || 0, 10, 20, 30, 40],
+                            borderColor: '#3182ce',
+                            backgroundColor: 'rgba(49, 130, 206, 0.1)'
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                ticks: {
+                                    color: '#ffffff'
+                                },
+                                grid: {
+                                    color: '#4a5568'
+                                }
+                            },
+                            y: {
+                                ticks: {
+                                    color: '#ffffff'
+                                },
+                                grid: {
+                                    color: '#4a5568'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#ffffff'
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+
+            fetch('/api/metrics/analyst')
+            .then(response => response.json())
+            .then(data => {
+                // Update analyst chart
+                const ctx = document.getElementById('analystChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Sentiment', 'Bias', 'Topics'],
+                        datasets: [{
+                            label: 'Analysis Count',
+                            data: [data.sentiment_count || 0, data.bias_count || 0, data.topics_count || 0],
+                            backgroundColor: '#63b3ed'
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                ticks: {
+                                    color: '#ffffff'
+                                },
+                                grid: {
+                                    color: '#4a5568'
+                                }
+                            },
+                            y: {
+                                ticks: {
+                                    color: '#ffffff'
+                                },
+                                grid: {
+                                    color: '#4a5568'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#ffffff'
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+
+            fetch('/api/metrics/memory')
+            .then(response => response.json())
+            .then(data => {
+                // Update memory chart - horizontal bar
+                const ctx = document.getElementById('memoryChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Memory Usage'],
+                        datasets: [{
+                            label: 'Used (%)',
+                            data: [data.used || 50],
+                            backgroundColor: '#e53e3e',
+                            borderColor: '#e53e3e',
+                            borderWidth: 1
+                        }, {
+                            label: 'Free (%)',
+                            data: [data.free || 50],
+                            backgroundColor: '#38a169',
+                            borderColor: '#38a169',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y', // This makes it horizontal
+                        scales: {
+                            x: {
+                                stacked: true,
+                                max: 100,
+                                ticks: {
+                                    color: '#ffffff'
+                                },
+                                grid: {
+                                    color: '#4a5568'
+                                }
+                            },
+                            y: {
+                                stacked: true,
+                                ticks: {
+                                    color: '#ffffff'
+                                },
+                                grid: {
+                                    color: '#4a5568'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#ffffff'
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+
+            fetch('/api/health')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('systemHealth').innerHTML = `
+                    <p style="color: #ffffff;"><strong>Crawler:</strong> <span style="color: ${data.crawler ? '#38a169' : '#e53e3e'};">${data.crawler ? 'Healthy' : 'Unhealthy'}</span></p>
+                    <p style="color: #ffffff;"><strong>Analyst:</strong> <span style="color: ${data.analyst ? '#38a169' : '#e53e3e'};">${data.analyst ? 'Healthy' : 'Unhealthy'}</span></p>
+                    <p style="color: #ffffff;"><strong>Memory:</strong> <span style="color: ${data.memory ? '#38a169' : '#e53e3e'};">${data.memory ? 'Healthy' : 'Unhealthy'}</span></p>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "JustNewsAgent System Overview",
+    "description": "Comprehensive system health and performance monitoring",
+    "tags": [
+      "system",
+      "overview",
+      "health"
+    ],
+    "timezone": "UTC",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": [
+        {
+          "name": "instance",
+          "label": "Instance",
+          "type": "query",
+          "query": "label_values(up, instance)",
+          "multi": true
+        }
+      ]
+    },
+    "annotations": {
+      "list": []
+    },
+    "panels": [
+      {
+        "id": null,
+        "title": "System CPU Usage",
+        "type": "graph",
+        "description": "CPU usage across all system instances",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "100 - (avg by(instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+            "legendFormat": "{{instance}}"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "System Memory Usage",
+        "type": "graph",
+        "description": "Memory usage percentage across all instances",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100",
+            "legendFormat": "{{instance}}"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Active Agents",
+        "type": "stat",
+        "description": "Number of active JustNewsAgent services",
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 0,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "up{job=~\"justnews-.*\"}",
+            "legendFormat": "{{job}}"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "MCP Bus Requests",
+        "type": "graph",
+        "description": "MCP Bus request rate over time",
+        "gridPos": {
+          "h": 8,
+          "w": 16,
+          "x": 8,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "rate(mcp_bus_requests_total[5m])",
+            "legendFormat": "Requests/sec"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      }
+    ],
+    "version": 1,
+    "schemaVersion": 36,
+    "style": "dark"
+  },
+  "overwrite": false
+}

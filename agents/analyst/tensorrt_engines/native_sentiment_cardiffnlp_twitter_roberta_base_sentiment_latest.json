@@ -1,0 +1,11 @@
+{
+  "task": "sentiment",
+  "model": "cardiffnlp/twitter-roberta-base-sentiment-latest",
+  "precision": "fp8",
+  "created_at": "2025-09-06T10:32:19.304275+00:00",
+  "max_batch_size": 32,
+  "sequence_length": 512,
+  "num_classes": 3,
+  "status": "marker_engine",
+  "note": "Actual TensorRT compilation requires tensorrt-llm package"
+}

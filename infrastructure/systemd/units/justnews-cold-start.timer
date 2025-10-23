@@ -1,0 +1,11 @@
+[Unit]
+Description=Run JustNews cold start shortly after boot
+After=multi-user.target
+
+[Timer]
+OnBootSec=45sec
+Persistent=true
+Unit=justnews-cold-start.service
+
+[Install]
+WantedBy=timers.target

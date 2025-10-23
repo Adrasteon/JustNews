@@ -1,0 +1,486 @@
+
+        <div id="consent-modal" class="consent-modal" style="display: none;">
+            <div class="modal-backdrop"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Privacy Preferences</h2>
+                    <button class="modal-close" id="modal-close">&times;</button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="preferences-intro">
+                        <p>Manage your privacy preferences below. You can change these settings at any time.</p>
+                    </div>
+
+                    <div class="preference-items">
+                        
+                <div class="preference-item">
+                    <div class="preference-header">
+                        <div class="preference-info">
+                            <h4>Data Processing</h4>
+                            <p>Process your data to provide our services</p>
+                        </div>
+                        <label class="preference-toggle">
+                            <input type="checkbox"
+                                   id="pref-data_processing"
+                                   class="preference-checkbox"
+                                   data-consent-type="data_processing"
+                                   checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="preference-details">
+                        <div class="detail-section">
+                            <h5>Purpose</h5>
+                            <p>Service delivery</p>
+                        </div>
+                        <div class="detail-section">
+                            <h5>Legal Basis</h5>
+                            <p>Contract fulfillment (GDPR Art. 6(1)(b))</p>
+                        </div>
+                        <div class="detail-section">
+                            <h5>Data Retention</h5>
+                            <p>365 days</p>
+                        </div>
+                        <div class="detail-section">
+                            <h5>Status</h5>
+                            <p class="consent-status" data-consent-type="data_processing">
+                                Granted
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            
+                <div class="preference-item">
+                    <div class="preference-header">
+                        <div class="preference-info">
+                            <h4>Usage Analytics</h4>
+                            <p>Collect anonymous usage statistics to improve our service</p>
+                        </div>
+                        <label class="preference-toggle">
+                            <input type="checkbox"
+                                   id="pref-analytics"
+                                   class="preference-checkbox"
+                                   data-consent-type="analytics"
+                                   >
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="preference-details">
+                        <div class="detail-section">
+                            <h5>Purpose</h5>
+                            <p>Service improvement</p>
+                        </div>
+                        <div class="detail-section">
+                            <h5>Legal Basis</h5>
+                            <p>Legitimate interest (GDPR Art. 6(1)(f))</p>
+                        </div>
+                        <div class="detail-section">
+                            <h5>Data Retention</h5>
+                            <p>365 days</p>
+                        </div>
+                        <div class="detail-section">
+                            <h5>Status</h5>
+                            <p class="consent-status" data-consent-type="analytics">
+                                Not granted
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            
+                <div class="preference-item">
+                    <div class="preference-header">
+                        <div class="preference-info">
+                            <h4>Marketing Communications</h4>
+                            <p>Send you promotional emails and offers</p>
+                        </div>
+                        <label class="preference-toggle">
+                            <input type="checkbox"
+                                   id="pref-marketing"
+                                   class="preference-checkbox"
+                                   data-consent-type="marketing"
+                                   >
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="preference-details">
+                        <div class="detail-section">
+                            <h5>Purpose</h5>
+                            <p>Marketing</p>
+                        </div>
+                        <div class="detail-section">
+                            <h5>Legal Basis</h5>
+                            <p>Consent (GDPR Art. 6(1)(a))</p>
+                        </div>
+                        <div class="detail-section">
+                            <h5>Data Retention</h5>
+                            <p>365 days</p>
+                        </div>
+                        <div class="detail-section">
+                            <h5>Status</h5>
+                            <p class="consent-status" data-consent-type="marketing">
+                                Not granted
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            
+                    </div>
+
+                    <div class="preference-actions">
+                        <button id="modal-accept-all" class="btn btn-primary">Accept All</button>
+                        <button id="modal-reject-all" class="btn btn-secondary">Reject All</button>
+                        <button id="modal-save" class="btn btn-primary">Save Preferences</button>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <p class="modal-footer-text">
+                        For more information, please read our
+                        <a href="/privacy-policy" target="_blank">Privacy Policy</a>.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            
+            .consent-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 10001;
+            }
+
+            .modal-backdrop {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+            }
+
+            .modal-content {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+                max-width: 600px;
+                width: 90%;
+                max-height: 80vh;
+                overflow-y: auto;
+            }
+
+            .modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 24px;
+                border-bottom: 1px solid #e2e8f0;
+            }
+
+            .modal-header h2 {
+                margin: 0;
+                font-size: 24px;
+                font-weight: 600;
+                color: #1a202c;
+            }
+
+            .modal-close {
+                background: none;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                color: #718096;
+                padding: 0;
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 4px;
+            }
+
+            .modal-close:hover {
+                background: #f7fafc;
+                color: #4a5568;
+            }
+
+            .modal-body {
+                padding: 24px;
+            }
+
+            .preferences-intro {
+                margin-bottom: 24px;
+            }
+
+            .preferences-intro p {
+                margin: 0;
+                color: #4a5568;
+                line-height: 1.5;
+            }
+
+            .preference-items {
+                margin-bottom: 24px;
+            }
+
+            .preference-item {
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                margin-bottom: 16px;
+                overflow: hidden;
+            }
+
+            .preference-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                padding: 16px;
+                background: #f8fafc;
+            }
+
+            .preference-info h4 {
+                margin: 0 0 4px 0;
+                font-size: 16px;
+                font-weight: 600;
+                color: #2d3748;
+            }
+
+            .preference-info p {
+                margin: 0;
+                color: #4a5568;
+                font-size: 14px;
+                line-height: 1.4;
+            }
+
+            .preference-toggle {
+                margin-left: 16px;
+            }
+
+            .preference-details {
+                padding: 16px;
+                background: white;
+                border-top: 1px solid #e2e8f0;
+            }
+
+            .detail-section {
+                margin-bottom: 12px;
+            }
+
+            .detail-section h5 {
+                margin: 0 0 4px 0;
+                font-size: 12px;
+                font-weight: 600;
+                color: #718096;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .detail-section p {
+                margin: 0;
+                font-size: 14px;
+                color: #4a5568;
+            }
+
+            .consent-status {
+                font-weight: 500;
+            }
+
+            .preference-actions {
+                display: flex;
+                gap: 12px;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .modal-footer {
+                padding: 16px 24px;
+                border-top: 1px solid #e2e8f0;
+                background: #f8fafc;
+            }
+
+            .modal-footer-text {
+                margin: 0;
+                text-align: center;
+                font-size: 14px;
+                color: #718096;
+            }
+
+            .modal-footer-text a {
+                color: #3182ce;
+                text-decoration: none;
+            }
+
+            .modal-footer-text a:hover {
+                text-decoration: underline;
+            }
+
+            @media (max-width: 768px) {
+                .modal-content {
+                    width: 95%;
+                    max-height: 90vh;
+                }
+
+                .modal-header {
+                    padding: 16px;
+                }
+
+                .modal-body {
+                    padding: 16px;
+                }
+
+                .preference-header {
+                    flex-direction: column;
+                    align-items: flex-start;
+                }
+
+                .preference-toggle {
+                    margin-left: 0;
+                    margin-top: 12px;
+                    align-self: flex-end;
+                }
+
+                .preference-actions {
+                    flex-direction: column;
+                }
+
+                .preference-actions .btn {
+                    width: 100%;
+                }
+            }
+        
+        </style>
+
+        <script>
+            
+            document.addEventListener('DOMContentLoaded', function() {
+                const modal = document.getElementById('consent-modal');
+                const modalClose = document.getElementById('modal-close');
+                const acceptAllBtn = document.getElementById('modal-accept-all');
+                const rejectAllBtn = document.getElementById('modal-reject-all');
+                const saveBtn = document.getElementById('modal-save');
+                const checkboxes = document.querySelectorAll('.preference-checkbox');
+
+                // Close modal
+                modalClose.addEventListener('click', function() {
+                    modal.style.display = 'none';
+                });
+
+                // Close on backdrop click
+                document.querySelector('.modal-backdrop').addEventListener('click', function() {
+                    modal.style.display = 'none';
+                });
+
+                // Accept all
+                acceptAllBtn.addEventListener('click', function() {
+                    checkboxes.forEach(cb => cb.checked = true);
+                    updateStatusDisplays();
+                });
+
+                // Reject all
+                rejectAllBtn.addEventListener('click', function() {
+                    checkboxes.forEach(cb => cb.checked = false);
+                    updateStatusDisplays();
+                });
+
+                // Save preferences
+                saveBtn.addEventListener('click', function() {
+                    savePreferences();
+                });
+
+                // Update status displays when checkboxes change
+                checkboxes.forEach(cb => {
+                    cb.addEventListener('change', function() {
+                        updateStatusDisplays();
+                    });
+                });
+
+                function updateStatusDisplays() {
+                    checkboxes.forEach(cb => {
+                        const statusEl = document.querySelector(`.consent-status[data-consent-type="${cb.dataset.consentType}"]`);
+                        if (statusEl) {
+                            statusEl.textContent = cb.checked ? 'Will be granted' : 'Will be denied';
+                            statusEl.style.color = cb.checked ? '#22543d' : '#742a2a';
+                        }
+                    });
+                }
+
+                function savePreferences() {
+                    const consents = {};
+                    checkboxes.forEach(cb => {
+                        consents[cb.dataset.consentType] = cb.checked;
+                    });
+
+                    fetch('/auth/consent/batch', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ consents: consents })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            modal.style.display = 'none';
+                            location.reload(); // Refresh to update UI
+                        } else {
+                            alert('Error saving preferences. Please try again.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error saving preferences. Please try again.');
+                    });
+                }
+
+                // Load current consent status
+                loadCurrentStatus();
+
+                function loadCurrentStatus() {
+                    fetch('/auth/consent/status', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': 'Bearer ' + getAuthToken()
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            data.data.forEach(consent => {
+                                const checkbox = document.getElementById(`pref-${consent.type}`);
+                                const statusEl = document.querySelector(`.consent-status[data-consent-type="${consent.type}"]`);
+
+                                if (checkbox) {
+                                    checkbox.checked = consent.granted;
+                                }
+                                if (statusEl) {
+                                    statusEl.textContent = consent.granted ? 'Granted' : 'Not granted';
+                                    statusEl.style.color = consent.granted ? '#22543d' : '#742a2a';
+                                }
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading consent status:', error);
+                    });
+                }
+
+                function getAuthToken() {
+                    // Get token from localStorage or wherever it's stored
+                    return localStorage.getItem('auth_token') || '';
+                }
+            });
+
+            // Function to show modal (call this from your UI)
+            function showConsentModal() {
+                document.getElementById('consent-modal').style.display = 'block';
+            }
+        
+        </script>
+        

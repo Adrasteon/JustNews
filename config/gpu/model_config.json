@@ -1,0 +1,144 @@
+{
+  "model_defaults": {
+    "torch_dtype": "float16",
+    "device_map": "auto",
+    "load_in_8bit": false,
+    "load_in_4bit": false,
+    "trust_remote_code": true,
+    "max_memory_usage_gb": 4.0
+  },
+  "model_specific": {
+    "gpt2-medium": {
+      "max_memory_usage_gb": 2.0,
+      "batch_size_recommendation": 8,
+      "use_flash_attention": false
+    },
+    "distilgpt2": {
+      "max_memory_usage_gb": 1.0,
+      "batch_size_recommendation": 16,
+      "use_flash_attention": false
+    },
+    "sentence-transformers/all-MiniLM-L6-v2": {
+      "max_memory_usage_gb": 0.5,
+      "batch_size_recommendation": 32,
+      "use_flash_attention": false
+    },
+    "facebook/bart-large-mnli": {
+      "max_memory_usage_gb": 3.0,
+      "batch_size_recommendation": 4,
+      "use_flash_attention": false
+    },
+    "google/bert_uncased_L-2_H-128_A-2": {
+      "max_memory_usage_gb": 0.5,
+      "batch_size_recommendation": 64,
+      "use_flash_attention": false
+    },
+    "cardiffnlp/twitter-roberta-base-sentiment-latest": {
+      "max_memory_usage_gb": 1.5,
+      "batch_size_recommendation": 16,
+      "use_flash_attention": false
+    },
+    "martin-ha/toxic-comment-model": {
+      "max_memory_usage_gb": 1.0,
+      "batch_size_recommendation": 16,
+      "use_flash_attention": false
+    },
+    "distilbert-base-uncased": {
+      "max_memory_usage_gb": 1.0,
+      "batch_size_recommendation": 16,
+      "use_flash_attention": false
+    },
+    "roberta-base": {
+      "max_memory_usage_gb": 2.0,
+      "batch_size_recommendation": 8,
+      "use_flash_attention": false
+    },
+    "unitary/unbiased-toxic-roberta": {
+      "max_memory_usage_gb": 2.0,
+      "batch_size_recommendation": 8,
+      "use_flash_attention": false
+    },
+    "unitary/toxic-bert": {
+      "max_memory_usage_gb": 1.5,
+      "batch_size_recommendation": 12,
+      "use_flash_attention": false
+    },
+    "sentence-transformers/all-mpnet-base-v2": {
+      "max_memory_usage_gb": 1.0,
+      "batch_size_recommendation": 16,
+      "use_flash_attention": false
+    },
+    "google/flan-t5-small": {
+      "max_memory_usage_gb": 1.5,
+      "batch_size_recommendation": 8,
+      "use_flash_attention": false
+    }
+  },
+  "agent_model_assignments": {
+    "synthesizer": ["gpt2-medium", "distilgpt2", "google/flan-t5-small"],
+    "fact_checker": ["distilbert-base-uncased", "roberta-base", "sentence-transformers/all-mpnet-base-v2"],
+    "analyst": ["google/bert_uncased_L-2_H-128_A-2"],
+    "scout": ["google/bert_uncased_L-2_H-128_A-2", "cardiffnlp/twitter-roberta-base-sentiment-latest", "martin-ha/toxic-comment-model"],
+    "memory": ["sentence-transformers/all-MiniLM-L6-v2"],
+    "newsreader": ["sentence-transformers/all-MiniLM-L6-v2"],
+    "critic": ["unitary/unbiased-toxic-roberta", "unitary/toxic-bert"],
+    "balancer": ["google/bert_uncased_L-2_H-128_A-2"],
+    "chief_editor": ["distilbert-base-uncased"]
+  },
+  "agent_memory_requirements": {
+    "analyst": {
+      "total_memory_gb": 0.5,
+      "mps_allocation_gb": 1.0,
+      "models": ["google/bert_uncased_L-2_H-128_A-2"],
+      "description": "Single lightweight BERT model for analysis"
+    },
+    "balancer": {
+      "total_memory_gb": 0.5,
+      "mps_allocation_gb": 1.0,
+      "models": ["google/bert_uncased_L-2_H-128_A-2"],
+      "description": "Single lightweight BERT model for load balancing"
+    },
+    "chief_editor": {
+      "total_memory_gb": 1.0,
+      "mps_allocation_gb": 2.0,
+      "models": ["distilbert-base-uncased"],
+      "description": "Single DistilBERT model for orchestration"
+    },
+    "critic": {
+      "total_memory_gb": 3.5,
+      "mps_allocation_gb": 4.0,
+      "models": ["unitary/unbiased-toxic-roberta", "unitary/toxic-bert"],
+      "description": "Two RoBERTa/BERT models for quality assessment"
+    },
+    "fact_checker": {
+      "total_memory_gb": 4.0,
+      "mps_allocation_gb": 5.0,
+      "models": ["distilbert-base-uncased", "roberta-base", "sentence-transformers/all-mpnet-base-v2"],
+      "description": "Three models for comprehensive fact verification"
+    },
+    "memory": {
+      "total_memory_gb": 0.5,
+      "mps_allocation_gb": 1.0,
+      "models": ["sentence-transformers/all-MiniLM-L6-v2"],
+      "description": "Single lightweight embedding model"
+    },
+    "newsreader": {
+      "total_memory_gb": 0.5,
+      "mps_allocation_gb": 1.0,
+      "models": ["sentence-transformers/all-MiniLM-L6-v2"],
+      "description": "Single lightweight embedding model for content analysis"
+    },
+    "scout": {
+      "total_memory_gb": 3.0,
+      "mps_allocation_gb": 4.0,
+      "models": ["google/bert_uncased_L-2_H-128_A-2", "cardiffnlp/twitter-roberta-base-sentiment-latest", "martin-ha/toxic-comment-model"],
+      "description": "Three models for content discovery and classification"
+    },
+    "synthesizer": {
+      "total_memory_gb": 3.0,
+      "mps_allocation_gb": 4.0,
+      "models": ["distilgpt2", "google/flan-t5-small"],
+      "description": "Two generative models for content synthesis"
+    }
+  }
+}

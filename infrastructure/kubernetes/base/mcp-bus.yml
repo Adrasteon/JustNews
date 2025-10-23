@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-bus
+  labels:
+    app: justnews
+    component: mcp-bus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: justnews
+      component: mcp-bus
+  template:
+    metadata:
+      labels:
+        app: justnews
+        component: mcp-bus
+    spec:
+      containers:
+      - name: mcp-bus
+        image: justnews/mcp-bus:latest
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: DEPLOY_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: justnews-config
+              key: deploy-env
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: justnews-config
+              key: log-level
+        - name: POSTGRES_HOST
+          valueFrom:
+            secretKeyRef:
+              name: justnews-secrets
+              key: postgres-host
+        - name: POSTGRES_PORT
+          valueFrom:
+            secretKeyRef:
+              name: justnews-secrets
+              key: postgres-port
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: justnews-secrets
+              key: postgres-db
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: justnews-secrets
+              key: postgres-user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: justnews-secrets
+              key: postgres-password
+        - name: REDIS_HOST
+          valueFrom:
+            secretKeyRef:
+              name: justnews-secrets
+              key: redis-host
+        - name: REDIS_PORT
+          valueFrom:
+            secretKeyRef:
+              name: justnews-secrets
+              key: redis-port
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: justnews-secrets
+              key: redis-password
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-bus
+  labels:
+    app: justnews
+    component: mcp-bus
+spec:
+  selector:
+    app: justnews
+    component: mcp-bus
+  ports:
+  - name: http
+    port: 8000
+    targetPort: http
+  type: ClusterIP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mcp-bus-ingress
+  labels:
+    app: justnews
+    component: mcp-bus
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: mcp-bus.justnews.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: mcp-bus
+            port:
+              number: 8000

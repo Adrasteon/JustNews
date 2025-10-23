@@ -1,0 +1,29 @@
+[Unit]
+Description=JustNews Service (%i)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+# Global and per-instance environment files (optional but recommended)
+EnvironmentFile=-/etc/justnews/global.env
+EnvironmentFile=-/etc/justnews/%i.env
+# Run as the deploy user by default (override in /etc/justnews/<instance>.env if needed)
+User=adra
+Group=adra
+# Use an absolute working directory (systemd requires absolute paths)
+WorkingDirectory=/home/adra/justnewsagent/JustNewsAgent
+# Start from a shell to allow cd into repo and use env var expansion safely
+# Skip MCP wait for mcp_bus and gpu_orchestrator (they must start before/without the bus)
+ExecStartPre=/bin/bash -c 'if [ "%i" = "mcp_bus" ]; then /home/adra/justnewsagent/JustNewsAgent/deploy/systemd/scripts/justnews-preflight-check.sh --gate-only; else [ "${REQUIRE_BUS:-1}" = "0" ] || [ "%i" = "gpu_orchestrator" ] || /home/adra/justnewsagent/JustNewsAgent/deploy/systemd/scripts/wait_for_mcp.sh; fi'
+ExecStart=/home/adra/justnewsagent/JustNewsAgent/deploy/systemd/scripts/justnews-start-agent.sh %i
+Restart=on-failure
+RestartSec=3
+# Uncomment to restrict core dumps and add basic security hardening
+# NoNewPrivileges=true
+# PrivateTmp=true
+# ProtectSystem=full
+# ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target

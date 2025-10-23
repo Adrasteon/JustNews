@@ -1,0 +1,44 @@
+[Unit]
+Description=JustNews MCP Bus Service
+After=network.target postgresql.service redis-server.service
+Requires=postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=justnews
+Group=justnews
+WorkingDirectory=/opt/justnews
+Environment=DEPLOY_ENV=production
+Environment=LOG_LEVEL=INFO
+Environment=POSTGRES_HOST=localhost
+Environment=POSTGRES_PORT=5432
+Environment=POSTGRES_DB=justnews
+Environment=POSTGRES_USER=justnews
+Environment=POSTGRES_PASSWORD_FILE=/etc/justnews/secrets/postgres_password
+Environment=REDIS_HOST=localhost
+Environment=REDIS_PORT=6379
+Environment=REDIS_PASSWORD_FILE=/etc/justnews/secrets/redis_password
+Environment=SECRET_KEY_FILE=/etc/justnews/secrets/secret_key
+Environment=JWT_SECRET_KEY_FILE=/etc/justnews/secrets/jwt_secret_key
+ExecStart=/opt/justnews/venv/bin/python -m agents.mcp_bus.main
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=justnews-mcp-bus
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/justnews /var/log/justnews /tmp
+ProtectHome=yes
+PrivateDevices=yes
+
+# Resource limits
+MemoryLimit=512M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target

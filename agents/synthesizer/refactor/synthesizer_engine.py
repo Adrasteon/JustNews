@@ -1,0 +1,864 @@
+"""
+Synthesizer Engine - Consolidated Content Synthesis Engine
+
+This module provides a consolidated synthesizer engine that combines
+the V3 production engine capabilities with GPU acceleration for optimal
+content synthesis performance.
+
+Architecture:
+- BERTopic clustering for advanced theme identification
+- BART summarization for content condensation
+- FLAN-T5 for neutralization and refinement
+- SentenceTransformers for semantic embeddings
+- GPU acceleration with CPU fallbacks
+
+Key Features:
+- Production-ready with comprehensive error handling
+- GPU memory management and cleanup
+- Batch processing for optimal performance
+- Training system integration
+- Performance monitoring and statistics
+"""
+
+import asyncio
+import os
+import time
+from dataclasses import dataclass
+from datetime import datetime, UTC
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import torch
+
+from common.observability import get_logger
+
+# Core ML libraries with fallbacks
+try:
+    from transformers import (
+        BartForConditionalGeneration,
+        BartTokenizer,
+        T5ForConditionalGeneration,
+        T5Tokenizer,
+        pipeline,
+    )
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
+
+try:
+    from bertopic import BERTopic
+    BERTOPIC_AVAILABLE = True
+except ImportError:
+    BERTOPIC_AVAILABLE = False
+
+try:
+    from sklearn.cluster import KMeans
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+
+try:
+    import numpy as np
+    NUMPY_AVAILABLE = True
+except ImportError:
+    NUMPY_AVAILABLE = False
+
+# GPU manager integration
+try:
+    from agents.common.gpu_manager import release_agent_gpu, request_agent_gpu
+    GPU_MANAGER_AVAILABLE = True
+except ImportError:
+    GPU_MANAGER_AVAILABLE = False
+
+logger = get_logger(__name__)
+
+@dataclass
+class SynthesizerConfig:
+    """Configuration for the synthesizer engine."""
+
+    # Model configurations
+    bertopic_model: str = "all-MiniLM-L6-v2"
+    bart_model: str = "facebook/bart-large-cnn"
+    flan_t5_model: str = "google/flan-t5-base"
+    embedding_model: str = "all-MiniLM-L6-v2"
+
+    # Processing parameters
+    max_new_tokens: int = 256
+    temperature: float = 0.8
+    top_p: float = 0.9
+    batch_size: int = 4
+
+    # Clustering parameters
+    min_cluster_size: int = 2
+    min_samples: int = 1
+    n_clusters: int = 3
+    min_articles_for_clustering: int = 3
+
+    # GPU parameters
+    device: str = "auto"
+    gpu_memory_limit_gb: float = 8.0
+
+    # Cache and logging
+    cache_dir: str = "./models/synthesizer"
+    feedback_log: str = "./feedback_synthesizer.log"
+
+
+class SynthesisResult:
+    """Result container for synthesis operations."""
+
+    def __init__(
+        self,
+        success: bool = False,
+        content: str = "",
+        method: str = "",
+        processing_time: float = 0.0,
+        model_used: str = "",
+        confidence: float = 0.0,
+        metadata: Optional[Dict[str, Any]] = None
+    ):
+        self.success = success
+        self.content = content
+        self.method = method
+        self.processing_time = processing_time
+        self.model_used = model_used
+        self.confidence = confidence
+        self.metadata = metadata or {}
+
+
+class SynthesizerEngine:
+    """
+    Consolidated synthesizer engine with GPU acceleration.
+
+    Combines V3 production engine capabilities with GPU tools for
+    optimal content synthesis performance.
+    """
+
+    def __init__(self, config: Optional[SynthesizerConfig] = None):
+        self.config = config or SynthesizerConfig()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        # Model containers
+        self.models = {}
+        self.tokenizers = {}
+        self.pipelines = {}
+        self.embedding_model = None
+
+        # GPU management
+        self.gpu_allocated = False
+        self.gpu_device = -1
+
+        # Performance tracking
+        self.performance_stats = {
+            'total_processed': 0,
+            'gpu_processed': 0,
+            'cpu_processed': 0,
+            'avg_processing_time': 0.0,
+            'gpu_memory_usage_gb': 0.0,
+            'last_performance_check': datetime.now()
+        }
+
+        logger.info("🔧 Initializing Synthesizer Engine...")
+        self._initialize_engine()
+
+    def _initialize_engine(self):
+        """Initialize all engine components with error handling."""
+        try:
+            # Initialize GPU if available
+            self._initialize_gpu()
+
+            # Load models
+            self._load_embedding_model()
+            self._load_bart_model()
+            self._load_flan_t5_model()
+            self._load_bertopic_model()
+
+            logger.info("✅ Synthesizer Engine initialized successfully")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize synthesizer engine: {e}")
+
+    def _initialize_gpu(self):
+        """Initialize GPU resources if available."""
+        if not torch.cuda.is_available():
+            logger.info("⚠️ CUDA not available, using CPU")
+            return
+
+        try:
+            if GPU_MANAGER_AVAILABLE:
+                # Request GPU allocation
+                gpu_info = request_agent_gpu("synthesizer", memory_gb=self.config.gpu_memory_limit_gb)
+                if gpu_info:
+                    self.gpu_device = gpu_info.get('device_id', 0)
+                    self.gpu_allocated = True
+                    logger.info(f"🎯 GPU allocated: device {self.gpu_device}")
+                else:
+                    logger.warning("⚠️ GPU allocation failed, using CPU")
+            else:
+                # Direct GPU usage
+                self.gpu_device = 0
+                self.gpu_allocated = True
+                logger.info("🎯 Using GPU directly (no manager)")
+
+        except Exception as e:
+            logger.warning(f"⚠️ GPU initialization failed: {e}, using CPU")
+
+    def _load_embedding_model(self):
+        """Load SentenceTransformer embedding model."""
+        try:
+            from agents.common.embedding import get_shared_embedding_model
+
+            agent_cache = os.environ.get('SYNTHESIZER_MODEL_CACHE') or str(Path('./agents/synthesizer/models').resolve())
+            self.embedding_model = get_shared_embedding_model(
+                self.config.embedding_model,
+                cache_folder=agent_cache,
+                device=self.device
+            )
+            logger.info("✅ Embedding model loaded")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to load embedding model: {e}")
+            self.embedding_model = None
+
+    def _load_bart_model(self):
+        """Load BART summarization model."""
+        if not TRANSFORMERS_AVAILABLE:
+            logger.warning("⚠️ Transformers not available, skipping BART")
+            return
+
+        try:
+            self.models['bart'] = BartForConditionalGeneration.from_pretrained(
+                self.config.bart_model,
+                cache_dir=self.config.cache_dir,
+                torch_dtype=torch.float16 if self.device.type == 'cuda' else torch.float32
+            ).to(self.device)
+
+            self.tokenizers['bart'] = BartTokenizer.from_pretrained(
+                self.config.bart_model,
+                cache_dir=self.config.cache_dir
+            )
+
+            self.pipelines['bart_summarization'] = pipeline(
+                "summarization",
+                model=self.models['bart'],
+                tokenizer=self.tokenizers['bart'],
+                device=self.gpu_device if self.gpu_allocated else -1,
+                batch_size=self.config.batch_size
+            )
+
+            logger.info("✅ BART summarization model loaded")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to load BART model: {e}")
+
+    def _load_flan_t5_model(self):
+        """Load FLAN-T5 generation model."""
+        if not TRANSFORMERS_AVAILABLE:
+            logger.warning("⚠️ Transformers not available, skipping FLAN-T5")
+            return
+
+        try:
+            self.models['flan_t5'] = T5ForConditionalGeneration.from_pretrained(
+                self.config.flan_t5_model,
+                cache_dir=self.config.cache_dir,
+                torch_dtype=torch.float16 if self.device.type == 'cuda' else torch.float32
+            ).to(self.device)
+
+            self.tokenizers['flan_t5'] = T5Tokenizer.from_pretrained(
+                self.config.flan_t5_model,
+                cache_dir=self.config.cache_dir,
+                legacy=False
+            )
+
+            self.pipelines['flan_t5_generation'] = pipeline(
+                "text2text-generation",
+                model=self.models['flan_t5'],
+                tokenizer=self.tokenizers['flan_t5'],
+                device=self.gpu_device if self.gpu_allocated else -1,
+                batch_size=self.config.batch_size
+            )
+
+            logger.info("✅ FLAN-T5 generation model loaded")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to load FLAN-T5 model: {e}")
+
+    def _load_bertopic_model(self):
+        """Load BERTopic clustering model."""
+        if not BERTOPIC_AVAILABLE or not self.embedding_model:
+            logger.warning("⚠️ BERTopic not available, using fallback clustering")
+            return
+
+        try:
+            from umap import UMAP
+            from hdbscan import HDBSCAN
+
+            umap_model = UMAP(
+                n_neighbors=5,
+                n_components=2,
+                min_dist=0.0,
+                metric='cosine',
+                random_state=42
+            )
+
+            hdbscan_model = HDBSCAN(
+                min_cluster_size=self.config.min_cluster_size,
+                min_samples=self.config.min_samples,
+                metric='euclidean',
+                cluster_selection_method='eom'
+            )
+
+            self.models['bertopic'] = BERTopic(
+                embedding_model=self.embedding_model,
+                umap_model=umap_model,
+                hdbscan_model=hdbscan_model,
+                min_topic_size=self.config.min_cluster_size,
+                verbose=False,
+                calculate_probabilities=False
+            )
+
+            logger.info("✅ BERTopic clustering model loaded")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to load BERTopic model: {e}")
+
+    async def cluster_articles(
+        self,
+        article_texts: List[str],
+        n_clusters: int = 3
+    ) -> SynthesisResult:
+        """Cluster articles using advanced ML techniques."""
+        start_time = time.time()
+
+        try:
+            if len(article_texts) < self.config.min_articles_for_clustering:
+                # Simple fallback for small datasets
+                clusters = [[i for i in range(len(article_texts))]]
+                result = SynthesisResult(
+                    success=True,
+                    content="",
+                    method="simple_fallback",
+                    processing_time=time.time() - start_time,
+                    model_used="none",
+                    confidence=0.5,
+                    metadata={
+                        "clusters": clusters,
+                        "n_clusters": 1,
+                        "articles_processed": len(article_texts)
+                    }
+                )
+                return result
+
+            if not self.models.get('bertopic'):
+                # KMeans fallback
+                return await self._cluster_articles_kmeans(article_texts, n_clusters, start_time)
+
+            # Advanced BERTopic clustering
+            topics, _ = self.models['bertopic'].fit_transform(article_texts)
+
+            # Group by topics
+            clusters = []
+            unique_topics = set(topics)
+            for topic_id in unique_topics:
+                if topic_id != -1:  # Exclude outliers
+                    cluster_indices = [i for i, t in enumerate(topics) if t == topic_id]
+                    if cluster_indices:
+                        clusters.append(cluster_indices)
+
+            result = SynthesisResult(
+                success=True,
+                content="",
+                method="bertopic_advanced",
+                processing_time=time.time() - start_time,
+                model_used="bertopic",
+                confidence=min(0.9, len(clusters) / max(1, len(article_texts) / 2)),
+                metadata={
+                    "clusters": clusters,
+                    "n_clusters": len(clusters),
+                    "articles_processed": len(article_texts),
+                    "topics": topics.tolist() if hasattr(topics, 'tolist') else topics
+                }
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(f"❌ Clustering failed: {e}")
+            # Ultimate fallback
+            clusters = [[i for i in range(len(article_texts))]]
+            return SynthesisResult(
+                success=False,
+                content="",
+                method="error_fallback",
+                processing_time=time.time() - start_time,
+                model_used="none",
+                confidence=0.0,
+                metadata={
+                    "clusters": clusters,
+                    "n_clusters": 1,
+                    "articles_processed": len(article_texts),
+                    "error": str(e)
+                }
+            )
+
+    async def _cluster_articles_kmeans(
+        self,
+        article_texts: List[str],
+        n_clusters: int,
+        start_time: float
+    ) -> SynthesisResult:
+        """Fallback KMeans clustering."""
+        try:
+            if not self.embedding_model or not SKLEARN_AVAILABLE:
+                raise ImportError("Embedding model or sklearn not available")
+
+            embeddings = self.embedding_model.encode(article_texts)
+            n_clusters = min(n_clusters, len(article_texts))
+
+            kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+            labels = kmeans.fit_predict(embeddings)
+
+            clusters = []
+            for i in range(n_clusters):
+                cluster_indices = [idx for idx, label in enumerate(labels) if label == i]
+                if cluster_indices:
+                    clusters.append(cluster_indices)
+
+            return SynthesisResult(
+                success=True,
+                content="",
+                method="kmeans_fallback",
+                processing_time=time.time() - start_time,
+                model_used="kmeans",
+                confidence=0.7,
+                metadata={
+                    "clusters": clusters,
+                    "n_clusters": len(clusters),
+                    "articles_processed": len(article_texts)
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"❌ KMeans clustering failed: {e}")
+            clusters = [[i for i in range(len(article_texts))]]
+            return SynthesisResult(
+                success=False,
+                content="",
+                method="simple_fallback",
+                processing_time=time.time() - start_time,
+                model_used="none",
+                confidence=0.0,
+                metadata={
+                    "clusters": clusters,
+                    "n_clusters": 1,
+                    "articles_processed": len(article_texts),
+                    "error": str(e)
+                }
+            )
+
+    async def neutralize_text(self, text: str) -> SynthesisResult:
+        """Neutralize text for bias and aggressive language."""
+        start_time = time.time()
+
+        try:
+            if not text or not text.strip():
+                return SynthesisResult(
+                    success=True,
+                    content="",
+                    method="empty_input",
+                    processing_time=time.time() - start_time,
+                    model_used="none",
+                    confidence=1.0
+                )
+
+            if not self.pipelines.get('flan_t5_generation'):
+                return await self._neutralize_text_fallback(text, start_time)
+
+            # Truncate text if too long
+            truncated_text = self._truncate_text(text, "flan_t5", max_tokens=400)
+            prompt = f"Rewrite this text to be neutral and unbiased: {truncated_text}"
+
+            result = self.pipelines['flan_t5_generation'](
+                prompt,
+                max_new_tokens=150,
+                do_sample=True,
+                temperature=0.7,
+                pad_token_id=self.tokenizers['flan_t5'].eos_token_id
+            )
+
+            neutralized = result[0]['generated_text'] if result else text
+
+            return SynthesisResult(
+                success=True,
+                content=neutralized,
+                method="flan_t5_neutralization",
+                processing_time=time.time() - start_time,
+                model_used="flan_t5",
+                confidence=0.85
+            )
+
+        except Exception as e:
+            logger.error(f"❌ Neutralization failed: {e}")
+            return await self._neutralize_text_fallback(text, start_time)
+
+    async def _neutralize_text_fallback(self, text: str, start_time: float) -> SynthesisResult:
+        """Fallback neutralization using simple text processing."""
+        try:
+            # Simple bias word replacement
+            bias_words = ['amazing', 'terrible', 'awful', 'fantastic', 'horrible', 'incredible']
+            neutralized = text
+            for word in bias_words:
+                neutralized = neutralized.replace(word, 'notable')
+
+            return SynthesisResult(
+                success=True,
+                content=neutralized,
+                method="simple_fallback",
+                processing_time=time.time() - start_time,
+                model_used="none",
+                confidence=0.6
+            )
+
+        except Exception as e:
+            return SynthesisResult(
+                success=False,
+                content=text,
+                method="error_fallback",
+                processing_time=time.time() - start_time,
+                model_used="none",
+                confidence=0.0,
+                metadata={"error": str(e)}
+            )
+
+    async def aggregate_cluster(self, article_texts: List[str]) -> SynthesisResult:
+        """Aggregate a cluster of articles into a synthesis."""
+        start_time = time.time()
+
+        try:
+            if not article_texts:
+                return SynthesisResult(
+                    success=True,
+                    content="",
+                    method="empty_input",
+                    processing_time=time.time() - start_time,
+                    model_used="none",
+                    confidence=1.0
+                )
+
+            # Summarize each article first
+            summaries = []
+            for text in article_texts:
+                summary = await self._summarize_text(text)
+                summaries.append(summary.content)
+
+            # Combine summaries
+            combined_text = " ".join(summaries)
+
+            if not self.pipelines.get('flan_t5_generation'):
+                return SynthesisResult(
+                    success=True,
+                    content=combined_text,
+                    method="summary_only",
+                    processing_time=time.time() - start_time,
+                    model_used="bart",
+                    confidence=0.7
+                )
+
+            # Refine the combined summary
+            truncated_text = self._truncate_text(combined_text, "flan_t5", max_tokens=400)
+            prompt = f"Summarize and refine this collection of article summaries: {truncated_text}"
+
+            result = self.pipelines['flan_t5_generation'](
+                prompt,
+                max_new_tokens=200,
+                do_sample=True,
+                temperature=0.7,
+                pad_token_id=self.tokenizers['flan_t5'].eos_token_id
+            )
+
+            refined = result[0]['generated_text'] if result else combined_text
+
+            return SynthesisResult(
+                success=True,
+                content=refined,
+                method="flan_t5_aggregation",
+                processing_time=time.time() - start_time,
+                model_used="flan_t5",
+                confidence=0.8,
+                metadata={
+                    "individual_summaries": summaries,
+                    "articles_processed": len(article_texts)
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"❌ Aggregation failed: {e}")
+            # Fallback to simple concatenation
+            combined = " ".join(article_texts[:3])  # Limit to first 3 articles
+            return SynthesisResult(
+                success=False,
+                content=combined,
+                method="error_fallback",
+                processing_time=time.time() - start_time,
+                model_used="none",
+                confidence=0.0,
+                metadata={"error": str(e)}
+            )
+
+    async def _summarize_text(self, text: str) -> SynthesisResult:
+        """Summarize individual text using BART."""
+        start_time = time.time()
+
+        try:
+            if not self.pipelines.get('bart_summarization'):
+                # Simple fallback summarization
+                sentences = text.split('. ')
+                summary = '. '.join(sentences[:2]) + '.' if len(sentences) > 1 else text
+                return SynthesisResult(
+                    success=True,
+                    content=summary,
+                    method="simple_fallback",
+                    processing_time=time.time() - start_time,
+                    model_used="none",
+                    confidence=0.6
+                )
+
+            # Check text length
+            words = text.split()
+            if len(words) < 25:
+                return SynthesisResult(
+                    success=True,
+                    content=text,
+                    method="too_short",
+                    processing_time=time.time() - start_time,
+                    model_used="none",
+                    confidence=1.0
+                )
+
+            # Summarize with BART
+            target_length = max(min(len(words) // 3, 100), 20)
+            min_length = max(target_length // 2, 10)
+
+            result = self.pipelines['bart_summarization'](
+                text,
+                max_length=target_length,
+                min_length=min_length,
+                do_sample=False,
+                early_stopping=True
+            )
+
+            summary = result[0]['summary_text'] if result else text
+
+            return SynthesisResult(
+                success=True,
+                content=summary,
+                method="bart_summarization",
+                processing_time=time.time() - start_time,
+                model_used="bart",
+                confidence=0.8
+            )
+
+        except Exception as e:
+            logger.error(f"❌ Summarization failed: {e}")
+            return SynthesisResult(
+                success=False,
+                content=text[:200] + "..." if len(text) > 200 else text,
+                method="error_fallback",
+                processing_time=time.time() - start_time,
+                model_used="none",
+                confidence=0.0,
+                metadata={"error": str(e)}
+            )
+
+    async def synthesize_gpu(self, articles: List[Dict[str, Any]], max_clusters: int = 5, context: str = "news analysis") -> SynthesisResult:
+        """GPU-accelerated synthesis with clustering and refinement."""
+        start_time = time.time()
+
+        try:
+            if not articles:
+                return SynthesisResult(
+                    success=True,
+                    content="",
+                    method="empty_input",
+                    processing_time=time.time() - start_time,
+                    model_used="none",
+                    confidence=1.0
+                )
+
+            # Extract article texts
+            article_texts = [article.get('content', '') for article in articles if isinstance(article, dict)]
+            article_texts = [text for text in article_texts if text.strip()]
+
+            if not article_texts:
+                return SynthesisResult(
+                    success=False,
+                    content="",
+                    method="no_content",
+                    processing_time=time.time() - start_time,
+                    model_used="none",
+                    confidence=0.0
+                )
+
+            # Cluster articles
+            cluster_result = await self.cluster_articles(article_texts, max_clusters)
+
+            if not cluster_result.success:
+                # Fallback: treat all as one cluster
+                clusters = [[i for i in range(len(article_texts))]]
+            else:
+                clusters = cluster_result.metadata.get('clusters', [[i for i in range(len(article_texts))]])
+
+            # Synthesize each cluster
+            cluster_syntheses = []
+            for cluster_indices in clusters:
+                cluster_articles = [article_texts[i] for i in cluster_indices if i < len(article_texts)]
+                if cluster_articles:
+                    synthesis = await self.aggregate_cluster(cluster_articles)
+                    cluster_syntheses.append(synthesis.content)
+
+            # Combine cluster syntheses
+            final_synthesis = " ".join(cluster_syntheses)
+
+            # Final refinement if we have FLAN-T5
+            if self.pipelines.get('flan_t5_generation') and len(final_synthesis) > 100:
+                truncated_text = self._truncate_text(final_synthesis, "flan_t5", max_tokens=400)
+                prompt = f"Create a cohesive synthesis from these cluster summaries in the context of {context}: {truncated_text}"
+
+                result = self.pipelines['flan_t5_generation'](
+                    prompt,
+                    max_new_tokens=300,
+                    do_sample=True,
+                    temperature=0.8,
+                    pad_token_id=self.tokenizers['flan_t5'].eos_token_id
+                )
+
+                if result:
+                    final_synthesis = result[0]['generated_text']
+
+            # Update performance stats
+            self.performance_stats['total_processed'] += len(articles)
+            if self.gpu_allocated:
+                self.performance_stats['gpu_processed'] += len(articles)
+            else:
+                self.performance_stats['cpu_processed'] += len(articles)
+
+            processing_time = time.time() - start_time
+            self.performance_stats['avg_processing_time'] = (
+                (self.performance_stats['avg_processing_time'] * (self.performance_stats['total_processed'] - len(articles)) +
+                 processing_time) / self.performance_stats['total_processed']
+            )
+
+            return SynthesisResult(
+                success=True,
+                content=final_synthesis,
+                method="gpu_accelerated_synthesis",
+                processing_time=processing_time,
+                model_used="multi_model",
+                confidence=0.85,
+                metadata={
+                    "articles_processed": len(articles),
+                    "clusters_found": len(clusters),
+                    "gpu_used": self.gpu_allocated,
+                    "cluster_details": cluster_result.metadata
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"❌ GPU synthesis failed: {e}")
+            # Emergency fallback
+            combined = " ".join([article.get('content', '') for article in articles[:3] if isinstance(article, dict)])
+            return SynthesisResult(
+                success=False,
+                content=combined,
+                method="emergency_fallback",
+                processing_time=time.time() - start_time,
+                model_used="none",
+                confidence=0.0,
+                metadata={"error": str(e)}
+            )
+
+    def _truncate_text(self, text: str, model_name: str = "flan_t5", max_tokens: int = 400) -> str:
+        """Truncate text to fit within model token limits."""
+        try:
+            if model_name == "flan_t5" and self.tokenizers.get('flan_t5'):
+                tokenizer = self.tokenizers['flan_t5']
+                tokens = tokenizer.encode(text, add_special_tokens=False)
+
+                if len(tokens) > max_tokens:
+                    truncated_tokens = tokens[:max_tokens]
+                    return tokenizer.decode(truncated_tokens, skip_special_tokens=True)
+
+            # Fallback: character-based truncation
+            max_chars = max_tokens * 4
+            if len(text) > max_chars:
+                return text[:max_chars].rsplit(' ', 1)[0]  # Don't cut words
+
+            return text
+
+        except Exception as e:
+            logger.warning(f"Text truncation failed: {e}")
+            max_chars = max_tokens * 4
+            return text[:max_chars] if len(text) > max_chars else text
+
+    def get_model_status(self) -> Dict[str, Any]:
+        """Get status of all loaded models."""
+        return {
+            'bertopic': self.models.get('bertopic') is not None,
+            'bart': self.models.get('bart') is not None,
+            'flan_t5': self.models.get('flan_t5') is not None,
+            'embeddings': self.embedding_model is not None,
+            'gpu_allocated': self.gpu_allocated,
+            'total_models': sum([
+                1 for model in ['bertopic', 'bart', 'flan_t5']
+                if self.models.get(model) is not None
+            ]) + (1 if self.embedding_model else 0)
+        }
+
+    def get_processing_stats(self) -> Dict[str, Any]:
+        """Get processing statistics."""
+        return self.performance_stats.copy()
+
+    def log_feedback(self, event: str, details: Dict[str, Any]):
+        """Log feedback for training and monitoring."""
+        try:
+            with open(self.config.feedback_log, "a", encoding="utf-8") as f:
+                timestamp = datetime.now(UTC).isoformat()
+                f.write(f"{timestamp}\t{event}\t{details}\n")
+        except Exception as e:
+            logger.warning(f"Feedback logging failed: {e}")
+
+    def cleanup(self):
+        """Clean up resources and GPU memory."""
+        try:
+            logger.info("🧹 Cleaning up Synthesizer Engine...")
+
+            # Clear models
+            for model_name in list(self.models.keys()):
+                if self.models[model_name] is not None:
+                    del self.models[model_name]
+
+            # Clear pipelines
+            for pipeline_name in list(self.pipelines.keys()):
+                if self.pipelines[pipeline_name] is not None:
+                    del self.pipelines[pipeline_name]
+
+            # Clear embedding model
+            if self.embedding_model:
+                del self.embedding_model
+
+            # Release GPU
+            if self.gpu_allocated and GPU_MANAGER_AVAILABLE:
+                try:
+                    release_agent_gpu("synthesizer")
+                    logger.info("✅ GPU released")
+                except Exception as e:
+                    logger.warning(f"⚠️ GPU release failed: {e}")
+
+            # Clear GPU memory
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+
+            logger.info("✅ Synthesizer Engine cleanup completed")
+
+        except Exception as e:
+            logger.warning(f"⚠️ Cleanup warning: {e}")

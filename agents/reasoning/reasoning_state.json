@@ -1,0 +1,27 @@
+{
+  "facts": {},
+  "rules": [
+    "if (source_age_days > 365 && fact_checks_passed > 50 && error_rate < 0.1) then source_tier = 'tier1'",
+    "if (source_tier == 'tier1' && claim_controversial == false) then auto_approve_threshold = 0.7",
+    "if (source_tier == 'tier1' && claim_controversial == true) then auto_approve_threshold = 0.9",
+    "if (news_type == 'breaking' && confirmation_sources < 2) then require_manual_review = true",
+    "if (news_type == 'breaking' && time_since_event < 60_minutes) then confidence_penalty = 0.2",
+    "if (claim_in_reuters == true && claim_in_ap == true) then cross_confirmation_bonus = 0.3",
+    "if (claim_only_in_single_source == true && controversy_score > 0.8) then skepticism_flag = true",
+    "if (quoted_event_date > publication_date) then temporal_error = true",
+    "if (article_age_hours > 48 && urgency_tag == 'breaking') then stale_breaking_flag = true",
+    "if (scout_confidence > 0.8 && fact_checker_score > 0.75 && analyst_sentiment == 'factual') then strong_consensus = true",
+    "if (agent_agreement_count >= 3 && average_confidence > 0.85) then high_confidence_consensus = true",
+    "if (internal_contradiction_detected == true) then credibility_score -= 0.4",
+    "if (contradicts_established_fact == true) then flag_for_investigation = true",
+    "if (primary_sources_count >= 2 && expert_quotes >= 1) then evidence_strength = 'strong'",
+    "if (evidence_strength == 'strong' && source_tier == 'tier1') then verification_confidence = 0.95",
+    "if (event_timestamp > current_timestamp) then future_event_flag = true",
+    "if (breaking_news_age_minutes > 180) then no_longer_breaking = true",
+    "if (fact_last_updated_days > 30 && fact_volatility == 'high') then revalidation_required = true",
+    "if (fact_checker_confidence < 0.6) then escalate_to_reasoning_validation = true",
+    "if (scout_quality_score < 0.5) then skip_detailed_analysis = true",
+    "if (multiple_agents_disagree == true) then require_chief_editor_review = true"
+  ],
+  "timestamp": "2025-09-25T18:33:59.979403+00:00"
+}

@@ -1,0 +1,554 @@
+"""
+Chief Editor Engine - Simplified 5-Model Editorial Workflow Engine
+
+This module provides a streamlined version of the chief editor engine
+with essential editorial decision-making capabilities.
+
+Key Features:
+- Content quality assessment using BERT
+- Fast categorization with DistilBERT
+- Editorial sentiment analysis with RoBERTa
+- Commentary generation with T5
+- Workflow embeddings with SentenceTransformer
+- Comprehensive editorial decision making
+"""
+
+import os
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from common.observability import get_logger
+
+# Core ML Libraries with fallbacks
+try:
+    from transformers import pipeline
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
+
+try:
+    from sentence_transformers import SentenceTransformer
+    SENTENCE_TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    SENTENCE_TRANSFORMERS_AVAILABLE = False
+
+logger = get_logger(__name__)
+
+class EditorialPriority(Enum):
+    """Editorial priority levels"""
+    URGENT = "urgent"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+    REVIEW = "review"
+
+class WorkflowStage(Enum):
+    """Editorial workflow stages"""
+    INTAKE = "intake"
+    ANALYSIS = "analysis"
+    FACT_CHECK = "fact_check"
+    SYNTHESIS = "synthesis"
+    REVIEW = "review"
+    PUBLISH = "publish"
+    ARCHIVE = "archive"
+
+@dataclass
+class EditorialDecision:
+    """Editorial decision data structure"""
+    priority: EditorialPriority
+    stage: WorkflowStage
+    confidence: float
+    reasoning: str
+    next_actions: List[str]
+    agent_assignments: Dict[str, str]
+    metadata: Dict[str, Any]
+
+@dataclass
+class ChiefEditorConfig:
+    """Configuration for Chief Editor Engine"""
+
+    # Model configurations
+    bert_model: str = "bert-base-uncased"
+    distilbert_model: str = "distilbert-base-uncased"
+    roberta_model: str = "cardiffnlp/twitter-roberta-base-sentiment-latest"
+    t5_model: str = "t5-small"
+    embedding_model: str = "all-MiniLM-L6-v2"
+
+    # Decision parameters
+    quality_threshold: float = 0.7
+    priority_threshold: float = 0.8
+    confidence_threshold: float = 0.6
+
+    # Performance parameters
+    max_length: int = 512
+    device: str = "cpu"  # Default to CPU for stability
+
+class ChiefEditorEngine:
+    """
+    Simplified 5-Model Editorial Workflow Engine
+
+    Capabilities:
+    - Content quality assessment with BERT
+    - Fast article categorization with DistilBERT
+    - Editorial sentiment analysis with RoBERTa
+    - Commentary generation with T5
+    - Workflow embeddings with SentenceTransformer
+    """
+
+    def __init__(self, config: Optional[ChiefEditorConfig] = None):
+        self.config = config or ChiefEditorConfig()
+        self.device = self.config.device
+
+        # Model containers
+        self.pipelines = {}
+        self.processing_stats = {
+            "total_requests": 0,
+            "successful_operations": 0,
+            "failed_operations": 0,
+            "average_processing_time": 0.0
+        }
+
+        # Agent capabilities for routing
+        self.agent_capabilities = {
+            "scout": ["content_discovery", "quality_assessment"],
+            "analyst": ["sentiment_analysis", "bias_detection"],
+            "fact_checker": ["fact_verification", "credibility_assessment"],
+            "synthesizer": ["content_aggregation", "summarization"],
+            "critic": ["content_review", "quality_control"]
+        }
+
+        # Initialize models
+        self._initialize_models()
+
+        logger.info(f"✅ Chief Editor Engine initialized on {self.device}")
+
+    def _initialize_models(self):
+        """Initialize AI models with proper error handling"""
+        try:
+            # BERT for quality assessment
+            self._load_bert_quality_model()
+
+            # DistilBERT for categorization
+            self._load_distilbert_category_model()
+
+            # RoBERTa for sentiment analysis
+            self._load_roberta_sentiment_model()
+
+            # T5 for commentary generation
+            self._load_t5_commentary_model()
+
+            # SentenceTransformer for embeddings
+            self._load_embedding_model()
+
+        except Exception as e:
+            logger.error(f"Error initializing models: {e}")
+
+    def _load_bert_quality_model(self):
+        """Load BERT model for quality assessment"""
+        try:
+            if not TRANSFORMERS_AVAILABLE:
+                logger.warning("Transformers not available - using fallback")
+                return
+
+            self.pipelines['bert_quality'] = pipeline(
+                "text-classification",
+                model=self.config.bert_model,
+                device=-1,  # CPU
+                return_all_scores=True
+            )
+            logger.info("✅ BERT quality model loaded")
+
+        except Exception as e:
+            logger.error(f"Error loading BERT: {e}")
+            self.pipelines['bert_quality'] = None
+
+    def _load_distilbert_category_model(self):
+        """Load DistilBERT model for categorization"""
+        try:
+            if not TRANSFORMERS_AVAILABLE:
+                logger.warning("Transformers not available - using fallback")
+                return
+
+            self.pipelines['distilbert_category'] = pipeline(
+                "text-classification",
+                model=self.config.distilbert_model,
+                device=-1,  # CPU
+                return_all_scores=True
+            )
+            logger.info("✅ DistilBERT category model loaded")
+
+        except Exception as e:
+            logger.error(f"Error loading DistilBERT: {e}")
+            self.pipelines['distilbert_category'] = None
+
+    def _load_roberta_sentiment_model(self):
+        """Load RoBERTa model for sentiment analysis"""
+        try:
+            if not TRANSFORMERS_AVAILABLE:
+                logger.warning("Transformers not available - using fallback")
+                return
+
+            self.pipelines['roberta_sentiment'] = pipeline(
+                "sentiment-analysis",
+                model=self.config.roberta_model,
+                device=-1,  # CPU
+                return_all_scores=True
+            )
+            logger.info("✅ RoBERTa sentiment model loaded")
+
+        except Exception as e:
+            logger.error(f"Error loading RoBERTa: {e}")
+            self.pipelines['roberta_sentiment'] = None
+
+    def _load_t5_commentary_model(self):
+        """Load T5 model for commentary generation"""
+        try:
+            if not TRANSFORMERS_AVAILABLE:
+                logger.warning("Transformers not available - using fallback")
+                return
+
+            self.pipelines['t5_commentary'] = pipeline(
+                "text2text-generation",
+                model=self.config.t5_model,
+                device=-1,  # CPU
+                max_length=256,
+                temperature=0.7
+            )
+            logger.info("✅ T5 commentary model loaded")
+
+        except Exception as e:
+            logger.error(f"Error loading T5: {e}")
+            self.pipelines['t5_commentary'] = None
+
+    def _load_embedding_model(self):
+        """Load SentenceTransformer model for embeddings"""
+        try:
+            if not SENTENCE_TRANSFORMERS_AVAILABLE:
+                logger.warning("SentenceTransformers not available - using fallback")
+                return
+
+            self.pipelines['embeddings'] = SentenceTransformer(self.config.embedding_model)
+            logger.info("✅ Embedding model loaded")
+
+        except Exception as e:
+            logger.error(f"Error loading embeddings: {e}")
+            self.pipelines['embeddings'] = None
+
+    def log_feedback(self, event: str, details: Dict[str, Any]):
+        """Log feedback for editorial decision tracking"""
+        try:
+            feedback_log = os.environ.get("CHIEF_EDITOR_FEEDBACK_LOG", "./feedback_chief_editor.log")
+            with open(feedback_log, "a", encoding="utf-8") as f:
+                timestamp = datetime.now(timezone.utc).isoformat()
+                f.write(f"{timestamp}\t{event}\t{details}\n")
+        except Exception as e:
+            logger.error(f"Error logging feedback: {e}")
+
+    def assess_content_quality_bert(self, text: str) -> Dict[str, Any]:
+        """Assess content quality using BERT"""
+        try:
+            if self.pipelines.get('bert_quality') is None:
+                return self._fallback_quality_assessment(text)
+
+            # Truncate text
+            text = text[:self.config.max_length]
+
+            results = self.pipelines['bert_quality'](text)
+
+            # Calculate overall quality score
+            if results:
+                quality_score = sum(r['score'] for r in results) / len(results)
+            else:
+                quality_score = 0.5
+
+            assessment = {
+                "overall_quality": quality_score,
+                "assessment": "high" if quality_score > 0.7 else "medium" if quality_score > 0.4 else "low",
+                "model": "bert"
+            }
+
+            self.log_feedback("assess_content_quality_bert", {
+                "quality_score": quality_score,
+                "text_length": len(text)
+            })
+
+            return assessment
+
+        except Exception as e:
+            logger.error(f"BERT quality assessment error: {e}")
+            return self._fallback_quality_assessment(text)
+
+    def categorize_content_distilbert(self, text: str) -> Dict[str, Any]:
+        """Categorize content using DistilBERT"""
+        try:
+            if self.pipelines.get('distilbert_category') is None:
+                return self._fallback_categorization(text)
+
+            # Truncate text
+            text = text[:self.config.max_length]
+
+            results = self.pipelines['distilbert_category'](text)
+
+            # Get top category
+            if results:
+                top_result = max(results, key=lambda x: x['score'])
+                category = top_result['label']
+                confidence = top_result['score']
+            else:
+                category = "general"
+                confidence = 0.5
+
+            categorization = {
+                "category": category,
+                "confidence": confidence,
+                "model": "distilbert"
+            }
+
+            self.log_feedback("categorize_content_distilbert", {
+                "category": category,
+                "confidence": confidence
+            })
+
+            return categorization
+
+        except Exception as e:
+            logger.error(f"DistilBERT categorization error: {e}")
+            return self._fallback_categorization(text)
+
+    def analyze_editorial_sentiment_roberta(self, text: str) -> Dict[str, Any]:
+        """Analyze editorial sentiment using RoBERTa"""
+        try:
+            if self.pipelines.get('roberta_sentiment') is None:
+                return self._fallback_sentiment_analysis(text)
+
+            # Truncate text
+            text = text[:self.config.max_length]
+
+            results = self.pipelines['roberta_sentiment'](text)
+
+            # Process sentiment results
+            if results:
+                sentiment_scores = {r['label']: r['score'] for r in results}
+                dominant_sentiment = max(sentiment_scores.keys(), key=lambda k: sentiment_scores[k])
+                confidence = sentiment_scores[dominant_sentiment]
+            else:
+                dominant_sentiment = "neutral"
+                confidence = 0.5
+
+            analysis = {
+                "sentiment": dominant_sentiment.lower(),
+                "confidence": confidence,
+                "editorial_tone": self._determine_editorial_tone(dominant_sentiment, confidence),
+                "model": "roberta"
+            }
+
+            self.log_feedback("analyze_editorial_sentiment_roberta", {
+                "sentiment": dominant_sentiment,
+                "confidence": confidence
+            })
+
+            return analysis
+
+        except Exception as e:
+            logger.error(f"RoBERTa sentiment analysis error: {e}")
+            return self._fallback_sentiment_analysis(text)
+
+    def generate_editorial_commentary_t5(self, text: str, context: str = "news article") -> str:
+        """Generate editorial commentary using T5"""
+        try:
+            if self.pipelines.get('t5_commentary') is None:
+                return self._fallback_commentary_generation(text, context)
+
+            prompt = f"summarize editorial notes for {context}: {text[:300]}"
+
+            result = self.pipelines['t5_commentary'](prompt)
+
+            commentary = result[0]['generated_text'] if result else "Editorial review required."
+
+            # Clean up T5 artifacts
+            if commentary.startswith("summarize editorial notes"):
+                commentary = commentary.split(": ", 1)[-1].strip()
+
+            self.log_feedback("generate_editorial_commentary_t5", {
+                "input_length": len(text),
+                "output_length": len(commentary),
+                "context": context
+            })
+
+            return commentary
+
+        except Exception as e:
+            logger.error(f"T5 commentary generation error: {e}")
+            return self._fallback_commentary_generation(text, context)
+
+    def make_editorial_decision(self, content: str, metadata: Optional[Dict[str, Any]] = None) -> EditorialDecision:
+        """Make comprehensive editorial decision using all models"""
+        try:
+            metadata = metadata or {}
+
+            # Run all analyses
+            quality = self.assess_content_quality_bert(content)
+            category = self.categorize_content_distilbert(content)
+            sentiment = self.analyze_editorial_sentiment_roberta(content)
+
+            # Determine priority and stage
+            priority = self._determine_priority(quality, category, sentiment, metadata)
+            stage = self._determine_workflow_stage(quality, category, metadata)
+
+            # Calculate confidence
+            confidences = [
+                quality.get('overall_quality', 0.5),
+                category.get('confidence', 0.5),
+                sentiment.get('confidence', 0.5)
+            ]
+            confidence = sum(confidences) / len(confidences)
+
+            # Generate reasoning
+            reasoning = self.generate_editorial_commentary_t5(content, f"{category['category']} article")
+
+            # Determine next actions
+            next_actions = self._determine_next_actions(priority, stage, quality)
+
+            # Agent assignments
+            agent_assignments = self._determine_agent_assignments(category['category'], stage)
+
+            decision = EditorialDecision(
+                priority=priority,
+                stage=stage,
+                confidence=confidence,
+                reasoning=reasoning,
+                next_actions=next_actions,
+                agent_assignments=agent_assignments,
+                metadata=metadata
+            )
+
+            self.log_feedback("make_editorial_decision", {
+                "priority": priority.value,
+                "stage": stage.value,
+                "confidence": confidence
+            })
+
+            return decision
+
+        except Exception as e:
+            logger.error(f"Editorial decision error: {e}")
+            return self._fallback_editorial_decision(content, metadata)
+
+    def _determine_priority(self, quality, category, sentiment, metadata) -> EditorialPriority:
+        """Determine editorial priority"""
+        quality_score = quality.get('overall_quality', 0.5)
+        category_confidence = category.get('confidence', 0.5)
+        sentiment_confidence = sentiment.get('confidence', 0.5)
+
+        priority_score = (quality_score + category_confidence + sentiment_confidence) / 3
+
+        # Check for urgency indicators
+        content_text = str(metadata.get('title', '') + ' ' + metadata.get('summary', '')).lower()
+        urgent_keywords = ['breaking', 'urgent', 'alert', 'emergency', 'crisis']
+
+        if any(keyword in content_text for keyword in urgent_keywords):
+            return EditorialPriority.URGENT
+        elif priority_score > 0.8:
+            return EditorialPriority.HIGH
+        elif priority_score > 0.6:
+            return EditorialPriority.MEDIUM
+        elif priority_score > 0.4:
+            return EditorialPriority.LOW
+        else:
+            return EditorialPriority.REVIEW
+
+    def _determine_workflow_stage(self, quality, category, metadata) -> WorkflowStage:
+        """Determine workflow stage"""
+        quality_score = quality.get('overall_quality', 0.5)
+
+        if metadata.get('is_new', True):
+            return WorkflowStage.INTAKE
+        elif metadata.get('needs_fact_check', False):
+            return WorkflowStage.FACT_CHECK
+        elif quality_score < 0.5:
+            return WorkflowStage.REVIEW
+        else:
+            return WorkflowStage.ANALYSIS
+
+    def _determine_next_actions(self, priority, stage, quality) -> List[str]:
+        """Determine next actions"""
+        actions = []
+
+        if priority == EditorialPriority.URGENT:
+            actions.extend(['fast_track_review', 'assign_senior_editor'])
+
+        if stage == WorkflowStage.INTAKE:
+            actions.extend(['initial_classification', 'route_to_analyst'])
+        elif stage == WorkflowStage.FACT_CHECK:
+            actions.extend(['verify_facts', 'check_sources'])
+        elif stage == WorkflowStage.REVIEW:
+            actions.extend(['detailed_review', 'quality_improvement'])
+
+        if quality.get('overall_quality', 0.5) < 0.4:
+            actions.append('quality_enhancement_required')
+
+        return actions
+
+    def _determine_agent_assignments(self, category: str, stage: WorkflowStage) -> Dict[str, str]:
+        """Determine agent assignments based on category and stage"""
+        assignments = {}
+
+        if stage == WorkflowStage.INTAKE:
+            assignments["scout"] = "content_discovery"
+        elif stage == WorkflowStage.FACT_CHECK:
+            assignments["fact_checker"] = "verification"
+        elif stage == WorkflowStage.ANALYSIS:
+            assignments["analyst"] = "sentiment_analysis"
+        elif stage == WorkflowStage.SYNTHESIS:
+            assignments["synthesizer"] = "content_aggregation"
+
+        return assignments
+
+    def _determine_editorial_tone(self, sentiment: str, confidence: float) -> str:
+        """Determine editorial tone from sentiment"""
+        if confidence < 0.6:
+            return "neutral"
+
+        sentiment_lower = sentiment.lower()
+        if 'positive' in sentiment_lower:
+            return "positive"
+        elif 'negative' in sentiment_lower:
+            return "critical"
+        else:
+            return "balanced"
+
+    # Fallback methods
+    def _fallback_quality_assessment(self, text: str) -> Dict[str, Any]:
+        return {"overall_quality": 0.5, "assessment": "medium", "model": "fallback"}
+
+    def _fallback_categorization(self, text: str) -> Dict[str, Any]:
+        return {"category": "general", "confidence": 0.5, "model": "fallback"}
+
+    def _fallback_sentiment_analysis(self, text: str) -> Dict[str, Any]:
+        return {"sentiment": "neutral", "confidence": 0.5, "editorial_tone": "balanced", "model": "fallback"}
+
+    def _fallback_commentary_generation(self, text: str, context: str) -> str:
+        return f"Editorial review required for {context}."
+
+    def _fallback_editorial_decision(self, content: str, metadata: Optional[Dict[str, Any]]) -> EditorialDecision:
+        return EditorialDecision(
+            priority=EditorialPriority.MEDIUM,
+            stage=WorkflowStage.REVIEW,
+            confidence=0.5,
+            reasoning="Fallback decision - manual review required",
+            next_actions=["manual_review"],
+            agent_assignments={"scout": "primary"},
+            metadata=metadata or {}
+        )
+
+    def get_model_status(self) -> Dict[str, bool]:
+        """Get status of all models"""
+        return {
+            "bert": self.pipelines.get('bert_quality') is not None,
+            "distilbert": self.pipelines.get('distilbert_category') is not None,
+            "roberta": self.pipelines.get('roberta_sentiment') is not None,
+            "t5": self.pipelines.get('t5_commentary') is not None,
+            "embeddings": self.pipelines.get('embeddings') is not None
+        }

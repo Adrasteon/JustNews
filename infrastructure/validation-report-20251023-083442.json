@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-10-23T08:34:42+01:00",
+  "validation_passed": true,
+  "issues_found": [
+  "WARNING: kubectl is not installed, skipping Kubernetes validation"
+],
+  "checks_performed": [
+    "directory_structure",
+    "configuration_files",
+    "docker_configuration",
+    "kubernetes_configuration",
+    "systemd_configuration",
+    "scripts_validation",
+    "templates_validation",
+    "security_configuration"
+  ]
+}

@@ -1,0 +1,661 @@
+"""
+Dashboard Generator for JustNewsAgent Monitoring System
+
+This module provides automated dashboard creation and configuration for the
+JustNewsAgent observability platform. It generates Grafana dashboards,
+Prometheus alerting rules, and custom visualizations for comprehensive
+monitoring and alerting.
+
+Author: JustNewsAgent Development Team
+Date: October 22, 2025
+"""
+
+import json
+import logging
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Any, Union
+from pathlib import Path
+import asyncio
+from datetime import datetime, timedelta
+
+from pydantic import BaseModel, Field, field_validator
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+class DashboardConfig(BaseModel):
+    """Configuration for dashboard generation"""
+    title: str = Field(..., description="Dashboard title")
+    description: Optional[str] = Field(None, description="Dashboard description")
+    tags: List[str] = Field(default_factory=list, description="Dashboard tags")
+    refresh: str = Field("30s", description="Dashboard refresh interval")
+    time_range: str = Field("1h", description="Default time range")
+    timezone: str = Field("UTC", description="Dashboard timezone")
+
+    @field_validator('refresh')
+    @classmethod
+    def validate_refresh(cls, v):
+        """Validate refresh interval format"""
+        valid_intervals = ['5s', '10s', '30s', '1m', '5m', '15m', '30m', '1h', '2h', '1d']
+        if v not in valid_intervals:
+            raise ValueError(f"Refresh interval must be one of: {valid_intervals}")
+        return v
+
+class PanelConfig(BaseModel):
+    """Configuration for individual dashboard panels"""
+    title: str = Field(..., description="Panel title")
+    type: str = Field(..., description="Panel type (graph, table, heatmap, etc.)")
+    targets: List[Dict[str, Any]] = Field(default_factory=list, description="Prometheus targets")
+    grid_pos: Dict[str, int] = Field(..., description="Grid position (h, w, x, y)")
+    description: Optional[str] = Field(None, description="Panel description")
+    options: Dict[str, Any] = Field(default_factory=dict, description="Panel-specific options")
+
+class DashboardTemplate(BaseModel):
+    """Template for dashboard generation"""
+    name: str = Field(..., description="Template name")
+    config: DashboardConfig = Field(..., description="Dashboard configuration")
+    panels: List[PanelConfig] = Field(default_factory=list, description="Dashboard panels")
+    variables: List[Dict[str, Any]] = Field(default_factory=list, description="Template variables")
+    annotations: List[Dict[str, Any]] = Field(default_factory=list, description="Dashboard annotations")
+
+@dataclass
+class DashboardGenerator:
+    """
+    Automated dashboard generator for JustNewsAgent monitoring system.
+
+    This class provides methods to generate Grafana dashboards, Prometheus
+    alerting rules, and custom visualizations based on system metrics and
+    business requirements.
+    """
+
+    # Dashboard templates
+    templates: Dict[str, DashboardTemplate] = field(default_factory=dict)
+
+    # Output directory for generated dashboards
+    output_dir: Path = field(default_factory=lambda: Path("monitoring/refactor/dashboards/generated"))
+
+    # Grafana API configuration
+    grafana_url: str = field(default="http://localhost:3000")
+    grafana_api_key: Optional[str] = field(default=None)
+
+    def __post_init__(self):
+        """Initialize dashboard generator"""
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self._load_default_templates()
+
+    def _load_default_templates(self):
+        """Load default dashboard templates"""
+        self.templates.update({
+            "system_overview": self._create_system_overview_template(),
+            "agent_performance": self._create_agent_performance_template(),
+            "content_quality": self._create_content_quality_template(),
+            "security_monitoring": self._create_security_monitoring_template(),
+            "business_metrics": self._create_business_metrics_template(),
+        })
+
+    def _create_system_overview_template(self) -> DashboardTemplate:
+        """Create system overview dashboard template"""
+        return DashboardTemplate(
+            name="system_overview",
+            config=DashboardConfig(
+                title="JustNewsAgent System Overview",
+                description="Comprehensive system health and performance monitoring",
+                tags=["system", "overview", "health"],
+                refresh="30s",
+                time_range="1h"
+            ),
+            panels=[
+                PanelConfig(
+                    title="System CPU Usage",
+                    type="graph",
+                    targets=[{
+                        "expr": "100 - (avg by(instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+                        "legendFormat": "{{instance}}"
+                    }],
+                    grid_pos={"h": 8, "w": 12, "x": 0, "y": 0},
+                    description="CPU usage across all system instances"
+                ),
+                PanelConfig(
+                    title="System Memory Usage",
+                    type="graph",
+                    targets=[{
+                        "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100",
+                        "legendFormat": "{{instance}}"
+                    }],
+                    grid_pos={"h": 8, "w": 12, "x": 12, "y": 0},
+                    description="Memory usage percentage across all instances"
+                ),
+                PanelConfig(
+                    title="Active Agents",
+                    type="stat",
+                    targets=[{
+                        "expr": "up{job=~\"justnews-.*\"}",
+                        "legendFormat": "{{job}}"
+                    }],
+                    grid_pos={"h": 4, "w": 8, "x": 0, "y": 8},
+                    description="Number of active JustNewsAgent services"
+                ),
+                PanelConfig(
+                    title="MCP Bus Requests",
+                    type="graph",
+                    targets=[{
+                        "expr": "rate(mcp_bus_requests_total[5m])",
+                        "legendFormat": "Requests/sec"
+                    }],
+                    grid_pos={"h": 8, "w": 16, "x": 8, "y": 8},
+                    description="MCP Bus request rate over time"
+                )
+            ],
+            variables=[
+                {
+                    "name": "instance",
+                    "label": "Instance",
+                    "type": "query",
+                    "query": "label_values(up, instance)",
+                    "multi": True
+                }
+            ]
+        )
+
+    def _create_agent_performance_template(self) -> DashboardTemplate:
+        """Create agent performance dashboard template"""
+        return DashboardTemplate(
+            name="agent_performance",
+            config=DashboardConfig(
+                title="Agent Performance Dashboard",
+                description="Detailed performance metrics for all JustNewsAgent services",
+                tags=["agents", "performance", "monitoring"],
+                refresh="15m",
+                time_range="30m"
+            ),
+            panels=[
+                PanelConfig(
+                    title="Agent Response Times",
+                    type="graph",
+                    targets=[{
+                        "expr": "histogram_quantile(0.95, rate(agent_request_duration_seconds_bucket[5m]))",
+                        "legendFormat": "{{agent}} P95"
+                    }],
+                    grid_pos={"h": 8, "w": 16, "x": 0, "y": 0},
+                    description="95th percentile response times by agent"
+                ),
+                PanelConfig(
+                    title="Agent Throughput",
+                    type="graph",
+                    targets=[{
+                        "expr": "rate(agent_requests_total[5m])",
+                        "legendFormat": "{{agent}} req/sec"
+                    }],
+                    grid_pos={"h": 8, "w": 16, "x": 0, "y": 8},
+                    description="Request throughput by agent"
+                ),
+                PanelConfig(
+                    title="Agent Error Rates",
+                    type="graph",
+                    targets=[{
+                        "expr": "rate(agent_errors_total[5m]) / rate(agent_requests_total[5m]) * 100",
+                        "legendFormat": "{{agent}} error %"
+                    }],
+                    grid_pos={"h": 8, "w": 16, "x": 0, "y": 16},
+                    description="Error rates by agent as percentage"
+                ),
+                PanelConfig(
+                    title="GPU Memory Usage",
+                    type="graph",
+                    targets=[{
+                        "expr": "gpu_memory_used_bytes / gpu_memory_total_bytes * 100",
+                        "legendFormat": "{{gpu}} {{agent}}"
+                    }],
+                    grid_pos={"h": 8, "w": 12, "x": 0, "y": 24},
+                    description="GPU memory utilization by agent"
+                ),
+                PanelConfig(
+                    title="Agent Health Status",
+                    type="table",
+                    targets=[{
+                        "expr": "up{job=~\"justnews-.*\"}",
+                        "legendFormat": "{{job}}"
+                    }],
+                    grid_pos={"h": 6, "w": 12, "x": 12, "y": 24},
+                    description="Current health status of all agents"
+                )
+            ]
+        )
+
+    def _create_content_quality_template(self) -> DashboardTemplate:
+        """Create content quality dashboard template"""
+        return DashboardTemplate(
+            name="content_quality",
+            config=DashboardConfig(
+                title="Content Quality Dashboard",
+                description="News content quality metrics and analysis",
+                tags=["content", "quality", "news"],
+                refresh="1m",
+                time_range="6h"
+            ),
+            panels=[
+                PanelConfig(
+                    title="Content Accuracy Score",
+                    type="graph",
+                    targets=[{
+                        "expr": "content_accuracy_score",
+                        "legendFormat": "Accuracy Score"
+                    }],
+                    grid_pos={"h": 8, "w": 12, "x": 0, "y": 0},
+                    description="Content accuracy scores over time"
+                ),
+                PanelConfig(
+                    title="Fact-Checking Results",
+                    type="stat",
+                    targets=[{
+                        "expr": "fact_check_passed_total / (fact_check_passed_total + fact_check_failed_total) * 100",
+                        "legendFormat": "Pass Rate %"
+                    }],
+                    grid_pos={"h": 4, "w": 6, "x": 12, "y": 0},
+                    description="Percentage of articles passing fact-checking"
+                ),
+                PanelConfig(
+                    title="Bias Detection Scores",
+                    type="heatmap",
+                    targets=[{
+                        "expr": "content_bias_score",
+                        "legendFormat": "Bias Score"
+                    }],
+                    grid_pos={"h": 8, "w": 12, "x": 0, "y": 8},
+                    description="Content bias detection heatmap"
+                ),
+                PanelConfig(
+                    title="Content Processing Rate",
+                    type="graph",
+                    targets=[{
+                        "expr": "rate(content_processed_total[5m])",
+                        "legendFormat": "Articles/min"
+                    }],
+                    grid_pos={"h": 8, "w": 12, "x": 12, "y": 8},
+                    description="Rate of content processing"
+                )
+            ]
+        )
+
+    def _create_security_monitoring_template(self) -> DashboardTemplate:
+        """Create security monitoring dashboard template"""
+        return DashboardTemplate(
+            name="security_monitoring",
+            config=DashboardConfig(
+                title="Security Monitoring Dashboard",
+                description="Security events, threats, and compliance monitoring",
+                tags=["security", "monitoring", "compliance"],
+                refresh="30s",
+                time_range="24h"
+            ),
+            panels=[
+                PanelConfig(
+                    title="Security Events",
+                    type="graph",
+                    targets=[{
+                        "expr": "rate(security_events_total[5m])",
+                        "legendFormat": "{{type}}"
+                    }],
+                    grid_pos={"h": 8, "w": 16, "x": 0, "y": 0},
+                    description="Security events by type"
+                ),
+                PanelConfig(
+                    title="Failed Authentication Attempts",
+                    type="graph",
+                    targets=[{
+                        "expr": "rate(auth_failures_total[5m])",
+                        "legendFormat": "Failures"
+                    }],
+                    grid_pos={"h": 6, "w": 8, "x": 0, "y": 8},
+                    description="Authentication failure rate"
+                ),
+                PanelConfig(
+                    title="Active Security Alerts",
+                    type="stat",
+                    targets=[{
+                        "expr": "security_alerts_active",
+                        "legendFormat": "Active Alerts"
+                    }],
+                    grid_pos={"h": 6, "w": 8, "x": 8, "y": 8},
+                    description="Number of active security alerts"
+                ),
+                PanelConfig(
+                    title="Compliance Violations",
+                    type="table",
+                    targets=[{
+                        "expr": "compliance_violations_total",
+                        "legendFormat": "{{regulation}}"
+                    }],
+                    grid_pos={"h": 8, "w": 16, "x": 0, "y": 14},
+                    description="Compliance violations by regulation"
+                )
+            ]
+        )
+
+    def _create_business_metrics_template(self) -> DashboardTemplate:
+        """Create business metrics dashboard template"""
+        return DashboardTemplate(
+            name="business_metrics",
+            config=DashboardConfig(
+                title="Business Metrics Dashboard",
+                description="Key business performance indicators and KPIs",
+                tags=["business", "kpi", "metrics"],
+                refresh="5m",
+                time_range="7d"
+            ),
+            panels=[
+                PanelConfig(
+                    title="Daily Active Users",
+                    type="graph",
+                    targets=[{
+                        "expr": "daily_active_users",
+                        "legendFormat": "DAU"
+                    }],
+                    grid_pos={"h": 8, "w": 12, "x": 0, "y": 0},
+                    description="Daily active user count"
+                ),
+                PanelConfig(
+                    title="Content Engagement",
+                    type="graph",
+                    targets=[{
+                        "expr": "content_engagement_score",
+                        "legendFormat": "Engagement"
+                    }],
+                    grid_pos={"h": 8, "w": 12, "x": 12, "y": 0},
+                    description="Content engagement metrics"
+                ),
+                PanelConfig(
+                    title="Revenue Metrics",
+                    type="stat",
+                    targets=[{
+                        "expr": "revenue_total",
+                        "legendFormat": "Total Revenue"
+                    }],
+                    grid_pos={"h": 4, "w": 8, "x": 0, "y": 8},
+                    description="Total revenue generated"
+                ),
+                PanelConfig(
+                    title="Customer Satisfaction",
+                    type="gauge",
+                    targets=[{
+                        "expr": "customer_satisfaction_score",
+                        "legendFormat": "CSAT"
+                    }],
+                    grid_pos={"h": 6, "w": 8, "x": 8, "y": 8},
+                    description="Customer satisfaction score"
+                ),
+                PanelConfig(
+                    title="Market Share",
+                    type="bargauge",
+                    targets=[{
+                        "expr": "market_share_percentage",
+                        "legendFormat": "{{segment}}"
+                    }],
+                    grid_pos={"h": 8, "w": 16, "x": 0, "y": 14},
+                    description="Market share by segment"
+                )
+            ]
+        )
+
+    async def generate_dashboard(self, template_name: str, custom_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Generate a dashboard from template
+
+        Args:
+            template_name: Name of the template to use
+            custom_config: Optional custom configuration overrides
+
+        Returns:
+            Generated Grafana dashboard JSON
+
+        Raises:
+            ValueError: If template doesn't exist
+        """
+        if template_name not in self.templates:
+            available_templates = list(self.templates.keys())
+            raise ValueError(f"Template '{template_name}' not found. Available templates: {available_templates}")
+
+        template = self.templates[template_name]
+
+        # Apply custom configuration if provided
+        if custom_config:
+            template = self._apply_custom_config(template, custom_config)
+
+        # Generate dashboard JSON
+        dashboard_json = self._template_to_grafana_json(template)
+
+        # Add metadata
+        dashboard_json.update({
+            "dashboard": {
+                "id": None,
+                "title": template.config.title,
+                "description": template.config.description,
+                "tags": template.config.tags,
+                "timezone": template.config.timezone,
+                "refresh": template.config.refresh,
+                "time": {
+                    "from": f"now-{template.config.time_range}",
+                    "to": "now"
+                },
+                "timepicker": {},
+                "templating": {
+                    "list": template.variables
+                },
+                "annotations": {
+                    "list": template.annotations
+                },
+                "panels": [self._panel_config_to_grafana(panel) for panel in template.panels],
+                "version": 1,
+                "schemaVersion": 36,
+                "style": "dark"
+            }
+        })
+
+        logger.info(f"Generated dashboard '{template.config.title}' from template '{template_name}'")
+        return dashboard_json
+
+    def _apply_custom_config(self, template: DashboardTemplate, custom_config: Dict[str, Any]) -> DashboardTemplate:
+        """Apply custom configuration to template"""
+        # Create a copy of the template
+        updated_template = template.copy()
+
+        # Update config if provided
+        if "config" in custom_config:
+            config_updates = custom_config["config"]
+            for key, value in config_updates.items():
+                if hasattr(updated_template.config, key):
+                    setattr(updated_template.config, key, value)
+
+        # Update panels if provided
+        if "panels" in custom_config:
+            panel_updates = custom_config["panels"]
+            for i, panel_update in enumerate(panel_updates):
+                if i < len(updated_template.panels):
+                    for key, value in panel_update.items():
+                        if hasattr(updated_template.panels[i], key):
+                            setattr(updated_template.panels[i], key, value)
+
+        return updated_template
+
+    def _template_to_grafana_json(self, template: DashboardTemplate) -> Dict[str, Any]:
+        """Convert template to Grafana dashboard JSON format"""
+        return {
+            "dashboard": {
+                "title": template.config.title,
+                "description": template.config.description,
+                "tags": template.config.tags,
+                "timezone": template.config.timezone,
+                "refresh": template.config.refresh,
+                "time": {
+                    "from": f"now-{template.config.time_range}",
+                    "to": "now"
+                },
+                "panels": [self._panel_config_to_grafana(panel) for panel in template.panels],
+                "templating": {
+                    "list": template.variables
+                },
+                "annotations": {
+                    "list": template.annotations
+                }
+            },
+            "overwrite": False
+        }
+
+    def _panel_config_to_grafana(self, panel: PanelConfig) -> Dict[str, Any]:
+        """Convert panel config to Grafana panel format"""
+        return {
+            "id": None,  # Will be assigned by Grafana
+            "title": panel.title,
+            "type": panel.type,
+            "description": panel.description,
+            "gridPos": panel.grid_pos,
+            "targets": panel.targets,
+            "options": panel.options,
+            "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+            },
+            "pluginVersion": "8.0.0"
+        }
+
+    async def save_dashboard(self, dashboard_json: Dict[str, Any], filename: Optional[str] = None) -> Path:
+        """
+        Save dashboard to file
+
+        Args:
+            dashboard_json: Dashboard JSON data
+            filename: Optional filename (auto-generated if not provided)
+
+        Returns:
+            Path to saved dashboard file
+        """
+        if filename is None:
+            title = dashboard_json["dashboard"]["title"].lower().replace(" ", "_")
+            filename = f"{title}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+
+        filepath = self.output_dir / filename
+
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(dashboard_json, f, indent=2, ensure_ascii=False)
+
+        logger.info(f"Saved dashboard to {filepath}")
+        return filepath
+
+    async def deploy_dashboard(self, dashboard_json: Dict[str, Any], folder_id: Optional[int] = None) -> Optional[int]:
+        """
+        Deploy dashboard to Grafana
+
+        Args:
+            dashboard_json: Dashboard JSON data
+            folder_id: Optional Grafana folder ID
+
+        Returns:
+            Dashboard ID if successful, None otherwise
+        """
+        if not self.grafana_api_key:
+            logger.warning("Grafana API key not configured, skipping deployment")
+            return None
+
+        try:
+            import aiohttp
+
+            headers = {
+                "Authorization": f"Bearer {self.grafana_api_key}",
+                "Content-Type": "application/json"
+            }
+
+            # Add folder ID if provided
+            if folder_id:
+                dashboard_json["folderId"] = folder_id
+
+            async with aiohttp.ClientSession() as session:
+                url = f"{self.grafana_url}/api/dashboards/db"
+                async with session.post(url, json=dashboard_json, headers=headers) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        dashboard_id = result.get("id")
+                        logger.info(f"Successfully deployed dashboard with ID: {dashboard_id}")
+                        return dashboard_id
+                    else:
+                        error_text = await response.text()
+                        logger.error(f"Failed to deploy dashboard: {response.status} - {error_text}")
+                        return None
+
+        except ImportError:
+            logger.error("aiohttp not available for Grafana deployment")
+            return None
+        except Exception as e:
+            logger.error(f"Error deploying dashboard to Grafana: {e}")
+            return None
+
+    async def generate_all_dashboards(self) -> List[Path]:
+        """
+        Generate all available dashboard templates
+
+        Returns:
+            List of paths to generated dashboard files
+        """
+        generated_files = []
+
+        for template_name in self.templates.keys():
+            try:
+                dashboard_json = await self.generate_dashboard(template_name)
+                filepath = await self.save_dashboard(dashboard_json)
+                generated_files.append(filepath)
+                logger.info(f"Generated dashboard for template '{template_name}'")
+            except Exception as e:
+                logger.error(f"Failed to generate dashboard for template '{template_name}': {e}")
+
+        return generated_files
+
+    def add_template(self, template: DashboardTemplate):
+        """
+        Add a custom dashboard template
+
+        Args:
+            template: Dashboard template to add
+        """
+        self.templates[template.name] = template
+        logger.info(f"Added custom dashboard template '{template.name}'")
+
+    def list_templates(self) -> List[str]:
+        """
+        List available dashboard templates
+
+        Returns:
+            List of template names
+        """
+        return list(self.templates.keys())
+
+    async def create_custom_dashboard(self,
+                                    title: str,
+                                    panels: List[PanelConfig],
+                                    tags: Optional[List[str]] = None,
+                                    description: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Create a custom dashboard from scratch
+
+        Args:
+            title: Dashboard title
+            panels: List of panel configurations
+            tags: Optional dashboard tags
+            description: Optional dashboard description
+
+        Returns:
+            Generated dashboard JSON
+        """
+        config = DashboardConfig(
+            title=title,
+            description=description or f"Custom dashboard: {title}",
+            tags=tags or ["custom"],
+            refresh="30s",
+            time_range="1h"
+        )
+
+        template = DashboardTemplate(
+            name=f"custom_{title.lower().replace(' ', '_')}",
+            config=config,
+            panels=panels
+        )
+
+        return await self.generate_dashboard(template.name, {"config": config.model_dump(), "panels": [p.model_dump() for p in panels]})

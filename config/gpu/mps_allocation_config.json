@@ -1,0 +1,109 @@
+{
+  "mps_resource_allocation": {
+    "version": "1.0",
+    "description": "MPS resource allocation configuration for JustNewsAgent - machine-readable format for GPU orchestrator",
+    "generated": "2025-09-17",
+    "total_gpu_memory_gb": 24.0,
+    "mps_overhead_gb": 0.5,
+    "available_memory_gb": 23.5,
+    "agent_allocations": {
+      "analyst": {
+        "mps_memory_limit_gb": 2.3,
+        "calculated_requirement_gb": 2.0,
+        "safety_margin_gb": 0.3,
+        "priority": "high",
+        "models": ["cardiffnlp/twitter-roberta-base-sentiment-latest", "unitary/toxic-bert"],
+        "description": "Two RoBERTa/BERT models for sentiment analysis and bias detection - GPU accelerated with MPS"
+      },
+      "balancer": {
+        "mps_memory_limit_gb": 1.0,
+        "calculated_requirement_gb": 0.5,
+        "safety_margin_gb": 0.5,
+        "priority": "low",
+        "models": ["google/bert_uncased_L-2_H-128_A-2"],
+        "description": "Single lightweight BERT model for load balancing decisions"
+      },
+      "chief_editor": {
+        "mps_memory_limit_gb": 2.0,
+        "calculated_requirement_gb": 1.0,
+        "safety_margin_gb": 1.0,
+        "priority": "high",
+        "models": ["distilbert-base-uncased"],
+        "description": "Single DistilBERT model for workflow orchestration"
+      },
+      "critic": {
+        "mps_memory_limit_gb": 4.0,
+        "calculated_requirement_gb": 3.5,
+        "safety_margin_gb": 0.5,
+        "priority": "medium",
+        "models": ["unitary/unbiased-toxic-roberta", "unitary/toxic-bert"],
+        "description": "Two RoBERTa/BERT models for quality assessment and review"
+      },
+      "fact_checker": {
+        "mps_memory_limit_gb": 5.0,
+        "calculated_requirement_gb": 4.0,
+        "safety_margin_gb": 1.0,
+        "priority": "high",
+        "models": ["distilbert-base-uncased", "roberta-base", "sentence-transformers/all-mpnet-base-v2"],
+        "description": "Three models for comprehensive fact verification and source credibility"
+      },
+      "memory": {
+        "mps_memory_limit_gb": 1.0,
+        "calculated_requirement_gb": 0.5,
+        "safety_margin_gb": 0.5,
+        "priority": "medium",
+        "models": ["sentence-transformers/all-MiniLM-L6-v2"],
+        "description": "Single lightweight embedding model for semantic search"
+      },
+      "newsreader": {
+        "mps_memory_limit_gb": 1.0,
+        "calculated_requirement_gb": 0.5,
+        "safety_margin_gb": 0.5,
+        "priority": "medium",
+        "models": ["sentence-transformers/all-MiniLM-L6-v2"],
+        "description": "Single lightweight embedding model for multimodal content analysis"
+      },
+      "scout": {
+        "mps_memory_limit_gb": 4.0,
+        "calculated_requirement_gb": 3.0,
+        "safety_margin_gb": 1.0,
+        "priority": "high",
+        "models": ["google/bert_uncased_L-2_H-128_A-2", "cardiffnlp/twitter-roberta-base-sentiment-latest", "martin-ha/toxic-comment-model"],
+        "description": "Three models for content discovery, classification, and quality assessment"
+      },
+      "synthesizer": {
+        "mps_memory_limit_gb": 4.0,
+        "calculated_requirement_gb": 3.0,
+        "safety_margin_gb": 1.0,
+        "priority": "high",
+        "models": ["distilgpt2", "google/flan-t5-small"],
+        "description": "Two generative models for news synthesis and content generation"
+      }
+    },
+    "system_summary": {
+      "total_agents": 9,
+      "total_allocated_memory_gb": 24.3,
+      "total_calculated_memory_gb": 17.3,
+      "total_safety_margin_gb": 7.0,
+      "average_allocation_gb": 2.7,
+      "max_allocation_gb": 5.0,
+      "min_allocation_gb": 1.0,
+      "memory_efficiency_percent": 71.2
+    },
+    "mps_configuration": {
+      "control_daemon": "nvidia-cuda-mps-control -d",
+      "pipe_directory": "/tmp/nvidia-mps",
+      "client_timeout_seconds": 300,
+      "memory_enforcement": "strict",
+      "isolation_level": "process",
+      "resource_sharing": "enabled"
+    },
+    "monitoring": {
+      "memory_tracking": true,
+      "client_isolation": true,
+      "resource_conflicts": "log",
+      "performance_metrics": true,
+      "health_checks": true
+    }
+  }
+}

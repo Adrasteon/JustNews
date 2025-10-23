@@ -1,0 +1,77 @@
+# V4 RTX-Enhanced Dockerfile for Analyst Agent
+# Includes TensorRT-LLM and NVIDIA RTX AI Toolkit dependencies
+
+### DEPRECATED: Dockerfiles are deprecated for core deployments. Prefer native Ubuntu deployment. See markdown_docs/development_reports/DEPRECATE_DOCKER.md
+FROM nvidia/cuda:12.9.1-devel-ubuntu20.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONPATH="/app"
+ENV CUDA_VISIBLE_DEVICES=0
+
+# First install Python 3.11 to match other agents
+RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-dev \
+    python3.11-distutils \
+    python3.11-venv \
+    curl \
+    wget \
+    build-essential \
+    cmake \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create symbolic links to make python3.11 the default
+RUN ln -sf /usr/bin/python3.11 /usr/bin/python3 \
+    && ln -sf /usr/bin/python3.11 /usr/bin/python \
+    && wget https://bootstrap.pypa.io/get-pip.py \
+    && python3.11 get-pip.py \
+    && rm get-pip.py \
+    && pip install --upgrade pip setuptools wheel
+
+WORKDIR /app
+
+# Install Python dependencies
+COPY agents/analyst/requirements_v4_simple.txt ./requirements.txt
+
+# Install PyTorch with CUDA support (this is what actually gives us performance)
+RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+# Install core GPU dependencies that we actually use
+RUN pip install --no-cache-dir \
+    nvidia-ml-py3 \
+    accelerate \
+    transformers[torch] \
+    safetensors \
+    sentencepiece \
+    protobuf
+
+# Install standard ML dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Skip TensorRT for now - we already exceed V4 performance targets with PyTorch
+# Future V4 implementation will add TensorRT optimization when needed
+
+# Copy application files
+COPY agents/analyst/main.py .
+COPY agents/analyst/tools.py .
+COPY agents/analyst/hybrid_tools_v4.py .
+COPY agents/analyst/rtx_manager.py .
+
+# Create directories for models
+RUN mkdir -p /app/models /app/rtx_models /app/tensorrt_engines
+
+# Set permissions
+RUN chmod +x /app/*.py
+
+EXPOSE 8004
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8004/health || exit 1
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8004", "--workers", "1"]

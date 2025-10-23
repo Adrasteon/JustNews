@@ -1,0 +1,151 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Business Metrics Dashboard",
+    "description": "Key business performance indicators and KPIs",
+    "tags": [
+      "business",
+      "kpi",
+      "metrics"
+    ],
+    "timezone": "UTC",
+    "refresh": "5m",
+    "time": {
+      "from": "now-7d",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": []
+    },
+    "panels": [
+      {
+        "id": null,
+        "title": "Daily Active Users",
+        "type": "graph",
+        "description": "Daily active user count",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "daily_active_users",
+            "legendFormat": "DAU"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Content Engagement",
+        "type": "graph",
+        "description": "Content engagement metrics",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "content_engagement_score",
+            "legendFormat": "Engagement"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Revenue Metrics",
+        "type": "stat",
+        "description": "Total revenue generated",
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 0,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "revenue_total",
+            "legendFormat": "Total Revenue"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Customer Satisfaction",
+        "type": "gauge",
+        "description": "Customer satisfaction score",
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 8,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "customer_satisfaction_score",
+            "legendFormat": "CSAT"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Market Share",
+        "type": "bargauge",
+        "description": "Market share by segment",
+        "gridPos": {
+          "h": 8,
+          "w": 16,
+          "x": 0,
+          "y": 14
+        },
+        "targets": [
+          {
+            "expr": "market_share_percentage",
+            "legendFormat": "{{segment}}"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      }
+    ],
+    "version": 1,
+    "schemaVersion": 36,
+    "style": "dark"
+  },
+  "overwrite": false
+}

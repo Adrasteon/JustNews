@@ -1,0 +1,47 @@
+[Unit]
+Description=JustNews Crawler Agent (%i)
+Wants=network-online.target postgresql.service
+After=network-online.target postgresql.service mcp_bus.service
+PartOf=justnews.target
+
+[Service]
+Type=simple
+User=adra
+Group=adra
+WorkingDirectory=/home/adra/justnewsagent/JustNewsAgent
+
+# Environment configuration
+EnvironmentFile=-/etc/justnews/global.env
+EnvironmentFile=-/etc/justnews/%i.env
+Environment=PYTHONPATH=/home/adra/justnewsagent/JustNewsAgent
+
+# Crawler agent specific environment
+Environment=CRAWLER_AGENT_PORT=8015
+Environment=UNIFIED_CRAWLER_MODE=production
+Environment=UNIFIED_CRAWLER_MAX_ARTICLES_PER_SITE=25
+Environment=UNIFIED_CRAWLER_CONCURRENT_SITES=3
+Environment=UNIFIED_CRAWLER_AI_ANALYSIS=true
+Environment=UNIFIED_CRAWLER_PERFORMANCE_MONITORING=true
+
+# Start the Crawler agent
+ExecStart=/home/adra/justnewsagent/JustNewsAgent/deploy/systemd/scripts/justnews-start-agent.sh %i
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Resource limits for production crawling
+MemoryLimit=4G
+CPUQuota=80%
+TasksMax=100
+
+# Restart on failure with backoff
+Restart=on-failure
+RestartSec=30
+StartLimitInterval=300
+StartLimitBurst=3
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=justnews-crawler-agent-%i
+
+[Install]
+WantedBy=multi-user.target

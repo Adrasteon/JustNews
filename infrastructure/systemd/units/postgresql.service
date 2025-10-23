@@ -1,0 +1,18 @@
+[Unit]
+Description=PostgreSQL Database Server
+After=network.target
+Wants=network.target
+
+[Service]
+Type=forking
+User=postgres
+Group=postgres
+Environment=PGDATA=/var/lib/postgresql/15/main
+Environment=PGLOG=/var/log/postgresql/postgresql-15-main.log
+ExecStart=/usr/bin/pg_ctlcluster 15 main start
+ExecStop=/usr/bin/pg_ctlcluster 15 main stop
+ExecReload=/usr/bin/pg_ctlcluster 15 main reload
+TimeoutSec=120
+
+[Install]
+WantedBy=multi-user.target

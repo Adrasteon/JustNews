@@ -1,0 +1,57 @@
+name: justnews-v2-py312
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12.11
+  - pip
+  - mamba
+
+  # Core system dependencies
+  - gcc_linux-64
+  - gxx_linux-64
+
+  # Core Python packages for all agents
+  - numpy>=1.24.0
+  - scipy>=1.11.0
+  - scikit-learn>=1.3.0
+  - pandas>=2.0.0
+  - networkx>=3.0
+  - spacy>=3.7.0
+  - psycopg2>=2.9.0
+  - sqlalchemy>=2.0.0
+
+  # Web framework dependencies
+  - fastapi>=0.104.1
+  - uvicorn>=0.24.0
+  - pydantic>=2.5.0
+  - requests>=2.31.0
+
+  # Development and testing
+  - pytest>=7.4.3
+  - pytest-asyncio>=0.21.1
+
+  - pip:
+    # Core ML packages (stable versions)
+    - torch==2.4.1
+    - torchvision==0.19.1
+    - torchaudio==2.4.1
+    - transformers==4.56.0
+    - tokenizers==0.22.0
+    - accelerate==1.10.1
+    - sentence-transformers==2.2.2
+    - safetensors==0.4.3
+    - bitsandbytes==0.47.0
+
+    # NVIDIA packages (specific versions)
+    - nvidia-ml-py3==7.352.0
+
+    # Additional pip packages from requirements file
+    - -r requirements.txt
+
+# Notes:
+# - Used specific package versions to avoid dependency conflicts
+# - RAPIDS packages pinned to 25.4.0 for compatibility
+# - PyTorch pinned to 2.4.1 (stable version compatible with Python 3.12)
+# - NVIDIA packages use available versions
+# - Compatible with NVIDIA RTX 3090/4090 GPUs

@@ -1,0 +1,16 @@
+[Unit]
+Description=JustNews MCP Bus
+After=network.target
+
+[Service]
+Type=simple
+User=justnews
+Group=justnews
+WorkingDirectory=/opt/justnews
+ExecStart=/usr/local/bin/justnews-mcp
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

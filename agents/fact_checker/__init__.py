@@ -1,1 +1,0 @@
-# Fact Checker agent package

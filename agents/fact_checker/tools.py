@@ -1,768 +1,743 @@
 """
-Fact Checker V2 - Production-Ready Multi-Model AI Architecture
-Focused fact verification with 4 specialized AI models
+Fact Checker Tools - Utility Functions for Fact Verification
 
-AI Models:
-1. DistilBERT-base: Fact verification (factual/questionable classification)
-2. RoBERTa-base: Source credibility assessment (reliability scoring)  
-3. SentenceTransformers: Evidence retrieval (semantic search)
-4. spaCy NER: Claim extraction (verifiable claims identification)
+This module provides utility functions for fact verification and source credibility assessment,
+focusing on claim validation, evidence evaluation, and source reliability analysis.
 
-Note: Contradiction detection moved to Reasoning Agent (Nucleoid symbolic logic)
-Performance: Production-ready with GPU acceleration
-V4 Compliance: TensorRT-ready multi-model architecture with MCP bus integration
-Dependencies: transformers, sentence-transformers, spacy, torch, numpy
+Key Functions:
+- verify_facts: Primary fact verification using AI models
+- validate_sources: Source credibility assessment
+- comprehensive_fact_check: Full article fact-checking
+- extract_claims: Extract verifiable claims from text
+- assess_credibility: Evaluate source reliability
+- detect_contradictions: Identify logical inconsistencies
+
+All functions include robust error handling, validation, and fallbacks.
 """
 
+import asyncio
 import json
 import os
-from datetime import datetime, timezone
+import re
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from common.observability import get_logger
 
-# Import V2 Engine
-try:
-    from agents.fact_checker.fact_checker_v2_engine import (
-        get_fact_checker_engine,
-        initialize_fact_checker_v2,
-    )
-    FACT_CHECKER_V2_AVAILABLE = True
-except ImportError as e:
-    FACT_CHECKER_V2_AVAILABLE = False
-    logging.error(f"❌ Fact Checker V2 Engine not available: {e}")
-
-# Fallback imports for compatibility
-try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
-except ImportError:
-    AutoModelForCausalLM = None
-    AutoTokenizer = None
-    pipeline = None
-
-# Fallback configuration for legacy compatibility
-MODEL_NAME = "distilgpt2"
-MODEL_PATH = os.environ.get("MODEL_PATH", "./models/distilgpt2")
-OPTIMIZED_MAX_LENGTH = 1512
-OPTIMIZED_BATCH_SIZE = 16
-
-# Environment configuration
-FEEDBACK_LOG = os.environ.get("FACT_CHECKER_FEEDBACK_LOG", "./feedback_fact_checker.log")
-
-
+# Configure logging
 logger = get_logger(__name__)
 
-# Online Training Integration (deferred)
-try:
-    # Import training system symbols but DO NOT call initialize_online_training() here.
-    # Initializing the online training coordinator can trigger DB connections / background
-    # threads which we must avoid at import time (it can block test collection).
-    from training_system import (
-        add_training_feedback,
-        add_user_correction,
-        get_training_coordinator,
-        initialize_online_training,
-    )
-    ONLINE_TRAINING_AVAILABLE = True
-    # Defer actual initialization to runtime to avoid heavy side-effects during import/collection
-    def _ensure_online_training_initialized():
-        try:
-            initialize_online_training(update_threshold=30)
-            logger.info("🎓 Online Training enabled for Fact Checker V2 (initialized)")
-        except Exception as _e:
-            logger.warning("⚠️ Failed to initialize online training at runtime: %s", _e)
+# Global engine instance
+_engine: Optional[Any] = None
 
-except ImportError:
-    ONLINE_TRAINING_AVAILABLE = False
-    logger.warning("⚠️ Online Training not available for Fact Checker V2")
+def get_fact_checker_engine():
+    """Get or create the global fact checker engine instance."""
+    global _engine
+    if _engine is None:
+        from .fact_checker_engine import FactCheckerEngine, FactCheckerConfig
+        config = FactCheckerConfig()
+        _engine = FactCheckerEngine(config)
+    return _engine
 
-# NOTE: Avoid initializing the heavy V2 engine at import time. Some callers (and pytest)
-# import this module during collection; initializing models (transformers, spaCy,
-# SentenceTransformers) here can trigger downloads and long-running operations.
-# Provide a helper to initialize on-demand instead.
-def ensure_fact_checker_engine_initialized():
-    """Ensure the global Fact Checker V2 engine is initialized (runtime)."""
-    try:
-        if FACT_CHECKER_V2_AVAILABLE:
-            # initialize_fact_checker_v2() may be expensive; call only when needed
-            try:
-                initialize_fact_checker_v2()
-                logger.info("🚀 Fact Checker V2 Engine initialized (deferred)")
-            except Exception as e:
-                logger.warning("Failed to initialize Fact Checker V2 Engine at runtime: %s", e)
-        else:
-            logger.warning("⚠️ Running in fallback mode - V2 engine unavailable")
-    except NameError:
-        # initialize_fact_checker_v2 not available in scope; ignore
-        logger.debug("initialize_fact_checker_v2 not available; skipping deferred init")
-
-def log_feedback(event: str, details: dict):
-    """Universal feedback logging for Fact Checker operations"""
-    with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:
-        timestamp = datetime.now(timezone.utc).isoformat()
-        f.write(f"{timestamp}\t{event}\t{json.dumps(details)}\n")
-
-def verify_claim(claim: str, context: str = "", source_url: str = "") -> dict:
+async def process_fact_check_request(
+    content: str,
+    operation_type: str,
+    **kwargs
+) -> Dict[str, Any]:
     """
-    V2 Fact Verification using 5 specialized AI models
-    
+    Process a fact-checking request using the fact checker engine.
+
     Args:
-        claim: The factual claim to verify
+        content: Content to fact-check
+        operation_type: Type of fact-checking operation to perform
+        **kwargs: Additional parameters for operation
+
+    Returns:
+        Fact-checking operation results dictionary
+    """
+    engine = get_fact_checker_engine()
+
+    try:
+        logger.info(f"🔍 Processing {operation_type} fact-checking operation for {len(content)} characters")
+
+        if operation_type == "verify":
+            result = engine.verify_facts(content, kwargs.get("source_url"))
+        elif operation_type == "validate_sources":
+            result = engine.validate_sources(content, kwargs.get("source_url"), kwargs.get("domain"))
+        elif operation_type == "comprehensive":
+            result = engine.comprehensive_fact_check(content, kwargs.get("source_url"), kwargs.get("metadata"))
+        elif operation_type == "extract_claims":
+            result = engine.extract_claims(content)
+        elif operation_type == "assess_credibility":
+            result = engine.assess_credibility(content, kwargs.get("domain"), kwargs.get("source_url"))
+        elif operation_type == "detect_contradictions":
+            result = engine.detect_contradictions(kwargs.get("text_passages", []))
+        else:
+            result = {"error": f"Unknown operation type: {operation_type}"}
+
+        logger.info(f"✅ {operation_type} fact-checking operation completed")
+        return result
+
+    except Exception as e:
+        logger.error(f"❌ {operation_type} fact-checking operation failed: {e}")
+        return {"error": str(e)}
+
+async def verify_facts(content: str, source_url: Optional[str] = None, context: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Primary fact verification function using AI models.
+
+    This function verifies factual claims using multiple AI models including
+    DistilBERT for fact classification and evidence assessment.
+
+    Args:
+        content: Content containing claims to verify
+        source_url: Source URL for context
         context: Additional context for verification
-        source_url: URL of the source (for credibility assessment)
-        
+
     Returns:
-        Comprehensive fact-check analysis with verification scores
+        Dictionary containing verification results
     """
+    if not content or not content.strip():
+        return {"verification_score": 0.0, "classification": "empty", "error": "Empty content provided"}
+
     try:
-        # Ensure runtime initialization when first needed
-        if 'ensure_fact_checker_engine_initialized' in globals():
-            try:
-                ensure_fact_checker_engine_initialized()
-            except Exception:
-                pass
+        engine = get_fact_checker_engine()
 
-        if FACT_CHECKER_V2_AVAILABLE:
-            # Use V2 Engine with 5 AI models
-            engine = get_fact_checker_engine()
-            if engine:
-                # Primary fact verification
-                verification = engine.verify_fact(claim, context)
+        # Perform fact verification
+        verification = engine.verify_facts(content, source_url, context)
 
-                # Source credibility assessment
-                domain = source_url.split('/')[2] if source_url and '/' in source_url else ""
-                credibility = engine.assess_source_credibility(context[:500], domain)
-
-                result = {
-                    "verification_result": verification,
-                    "credibility_assessment": credibility,
-                    "claim": claim,
-                    "context": context[:200] + "..." if len(context) > 200 else context,
-                    "source_url": source_url,
-                    "v2_analysis": True,
-                    "models_used": ["distilbert", "roberta"],
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }
-
-                # Online Training: Add prediction feedback for continuous improvement
-                if ONLINE_TRAINING_AVAILABLE and ' _ensure_online_training_initialized' not in globals():
-                    # If available, ensure online training is initialized at runtime before using it
-                    try:
-                        _ensure_online_training_initialized()
-                    except Exception:
-                        pass
-                if ONLINE_TRAINING_AVAILABLE:
-                    try:
-                        verification_confidence = verification.get("confidence", 0.5)
-                        credibility_confidence = credibility.get("confidence", 0.5)
-                        avg_confidence = (verification_confidence + credibility_confidence) / 2
-                        # Add training feedback (actual_output would come from user feedback)
-                        add_training_feedback(
-                            agent_name="fact_checker",
-                            task_type="fact_verification",
-                            input_text=claim,
-                            predicted_output=verification.get("classification", "unknown"),
-                            actual_output=verification.get("classification", "unknown"),  # This would be corrected by user feedback
-                            confidence=avg_confidence
-                        )
-                    except Exception as _e:
-                        logger.debug("Online training feedback submission failed: %s", _e)
-
-                log_feedback("claim_verified_v2", {
-                    "verification_score": verification.get("verification_score", 0.5),
-                    "credibility_score": credibility.get("credibility_score", 0.5),
-                    "classification": verification.get("classification", "unknown")
-                })
-
-                return result
-
-        # Fallback to basic verification
-        return _fallback_verify_claim(claim, context, source_url)
-
-    except Exception as e:
-        logger.error(f"Claim verification error: {e}")
-        return {
-            "verification_result": {"verification_score": 0.5, "classification": "error"},
-            "credibility_assessment": {"credibility_score": 0.5, "reliability": "error"},
-            "error": str(e),
-            "v2_analysis": False
+        # Enhance with additional analysis
+        verification["analysis_metadata"] = {
+            "content_length": len(content),
+            "source_url": source_url,
+            "context_provided": context is not None,
+            "analysis_timestamp": datetime.now().isoformat(),
+            "analyzer_version": "fact_checker_v2_verify"
         }
 
-def comprehensive_fact_check(article_text: str, source_url: str = "", metadata: dict | None = None) -> dict:
+        # Log feedback for training
+        engine.log_feedback("verify_facts", {
+            "verification_score": verification.get("verification_score", 0.0),
+            "classification": verification.get("classification", "unknown")
+        })
+
+        return verification
+
+    except Exception as e:
+        logger.error(f"Error in fact verification: {e}")
+        return {"error": str(e)}
+
+async def validate_sources(content: str, source_url: Optional[str] = None, domain: Optional[str] = None) -> Dict[str, Any]:
     """
-    V2 Comprehensive Fact-Checking using all 5 AI models
-    
+    Validate and assess source credibility.
+
+    This function evaluates the reliability and credibility of information sources
+    using domain analysis and content assessment.
+
     Args:
-        article_text: Full article text to fact-check
-        source_url: URL of the article source
-        metadata: Additional article metadata
-        
+        content: Source content to evaluate
+        source_url: Source URL
+        domain: Domain name (extracted from URL if not provided)
+
     Returns:
-        Complete fact-checking analysis with multiple model outputs
+        Dictionary containing credibility assessment
     """
+    if not content and not source_url and not domain:
+        return {"error": "At least one of content, source_url, or domain must be provided"}
+
     try:
-        # Ensure runtime initialization when first needed
-        if 'ensure_fact_checker_engine_initialized' in globals():
-            try:
-                ensure_fact_checker_engine_initialized()
-            except Exception:
-                pass
+        engine = get_fact_checker_engine()
 
-        if FACT_CHECKER_V2_AVAILABLE:
-            # Use V2 Engine comprehensive analysis
-            engine = get_fact_checker_engine()
-            if engine:
-                result = engine.comprehensive_fact_check(article_text, source_url)
+        # Assess source credibility
+        credibility = engine.assess_credibility(content, domain, source_url)
 
-                # Add metadata
-                result["article_metadata"] = metadata or {}
-                result["article_length"] = len(article_text)
-                result["processing_timestamp"] = datetime.now(timezone.utc).isoformat()
+        # Add metadata
+        credibility["analysis_metadata"] = {
+            "content_length": len(content) if content else 0,
+            "source_url": source_url,
+            "domain": domain,
+            "analysis_timestamp": datetime.now().isoformat(),
+            "analyzer_version": "fact_checker_v2_credibility"
+        }
 
-                log_feedback("comprehensive_fact_check_v2", {
-                    "overall_score": result.get("overall_score", 0.5),
-                    "assessment": result.get("assessment", "unknown"),
-                    "claims_count": len(result.get("claims_analysis", {}).get("extracted_claims", [])),
-                    "contradictions_found": len(result.get("contradictions", []))
-                })
+        # Log feedback for training
+        engine.log_feedback("validate_sources", {
+            "credibility_score": credibility.get("credibility_score", 0.0),
+            "reliability": credibility.get("reliability", "unknown")
+        })
 
-                return result
-
-        # Fallback to basic fact-checking
-        return _fallback_comprehensive_fact_check(article_text, source_url, metadata)
+        return credibility
 
     except Exception as e:
-        logger.error(f"Comprehensive fact-check error: {e}")
-        return {
-            "overall_score": 0.5,
-            "assessment": "error",
-            "error": str(e),
-            "v2_analysis": False
-        }
+        logger.error(f"Error in source validation: {e}")
+        return {"error": str(e)}
 
-
-def to_neural_assessment(comprehensive_result: dict) -> dict:
-    """Convert a comprehensive_fact_check result into the standardized NeuralAssessment dict.
-
-    This is a helper so the Fact Checker can produce the shared schema used by reasoning.
+async def comprehensive_fact_check(
+    content: str,
+    source_url: Optional[str] = None,
+    context: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     """
-    try:
-        # Normalize extracted_claims to a list of strings (claim texts)
-        raw_claims = comprehensive_result.get("claims_analysis", {}).get("extracted_claims", [])
-        normalized_claims = []
-        for c in raw_claims:
-            if isinstance(c, dict):
-                # prefer explicit 'text' field, then 'claim' or fallback to str()
-                text = c.get("text") or c.get("claim") or str(c)
-                normalized_claims.append(text)
-            else:
-                normalized_claims.append(str(c))
+    Perform comprehensive fact-checking on full articles.
 
-        assessment = {
-            "version": "1.0",
-            "confidence": float(comprehensive_result.get("overall_score", 0.5)),
-            "source_credibility": float(comprehensive_result.get("credibility_assessment", {}).get("credibility_score", 0.5) if comprehensive_result.get("credibility_assessment") else 0.5),
-            "extracted_claims": normalized_claims,
-            "evidence_matches": comprehensive_result.get("evidence_matches", []),
-            "processing_metadata": {
-                "models_used": comprehensive_result.get("models_used", []),
-                "timestamp": comprehensive_result.get("processing_timestamp") or comprehensive_result.get("timestamp")
-            }
-        }
-        return assessment
-    except Exception as e:
-        logger.warning(f"Failed to convert to neural assessment: {e}")
-        return {
-            "version": "1.0",
-            "confidence": 0.5,
-            "source_credibility": 0.5,
-            "extracted_claims": [],
-            "evidence_matches": [],
-            "processing_metadata": {}
-        }
+    This function provides complete fact verification including claim extraction,
+    evidence assessment, contradiction detection, and source credibility evaluation.
 
-def detect_contradictions(text_passages: list[str]) -> dict:
-    """
-    V2 Contradiction Detection using BERT-large
-    
     Args:
-        text_passages: List of text passages to check for contradictions
-        
+        content: Full article content to fact-check
+        source_url: Article source URL
+        context: Additional context
+        metadata: Article metadata
+
     Returns:
-        Contradiction analysis with detected conflicts
+        Dictionary containing comprehensive fact-checking results
     """
+    if not content or not content.strip():
+        return {"overall_score": 0.0, "assessment": "empty", "error": "Empty content provided"}
+
     try:
-        if FACT_CHECKER_V2_AVAILABLE and len(text_passages) >= 2:
-            engine = get_fact_checker_engine()
-            if engine:
-                contradictions = []
+        engine = get_fact_checker_engine()
 
-                # Check all pairs of passages
-                for i in range(len(text_passages)):
-                    for j in range(i + 1, len(text_passages)):
-                        contradiction = engine.detect_contradictions(
-                            text_passages[i],
-                            text_passages[j]
-                        )
+        # Perform comprehensive analysis
+        result = engine.comprehensive_fact_check(content, source_url, metadata)
 
-                        if contradiction.get("status") == "contradiction":
-                            contradictions.append({
-                                "passage_a_index": i,
-                                "passage_b_index": j,
-                                "passage_a": text_passages[i][:100] + "...",
-                                "passage_b": text_passages[j][:100] + "...",
-                                "contradiction_score": contradiction.get("contradiction_score", 0.0),
-                                "confidence": contradiction.get("confidence", 0.0)
-                            })
+        # Add processing metadata
+        result["processing_metadata"] = {
+            "content_length": len(content),
+            "source_url": source_url,
+            "context_provided": context is not None,
+            "metadata_provided": metadata is not None,
+            "processing_timestamp": datetime.now().isoformat(),
+            "analyzer_version": "fact_checker_v2_comprehensive"
+        }
 
-                result = {
-                    "contradictions_found": len(contradictions),
-                    "contradictions": contradictions,
-                    "passages_analyzed": len(text_passages),
-                    "model_used": "bert-large-contradiction-detection",
-                    "v2_analysis": True
-                }
+        # Calculate overall assessment
+        overall_score = result.get("overall_score", 0.5)
+        if overall_score >= 0.8:
+            result["overall_assessment"] = "highly_reliable"
+        elif overall_score >= 0.6:
+            result["overall_assessment"] = "generally_reliable"
+        elif overall_score >= 0.4:
+            result["overall_assessment"] = "mixed_reliability"
+        else:
+            result["overall_assessment"] = "low_reliability"
 
-                log_feedback("contradiction_detection_v2", {
-                    "passages_count": len(text_passages),
-                    "contradictions_found": len(contradictions)
-                })
+        # Log feedback for training
+        engine.log_feedback("comprehensive_fact_check", {
+            "overall_score": overall_score,
+            "assessment": result.get("overall_assessment", "unknown"),
+            "claims_analyzed": len(result.get("claims_analysis", {}).get("extracted_claims", []))
+        })
 
-                return result
+        return result
 
-        # Fallback basic contradiction detection
-        return {
-            "contradictions_found": 0,
-            "contradictions": [],
+    except Exception as e:
+        logger.error(f"Error in comprehensive fact-check: {e}")
+        return {"error": str(e)}
+
+async def extract_claims(content: str) -> Dict[str, Any]:
+    """
+    Extract verifiable claims from text content.
+
+    This function uses NLP techniques to identify factual claims that can be verified
+    against available evidence and sources.
+
+    Args:
+        content: Text content to extract claims from
+
+    Returns:
+        Dictionary containing extracted claims and analysis
+    """
+    if not content or not content.strip():
+        return {"error": "Empty content provided for claim extraction"}
+
+    try:
+        engine = get_fact_checker_engine()
+
+        # Extract claims
+        claims_result = engine.extract_claims(content)
+
+        # Enhance with verification readiness assessment
+        claims = claims_result.get("claims", [])
+        verification_ready = []
+
+        for claim in claims:
+            # Simple heuristics for verification readiness
+            verification_indicators = sum([
+                1 for indicator in ["according to", "reported", "announced", "study", "data", "research"]
+                if indicator in claim.lower()
+            ])
+
+            if verification_indicators > 0 or len(claim.split()) > 5:
+                verification_ready.append(claim)
+
+        claims_result["verification_ready_claims"] = verification_ready
+        claims_result["verification_ready_count"] = len(verification_ready)
+
+        # Add metadata
+        claims_result["analysis_metadata"] = {
+            "content_length": len(content),
+            "claims_extracted": len(claims),
+            "verification_ready": len(verification_ready),
+            "analysis_timestamp": datetime.now().isoformat(),
+            "analyzer_version": "fact_checker_v2_extraction"
+        }
+
+        # Log feedback for training
+        engine.log_feedback("extract_claims", {
+            "total_claims": len(claims),
+            "verification_ready": len(verification_ready)
+        })
+
+        return claims_result
+
+    except Exception as e:
+        logger.error(f"Error in claim extraction: {e}")
+        return {"error": str(e)}
+
+async def assess_credibility(
+    content: Optional[str] = None,
+    domain: Optional[str] = None,
+    source_url: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Assess the credibility and reliability of information sources.
+
+    This function evaluates source credibility using multiple factors including
+    domain reputation, content analysis, and historical reliability.
+
+    Args:
+        content: Source content (optional)
+        domain: Domain name (optional)
+        source_url: Full source URL (optional)
+
+    Returns:
+        Dictionary containing credibility assessment
+    """
+    if not any([content, domain, source_url]):
+        return {"error": "At least one parameter (content, domain, or source_url) must be provided"}
+
+    try:
+        engine = get_fact_checker_engine()
+
+        # Assess credibility
+        credibility = engine.assess_credibility(content, domain, source_url)
+
+        # Add metadata
+        credibility["analysis_metadata"] = {
+            "content_provided": content is not None,
+            "domain_provided": domain is not None,
+            "source_url_provided": source_url is not None,
+            "analysis_timestamp": datetime.now().isoformat(),
+            "analyzer_version": "fact_checker_v2_credibility"
+        }
+
+        # Log feedback for training
+        engine.log_feedback("assess_credibility", {
+            "credibility_score": credibility.get("credibility_score", 0.0),
+            "reliability": credibility.get("reliability", "unknown")
+        })
+
+        return credibility
+
+    except Exception as e:
+        logger.error(f"Error in credibility assessment: {e}")
+        return {"error": str(e)}
+
+async def detect_contradictions(text_passages: List[str]) -> Dict[str, Any]:
+    """
+    Detect logical contradictions and inconsistencies in text passages.
+
+    This function identifies contradictions between multiple text passages
+    using semantic analysis and logical reasoning.
+
+    Args:
+        text_passages: List of text passages to analyze for contradictions
+
+    Returns:
+        Dictionary containing contradiction analysis
+    """
+    if not text_passages or len(text_passages) < 2:
+        return {"error": "At least 2 text passages are required for contradiction detection"}
+
+    try:
+        engine = get_fact_checker_engine()
+
+        # Detect contradictions
+        contradictions = engine.detect_contradictions(text_passages)
+
+        # Add metadata
+        contradictions["analysis_metadata"] = {
             "passages_analyzed": len(text_passages),
-            "model_used": "fallback",
-            "v2_analysis": False
+            "contradictions_found": contradictions.get("contradictions_found", 0),
+            "analysis_timestamp": datetime.now().isoformat(),
+            "analyzer_version": "fact_checker_v2_contradictions"
+        }
+
+        # Log feedback for training
+        engine.log_feedback("detect_contradictions", {
+            "passages_count": len(text_passages),
+            "contradictions_found": contradictions.get("contradictions_found", 0)
+        })
+
+        return contradictions
+
+    except Exception as e:
+        logger.error(f"Error in contradiction detection: {e}")
+        return {"error": str(e)}
+
+# GPU-accelerated functions with CPU fallbacks
+async def validate_is_news_gpu(content: str) -> Dict[str, Any]:
+    """
+    GPU-accelerated news content validation.
+
+    Determines if content qualifies as legitimate news reporting using AI models.
+    """
+    try:
+        engine = get_fact_checker_engine()
+        return await engine.validate_is_news_gpu(content)
+    except Exception as e:
+        logger.warning(f"GPU news validation failed, falling back to CPU: {e}")
+        return await validate_is_news_cpu(content)
+
+async def validate_is_news_cpu(content: str) -> Dict[str, Any]:
+    """
+    CPU-based news content validation fallback.
+
+    Basic heuristic-based news validation when GPU is unavailable.
+    """
+    try:
+        # Simple heuristic-based validation
+        content_lower = content.lower()
+
+        # News indicators
+        news_keywords = ["breaking", "report", "headline", "news", "announced", "according to"]
+        news_score = sum(1 for keyword in news_keywords if keyword in content_lower) / len(news_keywords)
+
+        # Structure indicators
+        has_structure = any(indicator in content for indicator in [" - ", " | ", "\n\n"])
+
+        # Length indicator (news articles are typically substantial)
+        length_score = min(1.0, len(content) / 1000.0)
+
+        # Combined score
+        is_news_score = (news_score * 0.5 + has_structure * 0.3 + length_score * 0.2)
+
+        return {
+            "is_news": is_news_score > 0.4,
+            "confidence": is_news_score,
+            "news_score": news_score,
+            "structure_score": has_structure,
+            "length_score": length_score,
+            "method": "cpu_fallback",
+            "analysis_timestamp": datetime.now().isoformat()
         }
 
     except Exception as e:
-        logger.error(f"Contradiction detection error: {e}")
-        return {
-            "contradictions_found": 0,
-            "contradictions": [],
-            "error": str(e),
-            "v2_analysis": False
-        }
+        logger.error(f"CPU news validation failed: {e}")
+        return {"error": str(e), "is_news": False, "method": "cpu_fallback"}
 
-def extract_verifiable_claims(text: str) -> dict:
+async def verify_claims_gpu(claims: List[str], sources: List[str]) -> Dict[str, Any]:
     """
-    V2 Claim Extraction using spaCy NER + custom patterns
-    
-    Args:
-        text: Text to extract verifiable claims from
-        
-    Returns:
-        Extracted claims with entities and verification potential
+    GPU-accelerated claim verification for multiple claims.
     """
     try:
-        if FACT_CHECKER_V2_AVAILABLE:
-            engine = get_fact_checker_engine()
-            if engine:
-                result = engine.extract_claims(text)
-
-                # Enhance with verification readiness assessment
-                result["verification_ready_claims"] = []
-                for claim in result.get("claims", []):
-                    # Simple heuristics for verification readiness
-                    verification_indicators = sum([
-                        1 for indicator in ["according to", "reported", "announced", "study", "data"]
-                        if indicator in claim.lower()
-                    ])
-
-                    if verification_indicators > 0 or len(claim.split()) > 5:
-                        result["verification_ready_claims"].append(claim)
-
-                result["v2_analysis"] = True
-
-                log_feedback("claims_extraction_v2", {
-                    "total_claims": result.get("claim_count", 0),
-                    "entities_found": len(result.get("entities", [])),
-                    "verification_ready": len(result["verification_ready_claims"])
-                })
-
-                return result
-
-        # Fallback basic claim extraction
-        return _fallback_extract_claims(text)
-
+        engine = get_fact_checker_engine()
+        return await engine.verify_claims_gpu(claims, sources)
     except Exception as e:
-        logger.error(f"Claim extraction error: {e}")
-        return {
-            "claims": [],
-            "entities": [],
-            "claim_count": 0,
-            "error": str(e),
-            "v2_analysis": False
-        }
+        logger.warning(f"GPU claims verification failed, falling back to CPU: {e}")
+        return await verify_claims_cpu(claims, sources)
 
-def assess_source_credibility(source_text: str, domain: str = "") -> dict:
+async def verify_claims_cpu(claims: List[str], sources: List[str]) -> Dict[str, Any]:
     """
-    V2 Source Credibility Assessment using RoBERTa
-    
-    Args:
-        source_text: Text content from the source
-        domain: Domain name of the source
-        
-    Returns:
-        Credibility assessment with reliability scoring
+    CPU-based claim verification fallback.
     """
     try:
-        if FACT_CHECKER_V2_AVAILABLE:
-            engine = get_fact_checker_engine()
-            if engine:
-                result = engine.assess_source_credibility(source_text, domain)
+        results = {}
+        source_text = "\n".join(sources) if sources else ""
 
-                log_feedback("credibility_assessment_v2", {
-                    "domain": domain,
-                    "credibility_score": result.get("credibility_score", 0.5),
-                    "reliability": result.get("reliability", "unknown")
-                })
+        for claim in claims:
+            # Simple verification based on source matching
+            verification_score = 0.5
 
-                return result
+            if source_text:
+                # Check if claim elements appear in sources
+                claim_words = set(claim.lower().split())
+                source_words = set(source_text.lower().split())
+                overlap = len(claim_words.intersection(source_words))
+                verification_score = min(1.0, overlap / len(claim_words) * 2)
 
-        # Fallback basic credibility assessment
-        return _fallback_assess_credibility(source_text, domain)
-
-    except Exception as e:
-        logger.error(f"Credibility assessment error: {e}")
-        return {
-            "credibility_score": 0.5,
-            "reliability": "error",
-            "error": str(e),
-            "v2_analysis": False
-        }
-
-def get_model_status() -> dict:
-    """Get status of all Fact Checker V2 models"""
-    try:
-        if FACT_CHECKER_V2_AVAILABLE:
-            engine = get_fact_checker_engine()
-            if engine:
-                return engine.get_model_info()
-
-        return {
-            "status": "fallback_mode",
-            "v2_available": False,
-            "reason": "V2 engine not available"
-        }
-
-    except Exception as e:
-        logger.error(f"Model status error: {e}")
-        return {"status": "error", "error": str(e)}
-
-# Fallback functions for legacy compatibility
-def _fallback_verify_claim(claim: str, context: str, source_url: str) -> dict:
-    """Fallback claim verification using basic patterns"""
-    # Simple heuristic-based verification
-    confidence = 0.6 if any(indicator in claim.lower() for indicator in [
-        "according to", "reported", "announced", "confirmed"
-    ]) else 0.4
-
-    return {
-        "verification_result": {
-            "verification_score": confidence,
-            "classification": "unknown",
-            "confidence": confidence
-        },
-        "credibility_assessment": {
-            "credibility_score": 0.5,
-            "reliability": "unknown",
-            "confidence": 0.5
-        },
-        "v2_analysis": False,
-        "fallback": True
-    }
-
-def _fallback_comprehensive_fact_check(article_text: str, source_url: str, metadata: dict | None = None) -> dict:
-    """Fallback comprehensive fact-checking"""
-    return {
-        "overall_score": 0.5,
-        "assessment": "unknown",
-        "claims_analysis": {"extracted_claims": [], "claim_count": 0},
-        "article_metadata": metadata or {},
-        "v2_analysis": False,
-        "fallback": True
-    }
-
-def _fallback_extract_claims(text: str) -> dict:
-    """Fallback claim extraction using basic patterns"""
-    import re
-
-    sentences = re.split(r'[.!?]+', text)
-    claims = [
-        sent.strip() for sent in sentences
-        if any(indicator in sent.lower() for indicator in [
-            "according to", "reported", "announced", "said", "claimed"
-        ])
-    ]
-
-    return {
-        "claims": claims[:5],
-        "entities": [],
-        "claim_count": len(claims),
-        "v2_analysis": False,
-        "fallback": True
-    }
-
-def _fallback_assess_credibility(source_text: str, domain: str) -> dict:
-    """Fallback credibility assessment"""
-    # Basic domain-based heuristics
-    trusted_indicators = ["bbc", "reuters", "ap", "npr", "pbs"]
-
-    if any(indicator in domain.lower() for indicator in trusted_indicators):
-        credibility = 0.8
-        reliability = "high"
-    else:
-        credibility = 0.5
-        reliability = "unknown"
-
-    return {
-        "credibility_score": credibility,
-        "reliability": reliability,
-        "confidence": 0.5,
-        "v2_analysis": False,
-        "fallback": True
-    }
-
-# Legacy function for backward compatibility
-def get_dialog_model():
-    """Legacy function - maintained for backward compatibility"""
-    if AutoModelForCausalLM is None or AutoTokenizer is None:
-        raise ImportError("transformers library is not installed.")
-
-    if not os.path.exists(MODEL_PATH) or not os.listdir(MODEL_PATH):
-        print(f"Downloading {MODEL_NAME} to {MODEL_PATH}...")
-        model = AutoModelForCausalLM.from_pretrained(MODEL_NAME, cache_dir=MODEL_PATH)
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, cache_dir=MODEL_PATH)
-    else:
-        print(f"Loading {MODEL_NAME} from local cache {MODEL_PATH}...")
-        model = AutoModelForCausalLM.from_pretrained(MODEL_PATH)
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-
-    return model, tokenizer
-
-def check_claims(article: str, source: str) -> dict:
-    """
-    Legacy function - enhanced with V2 capabilities
-    """
-    return comprehensive_fact_check(article, source)
-
-def validate_is_news(content: str) -> bool:
-    """Validate if the given content qualifies as news."""
-    logger.info(f"Validating content for news: {content[:50]}...")
-    keywords = ["breaking", "report", "headline", "news"]
-    is_news = any(keyword in content.lower() for keyword in keywords)
-    log_feedback("validate_is_news", {"content": content[:100], "is_news": is_news})
-    return is_news
-
-def verify_claims(claims: list[str], sources: list[str]) -> dict:
-    """Enhanced legacy function with V2 capabilities"""
-    logger.info(f"Verifying {len(claims)} claims with {len(sources)} sources")
-
-    results = {}
-    for claim in claims:
-        verification = verify_claim(claim, "\n".join(sources))
-        results[claim] = verification.get("verification_result", {}).get("classification", "unknown")
-
-    log_feedback("verify_claims", {"claims_count": len(claims), "sources_count": len(sources)})
-    return results
-
-# Online Training Functions
-def correct_fact_verification(claim: str,
-                            context: str,
-                            incorrect_classification: str,
-                            correct_classification: str,
-                            priority: int = 2) -> dict:
-    """
-    Submit user correction for fact verification to improve model accuracy
-    
-    Args:
-        claim: The factual claim that was incorrectly classified
-        context: Additional context for the claim
-        incorrect_classification: What the model predicted (e.g., "factual", "questionable")
-        correct_classification: What the correct classification should be
-        priority: Correction priority (0=low, 1=medium, 2=high, 3=critical)
-        
-    Returns:
-        Confirmation of correction submission
-    """
-    try:
-        if ONLINE_TRAINING_AVAILABLE:
-            add_user_correction(
-                agent_name="fact_checker",
-                task_type="fact_verification",
-                input_text=claim,
-                incorrect_output=incorrect_classification,
-                correct_output=correct_classification,
-                priority=priority
-            )
-
-            result = {
-                "correction_submitted": True,
-                "claim": claim,
-                "incorrect_classification": incorrect_classification,
-                "correct_classification": correct_classification,
-                "priority": priority,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "immediate_update": priority >= 2
+            results[claim] = {
+                "verification_score": verification_score,
+                "classification": "verified" if verification_score > 0.6 else "questionable",
+                "confidence": verification_score,
+                "method": "cpu_fallback"
             }
 
-            log_feedback("user_correction_fact_verification", result)
-
-            logger.info(f"📝 Fact verification correction submitted: "
-                       f"'{incorrect_classification}' → '{correct_classification}' (Priority: {priority})")
-
-            return result
-        else:
-            return {
-                "correction_submitted": False,
-                "error": "Online training not available",
-                "fallback": True
-            }
+        return {
+            "results": results,
+            "total_claims": len(claims),
+            "verified_claims": sum(1 for r in results.values() if r["classification"] == "verified"),
+            "method": "cpu_fallback",
+            "analysis_timestamp": datetime.now().isoformat()
+        }
 
     except Exception as e:
-        logger.error(f"Failed to submit fact verification correction: {e}")
+        logger.error(f"CPU claims verification failed: {e}")
+        return {"error": str(e), "method": "cpu_fallback"}
+
+# Utility functions
+def get_performance_stats() -> Dict[str, Any]:
+    """Get GPU acceleration performance statistics."""
+    try:
+        engine = get_fact_checker_engine()
+        return engine.get_performance_stats()
+    except Exception as e:
+        logger.error(f"Error getting performance stats: {e}")
+        return {"error": str(e), "gpu_available": False}
+
+def get_model_status() -> Dict[str, Any]:
+    """Get status of all fact-checking models."""
+    try:
+        engine = get_fact_checker_engine()
+        return engine.get_model_status()
+    except Exception as e:
+        logger.error(f"Error getting model status: {e}")
+        return {"error": str(e), "models_loaded": False}
+
+def log_feedback(feedback_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Log user feedback for model improvement."""
+    try:
+        engine = get_fact_checker_engine()
+        return engine.log_feedback(feedback_data)
+    except Exception as e:
+        logger.error(f"Error logging feedback: {e}")
+        return {"error": str(e), "logged": False}
+
+def correct_verification(
+    claim: str,
+    context: Optional[str] = None,
+    incorrect_classification: str = "",
+    correct_classification: str = "",
+    priority: int = 2
+) -> Dict[str, Any]:
+    """Submit user correction for fact verification."""
+    try:
+        engine = get_fact_checker_engine()
+        return engine.correct_verification(claim, context, incorrect_classification, correct_classification, priority)
+    except Exception as e:
+        logger.error(f"Error submitting verification correction: {e}")
+        return {"error": str(e), "correction_submitted": False}
+
+def correct_credibility(
+    source_text: Optional[str] = None,
+    domain: str = "",
+    incorrect_reliability: str = "",
+    correct_reliability: str = "",
+    priority: int = 2
+) -> Dict[str, Any]:
+    """Submit user correction for credibility assessment."""
+    try:
+        engine = get_fact_checker_engine()
+        return engine.correct_credibility(source_text, domain, incorrect_reliability, correct_reliability, priority)
+    except Exception as e:
+        logger.error(f"Error submitting credibility correction: {e}")
+        return {"error": str(e), "correction_submitted": False}
+
+def get_training_status() -> Dict[str, Any]:
+    """Get online training status for fact checker models."""
+    try:
+        engine = get_fact_checker_engine()
+        return engine.get_training_status()
+    except Exception as e:
+        logger.error(f"Error getting training status: {e}")
+        return {"error": str(e), "online_training_enabled": False}
+
+def force_model_update() -> Dict[str, Any]:
+    """Force immediate model update (admin function)."""
+    try:
+        engine = get_fact_checker_engine()
+        return engine.force_model_update()
+    except Exception as e:
+        logger.error(f"Error forcing model update: {e}")
+        return {"error": str(e), "update_triggered": False}
+
+async def health_check() -> Dict[str, Any]:
+    """
+    Perform health check on fact checker components.
+
+    Returns:
+        Health check results with component status
+    """
+    try:
+        engine = get_fact_checker_engine()
+
+        model_status = engine.get_model_status()
+
+        health_status = {
+            "timestamp": datetime.now().isoformat(),
+            "overall_status": "healthy",
+            "components": {
+                "engine": "healthy",
+                "mcp_bus": "healthy",  # Assume healthy unless proven otherwise
+                "fact_checking_models": "healthy",
+                "gpu_acceleration": "healthy" if model_status.get("gpu_available", False) else "degraded"
+            },
+            "model_status": model_status,
+            "processing_stats": getattr(engine, 'processing_stats', {})
+        }
+
+        # Check for any unhealthy components
+        unhealthy_components = [k for k, v in health_status["components"].items() if v == "unhealthy"]
+        if unhealthy_components:
+            health_status["overall_status"] = "degraded"
+            health_status["issues"] = [f"Component {comp} is unhealthy" for comp in unhealthy_components]
+
+        # Check model availability
+        loaded_models = sum(1 for status in model_status.values() if isinstance(status, bool) and status)
+        if loaded_models < 2:  # Require at least 2 of 4 models for basic functionality
+            health_status["overall_status"] = "degraded"
+            health_status["issues"] = health_status.get("issues", []) + [f"Only {loaded_models}/4 AI models loaded"]
+
+        logger.info(f"🏥 Fact checker health check: {health_status['overall_status']}")
+        return health_status
+
+    except Exception as e:
+        logger.error(f"🏥 Fact checker health check failed: {e}")
         return {
-            "correction_submitted": False,
+            "timestamp": datetime.now().isoformat(),
+            "overall_status": "unhealthy",
             "error": str(e)
         }
 
-def correct_credibility_assessment(source_text: str,
-                                  domain: str,
-                                  incorrect_reliability: str,
-                                  correct_reliability: str,
-                                  priority: int = 2) -> dict:
+def validate_fact_check_result(result: Dict[str, Any], expected_fields: Optional[List[str]] = None) -> bool:
     """
-    Submit user correction for source credibility assessment
-    
+    Validate fact-check result structure.
+
     Args:
-        source_text: The source content that was incorrectly assessed
-        domain: Domain name of the source
-        incorrect_reliability: What the model predicted (e.g., "high", "medium", "low")
-        correct_reliability: What the correct reliability should be
-        priority: Correction priority (0=low, 1=medium, 2=high, 3=critical)
-        
+        result: Fact-check result to validate
+        expected_fields: List of expected fields (optional)
+
     Returns:
-        Confirmation of correction submission
+        True if result is valid, False otherwise
+    """
+    if not isinstance(result, dict):
+        return False
+
+    if "error" in result:
+        return True  # Error results are valid
+
+    if expected_fields:
+        return all(field in result for field in expected_fields)
+
+    # Basic validation for common fields
+    common_fields = ["analysis_metadata", "analysis_timestamp"]
+    return any(field in result for field in common_fields)
+
+def format_fact_check_output(result: Dict[str, Any], format_type: str = "json") -> str:
+    """
+    Format fact-check result for output.
+
+    Args:
+        result: Fact-check result to format
+        format_type: Output format ("json", "text", "markdown")
+
+    Returns:
+        Formatted output string
     """
     try:
-        if ONLINE_TRAINING_AVAILABLE:
-            add_user_correction(
-                agent_name="fact_checker",
-                task_type="credibility_assessment",
-                input_text=f"Domain: {domain} - {source_text}",
-                incorrect_output=incorrect_reliability,
-                correct_output=correct_reliability,
-                priority=priority
-            )
+        if format_type == "json":
+            return json.dumps(result, indent=2, default=str)
 
-            result = {
-                "correction_submitted": True,
-                "domain": domain,
-                "incorrect_reliability": incorrect_reliability,
-                "correct_reliability": correct_reliability,
-                "priority": priority,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "immediate_update": priority >= 2
-            }
+        elif format_type == "text":
+            if "error" in result:
+                return f"Error: {result['error']}"
 
-            log_feedback("user_correction_credibility_assessment", result)
+            lines = []
+            if "verification_score" in result:
+                lines.append(f"Verification Score: {result['verification_score']:.2f}/1.0")
+                lines.append(f"Classification: {result.get('classification', 'unknown')}")
 
-            logger.info(f"📝 Credibility assessment correction submitted for {domain}: "
-                       f"'{incorrect_reliability}' → '{correct_reliability}' (Priority: {priority})")
+            if "credibility_score" in result:
+                lines.append(f"Credibility Score: {result['credibility_score']:.2f}/1.0")
+                lines.append(f"Reliability: {result.get('reliability', 'unknown')}")
 
-            return result
+            if "overall_score" in result:
+                lines.append(f"Overall Score: {result['overall_score']:.2f}/1.0")
+                lines.append(f"Assessment: {result.get('overall_assessment', 'unknown')}")
+
+            if "claim_count" in result:
+                lines.append(f"Claims Extracted: {result['claim_count']}")
+
+            if "contradictions_found" in result:
+                lines.append(f"Contradictions Found: {result['contradictions_found']}")
+
+            return "\n".join(lines)
+
+        elif format_type == "markdown":
+            if "error" in result:
+                return f"## Fact Check Error\n\n{result['error']}"
+
+            lines = ["# Fact Check Results\n"]
+
+            if "verification_score" in result:
+                lines.append("## Verification Results")
+                lines.append(f"- **Score**: {result['verification_score']:.2f}/1.0")
+                lines.append(f"- **Classification**: {result.get('classification', 'unknown')}")
+
+            if "credibility_score" in result:
+                lines.append("## Source Credibility")
+                lines.append(f"- **Score**: {result['credibility_score']:.2f}/1.0")
+                lines.append(f"- **Reliability**: {result.get('reliability', 'unknown')}")
+
+            if "overall_score" in result:
+                lines.append("## Overall Assessment")
+                lines.append(f"- **Score**: {result['overall_score']:.2f}/1.0")
+                lines.append(f"- **Assessment**: {result.get('overall_assessment', 'unknown')}")
+
+            if "claims_analysis" in result:
+                claims = result["claims_analysis"].get("extracted_claims", [])
+                lines.append("## Claims Analysis")
+                lines.append(f"- **Total Claims**: {len(claims)}")
+                if claims:
+                    lines.append("- **Sample Claims**:")
+                    for i, claim in enumerate(claims[:3]):
+                        lines.append(f"  - {claim[:100]}{'...' if len(claim) > 100 else ''}")
+
+            if "contradictions_found" in result and result["contradictions_found"] > 0:
+                lines.append("## Contradictions Detected")
+                lines.append(f"- **Found**: {result['contradictions_found']} contradictions")
+
+            return "\n".join(lines)
+
         else:
-            return {
-                "correction_submitted": False,
-                "error": "Online training not available",
-                "fallback": True
-            }
+            return f"Unsupported format: {format_type}"
 
     except Exception as e:
-        logger.error(f"Failed to submit credibility correction: {e}")
-        return {
-            "correction_submitted": False,
-            "error": str(e)
-        }
+        return f"Formatting error: {e}"
 
-def get_online_training_status() -> dict:
-    """Get current status of online training for Fact Checker"""
-    try:
-        if ONLINE_TRAINING_AVAILABLE:
-            from training_system import get_online_training_status
-            status = get_online_training_status()
-
-            # Add Fact Checker specific information
-            fact_checker_status = {
-                "online_training_enabled": True,
-                "fact_checker_buffer_size": status.get("buffer_sizes", {}).get("fact_checker", 0),
-                "total_system_examples": status.get("total_examples", 0),
-                "is_training": status.get("is_training", False),
-                "update_threshold": 30,  # Fact checker specific threshold
-                "v2_models": ["DistilBERT", "RoBERTa", "BERT-large", "SentenceTransformers", "spaCy"],
-                "supported_corrections": [
-                    "fact_verification",
-                    "credibility_assessment",
-                    "contradiction_detection",
-                    "claim_extraction"
-                ]
-            }
-
-            return {**status, **fact_checker_status}
-        else:
-            return {
-                "online_training_enabled": False,
-                "reason": "Online training coordinator not available"
-            }
-
-    except Exception as e:
-        logger.error(f"Failed to get training status: {e}")
-        return {
-            "online_training_enabled": False,
-            "error": str(e)
-        }
-
-def force_fact_checker_update() -> dict:
-    """Force immediate model update for Fact Checker (admin function)"""
-    try:
-        if ONLINE_TRAINING_AVAILABLE:
-            coordinator = get_training_coordinator()
-            if coordinator:
-                success = coordinator.force_update_agent("fact_checker")
-
-                result = {
-                    "update_triggered": success,
-                    "agent": "fact_checker",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "immediate": True
-                }
-
-                log_feedback("force_model_update", result)
-
-                if success:
-                    logger.info("🚀 Forced Fact Checker model update initiated")
-                else:
-                    logger.warning("⚠️ Failed to trigger Fact Checker model update (system may be busy)")
-
-                return result
-            else:
-                return {
-                    "update_triggered": False,
-                    "error": "Training coordinator not available"
-                }
-        else:
-            return {
-                "update_triggered": False,
-                "error": "Online training not available"
-            }
-
-    except Exception as e:
-        logger.error(f"Failed to force model update: {e}")
-        return {
-            "update_triggered": False,
-            "error": str(e)
-        }
+# Export main functions
+__all__ = [
+    'verify_facts',
+    'validate_sources',
+    'comprehensive_fact_check',
+    'extract_claims',
+    'assess_credibility',
+    'detect_contradictions',
+    'validate_is_news_gpu',
+    'validate_is_news_cpu',
+    'verify_claims_gpu',
+    'verify_claims_cpu',
+    'get_performance_stats',
+    'get_model_status',
+    'log_feedback',
+    'correct_verification',
+    'correct_credibility',
+    'get_training_status',
+    'force_model_update',
+    'health_check',
+    'validate_fact_check_result',
+    'format_fact_check_output',
+    'get_fact_checker_engine'
+]

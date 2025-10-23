@@ -1,33 +1,41 @@
 """
-Main file for the Analytics Agent.
+Analytics Service for JustNewsAgent
+
+FastAPI application providing advanced analytics, performance monitoring, and optimization
+recommendations. Includes comprehensive system health monitoring and interactive dashboard.
 """
-# main.py for Analytics Agent
 
+import asyncio
 import os
+import sys
 from contextlib import asynccontextmanager
+from typing import Any, Dict
 
-import requests
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from agents.analytics.dashboard import create_analytics_app
 from common.observability import get_logger
 from common.metrics import JustNewsMetrics
+from agents.analytics.refactor.analytics_engine import get_analytics_engine, initialize_analytics_engine, shutdown_analytics_engine
+from agents.analytics.dashboard import create_analytics_app
 
-# Configure logging
 logger = get_logger(__name__)
-
-ready = False
 
 # Environment variables
 ANALYTICS_AGENT_PORT = int(os.environ.get("ANALYTICS_AGENT_PORT", 8011))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
+ready = False
+
+
 class MCPBusClient:
+    """MCP Bus client for agent registration"""
     def __init__(self, base_url: str = MCP_BUS_URL):
         self.base_url = base_url
 
     def register_agent(self, agent_name: str, agent_address: str, tools: list):
+        import requests
         registration_data = {
             "name": agent_name,
             "address": agent_address,
@@ -40,10 +48,23 @@ class MCPBusClient:
             logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
             raise
 
+
 # Define the lifespan context manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Analytics agent is starting up.")
+    """Application lifespan context manager for startup and shutdown"""
+    logger.info("📊 Analytics agent is starting up.")
+
+    # Initialize analytics engine
+    try:
+        if not await initialize_analytics_engine():
+            logger.error("❌ Failed to initialize analytics engine")
+            sys.exit(1)
+    except Exception as e:
+        logger.error(f"❌ Analytics engine initialization failed: {e}")
+        sys.exit(1)
+
+    # Register with MCP Bus
     mcp_bus_client = MCPBusClient()
     try:
         mcp_bus_client.register_agent(
@@ -54,14 +75,38 @@ async def lifespan(app: FastAPI):
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
         logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+
     global ready
     ready = True
+    logger.info("✅ Analytics agent started successfully")
+
     yield
 
-    logger.info("Analytics agent is shutting down.")
+    # Shutdown
+    logger.info("🛑 Analytics agent is shutting down.")
+    try:
+        await shutdown_analytics_engine()
+        logger.info("✅ Analytics agent shutdown complete")
+    except Exception as e:
+        logger.error(f"❌ Analytics agent shutdown error: {e}")
+
 
 # Initialize FastAPI with the lifespan context manager
-app = FastAPI(title="Analytics Agent", lifespan=lifespan)
+app = FastAPI(
+    title="JustNewsAgent Analytics Service",
+    description="Advanced analytics and performance monitoring service",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Initialize metrics
 metrics = JustNewsMetrics("analytics")
@@ -85,13 +130,65 @@ except Exception:
 analytics_dashboard = create_analytics_app()
 app.mount("/dashboard", analytics_dashboard, name="analytics-dashboard")
 
+
+@app.get("/")
+async def root():
+    """Root endpoint with service information"""
+    return {
+        "service": "JustNewsAgent Analytics Service",
+        "version": "1.0.0",
+        "description": "Advanced analytics and performance monitoring",
+        "status": "running",
+        "dashboard": "/dashboard"
+    }
+
+
 @app.get("/health")
-def health():
-    return {"status": "ok"}
+async def health_check():
+    """Comprehensive health check endpoint"""
+    try:
+        engine = get_analytics_engine()
+        health_info = await engine.health_check()
+
+        # Determine HTTP status code based on health
+        status_code = 200 if health_info["status"] == "healthy" else 503
+
+        return JSONResponse(
+            content=health_info,
+            status_code=status_code
+        )
+
+    except Exception as e:
+        logger.error(f"Health check error: {e}")
+        return JSONResponse(
+            content={
+                "service": "analytics_service",
+                "status": "error",
+                "error": str(e),
+                "timestamp": asyncio.get_event_loop().time()
+            },
+            status_code=503
+        )
+
 
 @app.get("/ready")
-def ready_endpoint():
+async def readiness_check():
+    """Kubernetes readiness probe endpoint"""
     return {"ready": ready}
+
+
+@app.get("/info")
+async def service_info():
+    """Get service information and capabilities"""
+    try:
+        engine = get_analytics_engine()
+        info = engine.get_service_info()
+        return info
+
+    except Exception as e:
+        logger.error(f"Service info error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get service information")
+
 
 # Metrics endpoint
 @app.get("/metrics")
@@ -100,7 +197,10 @@ def get_metrics():
     from fastapi import Response
     return Response(content=metrics.get_metrics(), media_type="text/plain")
 
+
 # Pydantic models
+from pydantic import BaseModel
+
 class ToolCall(BaseModel):
     args: list
     kwargs: dict
@@ -118,14 +218,13 @@ class PerformanceMetrics(BaseModel):
     power_draw_w: float = 0.0
     throughput_items_per_s: float = 0.0
 
+
 @app.post("/get_system_health")
 def get_system_health(call: ToolCall):
     """Get comprehensive system health metrics"""
     try:
-        from agents.common.advanced_analytics import get_analytics_engine
-
-        analytics_engine = get_analytics_engine()
-        health = analytics_engine.get_system_health_score()
+        engine = get_analytics_engine()
+        health = engine.get_system_health()
 
         logger.info("Retrieved system health metrics")
         return {"status": "success", "data": health}
@@ -133,33 +232,31 @@ def get_system_health(call: ToolCall):
         logger.error(f"Error getting system health: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/get_performance_metrics")
 def get_performance_metrics(call: ToolCall):
     """Get real-time performance metrics for specified time period"""
     try:
-        from agents.common.advanced_analytics import get_analytics_engine
-
         kwargs = call.kwargs or {}
         hours = kwargs.get("hours", 1)
 
         if hours < 1 or hours > 24:
             raise HTTPException(status_code=400, detail="Hours must be between 1 and 24")
 
-        analytics_engine = get_analytics_engine()
-        analytics = analytics_engine.get_real_time_analytics(hours=hours)
+        engine = get_analytics_engine()
+        analytics = engine.get_performance_metrics(hours=hours)
 
         logger.info(f"Retrieved performance metrics for {hours} hours")
-        return {"status": "success", "data": analytics.__dict__}
+        return {"status": "success", "data": analytics}
     except Exception as e:
         logger.error(f"Error getting performance metrics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/get_agent_profile")
 def get_agent_profile(call: ToolCall):
     """Get performance profile for specific agent"""
     try:
-        from agents.common.advanced_analytics import get_analytics_engine
-
         kwargs = call.kwargs or {}
         agent_name = kwargs.get("agent_name")
         hours = kwargs.get("hours", 24)
@@ -170,8 +267,8 @@ def get_agent_profile(call: ToolCall):
         if hours < 1 or hours > 168:  # Max 1 week
             raise HTTPException(status_code=400, detail="Hours must be between 1 and 168")
 
-        analytics_engine = get_analytics_engine()
-        profile = analytics_engine.get_agent_performance_profile(agent_name, hours=hours)
+        engine = get_analytics_engine()
+        profile = engine.get_agent_profile(agent_name, hours=hours)
 
         logger.info(f"Retrieved profile for agent {agent_name}")
         return {"status": "success", "data": profile}
@@ -179,47 +276,28 @@ def get_agent_profile(call: ToolCall):
         logger.error(f"Error getting agent profile: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/get_optimization_recommendations")
 def get_optimization_recommendations(call: ToolCall):
     """Get advanced optimization recommendations"""
     try:
-        from agents.common.advanced_optimization import generate_optimization_recommendations
-
         kwargs = call.kwargs or {}
         hours = kwargs.get("hours", 24)
 
-        recommendations = generate_optimization_recommendations(hours)
+        engine = get_analytics_engine()
+        recommendations = engine.get_optimization_recommendations(hours)
 
-        result = [
-            {
-                "id": rec.id,
-                "category": rec.category.value,
-                "priority": rec.priority.value,
-                "title": rec.title,
-                "description": rec.description,
-                "impact_score": rec.impact_score,
-                "confidence_score": rec.confidence_score,
-                "complexity": rec.implementation_complexity,
-                "time_savings": rec.estimated_time_savings,
-                "affected_agents": rec.affected_agents,
-                "steps": rec.implementation_steps
-            }
-            for rec in recommendations
-        ]
-
-        logger.info(f"Generated {len(result)} optimization recommendations")
-        return {"status": "success", "data": result}
+        logger.info(f"Generated {len(recommendations)} optimization recommendations")
+        return {"status": "success", "data": recommendations}
     except Exception as e:
         logger.error(f"Error getting optimization recommendations: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/record_performance_metric")
 def record_performance_metric(call: ToolCall):
     """Record a custom performance metric"""
     try:
-        from agents.common.advanced_analytics import get_analytics_engine, PerformanceMetrics
-        from datetime import datetime
-
         kwargs = call.kwargs or {}
 
         # Validate required fields
@@ -228,32 +306,71 @@ def record_performance_metric(call: ToolCall):
             if field not in kwargs:
                 raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
 
-        # Create metric object
-        metric = PerformanceMetrics(
-            timestamp=datetime.now(),
-            agent_name=kwargs["agent_name"],
-            operation=kwargs["operation"],
-            processing_time_s=float(kwargs["processing_time_s"]),
-            batch_size=int(kwargs["batch_size"]),
-            success=bool(kwargs["success"]),
-            gpu_memory_allocated_mb=float(kwargs.get("gpu_memory_allocated_mb", 0.0)),
-            gpu_memory_reserved_mb=float(kwargs.get("gpu_memory_reserved_mb", 0.0)),
-            gpu_utilization_pct=float(kwargs.get("gpu_utilization_pct", 0.0)),
-            temperature_c=float(kwargs.get("temperature_c", 0.0)),
-            power_draw_w=float(kwargs.get("power_draw_w", 0.0)),
-            throughput_items_per_s=float(kwargs.get("throughput_items_per_s", 0.0))
-        )
+        engine = get_analytics_engine()
+        success = engine.record_performance_metric(kwargs)
 
-        # Record the metric
-        analytics_engine = get_analytics_engine()
-        analytics_engine.record_metric(metric)
+        if success:
+            logger.info(f"Recorded performance metric for {kwargs['agent_name']}")
+            return {"status": "success", "message": "Metric recorded successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to record metric")
 
-        logger.info(f"Recorded performance metric for {kwargs['agent_name']}")
-        return {"status": "success", "message": "Metric recorded successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error recording performance metric: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-if __name__ == "__main__":
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global exception handler for unhandled exceptions"""
+    logger.error(f"Unhandled exception in {request.url}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal server error",
+            "detail": str(exc) if app.debug else "An unexpected error occurred"
+        }
+    )
+
+
+def main():
+    """Main entry point for running the analytics service"""
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=ANALYTICS_AGENT_PORT)
+
+    # Get configuration from environment
+    host = "0.0.0.0"  # Bind to all interfaces
+    port = ANALYTICS_AGENT_PORT
+    workers = int(os.environ.get("ANALYTICS_WORKERS", "1"))
+    reload = os.environ.get("ANALYTICS_RELOAD", "false").lower() == "true"
+
+    logger.info(f"📊 Starting Analytics Service on {host}:{port}")
+
+    # Configure uvicorn
+    config = uvicorn.Config(
+        app=app,
+        host=host,
+        port=port,
+        workers=workers,
+        reload=reload,
+        log_level="info"
+    )
+
+    server = uvicorn.Server(config)
+
+    # Handle graceful shutdown
+    def signal_handler(signum, frame):
+        logger.info(f"🛑 Received signal {signum}, shutting down...")
+        server.should_exit = True
+
+    import signal
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    # Run the server
+    server.run()
+
+
+if __name__ == "__main__":
+    main()

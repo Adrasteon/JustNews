@@ -6,6 +6,7 @@ Web interface for crawler management and monitoring.
 
 import os
 from contextlib import asynccontextmanager
+from typing import Dict, Any
 
 import requests
 from fastapi import FastAPI, HTTPException
@@ -15,6 +16,8 @@ import re
 
 from common.observability import get_logger
 from common.metrics import JustNewsMetrics
+from .crawler_control_engine import CrawlerControlEngine
+from .tools import get_sources_with_limit
 
 # Import database functions
 from agents.common.database import execute_query, initialize_connection_pool
@@ -40,6 +43,8 @@ MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:8000").split(",")
 
+ready = False
+
 class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
         self.base_url = base_url
@@ -56,27 +61,6 @@ class MCPBusClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
             raise
-
-def get_sources_with_limit(limit: int = None) -> list[str]:
-    """Get active sources from database, optionally limited"""
-    try:
-        query = """
-            SELECT domain
-            FROM public.sources
-            WHERE last_verified IS NOT NULL
-            AND last_verified > now() - interval '30 days'
-            ORDER BY last_verified DESC, name ASC
-        """
-        if limit:
-            query += f" LIMIT {limit}"
-
-        sources = execute_query(query)
-        domains = [source['domain'] for source in sources]
-        return domains
-
-    except Exception as e:
-        logger.error(f"❌ Failed to query sources from database: {e}")
-        return []
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -110,8 +94,6 @@ app = FastAPI(lifespan=lifespan, title="Crawler Control Agent", description="Web
 
 # Initialize metrics
 metrics = JustNewsMetrics("crawler_control")
-
-ready = False
 
 # Register shutdown endpoint
 try:
@@ -533,7 +515,7 @@ if __name__ == "__main__":
     import uvicorn
     logger.info(f"Starting Crawler Control Agent on port {CRAWLER_CONTROL_AGENT_PORT}")
     uvicorn.run(
-        "agents.crawler_control.main:app",
+        "agents.crawler_control.refactor.main:app",
         host="0.0.0.0",
         port=CRAWLER_CONTROL_AGENT_PORT,
         reload=False,

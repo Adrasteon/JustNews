@@ -15,7 +15,7 @@ import pytest
 from typing import Dict, List, Any, Optional, Tuple
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from tests.refactor.test_utils import AsyncTestHelper, MockFactory, PerformanceTester, CustomAssertions
+from tests.test_utils import AsyncTestHelper, MockFactory, PerformanceTester, CustomAssertions
 
 
 class TestGPUAvailability:

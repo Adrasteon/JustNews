@@ -19,9 +19,9 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from ..common.advanced_analytics import get_analytics_engine
+from agents.analytics.refactor.analytics_engine import get_analytics_engine
 
-# Initialize analytics engine
+# Get the analytics engine instance
 analytics_engine = get_analytics_engine()
 
 # FastAPI app for analytics dashboard
@@ -48,7 +48,7 @@ async def analytics_dashboard(request: Request):
 async def get_system_health():
     """Get system health metrics"""
     try:
-        health = analytics_engine.get_system_health_score()
+        health = analytics_engine.get_system_health()
         return JSONResponse(content=health)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
@@ -60,8 +60,8 @@ async def get_realtime_analytics(hours: int = 1):
         if hours < 1 or hours > 24:
             raise HTTPException(status_code=400, detail="Hours must be between 1 and 24")
 
-        analytics = analytics_engine.get_real_time_analytics(hours=hours)
-        return JSONResponse(content=analytics.__dict__)
+        analytics = analytics_engine.get_performance_metrics(hours=hours)
+        return JSONResponse(content=analytics)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analytics retrieval failed: {str(e)}")
 
@@ -72,7 +72,7 @@ async def get_agent_profile(agent_name: str, hours: int = 24):
         if hours < 1 or hours > 168:  # Max 1 week
             raise HTTPException(status_code=400, detail="Hours must be between 1 and 168")
 
-        profile = analytics_engine.get_agent_performance_profile(agent_name, hours=hours)
+        profile = analytics_engine.get_agent_profile(agent_name, hours=hours)
         return JSONResponse(content=profile)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent profile retrieval failed: {str(e)}")
@@ -81,11 +81,17 @@ async def get_agent_profile(agent_name: str, hours: int = 24):
 async def get_performance_trends(hours: int = 24):
     """Get performance trends analysis"""
     try:
-        analytics = analytics_engine.get_real_time_analytics(hours=hours)
+        analytics = analytics_engine.get_performance_metrics(hours=hours)
+
+        # Extract trends, bottlenecks, and recommendations from analytics data
+        trends = analytics.get("performance_trends", {})
+        bottlenecks = analytics.get("bottleneck_indicators", [])
+        recommendations = analytics.get("optimization_recommendations", [])
+
         return JSONResponse(content={
-            "trends": analytics.performance_trends,
-            "bottlenecks": analytics.bottleneck_indicators,
-            "recommendations": analytics.optimization_recommendations
+            "trends": trends,
+            "bottlenecks": bottlenecks,
+            "recommendations": recommendations
         })
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Trends analysis failed: {str(e)}")
@@ -103,25 +109,8 @@ async def get_analytics_report(hours: int = 24):
 async def get_optimization_recommendations(hours: int = 24):
     """Get advanced optimization recommendations"""
     try:
-        from ..common.advanced_optimization import generate_optimization_recommendations
-
-        recommendations = generate_optimization_recommendations(hours)
-        return JSONResponse(content=[
-            {
-                "id": rec.id,
-                "category": rec.category.value,
-                "priority": rec.priority.value,
-                "title": rec.title,
-                "description": rec.description,
-                "impact_score": rec.impact_score,
-                "confidence_score": rec.confidence_score,
-                "complexity": rec.implementation_complexity,
-                "time_savings": rec.estimated_time_savings,
-                "affected_agents": rec.affected_agents,
-                "steps": rec.implementation_steps
-            }
-            for rec in recommendations
-        ])
+        recommendations = analytics_engine.get_optimization_recommendations(hours)
+        return JSONResponse(content=recommendations)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Optimization analysis failed: {str(e)}")
 
@@ -129,9 +118,27 @@ async def get_optimization_recommendations(hours: int = 24):
 async def get_optimization_insights():
     """Get optimization insights and analytics"""
     try:
-        from ..common.advanced_optimization import get_optimization_insights
+        # This functionality might be part of the optimization recommendations
+        # For now, return a subset of recommendations as insights
+        recommendations = analytics_engine.get_optimization_recommendations(hours=24)
 
-        insights = get_optimization_insights()
+        # Group recommendations by category for insights
+        insights = {
+            "total_recommendations": len(recommendations),
+            "categories": {},
+            "priorities": {},
+            "high_impact": [r for r in recommendations if r.get("impact_score", 0) > 7],
+            "quick_wins": [r for r in recommendations if r.get("complexity", "high") == "low"]
+        }
+
+        # Count by category and priority
+        for rec in recommendations:
+            category = rec.get("category", "unknown")
+            priority = rec.get("priority", "unknown")
+
+            insights["categories"][category] = insights["categories"].get(category, 0) + 1
+            insights["priorities"][priority] = insights["priorities"].get(priority, 0) + 1
+
         return JSONResponse(content=insights)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Insights generation failed: {str(e)}")
@@ -140,45 +147,55 @@ async def get_optimization_insights():
 async def record_custom_metric(metric_data: dict[str, Any]):
     """Record a custom performance metric"""
     try:
-        from ..common.advanced_analytics import PerformanceMetrics
-
         # Validate required fields
         required_fields = ["agent_name", "operation", "processing_time_s", "batch_size", "success"]
         for field in required_fields:
             if field not in metric_data:
                 raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
 
-        # Create metric object
-        metric = PerformanceMetrics(
-            timestamp=datetime.now(),
-            agent_name=metric_data["agent_name"],
-            operation=metric_data["operation"],
-            processing_time_s=float(metric_data["processing_time_s"]),
-            batch_size=int(metric_data["batch_size"]),
-            success=bool(metric_data["success"]),
-            gpu_memory_allocated_mb=float(metric_data.get("gpu_memory_allocated_mb", 0.0)),
-            gpu_memory_reserved_mb=float(metric_data.get("gpu_memory_reserved_mb", 0.0)),
-            gpu_utilization_pct=float(metric_data.get("gpu_utilization_pct") or 0.0),
-            temperature_c=float(metric_data.get("temperature_c") or 0.0),
-            power_draw_w=float(metric_data.get("power_draw_w") or 0.0),
-            throughput_items_per_s=float(metric_data.get("throughput_items_per_s", 0.0))
-        )
+        # Record the metric using the engine
+        success = analytics_engine.record_performance_metric(metric_data)
 
-        # Record the metric
-        analytics_engine.record_metric(metric)
+        if success:
+            return JSONResponse(content={"status": "success", "message": "Metric recorded successfully"})
+        else:
+            raise HTTPException(status_code=500, detail="Failed to record metric")
 
-        return JSONResponse(content={"status": "success", "message": "Metric recorded successfully"})
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Metric recording failed: {str(e)}")
+
+@analytics_app.get("/api/service-info")
+async def get_service_info():
+    """Get analytics service information and capabilities"""
+    try:
+        info = analytics_engine.get_service_info()
+        return JSONResponse(content=info)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Service info retrieval failed: {str(e)}")
+
+@analytics_app.get("/api/engine-health")
+async def get_engine_health():
+    """Get detailed engine health information"""
+    try:
+        import asyncio
+        health_info = await analytics_engine.health_check()
+        return JSONResponse(content=health_info)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Engine health check failed: {str(e)}")
+
 
 def create_analytics_app() -> FastAPI:
     """Create and return the analytics dashboard FastAPI app"""
     return analytics_app
 
+
 def start_analytics_dashboard(host: str = "0.0.0.0", port: int = 8012):
-    """Start the analytics dashboard server"""
+    """Start the analytics dashboard server (standalone mode)"""
     import uvicorn
     uvicorn.run(analytics_app, host=host, port=port)
+
 
 if __name__ == "__main__":
     start_analytics_dashboard()

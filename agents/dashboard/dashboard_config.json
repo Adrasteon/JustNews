@@ -1,5 +1,0 @@
-{
-    "dashboard_port": 8010,
-    "mcp_bus_url": "http://localhost:8000",
-    "log_level": "INFO"
-}

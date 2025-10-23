@@ -19,7 +19,7 @@ import tracemalloc
 from typing import Dict, List, Any, Optional, Callable
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from tests.refactor.test_utils import AsyncTestHelper, MockFactory, PerformanceTester, CustomAssertions
+from tests.test_utils import AsyncTestHelper, MockFactory, PerformanceTester, CustomAssertions
 
 
 class TestSystemPerformance:

@@ -20,7 +20,7 @@ import pytest_asyncio
 from typing import Dict, List, Any, Optional, Callable
 from unittest.mock import Mock, AsyncMock
 
-from tests.refactor.test_utils import (
+from tests.test_utils import (
     MockFactory,
     TestDataGenerator,
     PerformanceTester,

@@ -1,50 +1,71 @@
 """
-Main file for the Synthesizer Agent.
+Synthesizer Agent - Simplified FastAPI Application
+
+This module provides a simplified synthesizer agent with GPU-accelerated
+content synthesis capabilities using a 4-model architecture (BERTopic,
+BART, FLAN-T5, SentenceTransformers).
+
+Key Features:
+- Article clustering and synthesis
+- GPU acceleration with CPU fallbacks
+- MCP bus integration
+- Comprehensive error handling
+- Performance monitoring
+
+Endpoints:
+- POST /cluster_articles: Cluster articles into themes
+- POST /neutralize_text: Remove bias from text
+- POST /aggregate_cluster: Aggregate cluster into summary
+- POST /synthesize_news_articles_gpu: GPU-accelerated synthesis
+- GET /health: Health check
+- GET /stats: Performance statistics
 """
-# main.py for Synthesizer Agent
-from typing import List
-from typing import Any
-from typing import Dict
+
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-import requests
 from fastapi import FastAPI, HTTPException, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from common.observability import get_logger
 from common.metrics import JustNewsMetrics
 
-# Configure centralized logging
-logger = get_logger(__name__)
+# Import refactored components
+from .synthesizer_engine import SynthesizerEngine
+from .tools import (
+    cluster_articles_tool,
+    neutralize_text_tool,
+    aggregate_cluster_tool,
+    synthesize_gpu_tool,
+    health_check,
+    get_stats
+)
 
-ready: bool = False
+logger = get_logger(__name__)
 
 # Environment variables
 SYNTHESIZER_AGENT_PORT: int = int(os.environ.get("SYNTHESIZER_AGENT_PORT", 8005))
 MCP_BUS_URL: str = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
+# Global engine instance
+synthesizer_engine: Optional[SynthesizerEngine] = None
 
 class MCPBusClient:
-    """Lightweight client for registering the agent with the central MCP Bus.
-
-    Args:
-        base_url: Base URL of the MCP Bus (defaults to MCP_BUS_URL).
-    """
+    """Lightweight client for registering the agent with the central MCP Bus."""
 
     def __init__(self, base_url: str = MCP_BUS_URL) -> None:
         self.base_url = base_url
 
     def register_agent(self, agent_name: str, agent_address: str, tools: List[str]) -> None:
-        """Register an agent with the MCP bus.
+        """Register an agent with the MCP bus."""
+        import requests
 
-        Raises:
-            requests.exceptions.RequestException: If the registration HTTP call fails.
-        """
         registration_data = {
             "name": agent_name,
             "address": agent_address,
+            "tools": tools
         }
         try:
             response = requests.post(
@@ -52,20 +73,27 @@ class MCPBusClient:
             )
             response.raise_for_status()
             logger.info("Successfully registered %s with MCP Bus.", agent_name)
-        except requests.exceptions.RequestException:
-            # Log full stack trace for diagnostics and re-raise
-            logger.exception("Failed to register %s with MCP Bus.", agent_name)
+        except Exception:
+            logger.warning("MCP Bus unavailable; running in standalone mode.")
             raise
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup / shutdown context manager for the FastAPI app.
+    """Startup / shutdown context manager for the FastAPI app."""
+    global synthesizer_engine
 
-    Registers the agent with the MCP bus if available and sets the module
-    readiness flag.
-    """
-    logger.info("Synthesizer agent is starting up.")
+    logger.info("🚀 Synthesizer agent is starting up.")
+
+    # Initialize synthesizer engine
+    try:
+        synthesizer_engine = SynthesizerEngine()
+        logger.info("✅ Synthesizer engine initialized successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize synthesizer engine: {e}")
+        synthesizer_engine = None
+
+    # Register with MCP bus
     mcp_bus_client = MCPBusClient()
     try:
         mcp_bus_client.register_agent(
@@ -79,264 +107,232 @@ async def lifespan(app: FastAPI):
                 "get_synthesizer_performance",
             ],
         )
-        logger.info("Registered tools with MCP Bus.")
+        logger.info("✅ Registered tools with MCP Bus.")
     except Exception:
-        logger.warning("MCP Bus unavailable; running in standalone mode.")
+        logger.warning("⚠️ MCP Bus unavailable; running in standalone mode.")
 
-    # Note: Models will be downloaded automatically by HuggingFace transformers when first used
-
-    global ready
-    ready = True
     yield
-    logger.info("Synthesizer agent is shutting down.")
+
+    # Cleanup on shutdown
+    if synthesizer_engine:
+        try:
+            synthesizer_engine.cleanup()
+            logger.info("🧹 Synthesizer engine cleanup completed")
+        except Exception as e:
+            logger.warning(f"⚠️ Engine cleanup warning: {e}")
+
+    logger.info("🛑 Synthesizer agent is shutting down.")
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    title="Synthesizer Agent",
+    description="GPU-accelerated news article synthesis and clustering",
+    version="3.0.0",
+    lifespan=lifespan
+)
 
 # Initialize metrics
 metrics = JustNewsMetrics("synthesizer")
-# Register the metrics middleware; metrics.request_middleware is a callable
 app.middleware("http")(metrics.request_middleware)
 
-# Register shutdown endpoint if available
+# Register common endpoints
 try:
     from agents.common.shutdown import register_shutdown_endpoint
-
     register_shutdown_endpoint(app)
 except Exception:
-    logger.debug("shutdown endpoint not registered for synthesizer")
+    logger.debug("Shutdown endpoint not registered")
 
-# Register reload endpoint if available
 try:
     from agents.common.reload import register_reload_endpoint
-
     register_reload_endpoint(app)
 except Exception:
-    logger.debug("reload endpoint not registered for synthesizer")
+    logger.debug("Reload endpoint not registered")
 
 
 class ToolCall(BaseModel):
-    """Standard MCP tool call format used by agent endpoints.
+    """Standard MCP tool call format."""
+    args: List[Any] = []
+    kwargs: Dict[str, Any] = {}
 
-    Attributes:
-        args: Positional arguments for the tool.
-        kwargs: Keyword arguments for the tool.
-    """
 
-    args: List[Any] = Field(default_factory=list)
-    kwargs: Dict[str, Any] = Field(default_factory=dict)
+class SynthesisRequest(BaseModel):
+    """Request model for synthesis operations."""
+    articles: List[Dict[str, Any]]
+    max_clusters: Optional[int] = 5
+    context: Optional[str] = "news analysis"
 
 
 @app.get("/health")
 def health() -> Dict[str, str]:
-    """Liveness probe.
-
-    Returns:
-        A small JSON object indicating service liveness.
-    """
-    return {"status": "ok"}
+    """Liveness probe."""
+    if synthesizer_engine is None:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
+    return {"status": "ok", "engine": "ready"}
 
 
 @app.get("/ready")
 def ready_endpoint() -> Dict[str, bool]:
-    """Readiness probe.
-
-    Returns:
-        JSON object with readiness boolean.
-    """
-    return {"ready": ready}
+    """Readiness probe."""
+    return {"ready": synthesizer_engine is not None}
 
 
-# Metrics endpoint
 @app.get("/metrics")
 def get_metrics() -> Response:
-    """Prometheus metrics endpoint.
-
-    Returns:
-        A plain text response containing Prometheus metrics.
-    """
+    """Prometheus metrics endpoint."""
     return Response(content=metrics.get_metrics(), media_type="text/plain")
 
 
 @app.post("/log_feedback")
 def log_feedback(call: ToolCall) -> Dict[str, Any]:
-    """Log feedback sent from other agents or tests.
-
-    The function records a timestamped feedback entry and returns it.
-    """
+    """Log feedback sent from other agents or tests."""
     try:
-        feedback_data: Dict[str, Any] = {
+        feedback_data = {
             "timestamp": datetime.now().isoformat(),
             "feedback": call.kwargs.get("feedback"),
         }
-        logger.info("Logging feedback: %s", feedback_data)
+        logger.info(f"📝 Logging feedback: {feedback_data}")
         return feedback_data
-    except Exception:
-        logger.exception("An error occurred while logging feedback")
+    except Exception as e:
+        logger.exception("❌ Failed to log feedback")
         raise HTTPException(status_code=500, detail="Failed to log feedback")
-
-
-@app.post("/aggregate_cluster")
-def aggregate_cluster_endpoint(call: ToolCall) -> Any:
-    """Aggregate a cluster of articles into a synthesis.
-
-    Delegates to the local `tools.aggregate_cluster` implementation.
-    """
-    try:
-        # Use relative import to resolve the agent-local tools module
-        from .tools import aggregate_cluster as _aggregate_cluster
-
-        logger.info("Calling aggregate_cluster with args: %s and kwargs: %s", call.args, call.kwargs)
-        return _aggregate_cluster(*call.args, **call.kwargs)
-    except Exception:
-        logger.exception("An error occurred in aggregate_cluster")
-        raise HTTPException(status_code=500, detail="aggregate_cluster failed")
 
 
 @app.post("/cluster_articles")
 def cluster_articles_endpoint(call: ToolCall) -> Any:
-    """Cluster a list of articles into groups.
+    """Cluster a list of articles into groups."""
+    if synthesizer_engine is None:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
 
-    Delegates to the local `tools.cluster_articles` implementation.
-    """
     try:
-        # Use relative import to resolve the agent-local tools module
-        from .tools import cluster_articles as _cluster_articles
+        # Extract parameters
+        article_texts = call.args[0] if call.args else call.kwargs.get("article_texts", [])
+        n_clusters = call.kwargs.get("n_clusters", 2)
 
-        logger.info("Calling cluster_articles with args: %s and kwargs: %s", call.args, call.kwargs)
-        return _cluster_articles(*call.args, **call.kwargs)
-    except Exception:
-        logger.exception("An error occurred in cluster_articles")
-        raise HTTPException(status_code=500, detail="cluster_articles failed")
+        if not article_texts:
+            raise HTTPException(status_code=400, detail="No articles provided")
+
+        logger.info(f"🎯 Clustering {len(article_texts)} articles into {n_clusters} clusters")
+
+        result = await cluster_articles_tool(synthesizer_engine, article_texts, n_clusters)
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("❌ Cluster articles failed")
+        raise HTTPException(status_code=500, detail=f"Clustering failed: {str(e)}")
 
 
 @app.post("/neutralize_text")
 def neutralize_text_endpoint(call: ToolCall) -> Any:
-    """Neutralize text for bias and aggressive language.
+    """Neutralize text for bias and aggressive language."""
+    if synthesizer_engine is None:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
 
-    Delegates to the local `tools.neutralize_text` implementation.
-    """
     try:
-        # Use relative import to resolve the agent-local tools module
-        from .tools import neutralize_text as _neutralize_text
+        text = call.args[0] if call.args else call.kwargs.get("text", "")
 
-        logger.info("Calling neutralize_text with args: %s and kwargs: %s", call.args, call.kwargs)
-        return _neutralize_text(*call.args, **call.kwargs)
-    except Exception:
-        logger.exception("An error occurred in neutralize_text")
-        raise HTTPException(status_code=500, detail="neutralize_text failed")
+        if not text or not text.strip():
+            raise HTTPException(status_code=400, detail="No text provided")
 
+        logger.info(f"⚖️ Neutralizing text ({len(text)} chars)")
 
-# GPU-accelerated endpoints (V4 performance implementation)
-@app.post("/synthesize_news_articles_gpu")
-def synthesize_news_articles_gpu_endpoint(call: ToolCall) -> Dict[str, Any]:
-    """GPU-accelerated news article synthesis endpoint.
-
-    Attempts to use GPU tools and falls back to CPU implementations when
-    GPU tooling is unavailable or raises an error.
-    """
-    try:
-        from .gpu_tools import synthesize_news_articles_gpu
-
-        # Normalize input: support args[0] or kwargs['articles']
-        articles: List[Dict[str, Any]] = []
-        if call.args and len(call.args) > 0 and isinstance(call.args[0], list):
-            articles = call.args[0]
-        elif isinstance(call.kwargs.get("articles"), list):
-            articles = call.kwargs.get("articles", [])
-
-        logger.info("Calling GPU synthesize with %d articles", len(articles))
-        # GPU tool in tools.py expects full article dicts and will handle fallback itself
-        result = synthesize_news_articles_gpu(articles)
-
-        # Log performance for monitoring
-        if isinstance(result, dict) and result.get("success") and "performance" in result:
-            perf = result["performance"]
-            try:
-                logger.info("GPU synthesis: %.1f articles/sec", float(perf.get("articles_per_sec", 0.0)))
-            except Exception:
-                logger.debug("Performance logging skipped: invalid perf data")
-
+        result = await neutralize_text_tool(synthesizer_engine, text)
         return result
-    except Exception:
-        logger.exception("GPU synthesis error; attempting CPU fallback")
-        # Graceful fallback to CPU implementation
-        try:
-            # Use relative import to resolve the agent-local tools module
-            from .tools import aggregate_cluster as _aggregate_cluster
-            from .tools import cluster_articles as _cluster_articles
 
-            logger.info("Falling back to CPU synthesis")
-            # Prepare article texts for CPU-only tools which expect list[str]
-            articles: List[Dict[str, Any]] = []
-            if call.args and len(call.args) > 0 and isinstance(call.args[0], list):
-                articles = call.args[0]
-            elif isinstance(call.kwargs.get("articles"), list):
-                articles = call.kwargs.get("articles", [])
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("❌ Neutralize text failed")
+        raise HTTPException(status_code=500, detail=f"Neutralization failed: {str(e)}")
 
-            article_texts: List[str] = [a.get("content", "") for a in articles if isinstance(a, dict)]
 
-            # cluster_articles returns a dict with 'clusters' key
-            clusters_result = _cluster_articles(article_texts)
-            clusters = clusters_result.get("clusters", []) if isinstance(clusters_result, dict) else []
+@app.post("/aggregate_cluster")
+def aggregate_cluster_endpoint(call: ToolCall) -> Any:
+    """Aggregate a cluster of articles into a synthesis."""
+    if synthesizer_engine is None:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
 
-            themes: List[Dict[str, Any]] = []
-            syntheses: List[Any] = []
-            for i, cluster_indices in enumerate(clusters):
-                # cluster_indices is a list of indices into article_texts
-                cluster_texts = [article_texts[idx] for idx in cluster_indices if 0 <= idx < len(article_texts)]
-                aggregation = _aggregate_cluster(cluster_texts)
-                syntheses.append(aggregation)
-                theme_articles = [articles[idx] for idx in cluster_indices if 0 <= idx < len(articles)]
-                themes.append({"theme_name": f"theme_{i}", "articles": theme_articles, "synthesis": aggregation})
+    try:
+        article_texts = call.args[0] if call.args else call.kwargs.get("article_texts", [])
 
-            overall_synthesis = {"clusters": syntheses}
-            return {
-                "success": True,
-                "themes": themes,
-                "synthesis": overall_synthesis,
-                "performance": {"articles_per_sec": 1.0, "gpu_used": False},
-            }
-        except Exception:
-            logger.exception("CPU fallback failed for GPU synthesis")
-            raise HTTPException(status_code=500, detail="GPU synthesis and CPU fallback both failed")
+        if not article_texts:
+            raise HTTPException(status_code=400, detail="No articles provided")
+
+        logger.info(f"📝 Aggregating {len(article_texts)} articles")
+
+        result = await aggregate_cluster_tool(synthesizer_engine, article_texts)
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("❌ Aggregate cluster failed")
+        raise HTTPException(status_code=500, detail=f"Aggregation failed: {str(e)}")
+
+
+@app.post("/synthesize_news_articles_gpu")
+def synthesize_news_articles_gpu_endpoint(request: SynthesisRequest) -> Dict[str, Any]:
+    """GPU-accelerated news article synthesis endpoint."""
+    if synthesizer_engine is None:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
+
+    try:
+        if not request.articles:
+            raise HTTPException(status_code=400, detail="No articles provided")
+
+        logger.info(f"🚀 GPU synthesis: {len(request.articles)} articles, max_clusters={request.max_clusters}")
+
+        result = await synthesize_gpu_tool(
+            synthesizer_engine,
+            request.articles,
+            request.max_clusters,
+            request.context
+        )
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("❌ GPU synthesis failed")
+        raise HTTPException(status_code=500, detail=f"GPU synthesis failed: {str(e)}")
 
 
 @app.post("/get_synthesizer_performance")
 def get_synthesizer_performance_endpoint(call: ToolCall) -> Dict[str, Any]:
-    """Get synthesizer performance statistics.
+    """Get synthesizer performance statistics."""
+    if synthesizer_engine is None:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
 
-    Returns a dictionary with basic counters when GPU tooling is unavailable.
-    """
     try:
-        from .gpu_tools import get_synthesizer_performance
+        logger.info("📊 Retrieving synthesizer performance stats")
+        result = await get_stats(synthesizer_engine)
+        return result
 
-        logger.info("Retrieving synthesizer performance stats")
-        # get_synthesizer_performance takes no arguments in tools.py
-        return get_synthesizer_performance()
-    except Exception:
-        logger.exception("Performance stats error")
-        # Return basic stats if GPU tools unavailable
-        return {
-            "total_processed": 0,
-            "gpu_processed": 0,
-            "cpu_processed": 0,
-            "gpu_allocated": False,
-            "models_loaded": False,
-            "error": "GPU tooling unavailable",
-        }
+    except Exception as e:
+        logger.exception("❌ Performance stats failed")
+        raise HTTPException(status_code=500, detail=f"Performance stats failed: {str(e)}")
 
 
-# MCP compatibility alias: older clients may call /synthesize_content
+# Health and stats endpoints
+@app.get("/stats")
+def get_stats_endpoint() -> Dict[str, Any]:
+    """Get comprehensive synthesizer statistics."""
+    if synthesizer_engine is None:
+        return {"error": "Engine not initialized"}
+
+    try:
+        return health_check(synthesizer_engine)
+    except Exception as e:
+        logger.exception("❌ Stats endpoint failed")
+        return {"error": str(e)}
+
+
+# Compatibility aliases
 @app.post("/synthesize_content")
-def synthesize_content_alias(call: ToolCall) -> Any:
-    """Alias for compatibility with existing E2E tests; delegates to GPU implementation."""
-    try:
-        # Reuse GPU pathway for best performance; args/kwargs are identical
-        return synthesize_news_articles_gpu_endpoint(call)
-    except Exception:
-        logger.exception("synthesize_content alias failed")
-        raise HTTPException(status_code=500, detail="synthesize_content failed")
+def synthesize_content_alias(request: SynthesisRequest) -> Any:
+    """Alias for compatibility with existing E2E tests."""
+    return synthesize_news_articles_gpu_endpoint(request)
 
 
 if __name__ == "__main__":
@@ -345,5 +341,5 @@ if __name__ == "__main__":
     host: str = os.environ.get("SYNTHESIZER_HOST", "0.0.0.0")
     port: int = int(os.environ.get("SYNTHESIZER_PORT", SYNTHESIZER_AGENT_PORT))
 
-    logger.info("Starting Synthesizer Agent on %s:%d", host, port)
+    logger.info("🎯 Starting Synthesizer Agent on %s:%d", host, port)
     uvicorn.run(app, host=host, port=port)

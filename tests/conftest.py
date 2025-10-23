@@ -1,492 +1,634 @@
-"""Test fixtures and lightweight runtime mocks to make unit tests run without network, DB, or heavy ML deps.
-
-This file provides conservative, autouse fixtures that only apply when the
-real service is not present. It keeps behavior minimal and predictable so
-unit tests can focus on repo logic instead of infrastructure.
 """
-from __future__ import annotations
+Comprehensive Testing Framework for JustNewsAgent
 
+This module provides a unified testing infrastructure that consolidates
+all testing patterns, fixtures, and utilities used across the JustNewsAgent
+system. It follows clean repository patterns and provides production-ready
+testing capabilities.
+
+Key Features:
+- Unified fixture management for all components
+- Comprehensive mocking for external dependencies
+- Async testing support with pytest-asyncio
+- Performance testing utilities
+- Integration testing helpers
+- GPU testing capabilities
+- Database testing fixtures
+- Security testing utilities
+
+Usage:
+    pytest tests/refactor/ --cov=agents --cov-report=html
+    pytest tests/refactor/ -m "gpu" --runslow
+    pytest tests/refactor/ -k "integration"
+"""
+
+import asyncio
 import os
 import sys
 import types
+import warnings
+from typing import Any, Dict, List, Optional, Generator, AsyncGenerator
+from pathlib import Path
 
 import pytest
+import pytest_asyncio
 
+# Add project root to path for clean imports
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+# Import common utilities
 from common.observability import get_logger
 
 logger = get_logger(__name__)
 
-# Reusable DummyResponse used by multiple fixtures
-class DummyResponse:
-    def __init__(self, status_code=200, json_data=None, text=''):
+# ============================================================================
+# MOCKING INFRASTRUCTURE
+# ============================================================================
+
+class MockResponse:
+    """Unified mock response for HTTP calls"""
+
+    def __init__(self, status_code: int = 200, json_data: Optional[Dict] = None,
+                 text: str = "", headers: Optional[Dict] = None):
         self.status_code = status_code
         self._json = json_data or {}
         self.text = text
+        self.headers = headers or {}
 
-    def json(self):
+    def json(self) -> Dict:
         return self._json
 
-    def raise_for_status(self):
-        if not (200 <= int(self.status_code) < 300):
+    def raise_for_status(self) -> None:
+        if not (200 <= self.status_code < 300):
             raise Exception(f"HTTP {self.status_code}: {self.text}")
 
 
-# --- Early lightweight fakes inserted at import time to avoid heavy library
-# imports during test collection. Placing these at module top-level ensures
-# they are present before other modules are imported by tests.
-try:
-    # Only inject fakes when the environment explicitly allows it or when
-    # running tests locally. If a real heavy stack is required, set
-    # USE_REAL_HEAVY_LIBS=1 in the environment to skip these overrides.
-    if not os.environ.get('USE_REAL_HEAVY_LIBS'):
-        # Fake torch
-        fake_torch = types.ModuleType('torch')
+def create_mock_torch() -> types.ModuleType:
+    """Create comprehensive torch mock for testing"""
 
-        class _Device:
-            def __init__(self, spec):
-                self.spec = str(spec)
+    class MockDevice:
+        def __init__(self, spec: str):
+            self.spec = str(spec)
 
-            def __str__(self):
-                return self.spec
+        def __str__(self) -> str:
+            return self.spec
 
-        fake_torch.device = lambda s: _Device(s)
-        fake_torch.cuda = types.SimpleNamespace(is_available=lambda: False)
-        # provide minimal dtype names referenced by transformers
-        fake_torch.float32 = object()
-        fake_torch.float16 = object()
-        import importlib.machinery
-        fake_torch.__version__ = '0.0-fake'
-        fake_torch.__spec__ = importlib.machinery.ModuleSpec('torch', None)
-        sys.modules['torch'] = fake_torch
+        def __repr__(self) -> str:
+            return f"device(type='{self.spec}')"
 
-        # Fake transformers - minimal objects used by sentence_transformers
-        fake_transformers = types.ModuleType('transformers')
-        # Minimal AutoConfig that accepts arbitrary kwargs
-        class AutoConfig:
-            @classmethod
-            def from_pretrained(cls, *a, **kw):
-                return types.SimpleNamespace()
+    class MockCuda:
+        @staticmethod
+        def is_available() -> bool:
+            return os.environ.get('TEST_GPU_AVAILABLE', 'false').lower() == 'true'
 
-        fake_transformers.AutoConfig = AutoConfig
-        fake_transformers.AutoModel = lambda *a, **kw: None
-        fake_transformers.AutoModelForSequenceClassification = lambda *a, **kw: None
-        # Provide minimal tokenizer and causal LM placeholders used by synthesizer
-        class FakeAutoTokenizer:
-            @classmethod
-            def from_pretrained(cls, *a, **kw):
-                return cls()
+        @staticmethod
+        def device_count() -> int:
+            return int(os.environ.get('TEST_GPU_COUNT', '0'))
 
-            def __call__(self, texts, padding=True, truncation=True, max_length=128, return_tensors=None):
-                n = len(texts) if isinstance(texts, (list, tuple)) else 1
-                return {'input_ids': [[0] * max_length for _ in range(n)], 'attention_mask': [[1] * max_length for _ in range(n)]}
+        class Event:
+            def __init__(self):
+                self.recorded = False
 
-        class FakeAutoModelForCausalLM:
-            @classmethod
-            def from_pretrained(cls, *a, **kw):
-                return None
+            def record(self):
+                self.recorded = True
 
-        fake_transformers.AutoTokenizer = FakeAutoTokenizer
-        fake_transformers.AutoModelForCausalLM = FakeAutoModelForCausalLM
-        fake_transformers.__spec__ = importlib.machinery.ModuleSpec('transformers', None)
-        sys.modules['transformers'] = fake_transformers
-
-        # Fake sentence_transformers with a lightweight SentenceTransformer
-        fake_st = types.ModuleType('sentence_transformers')
-
-        class FakeSentenceTransformer:
-            def __init__(self, *a, **kw):
+            def synchronize(self):
                 pass
 
-            def encode(self, texts, **kw):
-                if isinstance(texts, (list, tuple)):
-                    return [[0.0, 0.0, 0.0] for _ in texts]
-                return [0.0, 0.0, 0.0]
+            def elapsed_time(self, other):
+                return 0.001
 
-        fake_st.SentenceTransformer = FakeSentenceTransformer
-        fake_st.__spec__ = importlib.machinery.ModuleSpec('sentence_transformers', None)
-        sys.modules['sentence_transformers'] = fake_st
-        # Provide a very small fake `requests` module so tests importing
-        # requests at collection time receive deterministic behavior.
-        if 'requests' not in sys.modules and not os.environ.get('USE_REAL_REQUESTS'):
-            fake_requests = types.ModuleType('requests')
+    fake_torch = types.ModuleType('torch')
 
-            def _req_get(url, *a, **kw):
-                if url.rstrip('/').endswith('/agents'):
-                    return DummyResponse(200, json_data={
-                        "analyst": "http://localhost:8004",
-                        "fact_checker": "http://localhost:8003",
-                        "synthesizer": "http://localhost:8005",
-                    })
-                if 'vector_search' in url:
-                    return DummyResponse(200, json_data=[])
-                if '/get_article' in url:
-                    return DummyResponse(200, json_data={"id": 123, "content": "stub", "meta": {}})
-                return DummyResponse(200, json_data={})
+    # Core torch attributes
+    fake_torch.device = lambda s: MockDevice(s)
+    fake_torch.cuda = MockCuda()
 
-            def _req_post(url, *a, **kw):
-                if 'vector_search' in url:
-                    return DummyResponse(200, json_data=[])
-                if url.rstrip('/').endswith('/log_training_example'):
-                    return DummyResponse(200, json_data={"status": "logged"})
-                return DummyResponse(200, json_data={})
+    # Data types
+    fake_torch.float32 = object()
+    fake_torch.float16 = object()
+    fake_torch.int64 = object()
+    fake_torch.bool = object()
 
-            fake_requests.get = _req_get
-            fake_requests.post = _req_post
-            # Minimal exceptions namespace
-            fake_requests.exceptions = types.SimpleNamespace(RequestException=Exception)
-            sys.modules['requests'] = fake_requests
-except Exception:
-    # If anything goes wrong here, don't block test collection; the
-    # per-test fixtures below will try to cover gaps.
-    pass
+    # Tensor operations
+    class MockTensor:
+        def __init__(self, data=None, dtype=None, device=None):
+            self.data = data
+            self.dtype = dtype
+            self.device = device or MockDevice('cpu')
 
+        def to(self, device):
+            return MockTensor(self.data, self.dtype, device)
 
-@pytest.fixture(autouse=True)
-def mock_mcp_bus(monkeypatch):
-    """If MCP bus is not reachable, monkeypatch requests.get/post used by tests
-    to return safe defaults. Tests that require a real bus should set
-    MCP_BUS_URL to a reachable endpoint or set an explicit marker.
-    """
-    try:
-        import requests
-    except Exception:
-        return
+        def cpu(self):
+            return MockTensor(self.data, self.dtype, MockDevice('cpu'))
 
-    mcp_url = os.environ.get('MCP_BUS_URL', 'http://localhost:8000')
-    # Only patch if localhost:8000 is not responding quickly
-    if mcp_url.startswith('http://localhost'):
-        # simple connectivity probe
-        try:
-            requests.get(mcp_url, timeout=0.1)
-            return
-        except Exception:
+        def cuda(self):
+            return MockTensor(self.data, self.dtype, MockDevice('cuda'))
+
+        def detach(self):
+            return self
+
+        def numpy(self):
+            return self.data if self.data is not None else []
+
+        def item(self):
+            return self.data if isinstance(self.data, (int, float)) else 0
+
+        def __getitem__(self, key):
+            return MockTensor()
+
+        def __len__(self):
+            return len(self.data) if hasattr(self.data, '__len__') else 1
+
+    fake_torch.tensor = lambda data, **kwargs: MockTensor(data, **kwargs)
+    fake_torch.zeros = lambda *args, **kwargs: MockTensor()
+    fake_torch.ones = lambda *args, **kwargs: MockTensor()
+    fake_torch.randn = lambda *args, **kwargs: MockTensor()
+    fake_torch.Tensor = MockTensor
+
+    # Neural network modules
+    class MockModule:
+        def __init__(self):
+            self.training = True
+
+        def eval(self):
+            self.training = False
+            return self
+
+        def train(self):
+            self.training = True
+            return self
+
+        def to(self, device):
+            return self
+
+        def __call__(self, *args, **kwargs):
+            return MockTensor()
+
+    class MockLinear(MockModule):
+        def __init__(self, in_features, out_features):
+            super().__init__()
+            self.in_features = in_features
+            self.out_features = out_features
+
+    fake_torch.nn = types.SimpleNamespace(
+        Module=MockModule,
+        Linear=MockLinear,
+        Embedding=MockModule,
+        LayerNorm=MockModule,
+        Dropout=MockModule,
+        MSELoss=lambda: MockModule(),
+        CrossEntropyLoss=lambda: MockModule(),
+        BCEWithLogitsLoss=lambda: MockModule(),
+    )
+
+    # Optimization
+    class MockOptimizer:
+        def __init__(self, params, lr=0.001):
+            self.param_groups = [{'lr': lr, 'params': params}]
+
+        def step(self):
             pass
 
-    class DummyResponse:
-        def __init__(self, status_code=200, json_data=None, text=''):
-            self.status_code = status_code
-            self._json = json_data or {}
-            self.text = text
+        def zero_grad(self):
+            pass
 
-        def json(self):
-            return self._json
+    fake_torch.optim = types.SimpleNamespace(
+        Adam=lambda params, **kwargs: MockOptimizer(params, **kwargs),
+        SGD=lambda params, **kwargs: MockOptimizer(params, **kwargs),
+        AdamW=lambda params, **kwargs: MockOptimizer(params, **kwargs),
+    )
 
-        def raise_for_status(self):
-            if not (200 <= int(self.status_code) < 300):
-                raise Exception(f"HTTP {self.status_code}: {self.text}")
+    return fake_torch
 
-    def fake_get(url, *args, **kwargs):
-        # Return a mapping of registered agents for /agents
+
+def create_mock_transformers() -> types.ModuleType:
+    """Create comprehensive transformers mock"""
+
+    fake_transformers = types.ModuleType('transformers')
+
+    class MockTokenizer:
+        def __init__(self):
+            self.vocab_size = 30000
+            self.pad_token_id = 0
+            self.eos_token_id = 2
+            self.bos_token_id = 1
+
+        @classmethod
+        def from_pretrained(cls, *args, **kwargs):
+            return cls()
+
+        def __call__(self, texts, **kwargs):
+            if isinstance(texts, str):
+                texts = [texts]
+            batch_size = len(texts)
+            max_length = kwargs.get('max_length', 128)
+            return {
+                'input_ids': [[1] * max_length for _ in range(batch_size)],
+                'attention_mask': [[1] * max_length for _ in range(batch_size)],
+            }
+
+        def decode(self, tokens, **kwargs):
+            return "mock decoded text"
+
+        def encode(self, text, **kwargs):
+            return [1, 2, 3, 2]
+
+    class MockModel:
+        @classmethod
+        def from_pretrained(cls, *args, **kwargs):
+            return cls()
+
+        def __call__(self, **kwargs):
+            return types.SimpleNamespace(
+                last_hidden_state=[[0.1] * 768 for _ in range(kwargs.get('input_ids', [[1]])[0].__len__())],
+                pooler_output=[0.1] * 768
+            )
+
+    fake_transformers.AutoTokenizer = MockTokenizer
+    fake_transformers.AutoModel = MockModel
+    fake_transformers.AutoModelForSequenceClassification = MockModel
+    fake_transformers.AutoModelForCausalLM = MockModel
+    fake_transformers.AutoModelForTokenClassification = MockModel
+    fake_transformers.BertModel = MockModel
+    fake_transformers.BertTokenizer = MockTokenizer
+    fake_transformers.pipeline = lambda task, **kwargs: lambda text: {"label": "POSITIVE", "score": 0.9}
+
+    return fake_transformers
+
+
+def create_mock_sentence_transformers() -> types.ModuleType:
+    """Create sentence transformers mock"""
+
+    fake_st = types.ModuleType('sentence_transformers')
+
+    class MockSentenceTransformer:
+        def __init__(self, model_name=None):
+            self.model_name = model_name or "mock-model"
+
+        def encode(self, sentences, **kwargs):
+            if isinstance(sentences, str):
+                return [0.1] * 384
+            return [[0.1] * 384 for _ in sentences]
+
+    fake_st.SentenceTransformer = MockSentenceTransformer
+    return fake_st
+
+
+def create_mock_requests() -> types.ModuleType:
+    """Create requests mock with MCP Bus compatibility"""
+
+    fake_requests = types.ModuleType('requests')
+
+    def mock_get(url, **kwargs):
+        # MCP Bus endpoints
         if '/agents' in url:
-            # Emulate a minimal set of registered agents so tests that probe
-            # the MCP bus see expected names/URLs.
-            return DummyResponse(200, json_data={
+            return MockResponse(200, {
                 "analyst": "http://localhost:8004",
                 "fact_checker": "http://localhost:8003",
                 "synthesizer": "http://localhost:8005",
+                "scout": "http://localhost:8002",
+                "critic": "http://localhost:8006",
+                "memory": "http://localhost:8007",
+                "reasoning": "http://localhost:8008",
+                "chief_editor": "http://localhost:8001"
             })
-        # Memory endpoints and other health checks
-        if '/get_article/' in url or '/get_article' in url:
-            return DummyResponse(200, json_data={"id": 123, "content": "stub", "meta": {}})
-        return DummyResponse(200, json_data={})
+        elif '/health' in url:
+            return MockResponse(200, {"status": "healthy"})
+        elif 'vector_search' in url:
+            return MockResponse(200, [])
+        elif '/get_article/' in url:
+            return MockResponse(200, {
+                "id": "test-article-123",
+                "content": "Test article content for testing purposes.",
+                "meta": {"source": "test", "timestamp": "2024-01-01T00:00:00Z"}
+            })
+        return MockResponse(200, {})
 
-    def fake_post(url, *args, **kwargs):
-        # Support memory endpoints used by memory.tools
+    def mock_post(url, **kwargs):
         if 'vector_search' in url:
-            # Some callers expect a list directly
-            return DummyResponse(200, json_data=[])
-        if url.rstrip('/').endswith('/log_training_example'):
-            return DummyResponse(200, json_data={"status": "logged"})
-        if url.rstrip('/').endswith('/call'):
-            # Generic MCP /call wrapper returns a forwarded response
-            return DummyResponse(200, json_data={})
-        return DummyResponse(200, json_data={})
+            return MockResponse(200, [])
+        elif url.endswith('/call'):
+            return MockResponse(200, {"status": "success", "data": {}})
+        elif '/log_training_example' in url:
+            return MockResponse(200, {"status": "logged"})
+        return MockResponse(200, {})
 
-    monkeypatch.setattr('requests.get', fake_get)
-    monkeypatch.setattr('requests.post', fake_post)
+    fake_requests.get = mock_get
+    fake_requests.post = mock_post
+    fake_requests.exceptions = types.SimpleNamespace(
+        RequestException=Exception,
+        Timeout=Exception,
+        ConnectionError=Exception
+    )
 
-
-@pytest.fixture(autouse=True)
-def mock_heavy_ml_libs(monkeypatch):
-    """Provide minimal, safe fake modules for torch, transformers and
-    sentence_transformers so tests can run without downloading large models.
-    Tests that need real behavior should inject real modules via sys.modules
-    or explicit fixtures.
-    """
-    # Fake torch
-    if 'torch' not in sys.modules:
-        fake_torch = types.ModuleType('torch')
-
-        class CudaStub:
-            @staticmethod
-            def is_available():
-                return False
-
-        fake_torch.cuda = CudaStub
-        # Provide minimal dtype attrs used by transformers
-        fake_torch.float32 = 'float32'
-        fake_torch.device = lambda s: s
-        fake_torch.__spec__ = None
-        monkeypatch.setitem(sys.modules, 'torch', fake_torch)
-
-    # Fake transformers
-    if 'transformers' not in sys.modules:
-        fake_transformers = types.ModuleType('transformers')
-
-        class FakeAutoTokenizer:
-            @classmethod
-            def from_pretrained(cls, *a, **kw):
-                return cls()
-
-            def __call__(self, texts, padding, truncation, max_length, return_tensors='np'):
-                n = len(texts) if isinstance(texts, (list, tuple)) else 1
-                # return simple lists (tests will handle no-numpy)
-                return {'input_ids': [[0] * max_length for _ in range(n)], 'attention_mask': [[1] * max_length for _ in range(n)]}
-
-        fake_transformers.AutoTokenizer = FakeAutoTokenizer
-        fake_transformers.AutoModelForSequenceClassification = lambda *a, **kw: None
-        fake_transformers.BertModel = None
-        monkeypatch.setitem(sys.modules, 'transformers', fake_transformers)
-
-    # Fake sentence_transformers (SentenceTransformer)
-    if 'sentence_transformers' not in sys.modules and 'sentence_transformers' not in sys.modules:
-        fake_st = types.ModuleType('sentence_transformers')
-
-        class FakeSentenceTransformer:
-            def __init__(self, *a, **kw):
-                pass
-
-            def encode(self, texts, **kw):
-                # Return a list of small vectors
-                return [[0.0, 0.0, 0.0] for _ in (texts if isinstance(texts, (list, tuple)) else [texts])]
-
-        fake_st.SentenceTransformer = FakeSentenceTransformer
-        monkeypatch.setitem(sys.modules, 'sentence_transformers', fake_st)
+    return fake_requests
 
 
-@pytest.fixture(autouse=True)
-def mock_db_calls(monkeypatch):
-    """Monkeypatch database connection functions to avoid failing tests when
-    PostgreSQL is not present. Only substitutes minimal functions used by
-    memory.tools.save_article.
-    """
-    try:
-        import agents.memory.tools as memory_tools
-    except Exception:
-        return
+# ============================================================================
+# GLOBAL FIXTURES
+# ============================================================================
 
-    def fake_save_article(content, meta):
-        return {'id': 'test-id', 'content': content, 'meta': meta}
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_environment():
+    """Setup comprehensive test environment with all mocks"""
 
-    if hasattr(memory_tools, 'save_article'):
-        monkeypatch.setattr(memory_tools, 'save_article', fake_save_article)
+    # Install mocks if not in real environment
+    if not os.environ.get('USE_REAL_ML_LIBS'):
+        # Mock heavy ML libraries
+        if 'torch' not in sys.modules:
+            sys.modules['torch'] = create_mock_torch()
+        if 'transformers' not in sys.modules:
+            sys.modules['transformers'] = create_mock_transformers()
+        if 'sentence_transformers' not in sys.modules:
+            sys.modules['sentence_transformers'] = create_mock_sentence_transformers()
 
-    # Also ensure memory.tools functions that call requests receive DummyResponse
-    # when using requests. Some helpers expect response.raise_for_status to exist.
-    try:
+    # Mock requests for HTTP calls
+    if 'requests' not in sys.modules and not os.environ.get('USE_REAL_REQUESTS'):
+        sys.modules['requests'] = create_mock_requests()
 
-        def mem_fake_get(url, *a, **kw):
-            if '/agents' in url:
-                return DummyResponse(200, json_data={
-                    "analyst": "http://localhost:8004",
-                    "fact_checker": "http://localhost:8003",
-                    "synthesizer": "http://localhost:8005",
-                })
-            if '/get_article' in url:
-                return DummyResponse(200, json_data={"id": 123, "content": "stub", "meta": {}})
-            return DummyResponse(200, json_data={})
+    yield
 
-        def mem_fake_post(url, *a, **kw):
-            if 'vector_search' in url:
-                return DummyResponse(200, json_data=[])
-            if url.rstrip('/').endswith('/log_training_example'):
-                return DummyResponse(200, json_data={"status": "logged"})
-            if url.rstrip('/').endswith('/call'):
-                return DummyResponse(200, json_data={})
-            return DummyResponse(200, json_data={})
-
-        monkeypatch.setattr('requests.get', mem_fake_get)
-        monkeypatch.setattr('requests.post', mem_fake_post)
-    except Exception:
-        pass
+    # Cleanup if needed
+    pass
 
 
-@pytest.fixture(autouse=True)
-def provide_pipeline_placeholder(monkeypatch):
-    """Ensure modules that expect a `pipeline` symbol to exist can be monkeypatched
-    by tests. We add a no-op pipeline placeholder to analyst/critic/synthesizer tools
-    modules if missing.
-    """
-    tool_modules = [
-        'agents.analyst.tools',
-        'agents.critic.tools',
-        'agents.synthesizer.tools',
-    ]
-    for mod_name in tool_modules:
-        try:
-            mod = __import__(mod_name, fromlist=['*'])
-        except Exception:
-            continue
-        if not hasattr(mod, 'pipeline'):
-            mod.pipeline = lambda *a, **kw: lambda *args, **kws: []
-        # Provide lightweight shims for higher-level tool functions referenced by tests
-        # so monkeypatch.setattr won't fail when tests expect these to exist.
-        if not hasattr(mod, 'score_sentiment'):
-            mod.score_sentiment = lambda text: 0.5
-        if not hasattr(mod, 'score_bias'):
-            mod.score_bias = lambda text: 0.5
-        if not hasattr(mod, 'critique_synthesis'):
-            mod.critique_synthesis = lambda summary, refs: "Critique"
-        if not hasattr(mod, 'critique_neutrality'):
-            mod.critique_neutrality = lambda original, neutralized: "NeutralityCritique"
-        if not hasattr(mod, 'get_llama_model'):
-            mod.get_llama_model = lambda: (None, None)
+@pytest.fixture(scope="session")
+def event_loop_policy():
+    """Configure event loop policy for async tests"""
+    return asyncio.DefaultEventLoopPolicy()
 
-    # Provide a compatibility wrapper for identify_entities in analyst.tools
-    try:
-        from agents.analyst import tools as analyst_tools
-        if hasattr(analyst_tools, 'identify_entities'):
-            orig_ident = analyst_tools.identify_entities
 
-            def _compat_identify_entities(text: str):
-                res = orig_ident(text)
-                # If upstream returns list of dicts, convert to list of text strings
-                if isinstance(res, list) and res and isinstance(res[0], dict):
-                    return [r.get('text') or r.get('word') or str(r) for r in res]
-                return res
+@pytest_asyncio.fixture(scope="function")
+async def async_setup():
+    """Base async fixture for all async tests"""
+    yield
 
-            analyst_tools.identify_entities = _compat_identify_entities
-    except Exception:
-        pass
 
-    # Also ensure synthesizer.tools has minimal placeholders for transformer symbols
-    try:
-        import agents.synthesizer.tools as synth_tools
-        # Provide small classes that mimic transformers' API used by get_dialog_model
-        class _FakeAutoTokenizer:
-            @classmethod
-            def from_pretrained(cls, *a, **kw):
-                return cls()
-
-            def __call__(self, texts, padding=True, truncation=True, max_length=128, return_tensors=None):
-                n = len(texts) if isinstance(texts, (list, tuple)) else 1
-                return {'input_ids': [[0] * max_length for _ in range(n)], 'attention_mask': [[1] * max_length for _ in range(n)]}
-
-        class _FakeAutoModelForCausalLM:
-            @classmethod
-            def from_pretrained(cls, *a, **kw):
-                # Return a lightweight stand-in (could be None) that satisfies isinstance checks
-                return None
-
-        if not hasattr(synth_tools, 'AutoModelForCausalLM') or synth_tools.AutoModelForCausalLM is None:
-            synth_tools.AutoModelForCausalLM = _FakeAutoModelForCausalLM
-        if not hasattr(synth_tools, 'AutoTokenizer') or synth_tools.AutoTokenizer is None:
-            synth_tools.AutoTokenizer = _FakeAutoTokenizer
-    except Exception:
-        pass
-
+# ============================================================================
+# AGENT TESTING FIXTURES
+# ============================================================================
 
 @pytest.fixture
-def articles():
-    """Provide a default 'articles' fixture used by some production stress tests."""
+def sample_articles():
+    """Provide sample articles for testing"""
     return [
-        "Sample article one.",
-        "Sample article two about space.",
-        "Third sample article with some content.",
+        {
+            "id": "article-1",
+            "content": "This is a positive news article about technology advancements.",
+            "meta": {"source": "tech-news", "sentiment": "positive"}
+        },
+        {
+            "id": "article-2",
+            "content": "Breaking news: Market shows significant growth today.",
+            "meta": {"source": "finance-news", "sentiment": "positive"}
+        },
+        {
+            "id": "article-3",
+            "content": "Concerns raised about environmental impact of new policy.",
+            "meta": {"source": "environment-news", "sentiment": "negative"}
+        }
     ]
 
 
 @pytest.fixture
-def mcp_server(monkeypatch):
-    """Start a lightweight MCP stub and patch requests.get/post to target it.
-
-    Tests can use the running stub by reading `mcp_server.url()` or by
-    letting existing code call `requests.post('{MCP_BUS_URL}/call', ...)`
-    provided the test sets the environment variable MCP_BUS_URL to the
-    stub address.
-    """
-    try:
-        from tests.mcp_scaffold import MCPStubServer
-    except Exception:
-        pytest.skip("mcp_scaffold not available")
-
-    server = MCPStubServer()
-    server.start()
-    # Ensure tests use the stub by setting MCP_BUS_URL
-    monkeypatch.setenv('MCP_BUS_URL', server.url())
-
-    # Provide a small requests-like adapter backed by urllib so code under
-    # test that calls `requests.get/post` will reach the stub even when the
-    # test environment injects lightweight fake `requests` modules.
-    import urllib.request
-    import urllib.error
-    import json as _json
-
-    def _wrapped_get(url, *args, **kwargs):
-        timeout = kwargs.get('timeout', 5)
-        try:
-            req = urllib.request.Request(url, headers={'Content-Type': 'application/json'})
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                raw = resp.read().decode('utf-8')
-                try:
-                    data = _json.loads(raw)
-                except Exception:
-                    data = {}
-                return DummyResponse(status_code=resp.getcode(), json_data=data, text=raw)
-        except urllib.error.HTTPError as e:
-            body = e.read().decode('utf-8') if hasattr(e, 'read') else ''
-            return DummyResponse(status_code=e.code, text=body, json_data={})
-        except Exception as e:
-            return DummyResponse(status_code=500, text=str(e), json_data={})
-
-    def _wrapped_post(url, *args, **kwargs):
-        timeout = kwargs.get('timeout', 5)
-        payload = kwargs.get('json')
-        data = None
-        headers = {}
-        if payload is not None:
-            data = _json.dumps(payload).encode('utf-8')
-            headers['Content-Type'] = 'application/json'
-        else:
-            # allow tests to pass raw data
-            data = kwargs.get('data')
-        try:
-            req = urllib.request.Request(url, data=data, headers=headers)
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                raw = resp.read().decode('utf-8')
-                try:
-                    data = _json.loads(raw)
-                except Exception:
-                    data = {}
-                return DummyResponse(status_code=resp.getcode(), json_data=data, text=raw)
-        except urllib.error.HTTPError as e:
-            body = e.read().decode('utf-8') if hasattr(e, 'read') else ''
-            return DummyResponse(status_code=e.code, text=body, json_data={})
-        except Exception as e:
-            return DummyResponse(status_code=500, text=str(e), json_data={})
-
-    # Monkeypatch the requests module used by code under test. This will
-    # override any earlier fake implementations for the duration of the
-    # test so that calls reach our local stub.
-    monkeypatch.setattr('requests.get', _wrapped_get, raising=False)
-    monkeypatch.setattr('requests.post', _wrapped_post, raising=False)
-
-    try:
-        yield server
-    finally:
-        server.stop()
+def mock_mcp_bus_response():
+    """Mock MCP Bus response for agent communication"""
+    return {
+        "status": "success",
+        "data": {
+            "result": "mock analysis result",
+            "confidence": 0.85,
+            "metadata": {"processing_time": 0.1}
+        }
+    }
 
 
 @pytest.fixture
-def agent_server():
-    """Start a tiny agent HTTP server and yield its address. Caller must
-    stop it when finished (via context manager pattern).
-    """
-    from tests.mcp_scaffold import AgentServer
+def mock_gpu_context():
+    """Mock GPU context for GPU-dependent tests"""
+    class MockGPUContext:
+        def __enter__(self):
+            return self
 
-    srv = AgentServer()
-    srv.start()
+        def __exit__(self, *args):
+            pass
+
+        def allocate_memory(self, size):
+            return f"mock_gpu_memory_{size}"
+
+        def free_memory(self, memory):
+            pass
+
+    return MockGPUContext()
+
+
+# ============================================================================
+# DATABASE TESTING FIXTURES
+# ============================================================================
+
+@pytest.fixture
+def mock_database_connection():
+    """Mock database connection for testing"""
+
+    class MockConnection:
+        def __init__(self):
+            self.connected = True
+            self.transactions = []
+
+        async def execute(self, query, *args):
+            self.transactions.append({"query": query, "args": args})
+            return MockResult()
+
+        async def fetch(self, query, *args):
+            return [
+                {"id": 1, "content": "mock article", "meta": {}},
+                {"id": 2, "content": "another mock article", "meta": {}}
+            ]
+
+        async def close(self):
+            self.connected = False
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            await self.close()
+
+    class MockResult:
+        def __init__(self):
+            self.rowcount = 1
+
+    return MockConnection()
+
+
+# ============================================================================
+# PERFORMANCE TESTING UTILITIES
+# ============================================================================
+
+@pytest.fixture
+def performance_timer():
+    """Timer fixture for performance testing"""
+
+    class PerformanceTimer:
+        def __init__(self):
+            self.start_time = None
+            self.end_time = None
+
+        def start(self):
+            self.start_time = asyncio.get_event_loop().time()
+
+        def stop(self):
+            self.end_time = asyncio.get_event_loop().time()
+
+        @property
+        def elapsed(self):
+            if self.start_time and self.end_time:
+                return self.end_time - self.start_time
+            return 0
+
+        def assert_under_limit(self, limit_seconds, operation_name="operation"):
+            elapsed = self.elapsed
+            assert elapsed < limit_seconds, f"{operation_name} took {elapsed:.3f}s, limit was {limit_seconds}s"
+
+    return PerformanceTimer()
+
+
+# ============================================================================
+# SECURITY TESTING FIXTURES
+# ============================================================================
+
+@pytest.fixture
+def mock_security_context():
+    """Mock security context for testing"""
+
+    class MockSecurityContext:
+        def __init__(self):
+            self.user_id = "test-user-123"
+            self.permissions = ["read", "write", "analyze"]
+            self.token_valid = True
+
+        def validate_token(self, token):
+            return self.token_valid
+
+        def has_permission(self, permission):
+            return permission in self.permissions
+
+        def encrypt_data(self, data):
+            return f"encrypted_{data}"
+
+        def decrypt_data(self, encrypted_data):
+            if encrypted_data.startswith("encrypted_"):
+                return encrypted_data[10:]
+            return encrypted_data
+
+    return MockSecurityContext()
+
+
+# ============================================================================
+# CONFIGURATION TESTING FIXTURES
+# ============================================================================
+
+@pytest.fixture
+def test_config():
+    """Test configuration fixture"""
+    return {
+        "database": {
+            "url": "postgresql://test:test@localhost:5432/test_db",
+            "pool_size": 5,
+            "timeout": 30
+        },
+        "mcp_bus": {
+            "url": "http://localhost:8000",
+            "timeout": 10,
+            "retries": 3
+        },
+        "gpu": {
+            "enabled": False,
+            "memory_limit": "2GB",
+            "devices": []
+        },
+        "logging": {
+            "level": "INFO",
+            "format": "json"
+        }
+    }
+
+
+# ============================================================================
+# MARKERS AND CONFIGURATION
+# ============================================================================
+
+def pytest_configure(config):
+    """Configure pytest with custom markers"""
+    config.addinivalue_line("markers", "gpu: marks tests that require GPU")
+    config.addinivalue_line("markers", "slow: marks tests that are slow")
+    config.addinivalue_line("markers", "integration: marks integration tests")
+    config.addinivalue_line("markers", "security: marks security-related tests")
+    config.addinivalue_line("markers", "performance: marks performance tests")
+    config.addinivalue_line("markers", "database: marks database tests")
+
+
+def pytest_collection_modifyitems(config, items):
+    """Modify test collection based on environment"""
+
+    # Skip GPU tests if no GPU available
+    gpu_available = os.environ.get('TEST_GPU_AVAILABLE', 'false').lower() == 'true'
+    if not gpu_available:
+        skip_gpu = pytest.mark.skip(reason="GPU not available")
+        for item in items:
+            if "gpu" in item.keywords:
+                item.add_marker(skip_gpu)
+
+    # Skip slow tests unless explicitly requested
     try:
-        yield srv
-    finally:
-        srv.stop()
+        runslow = config.getoption("--runslow", default=False)
+    except ValueError:
+        runslow = False
+
+    if not runslow:
+        skip_slow = pytest.mark.skip(reason="need --runslow option to run")
+        for item in items:
+            if "slow" in item.keywords:
+                item.add_marker(skip_slow)
+
+
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
+
+def assert_async_operation_completes_within(async_func, timeout_seconds=5.0):
+    """Assert that an async operation completes within timeout"""
+
+    async def run_with_timeout():
+        try:
+            await asyncio.wait_for(async_func(), timeout=timeout_seconds)
+            return True
+        except asyncio.TimeoutError:
+            return False
+
+    result = asyncio.run(run_with_timeout())
+    assert result, f"Async operation did not complete within {timeout_seconds} seconds"
+
+
+def create_mock_agent_response(agent_name, tool_name, result=None, error=None):
+    """Create standardized mock agent response"""
+    return {
+        "agent": agent_name,
+        "tool": tool_name,
+        "result": result,
+        "error": error,
+        "timestamp": "2024-01-01T00:00:00Z",
+        "processing_time": 0.1
+    }
+
+
+def parametrize_test_data(*test_cases):
+    """Helper to parametrize test data"""
+    return pytest.mark.parametrize(
+        "test_input,expected_output",
+        test_cases,
+        ids=[f"case_{i}" for i in range(len(test_cases))]
+    )

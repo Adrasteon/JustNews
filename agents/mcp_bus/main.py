@@ -1,26 +1,131 @@
 """
-Main file for the MCP Bus.
-"""
-# main.py for MCP Message Bus
-import atexit
-import time
-import os
-from contextlib import asynccontextmanager
-from typing import Any
+MCP Bus Agent - Main FastAPI Application
 
-# Make 'requests' optional so MCP Bus can start in constrained environments.
-try:
-    import requests
-except Exception:
-    requests = None
+This is the main entry point for the MCP Bus agent, providing RESTful APIs
+for inter-agent communication and coordination using the Model Context Protocol.
+
+Features:
+- FastAPI web server for agent communication
+- Agent registration and management endpoints
+- Tool calling with circuit breaker protection
+- Health checks and monitoring
+- Production-ready error handling and logging
+
+Endpoints:
+- POST /register: Register an agent with the bus
+- POST /call: Call a tool on a registered agent
+- GET /agents: List all registered agents
+- GET /health: Health check endpoint
+- GET /ready: Readiness check endpoint
+- GET /stats: Bus statistics and metrics
+- GET /circuit_breaker_status: Circuit breaker status
+- GET /metrics: Prometheus metrics endpoint
+"""
+
+import os
+import time
+from contextlib import asynccontextmanager
+from typing import Any, Dict, List, Optional
+
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from common.observability import get_logger
 from common.metrics import JustNewsMetrics
+from .tools import (
+    register_agent as register_agent_tool,
+    call_agent_tool,
+    get_registered_agents,
+    get_bus_health,
+    get_bus_stats,
+    get_circuit_breaker_status,
+    notify_gpu_orchestrator,
+    health_check
+)
 
-app = FastAPI()
+logger = get_logger(__name__)
+
+# Global variables
+ready = False
+startup_time = time.time()
+
+# Request/Response Models
+class AgentRegistration(BaseModel):
+    """Request model for agent registration."""
+    name: str = Field(..., description="Name of the agent to register")
+    address: str = Field(..., description="HTTP address of the agent")
+
+class ToolCallRequest(BaseModel):
+    """Request model for tool calling."""
+    agent: str = Field(..., description="Name of the agent to call")
+    tool: str = Field(..., description="Name of the tool to execute")
+    args: List[Any] = Field(default_factory=list, description="Positional arguments for the tool")
+    kwargs: Dict[str, Any] = Field(default_factory=dict, description="Keyword arguments for the tool")
+
+class ToolCallResponse(BaseModel):
+    """Response model for tool calling."""
+    status: str = Field(..., description="Call status ('success' or 'error')")
+    data: Optional[Dict[str, Any]] = Field(None, description="Call result data")
+    error: Optional[str] = Field(None, description="Error message if call failed")
+    timestamp: float = Field(..., description="Response timestamp")
+
+class HealthResponse(BaseModel):
+    """Response model for health checks."""
+    timestamp: float = Field(..., description="Health check timestamp")
+    overall_status: str = Field(..., description="Overall health status")
+    components: Dict[str, Any] = Field(..., description="Component health status")
+    issues: List[str] = Field(..., description="List of issues found")
+    stats: Optional[Dict[str, Any]] = Field(None, description="Bus statistics")
+
+class StatsResponse(BaseModel):
+    """Response model for bus statistics."""
+    registered_agents: int = Field(..., description="Number of registered agents")
+    total_circuit_breaker_failures: int = Field(..., description="Total circuit breaker failures")
+    open_circuits: int = Field(..., description="Number of open circuits")
+    agents_with_failures: int = Field(..., description="Agents with circuit breaker failures")
+    uptime: float = Field(..., description="Service uptime in seconds")
+    timestamp: float = Field(..., description="Statistics timestamp")
+
+# Lifespan management
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager for startup and shutdown."""
+    global ready
+
+    # Startup
+    logger.info("🚀 Starting MCP Bus Agent...")
+
+    try:
+        # Notify GPU Orchestrator that MCP Bus is ready
+        success = notify_gpu_orchestrator()
+        if success:
+            logger.info("✅ GPU Orchestrator notification successful")
+        else:
+            logger.warning("⚠️ GPU Orchestrator notification failed")
+
+        ready = True
+        logger.info("✅ MCP Bus Agent started successfully")
+
+        yield
+
+    except Exception as e:
+        logger.error(f"❌ Failed to start MCP Bus Agent: {e}")
+        raise
+    finally:
+        # Shutdown
+        logger.info("🛑 Shutting down MCP Bus Agent...")
+        ready = False
+        logger.info("✅ MCP Bus Agent shutdown complete")
+
+# Create FastAPI app
+app = FastAPI(
+    title="MCP Bus Agent",
+    description="Model Context Protocol Bus for inter-agent communication and coordination",
+    version="2.0.0",
+    lifespan=lifespan
+)
 
 # Initialize metrics
 metrics = JustNewsMetrics("mcp_bus")
@@ -28,153 +133,243 @@ metrics = JustNewsMetrics("mcp_bus")
 # Add metrics middleware
 app.middleware("http")(metrics.request_middleware)
 
-ready = False
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Configure centralized logging
-logger = get_logger(__name__)
-
-# Register common shutdown endpoint (after logger is configured)
+# Register common shutdown endpoint
 try:
     from agents.common.shutdown import register_shutdown_endpoint
     register_shutdown_endpoint(app)
 except Exception:
     logger.debug("shutdown endpoint not registered for mcp_bus")
 
-# Register reload endpoint if available
+# Register reload endpoint
 try:
     from agents.common.reload import register_reload_endpoint
     register_reload_endpoint(app)
 except Exception:
     logger.debug("reload endpoint not registered for mcp_bus")
 
-agents = {}
-cb_state = {}
-CB_FAIL_THRESHOLD = 3
-CB_COOLDOWN_SEC = 10
-
-class Agent(BaseModel):
-    name: str
-    address: str
-
-class ToolCall(BaseModel):
-    agent: str
-    tool: str
-    args: list[Any]
-    kwargs: dict[str, Any]
+@app.get("/")
+async def root():
+    """Root endpoint with basic information."""
+    return {
+        "name": "MCP Bus Agent",
+        "version": "2.0.0",
+        "description": "Model Context Protocol Bus for inter-agent communication",
+        "status": "running" if ready else "starting"
+    }
 
 @app.post("/register")
-def register_agent(agent: Agent):
-    logger.info(f"Registering agent: {agent.name} at {agent.address}")
-    agents[agent.name] = agent.address
-    # Reset circuit breaker on registration
-    cb_state[agent.name] = {"fails": 0, "open_until": 0}
-    return {"status": "ok"}
+async def register_agent_endpoint(agent: AgentRegistration):
+    """
+    Register an agent with the MCP Bus.
 
-@app.post("/call")
-def call_tool(call: ToolCall):
-    if call.agent not in agents:
-        raise HTTPException(status_code=404, detail=f"Agent not found: {call.agent}")
+    This endpoint allows agents to register themselves with the bus,
+    making their tools available for inter-agent communication.
+    """
+    try:
+        logger.info(f"📨 Agent registration request: {agent.name} at {agent.address}")
 
-    agent_name = call.agent
-    agent_address = agents[agent_name]
+        result = register_agent_tool(agent.name, agent.address)
 
-    # Circuit breaker check
-    state = cb_state.get(agent_name, {"fails": 0, "open_until": 0})
-    now = time.time()
-    if state.get("open_until", 0) > now:
-        raise HTTPException(status_code=503, detail=f"Circuit open for agent {agent_name}")
+        logger.info(f"✅ Agent {agent.name} registered successfully")
+        return result
 
-    payload = {"args": call.args, "kwargs": call.kwargs}
-    # Correctly join the agent address and the tool path
-    url = f"{agent_address.rstrip('/')}/{call.tool.lstrip('/')}"
-    
-    # Configurable timeouts via environment (defaults: connect 3s, read 120s for long-running tools)
-    connect_timeout = float(os.getenv("MCP_CALL_CONNECT_TIMEOUT", "3"))
-    read_timeout = float(os.getenv("MCP_CALL_READ_TIMEOUT", "120"))
-    timeout = (connect_timeout, read_timeout)
+    except ValueError as e:
+        logger.error(f"❌ Invalid registration request: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"❌ Registration error: {e}")
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
-    # Simple retry with backoff
-    last_error = None
-    if requests is None:
-        # Cannot make outbound calls; fail fast so caller gets a clear error.
-        raise HTTPException(status_code=502, detail="Requests library unavailable on host")
+@app.post("/call", response_model=ToolCallResponse)
+async def call_tool_endpoint(call: ToolCallRequest):
+    """
+    Call a tool on a registered agent.
 
-    for attempt in range(3):
-        try:
-            response = requests.post(url, json=payload, timeout=timeout)
-            response.raise_for_status()
-            # Success: reset failures
-            cb_state[agent_name] = {"fails": 0, "open_until": 0}
-            return {"status": "success", "data": response.json()}
-        except requests.exceptions.RequestException as e:
-            last_error = str(e)
-            time.sleep(0.2 * (2 ** attempt))
+    This endpoint routes tool calls to the appropriate registered agent
+    with circuit breaker protection and retry logic.
+    """
+    try:
+        logger.debug(f"📨 Tool call request: {call.agent}.{call.tool}")
 
-    # Failure after retries: increment failure count
-    fails = state.get("fails", 0) + 1
-    if fails >= CB_FAIL_THRESHOLD:
-        cb_state[agent_name] = {"fails": 0, "open_until": now + CB_COOLDOWN_SEC}
-        logger.warning(f"Circuit opened for {agent_name} for {CB_COOLDOWN_SEC}s after failures")
-    else:
-        cb_state[agent_name] = {"fails": fails, "open_until": 0}
+        result = call_agent_tool(
+            call.agent,
+            call.tool,
+            call.args,
+            call.kwargs
+        )
 
-    raise HTTPException(status_code=502, detail=f"Tool call failed: {last_error}")
+        response = ToolCallResponse(
+            status=result.get("status", "unknown"),
+            data=result.get("data"),
+            error=result.get("error"),
+            timestamp=time.time()
+        )
+
+        logger.debug(f"✅ Tool call completed: {call.agent}.{call.tool}")
+        return response
+
+    except ValueError as e:
+        logger.warning(f"❌ Tool call validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        logger.error(f"❌ Tool call runtime error: {e}")
+        raise HTTPException(status_code=502, detail=str(e))
+    except ConnectionError as e:
+        logger.error(f"❌ Tool call connection error: {e}")
+        raise HTTPException(status_code=502, detail=str(e))
+    except Exception as e:
+        logger.error(f"❌ Unexpected tool call error: {e}")
+        raise HTTPException(status_code=500, detail=f"Tool call failed: {str(e)}")
 
 @app.get("/agents")
-def get_agents():
-    return agents
+async def get_agents_endpoint():
+    """
+    Get all currently registered agents.
 
+    Returns a mapping of agent names to their addresses.
+    """
+    try:
+        agents = get_registered_agents()
+        logger.debug(f"📋 Retrieved {len(agents)} registered agents")
+        return agents
+    except Exception as e:
+        logger.error(f"❌ Failed to retrieve agents: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve agents: {str(e)}")
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+@app.get("/health", response_model=HealthResponse)
+async def health_endpoint():
+    """Health check endpoint for monitoring and load balancers."""
+    try:
+        health_result = health_check()
+        return HealthResponse(**health_result)
+    except Exception as e:
+        logger.error(f"❌ Health check error: {e}")
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
 @app.get("/ready")
-def ready_endpoint():
+async def ready_endpoint():
+    """Readiness check endpoint."""
     return {"ready": ready}
 
+@app.get("/stats", response_model=StatsResponse)
+async def stats_endpoint():
+    """Get MCP Bus statistics and performance metrics."""
+    try:
+        stats = get_bus_stats()
+        uptime = time.time() - startup_time
+
+        response = StatsResponse(
+            registered_agents=stats.get("registered_agents", 0),
+            total_circuit_breaker_failures=stats.get("total_circuit_breaker_failures", 0),
+            open_circuits=stats.get("open_circuits", 0),
+            agents_with_failures=stats.get("agents_with_failures", 0),
+            uptime=uptime,
+            timestamp=time.time()
+        )
+
+        logger.debug("📊 Bus statistics retrieved")
+        return response
+
+    except Exception as e:
+        logger.error(f"❌ Stats retrieval error: {e}")
+        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}")
+
+@app.get("/circuit_breaker_status")
+async def circuit_breaker_status_endpoint():
+    """Get the current circuit breaker status for all agents."""
+    try:
+        status = get_circuit_breaker_status()
+        logger.debug(f"🔌 Circuit breaker status retrieved for {len(status)} agents")
+        return status
+    except Exception as e:
+        logger.error(f"❌ Failed to get circuit breaker status: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get circuit breaker status: {str(e)}")
+
 @app.get("/metrics")
-def metrics_endpoint():
-    """Prometheus metrics endpoint"""
+async def metrics_endpoint():
+    """Prometheus metrics endpoint."""
     return Response(metrics.get_metrics(), media_type="text/plain; charset=utf-8")
 
-@asynccontextmanager
-async def lifespan(app):
-    logger.info("MCP_Bus is starting up.")
-    global ready
-    ready = True
+@app.get("/capabilities")
+async def capabilities_endpoint():
+    """Get MCP Bus capabilities and supported features."""
+    return {
+        "name": "MCP Bus Agent",
+        "version": "2.0.0",
+        "capabilities": [
+            "agent_registration",
+            "tool_calling",
+            "circuit_breaker",
+            "health_monitoring",
+            "metrics_collection"
+        ],
+        "supported_protocols": ["http", "https"],
+        "features": {
+            "circuit_breaker": {
+                "enabled": True,
+                "failure_threshold": 3,
+                "cooldown_seconds": 10,
+                "max_retries": 3
+            },
+            "timeouts": {
+                "connect_timeout": 3.0,
+                "read_timeout": 120.0
+            }
+        },
+        "rate_limits": {
+            "requests_per_minute": 1000,
+            "concurrent_requests": 100
+        }
+    }
 
-    # Notify GPU Orchestrator
-    orchestrator_url = "http://localhost:8014/notify_ready"
-    if requests is None:
-        logger.warning("Requests library not available; skipping notification to GPU Orchestrator")
-    else:
-        try:
-            response = requests.post(orchestrator_url, timeout=10)
-            response.raise_for_status()
-            logger.info("Successfully notified GPU Orchestrator that MCP Bus is ready.")
-        except requests.RequestException as e:
-            logger.error(f"Failed to notify GPU Orchestrator: {e}")
+# Error handlers
+@app.exception_handler(500)
+async def internal_error_handler(request, exc):
+    """Handle internal server errors."""
+    logger.error(f"500 Internal Server Error: {exc}")
+    return {
+        "error": "Internal server error",
+        "detail": str(exc) if os.getenv("DEBUG", "").lower() == "true" else "An unexpected error occurred"
+    }
 
-    yield
-    logger.info("MCP_Bus is shutting down.")
+@app.exception_handler(404)
+async def not_found_handler(request, exc):
+    """Handle 404 not found errors."""
+    return {
+        "error": "Not found",
+        "detail": f"Endpoint {request.url.path} not found"
+    }
 
-atexit.register(lambda: logger.info("MCP_Bus has exited."))
-
-# Attach lifespan context if available (defined above). Use router.lifespan_context to avoid
-# referencing lifespan before it is declared earlier in the module.
-try:
-    # starlette exposes router.lifespan_context to set an asynccontextmanager
-    app.router.lifespan_context = lifespan  # type: ignore[attr-defined]
-except Exception:
-    # If assigning fails, the module will still run with a default no-op lifespan
-    logger.debug("Could not attach custom lifespan to MCP Bus router; continuing without it.")
+@app.exception_handler(503)
+async def service_unavailable_handler(request, exc):
+    """Handle 503 service unavailable errors (circuit breaker)."""
+    logger.warning(f"503 Service Unavailable: {exc}")
+    return {
+        "error": "Service temporarily unavailable",
+        "detail": str(exc)
+    }
 
 if __name__ == "__main__":
     import uvicorn
 
+    # Run with uvicorn for development
     host = os.environ.get("MCP_BUS_HOST", "0.0.0.0")
-    port = int(os.environ.get("MCP_BUS_PORT", 8000))
+    port = int(os.environ.get("MCP_BUS_PORT", "8000"))
 
-    logger.info(f"Starting MCP Bus on {host}:{port}")
-    uvicorn.run(app, host=host, port=port)
+    logger.info(f"Starting MCP Bus Agent on {host}:{port}")
+    uvicorn.run(
+        "main:app",
+        host=host,
+        port=port,
+        reload=True,
+        log_level="info"
+    )

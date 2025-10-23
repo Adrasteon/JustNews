@@ -1,420 +1,483 @@
 """
-Main file for the Scout Agent.
+Scout Agent - Main FastAPI Application
+
+This is the main entry point for the Scout agent, providing RESTful APIs
+for web crawling, content discovery, and AI-powered analysis.
+
+Features:
+- FastAPI web server with MCP bus integration
+- Web crawling and content discovery endpoints
+- AI-powered sentiment and bias analysis
+- Production-ready error handling and logging
+
+Endpoints:
+- POST /discover_sources: Discover news sources
+- POST /crawl_url: Crawl a specific URL
+- POST /deep_crawl_site: Deep crawl a website
+- POST /analyze_sentiment: Analyze sentiment in text
+- POST /detect_bias: Detect bias in text
+- GET /health: Health check endpoint
+- GET /stats: Processing statistics
 """
-# main.py for Scout Agent
 
+import asyncio
 import os
+import time
 from contextlib import asynccontextmanager
-from datetime import datetime
-from typing import Any
+from typing import Any, Dict, List, Optional
 
-import requests
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-# Import security utilities
-from agents.scout.security_utils import log_security_event, rate_limit, validate_url
 from common.observability import get_logger
-from common.metrics import JustNewsMetrics
+from .scout_engine import ScoutEngine, ScoutConfig, CrawlMode
+from .tools import (
+    discover_sources_tool,
+    crawl_url_tool,
+    deep_crawl_tool,
+    analyze_sentiment_tool,
+    detect_bias_tool,
+    health_check,
+    get_stats
+)
 
-# Configure logging
+# MCP Bus integration
+try:
+    from common.mcp_bus_client import MCPBusClient
+    MCP_AVAILABLE = True
+except ImportError:
+    MCPBusClient = None
+    MCP_AVAILABLE = False
 
 logger = get_logger(__name__)
 
-ready = False
+# Global engine instance
+engine: Optional[ScoutEngine] = None
 
-# Environment variables
-SCOUT_AGENT_PORT = int(os.environ.get("SCOUT_AGENT_PORT", 8002))
-MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
+# Request/Response Models
+class DiscoverSourcesRequest(BaseModel):
+    """Request model for source discovery."""
+    domains: Optional[List[str]] = Field(None, description="Specific domains to search")
+    max_sources: int = Field(10, description="Maximum sources to discover")
+    include_social: bool = Field(True, description="Include social media sources")
 
-# Security configuration
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:8000").split(",")
+class DiscoverSourcesResponse(BaseModel):
+    """Response model for source discovery."""
+    success: bool = Field(..., description="Discovery success status")
+    sources: List[Dict[str, Any]] = Field(..., description="Discovered sources")
+    total_found: int = Field(..., description="Total sources found")
+    processing_time: float = Field(..., description="Processing time in seconds")
 
-class MCPBusClient:
-    def __init__(self, base_url: str = MCP_BUS_URL):
-        self.base_url = base_url
+class CrawlURLRequest(BaseModel):
+    """Request model for URL crawling."""
+    url: str = Field(..., description="URL to crawl")
+    mode: CrawlMode = Field(default=CrawlMode.STANDARD, description="Crawling mode")
+    max_depth: int = Field(2, description="Maximum crawl depth")
+    follow_external: bool = Field(False, description="Follow external links")
 
-    def register_agent(self, agent_name: str, agent_address: str, tools: list[str]):
-        registration_data = {
-            "name": agent_name,
-            "address": agent_address,
-        }
-        try:
-            # Use shorter timeout to prevent hanging
-            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(1, 2))
-            response.raise_for_status()
-            logger.info(f"Successfully registered {agent_name} with MCP Bus.")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
-            raise
+class CrawlURLResponse(BaseModel):
+    """Response model for URL crawling."""
+    success: bool = Field(..., description="Crawling success status")
+    url: str = Field(..., description="Crawled URL")
+    content: Dict[str, Any] = Field(..., description="Extracted content")
+    links_found: List[str] = Field(..., description="Links discovered")
+    processing_time: float = Field(..., description="Processing time in seconds")
 
+class DeepCrawlRequest(BaseModel):
+    """Request model for deep site crawling."""
+    site_url: str = Field(..., description="Site URL to crawl deeply")
+    max_pages: int = Field(50, description="Maximum pages to crawl")
+    concurrent_requests: int = Field(5, description="Concurrent request limit")
+
+class DeepCrawlResponse(BaseModel):
+    """Response model for deep crawling."""
+    success: bool = Field(..., description="Deep crawl success status")
+    site_url: str = Field(..., description="Site URL crawled")
+    pages_crawled: int = Field(..., description="Number of pages crawled")
+    articles_found: List[Dict[str, Any]] = Field(..., description="Articles discovered")
+    processing_time: float = Field(..., description="Processing time in seconds")
+
+class SentimentAnalysisRequest(BaseModel):
+    """Request model for sentiment analysis."""
+    text: str = Field(..., description="Text to analyze")
+    include_confidence: bool = Field(True, description="Include confidence scores")
+
+class SentimentAnalysisResponse(BaseModel):
+    """Response model for sentiment analysis."""
+    success: bool = Field(..., description="Analysis success status")
+    sentiment: str = Field(..., description="Sentiment classification")
+    confidence: float = Field(..., description="Confidence score")
+    scores: Dict[str, float] = Field(..., description="Detailed sentiment scores")
+
+class BiasDetectionRequest(BaseModel):
+    """Request model for bias detection."""
+    text: str = Field(..., description="Text to analyze for bias")
+    include_explanation: bool = Field(True, description="Include bias explanation")
+
+class BiasDetectionResponse(BaseModel):
+    """Response model for bias detection."""
+    success: bool = Field(..., description="Detection success status")
+    bias_score: float = Field(..., description="Bias score (0.0-1.0)")
+    bias_type: str = Field(..., description="Type of bias detected")
+    explanation: str = Field(..., description="Bias explanation")
+
+class HealthResponse(BaseModel):
+    """Response model for health checks."""
+    timestamp: float = Field(..., description="Health check timestamp")
+    overall_status: str = Field(..., description="Overall health status")
+    components: Dict[str, Any] = Field(..., description="Component health status")
+    issues: List[str] = Field(..., description="List of issues found")
+
+class StatsResponse(BaseModel):
+    """Response model for statistics."""
+    total_crawled: int = Field(..., description="Total URLs crawled")
+    total_discovered: int = Field(..., description="Total sources discovered")
+    success_rate: float = Field(..., description="Success rate (0.0-1.0)")
+    average_processing_time: float = Field(..., description="Average processing time")
+    uptime: float = Field(..., description="Service uptime in seconds")
+
+# Lifespan management
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Scout agent is starting up.")
-    mcp_bus_client = MCPBusClient()
+    """Application lifespan manager for startup and shutdown."""
+    global engine
+
+    # Startup
+    logger.info("🚀 Starting Scout Agent...")
+
     try:
-        # Try to register with MCP Bus with shorter timeout
-        mcp_bus_client.register_agent(
-            agent_name="scout",
-            agent_address=f"http://localhost:{SCOUT_AGENT_PORT}",
-            tools=[
-                "discover_sources", "crawl_url", "deep_crawl_site", "enhanced_deep_crawl_site",
-                "intelligent_source_discovery", "intelligent_content_crawl",
-                "intelligent_batch_analysis", "enhanced_newsreader_crawl",
-                "production_crawl_ultra_fast", "get_production_crawler_info",
-                "production_crawl_dynamic", "analyze_sentiment", "detect_bias"
-            ],
-        )
-        logger.info("Registered tools with MCP Bus.")
+        # Initialize engine
+        config = ScoutConfig()
+        engine = ScoutEngine(config)
+
+        # Register with MCP Bus if available
+        if MCP_AVAILABLE:
+            await register_with_mcp_bus()
+
+        logger.info("✅ Scout Agent started successfully")
+
+        yield
+
     except Exception as e:
-        logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
-    global ready
-    ready = True
-    yield
-    logger.info("Scout agent is shutting down.")
+        logger.error(f"❌ Failed to start Scout Agent: {e}")
+        raise
+    finally:
+        # Shutdown
+        logger.info("🛑 Shutting down Scout Agent...")
 
-app = FastAPI(lifespan=lifespan, title="Scout Agent", description="Secure web crawling and content analysis agent")
+        # Cleanup engine
+        if engine:
+            engine.cleanup()
 
-# Initialize metrics
-metrics = JustNewsMetrics("scout")
+        logger.info("✅ Scout Agent shutdown complete")
 
-# Security middleware
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
+async def register_with_mcp_bus():
+    """Register agent with MCP Bus."""
+    if not MCP_AVAILABLE:
+        logger.warning("MCP Bus client not available - skipping registration")
+        return
+
+    try:
+        mcp_bus_url = os.getenv("MCP_BUS_URL", "http://localhost:8000")
+        client = MCPBusClient(mcp_bus_url)
+
+        agent_info = {
+            "name": "scout",
+            "description": "Web crawling and content discovery with AI analysis",
+            "version": "2.0.0",
+            "capabilities": ["source_discovery", "web_crawling", "sentiment_analysis", "bias_detection"],
+            "endpoints": {
+                "discover_sources": "/discover_sources",
+                "crawl_url": "/crawl_url",
+                "deep_crawl_site": "/deep_crawl_site",
+                "analyze_sentiment": "/analyze_sentiment",
+                "detect_bias": "/detect_bias",
+                "health": "/health",
+                "stats": "/stats"
+            }
+        }
+
+        await client.register_agent(agent_info)
+        logger.info("✅ Registered with MCP Bus")
+
+    except Exception as e:
+        logger.error(f"❌ MCP Bus registration failed: {e}")
+
+# Create FastAPI app
+app = FastAPI(
+    title="Scout Agent",
+    description="AI-powered web crawling and content analysis agent",
+    version="2.0.0",
+    lifespan=lifespan
+)
+
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Metrics middleware (must be added after security middleware)
-app.middleware("http")(metrics.request_middleware)
+# Global startup time
+startup_time = time.time()
 
-# Request middleware for rate limiting
-@app.middleware("http")
-async def security_middleware(request: Request, call_next):
-    """Security middleware for request validation and rate limiting."""
-    client_ip = request.client.host if request.client else "unknown"
+@app.get("/")
+async def root():
+    """Root endpoint with basic information."""
+    return {
+        "name": "Scout Agent",
+        "version": "2.0.0",
+        "description": "AI-powered web crawling and content analysis",
+        "status": "running"
+    }
 
-    # Rate limiting per IP
-    if not rate_limit(f"request_{client_ip}"):
-        log_security_event('rate_limit_exceeded', {
-            'ip': client_ip,
-            'path': request.url.path,
-            'method': request.method
-        })
-        return JSONResponse(
-            status_code=429,
-            content={"error": "Rate limit exceeded", "retry_after": 60}
+@app.post("/discover_sources", response_model=DiscoverSourcesResponse)
+async def discover_sources_endpoint(request: DiscoverSourcesRequest):
+    """
+    Discover news sources and websites.
+
+    This endpoint uses intelligent algorithms to find relevant news sources
+    based on the provided criteria.
+    """
+    global engine
+
+    if not engine:
+        raise HTTPException(status_code=503, detail="Scout engine not initialized")
+
+    try:
+        logger.info(f"🔍 Discovering sources: domains={request.domains}, max_sources={request.max_sources}")
+
+        result = await discover_sources_tool(
+            engine=engine,
+            domains=request.domains,
+            max_sources=request.max_sources,
+            include_social=request.include_social
         )
 
-    # Log suspicious requests
-    user_agent = request.headers.get("user-agent", "")
-    if not user_agent or len(user_agent) < 10:
-        log_security_event('suspicious_request', {
-            'ip': client_ip,
-            'path': request.url.path,
-            'user_agent': user_agent[:100]
-        })
+        response = DiscoverSourcesResponse(**result)
+        logger.info(f"✅ Source discovery completed: {len(result.get('sources', []))} sources found")
+        return response
 
-    response = await call_next(request)
-    return response
-
-# Register shutdown endpoint if available
-try:
-    from agents.common.shutdown import register_shutdown_endpoint
-    register_shutdown_endpoint(app)
-except Exception:
-    logger.debug("shutdown endpoint not registered for scout")
-
-# Register reload endpoint if available
-try:
-    from agents.common.reload import register_reload_endpoint
-    register_reload_endpoint(app)
-except Exception:
-    logger.debug("reload endpoint not registered for scout")
-
-class ToolCall(BaseModel):
-    args: list[Any]
-    kwargs: dict[str, Any]
-
-@app.post("/discover_sources")
-def discover_sources(call: ToolCall):
-    try:
-        from agents.scout.tools import discover_sources
-        logger.info(f"Calling discover_sources with args: {call.args} and kwargs: {call.kwargs}")
-        return discover_sources(*call.args, **call.kwargs)
     except Exception as e:
-        logger.error(f"An error occurred in discover_sources: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"❌ Source discovery failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Source discovery failed: {str(e)}")
 
-@app.post("/crawl_url")
-def crawl_url(call: ToolCall):
+@app.post("/crawl_url", response_model=CrawlURLResponse)
+async def crawl_url_endpoint(request: CrawlURLRequest):
+    """
+    Crawl a specific URL for content extraction.
+
+    This endpoint crawls the provided URL and extracts relevant content
+    using the specified crawling mode.
+    """
+    global engine
+
+    if not engine:
+        raise HTTPException(status_code=503, detail="Scout engine not initialized")
+
     try:
-        from agents.scout.tools import crawl_url
-        logger.info(f"Calling crawl_url with args: {call.args} and kwargs: {call.kwargs}")
+        logger.info(f"🕷️ Crawling URL: {request.url}")
 
-        # Validate URL if provided
-        url = call.kwargs.get("url") or (call.args[0] if call.args else None)
-        if url and not validate_url(url):
-            log_security_event('url_validation_failed', {
-                'url': url[:100],
-                'endpoint': '/crawl_url'
-            })
-            raise HTTPException(status_code=400, detail="Invalid or unsafe URL")
+        result = await crawl_url_tool(
+            engine=engine,
+            url=request.url,
+            mode=request.mode,
+            max_depth=request.max_depth,
+            follow_external=request.follow_external
+        )
 
-        return crawl_url(*call.args, **call.kwargs)
-    except ValueError as e:
-        logger.warning(f"Validation error in crawl_url: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        response = CrawlURLResponse(**result)
+        logger.info(f"✅ URL crawling completed: {result.get('processing_time', 0):.2f}s")
+        return response
+
     except Exception as e:
-        logger.error(f"An error occurred in crawl_url: {e}")
-        log_security_event('endpoint_error', {
-            'endpoint': '/crawl_url',
-            'error': str(e)
-        })
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"❌ URL crawling failed: {e}")
+        raise HTTPException(status_code=500, detail=f"URL crawling failed: {str(e)}")
 
-@app.post("/deep_crawl_site")
-def deep_crawl_site(call: ToolCall):
+@app.post("/deep_crawl_site", response_model=DeepCrawlResponse)
+async def deep_crawl_site_endpoint(request: DeepCrawlRequest):
+    """
+    Perform deep crawling of a website.
+
+    This endpoint performs comprehensive crawling of a website to discover
+    and extract multiple articles and content.
+    """
+    global engine
+
+    if not engine:
+        raise HTTPException(status_code=503, detail="Scout engine not initialized")
+
     try:
-        from agents.scout.tools import deep_crawl_site
-        logger.info(f"Calling deep_crawl_site with args: {call.args} and kwargs: {call.kwargs}")
-        return deep_crawl_site(*call.args, **call.kwargs)
+        logger.info(f"🔬 Deep crawling site: {request.site_url}")
+
+        result = await deep_crawl_tool(
+            engine=engine,
+            site_url=request.site_url,
+            max_pages=request.max_pages,
+            concurrent_requests=request.concurrent_requests
+        )
+
+        response = DeepCrawlResponse(**result)
+        logger.info(f"✅ Deep crawl completed: {result.get('pages_crawled', 0)} pages, {len(result.get('articles_found', []))} articles")
+        return response
+
     except Exception as e:
-        logger.error(f"An error occurred in deep_crawl_site: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"❌ Deep crawl failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Deep crawl failed: {str(e)}")
 
-@app.post("/enhanced_deep_crawl_site")
-async def enhanced_deep_crawl_site_endpoint(call: ToolCall):
+@app.post("/analyze_sentiment", response_model=SentimentAnalysisResponse)
+async def analyze_sentiment_endpoint(request: SentimentAnalysisRequest):
+    """
+    Analyze sentiment in provided text.
+
+    This endpoint uses AI models to analyze the sentiment of the provided text
+    and returns classification with confidence scores.
+    """
+    global engine
+
+    if not engine:
+        raise HTTPException(status_code=503, detail="Scout engine not initialized")
+
     try:
-        from agents.scout.tools import enhanced_deep_crawl_site
-        logger.info(f"Calling enhanced_deep_crawl_site with args: {call.args} and kwargs: {call.kwargs}")
+        logger.info(f"😊 Analyzing sentiment for text ({len(request.text)} chars)")
 
-        # Validate URL if provided
-        url = call.kwargs.get("url") or (call.args[0] if call.args else None)
-        if url and not validate_url(url):
-            log_security_event('url_validation_failed', {
-                'url': url[:100],
-                'endpoint': '/enhanced_deep_crawl_site'
-            })
-            raise HTTPException(status_code=400, detail="Invalid or unsafe URL")
+        result = await analyze_sentiment_tool(
+            engine=engine,
+            text=request.text,
+            include_confidence=request.include_confidence
+        )
 
-        return await enhanced_deep_crawl_site(*call.args, **call.kwargs)
-    except ValueError as e:
-        logger.warning(f"Validation error in enhanced_deep_crawl_site: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        response = SentimentAnalysisResponse(**result)
+        logger.info(f"✅ Sentiment analysis completed: {result.get('sentiment', 'unknown')}")
+        return response
+
     except Exception as e:
-        logger.error(f"An error occurred in enhanced_deep_crawl_site: {e}")
-        log_security_event('endpoint_error', {
-            'endpoint': '/enhanced_deep_crawl_site',
-            'error': str(e)
-        })
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"❌ Sentiment analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Sentiment analysis failed: {str(e)}")
 
-@app.post("/intelligent_source_discovery")
-def intelligent_source_discovery_endpoint(call: ToolCall):
+@app.post("/detect_bias", response_model=BiasDetectionResponse)
+async def detect_bias_endpoint(request: BiasDetectionRequest):
+    """
+    Detect bias in provided text.
+
+    This endpoint analyzes text for potential bias using AI models
+    and provides detailed bias assessment.
+    """
+    global engine
+
+    if not engine:
+        raise HTTPException(status_code=503, detail="Scout engine not initialized")
+
     try:
-        from agents.scout.tools import intelligent_source_discovery
-        logger.info(f"Calling intelligent_source_discovery with args: {call.args} and kwargs: {call.kwargs}")
-        return intelligent_source_discovery(*call.args, **call.kwargs)
+        logger.info(f"⚖️ Detecting bias for text ({len(request.text)} chars)")
+
+        result = await detect_bias_tool(
+            engine=engine,
+            text=request.text,
+            include_explanation=request.include_explanation
+        )
+
+        response = BiasDetectionResponse(**result)
+        logger.info(f"✅ Bias detection completed: score={result.get('bias_score', 0.0):.2f}")
+        return response
+
     except Exception as e:
-        logger.error(f"An error occurred in intelligent_source_discovery: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"❌ Bias detection failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Bias detection failed: {str(e)}")
 
-@app.post("/intelligent_content_crawl")
-def intelligent_content_crawl_endpoint(call: ToolCall):
+@app.get("/health", response_model=HealthResponse)
+async def health_endpoint():
+    """Health check endpoint for monitoring and load balancers."""
+    global engine
+
+    if not engine:
+        raise HTTPException(status_code=503, detail="Scout engine not initialized")
+
     try:
-        from agents.scout.tools import intelligent_content_crawl
-        logger.info(f"Calling intelligent_content_crawl with args: {call.args} and kwargs: {call.kwargs}")
-        return intelligent_content_crawl(*call.args, **call.kwargs)
+        health_result = await health_check(engine)
+        return HealthResponse(**health_result)
     except Exception as e:
-        logger.error(f"An error occurred in intelligent_content_crawl: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"❌ Health check error: {e}")
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
-@app.post("/intelligent_batch_analysis")
-def intelligent_batch_analysis_endpoint(call: ToolCall):
+@app.get("/stats", response_model=StatsResponse)
+async def stats_endpoint():
+    """Get processing statistics and performance metrics."""
+    global engine
+
+    if not engine:
+        raise HTTPException(status_code=503, detail="Scout engine not initialized")
+
     try:
-        from agents.scout.tools import intelligent_batch_analysis
-        logger.info(f"Calling intelligent_batch_analysis with args: {call.args} and kwargs: {call.kwargs}")
-        return intelligent_batch_analysis(*call.args, **call.kwargs)
+        uptime = time.time() - startup_time
+
+        stats_result = await get_stats(engine)
+        stats = StatsResponse(
+            total_crawled=stats_result.get('total_crawled', 0),
+            total_discovered=stats_result.get('total_discovered', 0),
+            success_rate=stats_result.get('success_rate', 0.0),
+            average_processing_time=stats_result.get('average_processing_time', 0.0),
+            uptime=uptime
+        )
+
+        return stats
+
     except Exception as e:
-        logger.error(f"An error occurred in intelligent_batch_analysis: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"❌ Stats retrieval error: {e}")
+        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}")
 
-@app.post("/enhanced_newsreader_crawl")
-def enhanced_newsreader_crawl_endpoint(call: ToolCall):
-    try:
-        from agents.scout.tools import enhanced_newsreader_crawl
-        logger.info(f"Calling enhanced_newsreader_crawl with args: {call.args} and kwargs: {call.kwargs}")
-        return enhanced_newsreader_crawl(*call.args, **call.kwargs)
-    except Exception as e:
-        logger.error(f"An error occurred in enhanced_newsreader_crawl: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-@app.get("/ready")
-def ready_endpoint():
-    return {"ready": ready}
-
-@app.get("/metrics")
-def metrics_endpoint():
-    """Prometheus metrics endpoint"""
-    from fastapi.responses import Response
-    return Response(metrics.get_metrics(), media_type="text/plain; charset=utf-8")
-
-@app.post("/log_feedback")
-def log_feedback(call: ToolCall):
-    try:
-        feedback_data = {
-            "timestamp": datetime.now().isoformat(),
-            "feedback": call.kwargs.get("feedback")
+@app.get("/capabilities")
+async def capabilities_endpoint():
+    """Get agent capabilities and supported features."""
+    return {
+        "name": "Scout Agent",
+        "version": "2.0.0",
+        "capabilities": [
+            "source_discovery",
+            "web_crawling",
+            "deep_crawling",
+            "sentiment_analysis",
+            "bias_detection",
+            "content_extraction"
+        ],
+        "supported_modes": ["fast", "standard", "deep"],
+        "ai_models": ["bert", "deberta", "roberta"],
+        "max_concurrent_crawls": 10,
+        "rate_limits": {
+            "requests_per_minute": 60,
+            "concurrent_crawls": 5
         }
-        logger.info(f"Logging feedback: {feedback_data}")
-        return feedback_data
-    except Exception as e:
-        logger.error(f"An error occurred while logging feedback: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    }
 
-@app.post("/analyze_sentiment")
-def analyze_sentiment_endpoint(call: ToolCall):
-    """Analyze sentiment in provided text content."""
-    try:
-        from agents.scout.gpu_scout_engine_v2 import NextGenGPUScoutEngine
-        text = call.kwargs.get("text")
-        if not text:
-            raise HTTPException(status_code=400, detail="Text parameter required")
+# Error handlers
+@app.exception_handler(500)
+async def internal_error_handler(request, exc):
+    """Handle internal server errors."""
+    logger.error(f"500 Internal Server Error: {exc}")
+    return {
+        "error": "Internal server error",
+        "detail": str(exc) if os.getenv("DEBUG", "").lower() == "true" else "An unexpected error occurred"
+    }
 
-        # Use cached engine instance to avoid GPU memory issues
-        if not hasattr(analyze_sentiment_endpoint, '_engine'):
-            analyze_sentiment_endpoint._engine = NextGenGPUScoutEngine(enable_training=False)
-
-        engine = analyze_sentiment_endpoint._engine
-        result = engine.analyze_sentiment(text)
-        return result
-    except Exception as e:
-        logger.error(f"An error occurred in analyze_sentiment: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/detect_bias")
-def detect_bias_endpoint(call: ToolCall):
-    """Detect bias in provided text content."""
-    try:
-        from agents.scout.gpu_scout_engine_v2 import NextGenGPUScoutEngine
-        text = call.kwargs.get("text")
-        if not text:
-            raise HTTPException(status_code=400, detail="Text parameter required")
-
-        # Use cached engine instance to avoid GPU memory issues
-        if not hasattr(detect_bias_endpoint, '_engine'):
-            detect_bias_endpoint._engine = NextGenGPUScoutEngine(enable_training=False)
-
-        engine = detect_bias_endpoint._engine
-        result = engine.detect_bias(text)
-        return result
-    except Exception as e:
-        logger.error(f"An error occurred in detect_bias: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# =============================================================================
-# PRODUCTION CRAWLER ENDPOINTS
-# =============================================================================
-
-
-@app.post("/production_crawl_ai_enhanced")
-async def production_crawl_ai_enhanced_endpoint(call: ToolCall):
-    try:
-        from agents.scout.tools import production_crawl_ai_enhanced
-        logger.info(f"Calling production_crawl_ai_enhanced with args: {call.args} and kwargs: {call.kwargs}")
-
-        # Validate site parameter
-        site = call.kwargs.get("site") or (call.args[0] if call.args else None)
-        if not site or not isinstance(site, str):
-            log_security_event('invalid_site', {
-                'endpoint': '/production_crawl_ai_enhanced',
-                'site': str(site)[:50]
-            })
-            raise HTTPException(status_code=400, detail="Invalid site identifier")
-
-        return await production_crawl_ai_enhanced(*call.args, **call.kwargs)
-    except ValueError as e:
-        logger.warning(f"Validation error in production_crawl_ai_enhanced: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"An error occurred in production_crawl_ai_enhanced: {e}")
-        log_security_event('endpoint_error', {
-            'endpoint': '/production_crawl_ai_enhanced',
-            'error': str(e)
-        })
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-@app.post("/production_crawl_ultra_fast")
-async def production_crawl_ultra_fast_endpoint(call: ToolCall):
-    try:
-        from agents.scout.tools import production_crawl_ultra_fast
-        logger.info(f"Calling production_crawl_ultra_fast with args: {call.args} and kwargs: {call.kwargs}")
-
-        # Validate site parameter
-        site = call.kwargs.get("site") or (call.args[0] if call.args else None)
-        if not site or not isinstance(site, str):
-            log_security_event('invalid_site', {
-                'endpoint': '/production_crawl_ultra_fast',
-                'site': str(site)[:50]
-            })
-            raise HTTPException(status_code=400, detail="Invalid site identifier")
-
-        return await production_crawl_ultra_fast(*call.args, **call.kwargs)
-    except ValueError as e:
-        logger.warning(f"Validation error in production_crawl_ultra_fast: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"An error occurred in production_crawl_ultra_fast: {e}")
-        log_security_event('endpoint_error', {
-            'endpoint': '/production_crawl_ultra_fast',
-            'error': str(e)
-        })
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-@app.post("/get_production_crawler_info")
-def get_production_crawler_info_endpoint(call: ToolCall):
-    try:
-        from agents.scout.tools import get_production_crawler_info
-        logger.info(f"Calling get_production_crawler_info with args: {call.args} and kwargs: {call.kwargs}")
-        return get_production_crawler_info(*call.args, **call.kwargs)
-    except Exception as e:
-        logger.error(f"An error occurred in get_production_crawler_info: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/production_crawl_dynamic")
-async def production_crawl_dynamic_endpoint(call: ToolCall):
-    try:
-        from agents.scout.tools import production_crawl_dynamic
-        logger.info(f"Calling production_crawl_dynamic with args: {call.args} and kwargs: {call.kwargs}")
-        # Expect kwargs: domains (list[str]|None), articles_per_site, concurrent_sites, max_total_articles
-        return await production_crawl_dynamic(*call.args, **call.kwargs)
-    except Exception as e:
-        logger.error(f"An error occurred in production_crawl_dynamic: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# =============================================================================
-# SERVER STARTUP
-# =============================================================================
+@app.exception_handler(404)
+async def not_found_handler(request, exc):
+    """Handle 404 not found errors."""
+    return {
+        "error": "Not found",
+        "detail": f"Endpoint {request.url.path} not found"
+    }
 
 if __name__ == "__main__":
     import uvicorn
-    logger.info(f"Starting Scout Agent on port {SCOUT_AGENT_PORT}")
+
+    # Run with uvicorn for development
     uvicorn.run(
-        "agents.scout.main:app",
+        "main:app",
         host="0.0.0.0",
-        port=SCOUT_AGENT_PORT,
-        reload=False,
+        port=int(os.getenv("PORT", "8002")),
+        reload=True,
         log_level="info"
     )

@@ -1,176 +1,680 @@
 """
-Main file for the Chief Editor Agent.
+Chief Editor Agent - Main FastAPI Application
+
+This is the main entry point for the Chief Editor agent, providing RESTful APIs
+for editorial workflow orchestration, content quality assessment, and multi-agent
+coordination.
+
+Features:
+- FastAPI web server with MCP bus integration
+- Editorial decision making with 5-model AI workflow
+- Content quality assessment and categorization
+- Story brief generation and publishing coordination
+- Evidence review queue management
+- Health checks and monitoring
+
+Endpoints:
+- POST /assess_content_quality: Assess content quality using BERT
+- POST /categorize_content: Categorize content using DistilBERT
+- POST /analyze_editorial_sentiment: Analyze editorial sentiment using RoBERTa
+- POST /generate_editorial_commentary: Generate commentary using T5
+- POST /make_editorial_decision: Comprehensive editorial decision making
+- POST /request_story_brief: Generate story briefs
+- POST /publish_story: Coordinate story publishing
+- POST /review_evidence: Queue evidence for human review
+- GET /health: Health check endpoint
+- GET /stats: Processing statistics
+
+All endpoints include security validation, error handling, and comprehensive logging.
 """
-# main.py for Chief Editor Agent
 
 import os
+import time
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Dict, List, Optional
 
-import requests
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
-from agents.chief_editor.handler import handle_review_request
 from common.observability import get_logger
-
-# Import metrics library
 from common.metrics import JustNewsMetrics
+from common.version_utils import get_version
 
-# Configure logging
+from .tools import (
+    assess_content_quality,
+    categorize_content,
+    analyze_editorial_sentiment,
+    generate_editorial_commentary,
+    make_editorial_decision,
+    request_story_brief,
+    publish_story,
+    review_evidence,
+    health_check,
+    validate_editorial_result,
+    format_editorial_output
+)
+
+# MCP Bus integration
+try:
+    from common.mcp_bus_client import MCPBusClient
+    MCP_AVAILABLE = True
+except ImportError:
+    MCPBusClient = None
+    MCP_AVAILABLE = False
 
 logger = get_logger(__name__)
-
-ready = False
 
 # Environment variables
 CHIEF_EDITOR_AGENT_PORT = int(os.environ.get("CHIEF_EDITOR_AGENT_PORT", 8001))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
-class MCPBusClient:
-    def __init__(self, base_url: str = MCP_BUS_URL):
-        self.base_url = base_url
+# Request/Response Models
+class ContentAnalysisRequest(BaseModel):
+    """Base request model for content analysis operations."""
+    content: str = Field(..., min_length=1, max_length=100000, description="Content to analyze")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+    format_output: str = Field("json", description="Output format (json, text, markdown)")
 
-    def register_agent(self, agent_name: str, agent_address: str, tools: list):
-        registration_data = {
-            "name": agent_name,
-            "address": agent_address,
-        }
-        try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
-            response.raise_for_status()
-            logger.info(f"Successfully registered {agent_name} with MCP Bus.")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
-            raise
+class QualityAssessmentRequest(ContentAnalysisRequest):
+    """Request model for quality assessment."""
+    pass
 
-# Define the lifespan context manager
+class CategorizationRequest(ContentAnalysisRequest):
+    """Request model for content categorization."""
+    pass
+
+class SentimentAnalysisRequest(ContentAnalysisRequest):
+    """Request model for sentiment analysis."""
+    pass
+
+class CommentaryRequest(BaseModel):
+    """Request model for commentary generation."""
+    content: str = Field(..., min_length=1, max_length=100000, description="Content for commentary")
+    context: str = Field("news article", description="Context for commentary generation")
+    format_output: str = Field("json", description="Output format (json, text, markdown)")
+
+class EditorialDecisionRequest(ContentAnalysisRequest):
+    """Request model for comprehensive editorial decisions."""
+    pass
+
+class StoryBriefRequest(BaseModel):
+    """Request model for story brief generation."""
+    topic: str = Field(..., min_length=1, description="Story topic")
+    scope: str = Field(..., min_length=1, description="Story scope")
+    format_output: str = Field("json", description="Output format (json, text, markdown)")
+
+class PublishRequest(BaseModel):
+    """Request model for story publishing."""
+    story_id: str = Field(..., min_length=1, description="Story ID to publish")
+    format_output: str = Field("json", description="Output format (json, text, markdown)")
+
+class EvidenceReviewRequest(BaseModel):
+    """Request model for evidence review."""
+    evidence_manifest: str = Field(..., min_length=1, description="Evidence manifest path")
+    reason: str = Field(..., min_length=1, description="Reason for review")
+
+class EditorialResponse(BaseModel):
+    """Base response model for editorial operations."""
+    success: bool = Field(..., description="Operation success status")
+    result: Dict[str, Any] = Field(..., description="Operation result data")
+    processing_time: float = Field(..., description="Processing time in seconds")
+    timestamp: float = Field(..., description="Response timestamp")
+    format: str = Field(..., description="Output format used")
+
+class HealthResponse(BaseModel):
+    """Response model for health checks."""
+    timestamp: float = Field(..., description="Health check timestamp")
+    overall_status: str = Field(..., description="Overall health status")
+    components: Dict[str, Any] = Field(..., description="Component health status")
+    model_status: Dict[str, Any] = Field(..., description="AI model status")
+    processing_stats: Dict[str, Any] = Field(..., description="Processing statistics")
+    issues: Optional[List[str]] = Field(None, description="List of issues found")
+
+class StatsResponse(BaseModel):
+    """Response model for statistics."""
+    total_processed: int = Field(..., description="Total analyses processed")
+    quality_assessments: int = Field(..., description="Total quality assessments")
+    categorizations: int = Field(..., description="Total content categorizations")
+    sentiment_analyses: int = Field(..., description="Total sentiment analyses")
+    editorial_decisions: int = Field(..., description="Total editorial decisions")
+    story_briefs: int = Field(..., description="Total story briefs generated")
+    stories_published: int = Field(..., description="Total stories published")
+    average_processing_time: float = Field(..., description="Average processing time")
+    uptime: float = Field(..., description="Service uptime in seconds")
+
+# Global startup time
+startup_time = time.time()
+
+# Lifespan management
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Chief Editor agent is starting up.")
-    mcp_bus_client = MCPBusClient()
+    """Application lifespan manager for startup and shutdown."""
+    logger.info("🎯 Starting Chief Editor Agent - Editorial Workflow Orchestrator")
+    logger.info("📋 Focus: Content quality assessment, editorial decision making, workflow coordination")
+    logger.info("🤝 Integration: Coordinates Scout, Analyst, Fact Checker, Synthesizer, and Critic agents")
+    logger.info("🎨 Specializes: 5-model AI workflow (BERT, DistilBERT, RoBERTa, T5, SentenceTransformers)")
+
     try:
-        mcp_bus_client.register_agent(
-            agent_name="chief_editor",
-            agent_address=f"http://localhost:{CHIEF_EDITOR_AGENT_PORT}",
-            tools=["request_story_brief", "publish_story", "review_evidence"],
-        )
-        logger.info("Registered tools with MCP Bus.")
+        # Register with MCP Bus if available
+        if MCP_AVAILABLE:
+            await register_with_mcp_bus()
+
+        logger.info("✅ Chief Editor Agent started successfully")
+
+        yield
+
     except Exception as e:
-        logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
-    global ready
-    ready = True
-    yield
+        logger.error(f"❌ Failed to start Chief Editor Agent: {e}")
+        raise
+    finally:
+        logger.info("🛑 Chief Editor Agent shutdown completed")
 
-    logger.info("Chief Editor agent is shutting down.")
+async def register_with_mcp_bus():
+    """Register agent with MCP Bus."""
+    if not MCP_AVAILABLE:
+        logger.warning("MCP Bus client not available - skipping registration")
+        return
 
-# Initialize FastAPI with the lifespan context manager
-app = FastAPI(title="Chief Editor Agent", lifespan=lifespan)
+    try:
+        mcp_bus_url = MCP_BUS_URL
+        client = MCPBusClient(mcp_bus_url)
+
+        agent_info = {
+            "name": "chief_editor",
+            "description": "Editorial workflow orchestration with 5-model AI decision making",
+            "version": "2.0.0",
+            "capabilities": [
+                "content_quality_assessment",
+                "content_categorization",
+                "editorial_sentiment_analysis",
+                "editorial_commentary_generation",
+                "editorial_decision_making",
+                "story_brief_generation",
+                "story_publishing_coordination",
+                "evidence_review_queuing"
+            ],
+            "endpoints": {
+                "assess_content_quality": "/assess_content_quality",
+                "categorize_content": "/categorize_content",
+                "analyze_editorial_sentiment": "/analyze_editorial_sentiment",
+                "generate_editorial_commentary": "/generate_editorial_commentary",
+                "make_editorial_decision": "/make_editorial_decision",
+                "request_story_brief": "/request_story_brief",
+                "publish_story": "/publish_story",
+                "review_evidence": "/review_evidence",
+                "health": "/health",
+                "stats": "/stats"
+            }
+        }
+
+        await client.register_agent(agent_info)
+        logger.info("✅ Registered with MCP Bus")
+
+    except Exception as e:
+        logger.error(f"❌ MCP Bus registration failed: {e}")
+
+# Create FastAPI app
+app = FastAPI(
+    title="Chief Editor Agent",
+    description="Editorial workflow orchestrator for news content processing",
+    version="2.0.0",
+    lifespan=lifespan
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Initialize metrics
-metrics = JustNewsMetrics("chief_editor")
-
-# Register common shutdown endpoint
 try:
-    from agents.common.shutdown import register_shutdown_endpoint
-    register_shutdown_endpoint(app)
-except Exception:
-    logger.debug("shutdown endpoint not registered for chief_editor")
+    metrics = JustNewsMetrics("chief_editor")
+    # Metrics middleware
+    app.middleware("http")(metrics.request_middleware)
+except Exception as e:
+    logger.warning(f"Metrics initialization failed: {e}")
+    metrics = None
 
-# Register reload endpoint if available
-try:
-    from agents.common.reload import register_reload_endpoint
-    register_reload_endpoint(app)
-except Exception:
-    logger.debug("reload endpoint not registered for chief_editor")
+@app.get("/")
+async def root():
+    """Root endpoint with basic information."""
+    return {
+        "name": "Chief Editor Agent",
+        "version": "2.0.0",
+        "description": "Editorial workflow orchestrator for news content",
+        "status": "running",
+        "capabilities": [
+            "content_quality_assessment",
+            "editorial_decision_making",
+            "story_brief_generation",
+            "publishing_coordination",
+            "evidence_review_management"
+        ]
+    }
 
-# Add metrics middleware
-app.middleware("http")(metrics.request_middleware)
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-@app.get("/ready")
-def ready_endpoint():
-    return {"ready": ready}
-
-
-@app.get("/metrics")
-def get_metrics():
-    """Prometheus metrics endpoint."""
-    from fastapi.responses import Response
-    return Response(metrics.get_metrics(), media_type="text/plain")
-
-# Pydantic models
-class ToolCall(BaseModel):
-    args: list[Any]
-    kwargs: dict[str, Any]
-
-class StoryBrief(BaseModel):
-    topic: str
-    deadline: str
-    priority: str
-
-@app.post("/request_story_brief")
-def request_story_brief(call: ToolCall):
-    """Request a story brief from another agent"""
-    try:
-        # Implementation for requesting story briefs
-        logger.info("Requesting story brief")
-        return {"status": "success", "message": "Story brief requested"}
-    except Exception as e:
-        logger.error(f"Error requesting story brief: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/publish_story")
-def publish_story(call: ToolCall):
-    """Publish a finalized story"""
-    try:
-        # Implementation for publishing stories
-        logger.info("Publishing story")
-        return {"status": "success", "message": "Story published"}
-    except Exception as e:
-        logger.error(f"Error publishing story: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/coordinate_editorial_workflow")
-def coordinate_editorial_workflow(call: ToolCall):
-    """Coordinate the editorial workflow between agents"""
-    try:
-        # Implementation for coordinating workflow
-        logger.info("Coordinating editorial workflow")
-        return {"status": "success", "message": "Workflow coordinated"}
-    except Exception as e:
-        logger.error(f"Error coordinating workflow: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/manage_content_lifecycle")
-def manage_content_lifecycle(call: ToolCall):
-    """Manage the lifecycle of content through the system"""
-    try:
-        # Implementation for managing content lifecycle
-        logger.info("Managing content lifecycle")
-        return {"status": "success", "message": "Content lifecycle managed"}
-    except Exception as e:
-        logger.error(f"Error managing content lifecycle: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/review_evidence")
-def review_evidence(call: ToolCall):
-    """Endpoint to receive evidence review requests from other agents.
-
-    Expected kwargs: evidence_manifest (path), reason
-    Persists the request to a local JSONL queue for human reviewers or UI to pick up.
+@app.post("/assess_content_quality", response_model=EditorialResponse)
+async def assess_content_quality_endpoint(request: QualityAssessmentRequest):
     """
+    Assess content quality using BERT-based analysis.
+
+    This endpoint evaluates the overall quality of news content using
+    advanced NLP models to determine publication readiness and editorial needs.
+    """
+    start_time = time.time()
+
     try:
-        kwargs = call.kwargs or {}
-        return handle_review_request(kwargs)
+        logger.info(f"🎯 Processing content quality assessment: {len(request.content)} characters")
+
+        # Perform analysis
+        result = assess_content_quality(request.content, request.metadata)
+
+        # Validate result
+        if not validate_editorial_result(result):
+            raise HTTPException(status_code=500, detail="Invalid analysis result")
+
+        # Format output if requested
+        if request.format_output != "json":
+            formatted_result = format_editorial_output(result, request.format_output)
+            result = {"formatted_output": formatted_result}
+
+        processing_time = time.time() - start_time
+
+        response = EditorialResponse(
+            success=True,
+            result=result,
+            processing_time=processing_time,
+            timestamp=time.time(),
+            format=request.format_output
+        )
+
+        logger.info(".2f"        return response
+
     except Exception as e:
-        logger.error(f"Error enqueuing evidence review: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        processing_time = time.time() - start_time
+        logger.error(f"❌ Content quality assessment failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Content quality assessment failed: {str(e)}")
+
+@app.post("/categorize_content", response_model=EditorialResponse)
+async def categorize_content_endpoint(request: CategorizationRequest):
+    """
+    Categorize content using DistilBERT-based classification.
+
+    This endpoint automatically categorizes news content into appropriate
+    editorial categories for workflow routing and prioritization.
+    """
+    start_time = time.time()
+
+    try:
+        logger.info(f"📂 Processing content categorization: {len(request.content)} characters")
+
+        # Perform analysis
+        result = categorize_content(request.content, request.metadata)
+
+        # Validate result
+        if not validate_editorial_result(result):
+            raise HTTPException(status_code=500, detail="Invalid analysis result")
+
+        # Format output if requested
+        if request.format_output != "json":
+            formatted_result = format_editorial_output(result, request.format_output)
+            result = {"formatted_output": formatted_result}
+
+        processing_time = time.time() - start_time
+
+        response = EditorialResponse(
+            success=True,
+            result=result,
+            processing_time=processing_time,
+            timestamp=time.time(),
+            format=request.format_output
+        )
+
+        logger.info(".2f"        return response
+
+    except Exception as e:
+        processing_time = time.time() - start_time
+        logger.error(f"❌ Content categorization failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Content categorization failed: {str(e)}")
+
+@app.post("/analyze_editorial_sentiment", response_model=EditorialResponse)
+async def analyze_editorial_sentiment_endpoint(request: SentimentAnalysisRequest):
+    """
+    Analyze editorial sentiment using RoBERTa-based analysis.
+
+    This endpoint determines the editorial tone and sentiment of content
+    to inform publication decisions and editorial positioning.
+    """
+    start_time = time.time()
+
+    try:
+        logger.info(f"📊 Processing editorial sentiment analysis: {len(request.content)} characters")
+
+        # Perform analysis
+        result = analyze_editorial_sentiment(request.content, request.metadata)
+
+        # Validate result
+        if not validate_editorial_result(result):
+            raise HTTPException(status_code=500, detail="Invalid analysis result")
+
+        # Format output if requested
+        if request.format_output != "json":
+            formatted_result = format_editorial_output(result, request.format_output)
+            result = {"formatted_output": formatted_result}
+
+        processing_time = time.time() - start_time
+
+        response = EditorialResponse(
+            success=True,
+            result=result,
+            processing_time=processing_time,
+            timestamp=time.time(),
+            format=request.format_output
+        )
+
+        logger.info(".2f"        return response
+
+    except Exception as e:
+        processing_time = time.time() - start_time
+        logger.error(f"❌ Editorial sentiment analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Editorial sentiment analysis failed: {str(e)}")
+
+@app.post("/generate_editorial_commentary", response_model=EditorialResponse)
+async def generate_editorial_commentary_endpoint(request: CommentaryRequest):
+    """
+    Generate editorial commentary using T5-based generation.
+
+    This endpoint creates editorial notes and commentary for content
+    to guide the editorial workflow and decision making process.
+    """
+    start_time = time.time()
+
+    try:
+        logger.info(f"💬 Processing editorial commentary generation: {len(request.content)} characters")
+
+        # Perform analysis
+        result = generate_editorial_commentary(request.content, request.context)
+
+        # Validate result
+        if not validate_editorial_result(result):
+            raise HTTPException(status_code=500, detail="Invalid analysis result")
+
+        # Format output if requested
+        if request.format_output != "json":
+            formatted_result = format_editorial_output(result, request.format_output)
+            result = {"formatted_output": formatted_result}
+
+        processing_time = time.time() - start_time
+
+        response = EditorialResponse(
+            success=True,
+            result=result,
+            processing_time=processing_time,
+            timestamp=time.time(),
+            format=request.format_output
+        )
+
+        logger.info(".2f"        return response
+
+    except Exception as e:
+        processing_time = time.time() - start_time
+        logger.error(f"❌ Editorial commentary generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Editorial commentary generation failed: {str(e)}")
+
+@app.post("/make_editorial_decision", response_model=EditorialResponse)
+async def make_editorial_decision_endpoint(request: EditorialDecisionRequest):
+    """
+    Make comprehensive editorial decision using all 5 AI models.
+
+    This endpoint provides a complete editorial assessment including
+    quality, categorization, sentiment, and workflow recommendations.
+    """
+    start_time = time.time()
+
+    try:
+        logger.info(f"🏛️ Processing comprehensive editorial decision: {len(request.content)} characters")
+
+        # Perform analysis
+        result = make_editorial_decision(request.content, request.metadata)
+
+        # Validate result
+        if not validate_editorial_result(result):
+            raise HTTPException(status_code=500, detail="Invalid analysis result")
+
+        # Format output if requested
+        if request.format_output != "json":
+            formatted_result = format_editorial_output(result, request.format_output)
+            result = {"formatted_output": formatted_result}
+
+        processing_time = time.time() - start_time
+
+        response = EditorialResponse(
+            success=True,
+            result=result,
+            processing_time=processing_time,
+            timestamp=time.time(),
+            format=request.format_output
+        )
+
+        logger.info(".2f"        return response
+
+    except Exception as e:
+        processing_time = time.time() - start_time
+        logger.error(f"❌ Editorial decision making failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Editorial decision making failed: {str(e)}")
+
+@app.post("/request_story_brief", response_model=EditorialResponse)
+async def request_story_brief_endpoint(request: StoryBriefRequest):
+    """
+    Generate a story brief for editorial planning.
+
+    This endpoint creates structured story briefs to guide content development
+    and editorial planning across the newsroom.
+    """
+    start_time = time.time()
+
+    try:
+        logger.info(f"📝 Processing story brief request: {request.topic}")
+
+        # Perform analysis
+        result = request_story_brief(request.topic, request.scope)
+
+        # Validate result
+        if not validate_editorial_result(result):
+            raise HTTPException(status_code=500, detail="Invalid brief result")
+
+        # Format output if requested
+        if request.format_output != "json":
+            formatted_result = format_editorial_output(result, request.format_output)
+            result = {"formatted_output": formatted_result}
+
+        processing_time = time.time() - start_time
+
+        response = EditorialResponse(
+            success=True,
+            result=result,
+            processing_time=processing_time,
+            timestamp=time.time(),
+            format=request.format_output
+        )
+
+        logger.info(".2f"        return response
+
+    except Exception as e:
+        processing_time = time.time() - start_time
+        logger.error(f"❌ Story brief generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Story brief generation failed: {str(e)}")
+
+@app.post("/publish_story", response_model=EditorialResponse)
+async def publish_story_endpoint(request: PublishRequest):
+    """
+    Coordinate story publishing across the editorial workflow.
+
+    This endpoint manages the publishing process, coordinating with
+    other agents and updating editorial timelines.
+    """
+    start_time = time.time()
+
+    try:
+        logger.info(f"🚀 Processing story publishing: {request.story_id}")
+
+        # Perform analysis
+        result = publish_story(request.story_id)
+
+        # Validate result
+        if not validate_editorial_result(result):
+            raise HTTPException(status_code=500, detail="Invalid publishing result")
+
+        # Format output if requested
+        if request.format_output != "json":
+            formatted_result = format_editorial_output(result, request.format_output)
+            result = {"formatted_output": formatted_result}
+
+        processing_time = time.time() - start_time
+
+        response = EditorialResponse(
+            success=True,
+            result=result,
+            processing_time=processing_time,
+            timestamp=time.time(),
+            format=request.format_output
+        )
+
+        logger.info(".2f"        return response
+
+    except Exception as e:
+        processing_time = time.time() - start_time
+        logger.error(f"❌ Story publishing failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Story publishing failed: {str(e)}")
+
+@app.post("/review_evidence", response_model=EditorialResponse)
+async def review_evidence_endpoint(request: EvidenceReviewRequest):
+    """
+    Queue evidence for human review and editorial oversight.
+
+    This endpoint manages the evidence review queue, notifying editors
+    and maintaining audit trails for editorial decisions.
+    """
+    start_time = time.time()
+
+    try:
+        logger.info(f"🔍 Processing evidence review request: {request.evidence_manifest}")
+
+        # Perform analysis
+        result = review_evidence(request.evidence_manifest, request.reason)
+
+        processing_time = time.time() - start_time
+
+        response = EditorialResponse(
+            success=True,
+            result=result,
+            processing_time=processing_time,
+            timestamp=time.time(),
+            format="json"
+        )
+
+        logger.info(".2f"        return response
+
+    except Exception as e:
+        processing_time = time.time() - start_time
+        logger.error(f"❌ Evidence review queuing failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Evidence review queuing failed: {str(e)}")
+
+@app.get("/health", response_model=HealthResponse)
+async def health_endpoint():
+    """Health check endpoint for monitoring and load balancers."""
+    try:
+        health_result = await health_check()
+        return HealthResponse(**health_result)
+    except Exception as e:
+        logger.error(f"❌ Health check error: {e}")
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+
+@app.get("/stats", response_model=StatsResponse)
+async def stats_endpoint():
+    """Get processing statistics and performance metrics."""
+    try:
+        from .tools import get_chief_editor_engine
+        engine = get_chief_editor_engine()
+
+        uptime = time.time() - startup_time
+
+        stats = StatsResponse(
+            total_processed=engine.processing_stats['total_processed'],
+            quality_assessments=engine.processing_stats['quality_assessments'],
+            categorizations=engine.processing_stats['categorizations'],
+            sentiment_analyses=engine.processing_stats['sentiment_analyses'],
+            editorial_decisions=engine.processing_stats['editorial_decisions'],
+            story_briefs=engine.processing_stats['story_briefs'],
+            stories_published=engine.processing_stats['stories_published'],
+            average_processing_time=engine.processing_stats['average_processing_time'],
+            uptime=uptime
+        )
+
+        return stats
+
+    except Exception as e:
+        logger.error(f"❌ Stats retrieval error: {e}")
+        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}")
+
+@app.get("/capabilities")
+async def capabilities_endpoint():
+    """Get agent capabilities and supported features."""
+    return {
+        "name": "Chief Editor Agent",
+        "version": "2.0.0",
+        "capabilities": [
+            "content_quality_assessment",
+            "content_categorization",
+            "editorial_sentiment_analysis",
+            "editorial_commentary_generation",
+            "comprehensive_editorial_decisions",
+            "story_brief_generation",
+            "publishing_coordination",
+            "evidence_review_management"
+        ],
+        "supported_formats": ["json", "text", "markdown"],
+        "ai_models": {
+            "quality_assessment": "BERT (bert-base-uncased)",
+            "categorization": "DistilBERT (distilbert-base-uncased)",
+            "sentiment_analysis": "RoBERTa (cardiffnlp/twitter-roberta-base-sentiment-latest)",
+            "commentary_generation": "T5 (t5-small)",
+            "workflow_embeddings": "SentenceTransformers (all-MiniLM-L6-v2)"
+        },
+        "workflow_stages": ["intake", "analysis", "fact_check", "synthesis", "review", "publish", "archive"],
+        "editorial_priorities": ["urgent", "high", "medium", "low", "review"]
+    }
+
+# Error handlers
+@app.exception_handler(500)
+async def internal_error_handler(request, exc):
+    """Handle internal server errors."""
+    logger.error(f"500 Internal Server Error: {exc}")
+    return {
+        "error": "Internal server error",
+        "detail": str(exc) if os.getenv("DEBUG", "").lower() == "true" else "An unexpected error occurred"
+    }
+
+@app.exception_handler(404)
+async def not_found_handler(request, exc):
+    """Handle 404 not found errors."""
+    return {
+        "error": "Not found",
+        "detail": f"Endpoint {request.url.path} not found"
+    }
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=CHIEF_EDITOR_AGENT_PORT)
+
+    # Run with uvicorn for development
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=int(os.getenv("CHIEF_EDITOR_PORT", "8001")),
+        reload=True,
+        log_level="info"
+    )

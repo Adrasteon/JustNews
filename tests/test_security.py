@@ -16,7 +16,7 @@ import pytest
 from typing import Dict, List, Any, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from tests.refactor.test_utils import AsyncTestHelper, MockFactory, CustomAssertions
+from tests.test_utils import AsyncTestHelper, MockFactory, CustomAssertions
 
 
 class TestInputValidation:

@@ -1,20 +1,24 @@
 """
 Main file for the Balancer Agent.
+Load balancing and workload distribution agent with MCP integration.
 """
 # main.py for Balancer Agent
 
 import os
 from contextlib import asynccontextmanager
+from typing import Dict, Any
 
 import requests
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
-from agents.balancer import tools
 from common.observability import get_logger
-
-# Import metrics library
 from common.metrics import JustNewsMetrics
+from .balancer_engine import BalancerEngine
+from .tools import distribute_load, get_agent_status, balance_workload, monitor_performance
 
 # Configure logging
 logger = get_logger(__name__)
@@ -24,6 +28,10 @@ ready = False
 # Environment variables
 BALANCER_AGENT_PORT = int(os.environ.get("BALANCER_AGENT_PORT", 8010))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
+
+# Security configuration
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:8000").split(",")
 
 class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
@@ -35,14 +43,13 @@ class MCPBusClient:
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
+            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(1, 2))
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
             raise
 
-# Define the lifespan context manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Balancer agent is starting up.")
@@ -59,31 +66,73 @@ async def lifespan(app: FastAPI):
     global ready
     ready = True
     yield
-
     logger.info("Balancer agent is shutting down.")
 
-# Initialize FastAPI with the lifespan context manager
-app = FastAPI(title="Balancer Agent", lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, title="Balancer Agent", description="Load balancing and workload distribution agent")
 
 # Initialize metrics
 metrics = JustNewsMetrics("balancer")
 
-# Register common shutdown endpoint
-try:
-    from agents.common.shutdown import register_shutdown_endpoint
-    register_shutdown_endpoint(app)
-except Exception:
-    logger.debug("shutdown endpoint not registered for balancer")
+# Security middleware
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
 
-# Register reload endpoint if available
-try:
-    from agents.common.reload import register_reload_endpoint
-    register_reload_endpoint(app)
-except Exception:
-    logger.debug("reload endpoint not registered for balancer")
-
-# Add metrics middleware
+# Metrics middleware (must be added after CORS middleware)
 app.middleware("http")(metrics.request_middleware)
+
+class ToolCall(BaseModel):
+    args: list[Any]
+    kwargs: dict[str, Any]
+
+@app.post("/distribute_load")
+def distribute_load_endpoint(call: ToolCall):
+    """Distribute workload across available agents"""
+    try:
+        result = distribute_load(*call.args, **call.kwargs)
+        logger.info("Load distributed successfully")
+        return {"status": "success", "data": result}
+    except Exception as e:
+        logger.error(f"Error distributing load: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/get_agent_status")
+def get_agent_status_endpoint(call: ToolCall):
+    """Get status of all agents for load balancing"""
+    try:
+        result = get_agent_status(*call.args, **call.kwargs)
+        logger.info("Retrieved agent status")
+        return {"status": "success", "data": result}
+    except Exception as e:
+        logger.error(f"Error getting agent status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/balance_workload")
+def balance_workload_endpoint(call: ToolCall):
+    """Balance workload based on agent capacity and performance"""
+    try:
+        result = balance_workload(*call.args, **call.kwargs)
+        logger.info("Workload balanced successfully")
+        return {"status": "success", "data": result}
+    except Exception as e:
+        logger.error(f"Error balancing workload: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/monitor_performance")
+def monitor_performance_endpoint(call: ToolCall):
+    """Monitor agent performance for load balancing decisions"""
+    try:
+        result = monitor_performance(*call.args, **call.kwargs)
+        logger.info("Performance monitoring completed")
+        return {"status": "success", "data": result}
+    except Exception as e:
+        logger.error(f"Error monitoring performance: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
 def health():
@@ -93,63 +142,18 @@ def health():
 def ready_endpoint():
     return {"ready": ready}
 
-
 @app.get("/metrics")
-def get_metrics():
-    """Prometheus metrics endpoint."""
-    from fastapi.responses import Response
-    return Response(metrics.get_metrics(), media_type="text/plain")
-
-# Pydantic models
-class ToolCall(BaseModel):
-    args: list = []
-    kwargs: dict = {}
-
-@app.post("/distribute_load")
-def distribute_load(call: ToolCall):
-    """Distribute workload across available agents"""
-    try:
-        result = tools.distribute_load(*call.args, **call.kwargs)
-        logger.info("Load distributed successfully")
-        return {"status": "success", "data": result}
-    except Exception as e:
-        logger.error(f"Error distributing load: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/get_agent_status")
-def get_agent_status(call: ToolCall):
-    """Get status of all agents for load balancing"""
-    try:
-        result = tools.get_agent_status(*call.args, **call.kwargs)
-        logger.info("Retrieved agent status")
-        return {"status": "success", "data": result}
-    except Exception as e:
-        logger.error(f"Error getting agent status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/balance_workload")
-def balance_workload(call: ToolCall):
-    """Balance workload based on agent capacity and performance"""
-    try:
-        result = tools.balance_workload(*call.args, **call.kwargs)
-        logger.info("Workload balanced successfully")
-        return {"status": "success", "data": result}
-    except Exception as e:
-        logger.error(f"Error balancing workload: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/monitor_performance")
-def monitor_performance(call: ToolCall):
-    """Monitor agent performance for load balancing decisions"""
-    try:
-        result = tools.monitor_performance(*call.args, **call.kwargs)
-        logger.info("Performance monitoring completed")
-        return {"status": "success", "data": result}
-    except Exception as e:
-        logger.error(f"Error monitoring performance: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+def metrics_endpoint():
+    """Prometheus metrics endpoint"""
+    return Response(metrics.get_metrics(), media_type="text/plain; charset=utf-8")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=BALANCER_AGENT_PORT)
-
+    logger.info(f"Starting Balancer Agent on port {BALANCER_AGENT_PORT}")
+    uvicorn.run(
+        "agents.balancer.refactor.main:app",
+        host="0.0.0.0",
+        port=BALANCER_AGENT_PORT,
+        reload=False,
+        log_level="info"
+    )

@@ -1,8 +1,28 @@
+"""
+Memory Agent Tools - Utility Functions
+=====================================
+
+Core utilities for the memory agent:
+- Embedding model management
+- Article storage operations
+- Vector search functionality
+- Feedback logging
+- Training data collection
+
+Architecture:
+- Shared embedding model with caching
+- Database connection pooling
+- GPU acceleration support
+- Comprehensive error handling
+"""
+
 import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
+import numpy as np
 import requests
 
 from common.observability import get_logger
@@ -12,23 +32,12 @@ try:
 except Exception:
     torch = None
 
-try:
-    # Prefer the shared model helper to avoid repeated loads
-    SentenceTransformer = None
-except Exception:
-    # Fallback: try to import SentenceTransformer directly
-    try:
-        from sentence_transformers import SentenceTransformer
-    except Exception:
-        SentenceTransformer = None
-
-# Import the new database connection utilities
+# Import database utilities
 from agents.common.database import execute_query, execute_query_single
 from agents.common.database import get_db_connection as get_pooled_connection
 
-"""
-Tools for the Memory Agent.
-"""
+# Configure centralized logging
+logger = get_logger(__name__)
 
 # Environment variables
 FEEDBACK_LOG = os.environ.get("MEMORY_FEEDBACK_LOG", "./feedback_memory.log")
@@ -38,30 +47,22 @@ POSTGRES_HOST = os.environ.get("POSTGRES_HOST")
 POSTGRES_DB = os.environ.get("POSTGRES_DB")
 POSTGRES_USER = os.environ.get("POSTGRES_USER")
 POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
-# Canonical cache folder for shared embedding model (keep consistent with engines)
-# Canonical cache folder for memory agent: prefer agent-local models directory
-DEFAULT_MODEL_CACHE = os.environ.get("MEMORY_V2_CACHE") or os.environ.get('MEMORY_MODEL_CACHE') or str(Path('./agents/memory/models').resolve())
 
-# Configure centralized logging
-logger = get_logger(__name__)
+# Canonical cache folder for shared embedding model
+DEFAULT_MODEL_CACHE = os.environ.get("MEMORY_MODEL_CACHE") or str(Path('./agents/memory/models').resolve())
 
-def get_db_connection():
-    """Establishes a connection to the PostgreSQL database using connection pooling."""
-    try:
-        # Use the new connection pooling system
-        return get_pooled_connection()
-    except Exception as e:
-        logger.error(f"Could not connect to PostgreSQL database: {e}")
-        return None
 
 def log_feedback(event: str, details: dict):
     """Logs feedback to a file."""
-    with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:
-        f.write(f"{datetime.now(timezone.utc).isoformat()}\t{event}\t{details}\n")
+    try:
+        with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:
+            f.write(f"{datetime.now(timezone.utc).isoformat()}\t{event}\t{details}\n")
+    except Exception as e:
+        logger.error(f"Error logging feedback: {e}")
+
 
 def get_embedding_model():
     """Return a SentenceTransformer instance, using the shared helper when available."""
-    # If shared helper is available, use it (it will import sentence_transformers under the hood)
     try:
         from agents.common.embedding import get_shared_embedding_model
         # Use a canonical cache folder and device so cached instances are reused
@@ -70,12 +71,19 @@ def get_embedding_model():
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         return get_shared_embedding_model(EMBEDDING_MODEL_NAME, cache_folder=DEFAULT_MODEL_CACHE, device=device)
     except Exception:
-        # Fallback to direct construction
-        if SentenceTransformer is None:
-            raise ImportError("sentence-transformers is not installed.")
-    from agents.common.embedding import get_shared_embedding_model
-    agent_cache = os.environ.get('MEMORY_MODEL_CACHE') or str(Path('./agents/memory/models').resolve())
-    return get_shared_embedding_model(EMBEDDING_MODEL_NAME, cache_folder=agent_cache)
+        # Fallback: use agent-local models directory
+        try:
+            from agents.common.embedding import get_shared_embedding_model
+            agent_cache = os.environ.get('MEMORY_MODEL_CACHE') or str(Path('./agents/memory/models').resolve())
+            device = None
+            if torch is not None:
+                device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            return get_shared_embedding_model(EMBEDDING_MODEL_NAME, cache_folder=agent_cache, device=device)
+        except Exception as e:
+            logger.warning(f"Could not load shared embedding model: {e}")
+            # Return None - caller should handle this gracefully
+            return None
+
 
 def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
     """Saves an article to the database and generates an embedding for the content.
@@ -102,6 +110,11 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
         # Use provided model if available to avoid re-loading model per-call
         if embedding_model is None:
             embedding_model = get_embedding_model()
+
+        if embedding_model is None:
+            logger.error("No embedding model available for article storage")
+            return {"error": "embedding_model_unavailable"}
+
         # encode may return numpy array; convert later to list of floats
         embedding = embedding_model.encode(content)
 
@@ -113,7 +126,6 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
             metadata_payload = json.dumps({"raw": str(metadata)})
 
         # Get the next available ID (simple approach without sequence)
-        # Use a stable alias and be robust to driver-specific key names
         next_id_result = execute_query_single("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM articles")
         next_id = 1
         if next_id_result:
@@ -163,42 +175,13 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
             logger.debug("Training system not available - skipping data collection")
         except Exception as e:
             logger.warning(f"Failed to collect training data: {e}")
-        
+
         # Return both 'article_id' and legacy 'id' key for backward compatibility
         return result
     except Exception as e:
         logger.error(f"Error saving article: {e}")
         return {"error": str(e)}
 
-def get_article(article_id: int) -> dict:
-    """Retrieves an article from the database by its ID."""
-    try:
-        article = execute_query_single(
-            "SELECT id, content, metadata FROM articles WHERE id = %s",
-            (article_id,)
-        )
-        if article:
-            return article
-        else:
-            return {"id": article_id, "error": "not_found"}
-    except Exception as e:
-        logger.error(f"Error retrieving article {article_id}: {e}")
-        return {"id": article_id, "error": "database_error"}
-
-def get_all_article_ids() -> dict:
-    """Retrieves all article IDs from the database."""
-    logger.info("Executing get_all_article_ids tool")
-    try:
-        rows = execute_query("SELECT id FROM articles")
-        if rows:
-            logger.info(f"Found {len(rows)} article IDs")
-            return {"article_ids": [row['id'] for row in rows]}
-        else:
-            logger.info("No article IDs found")
-            return {"article_ids": []}
-    except Exception as e:
-        logger.error(f"Error retrieving all article IDs: {e}")
-        return {"error": "database_error"}
 
 def vector_search_articles(query: str, top_k: int = 5) -> list:
     """Performs a vector search for articles using the memory agent."""
@@ -222,7 +205,7 @@ def vector_search_articles(query: str, top_k: int = 5) -> list:
         return []
 
 
-def vector_search_articles_local(query: str, top_k: int = 5) -> list:
+def vector_search_articles_local(query: str, top_k: int = 5, embedding_model=None) -> list:
     """Local in-process vector search implementation.
 
     This avoids making an HTTP call to the same process when the endpoint is
@@ -240,7 +223,13 @@ def vector_search_articles_local(query: str, top_k: int = 5) -> list:
 
     # Build embeddings matrix and compute cosine similarities
     try:
-        import numpy as np
+        # Use provided model or get one
+        if embedding_model is None:
+            embedding_model = get_embedding_model()
+
+        if embedding_model is None:
+            logger.error("No embedding model available for vector search")
+            return []
 
         # Load stored embeddings and ids
         ids = []
@@ -259,14 +248,9 @@ def vector_search_articles_local(query: str, top_k: int = 5) -> list:
         if len(embeddings) == 0:
             return []
 
-        # Compute query embedding using shared model (best-effort)
-        try:
-            model = get_embedding_model()
-            q_emb = model.encode(query)
-            q_emb = np.array(q_emb, dtype=float)
-        except Exception as e:
-            logger.warning(f"vector_search_articles_local: failed to compute query embedding: {e}")
-            return []
+        # Compute query embedding
+        q_emb = embedding_model.encode(query)
+        q_emb = np.array(q_emb, dtype=float)
 
         M = np.vstack(embeddings)
         # Normalize
@@ -288,7 +272,7 @@ def vector_search_articles_local(query: str, top_k: int = 5) -> list:
                 "content": contents[aid],
                 "metadata": metas.get(aid),
             })
-        
+
         # Collect prediction for training
         try:
             from training_system import collect_prediction
@@ -306,63 +290,8 @@ def vector_search_articles_local(query: str, top_k: int = 5) -> list:
             logger.debug("Training system not available - skipping data collection")
         except Exception as e:
             logger.warning(f"Failed to collect training data: {e}")
-        
+
         return results
     except Exception:
         logger.exception("vector_search_articles_local: error computing similarities")
         return []
-
-def log_training_example(task: str, input: dict, output: dict, critique: str) -> dict:
-    """Logs a training example using the memory agent."""
-    url = f"http://localhost:{MEMORY_AGENT_PORT}/log_training_example"
-    try:
-        response = requests.post(url, json={"task": task, "input": input, "output": output, "critique": critique}, timeout=5)
-        response.raise_for_status()
-        res = response.json()
-        # Normalize to expected dict with status
-        if isinstance(res, dict) and 'status' in res:
-            result = res
-        else:
-            result = {"status": "logged"}
-        
-        # Collect prediction for training
-        try:
-            from training_system import collect_prediction
-            collect_prediction(
-                agent_name="memory",
-                task_type="training_example_logging",
-                input_text=f"Task: {task}, Input: {str(input)}, Output: {str(output)}, Critique: {critique}",
-                prediction=result,
-                confidence=0.9,  # High confidence for successful logging
-                source_url=""
-            )
-            logger.debug("📊 Training data collected for training example logging")
-        except ImportError:
-            logger.debug("Training system not available - skipping data collection")
-        except Exception as e:
-            logger.warning(f"Failed to collect training data: {e}")
-        
-        return result
-    except requests.exceptions.RequestException as e:
-        logger.warning(f"log_training_example: memory agent request failed: {e}")
-        
-        error_result = {"status": "logged", "error": "memory_agent_unavailable"}
-        
-        # Collect prediction for training even on error
-        try:
-            from training_system import collect_prediction
-            collect_prediction(
-                agent_name="memory",
-                task_type="training_example_logging",
-                input_text=f"Task: {task}, Input: {str(input)}, Output: {str(output)}, Critique: {critique}",
-                prediction=error_result,
-                confidence=0.1,  # Low confidence for failed logging
-                source_url=""
-            )
-            logger.debug("📊 Training data collected for failed training example logging")
-        except ImportError:
-            logger.debug("Training system not available - skipping data collection")
-        except Exception as e:
-            logger.warning(f"Failed to collect training data: {e}")
-        
-        return error_result

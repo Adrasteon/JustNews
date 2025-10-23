@@ -6,55 +6,6 @@ status: current
 last_updated: 2025-09-12
 ---
 
-## [4.0.0] - 2025-10-23 - **PRODUCTION RELEASE - ENTERPRISE NEWS ANALYSIS SYSTEM**
-
-### 🎉 **Major Release: JustNews V4 Production Ready**
-
-#### **Core System**
-- **17 Specialized AI Agents**: Complete multi-agent ecosystem with MCP Bus communication
-- **GPU-Accelerated Processing**: TensorRT optimization with NVIDIA MPS resource isolation
-- **Enterprise Architecture**: Production-ready deployment with Docker, Kubernetes, and systemd support
-- **Comprehensive Monitoring**: Real-time dashboards, metrics, alerting, and observability
-- **Enterprise Security**: Authentication, authorization, encryption, and GDPR/CCPA compliance
-
-#### **Agent Ecosystem**
-- **MCP Bus** (Port 8000): Central communication hub with agent registration and routing
-- **Scout Agent** (Port 8002): 5-model AI content discovery with multi-source crawling
-- **Analyst Agent** (Port 8004): TensorRT-accelerated sentiment and bias analysis
-- **Fact Checker** (Port 8003): 5-model verification system with evidence validation
-- **Synthesizer V3** (Port 8005): 4-model content synthesis (BERTopic, BART, FLAN-T5, SentenceTransformers)
-- **Critic Agent** (Port 8006): Quality assessment and content review
-- **Chief Editor** (Port 8001): End-to-end workflow orchestration
-- **Memory Agent** (Port 8007): PostgreSQL + vector search storage
-- **Reasoning Agent** (Port 8008): Nucleoid symbolic logic engine
-- **Dashboard** (Port 8013): Real-time monitoring and management interface
-- **Additional Agents**: Newsreader, Crawler Control, GPU Orchestrator, Balancer, Archive, Analytics, Auth
-
-#### **Performance & Reliability**
-- **730+ articles/sec** GPU processing throughput
-- **99.9% uptime** with comprehensive error handling
-- **Enterprise GPU Management**: 23GB allocation with 69.6% efficiency
-- **Zero-touch Recovery**: Automatic post-reboot system restoration
-
-#### **APIs & Interfaces**
-- **REST APIs**: Archive (8021), Compliance (8021), Public (8014)
-- **GraphQL API** (Port 8020): Advanced queries and analytics
-- **Web Dashboards**: Real-time monitoring and business intelligence
-
-#### **Infrastructure**
-- **Multi-Platform Deployment**: Docker, Kubernetes, systemd support
-- **Monitoring Stack**: Prometheus, Grafana, centralized logging
-- **Security Framework**: JWT auth, data encryption, compliance monitoring
-- **Build System**: Makefile automation with 15+ targets
-
-#### **Code Quality**
-- **Comprehensive Refactoring**: 11 major areas completed
-- **Type Hints**: Full type annotation coverage
-- **Testing**: Complete test suite with mocking infrastructure
-- **Documentation**: Production-ready docs with setup guides
-
----
-
 # Changelog
 
 All notable changes to this project will be documented in this file.

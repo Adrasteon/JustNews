@@ -1,120 +1,130 @@
 """
-Main file for the Archive Agent.
+Archive Agent Main Application
+
+FastAPI application providing archive services with MCP integration.
+Handles article archiving, retrieval, search, and knowledge graph operations.
 """
-# main.py for Archive Agent
 
 import os
 from contextlib import asynccontextmanager
+from typing import Any, Dict, List, Optional
 
 import requests
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from agents.archive.archive_manager import ArchiveManager
+from agents.archive.refactor.archive_engine import get_archive_engine
+from common.metrics import JustNewsMetrics
 from common.observability import get_logger
 
-# Import metrics library
-from common.metrics import JustNewsMetrics
-
-# Configure logging
 logger = get_logger(__name__)
-
-ready = False
 
 # Environment variables
 ARCHIVE_AGENT_PORT = int(os.environ.get("ARCHIVE_AGENT_PORT", 8012))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
+# Global variables
+ready = False
+archive_engine = get_archive_engine()
+
+
 class MCPBusClient:
+    """MCP Bus client for agent registration."""
+
     def __init__(self, base_url: str = MCP_BUS_URL):
         self.base_url = base_url
 
-    def register_agent(self, agent_name: str, agent_address: str, tools: list):
+    def register_agent(self, agent_name: str, agent_address: str, tools: List[str]):
+        """Register agent with MCP Bus."""
         registration_data = {
             "name": agent_name,
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
+            response = requests.post(
+                f"{self.base_url}/register",
+                json=registration_data,
+                timeout=(2, 5)
+            )
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
             raise
 
-# Initialize archive manager
-archive_manager = ArchiveManager({
-    "type": "local",
-    "local_path": "./archive_storage",
-    "kg_storage_path": "./kg_storage"
-})
 
-# Define the lifespan context manager
+# Lifespan context manager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Application lifespan manager."""
     logger.info("Archive agent is starting up.")
+
+    # Register with MCP Bus
     mcp_bus_client = MCPBusClient()
     try:
         mcp_bus_client.register_agent(
             agent_name="archive",
             agent_address=f"http://localhost:{ARCHIVE_AGENT_PORT}",
-            tools=["archive_articles", "retrieve_article", "search_archive", "get_archive_stats"],
+            tools=[
+                "archive_articles",
+                "retrieve_article",
+                "search_archive",
+                "get_archive_stats",
+                "store_single_article",
+                "get_article_entities",
+                "search_knowledge_graph",
+                "link_entities"
+            ],
         )
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
         logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+
     global ready
     ready = True
     yield
 
     logger.info("Archive agent is shutting down.")
 
-# Initialize FastAPI with the lifespan context manager
-app = FastAPI(title="Archive Agent", lifespan=lifespan)
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="JustNewsAgent Archive Service",
+    description="Comprehensive article archiving with knowledge graph integration",
+    lifespan=lifespan
+)
 
 # Initialize metrics
 metrics = JustNewsMetrics("archive")
 
-# Register common shutdown endpoint
+# Register common endpoints
 try:
     from agents.common.shutdown import register_shutdown_endpoint
     register_shutdown_endpoint(app)
 except Exception:
-    logger.debug("shutdown endpoint not registered for archive")
+    logger.debug("Shutdown endpoint not registered for archive")
 
-# Register reload endpoint if available
 try:
     from agents.common.reload import register_reload_endpoint
     register_reload_endpoint(app)
 except Exception:
-    logger.debug("reload endpoint not registered for archive")
+    logger.debug("Reload endpoint not registered for archive")
 
 # Add metrics middleware
 app.middleware("http")(metrics.request_middleware)
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-@app.get("/ready")
-def ready_endpoint():
-    return {"ready": ready}
-
-
-@app.get("/metrics")
-def get_metrics():
-    """Prometheus metrics endpoint."""
-    from fastapi.responses import Response
-    return Response(metrics.get_metrics(), media_type="text/plain")
 
 # Pydantic models
 class ToolCall(BaseModel):
-    args: list
-    kwargs: dict
+    """Standard MCP tool call format."""
+    args: List[Any] = []
+    kwargs: Dict[str, Any] = {}
+
 
 class ArticleData(BaseModel):
+    """Article data model."""
     url: str
-    url_hash: str
+    url_hash: str = ""
     domain: str
     title: str
     content: str
@@ -124,169 +134,209 @@ class ArticleData(BaseModel):
     canonical: str = ""
     paywall_flag: bool = False
     confidence: float = 0.8
-    publisher_meta: dict = {}
+    publisher_meta: Dict[str, Any] = {}
     news_score: float = 0.7
     timestamp: str = ""
 
+
 class CrawlerResults(BaseModel):
+    """Crawler results model."""
     multi_site_crawl: bool = False
     sites_crawled: int = 0
     total_articles: int = 0
     processing_time_seconds: float = 0.0
     articles_per_second: float = 0.0
-    articles: list[ArticleData] = []
+    articles: List[ArticleData] = []
 
+
+# Health and readiness endpoints
+@app.get("/health")
+def health():
+    """Health check endpoint."""
+    return {"status": "ok", "service": "archive"}
+
+
+@app.get("/ready")
+def ready_endpoint():
+    """Readiness check endpoint."""
+    return {"ready": ready, "service": "archive"}
+
+
+@app.get("/metrics")
+def get_metrics():
+    """Prometheus metrics endpoint."""
+    from fastapi.responses import Response
+    return Response(metrics.get_metrics(), media_type="text/plain")
+
+
+# Tool endpoints
 @app.post("/archive_articles")
-async def archive_articles(call: ToolCall):
-    """Archive articles from crawler results with Knowledge Graph integration"""
+async def archive_articles_endpoint(call: ToolCall):
+    """Archive articles from crawler results."""
     try:
-        from datetime import datetime
+        from agents.archive.refactor.tools import archive_articles
 
-        kwargs = call.kwargs or {}
+        result = await archive_articles(**call.kwargs)
+        return {"status": "success", "data": result}
 
-        # Convert kwargs to CrawlerResults format
-        crawler_results = {
-            "multi_site_crawl": kwargs.get("multi_site_crawl", False),
-            "sites_crawled": kwargs.get("sites_crawled", 0),
-            "total_articles": kwargs.get("total_articles", 0),
-            "processing_time_seconds": kwargs.get("processing_time_seconds", 0.0),
-            "articles_per_second": kwargs.get("articles_per_second", 0.0),
-            "articles": kwargs.get("articles", [])
-        }
-
-        if not crawler_results["articles"]:
-            raise HTTPException(status_code=400, detail="No articles provided for archiving")
-
-        # Run async archive operation directly (no asyncio.run needed)
-        archive_summary = await archive_manager.archive_from_crawler(crawler_results)
-
-        logger.info(f"Archived {len(crawler_results['articles'])} articles")
-        return {"status": "success", "data": archive_summary}
     except Exception as e:
-        logger.error(f"Error archiving articles: {e}")
+        logger.error(f"Error in archive_articles endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/retrieve_article")
-async def retrieve_article(call: ToolCall):
-    """Retrieve archived article by storage key"""
-    try:
-        kwargs = call.kwargs or {}
-        storage_key = kwargs.get("storage_key")
 
+@app.post("/retrieve_article")
+async def retrieve_article_endpoint(call: ToolCall):
+    """Retrieve archived article by storage key."""
+    try:
+        from agents.archive.refactor.tools import retrieve_article
+
+        storage_key = call.kwargs.get("storage_key")
         if not storage_key:
             raise HTTPException(status_code=400, detail="storage_key is required")
 
-        # Run async retrieval operation directly (no asyncio.run needed)
-        article_data = await archive_manager.storage_manager.retrieve_article(storage_key)
-
-        if article_data is None:
+        article = await retrieve_article(storage_key)
+        if article is None:
             raise HTTPException(status_code=404, detail=f"Article not found: {storage_key}")
 
-        logger.info(f"Retrieved article: {storage_key}")
-        return {"status": "success", "data": article_data}
+        return {"status": "success", "data": article}
+
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error retrieving article: {e}")
+        logger.error(f"Error in retrieve_article endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/search_archive")
-async def search_archive(call: ToolCall):
-    """Search archived articles by metadata"""
+async def search_archive_endpoint(call: ToolCall):
+    """Search archived articles by metadata."""
     try:
-        kwargs = call.kwargs or {}
-        query = kwargs.get("query", "")
-        filters = kwargs.get("filters", {})
+        from agents.archive.refactor.tools import search_archive
+
+        query = call.kwargs.get("query", "")
+        filters = call.kwargs.get("filters", {})
 
         if not query:
             raise HTTPException(status_code=400, detail="query is required")
 
-        # Run async search operation directly (no asyncio.run needed)
-        storage_keys = await archive_manager.metadata_index.search_articles(query, filters)
+        result = await search_archive(query, filters)
+        return {"status": "success", "data": result}
 
-        logger.info(f"Search query '{query}' returned {len(storage_keys)} results")
-        return {"status": "success", "data": {"query": query, "results": storage_keys, "count": len(storage_keys)}}
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error searching archive: {e}")
+        logger.error(f"Error in search_archive endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/get_archive_stats")
-def get_archive_stats(call: ToolCall):
-    """Get comprehensive archive statistics"""
+def get_archive_stats_endpoint(call: ToolCall):
+    """Get comprehensive archive statistics."""
     try:
-        import os
-        from pathlib import Path
+        from agents.archive.refactor.tools import get_archive_stats
 
-        # Get storage statistics
-        storage_path = Path("./archive_storage")
-        total_files = 0
-        total_size = 0
-
-        if storage_path.exists():
-            for file_path in storage_path.rglob("*"):
-                if file_path.is_file():
-                    total_files += 1
-                    total_size += file_path.stat().st_size
-
-        # Get Knowledge Graph statistics
-        kg_stats = archive_manager.kg_manager.get_statistics() if hasattr(archive_manager.kg_manager, 'get_statistics') else {}
-
-        stats = {
-            "storage_type": archive_manager.storage_config.get("type", "local"),
-            "total_archived_articles": total_files,
-            "total_storage_size_bytes": total_size,
-            "total_storage_size_mb": round(total_size / (1024 * 1024), 2),
-            "storage_path": str(storage_path.absolute()),
-            "knowledge_graph_enabled": True,
-            "knowledge_graph_stats": kg_stats,
-            "archive_manager_initialized": True,
-            "phase3_integration": True
-        }
-
-        logger.info(f"Retrieved archive statistics: {total_files} articles, {stats['total_storage_size_mb']} MB")
+        stats = get_archive_stats()
         return {"status": "success", "data": stats}
+
     except Exception as e:
-        logger.error(f"Error getting archive stats: {e}")
+        logger.error(f"Error in get_archive_stats endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/store_single_article")
-async def store_single_article(call: ToolCall):
-    """Store a single article with complete metadata"""
+async def store_single_article_endpoint(call: ToolCall):
+    """Store a single article with complete metadata."""
     try:
-        from datetime import datetime
+        from agents.archive.refactor.tools import store_single_article
 
-        kwargs = call.kwargs or {}
+        result = await store_single_article(**call.kwargs)
+        return {"status": "success", "data": result}
 
-        # Validate required fields
-        required_fields = ["url", "title", "content", "domain"]
-        for field in required_fields:
-            if field not in kwargs:
-                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
-
-        # Prepare article data
-        article_data = {
-            "url": kwargs["url"],
-            "url_hash": kwargs.get("url_hash", ""),
-            "domain": kwargs["domain"],
-            "title": kwargs["title"],
-            "content": kwargs["content"],
-            "extraction_method": kwargs.get("extraction_method", "generic_dom"),
-            "status": kwargs.get("status", "success"),
-            "crawl_mode": kwargs.get("crawl_mode", "generic_site"),
-            "canonical": kwargs.get("canonical", kwargs["url"]),
-            "paywall_flag": kwargs.get("paywall_flag", False),
-            "confidence": kwargs.get("confidence", 0.8),
-            "publisher_meta": kwargs.get("publisher_meta", {}),
-            "news_score": kwargs.get("news_score", 0.7),
-            "timestamp": kwargs.get("timestamp", datetime.now().isoformat())
-        }
-
-        # Run async storage operation directly (no asyncio.run needed)
-        storage_key = await archive_manager.storage_manager.store_article(article_data)
-
-        logger.info(f"Stored single article: {kwargs['title'][:50]}...")
-        return {"status": "success", "data": {"storage_key": storage_key, "article_title": kwargs["title"]}}
     except Exception as e:
-        logger.error(f"Error storing single article: {e}")
+        logger.error(f"Error in store_single_article endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/get_article_entities")
+async def get_article_entities_endpoint(call: ToolCall):
+    """Get knowledge graph entities for an article."""
+    try:
+        from agents.archive.refactor.tools import get_article_entities
+
+        storage_key = call.kwargs.get("storage_key")
+        if not storage_key:
+            raise HTTPException(status_code=400, detail="storage_key is required")
+
+        entities = await get_article_entities(storage_key)
+        return {"status": "success", "data": entities}
+
+    except Exception as e:
+        logger.error(f"Error in get_article_entities endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/search_knowledge_graph")
+async def search_knowledge_graph_endpoint(call: ToolCall):
+    """Search the knowledge graph for entities."""
+    try:
+        from agents.archive.refactor.tools import search_knowledge_graph
+
+        query = call.kwargs.get("query", "")
+        if not query:
+            raise HTTPException(status_code=400, detail="query is required")
+
+        results = await search_knowledge_graph(query)
+        return {"status": "success", "data": {"query": query, "results": results, "count": len(results)}}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in search_knowledge_graph endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/link_entities")
+async def link_entities_endpoint(call: ToolCall):
+    """Link article entities to external knowledge bases."""
+    try:
+        from agents.archive.refactor.tools import link_entities
+
+        article_data = call.kwargs.get("article_data", {})
+        if not article_data:
+            raise HTTPException(status_code=400, detail="article_data is required")
+
+        result = await link_entities(article_data)
+        return {"status": "success", "data": result}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in link_entities endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Additional utility endpoints
+@app.get("/api/health")
+async def api_health():
+    """Detailed health check with component status."""
+    try:
+        health_data = await archive_engine.health_check()
+        return health_data
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+
+
+@app.get("/api/stats")
+def api_stats():
+    """Get archive statistics via REST API."""
+    try:
+        stats = archive_engine.get_archive_stats()
+        return stats
+    except Exception as e:
+        logger.error(f"Stats retrieval failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}")
+
 
 if __name__ == "__main__":
     import uvicorn

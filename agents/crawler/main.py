@@ -1,24 +1,26 @@
 """
 Main file for the Crawler Agent.
+Unified production crawling agent with MCP integration.
 """
 # main.py for Crawler Agent
 
 import os
 from contextlib import asynccontextmanager
+from typing import Dict, Any
 
 import requests
-from fastapi import FastAPI, HTTPException
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from typing import Dict, Any
-import uuid
-import asyncio
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
+import uuid
+import asyncio
 
 from common.observability import get_logger
 from common.metrics import JustNewsMetrics
+from .crawler_engine import CrawlerEngine
+from .tools import get_crawler_info
 
 # Configure logging
 logger = get_logger(__name__)
@@ -28,7 +30,7 @@ ready = False
 crawl_jobs: Dict[str, Any] = {}
 
 # Environment variables
-CRAWLER_AGENT_PORT = int(os.environ.get("CRAWLER_AGENT_PORT", 8015))  # Updated to 8015 per canonical port mapping
+CRAWLER_AGENT_PORT = int(os.environ.get("CRAWLER_AGENT_PORT", 8015))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
 # Security configuration
@@ -112,10 +114,9 @@ async def unified_production_crawl_endpoint(call: ToolCall, background_tasks: Ba
     logger.info(f"Enqueueing background crawl job {job_id} for {len(domains)} domains")
     # Define background task
     async def _crawl_task(domains, max_articles, concurrent, job_id):
-        from agents.crawler.unified_production_crawler import UnifiedProductionCrawler
         try:
             crawl_jobs[job_id]["status"] = "running"
-            async with UnifiedProductionCrawler() as crawler:
+            async with CrawlerEngine() as crawler:
                 await crawler._load_ai_models()
                 result = await crawler.run_unified_crawl(domains, max_articles, concurrent)
             # Store result in job status
@@ -150,34 +151,33 @@ def clear_jobs():
     for job_id in list(crawl_jobs.keys()):
         del crawl_jobs[job_id]
         cleared_jobs.append(job_id)
-    
+
     return {"cleared_jobs": cleared_jobs, "message": f"Cleared {len(cleared_jobs)} jobs from memory"}
 
 @app.post("/reset_crawler")
 def reset_crawler():
     """Completely reset the crawler state - clear all jobs and reset performance metrics."""
     global crawl_jobs
-    
+
     # Clear all jobs
     cleared_jobs = list(crawl_jobs.keys())
     crawl_jobs.clear()
-    
+
     # Reset performance metrics if they exist
     try:
-        from agents.crawler.performance_monitoring import reset_performance_metrics
+        from .tools import reset_performance_metrics
         reset_performance_metrics()
     except ImportError:
         pass  # Performance monitoring might not be available
-    
+
     return {
-        "cleared_jobs": cleared_jobs, 
+        "cleared_jobs": cleared_jobs,
         "message": f"Completely reset crawler: cleared {len(cleared_jobs)} jobs and reset metrics"
     }
 
 @app.post("/get_crawler_info")
 def get_crawler_info_endpoint(call: ToolCall):
     try:
-        from agents.crawler.unified_production_crawler import get_crawler_info
         logger.info(f"Calling get_crawler_info with args: {call.args} and kwargs: {call.kwargs}")
         return get_crawler_info(*call.args, **call.kwargs)
     except Exception as e:
@@ -187,7 +187,7 @@ def get_crawler_info_endpoint(call: ToolCall):
 @app.post("/get_performance_metrics")
 def get_performance_metrics_endpoint(call: ToolCall):
     try:
-        from agents.crawler.performance_monitoring import get_performance_monitor
+        from .tools import get_performance_monitor
         monitor = get_performance_monitor()
         logger.info(f"Calling get_performance_metrics with args: {call.args} and kwargs: {call.kwargs}")
         return monitor.get_current_metrics()
@@ -212,7 +212,7 @@ if __name__ == "__main__":
     import uvicorn
     logger.info(f"Starting Crawler Agent on port {CRAWLER_AGENT_PORT}")
     uvicorn.run(
-        "agents.crawler.main:app",
+        "agents.crawler.refactor.main:app",
         host="0.0.0.0",
         port=CRAWLER_AGENT_PORT,
         reload=False,

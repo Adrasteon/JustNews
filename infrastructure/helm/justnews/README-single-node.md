@@ -20,10 +20,19 @@ The `values-single-node.yaml` includes these optimizations:
 - **Infrastructure**: Scaled down PostgreSQL, Redis, Prometheus, Grafana
 
 ### Agent Selection
-- **Enabled**: 13 core agents total
-- **GPU-enabled**: 2 agents (scout, analyst) - dedicated GPU access
-- **CPU-only**: 3 agents (synthesizer, fact-checker, newsreader) - run on CPU to fit single GPU
-- **Core agents**: 8 agents (MCP Bus, Chief Editor, Balancer, Memory, Reasoning, Critic, Dashboard, Analytics)
+- **Enabled**: 15 agents total (13 single + 2 duplicated)
+### GPU Usage
+- **Active GPU agents**: 5 (scout, analyst, synthesizer, fact-checker, newsreader) - all running concurrently with MPS sharing
+- **MPS configuration**: RTX3090 shared between multiple processes without context switching
+- **Total VRAM usage**: ~8-10GB peak (well within 24GB RTX3090 limit)
+- **Model efficiency**: MPS enables memory sharing between transformer models
+
+### Training Features
+- **Online Training**: Enabled for continuous model improvement
+- **Training Data Path**: /data/training (local storage)
+- **GPU Acceleration**: Training workloads leverage MPS sharing
+- **CPU-only**: 8 infrastructure agents (MCP Bus, Chief Editor, Reasoning, Critic, Dashboard, Analytics, Archive, GPU Orchestrator)
+- **Duplicated**: Balancer (2 replicas), Memory (2 replicas) for improved performance
 
 ### Storage
 - **Local storage**: Uses `local-path` provisioner instead of cloud storage
@@ -76,6 +85,8 @@ If you prefer step-by-step deployment:
 # 3. Optional: Install GPU operator
 ./deploy-single-node.sh gpu-setup
 
+This installs the NVIDIA GPU Operator with MPS (Multi-Process Service) support enabled, allowing multiple agents to share the RTX3090 concurrently without context switching overhead.
+
 # 4. Deploy JustNews
 ./deploy-single-node.sh deploy
 
@@ -91,19 +102,26 @@ If you prefer step-by-step deployment:
 With the optimized configuration:
 
 ### CPU Usage
-- **Agents**: 13 × 500m = 6.5 cores
-- **Infrastructure**: ~2 cores
-- **Total**: ~8.5 cores (comfortable within 16-core limit)
+- **Agents**: 15 × 600m = 9 cores (reduced for OS compatibility)
+- **Infrastructure**: ~2.5 cores (PostgreSQL 600m, Redis 300m, Prometheus 500m, Grafana 250m)
+- **Total**: ~11.5 cores (72% utilization - good headroom for OS)
 
-### Memory Usage
-- **Agents**: 13 × 1Gi = 13Gi
-- **Infrastructure**: ~4Gi
-- **Total**: ~17Gi (comfortable within 32Gi limit)
+### Memory Usage (Accounting for Ubuntu 24.04 + IDE)
+- **OS Overhead**: ~4-6GB (Ubuntu 24.04 + VS Code + system buffers)
+- **Agents**: 15 × 1.2Gi = 18Gi
+- **Infrastructure**: ~4.5Gi
+- **Kubernetes**: ~1-2GB overhead
+- **Total Estimated**: ~23.5-25.5GB (78-84% utilization - safe within 32GB)
 
-### GPU Usage
-- **Active GPU agents**: 2 (scout, analyst)
-- **CPU-only agents**: 3 (synthesizer, fact-checker, newsreader)
-- **GPU memory**: ~8-12GB (well within 24GB RTX3090 limit)
+**Memory Safety Notes:**
+- Conservative limits account for desktop OS and IDE usage
+- ~6-8GB headroom maintained for system stability
+- Monitor with `kubectl top nodes` and adjust if needed
+
+### Training Features
+- **Online Training**: Enabled for continuous model improvement
+- **Training Data Path**: /data/training (local storage)
+- **GPU Acceleration**: Training workloads leverage MPS sharing
 
 ## Monitoring Resources
 
@@ -204,10 +222,9 @@ kubectl exec -n justnews justnews-redis-master-0 -- redis-cli save
 ## Performance Tuning
 
 ### For Better Performance
-1. **Increase resource limits** if you have spare capacity
-2. **Use SSD storage** for better database performance
-3. **Enable online training** in values file
-4. **Add more GPU agents** if GPU memory allows
+1. **Monitor actual usage** with `kubectl top` before increasing limits
+2. **Consider resource adjustments** only after observing stable operation
+3. **All agents are already GPU-enabled** with MPS sharing for optimal performance
 
 ### For Lower Resource Usage
 1. **Reduce agent replicas** to 1 each

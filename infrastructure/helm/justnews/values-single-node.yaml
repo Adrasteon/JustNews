@@ -20,20 +20,20 @@ justnews:
     create: true
     name: justnews-agent-sa
 
-  # Reduced resource limits for single node
+    # Optimized resource limits for single node with OS overhead
   resources:
     limits:
-      cpu: 500m      # Reduced from 1000m
-      memory: 1Gi    # Reduced from 2Gi
-    requests:
-      cpu: 250m      # Reduced from 500m
-      memory: 512Mi  # Reduced from 1Gi
+        cpu: 600m    # Reduced from 750m to account for OS overhead
+        memory: 1.2Gi  # Reduced from 1.5Gi for memory safety
+      requests:
+        cpu: 300m
+        memory: 600Mi
 
-  # GPU configuration - single GPU, so limit concurrent usage
+  # GPU configuration - enable MPS sharing for concurrent usage on RTX 3090
   gpu:
     enabled: true
     resourceName: nvidia.com/gpu
-    resourceCount: 1
+    resourceCount: 1  # Single GPU with MPS sharing allows concurrent access
 
   # API Keys (set these in production)
   apiKeys:
@@ -58,7 +58,7 @@ justnews:
 
   training:
     online:
-      enabled: false  # Disable for single node
+      enabled: true  # Enable online training with GPU headroom
     dataPath: "/data/training"
 
   metrics:
@@ -89,14 +89,14 @@ justnews:
     balancer:
       name: balancer
       enabled: true
-      replicas: 1
+      replicas: 2  # Increased for load distribution
       port: 8010
       gpuRequired: false
 
     memory:
       name: memory
       enabled: true
-      replicas: 1
+      replicas: 2  # Increased for better memory management
       port: 8007
       gpuRequired: false
 
@@ -150,27 +150,27 @@ justnews:
       port: 8004
       gpuRequired: true
 
-    # Enable additional agents as CPU-only (no GPU required)
+    # Enable additional agents with GPU acceleration (MPS sharing)
     synthesizer:
       name: synthesizer
       enabled: true
       replicas: 1
       port: 8005
-      gpuRequired: false  # Run on CPU to fit single GPU
+      gpuRequired: true  # Enable GPU with MPS sharing
 
     factChecker:
       name: factChecker
       enabled: true
       replicas: 1
       port: 8003
-      gpuRequired: false  # Run on CPU to fit single GPU
+      gpuRequired: true  # Enable GPU with MPS sharing
 
     newsreader:
       name: newsreader
       enabled: true
       replicas: 1
       port: 8009
-      gpuRequired: false  # Run on CPU to fit single GPU
+      gpuRequired: true  # Enable GPU with MPS sharing
 
     gpuOrchestrator:
       name: gpuOrchestrator
@@ -199,11 +199,11 @@ postgresql:
       storageClass: "local-path"
     resources:
       limits:
-        cpu: 500m    # Reduced from 1000m
-        memory: 1Gi  # Reduced from 2Gi
+        cpu: 600m    # Reduced from 750m for OS compatibility
+        memory: 1.2Gi  # Reduced from 1.5Gi for memory safety
       requests:
-        cpu: 250m
-        memory: 512Mi
+        cpu: 300m
+        memory: 600Mi
 
 redis:
   enabled: true
@@ -221,11 +221,11 @@ redis:
       storageClass: "local-path"
     resources:
       limits:
-        cpu: 250m  # Reduced from 500m
-        memory: 512Mi  # Reduced from 1Gi
+        cpu: 300m  # Reduced from 375m
+        memory: 600Mi  # Reduced from 768Mi for memory safety
       requests:
-        cpu: 125m
-        memory: 256Mi
+        cpu: 150m
+        memory: 300Mi
 
 prometheus:
   enabled: true

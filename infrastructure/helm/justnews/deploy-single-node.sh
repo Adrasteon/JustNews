@@ -106,19 +106,34 @@ install_k3s() {
 
 # Install NVIDIA GPU operator (optional)
 install_nvidia_operator() {
-    log_info "Installing NVIDIA GPU Operator..."
+    log_info "Installing NVIDIA GPU Operator with MPS support for RTX 3090..."
 
     # Add NVIDIA Helm repository
     helm repo add nvidia https://nvidia.github.io/gpu-operator
     helm repo update
 
-    # Install GPU operator
+    # Install GPU operator with MPS enabled for RTX 3090 (no MIG support)
     helm install --wait --generate-name \
          -n gpu-operator --create-namespace \
          nvidia/gpu-operator \
-         --set driver.enabled=false  # Assume drivers are pre-installed
+         --set driver.enabled=false \  # Assume drivers are pre-installed
+         --set devicePlugin.config.name=nvidia-mps-config
 
-    log_success "NVIDIA GPU Operator installed"
+    # Create MPS config map for GPU sharing
+    kubectl apply -f - <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvidia-mps-config
+  namespace: gpu-operator
+data:
+  config.yaml: |
+    version: v1
+    sharing:
+      mps: true
+EOF
+
+    log_success "NVIDIA GPU Operator installed with MPS support"
 }
 
 # Install Helm

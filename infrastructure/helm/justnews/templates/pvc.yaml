@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "justnews.fullname" . }}-postgres-pvc
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: postgres
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.postgresql.primary.persistence.size }}
+  storageClassName: {{ .Values.postgresql.primary.persistence.storageClass | default "" }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "justnews.fullname" . }}-redis-pvc
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: redis
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.redis.master.persistence.size }}
+  storageClassName: {{ .Values.redis.master.persistence.storageClass | default "" }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "justnews.fullname" . }}-prometheus-pvc
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: prometheus
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.prometheus.server.persistentVolume.size }}
+  storageClassName: {{ .Values.prometheus.server.persistentVolume.storageClass | default "" }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "justnews.fullname" . }}-grafana-pvc
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: grafana
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.grafana.persistence.size }}
+  storageClassName: {{ .Values.grafana.persistence.storageClass | default "" }}

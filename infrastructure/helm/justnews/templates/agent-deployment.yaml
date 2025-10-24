@@ -1,0 +1,97 @@
+{{- define "justnews.agent.deployment" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "justnews.fullname" . }}-{{ .agent.name }}
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: {{ .agent.name }}
+    component: agent
+    gpu-required: {{ .agent.gpuRequired | quote }}
+spec:
+  replicas: {{ .agent.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .agent.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .agent.name }}
+        component: agent
+        gpu-required: {{ .agent.gpuRequired | quote }}
+    spec:
+      {{- if .Values.justnews.serviceAccount.create }}
+      serviceAccountName: {{ include "justnews.serviceAccountName" . }}
+      {{- end }}
+      containers:
+      - name: {{ .agent.name }}
+        image: {{ .Values.justnews.image.registry }}/{{ .agent.name }}:{{ .Values.justnews.image.tag }}
+        imagePullPolicy: {{ include "justnews.imagePullPolicy" . }}
+        ports:
+        - containerPort: {{ .agent.port }}
+          name: http
+        envFrom:
+        - configMapRef:
+            name: {{ include "justnews.fullname" . }}-config
+        - secretRef:
+            name: {{ include "justnews.fullname" . }}-secrets
+        env:
+        - name: AGENT_NAME
+          value: "{{ .agent.name }}"
+        - name: AGENT_PORT
+          value: "{{ .agent.port }}"
+        resources:
+          limits:
+            cpu: {{ .Values.justnews.resources.limits.cpu }}
+            memory: {{ .Values.justnews.resources.limits.memory }}
+            {{- if and .Values.justnews.gpu.enabled .agent.gpuRequired }}
+            nvidia.com/gpu: {{ .Values.justnews.gpu.resourceCount | quote }}
+            {{- end }}
+          requests:
+            cpu: {{ .Values.justnews.resources.requests.cpu }}
+            memory: {{ .Values.justnews.resources.requests.memory }}
+            {{- if and .Values.justnews.gpu.enabled .agent.gpuRequired }}
+            nvidia.com/gpu: {{ .Values.justnews.gpu.resourceCount | quote }}
+            {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      {{- if .agent.gpuRequired }}
+      nodeSelector:
+        accelerator: nvidia-tesla-k80
+      tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .agent.name }}-service
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: {{ .agent.name }}
+    component: agent
+spec:
+  selector:
+    app: {{ .agent.name }}
+  ports:
+  - port: {{ .agent.port }}
+    targetPort: http
+    name: http
+  type: ClusterIP
+{{- end -}}

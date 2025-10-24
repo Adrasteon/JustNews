@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "justnews.fullname" . }}-postgres
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: postgres
+    component: database
+spec:
+  replicas: {{ .Values.postgresql.primary.persistence.enabled | ternary 1 1 }}
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+        component: database
+    spec:
+      containers:
+      - name: postgres
+        image: {{ .Values.postgresql.image.registry }}/{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}
+        imagePullPolicy: {{ include "justnews.imagePullPolicy" . }}
+        ports:
+        - containerPort: 5432
+          name: postgres
+        envFrom:
+        - secretRef:
+            name: {{ include "justnews.fullname" . }}-postgres-secrets
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        resources:
+          limits:
+            cpu: {{ .Values.postgresql.primary.resources.limits.cpu }}
+            memory: {{ .Values.postgresql.primary.resources.limits.memory }}
+          requests:
+            cpu: {{ .Values.postgresql.primary.resources.requests.cpu }}
+            memory: {{ .Values.postgresql.primary.resources.requests.memory }}
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - {{ .Values.postgresql.auth.username }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - {{ .Values.postgresql.auth.username }}
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: postgres-data
+        persistentVolumeClaim:
+          claimName: {{ include "justnews.fullname" . }}-postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "justnews.fullname" . }}-postgres
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: postgres
+    component: database
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+    name: postgres
+  type: ClusterIP

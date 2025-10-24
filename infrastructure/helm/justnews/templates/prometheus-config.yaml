@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "justnews.fullname" . }}-prometheus-config
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: prometheus
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    rule_files:
+      # - "first_rules.yml"
+      # - "second_rules.yml"
+
+    scrape_configs:
+      # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+      # JustNews Agents
+      {{- range $agent := .Values.justnews.agents }}
+      - job_name: '{{ $agent.name }}'
+        static_configs:
+          - targets: ['{{ $agent.name }}-service:{{ $agent.port }}']
+        scrape_interval: 30s
+        metrics_path: /metrics
+      {{- end }}
+
+      # MCP Bus
+      - job_name: 'mcp-bus'
+        static_configs:
+          - targets: ['{{ include "justnews.fullname" . }}-mcp-bus:{{ .Values.mcpBus.port }}']
+        scrape_interval: 30s
+        metrics_path: /metrics
+
+      # PostgreSQL
+      - job_name: 'postgres'
+        static_configs:
+          - targets: ['{{ include "justnews.fullname" . }}-postgres:5432']
+        scrape_interval: 30s
+
+      # Redis
+      - job_name: 'redis'
+        static_configs:
+          - targets: ['{{ include "justnews.fullname" . }}-redis:6379']
+        scrape_interval: 30s

@@ -1,0 +1,316 @@
+# Default values for JustNews Helm chart
+# This is a YAML-formatted file.
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# JustNews application configuration
+justnews:
+  # Namespace override
+  namespace: justnews
+
+  # Image configuration
+  image:
+    registry: justnews
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  # Service account configuration
+  serviceAccount:
+    create: true
+    name: justnews-agent-sa
+
+  # Resource limits and requests
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+  # GPU configuration
+  gpu:
+    enabled: true
+    resourceName: nvidia.com/gpu
+    resourceCount: 1
+
+  # API Keys
+  apiKeys:
+    openai: "change_me_in_production"
+    anthropic: "change_me_in_production"
+    github: "change_me_in_production"
+
+  # Security configuration
+  security:
+    secretKey: "change_me_in_production"
+    jwtSecretKey: "change_me_in_production"
+
+  # External service credentials
+  external:
+    newsApiKey: "change_me_in_production"
+    twitterApiKey: "change_me_in_production"
+    twitterApiSecret: "change_me_in_production"
+    twitterAccessToken: "change_me_in_production"
+    twitterAccessTokenSecret: "change_me_in_production"
+
+  # Archive configuration
+  archive:
+    storagePath: "/data/archive"
+    retentionDays: 365
+
+  # Training configuration
+  training:
+    online:
+      enabled: true
+    dataPath: "/data/training"
+
+  # Metrics configuration
+  metrics:
+    enabled: true
+    port: 9090
+
+  # Application settings
+  logLevel: "INFO"
+  environment: "production"
+  debug: false
+
+  # Agent configurations
+  agents:
+    scout:
+      name: scout
+      enabled: true
+      replicas: 1
+      port: 8002
+      gpuRequired: true
+    analyst:
+      name: analyst
+      enabled: true
+      replicas: 1
+      port: 8004
+      gpuRequired: true
+    synthesizer:
+      name: synthesizer
+      enabled: true
+      replicas: 1
+      port: 8005
+      gpuRequired: true
+    factChecker:
+      name: factChecker
+      enabled: true
+      replicas: 1
+      port: 8003
+      gpuRequired: true
+    memory:
+      name: memory
+      enabled: true
+      replicas: 1
+      port: 8007
+      gpuRequired: false
+    chiefEditor:
+      name: chiefEditor
+      enabled: true
+      replicas: 1
+      port: 8001
+      gpuRequired: false
+    reasoning:
+      name: reasoning
+      enabled: true
+      replicas: 1
+      port: 8008
+      gpuRequired: false
+    newsreader:
+      name: newsreader
+      enabled: true
+      replicas: 1
+      port: 8009
+      gpuRequired: true
+    critic:
+      name: critic
+      enabled: true
+      replicas: 1
+      port: 8006
+      gpuRequired: false
+    dashboard:
+      name: dashboard
+      enabled: true
+      replicas: 1
+      port: 8013
+      gpuRequired: false
+    analytics:
+      name: analytics
+      enabled: true
+      replicas: 1
+      port: 8011
+      gpuRequired: false
+    archive:
+      name: archive
+      enabled: true
+      replicas: 1
+      port: 8012
+      gpuRequired: false
+    balancer:
+      name: balancer
+      enabled: true
+      replicas: 1
+      port: 8010
+      gpuRequired: false
+    mcpBus:
+      name: mcpBus
+      enabled: true
+      replicas: 1
+      port: 8000
+      gpuRequired: false
+    gpuOrchestrator:
+      name: gpuOrchestrator
+      enabled: true
+      replicas: 1
+      port: 8015
+      gpuRequired: false
+
+# PostgreSQL configuration
+postgresql:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: postgres
+    tag: "15"
+  auth:
+    postgresPassword: "change_me_in_production"
+    username: justnews
+    password: "change_me_in_production"
+    database: justnews
+  architecture: standalone
+  primary:
+    persistence:
+      enabled: true
+      size: 50Gi
+      storageClass: ""
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+
+# Redis configuration
+redis:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: redis
+    tag: "7"
+  auth:
+    password: "change_me_in_production"
+  architecture: standalone
+  master:
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: ""
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+# Prometheus configuration
+prometheus:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: prom/prometheus
+    tag: "v2.45.0"
+  server:
+    persistentVolume:
+      enabled: true
+      size: 20Gi
+      storageClass: ""
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+  serviceAccounts:
+    server:
+      create: true
+      name: prometheus
+
+# Grafana configuration
+grafana:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: grafana/grafana
+    tag: "9.5.0"
+  adminUser: admin
+  adminPassword: "change_me_in_production"
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: justnews.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service:
+            name: justnews-grafana
+            port: 3000
+  tls:
+    - secretName: justnews-tls
+      hosts:
+        - justnews.local
+
+# Autoscaling configuration
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Security configuration
+security:
+  networkPolicies:
+    enabled: true
+  podSecurityStandards:
+    enabled: true
+  rbac:
+    enabled: true
+
+# Network policy configuration
+networkPolicy:
+  enabled: true
+
+# MCP Bus configuration
+mcpBus:
+  port: 8000
+  replicas: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi

@@ -1,0 +1,59 @@
+{{- if .Values.autoscaling.enabled -}}
+{{- range $agent := .Values.justnews.agents }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "justnews.fullname" $ }}-{{ $agent.name }}-hpa
+  labels:
+    {{- include "justnews.labels" $ | nindent 4 }}
+    app: {{ $agent.name }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "justnews.fullname" $ }}-{{ $agent.name }}
+  minReplicas: {{ $agent.minReplicas | default $.Values.autoscaling.minReplicas }}
+  maxReplicas: {{ $agent.maxReplicas | default $.Values.autoscaling.maxReplicas }}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ $.Values.autoscaling.targetCPUUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: {{ $.Values.autoscaling.targetMemoryUtilizationPercentage }}
+---
+{{- end }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "justnews.fullname" . }}-mcp-bus-hpa
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: mcp-bus
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "justnews.fullname" . }}-mcp-bus
+  minReplicas: {{ .Values.mcpBus.minReplicas | default .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.mcpBus.maxReplicas | default .Values.autoscaling.maxReplicas }}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
+{{- end }}

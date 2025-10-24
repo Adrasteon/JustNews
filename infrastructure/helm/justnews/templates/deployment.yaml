@@ -1,0 +1,4 @@
+{{- range $agent := .Values.justnews.agents }}
+{{- include "justnews.agent.deployment" (dict "Chart" $.Chart "Release" $.Release "Values" $.Values "agent" $agent) }}
+---
+{{- end }}

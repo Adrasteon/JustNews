@@ -1,0 +1,123 @@
+# Override file for local development
+# This file contains development-specific configurations that override the main compose file
+
+version: '3.8'
+
+services:
+  # Development overrides - reduce resource usage for local testing
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: dev_password
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  redis:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # Development service overrides - single replicas for local testing
+  scout:
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+
+  memory:
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+
+  reasoning:
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+
+  balancer:
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+
+  # GPU services - commented out for non-GPU development
+  # analyst:
+  #   deploy:
+  #     replicas: 1
+  #     resources:
+  #       limits:
+  #         memory: 2G
+  #       reservations:
+  #         memory: 1G
+
+  # synthesizer:
+  #   deploy:
+  #     replicas: 1
+  #     resources:
+  #       limits:
+  #         memory: 2G
+  #       reservations:
+  #         memory: 1G
+
+  # fact-checker:
+  #   deploy:
+  #     replicas: 1
+  #     resources:
+  #       limits:
+  #         memory: 2G
+  #       reservations:
+  #         memory: 1G
+
+  # newsreader:
+  #   deploy:
+  #     replicas: 1
+  #     resources:
+  #       limits:
+  #         memory: 2G
+  #       reservations:
+  #         memory: 1G
+
+  # Monitoring - reduced resources for development
+  prometheus:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  grafana:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M

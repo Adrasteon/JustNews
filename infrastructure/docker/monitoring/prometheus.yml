@@ -1,0 +1,46 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # JustNews Agents
+  - job_name: 'justnews-agents'
+    static_configs:
+      - targets:
+          - 'mcp-bus:8000'
+          - 'scout:8002'
+          - 'analyst:8004'
+          - 'synthesizer:8005'
+          - 'fact-checker:8003'
+          - 'memory:8007'
+          - 'chief-editor:8001'
+          - 'reasoning:8008'
+          - 'newsreader:8009'
+          - 'critic:8006'
+          - 'dashboard:8013'
+          - 'analytics:8011'
+          - 'archive:8012'
+          - 'balancer:8010'
+          - 'gpu-orchestrator:8015'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Databases
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 30s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s

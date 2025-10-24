@@ -1,32 +1,88 @@
 version: '3.8'
 
 services:
+  # Databases
   postgres:
     image: postgres:15-alpine
     container_name: justnews-postgres
     environment:
       POSTGRES_DB: justnews
       POSTGRES_USER: justnews
-      POSTGRES_PASSWORD: change_me
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - justnews-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U justnews"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   redis:
     image: redis:7-alpine
     container_name: justnews-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-change_me}
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring Stack
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: justnews-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
     networks:
       - justnews-network
     restart: unless-stopped
 
+  grafana:
+    image: grafana/grafana:9.5.0
+    container_name: justnews-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  # MCP Bus (Communication Hub)
   mcp-bus:
     build:
       context: ../../
-      dockerfile: deploy/refactor/docker/Dockerfile.mcp-bus
+      dockerfile: infrastructure/docker/infrastructure-dockerfiles/Dockerfile.mcp-bus
     container_name: justnews-mcp-bus
     environment:
       DEPLOY_ENV: development
@@ -34,20 +90,411 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_DB: justnews
       POSTGRES_USER: justnews
-      POSTGRES_PASSWORD: change_me
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
       REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
+      MCP_BUS_PORT: 8000
+      MCP_BUS_HOST: 0.0.0.0
     ports:
       - "8000:8000"
     networks:
       - justnews-network
     restart: unless-stopped
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # JustNews Agents (CPU-based)
+  scout:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.scout
+    container_name: justnews-scout
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      AGENT_NAME: scout
+      AGENT_PORT: 8002
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: justnews
+      POSTGRES_USER: justnews
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
+      MCP_BUS_URL: http://mcp-bus:8000
+    ports:
+      - "8002:8002"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      - mcp-bus
+
+  chief-editor:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.chiefEditor
+    container_name: justnews-chief-editor
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      AGENT_NAME: chiefEditor
+      AGENT_PORT: 8001
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: justnews
+      POSTGRES_USER: justnews
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
+      MCP_BUS_URL: http://mcp-bus:8000
+    ports:
+      - "8001:8001"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      - mcp-bus
+
+  memory:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.memory
+    container_name: justnews-memory
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      AGENT_NAME: memory
+      AGENT_PORT: 8007
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: justnews
+      POSTGRES_USER: justnews
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
+      MCP_BUS_URL: http://mcp-bus:8000
+    ports:
+      - "8007:8007"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      - mcp-bus
+
+  reasoning:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.reasoning
+    container_name: justnews-reasoning
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      AGENT_NAME: reasoning
+      AGENT_PORT: 8008
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: justnews
+      POSTGRES_USER: justnews
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
+      MCP_BUS_URL: http://mcp-bus:8000
+    ports:
+      - "8008:8008"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      - mcp-bus
+
+  critic:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.critic
+    container_name: justnews-critic
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      AGENT_NAME: critic
+      AGENT_PORT: 8006
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: justnews
+      POSTGRES_USER: justnews
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
+      MCP_BUS_URL: http://mcp-bus:8000
+    ports:
+      - "8006:8006"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      - mcp-bus
+
+  dashboard:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.dashboard
+    container_name: justnews-dashboard
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      AGENT_NAME: dashboard
+      AGENT_PORT: 8013
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: justnews
+      POSTGRES_USER: justnews
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
+      MCP_BUS_URL: http://mcp-bus:8000
+    ports:
+      - "8013:8013"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      - mcp-bus
+
+  analytics:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.analytics
+    container_name: justnews-analytics
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      AGENT_NAME: analytics
+      AGENT_PORT: 8011
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: justnews
+      POSTGRES_USER: justnews
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
+      MCP_BUS_URL: http://mcp-bus:8000
+    ports:
+      - "8011:8011"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      - mcp-bus
+
+  archive:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.archive
+    container_name: justnews-archive
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      AGENT_NAME: archive
+      AGENT_PORT: 8012
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: justnews
+      POSTGRES_USER: justnews
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
+      MCP_BUS_URL: http://mcp-bus:8000
+    ports:
+      - "8012:8012"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      - mcp-bus
+
+  balancer:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.balancer
+    container_name: justnews-balancer
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      AGENT_NAME: balancer
+      AGENT_PORT: 8010
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: justnews
+      POSTGRES_USER: justnews
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
+      MCP_BUS_URL: http://mcp-bus:8000
+    ports:
+      - "8010:8010"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      - mcp-bus
+
+  gpu-orchestrator:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.gpuOrchestrator
+    container_name: justnews-gpu-orchestrator
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      AGENT_NAME: gpuOrchestrator
+      AGENT_PORT: 8015
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: justnews
+      POSTGRES_USER: justnews
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
+      MCP_BUS_URL: http://mcp-bus:8000
+    ports:
+      - "8015:8015"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      - mcp-bus
+
+  # GPU-enabled Agents
+  analyst:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.analyst
+    container_name: justnews-analyst
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      AGENT_NAME: analyst
+      AGENT_PORT: 8004
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: justnews
+      POSTGRES_USER: justnews
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
+      MCP_BUS_URL: http://mcp-bus:8000
+    ports:
+      - "8004:8004"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      - mcp-bus
+
+  synthesizer:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.synthesizer
+    container_name: justnews-synthesizer
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      AGENT_NAME: synthesizer
+      AGENT_PORT: 8005
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: justnews
+      POSTGRES_USER: justnews
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
+      MCP_BUS_URL: http://mcp-bus:8000
+    ports:
+      - "8005:8005"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      - mcp-bus
+
+  fact-checker:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.factChecker
+    container_name: justnews-fact-checker
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      AGENT_NAME: factChecker
+      AGENT_PORT: 8003
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: justnews
+      POSTGRES_USER: justnews
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
+      MCP_BUS_URL: http://mcp-bus:8000
+    ports:
+      - "8003:8003"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      - mcp-bus
+
+  newsreader:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.newsreader
+    container_name: justnews-newsreader
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      AGENT_NAME: newsreader
+      AGENT_PORT: 8009
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: justnews
+      POSTGRES_USER: justnews
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_me}
+      MCP_BUS_URL: http://mcp-bus:8000
+    ports:
+      - "8009:8009"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      - mcp-bus
 
 volumes:
   postgres_data:
+    driver: local
   redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
 
 networks:
   justnews-network:

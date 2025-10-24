@@ -30,7 +30,7 @@ from agents.common.database import execute_query, execute_query_single
 from agents.common.database import get_db_connection as get_pooled_connection
 
 # Import tools
-from agents.memory.refactor.tools import get_embedding_model, log_feedback, save_article
+from agents.memory.tools import get_embedding_model, log_feedback, save_article
 
 # Configure centralized logging
 logger = get_logger(__name__)

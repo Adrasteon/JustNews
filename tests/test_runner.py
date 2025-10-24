@@ -48,7 +48,7 @@ class TestRunner:
     def __init__(self, args):
         self.args = args
         self.project_root = project_root
-        self.test_dir = self.project_root / "tests" / "refactor"
+        self.test_dir = self.project_root / "tests"
         self.results = {}
         self.start_time = None
 

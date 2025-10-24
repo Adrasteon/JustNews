@@ -19,7 +19,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from agents.analytics.refactor.analytics_engine import get_analytics_engine
+from agents.analytics.analytics_engine import get_analytics_engine
 
 # Get the analytics engine instance
 analytics_engine = get_analytics_engine()

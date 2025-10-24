@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime
 from pydantic import Field
-from database.refactor.models.base_model import BaseModel
+from database.models.base_model import BaseModel
 
 
 class TestBaseModel:

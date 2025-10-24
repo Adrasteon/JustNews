@@ -22,7 +22,7 @@ from typing import Any, Dict, Optional
 from common.observability import get_logger
 
 # Import tools
-from agents.memory.refactor.tools import save_article
+from agents.memory.tools import save_article
 
 # Configure centralized logging
 logger = get_logger(__name__)

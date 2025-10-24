@@ -204,6 +204,27 @@ class MockFactory:
                         },
                         "processing_time": 0.05
                     }
+                elif agent == "mcp_bus" and tool == "register_agent":
+                    # Handle agent registration
+                    name = kwargs.get("name")
+                    address = kwargs.get("address")
+                    if name and address:
+                        self.agents[name] = address
+                        return {
+                            "status": "success",
+                            "data": {
+                                "registered": True,
+                                "agent": name,
+                                "address": address
+                            },
+                            "processing_time": 0.02
+                        }
+                    else:
+                        return {
+                            "status": "error",
+                            "data": {"error": "Missing name or address"},
+                            "processing_time": 0.01
+                        }
                 else:
                     # Generic response
                     return {

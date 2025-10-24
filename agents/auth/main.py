@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from common.observability import get_logger
-from agents.auth.refactor.auth_engine import get_auth_engine, initialize_auth_engine, shutdown_auth_engine
+from agents.auth.auth_engine import get_auth_engine, initialize_auth_engine, shutdown_auth_engine
 from agents.common.auth_api import router as auth_router
 
 logger = get_logger(__name__)

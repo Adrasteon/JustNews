@@ -3,13 +3,13 @@
 import pytest
 import os
 from unittest.mock import Mock, patch
-from database.refactor.core.connection_pool import DatabaseConnectionPool
-from database.refactor.core.schema_manager import SchemaManager
-from database.refactor.core.migration_engine import MigrationEngine
-from database.refactor.core.query_optimizer import QueryOptimizer
-from database.refactor.core.backup_manager import BackupManager
-from database.refactor.models.base_model import BaseModel
-from database.refactor.utils.database_utils import get_db_config
+from database.core.connection_pool import DatabaseConnectionPool
+from database.core.schema_manager import SchemaManager
+from database.core.migration_engine import MigrationEngine
+from database.core.query_optimizer import QueryOptimizer
+from database.core.backup_manager import BackupManager
+from database.models.base_model import BaseModel
+from database.utils.database_utils import get_db_config
 
 
 @pytest.fixture
@@ -43,7 +43,7 @@ def mock_connection():
 def mock_pool(mock_db_config):
     """Mock connection pool"""
     with patch('psycopg2.connect') as mock_connect:
-        from database.refactor.core.connection_pool import DatabaseConnectionPool
+        from database.core.connection_pool import DatabaseConnectionPool
         pool = DatabaseConnectionPool(mock_db_config)
         # Mock the pool attribute to avoid actual database connections
         pool.pool = Mock()

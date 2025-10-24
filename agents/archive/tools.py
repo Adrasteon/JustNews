@@ -8,7 +8,7 @@ via the MCP protocol. Provides clean interfaces to archive functionality.
 import asyncio
 from typing import Any, Dict, List, Optional
 
-from agents.archive.refactor.archive_engine import get_archive_engine
+from agents.archive.archive_engine import get_archive_engine
 from common.observability import get_logger
 
 logger = get_logger(__name__)

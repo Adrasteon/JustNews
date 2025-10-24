@@ -2,7 +2,7 @@
 
 import pytest
 from unittest.mock import Mock, patch, call
-from database.refactor.core.connection_pool import DatabaseConnectionPool
+from database.core.connection_pool import DatabaseConnectionPool
 
 
 class TestDatabaseConnectionPool:

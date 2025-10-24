@@ -72,7 +72,7 @@ class DashboardGenerator:
     templates: Dict[str, DashboardTemplate] = field(default_factory=dict)
 
     # Output directory for generated dashboards
-    output_dir: Path = field(default_factory=lambda: Path("monitoring/refactor/dashboards/generated"))
+    output_dir: Path = field(default_factory=lambda: Path("monitoring/dashboards/generated"))
 
     # Grafana API configuration
     grafana_url: str = field(default="http://localhost:3000")

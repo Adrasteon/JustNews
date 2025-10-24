@@ -30,10 +30,10 @@ from common.observability import get_logger
 from common.metrics import JustNewsMetrics
 
 # Import memory agent engines
-from agents.memory.refactor.memory_engine import MemoryEngine
-from agents.memory.refactor.vector_engine import VectorEngine
-from agents.memory.refactor.worker_engine import WorkerEngine
-from agents.memory.refactor.tools import (
+from agents.memory.memory_engine import MemoryEngine
+from agents.memory.vector_engine import VectorEngine
+from agents.memory.worker_engine import WorkerEngine
+from agents.memory.tools import (
     get_embedding_model,
     log_feedback,
     save_article,

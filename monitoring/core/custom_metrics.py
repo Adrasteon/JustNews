@@ -17,7 +17,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from monitoring.refactor.core.metrics_collector import EnhancedMetricsCollector, get_enhanced_metrics_collector
+from monitoring.core.metrics_collector import EnhancedMetricsCollector, get_enhanced_metrics_collector
 
 logger = logging.getLogger(__name__)
 

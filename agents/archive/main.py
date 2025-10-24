@@ -13,7 +13,7 @@ import requests
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from agents.archive.refactor.archive_engine import get_archive_engine
+from agents.archive.archive_engine import get_archive_engine
 from common.metrics import JustNewsMetrics
 from common.observability import get_logger
 
@@ -174,7 +174,7 @@ def get_metrics():
 async def archive_articles_endpoint(call: ToolCall):
     """Archive articles from crawler results."""
     try:
-        from agents.archive.refactor.tools import archive_articles
+        from agents.archive.tools import archive_articles
 
         result = await archive_articles(**call.kwargs)
         return {"status": "success", "data": result}
@@ -188,7 +188,7 @@ async def archive_articles_endpoint(call: ToolCall):
 async def retrieve_article_endpoint(call: ToolCall):
     """Retrieve archived article by storage key."""
     try:
-        from agents.archive.refactor.tools import retrieve_article
+        from agents.archive.tools import retrieve_article
 
         storage_key = call.kwargs.get("storage_key")
         if not storage_key:
@@ -211,7 +211,7 @@ async def retrieve_article_endpoint(call: ToolCall):
 async def search_archive_endpoint(call: ToolCall):
     """Search archived articles by metadata."""
     try:
-        from agents.archive.refactor.tools import search_archive
+        from agents.archive.tools import search_archive
 
         query = call.kwargs.get("query", "")
         filters = call.kwargs.get("filters", {})
@@ -233,7 +233,7 @@ async def search_archive_endpoint(call: ToolCall):
 def get_archive_stats_endpoint(call: ToolCall):
     """Get comprehensive archive statistics."""
     try:
-        from agents.archive.refactor.tools import get_archive_stats
+        from agents.archive.tools import get_archive_stats
 
         stats = get_archive_stats()
         return {"status": "success", "data": stats}
@@ -247,7 +247,7 @@ def get_archive_stats_endpoint(call: ToolCall):
 async def store_single_article_endpoint(call: ToolCall):
     """Store a single article with complete metadata."""
     try:
-        from agents.archive.refactor.tools import store_single_article
+        from agents.archive.tools import store_single_article
 
         result = await store_single_article(**call.kwargs)
         return {"status": "success", "data": result}
@@ -261,7 +261,7 @@ async def store_single_article_endpoint(call: ToolCall):
 async def get_article_entities_endpoint(call: ToolCall):
     """Get knowledge graph entities for an article."""
     try:
-        from agents.archive.refactor.tools import get_article_entities
+        from agents.archive.tools import get_article_entities
 
         storage_key = call.kwargs.get("storage_key")
         if not storage_key:
@@ -279,7 +279,7 @@ async def get_article_entities_endpoint(call: ToolCall):
 async def search_knowledge_graph_endpoint(call: ToolCall):
     """Search the knowledge graph for entities."""
     try:
-        from agents.archive.refactor.tools import search_knowledge_graph
+        from agents.archive.tools import search_knowledge_graph
 
         query = call.kwargs.get("query", "")
         if not query:
@@ -299,7 +299,7 @@ async def search_knowledge_graph_endpoint(call: ToolCall):
 async def link_entities_endpoint(call: ToolCall):
     """Link article entities to external knowledge bases."""
     try:
-        from agents.archive.refactor.tools import link_entities
+        from agents.archive.tools import link_entities
 
         article_data = call.kwargs.get("article_data", {})
         if not article_data:

@@ -302,7 +302,7 @@ class ConfigurationTester:
 
         try:
             # Test loading
-            from config.refactor.schemas import load_config_from_file
+            from config.schemas import load_config_from_file
             config = load_config_from_file(config_path)
             info.append(f"Successfully loaded configuration from {config_path}")
 
@@ -564,7 +564,7 @@ class ConfigurationMigrationValidator:
 
         try:
             # Load backup configuration
-            from config.refactor.schemas import load_config_from_file
+            from config.schemas import load_config_from_file
             backup_config = load_config_from_file(backup_path)
 
             # Validate backup configuration

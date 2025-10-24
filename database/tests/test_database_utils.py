@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
 import asyncio
-from database.refactor.utils.database_utils import (
+from database.utils.database_utils import (
     get_db_config, create_connection_pool, execute_query_async,
     execute_transaction, get_database_stats, vacuum_analyze_table,
     reindex_table, get_slow_queries, kill_query, check_connection

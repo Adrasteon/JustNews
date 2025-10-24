@@ -26,7 +26,7 @@ except Exception:
     torch = None
 
 # Import tools
-from agents.memory.refactor.tools import get_embedding_model, vector_search_articles_local
+from agents.memory.tools import get_embedding_model, vector_search_articles_local
 
 # Configure centralized logging
 logger = get_logger(__name__)

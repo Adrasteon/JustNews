@@ -20,7 +20,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from monitoring.refactor.core.log_storage import LogStorage, LogQuery, QueryOperator
+from monitoring.core.log_storage import LogStorage, LogQuery, QueryOperator
 
 
 class AnalysisType(Enum):
@@ -607,7 +607,7 @@ def get_log_analyzer(storage: Optional[LogStorage] = None, config: Optional[Dict
 
     if _global_analyzer is None:
         if storage is None:
-            from monitoring.refactor.core.log_storage import get_log_storage
+            from monitoring.core.log_storage import get_log_storage
             storage = get_log_storage()
         _global_analyzer = LogAnalyzer(storage, config)
 

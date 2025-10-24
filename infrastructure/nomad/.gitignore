@@ -1,0 +1,46 @@
+# Environment files with secrets
+.env
+.env.local
+secrets.env
+
+# Logs
+*.log
+logs/
+nomad.log
+consul.log
+
+# Temporary files
+*.tmp
+*.swp
+*.bak
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backup files
+backups/
+*.backup
+health_report_*.txt
+
+# TLS certificates (if used)
+tls/
+certs/
+*.pem
+*.key
+*.crt
+
+# Local configuration overrides
+local/
+overrides/

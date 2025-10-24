@@ -150,27 +150,27 @@ justnews:
       port: 8004
       gpuRequired: true
 
-    # Disable some GPU agents to fit single GPU
+    # Enable additional agents as CPU-only (no GPU required)
     synthesizer:
       name: synthesizer
-      enabled: false  # Disabled for single node
-      replicas: 0
+      enabled: true
+      replicas: 1
       port: 8005
-      gpuRequired: true
+      gpuRequired: false  # Run on CPU to fit single GPU
 
     factChecker:
       name: factChecker
-      enabled: false  # Disabled for single node
-      replicas: 0
+      enabled: true
+      replicas: 1
       port: 8003
-      gpuRequired: true
+      gpuRequired: false  # Run on CPU to fit single GPU
 
     newsreader:
       name: newsreader
-      enabled: false  # Disabled for single node
-      replicas: 0
+      enabled: true
+      replicas: 1
       port: 8009
-      gpuRequired: true
+      gpuRequired: false  # Run on CPU to fit single GPU
 
     gpuOrchestrator:
       name: gpuOrchestrator

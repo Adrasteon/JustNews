@@ -20,9 +20,10 @@ The `values-single-node.yaml` includes these optimizations:
 - **Infrastructure**: Scaled down PostgreSQL, Redis, Prometheus, Grafana
 
 ### Agent Selection
-- **Enabled**: 10 core agents (non-GPU intensive)
-- **GPU-enabled**: 2 agents (scout, analyst) - fits single RTX3090
-- **Disabled**: 3 GPU agents (synthesizer, fact-checker, newsreader) to prevent GPU contention
+- **Enabled**: 13 core agents total
+- **GPU-enabled**: 2 agents (scout, analyst) - dedicated GPU access
+- **CPU-only**: 3 agents (synthesizer, fact-checker, newsreader) - run on CPU to fit single GPU
+- **Core agents**: 8 agents (MCP Bus, Chief Editor, Balancer, Memory, Reasoning, Critic, Dashboard, Analytics)
 
 ### Storage
 - **Local storage**: Uses `local-path` provisioner instead of cloud storage
@@ -90,17 +91,18 @@ If you prefer step-by-step deployment:
 With the optimized configuration:
 
 ### CPU Usage
-- **Agents**: 10 × 500m = 5 cores
+- **Agents**: 13 × 500m = 6.5 cores
 - **Infrastructure**: ~2 cores
-- **Total**: ~7 cores (well within 16-core limit)
+- **Total**: ~8.5 cores (comfortable within 16-core limit)
 
 ### Memory Usage
-- **Agents**: 10 × 1Gi = 10Gi
+- **Agents**: 13 × 1Gi = 13Gi
 - **Infrastructure**: ~4Gi
-- **Total**: ~14Gi (comfortable within 32Gi limit)
+- **Total**: ~17Gi (comfortable within 32Gi limit)
 
 ### GPU Usage
 - **Active GPU agents**: 2 (scout, analyst)
+- **CPU-only agents**: 3 (synthesizer, fact-checker, newsreader)
 - **GPU memory**: ~8-12GB (well within 24GB RTX3090 limit)
 
 ## Monitoring Resources

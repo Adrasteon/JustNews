@@ -1,0 +1,287 @@
+# Single-Node Optimized Values for JustNews K8s Deployment
+# Optimized for AMD Ryzen 7 (16 cores) + 32GB RAM + RTX3090
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: "local-path"  # Use local storage for single node
+
+# JustNews application configuration
+justnews:
+  namespace: justnews
+
+  image:
+    registry: justnews
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  serviceAccount:
+    create: true
+    name: justnews-agent-sa
+
+  # Reduced resource limits for single node
+  resources:
+    limits:
+      cpu: 500m      # Reduced from 1000m
+      memory: 1Gi    # Reduced from 2Gi
+    requests:
+      cpu: 250m      # Reduced from 500m
+      memory: 512Mi  # Reduced from 1Gi
+
+  # GPU configuration - single GPU, so limit concurrent usage
+  gpu:
+    enabled: true
+    resourceName: nvidia.com/gpu
+    resourceCount: 1
+
+  # API Keys (set these in production)
+  apiKeys:
+    openai: "change_me_in_production"
+    anthropic: "change_me_in_production"
+    github: "change_me_in_production"
+
+  security:
+    secretKey: "change_me_in_production"
+    jwtSecretKey: "change_me_in_production"
+
+  external:
+    newsApiKey: "change_me_in_production"
+    twitterApiKey: "change_me_in_production"
+    twitterApiSecret: "change_me_in_production"
+    twitterAccessToken: "change_me_in_production"
+    twitterAccessTokenSecret: "change_me_in_production"
+
+  archive:
+    storagePath: "/data/archive"
+    retentionDays: 365
+
+  training:
+    online:
+      enabled: false  # Disable for single node
+    dataPath: "/data/training"
+
+  metrics:
+    enabled: true
+    port: 9090
+
+  logLevel: "INFO"
+  environment: "development"  # Changed from production for single node
+  debug: false
+
+  # Optimized agent configurations for single node
+  agents:
+    # Core agents - keep enabled
+    mcpBus:
+      name: mcpBus
+      enabled: true
+      replicas: 1
+      port: 8000
+      gpuRequired: false
+
+    chiefEditor:
+      name: chiefEditor
+      enabled: true
+      replicas: 1
+      port: 8001
+      gpuRequired: false
+
+    balancer:
+      name: balancer
+      enabled: true
+      replicas: 1
+      port: 8010
+      gpuRequired: false
+
+    memory:
+      name: memory
+      enabled: true
+      replicas: 1
+      port: 8007
+      gpuRequired: false
+
+    reasoning:
+      name: reasoning
+      enabled: true
+      replicas: 1
+      port: 8008
+      gpuRequired: false
+
+    critic:
+      name: critic
+      enabled: true
+      replicas: 1
+      port: 8006
+      gpuRequired: false
+
+    dashboard:
+      name: dashboard
+      enabled: true
+      replicas: 1
+      port: 8013
+      gpuRequired: false
+
+    analytics:
+      name: analytics
+      enabled: true
+      replicas: 1
+      port: 8011
+      gpuRequired: false
+
+    archive:
+      name: archive
+      enabled: true
+      replicas: 1
+      port: 8012
+      gpuRequired: false
+
+    # GPU agents - reduced replicas due to single GPU
+    scout:
+      name: scout
+      enabled: true
+      replicas: 1  # Keep 1 for GPU work
+      port: 8002
+      gpuRequired: true
+
+    analyst:
+      name: analyst
+      enabled: true
+      replicas: 1  # Keep 1 for GPU work
+      port: 8004
+      gpuRequired: true
+
+    # Disable some GPU agents to fit single GPU
+    synthesizer:
+      name: synthesizer
+      enabled: false  # Disabled for single node
+      replicas: 0
+      port: 8005
+      gpuRequired: true
+
+    factChecker:
+      name: factChecker
+      enabled: false  # Disabled for single node
+      replicas: 0
+      port: 8003
+      gpuRequired: true
+
+    newsreader:
+      name: newsreader
+      enabled: false  # Disabled for single node
+      replicas: 0
+      port: 8009
+      gpuRequired: true
+
+    gpuOrchestrator:
+      name: gpuOrchestrator
+      enabled: true
+      replicas: 1
+      port: 8015
+      gpuRequired: false  # Can run without GPU
+
+# Infrastructure - reduced resources for single node
+postgresql:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: postgres
+    tag: "15"
+  auth:
+    postgresPassword: "justnews_password"
+    username: justnews
+    password: "justnews_password"
+    database: justnews
+  architecture: standalone
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi  # Reduced from 50Gi
+      storageClass: "local-path"
+    resources:
+      limits:
+        cpu: 500m    # Reduced from 1000m
+        memory: 1Gi  # Reduced from 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+redis:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: redis
+    tag: "7"
+  auth:
+    password: "redis_password"
+  architecture: standalone
+  master:
+    persistence:
+      enabled: true
+      size: 5Gi   # Reduced from 10Gi
+      storageClass: "local-path"
+    resources:
+      limits:
+        cpu: 250m  # Reduced from 500m
+        memory: 512Mi  # Reduced from 1Gi
+      requests:
+        cpu: 125m
+        memory: 256Mi
+
+prometheus:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: prom/prometheus
+    tag: "v2.45.0"
+  server:
+    persistentVolume:
+      enabled: true
+      size: 10Gi  # Reduced from 20Gi
+      storageClass: "local-path"
+    resources:
+      limits:
+        cpu: 500m    # Reduced from 1000m
+        memory: 1Gi  # Reduced from 2Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+grafana:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: grafana/grafana
+    tag: "9.5.0"
+  adminUser: admin
+  adminPassword: "admin_password"
+  persistence:
+    enabled: true
+    size: 5Gi   # Reduced from 10Gi
+    storageClass: "local-path"
+  resources:
+    limits:
+      cpu: 250m  # Reduced from 500m
+      memory: 512Mi  # Reduced from 1Gi
+    requests:
+      cpu: 125m
+      memory: 256Mi
+
+# Disable ingress for single node (use port forwarding instead)
+ingress:
+  enabled: false
+
+# Disable autoscaling for single node
+autoscaling:
+  enabled: false
+
+# Relaxed security for single node development
+security:
+  networkPolicies:
+    enabled: false
+  podSecurityStandards:
+    enabled: false
+  rbac:
+    enabled: true
+
+networkPolicy:
+  enabled: false

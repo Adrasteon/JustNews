@@ -1,0 +1,102 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: justnews-ingress
+  namespace: justnews
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - justnews.local  # Change to your domain
+    secretName: justnews-tls
+  rules:
+  - host: justnews.local  # Change to your domain
+    http:
+      paths:
+      - path: /api/mcp
+        pathType: Prefix
+        backend:
+          service:
+            name: mcp-bus-service
+            port:
+              number: 8000
+      - path: /api/editor
+        pathType: Prefix
+        backend:
+          service:
+            name: chief-editor-service
+            port:
+              number: 8001
+      - path: /dashboard
+        pathType: Prefix
+        backend:
+          service:
+            name: dashboard-service
+            port:
+              number: 8013
+      - path: /api/analytics
+        pathType: Prefix
+        backend:
+          service:
+            name: analytics-service
+            port:
+              number: 8011
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: dashboard-service
+            port:
+              number: 8013
+
+---
+# NetworkPolicy for ingress traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-traffic
+  namespace: justnews
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8000  # MCP Bus
+    - protocol: TCP
+      port: 8001  # Chief Editor
+    - protocol: TCP
+      port: 8013  # Dashboard
+    - protocol: TCP
+      port: 8011  # Analytics
+
+---
+# Service for external access (LoadBalancer type for cloud providers)
+apiVersion: v1
+kind: Service
+metadata:
+  name: justnews-external
+  namespace: justnews
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+spec:
+  selector:
+    app: dashboard  # Route external traffic to dashboard by default
+  ports:
+  - port: 80
+    targetPort: 8013
+    name: http
+  - port: 443
+    targetPort: 8013
+    name: https
+  type: LoadBalancer

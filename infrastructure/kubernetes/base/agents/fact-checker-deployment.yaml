@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fact-checker
+  namespace: justnews
+  labels:
+    app: fact-checker
+    component: agent
+    gpu-required: true
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fact-checker
+  template:
+    metadata:
+      labels:
+        app: fact-checker
+        component: agent
+        gpu-required: true
+    spec:
+      containers:
+      - name: fact-checker
+        image: justnews/fact-checker:latest
+        ports:
+        - containerPort: 8003
+          name: http
+        envFrom:
+        - configMapRef:
+            name: justnews-config
+        - secretRef:
+            name: justnews-secrets
+        env:
+        - name: AGENT_NAME
+          value: "fact-checker"
+        - name: AGENT_PORT
+          value: "8003"
+        resources:
+          limits:
+            memory: 2Gi
+            cpu: 1000m
+          nvidia.com/gpu: 1
+          requests:
+            memory: 1Gi
+            cpu: 500m
+          nvidia.com/gpu: 1
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      nodeSelector:
+        accelerator: nvidia-tesla-k80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fact-checker-service
+  namespace: justnews
+  labels:
+    app: fact-checker
+    component: agent
+spec:
+  selector:
+    app: fact-checker
+  ports:
+  - port: 8003
+    targetPort: http
+    name: http
+  type: ClusterIP
+
+---

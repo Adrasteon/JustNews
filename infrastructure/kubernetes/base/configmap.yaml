@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: justnews-config
+  namespace: justnews
+data:
+  # Database Configuration
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "justnews"
+  POSTGRES_USER: "justnews"
+
+  # Redis Configuration
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+
+  # MCP Bus Configuration
+  MCP_BUS_HOST: "mcp-bus-service"
+  MCP_BUS_PORT: "8000"
+
+  # GPU Configuration
+  GPU_ORCHESTRATOR_HOST: "gpu-orchestrator-service"
+  GPU_ORCHESTRATOR_PORT: "8014"
+  CUDA_VISIBLE_DEVICES: "0"
+
+  # Monitoring Configuration
+  GRAFANA_ADMIN_PASSWORD: "admin"
+  PROMETHEUS_RETENTION_TIME: "30d"
+
+  # Application Configuration
+  LOG_FORMAT: "json"
+  METRICS_ENABLED: "true"
+  TRACING_ENABLED: "true"
+  HEALTH_CHECK_INTERVAL: "30"
+
+  # Service Discovery
+  SERVICE_DISCOVERY_ENABLED: "true"
+  KUBERNETES_SERVICE_DISCOVERY: "true"
+
+  # Resource Limits
+  DEFAULT_MEMORY_LIMIT: "1Gi"
+  DEFAULT_CPU_LIMIT: "500m"
+  DEFAULT_MEMORY_REQUEST: "512Mi"
+  DEFAULT_CPU_REQUEST: "250m"

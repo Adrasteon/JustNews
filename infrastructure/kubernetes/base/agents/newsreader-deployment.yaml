@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: newsreader
+  namespace: justnews
+  labels:
+    app: newsreader
+    component: agent
+    gpu-required: true
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: newsreader
+  template:
+    metadata:
+      labels:
+        app: newsreader
+        component: agent
+        gpu-required: true
+    spec:
+      containers:
+      - name: newsreader
+        image: justnews/newsreader:latest
+        ports:
+        - containerPort: 8009
+          name: http
+        envFrom:
+        - configMapRef:
+            name: justnews-config
+        - secretRef:
+            name: justnews-secrets
+        env:
+        - name: AGENT_NAME
+          value: "newsreader"
+        - name: AGENT_PORT
+          value: "8009"
+        resources:
+          limits:
+            memory: 2Gi
+            cpu: 1000m
+          nvidia.com/gpu: 1
+          requests:
+            memory: 1Gi
+            cpu: 500m
+          nvidia.com/gpu: 1
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      nodeSelector:
+        accelerator: nvidia-tesla-k80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: newsreader-service
+  namespace: justnews
+  labels:
+    app: newsreader
+    component: agent
+spec:
+  selector:
+    app: newsreader
+  ports:
+  - port: 8009
+    targetPort: http
+    name: http
+  type: ClusterIP
+
+---

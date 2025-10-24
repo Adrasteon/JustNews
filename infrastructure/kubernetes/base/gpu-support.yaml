@@ -1,0 +1,76 @@
+# GPU Support Configuration for JustNews
+# This file contains GPU-specific configurations and node selectors
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gpu-config
+  namespace: justnews
+data:
+  NVIDIA_VISIBLE_DEVICES: "all"
+  NVIDIA_DRIVER_CAPABILITIES: "compute,utility"
+  CUDA_VISIBLE_DEVICES: "0"
+  GPU_MEMORY_FRACTION: "0.8"
+
+---
+# GPU-enabled node label selector
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gpu-node-selector
+  namespace: justnews
+data:
+  # Node selector for GPU workloads
+  gpu-node-selector.yaml: |
+    nodeSelector:
+      accelerator: nvidia-tesla-k80
+    tolerations:
+    - key: "nvidia.com/gpu"
+      operator: "Exists"
+      effect: "NoSchedule"
+
+---
+# GPU resource quota
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: gpu-quota
+  namespace: justnews
+spec:
+  hard:
+    nvidia.com/gpu: "4"  # Adjust based on available GPUs
+
+---
+# GPU DaemonSet for NVIDIA device plugin (if not already installed cluster-wide)
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-device-plugin-daemonset
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      name: nvidia-device-plugin-ds
+  template:
+    metadata:
+      labels:
+        name: nvidia-device-plugin-ds
+    spec:
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - image: nvcr.io/nvidia/k8s-device-plugin:v0.14.1
+        name: nvidia-device-plugin-ctr
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        volumeMounts:
+        - name: device-plugin
+          mountPath: /var/lib/kubelet/device-plugins
+      volumes:
+      - name: device-plugin
+        hostPath:
+          path: /var/lib/kubelet/device-plugins

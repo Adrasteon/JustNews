@@ -18,7 +18,7 @@ import requests
 # Database imports
 from common.observability import get_logger
 from ..sites.generic_site_crawler import GenericSiteCrawler, MultiSiteCrawler, SiteConfig
-from ..crawler_utils import (
+from .crawler_utils import (
     CanonicalMetadata,
     ModalDismisser,
     RateLimiter,
@@ -308,7 +308,7 @@ class CrawlerEngine:
 
         # 2. Check database for historical performance
         if domain not in self.performance_history:
-            self.performance_history[domain] = await get_source_performance_history(domain)
+            self.performance_history[domain] = get_source_performance_history(domain)
 
         # Default to generic strategy
         return "generic"
@@ -419,6 +419,8 @@ class CrawlerEngine:
         # Convert domains to SiteConfig objects
         site_configs = []
         for domain in domains:
+            if isinstance(domain, list):
+                domain = domain[0] if domain else ""
             try:
                 # Get source info from database
                 sources = get_sources_by_domain([domain])  # Pass as list
@@ -429,11 +431,19 @@ class CrawlerEngine:
                 else:
                     # Create basic config for unknown domains
                     logger.warning(f"No database entry for {domain}, creating basic config")
+                    parsed = urlparse(domain)
+                    if parsed.scheme and parsed.netloc:
+                        fallback_domain = parsed.netloc
+                        fallback_url = domain
+                    else:
+                        fallback_domain = domain
+                        fallback_url = f"https://{domain}" if domain else ""
+
                     config = SiteConfig({
                         'id': None,
-                        'name': domain,
-                        'domain': domain,
-                        'url': f'https://{domain}',
+                        'name': fallback_domain or domain or 'unknown',
+                        'domain': fallback_domain,
+                        'url': fallback_url,
                         'crawling_strategy': 'generic'
                     })
                     site_configs.append(config)
@@ -533,6 +543,14 @@ class CrawlerEngine:
                     'confidence': article.get('confidence', 0.5),
                     'paywall_flag': article.get('paywall_flag', False),
                     'extraction_metadata': article.get('extraction_metadata', {}),
+                    'extracted_metadata': article.get('extracted_metadata', {}),
+                    'structured_metadata': article.get('structured_metadata', {}),
+                    'language': article.get('language'),
+                    'authors': article.get('authors', []),
+                    'section': article.get('section'),
+                    'tags': article.get('tags', []),
+                    'publication_date': article.get('publication_date'),
+                    'raw_html_ref': article.get('raw_html_ref'),
                     'timestamp': article.get('timestamp'),
                     'url_hash': article.get('url_hash'),
                     'canonical': article.get('canonical'),
@@ -575,8 +593,13 @@ class CrawlerEngine:
                 response.raise_for_status()
                 result = response.json()
 
-                if result.get('status') == 'ok':
-                    if result.get('duplicate', False):
+                outer_status = result.get('status')
+                inner_payload = result.get('data') if isinstance(result.get('data'), dict) else {}
+                effective_payload = inner_payload if inner_payload else result
+                inner_status = effective_payload.get('status', outer_status)
+
+                if outer_status in {"ok", "success"} and inner_status in {"ok", "success"}:
+                    if effective_payload.get('duplicate'):
                         duplicates += 1
                         logger.debug(f"Duplicate article skipped: {article.get('url')}")
                     else:

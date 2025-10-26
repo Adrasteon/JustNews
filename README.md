@@ -28,9 +28,11 @@ conda env create -f environment.yml
 conda activate justnews-v2-py312
 ```
 
-3. Install dependencies:
+3. Install dependencies (prefer conda-forge for the crawler extraction stack):
 ```bash
-conda install --file requirements.txt
+mamba install -c conda-forge --file requirements.txt
+# or, if mamba is unavailable
+conda install -c conda-forge --file requirements.txt
 ```
 
 4. Set up the database:
@@ -54,6 +56,7 @@ make start
 
 ### Key Features
 - **GPU Acceleration**: TensorRT-optimized models for performance
+- **High-Precision Extraction**: Trafilatura-first crawler cascade with readability/jusText fallbacks, structured metadata, raw HTML archival, and quality heuristics
 - **Enterprise Security**: JWT authentication, RBAC, GDPR compliance
 - **Multi-Platform Deployment**: Docker, Kubernetes, systemd support
 - **Comprehensive Testing**: 80%+ test coverage with integration tests
@@ -103,6 +106,13 @@ conda list
 # Export environment (for backup)
 conda env export > environment_backup.yml
 ```
+
+### Crawler Extraction Regression Tests
+```bash
+PYTHONPATH=$(pwd) pytest tests/agents/crawler -q
+```
+
+This suite covers the Stage B2 extraction pipeline, including the Trafilatura/readability/jusText cascade, raw HTML persistence, and ingestion metadata enrichment.
 
 ### Project Structure
 ```

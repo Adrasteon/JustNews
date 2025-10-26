@@ -29,3 +29,12 @@ ruff>=0.1.6
 
 # Type checking
 mypy>=1.7.0
+
+# Content extraction stack (Stage B2)
+trafilatura>=1.6.0
+readability-lxml>=0.8.1
+justext>=3.0.0
+extruct>=0.17.0
+w3lib>=2.1.2
+langdetect>=1.0.9
+lxml>=4.9.3

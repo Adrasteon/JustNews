@@ -10,6 +10,7 @@ import os
 import time
 from pathlib import Path
 from contextlib import asynccontextmanager
+from typing import Any
 
 import requests
 import uvicorn
@@ -24,6 +25,8 @@ from agents.common.gpu_manager_production import GPU_MANAGER_AVAILABLE, get_gpu_
 from agents.common.config import load_config, save_config
 from agents.common.constants import PUBLIC_API_AVAILABLE, include_public_api
 from agents.common.metrics import JustNewsMetrics
+
+from .transparency_router import router as transparency_router
 
 from .dashboard_engine import dashboard_engine
 
@@ -99,6 +102,9 @@ app.add_middleware(
 static_path = Path(__file__).parent / "static"
 static_path.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+
+# Mount transparency and evidence audit endpoints
+app.include_router(transparency_router)
 
 # Include public API routes
 if PUBLIC_API_AVAILABLE:

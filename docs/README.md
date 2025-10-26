@@ -57,7 +57,7 @@ The JustNewsAgent Documentation Catalogue System is a comprehensive, industry-st
 
 ### 1. Health Check
 ```bash
-cd /home/adra/justnewsagent/JustNewsAgent
+cd /home/adra/JustNewsAgent-Clean
 python docs/catalogue_maintenance.py --health-check
 ```
 

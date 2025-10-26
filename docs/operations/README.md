@@ -146,7 +146,7 @@ docker-compose up -d --scale scout=3 --scale analyst=2
 #### Systemd Deployment
 ```bash
 # Install systemd services
-sudo cp deploy/systemd/*.service /etc/systemd/system/
+sudo cp infrastructure/systemd/units/*.service /etc/systemd/system/
 sudo systemctl daemon-reload
 
 # Start services in order

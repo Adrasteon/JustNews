@@ -2,21 +2,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "justnews.fullname" . }}-{{ .agent.name }}
+  name: {{ include "justnews.fullname" . }}-{{ include "justnews.agentName" . }}
   labels:
     {{- include "justnews.labels" . | nindent 4 }}
-    app: {{ .agent.name }}
+    app: {{ include "justnews.agentName" . }}
     component: agent
     gpu-required: {{ .agent.gpuRequired | quote }}
 spec:
   replicas: {{ .agent.replicas }}
   selector:
     matchLabels:
-      app: {{ .agent.name }}
+      app: {{ include "justnews.agentName" . }}
   template:
     metadata:
       labels:
-        app: {{ .agent.name }}
+        app: {{ include "justnews.agentName" . }}
         component: agent
         gpu-required: {{ .agent.gpuRequired | quote }}
     spec:
@@ -24,8 +24,9 @@ spec:
       serviceAccountName: {{ include "justnews.serviceAccountName" . }}
       {{- end }}
       containers:
-      - name: {{ .agent.name }}
-        image: {{ .Values.justnews.image.registry }}/{{ .agent.name }}:{{ .Values.justnews.image.tag }}
+      - name: {{ include "justnews.agentName" . }}
+        image: busybox:latest
+        command: ["sh", "-c", "echo 'Agent {{ .agent.name }} starting...' && sleep 3600"]
         imagePullPolicy: {{ include "justnews.imagePullPolicy" . }}
         ports:
         - containerPort: {{ .agent.port }}
@@ -53,22 +54,6 @@ spec:
             {{- if and .Values.justnews.gpu.enabled .agent.gpuRequired }}
             nvidia.com/gpu: {{ .Values.justnews.gpu.resourceCount | quote }}
             {{- end }}
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: http
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 6
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: http
-          initialDelaySeconds: 5
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 3
       {{- if .agent.gpuRequired }}
       nodeSelector:
         accelerator: nvidia-tesla-k80
@@ -81,14 +66,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .agent.name }}-service
+  name: {{ include "justnews.agentName" . }}-service
   labels:
     {{- include "justnews.labels" . | nindent 4 }}
-    app: {{ .agent.name }}
+    app: {{ include "justnews.agentName" . }}
     component: agent
 spec:
   selector:
-    app: {{ .agent.name }}
+    app: {{ include "justnews.agentName" . }}
   ports:
   - port: {{ .agent.port }}
     targetPort: http

@@ -8,9 +8,9 @@ resolve_root() {
     [[ -n "${JUSTNEWS_ROOT:-}" ]] && { echo "$JUSTNEWS_ROOT"; return 0; }
     [[ -n "${SERVICE_DIR:-}" ]] && { echo "$SERVICE_DIR"; return 0; }
   fi
-  echo "/home/adra/justnewsagent/JustNewsAgent"
+  echo "/home/adra/JustNewsAgent-Clean"
 }
 ROOT="$(resolve_root)"
-SCRIPT="$ROOT/deploy/systemd/cold_start.sh"
+SCRIPT="$ROOT/infrastructure/systemd/cold_start.sh"
 [[ -x "$SCRIPT" ]] || { echo "cold_start.sh missing at $SCRIPT" >&2; exit 1; }
 exec "$SCRIPT" "$@"

@@ -5,7 +5,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SYSTEMD_ROOT="$SCRIPT_DIR"
+PROJECT_ROOT="$(cd "$SYSTEMD_ROOT/../.." && pwd)"
 
 # Crawler service definitions
 CRAWLER_SERVICES=(
@@ -59,7 +60,7 @@ check_crawler_services_installed() {
     if [[ ! -f "/etc/systemd/system/justnews@.service" ]]; then
         log_error "Missing systemd service template file"
         log_error "Please install the systemd unit template first:"
-        log_error "  sudo cp $PROJECT_ROOT/deploy/systemd/units/justnews@.service /etc/systemd/system/"
+        log_error "  sudo cp $SYSTEMD_ROOT/units/justnews@.service /etc/systemd/system/"
         log_error "  sudo systemctl daemon-reload"
         exit 1
     fi
@@ -68,7 +69,7 @@ check_crawler_services_installed() {
     if [[ ! -f "/usr/local/bin/justnews-start-agent.sh" ]]; then
         log_error "Missing justnews-start-agent.sh script"
         log_error "Please install the startup script:"
-        log_error "  sudo cp $PROJECT_ROOT/deploy/systemd/justnews-start-agent.sh /usr/local/bin/"
+        log_error "  sudo cp $SYSTEMD_ROOT/scripts/justnews-start-agent.sh /usr/local/bin/"
         log_error "  sudo chmod +x /usr/local/bin/justnews-start-agent.sh"
         exit 1
     fi

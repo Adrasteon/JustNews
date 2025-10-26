@@ -19,7 +19,7 @@ resolve_project_root() {
     # Helper: consider a directory a valid repo root only if it contains expected agent folders
     _is_valid_root() {
         local root="$1"
-        [[ -d "$root/agents" ]] && [[ -d "$root/agents/gpu_orchestrator" ]] && [[ -d "$root/deploy" ]]
+        [[ -d "$root/agents" ]] && [[ -d "$root/agents/gpu_orchestrator" ]] && [[ -d "$root/infrastructure/systemd" ]]
     }
 
     local cwd; cwd="$(pwd)"
@@ -38,17 +38,20 @@ resolve_project_root() {
         if _is_valid_root "$SERVICE_DIR/JustNewsAgent"; then
             echo "$SERVICE_DIR/JustNewsAgent"; return 0
         fi
+        if _is_valid_root "$SERVICE_DIR/JustNewsAgent-Clean"; then
+            echo "$SERVICE_DIR/JustNewsAgent-Clean"; return 0
+        fi
     fi
 
     # Try two levels up from this script (useful when running from repo, not after install)
     local script_dir; script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local candidate; candidate="$(cd "$script_dir/../.." && pwd)"
+    local candidate; candidate="$(cd "$script_dir/../../.." && pwd)"
     if _is_valid_root "$candidate"; then
         echo "$candidate"; return 0
     fi
 
     # Final fallback: known path on this machine
-    echo "/home/adra/justnewsagent/JustNewsAgent"; return 0
+    echo "/home/adra/JustNewsAgent-Clean"; return 0
 }
 
 PROJECT_ROOT="$(resolve_project_root)"
@@ -84,7 +87,7 @@ validate_agent_name() {
     if [[ -z "$agent" ]]; then
         log_error "Agent name is required"
         log_info "Usage: $SCRIPT_NAME <agent_name>"
-    log_info "Available agents: mcp_bus, chief_editor, scout, fact_checker, analyst, synthesizer, critic, memory, reasoning, newsreader, dashboard, analytics, balancer, archive, gpu_orchestrator, crawler, crawler_control"
+        log_info "Available agents: mcp_bus, chief_editor, scout, fact_checker, analyst, synthesizer, critic, memory, reasoning, newsreader, dashboard, analytics, balancer, archive, gpu_orchestrator, crawler, crawler_control"
         exit 1
     fi
 
@@ -208,8 +211,8 @@ wait_for_dependencies() {
     if [[ "${REQUIRE_BUS:-1}" != "0" && "$agent" != "mcp_bus" && "$agent" != "gpu_orchestrator" ]]; then
         log_info "Waiting for MCP Bus dependency..."
 
-        if [[ -x "$PROJECT_ROOT/deploy/systemd/wait_for_mcp.sh" ]]; then
-            if ! "$PROJECT_ROOT/deploy/systemd/wait_for_mcp.sh" -q; then
+        if [[ -x "$PROJECT_ROOT/infrastructure/systemd/scripts/wait_for_mcp.sh" ]]; then
+            if ! "$PROJECT_ROOT/infrastructure/systemd/scripts/wait_for_mcp.sh" -q; then
                 log_error "Failed to connect to MCP Bus"
                 exit 1
             fi
@@ -256,7 +259,7 @@ check_python_deps_and_exit_if_missing() {
         fi
     fi
     if [[ -z "$py_cmd" ]]; then
-        local py="${PYTHON_BIN:-/opt/justnews/venv/bin/python}"
+    local py="${PYTHON_BIN:-/home/adra/miniconda3/envs/justnews-v2-py312/bin/python}"
         if [[ ! -x "$py" ]]; then
             py="$(command -v python3 || command -v python || true)"
         fi

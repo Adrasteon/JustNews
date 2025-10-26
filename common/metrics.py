@@ -40,7 +40,8 @@ class JustNewsMetrics:
         'dashboard': 'web-dashboard-agent',
         'analytics': 'system-analytics-agent',
         'chief_editor': 'workflow-orchestration-agent',
-        'crawler': 'content-crawling-agent',
+    'crawler': 'content-crawling-agent',
+    'crawler_scheduler': 'content-crawl-scheduler',
         'gpu_orchestrator': 'gpu-resource-orchestrator',
         'mcp_bus': 'communication-bus'
     }

@@ -14,10 +14,10 @@ This directory contains the native (no Docker/K8s) deployment scaffold for runni
 	 - Wait for READY: `curl -fsS http://127.0.0.1:8014/ready` → HTTP 200
 
 2) Start the rest in order:
-	 - `sudo ./deploy/systemd/enable_all.sh start`
+	 - `sudo ./infrastructure/systemd/scripts/enable_all.sh start`
 
 3) Check health:
-	 - `sudo ./deploy/systemd/health_check.sh`
+	 - `sudo ./infrastructure/systemd/scripts/health_check.sh`
 
 Troubleshooting? See the Quick Reference and Comprehensive guide below.
 
@@ -47,6 +47,24 @@ Helpers (optional, recommended):
 - `helpers/tail-logs.sh` – follow multiple `journalctl` streams with labels
 - `helpers/diag-dump.sh` – capture statuses, logs, ports into a bundle
 - `helpers/db-check.sh` – quick DB reachability check
+- `run_crawl_schedule.sh` – Stage B1 hourly crawl scheduler entry point (copy to `/usr/local/bin/` and ensure executable)
+
+### Crawl scheduler service (Stage B1)
+
+- Unit: `units/justnews-crawl-scheduler.service` (oneshot wrapper around `run_crawl_schedule.sh`)
+- Timer: `units/justnews-crawl-scheduler.timer` (hourly with a 5-minute jitter window)
+- Enable sequence:
+	1. `sudo cp infrastructure/systemd/scripts/run_crawl_schedule.sh /usr/local/bin/run_crawl_schedule.sh`
+	2. `sudo chmod +x /usr/local/bin/run_crawl_schedule.sh`
+	3. `sudo cp infrastructure/systemd/units/justnews-crawl-scheduler.* /etc/systemd/system/`
+	4. `sudo systemctl daemon-reload`
+	5. `sudo systemctl enable --now justnews-crawl-scheduler.timer`
+- Optional overrides: `/etc/justnews/crawl_scheduler.env`
+	- `CRAWLER_AGENT_URL=http://127.0.0.1:8015`
+	- `CRAWL_SCHEDULE_PATH=/etc/justnews/crawl_schedule.yaml` (if relocating config)
+	- `CRAWL_SCHEDULER_METRICS=/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom`
+	- `CRAWL_SCHEDULER_STATE=/var/log/justnews/crawl_scheduler_state.json`
+	- `CRAWL_SCHEDULER_SUCCESS=/var/log/justnews/crawl_scheduler_success.json`
 
 ## Unit template and drop-ins
 
@@ -65,7 +83,7 @@ Global: `/etc/justnews/global.env`
 JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-v2-py312/bin/python
 
 # optional: default working directory
-SERVICE_DIR=/home/adra/justnewsagent/JustNewsAgent
+SERVICE_DIR=/home/adra/JustNewsAgent-Clean
 
 # database URL for Memory agent (adjust as needed)
 JUSTNEWS_DB_URL=postgresql://user:pass@localhost:5432/justnews

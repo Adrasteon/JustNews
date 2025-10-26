@@ -4,8 +4,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-OVERRIDE_SRC="${REPO_ROOT}/deploy/systemd/units/overrides/10-preflight-gating.conf"
+OVERRIDE_SRC="${SCRIPT_DIR}/units/overrides/10-preflight-gating.conf"
 
 usage(){
   cat <<EOF

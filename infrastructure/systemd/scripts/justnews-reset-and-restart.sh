@@ -31,7 +31,7 @@ fi
 
 # Step 1: Preflight Checks
 echo "Running preflight checks..."
-$PROJECT_ROOT/deploy/systemd/scripts/justnews-preflight-check.sh --gate-only
+$PROJECT_ROOT/infrastructure/systemd/scripts/justnews-preflight-check.sh --gate-only
 
 # Step 2: Shutdown Services
 echo "Stopping all JustNews services..."
@@ -48,11 +48,11 @@ rm -rf /tmp/justnews/*
 
 # Step 5: Restart Services
 echo "Starting all JustNews services..."
-$PROJECT_ROOT/deploy/systemd/scripts/enable_all.sh start
+$PROJECT_ROOT/infrastructure/systemd/scripts/enable_all.sh start
 
 # Step 6: Verify Status
 echo "Verifying system status..."
-$PROJECT_ROOT/deploy/systemd/scripts/justnews-system-status.sh
+$PROJECT_ROOT/infrastructure/systemd/scripts/justnews-system-status.sh
 
 # Debug NVML Initialization
 echo "Testing NVML Initialization..."

@@ -70,3 +70,10 @@ Image pull policy
 {{- define "justnews.imagePullPolicy" -}}
 {{- .Values.justnews.image.pullPolicy | default "IfNotPresent" }}
 {{- end }}
+
+{{/*
+Convert agent name to lowercase for Kubernetes naming
+*/}}
+{{- define "justnews.agentName" -}}
+{{- .agent.name | lower }}
+{{- end }}

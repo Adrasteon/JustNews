@@ -11,6 +11,9 @@ HELM_CHART="./infrastructure/helm/justnews"
 VALUES_FILE="${VALUES_FILE:-values-single-node.yaml}"
 RELEASE_NAME="${RELEASE_NAME:-justnews}"
 
+# Set kubeconfig for kubectl
+export KUBECONFIG="${KUBECONFIG:-$HOME/.kube/config}"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -100,6 +103,7 @@ install_k3s() {
     sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
     sudo chown $(id -u):$(id -g) ~/.kube/config
     export KUBECONFIG=~/.kube/config
+    export KUBECONFIG=~/.kube/config
 
     log_success "k3s installed and configured"
 }
@@ -113,11 +117,12 @@ install_nvidia_operator() {
     helm repo update
 
     # Install GPU operator with MPS enabled for RTX 3090 (no MIG support)
-    helm install --wait --generate-name \
+    helm upgrade --install gpu-operator \
          -n gpu-operator --create-namespace \
          nvidia/gpu-operator \
-         --set driver.enabled=false \  # Assume drivers are pre-installed
-         --set devicePlugin.config.name=nvidia-mps-config
+         --set driver.enabled=false \
+         --set devicePlugin.config.name=nvidia-mps-config \
+         --wait --timeout=300s
 
     # Create MPS config map for GPU sharing
     kubectl apply -f - <<EOF

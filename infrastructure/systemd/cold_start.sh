@@ -5,7 +5,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SYSTEMD_ROOT="$SCRIPT_DIR"
+PROJECT_ROOT="$(cd "$SYSTEMD_ROOT/../.." && pwd)"
 
 # Colors
 RED='\033[0;31m'
@@ -39,10 +40,10 @@ ensure_path_wrappers() {
     "/usr/local/bin/cold_start.sh"
   )
   local srcs=(
-    "$PROJECT_ROOT/deploy/systemd/scripts/enable_all.sh"
-    "$PROJECT_ROOT/deploy/systemd/scripts/health_check.sh"
-    "$PROJECT_ROOT/deploy/systemd/scripts/reset_and_start.sh"
-    "$PROJECT_ROOT/deploy/systemd/scripts/cold_start.sh"
+    "$SYSTEMD_ROOT/scripts/enable_all.sh"
+    "$SYSTEMD_ROOT/scripts/health_check.sh"
+    "$SYSTEMD_ROOT/scripts/reset_and_start.sh"
+    "$SYSTEMD_ROOT/scripts/cold_start.sh"
   )
   for i in "${!dsts[@]}"; do
     local dst="${dsts[$i]}"; local src="${srcs[$i]}"
@@ -57,12 +58,14 @@ ensure_path_wrappers() {
 ensure_install_helpers() {
   # Install/refresh helper scripts (idempotent)
   local start_dst="/usr/local/bin/justnews-start-agent.sh"
-  local start_src="$PROJECT_ROOT/deploy/systemd/justnews-start-agent.sh"
+  local start_src="$SYSTEMD_ROOT/scripts/justnews-start-agent.sh"
   local wait_dst="/usr/local/bin/wait_for_mcp.sh"
-  local wait_src="$PROJECT_ROOT/deploy/systemd/wait_for_mcp.sh"
+  local wait_src="$SYSTEMD_ROOT/scripts/wait_for_mcp.sh"
   local smoke_dst="/usr/local/bin/justnews-boot-smoke.sh"
-  local smoke_src="$PROJECT_ROOT/deploy/systemd/scripts/justnews-boot-smoke.sh"
-  for pair in "$start_src|$start_dst" "$wait_src|$wait_dst" "$smoke_src|$smoke_dst"; do
+  local smoke_src="$SYSTEMD_ROOT/scripts/justnews-boot-smoke.sh"
+  local preflight_dst="/usr/local/bin/justnews-preflight-check.sh"
+  local preflight_src="$SYSTEMD_ROOT/scripts/justnews-preflight-check.sh"
+  for pair in "$start_src|$start_dst" "$wait_src|$wait_dst" "$smoke_src|$smoke_dst" "$preflight_src|$preflight_dst"; do
     IFS='|' read -r src dst <<<"$pair"
     if [[ -f "$src" ]]; then
       if [[ ! -f "$dst" ]] || ! cmp -s "$src" "$dst"; then
@@ -74,7 +77,7 @@ ensure_install_helpers() {
 
 ensure_unit_template() {
   local unit_dst="/etc/systemd/system/justnews@.service"
-  local unit_src="$PROJECT_ROOT/deploy/systemd/units/justnews@.service"
+  local unit_src="$SYSTEMD_ROOT/units/justnews@.service"
   if [[ -f "$unit_src" ]]; then
     if [[ ! -f "$unit_dst" ]] || ! cmp -s "$unit_src" "$unit_dst"; then
       cp "$unit_src" "$unit_dst"

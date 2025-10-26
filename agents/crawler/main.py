@@ -212,7 +212,7 @@ if __name__ == "__main__":
     import uvicorn
     logger.info(f"Starting Crawler Agent on port {CRAWLER_AGENT_PORT}")
     uvicorn.run(
-        "agents.crawler.refactor.main:app",
+        "agents.crawler.main:app",
         host="0.0.0.0",
         port=CRAWLER_AGENT_PORT,
         reload=False,

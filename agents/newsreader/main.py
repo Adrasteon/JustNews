@@ -313,11 +313,24 @@ async def not_found_handler(request, exc):
 if __name__ == "__main__":
     import uvicorn
 
-    # Run with uvicorn for development
+    host = os.environ.get("NEWSREADER_HOST", "0.0.0.0")
+    port = int(os.environ.get("NEWSREADER_PORT", os.environ.get("PORT", "8002")))
+    reload_flag = os.environ.get("UVICORN_RELOAD", os.environ.get("NEWSREADER_RELOAD", "false")).lower() == "true"
+    log_level = os.environ.get("UVICORN_LOG_LEVEL", os.environ.get("NEWSREADER_LOG_LEVEL", "info"))
+
+    target = f"{__package__}.main:app" if __package__ else "main:app"
+
+    logger.info(
+        "Starting Newsreader Service on %s:%s (reload=%s)",
+        host,
+        port,
+        reload_flag,
+    )
+
     uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=int(os.getenv("PORT", "8002")),
-        reload=True,
-        log_level="info"
+        target,
+        host=host,
+        port=port,
+        reload=reload_flag,
+        log_level=log_level,
     )

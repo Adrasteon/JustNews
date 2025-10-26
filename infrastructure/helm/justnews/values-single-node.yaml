@@ -12,7 +12,7 @@ justnews:
   namespace: justnews
 
   image:
-    registry: justnews
+    registry: docker.io/library
     tag: latest
     pullPolicy: IfNotPresent
 
@@ -20,14 +20,14 @@ justnews:
     create: true
     name: justnews-agent-sa
 
-    # Optimized resource limits for single node with OS overhead
+  # Optimized resource limits for single node with OS overhead
   resources:
     limits:
-        cpu: 600m    # Reduced from 750m to account for OS overhead
-        memory: 1.2Gi  # Reduced from 1.5Gi for memory safety
-      requests:
-        cpu: 300m
-        memory: 600Mi
+      cpu: 600m    # Reduced from 750m to account for OS overhead
+      memory: 1200Mi  # Reduced from 1.5Gi for memory safety (1.2Gi = 1200Mi)
+    requests:
+      cpu: 300m
+      memory: 600Mi
 
   # GPU configuration - enable MPS sharing for concurrent usage on RTX 3090
   gpu:
@@ -181,7 +181,7 @@ justnews:
 
 # Infrastructure - reduced resources for single node
 postgresql:
-  enabled: true
+  enabled: false  # Temporarily disabled due to data corruption
   image:
     registry: docker.io
     repository: postgres
@@ -194,13 +194,13 @@ postgresql:
   architecture: standalone
   primary:
     persistence:
-      enabled: true
+      enabled: false  # Temporarily disabled due to data corruption
       size: 20Gi  # Reduced from 50Gi
       storageClass: "local-path"
     resources:
       limits:
         cpu: 600m    # Reduced from 750m for OS compatibility
-        memory: 1.2Gi  # Reduced from 1.5Gi for memory safety
+        memory: 1200Mi  # Reduced from 1.5Gi for memory safety
       requests:
         cpu: 300m
         memory: 600Mi
@@ -228,20 +228,20 @@ redis:
         memory: 300Mi
 
 prometheus:
-  enabled: true
+  enabled: false  # Temporarily disabled due to data corruption
   image:
     registry: docker.io
     repository: prom/prometheus
     tag: "v2.45.0"
   server:
     persistentVolume:
-      enabled: true
+      enabled: false  # Temporarily disabled due to data corruption
       size: 10Gi  # Reduced from 20Gi
       storageClass: "local-path"
     resources:
       limits:
         cpu: 500m    # Reduced from 1000m
-        memory: 1Gi  # Reduced from 2Gi
+        memory: 1000Mi  # Reduced from 2Gi
       requests:
         cpu: 250m
         memory: 512Mi

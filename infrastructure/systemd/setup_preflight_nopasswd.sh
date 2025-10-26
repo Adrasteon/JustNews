@@ -8,7 +8,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-DEFAULT_PREFLIGHT="${PROJECT_ROOT}/deploy/systemd/preflight.sh"
+DEFAULT_PREFLIGHT="${SCRIPT_DIR}/preflight.sh"
 SUDOERS_DROPIN="/etc/sudoers.d/justnews-preflight"
 TMP_DROPIN="/tmp/justnews-preflight.$$"
 

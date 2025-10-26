@@ -151,7 +151,7 @@ if __name__ == "__main__":
     import uvicorn
     logger.info(f"Starting Balancer Agent on port {BALANCER_AGENT_PORT}")
     uvicorn.run(
-        "agents.balancer.refactor.main:app",
+        "agents.balancer.main:app",
         host="0.0.0.0",
         port=BALANCER_AGENT_PORT,
         reload=False,

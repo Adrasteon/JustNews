@@ -1,0 +1,7 @@
+# Workspace hygiene exclusions
+stored_archive/
+logs/
+archive_storage/
+__pycache__/
+*.py[cod]
+

@@ -11,6 +11,8 @@ Key Features:
 - MCP bus integration
 - Comprehensive error handling
 - Performance monitoring
+- Transparency gating: the synthesizer refuses to report ready until the
+    evidence audit API responds successfully.
 
 Endpoints:
 - POST /cluster_articles: Cluster articles into themes
@@ -26,6 +28,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+import requests
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 
@@ -48,9 +51,13 @@ logger = get_logger(__name__)
 # Environment variables
 SYNTHESIZER_AGENT_PORT: int = int(os.environ.get("SYNTHESIZER_AGENT_PORT", 8005))
 MCP_BUS_URL: str = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
+EVIDENCE_AUDIT_BASE_URL: Optional[str] = os.environ.get("EVIDENCE_AUDIT_BASE_URL")
+TRANSPARENCY_HEALTH_TIMEOUT: float = float(os.environ.get("TRANSPARENCY_HEALTH_TIMEOUT", "3.0"))
+TRANSPARENCY_AUDIT_REQUIRED: bool = os.environ.get("REQUIRE_TRANSPARENCY_AUDIT", "1") != "0"
 
 # Global engine instance
 synthesizer_engine: Optional[SynthesizerEngine] = None
+transparency_gate_passed: bool = False
 
 class MCPBusClient:
     """Lightweight client for registering the agent with the central MCP Bus."""
@@ -78,10 +85,54 @@ class MCPBusClient:
             raise
 
 
+def check_transparency_gateway(
+    *,
+    base_url: Optional[str],
+    timeout: float,
+    required: bool,
+) -> bool:
+    """Ensure the evidence audit API is reachable before synthesis proceeds."""
+
+    if not base_url:
+        message = "EVIDENCE_AUDIT_BASE_URL is not configured"
+        if required:
+            raise RuntimeError(message)
+        logger.warning("%s; continuing in soft-fail mode", message)
+        return False
+
+    status_url = f"{base_url.rstrip('/')}/status"
+    try:
+        response = requests.get(status_url, timeout=timeout)
+        response.raise_for_status()
+        payload: Dict[str, Any] = response.json()
+    except Exception as exc:  # pragma: no cover - exercised in unit tests via monkeypatch
+        if required:
+            raise RuntimeError(f"Transparency status request failed: {exc}") from exc
+        logger.warning("Transparency status request failed: %s", exc)
+        return False
+
+    integrity = payload.get("integrity", {})
+    status = integrity.get("status")
+    if status not in {"ok", "degraded"}:
+        message = f"Transparency integrity status '{status}' is not acceptable"
+        if required:
+            raise RuntimeError(message)
+        logger.warning(message)
+        return False
+
+    if status == "degraded":
+        logger.warning(
+            "Transparency dataset integrity degraded: missing_assets=%s",
+            integrity.get("missing_assets", []),
+        )
+
+    return True
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown context manager for the FastAPI app."""
-    global synthesizer_engine
+    global synthesizer_engine, transparency_gate_passed
 
     logger.info("🚀 Synthesizer agent is starting up.")
 
@@ -92,6 +143,24 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"❌ Failed to initialize synthesizer engine: {e}")
         synthesizer_engine = None
+
+    # Block readiness until transparency evidence API is healthy
+    try:
+        transparency_gate_passed = check_transparency_gateway(
+            base_url=EVIDENCE_AUDIT_BASE_URL,
+            timeout=TRANSPARENCY_HEALTH_TIMEOUT,
+            required=TRANSPARENCY_AUDIT_REQUIRED,
+        )
+        if transparency_gate_passed:
+            logger.info("🔍 Transparency gate satisfied; proceeding with synthesizer startup")
+        else:
+            logger.warning("⚠️ Transparency gate not satisfied but audit requirement disabled; synthesizer will remain not-ready")
+    except RuntimeError as exc:
+        logger.error("Transparency audit check failed: %s", exc)
+        synthesizer_engine = None
+        transparency_gate_passed = False
+        if TRANSPARENCY_AUDIT_REQUIRED:
+            raise
 
     # Register with MCP bus
     mcp_bus_client = MCPBusClient()
@@ -167,13 +236,15 @@ def health() -> Dict[str, str]:
     """Liveness probe."""
     if synthesizer_engine is None:
         raise HTTPException(status_code=503, detail="Engine not initialized")
-    return {"status": "ok", "engine": "ready"}
+    if not transparency_gate_passed:
+        raise HTTPException(status_code=503, detail="Transparency audit gateway not satisfied")
+    return {"status": "ok", "engine": "ready", "transparency": "verified"}
 
 
 @app.get("/ready")
 def ready_endpoint() -> Dict[str, bool]:
     """Readiness probe."""
-    return {"ready": synthesizer_engine is not None}
+    return {"ready": synthesizer_engine is not None and transparency_gate_passed}
 
 
 @app.get("/metrics")
@@ -198,7 +269,7 @@ def log_feedback(call: ToolCall) -> Dict[str, Any]:
 
 
 @app.post("/cluster_articles")
-def cluster_articles_endpoint(call: ToolCall) -> Any:
+async def cluster_articles_endpoint(call: ToolCall) -> Any:
     """Cluster a list of articles into groups."""
     if synthesizer_engine is None:
         raise HTTPException(status_code=503, detail="Engine not initialized")
@@ -224,7 +295,7 @@ def cluster_articles_endpoint(call: ToolCall) -> Any:
 
 
 @app.post("/neutralize_text")
-def neutralize_text_endpoint(call: ToolCall) -> Any:
+async def neutralize_text_endpoint(call: ToolCall) -> Any:
     """Neutralize text for bias and aggressive language."""
     if synthesizer_engine is None:
         raise HTTPException(status_code=503, detail="Engine not initialized")
@@ -248,7 +319,7 @@ def neutralize_text_endpoint(call: ToolCall) -> Any:
 
 
 @app.post("/aggregate_cluster")
-def aggregate_cluster_endpoint(call: ToolCall) -> Any:
+async def aggregate_cluster_endpoint(call: ToolCall) -> Any:
     """Aggregate a cluster of articles into a synthesis."""
     if synthesizer_engine is None:
         raise HTTPException(status_code=503, detail="Engine not initialized")
@@ -272,7 +343,7 @@ def aggregate_cluster_endpoint(call: ToolCall) -> Any:
 
 
 @app.post("/synthesize_news_articles_gpu")
-def synthesize_news_articles_gpu_endpoint(request: SynthesisRequest) -> Dict[str, Any]:
+async def synthesize_news_articles_gpu_endpoint(request: SynthesisRequest) -> Dict[str, Any]:
     """GPU-accelerated news article synthesis endpoint."""
     if synthesizer_engine is None:
         raise HTTPException(status_code=503, detail="Engine not initialized")
@@ -299,13 +370,14 @@ def synthesize_news_articles_gpu_endpoint(request: SynthesisRequest) -> Dict[str
 
 
 @app.post("/get_synthesizer_performance")
-def get_synthesizer_performance_endpoint(call: ToolCall) -> Dict[str, Any]:
+async def get_synthesizer_performance_endpoint(call: ToolCall) -> Dict[str, Any]:
     """Get synthesizer performance statistics."""
     if synthesizer_engine is None:
         raise HTTPException(status_code=503, detail="Engine not initialized")
 
     try:
         logger.info("📊 Retrieving synthesizer performance stats")
+
         result = await get_stats(synthesizer_engine)
         return result
 
@@ -316,13 +388,13 @@ def get_synthesizer_performance_endpoint(call: ToolCall) -> Dict[str, Any]:
 
 # Health and stats endpoints
 @app.get("/stats")
-def get_stats_endpoint() -> Dict[str, Any]:
+async def get_stats_endpoint() -> Dict[str, Any]:
     """Get comprehensive synthesizer statistics."""
     if synthesizer_engine is None:
         return {"error": "Engine not initialized"}
 
     try:
-        return health_check(synthesizer_engine)
+        return await health_check(synthesizer_engine)
     except Exception as e:
         logger.exception("❌ Stats endpoint failed")
         return {"error": str(e)}
@@ -330,9 +402,9 @@ def get_stats_endpoint() -> Dict[str, Any]:
 
 # Compatibility aliases
 @app.post("/synthesize_content")
-def synthesize_content_alias(request: SynthesisRequest) -> Any:
+async def synthesize_content_alias(request: SynthesisRequest) -> Any:
     """Alias for compatibility with existing E2E tests."""
-    return synthesize_news_articles_gpu_endpoint(request)
+    return await synthesize_news_articles_gpu_endpoint(request)
 
 
 if __name__ == "__main__":

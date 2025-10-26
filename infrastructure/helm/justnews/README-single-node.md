@@ -53,8 +53,8 @@ sudo mv linux-amd64/helm /usr/local/bin/helm
 
 ### 2. Deploy Everything
 ```bash
-cd infrastructure/helm/justnews
-./deploy-single-node.sh all
+cd /home/adra/JustNewsAgent-Clean
+./infrastructure/helm/justnews/deploy-single-node.sh all
 ```
 
 This will:
@@ -76,25 +76,27 @@ MCP Bus:    http://localhost:8000
 If you prefer step-by-step deployment:
 
 ```bash
+cd /home/adra/JustNewsAgent-Clean
+
 # 1. Check system
-./deploy-single-node.sh check
+./infrastructure/helm/justnews/deploy-single-node.sh check
 
 # 2. Install k3s and dependencies
-./deploy-single-node.sh install
+./infrastructure/helm/justnews/deploy-single-node.sh install
 
 # 3. Optional: Install GPU operator
-./deploy-single-node.sh gpu-setup
+./infrastructure/helm/justnews/deploy-single-node.sh gpu-setup
 
 This installs the NVIDIA GPU Operator with MPS (Multi-Process Service) support enabled, allowing multiple agents to share the RTX3090 concurrently without context switching overhead.
 
 # 4. Deploy JustNews
-./deploy-single-node.sh deploy
+./infrastructure/helm/justnews/deploy-single-node.sh deploy
 
 # 5. Check status
-./deploy-single-node.sh status
+./infrastructure/helm/justnews/deploy-single-node.sh status
 
 # 6. Setup port forwarding
-./deploy-single-node.sh ports
+./infrastructure/helm/justnews/deploy-single-node.sh ports
 ```
 
 ## Resource Usage Estimate

@@ -32,9 +32,28 @@ Minimum keys (examples):
 
 ```
 JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-v2-py312/bin/python
-SERVICE_DIR=/home/adra/justnewsagent/JustNewsAgent
+SERVICE_DIR=/home/adra/JustNewsAgent-Clean
 JUSTNEWS_DB_URL=postgresql://user:pass@localhost:5432/justnews
 ENABLE_MPS=true
+UNIFIED_CRAWLER_ENABLE_HTTP_FETCH=true
+ARTICLE_EXTRACTOR_PRIMARY=trafilatura
+ARTICLE_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+ARTICLE_URL_HASH_ALGO=sha256
+ARTICLE_URL_NORMALIZATION=strict
+CLUSTER_SIMILARITY_THRESHOLD=0.85
+TRANSPARENCY_PORTAL_BASE_URL=https://news.example.com/transparency
+EVIDENCE_AUDIT_BASE_URL=https://news.example.com/api/evidence
+TRANSPARENCY_DATA_DIR=/var/lib/justnews/transparency-archive
+REQUIRE_TRANSPARENCY_AUDIT=1
+# Optional Prometheus textfile target for the crawl scheduler
+# CRAWL_SCHEDULER_METRICS=/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom
+```
+
+Minimum governance/observability keys (recommended additions as the transparency stack comes online):
+
+```
+GOVERNANCE_DASHBOARD_URL=https://grafana.example.com/d/justnews-governance
+QA_SAMPLING_PLAYBOOK=/etc/justnews/playbooks/extraction-qa.md
 ```
 
 Per-instance overrides (e.g., `/etc/justnews/analyst.env`):
@@ -93,9 +112,6 @@ After changes: `sudo systemctl daemon-reload`.
 
 ## Operations scripts
 
-- `enable_all.sh` – orchestration of enable/disable/start/stop/restart/fresh.
-- `health_check.sh` – consolidated status table of systemd/ports/HTTP/READY.
-- `preflight.sh` – full validations and model preload gate.
 
 PATH wrappers (optional): small shims installed to `/usr/local/bin` so operators can run commands from any CWD:
 
@@ -116,18 +132,31 @@ Helpers (optional):
 ```
 sudo systemctl status justnews@analyst
 sudo journalctl -u justnews@analyst -e -n 200 -f
-sudo ./deploy/systemd/preflight.sh --stop     # to free occupied ports
-sudo ./deploy/systemd/health_check.sh -v
+sudo ./infrastructure/systemd/preflight.sh --stop     # to free occupied ports
+sudo ./infrastructure/systemd/scripts/health_check.sh -v
+sudo journalctl -u justnews-crawl-scheduler.service -e -n 200 -f   # scheduler jobs
+sudo journalctl -u justnews@cluster_pipeline -e -n 200 -f  # clustering workers
+sudo journalctl -u justnews@fact_intel -e -n 200 -f        # fact intelligence workers
 ```
 
 If many services fail on first boot, verify `justnews@gpu_orchestrator` is READY.
+
+## Transparency and governance checks
+
+- Evidence audit API: `curl -fsS "$EVIDENCE_AUDIT_BASE_URL/facts/<id>/trail" | jq`
+- Transparency portal smoke test: `curl -I "$TRANSPARENCY_PORTAL_BASE_URL/status"`
+- Governance dashboard heartbeat: `curl -fsS "$GOVERNANCE_DASHBOARD_URL/api/health"`
+- QA sampling reminders: ensure `/etc/justnews/playbooks/extraction-qa.md` exists and is referenced in weekly ops review notes.
+- Verify synthesizer gate: `curl -fsS http://127.0.0.1:8005/ready` should report `true` only when `/transparency/status` returns `integrity.status` of `ok` or `degraded`.
+
+If transparency endpoints return non-200 responses, pause automated publishing (`sudo systemctl stop justnews@synthesis`) until evidence trails are restored.
 
 ## Orderly shutdown
 
 Shut down the system cleanly using the orchestration script which issues systemd stops in reverse order to avoid dependency issues:
 
 ```
-sudo ./deploy/systemd/enable_all.sh stop
+sudo ./infrastructure/systemd/scripts/enable_all.sh stop
 ```
 
 Behavior:
@@ -150,8 +179,8 @@ sudo systemctl stop justnews@gpu_orchestrator
 
 Troubleshooting:
 - If a service hangs, check logs: `journalctl -u justnews@<name> -e -n 200 -f`.
-- Free ports and dangling processes: `sudo ./deploy/systemd/preflight.sh --stop`.
-- After changes, confirm all ports are free with `deploy/systemd/health_check.sh` (it reports port usage).
+- Free ports and dangling processes: `sudo ./infrastructure/systemd/preflight.sh --stop`.
+- After changes, confirm all ports are free with `infrastructure/systemd/scripts/health_check.sh` (it reports port usage).
 
 ## Status panel (auto-refresh)
 
@@ -184,7 +213,7 @@ This project gates agent startup on the GPU Orchestrator’s model preload, whic
 1) One-command fresh restart (recommended)
 
 ```
-sudo ./deploy/systemd/reset_and_start.sh
+sudo ./infrastructure/systemd/reset_and_start.sh
 ```
 
 What it does:
@@ -199,8 +228,8 @@ What it does:
 ```
 sudo systemctl enable --now justnews@gpu_orchestrator
 curl -fsS http://127.0.0.1:8014/ready
-sudo ./deploy/systemd/enable_all.sh start
-sudo ./deploy/systemd/health_check.sh
+sudo ./infrastructure/systemd/scripts/enable_all.sh start
+sudo ./infrastructure/systemd/scripts/health_check.sh
 ```
 
 Notes and tuning:
@@ -212,14 +241,14 @@ Notes and tuning:
 Failure handling:
 - If the orchestrator `READY` probe doesn’t succeed within the timeout, `enable_all.sh` aborts with a clear message. Check `journalctl -u justnews@gpu_orchestrator -f`.
 - If MCP Bus health isn’t ready, the script logs a warning and continues; subsequent services will still start due to systemd gating.
-- Always run `sudo ./deploy/systemd/health_check.sh -v` after changes to confirm all agents are healthy.
+- Always run `sudo ./infrastructure/systemd/scripts/health_check.sh -v` after changes to confirm all agents are healthy.
 
 ## Cold start (machine reboot)
 
 Use the one-command cold boot to bring the system up from a clean machine restart:
 
 ```
-sudo ./deploy/systemd/cold_start.sh
+sudo ./infrastructure/systemd/cold_start.sh
 ```
 
 What it does:
@@ -239,12 +268,12 @@ Notes:
 Install the service/timer pair to trigger a cold start shortly after boot:
 
 ```
-sudo cp deploy/systemd/scripts/justnews-cold-start.sh /usr/local/bin/
-sudo cp deploy/systemd/scripts/justnews-boot-smoke.sh /usr/local/bin/
+sudo cp infrastructure/systemd/scripts/justnews-cold-start.sh /usr/local/bin/
+sudo cp infrastructure/systemd/scripts/justnews-boot-smoke.sh /usr/local/bin/
 sudo chmod +x /usr/local/bin/justnews-cold-start.sh
 sudo chmod +x /usr/local/bin/justnews-boot-smoke.sh
-sudo cp deploy/systemd/units/justnews-cold-start.service /etc/systemd/system/
-sudo cp deploy/systemd/units/justnews-cold-start.timer /etc/systemd/system/
+sudo cp infrastructure/systemd/units/justnews-cold-start.service /etc/systemd/system/
+sudo cp infrastructure/systemd/units/justnews-cold-start.timer /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now justnews-cold-start.timer
 ```
@@ -256,11 +285,11 @@ This schedules a one-shot cold start ~45s after boot, after `network-online.targ
 Install a lightweight smoke test that runs ~2 minutes after boot to verify orchestrator, MCP Bus, and agent /health endpoints. It logs a concise summary to the journal and always exits 0 (so it never flaps):
 
 ```
-sudo cp deploy/systemd/helpers/boot_smoke_test.sh /usr/local/bin/
-sudo cp deploy/systemd/scripts/justnews-boot-smoke.sh /usr/local/bin/
+sudo cp infrastructure/systemd/helpers/boot_smoke_test.sh /usr/local/bin/
+sudo cp infrastructure/systemd/scripts/justnews-boot-smoke.sh /usr/local/bin/
 sudo chmod +x /usr/local/bin/justnews-boot-smoke.sh /usr/local/bin/boot_smoke_test.sh
-sudo cp deploy/systemd/units/justnews-boot-smoke.service /etc/systemd/system/
-sudo cp deploy/systemd/units/justnews-boot-smoke.timer /etc/systemd/system/
+sudo cp infrastructure/systemd/units/justnews-boot-smoke.service /etc/systemd/system/
+sudo cp infrastructure/systemd/units/justnews-boot-smoke.timer /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now justnews-boot-smoke.timer
 ```
@@ -275,4 +304,44 @@ journalctl -u justnews-boot-smoke.service -e -n 200
 Tuning (optional):
 - `SMOKE_TIMEOUT_SEC`, `SMOKE_RETRIES`, `SMOKE_SLEEP_BETWEEN` can be exported in the environment or set via a systemd drop-in for `justnews-boot-smoke.service`.
 - To delay further, increase `OnBootSec` in the timer unit.
+
+## Stage B1 crawl scheduler
+
+The Stage B ingestion scheduler runs as a oneshot unit with an hourly timer once Stage A is green.
+
+Setup recap (idempotent):
+
+```
+sudo cp infrastructure/systemd/scripts/run_crawl_schedule.sh /usr/local/bin/
+sudo chmod +x /usr/local/bin/run_crawl_schedule.sh
+sudo cp infrastructure/systemd/units/justnews-crawl-scheduler.* /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now justnews-crawl-scheduler.timer
+```
+
+Optional overrides live in `/etc/justnews/crawl_scheduler.env`:
+
+```
+CRAWLER_AGENT_URL=http://127.0.0.1:8015
+CRAWL_SCHEDULE_PATH=/etc/justnews/crawl_schedule.yaml
+CRAWL_SCHEDULER_METRICS=/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom
+CRAWL_SCHEDULER_STATE=/var/log/justnews/crawl_scheduler_state.json
+CRAWL_SCHEDULER_SUCCESS=/var/log/justnews/crawl_scheduler_success.json
+```
+
+Operations:
+
+```
+sudo systemctl status justnews-crawl-scheduler.timer
+sudo systemctl status justnews-crawl-scheduler.service
+journalctl -u justnews-crawl-scheduler.service -e -n 200 -f
+```
+
+Outputs land in the paths above; Prometheus gauges (`justnews_crawler_scheduler_*`) are emitted via the textfile target. For a dry run without touching the crawler agent:
+
+```
+conda run -n justnews-v2-py312 python scripts/ops/run_crawl_schedule.py --dry-run
+```
+
+Governance notes and rate-limit reviews belong in `logs/governance/crawl_terms_audit.md`.
 

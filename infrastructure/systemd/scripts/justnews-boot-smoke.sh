@@ -4,8 +4,19 @@
 # doesn't depend on execute bit; print a helpful message if missing.
 set -uo pipefail
 
-REPO_DIR="/home/adra/justnewsagent/JustNewsAgent"
-SCRIPT="$REPO_DIR/deploy/systemd/helpers/boot_smoke_test.sh"
+resolve_root() {
+  if [[ -n "${JUSTNEWS_ROOT:-}" ]]; then echo "$JUSTNEWS_ROOT"; return 0; fi
+  if [[ -r /etc/justnews/global.env ]]; then
+    # shellcheck disable=SC1091
+    source /etc/justnews/global.env
+    [[ -n "${JUSTNEWS_ROOT:-}" ]] && { echo "$JUSTNEWS_ROOT"; return 0; }
+    [[ -n "${SERVICE_DIR:-}" ]] && { echo "$SERVICE_DIR"; return 0; }
+  fi
+  echo "/home/adra/JustNewsAgent-Clean"
+}
+
+REPO_DIR="$(resolve_root)"
+SCRIPT="$REPO_DIR/infrastructure/systemd/helpers/boot_smoke_test.sh"
 
 if [[ -r "$SCRIPT" ]]; then
   /usr/bin/env bash "$SCRIPT" || true

@@ -1,0 +1,23 @@
+[Unit]
+Description=JustNews Crawl Scheduler
+Wants=network-online.target justnews-crawler-agent@production.service
+After=network-online.target justnews-crawler-agent@production.service
+PartOf=justnews.target
+
+[Service]
+Type=oneshot
+User=adra
+Group=adra
+EnvironmentFile=-/etc/justnews/global.env
+EnvironmentFile=-/etc/justnews/crawl_scheduler.env
+WorkingDirectory=/
+ExecStart=/usr/local/bin/run_crawl_schedule.sh
+Nice=5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=4
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=justnews-crawl-scheduler
+
+[Install]
+WantedBy=multi-user.target

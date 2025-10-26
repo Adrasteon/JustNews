@@ -1,7 +1,9 @@
 # Workspace hygiene exclusions
 stored_archive/
 logs/
-archive_storage/
+archive_storage/*
+!archive_storage/transparency/
+!archive_storage/transparency/**
 __pycache__/
 *.py[cod]
 

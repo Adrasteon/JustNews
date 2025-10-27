@@ -11,8 +11,18 @@ PROJECT_ROOT="$(realpath "$SCRIPT_DIR/../../..")"
 ENV_FILE="/etc/justnews/global.env"
 
 # Activate Conda environment
-source ~/miniconda3/etc/profile.d/conda.sh
-conda activate justnews-v2-py312
+if [[ -n "$SUDO_USER" ]]; then
+    CONDA_BASE="$(sudo -Hiu "$SUDO_USER" bash -lc 'echo "$HOME"')/miniconda3"
+else
+    CONDA_BASE="$HOME/miniconda3"
+fi
+if [[ -f "$CONDA_BASE/etc/profile.d/conda.sh" ]]; then
+    source "$CONDA_BASE/etc/profile.d/conda.sh"
+    conda activate justnews-v2-py312
+else
+    echo "Conda initialization script not found at $CONDA_BASE/etc/profile.d/conda.sh"
+    exit 1
+fi
 
 # Print environment variables for debugging
 echo "Environment variables for debugging:" >&2

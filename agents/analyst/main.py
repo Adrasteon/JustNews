@@ -66,6 +66,25 @@ logger = get_logger(__name__)
 ANALYST_AGENT_PORT = int(os.environ.get("ANALYST_AGENT_PORT", 8004))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
+def analyze_text(text: str) -> Dict[str, Any]:
+    """Backwards-compatible text analysis helper.
+
+    Legacy integrations and tests import this function directly from the
+    module. We delegate to the primary sentiment analysis tooling so callers
+    receive a consistent response structure without reimplementing logic.
+    """
+
+    if not text:
+        return {"sentiment": "neutral", "confidence": 0.0}
+
+    from .tools import analyze_sentiment
+
+    try:
+        return analyze_sentiment(text)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        logger.warning("Sentiment analysis fallback due to error: %s", exc)
+        return {"sentiment": "unknown", "confidence": 0.0, "error": str(exc)}
+
 # Request/Response Models
 class AnalysisRequest(BaseModel):
     """Base request model for analysis operations."""

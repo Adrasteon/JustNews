@@ -37,6 +37,24 @@ MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:8000").split(",")
 
+
+async def execute_crawl(
+    domains: list[str],
+    max_articles_per_site: int = 25,
+    concurrent_sites: int = 3
+) -> Dict[str, Any]:
+    """Execute a crawl synchronously for legacy integrations and tests.
+
+    The production workflow relies on the background job endpoint, but certain
+    callers import ``execute_crawl`` directly (including security tests that
+    patch the function). This helper provides a thin wrapper around the
+    ``CrawlerEngine`` so those imports remain valid in Stage B.
+    """
+
+    async with CrawlerEngine() as crawler:
+        await crawler._load_ai_models()
+        return await crawler.run_unified_crawl(domains, max_articles_per_site, concurrent_sites)
+
 class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
         self.base_url = base_url

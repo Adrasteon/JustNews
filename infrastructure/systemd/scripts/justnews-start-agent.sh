@@ -319,23 +319,32 @@ start_agent() {
     else
         py_interpreter="${PYTHON_BIN:-python3}"
     fi
-    if ! command -v $(echo "$py_interpreter" | awk '{print $1}') >/dev/null 2>&1; then
+    local -a py_cmd_parts
+    local IFS=' '
+    read -r -a py_cmd_parts <<< "$py_interpreter"
+    if [[ ${#py_cmd_parts[@]} -eq 0 ]]; then
+        log_error "Resolved Python command is empty"
+        exit 1
+    fi
+    local py_executable="${py_cmd_parts[0]}"
+    if ! command -v "$py_executable" >/dev/null 2>&1; then
         log_warning "Configured PYTHON_BIN not found (PYTHON_BIN='${PYTHON_BIN:-}'), falling back to 'python3'"
-        py_interpreter="python3"
+        py_cmd_parts=("python3")
+        py_executable="python3"
     fi
     local cmd
     if [[ "$agent" == "gpu_orchestrator" ]]; then
         # Prefer uvicorn runner for orchestrator for clearer server logs and binding
         local port="${GPU_ORCHESTRATOR_PORT:-8014}"
-        if $py_interpreter -c "import uvicorn" >/dev/null 2>&1; then
-            cmd=("$py_interpreter" "-m" "uvicorn" "agents.gpu_orchestrator.main:app" "--host" "0.0.0.0" "--port" "$port" "--log-level" "info")
+        if "${py_cmd_parts[@]}" -c "import uvicorn" >/dev/null 2>&1; then
+            cmd=("${py_cmd_parts[@]}" "-m" "uvicorn" "agents.gpu_orchestrator.main:app" "--host" "0.0.0.0" "--port" "$port" "--log-level" "info")
             log_info "Using uvicorn runner on port $port"
         else
             log_warning "uvicorn not available; falling back to module runner"
-            cmd=("$py_interpreter" "-m" "agents.${agent}.main")
+            cmd=("${py_cmd_parts[@]}" "-m" "agents.${agent}.main")
         fi
     else
-        cmd=("$py_interpreter" "-m" "agents.${agent}.main")
+        cmd=("${py_cmd_parts[@]}" "-m" "agents.${agent}.main")
     fi
 
     # Add any additional arguments from environment
@@ -346,7 +355,7 @@ start_agent() {
     fi
 
     # Log the command (without sensitive info)
-    log_info "Using Python: $(command -v "$py_interpreter" || echo "$py_interpreter")"
+    log_info "Using Python: $(command -v "$py_executable" || echo "$py_executable")"
     log_info "Executing: ${cmd[*]}"
 
     # Execute the agent

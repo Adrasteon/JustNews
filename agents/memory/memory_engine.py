@@ -224,15 +224,26 @@ class MemoryEngine:
                 content = article_payload.get("content", "")
                 metadata = {
                     "url": article_payload.get("url"),
+                    "normalized_url": article_payload.get("normalized_url"),
                     "title": article_payload.get("title"),
                     "domain": article_payload.get("domain"),
                     "publisher_meta": article_payload.get("publisher_meta", {}),
                     "confidence": article_payload.get("confidence", 0.5),
                     "paywall_flag": article_payload.get("paywall_flag", False),
                     "extraction_metadata": article_payload.get("extraction_metadata", {}),
+                    "structured_metadata": article_payload.get("structured_metadata", {}),
                     "timestamp": article_payload.get("timestamp"),
                     "url_hash": article_payload.get("url_hash"),
+                    "url_hash_algorithm": article_payload.get("url_hash_algorithm"),
                     "canonical": article_payload.get("canonical"),
+                    "language": article_payload.get("language"),
+                    "authors": article_payload.get("authors", []),
+                    "section": article_payload.get("section"),
+                    "tags": article_payload.get("tags", []),
+                    "publication_date": article_payload.get("publication_date"),
+                    "raw_html_ref": article_payload.get("raw_html_ref"),
+                    "needs_review": article_payload.get("needs_review", False),
+                    "review_reasons": article_payload.get("review_reasons", []),
                 }
 
                 if content:  # Only save if there's actual content

@@ -4,6 +4,12 @@
 
 This guide covers production deployment, scaling, and operational procedures for JustNewsAgent.
 
+## Stage B Validation Workflow
+- Follow the playbook in `docs/operations/stage_b_validation.md` when preparing Stage B rollout work.
+- Instantiate ops tickets with the checklist from `docs/operations/stage_b_ticket_template.md`.
+- Attach artifacts to the running ticket and log summaries in `docs/operations/stage_b_validation_evidence_log.md`.
+- Use `bash scripts/ops/apply_stage_b_migration.sh` to run migration 003 and optionally append a timestamped entry to the evidence log; the script drops raw output in `logs/operations/migrations/` for archival.
+
 ## Environment Overview
 
 ### Development Environment

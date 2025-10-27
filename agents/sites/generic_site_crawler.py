@@ -10,7 +10,6 @@ and fall back to no-op behaviour in offline environments.
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import os
 from collections.abc import Mapping, Sequence
@@ -23,6 +22,7 @@ import requests
 
 from agents.crawler.extraction import ExtractionOutcome, extract_article_content
 from common.observability import get_logger
+from common.url_normalization import hash_article_url, normalize_article_url
 
 logger = get_logger(__name__)
 
@@ -145,7 +145,7 @@ class GenericSiteCrawler:
         self.batch_size = batch_size
         resolved = enable_http_fetch if enable_http_fetch is not None else _bool_from_env(
             os.environ.get("UNIFIED_CRAWLER_ENABLE_HTTP_FETCH"),
-            default=False,
+            default=True,
         )
         self.enable_http_fetch = resolved
         self.session = session or requests.Session()
@@ -245,7 +245,10 @@ class GenericSiteCrawler:
             return None
 
         canonical_url = extraction.canonical_url or url
-        url_hash = hashlib.sha256(canonical_url.encode("utf-8", errors="ignore")).hexdigest()
+        normalized_url = normalize_article_url(url, canonical_url)
+        hash_algorithm = os.environ.get("ARTICLE_URL_HASH_ALGO", "sha256")
+        hash_candidate = normalized_url or canonical_url or url
+        url_hash = hash_article_url(hash_candidate, algorithm=hash_algorithm)
         timestamp = datetime.now(timezone.utc).isoformat()
 
         extraction_metadata: Dict[str, Any] = {
@@ -264,6 +267,7 @@ class GenericSiteCrawler:
         article = {
             "url": url,
             "canonical": canonical_url,
+            "normalized_url": normalized_url,
             "title": extraction.title or self.site_config.name,
             "content": extraction.text[:10_000],
             "domain": self.site_config.domain,
@@ -283,6 +287,7 @@ class GenericSiteCrawler:
             "raw_html_ref": extraction.raw_html_path,
             "timestamp": timestamp,
             "url_hash": url_hash,
+            "url_hash_algorithm": hash_algorithm,
         }
 
         return article

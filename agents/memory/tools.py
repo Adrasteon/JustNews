@@ -21,11 +21,13 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from time import perf_counter
 
 import numpy as np
 import requests
 
 from common.observability import get_logger
+from common.stage_b_metrics import get_stage_b_metrics
 
 try:
     import torch
@@ -35,6 +37,7 @@ except Exception:
 # Import database utilities
 from agents.common.database import execute_query, execute_query_single
 from agents.common.database import get_db_connection as get_pooled_connection
+from common.url_normalization import hash_article_url, normalize_article_url
 
 # Configure centralized logging
 logger = get_logger(__name__)
@@ -85,6 +88,24 @@ def get_embedding_model():
             return None
 
 
+def _parse_publication_date(value: Any) -> Optional[datetime]:
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        candidate = value.strip()
+        if not candidate:
+            return None
+        try:
+            if candidate.endswith("Z"):
+                candidate = candidate[:-1] + "+00:00"
+            return datetime.fromisoformat(candidate)
+        except ValueError:
+            return None
+    return None
+
+
 def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
     """Saves an article to the database and generates an embedding for the content.
 
@@ -94,66 +115,158 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
         embedding_model: Optional pre-initialized SentenceTransformer instance.
             If not provided, a new model will be created via get_embedding_model().
     """
+    metrics = get_stage_b_metrics()
     try:
-        # Check for duplicates based on URL first
-        article_url = metadata.get("url") if metadata else None
-        if article_url:
-            # Check if article with this URL already exists
-            existing_article = execute_query_single(
-                "SELECT id FROM articles WHERE metadata->>'url' = %s",
-                (article_url,)
+        metadata = metadata or {}
+
+        raw_url = metadata.get("url")
+        canonical_url = metadata.get("canonical") or raw_url
+        normalized_url = metadata.get("normalized_url") or normalize_article_url(raw_url or "", canonical_url)
+        normalized_url = normalized_url or None
+        hash_algorithm = (metadata.get("url_hash_algorithm") or os.environ.get("ARTICLE_URL_HASH_ALGO", "sha256")).lower()
+        hash_candidate = metadata.get("url_hash") or hash_article_url(
+            normalized_url or canonical_url or raw_url or "",
+            algorithm=hash_algorithm,
+        )
+
+        if not hash_candidate and normalized_url:
+            hash_candidate = hash_article_url(normalized_url, algorithm=hash_algorithm)
+        hash_value = hash_candidate or None
+
+        duplicate_lookup_id = None
+        if hash_value:
+            duplicate = execute_query_single(
+                "SELECT id FROM articles WHERE url_hash = %s",
+                (hash_value,)
             )
-            if existing_article:
-                logger.info(f"Article with URL {article_url} already exists (ID: {existing_article['id']}), skipping duplicate")
-                return {"status": "duplicate", "article_id": existing_article['id'], "message": "Article already exists"}
+            if duplicate:
+                duplicate_lookup_id = duplicate.get("id")
+        elif normalized_url:
+            duplicate = execute_query_single(
+                "SELECT id FROM articles WHERE normalized_url = %s",
+                (normalized_url,)
+            )
+            if duplicate:
+                duplicate_lookup_id = duplicate.get("id")
+
+        if duplicate_lookup_id is not None:
+            logger.info(
+                "Article with hash %s already exists (ID: %s), skipping duplicate",
+                hash_value,
+                duplicate_lookup_id,
+            )
+            metrics.record_ingestion("duplicate")
+            return {
+                "status": "duplicate",
+                "article_id": duplicate_lookup_id,
+                "message": "Article already exists",
+            }
 
         # Use provided model if available to avoid re-loading model per-call
+        cache_label = "provided" if embedding_model is not None else "shared"
         if embedding_model is None:
             embedding_model = get_embedding_model()
-
-        if embedding_model is None:
-            logger.error("No embedding model available for article storage")
-            return {"error": "embedding_model_unavailable"}
+            if embedding_model is None:
+                metrics.record_embedding("model_unavailable")
+                logger.error("No embedding model available for article storage")
+                metrics.record_ingestion("embedding_model_unavailable")
+                return {"error": "embedding_model_unavailable"}
+            cache_label = "shared"
 
         # encode may return numpy array; convert later to list of floats
-        embedding = embedding_model.encode(content)
-
-        # Ensure metadata is a JSON-serializable string for safe insertion
+        encode_start = perf_counter()
         try:
-            metadata_payload = json.dumps(metadata) if metadata is not None else json.dumps({})
+            embedding = embedding_model.encode(content)
+            encode_duration = perf_counter() - encode_start
+            metrics.observe_embedding_latency(cache_label, encode_duration)
+            metrics.record_embedding("success")
+        except Exception as encoding_error:
+            encode_duration = perf_counter() - encode_start
+            metrics.observe_embedding_latency(cache_label, encode_duration)
+            metrics.record_embedding("error")
+            logger.error("Embedding generation failed: %s", encoding_error)
+            metrics.record_ingestion("error")
+            return {"error": "embedding_generation_failed"}
+
+        try:
+            metadata_payload = json.dumps(metadata)
         except Exception:
-            # Fallback: coerce to string
             metadata_payload = json.dumps({"raw": str(metadata)})
 
-        # Get the next available ID (simple approach without sequence)
-        next_id_result = execute_query_single("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM articles")
-        next_id = 1
-        if next_id_result:
-            if isinstance(next_id_result, dict):
-                if 'next_id' in next_id_result:
-                    next_id = int(next_id_result['next_id'])
-                elif 'coalesce' in next_id_result:  # some drivers name expression as 'coalesce'
-                    next_id = int(next_id_result['coalesce'])
-                elif '?column?' in next_id_result:  # postgres default unnamed expression
-                    next_id = int(next_id_result['?column?'])
-                else:
-                    # fallback to first value
-                    try:
-                        next_id = int(list(next_id_result.values())[0])
-                    except Exception:
-                        next_id = 1
-            else:
-                try:
-                    next_id = int(next_id_result)
-                except Exception:
-                    next_id = 1
+        authors: List[str] = metadata.get("authors") or []
+        if isinstance(authors, str):
+            authors = [authors]
+        tags: List[str] = metadata.get("tags") or []
+        if isinstance(tags, str):
+            tags = [t.strip() for t in tags.split(",") if t.strip()]
 
-        # Insert with explicit ID - metadata as JSON string (Postgres will cast)
-        execute_query(
-            "INSERT INTO articles (id, content, metadata, embedding) VALUES (%s, %s, %s::jsonb, %s)",
-            (next_id, content, metadata_payload, list(map(float, embedding))),
-            fetch=False
+        publication_dt = _parse_publication_date(metadata.get("publication_date"))
+        collection_dt = _parse_publication_date(metadata.get("collection_timestamp"))
+        if collection_dt is None:
+            collection_dt = datetime.now(timezone.utc)
+
+        review_reasons_json = json.dumps(metadata.get("review_reasons") or [])
+
+        insertion_params = (
+            metadata.get("title"),
+            content,
+            (authors[0] if authors else metadata.get("author")),
+            raw_url,
+            normalized_url,
+            hash_value,
+            hash_algorithm,
+            metadata.get("language"),
+            metadata.get("section"),
+            tags or None,
+            json.dumps(authors) if authors else None,
+            publication_dt,
+            collection_dt,
+            metadata.get("raw_html_ref"),
+            float(metadata.get("confidence", 0.0)) if metadata.get("confidence") is not None else None,
+            bool(metadata.get("needs_review", False)),
+            review_reasons_json,
+            json.dumps(metadata.get("extraction_metadata") or {}),
+            json.dumps(metadata.get("structured_metadata") or {}),
+            metadata_payload,
+            list(map(float, embedding)),
         )
+
+        inserted = execute_query_single(
+            """
+            INSERT INTO articles (
+                title,
+                content,
+                author,
+                source_url,
+                normalized_url,
+                url_hash,
+                url_hash_algo,
+                language,
+                section,
+                tags,
+                authors,
+                published_at,
+                collection_timestamp,
+                raw_html_ref,
+                extraction_confidence,
+                needs_review,
+                review_reasons,
+                extraction_metadata,
+                structured_metadata,
+                metadata,
+                embedding,
+                created_at,
+                updated_at
+            )
+            VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s, NOW(), NOW()
+            )
+            RETURNING id
+            """,
+            insertion_params,
+        )
+
+        next_id = inserted["id"] if isinstance(inserted, dict) else inserted
 
         log_feedback("save_article", {"status": "success", "article_id": next_id})
 
@@ -177,9 +290,11 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
             logger.warning(f"Failed to collect training data: {e}")
 
         # Return both 'article_id' and legacy 'id' key for backward compatibility
+        metrics.record_ingestion("success")
         return result
     except Exception as e:
         logger.error(f"Error saving article: {e}")
+        metrics.record_ingestion("error")
         return {"error": str(e)}
 
 

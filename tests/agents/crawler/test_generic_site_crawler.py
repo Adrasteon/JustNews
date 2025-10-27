@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
 
 import pytest
 
 from agents.sites.generic_site_crawler import GenericSiteCrawler, SiteConfig
 import agents.crawler.extraction as extraction
+from common.url_normalization import hash_article_url, normalize_article_url
 
 
 @pytest.fixture(autouse=True)
@@ -14,6 +14,8 @@ def reset_env(monkeypatch, tmp_path):
     monkeypatch.delenv("JUSTNEWS_RAW_HTML_DIR", raising=False)
     monkeypatch.delenv("ARTICLE_MIN_WORDS", raising=False)
     monkeypatch.delenv("ARTICLE_MIN_TEXT_HTML_RATIO", raising=False)
+    monkeypatch.delenv("ARTICLE_URL_HASH_ALGO", raising=False)
+    monkeypatch.delenv("ARTICLE_URL_NORMALIZATION", raising=False)
     monkeypatch.setattr(extraction, "_DEFAULT_RAW_DIR", tmp_path)
     monkeypatch.setattr(extraction, "_MIN_WORDS", 5)
     monkeypatch.setattr(extraction, "_MIN_TEXT_HTML_RATIO", 0.001)
@@ -61,11 +63,13 @@ def test_build_article_enriches_metadata(tmp_path):
     assert article["needs_review"] is False
     assert article["raw_html_ref"] is not None
     assert Path(article["raw_html_ref"]).exists()
+    assert article["normalized_url"] == normalize_article_url(
+        "https://example.com/news/focus", article["canonical"]
+    )
 
-    expected_hash = hashlib.sha256(
-        article["canonical"].encode("utf-8", errors="ignore")
-    ).hexdigest()
+    expected_hash = hash_article_url(article["normalized_url"], algorithm="sha256")
     assert article["url_hash"] == expected_hash
+    assert article["url_hash_algorithm"] == "sha256"
 
 
 def test_build_article_respects_review_flags(monkeypatch, tmp_path):

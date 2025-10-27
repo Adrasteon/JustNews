@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
 from common.observability import get_logger
+from common.stage_b_metrics import get_stage_b_metrics
 
 logger = get_logger(__name__)
 
@@ -275,6 +276,7 @@ def _normalise_value_sequence(value: Any) -> List[str]:
 def extract_article_content(html: str, url: str) -> ExtractionOutcome:
     """Execute the multi-tier extraction pipeline and return a rich outcome."""
 
+    metrics = get_stage_b_metrics()
     outcome = ExtractionOutcome()
     outcome.raw_html_path = _store_raw_html(html, url)
 
@@ -306,8 +308,10 @@ def extract_article_content(html: str, url: str) -> ExtractionOutcome:
                 outcome.extractor_used = "readability"
             if not outcome.title:
                 outcome.title = readability_result.get("title", "")
+            metrics.record_fallback("readability", "success")
         else:
             outcome.fallbacks_attempted.append("readability")
+            metrics.record_fallback("readability", "failed")
 
     # Tier 3: jusText fallback for stubborn pages
     if not outcome.text and html:
@@ -316,8 +320,10 @@ def extract_article_content(html: str, url: str) -> ExtractionOutcome:
         if justext_result:
             outcome.text = justext_result.strip()
             outcome.extractor_used = outcome.extractor_used or "justext"
+            metrics.record_fallback("justext", "success")
         else:
             outcome.fallbacks_attempted.append("justext")
+            metrics.record_fallback("justext", "failed")
 
     # Tier 4: Plain-text sanitiser as a last resort
     if not outcome.text and html:
@@ -325,8 +331,10 @@ def extract_article_content(html: str, url: str) -> ExtractionOutcome:
         if plain_fallback:
             outcome.text = plain_fallback
             outcome.extractor_used = outcome.extractor_used or "plain_sanitiser"
+            metrics.record_fallback("plain_sanitiser", "success")
         else:
             outcome.fallbacks_attempted.append("plain_sanitiser")
+            metrics.record_fallback("plain_sanitiser", "failed")
 
     # Structured metadata and DOM-derived hints
     outcome.structured_metadata = _parse_structured_metadata(html, url)
@@ -368,4 +376,5 @@ def extract_article_content(html: str, url: str) -> ExtractionOutcome:
         outcome.needs_review = True
         outcome.review_reasons.append("possible_placeholder_text")
 
+    metrics.record_extraction(outcome.extractor_used or "none")
     return outcome

@@ -145,6 +145,7 @@ B2. High-precision extraction pipeline
 
 B3. Storage and schema updates
 - Extend the articles table to include: `publication_date`, `authors`, `language`, `section`, `collection_timestamp`, `raw_html_ref`, `extraction_confidence`, `url_hash`.
+  - Run `bash scripts/ops/apply_stage_b_migration.sh --record` to apply migration 003 and capture evidence in the ops log.
 - Normalize URLs before hashing (lowercase host, strip tracking params, honor canonical tags) controlled by `ARTICLE_URL_NORMALIZATION`. Log original vs. normalized URL for audit.
 - Compute per-URL hashes (algorithm configurable via `ARTICLE_URL_HASH_ALGO`) to block re-ingestion of the exact same article from the same source.
 - Ensure ingestion payloads supply these fields; update the memory agent to upsert sources with enriched metadata.
@@ -155,11 +156,13 @@ B4. Embedding generation and clustering preparation
 - Compute embeddings during ingestion; store in pg_vector (or FAISS mirror for offline analysis).
 - Defer cross-source clustering until each article completes fact-check scoring; embeddings are tagged with the latest GTV once Stage C runs so cluster creation can weight articles appropriately.
 - Maintain metrics: embeddings generated, cluster candidate count (post Stage C), embedding latency, and model cache hit rate.
+  - **Implemented by** extended `StageBMetrics` counters/histograms consumed in `agents/memory/tools.save_article`; includes cache-label latency tracking and model availability counters.
 
 B5. Validation and monitoring
 - Regression tests: add fixtures with varied HTML to ensure extractor cascade behaves and metadata is captured. **Covered by** `tests/agents/crawler/test_extraction.py` and `tests/agents/crawler/test_generic_site_crawler.py`.
 - Add integration tests covering scheduler-triggered crawl, ingestion, embedding computation, and duplicate suppression.
 - Extend observability (Prometheus/Grafana panels) with extraction success rate, fallback usage, duplicate count, and article throughput trendlines.
+  - **Implemented by** `common/stage_b_metrics.StageBMetrics` counters consumed in `agents/crawler/extraction.py` and `agents/memory/tools.py`; validated via `tests/agents/crawler/test_extraction.py` and `tests/agents/memory/test_save_article.py`. Use the `docs/operations/stage_b_validation.md` playbook to coordinate dashboard updates and collect exit evidence.
 - Launch a human-in-the-loop sampling program (by language/region) with QA dashboards to surface extractor drift.
 - Publish governance dashboards tracking source coverage, robots compliance, and ingestion error budgets; alert when thresholds (e.g., >20% ingestion failures or QA alerts) are exceeded.
 - Define rollback: disable scheduler timer and revert to manual crawl if errors exceed agreed threshold or governance alerts trigger.

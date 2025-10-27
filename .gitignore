@@ -15,3 +15,7 @@ agents/reasoning/reasoning_state.json
 *.log
 .pytest_cache/
 
+# Editor helpers
+.copilot-instructions
+.vscode/
+

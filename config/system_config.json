@@ -1,0 +1,201 @@
+{
+  "system": {
+    "name": "JustNewsAgent",
+    "version": "4.0",
+    "environment": "development",
+    "log_level": "INFO",
+    "debug_mode": false,
+    "conda_environment": null
+  },
+  "mcp_bus": {
+    "host": "localhost",
+    "port": 8000,
+    "url": null,
+    "timeout_seconds": 30.0,
+    "max_retries": 3,
+    "retry_delay_seconds": 1.0
+  },
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "database": "justnews",
+    "user": "justnews_user",
+    "password": "",
+    "connection_pool": {
+      "min_connections": 2,
+      "max_connections": 10,
+      "connection_timeout_seconds": 3.0,
+      "command_timeout_seconds": 30.0
+    },
+    "ssl_mode": "prefer"
+  },
+  "crawling": {
+    "enabled": true,
+    "obey_robots_txt": true,
+    "respect_rate_limits": true,
+    "user_agent": "JustNewsAgent/4.0",
+    "robots_cache_hours": 1,
+    "rate_limiting": {
+      "requests_per_minute": 20,
+      "delay_between_requests_seconds": 2.0,
+      "concurrent_sites": 3,
+      "concurrent_browsers": 3,
+      "batch_size": 10,
+      "articles_per_site": 25,
+      "max_total_articles": 100
+    },
+    "timeouts": {
+      "page_load_timeout_seconds": 120,
+      "modal_dismiss_timeout_ms": 1000,
+      "request_timeout_seconds": 30
+    },
+    "delays": {
+      "between_batches_seconds": 0.5,
+      "between_requests_random_min": 1.0,
+      "between_requests_random_max": 3.0
+    }
+  },
+  "gpu": {
+    "enabled": true,
+    "devices": {
+      "preferred": [
+        0
+      ],
+      "excluded": [],
+      "device_limits": {}
+    },
+    "memory_management": {
+      "max_memory_per_agent_gb": 8.0,
+      "safety_margin_percent": 15.0,
+      "enable_cleanup": true,
+      "preallocation": false
+    },
+    "performance": {
+      "batch_size_optimization": true,
+      "async_operations": true,
+      "profiling_enabled": false,
+      "metrics_collection_interval_seconds": 10.0
+    },
+    "health_monitoring": {
+      "enabled": true,
+      "check_interval_seconds": 30.0,
+      "temperature_limits": {
+        "warning_celsius": 75,
+        "critical_celsius": 85,
+        "shutdown_celsius": 95
+      }
+    }
+  },
+  "agents": {
+    "ports": {
+      "scout": 8002,
+      "analyst": 8004,
+      "fact_checker": 8003,
+      "synthesizer": 8005,
+      "critic": 8006,
+      "chief_editor": 8001,
+      "memory": 8007,
+      "reasoning": 8008,
+      "dashboard": 8013
+    },
+    "timeouts": {
+      "agent_response_timeout_seconds": 300,
+      "health_check_timeout_seconds": 10
+    },
+    "batch_sizes": {
+      "scout_batch_size": 10,
+      "analyst_batch_size": 16,
+      "synthesizer_batch_size": 8
+    }
+  },
+  "training": {
+    "enabled": true,
+    "continuous_learning": true,
+    "ewc_lambda": 0.1,
+    "learning_rate": 0.001,
+    "batch_size": 32,
+    "epochs": 10,
+    "validation_split": 0.2,
+    "early_stopping_patience": 5,
+    "model_save_interval": 100,
+    "max_memory_samples": 10000
+  },
+  "security": {
+    "max_requests_per_minute": 60,
+    "rate_limit_window_seconds": 60,
+    "enable_ip_filtering": false,
+    "allowed_ips": [],
+    "api_key_required": false,
+    "cors_origins": [
+      "*"
+    ],
+    "session_timeout_minutes": 30
+  },
+  "monitoring": {
+    "enabled": true,
+    "metrics_collection_interval_seconds": 60,
+    "alert_thresholds": {
+      "cpu_usage_percent": 90,
+      "memory_usage_percent": 85,
+      "disk_usage_percent": 90,
+      "gpu_memory_percent": 90,
+      "gpu_temperature_celsius": 85
+    },
+    "alert_cooldown_minutes": 5,
+    "email_alerts": {
+      "enabled": false,
+      "smtp_server": null,
+      "smtp_port": 587,
+      "recipients": []
+    },
+    "log_rotation": {
+      "max_file_size_mb": 100,
+      "backup_count": 5
+    }
+  },
+  "data_minimization": {
+    "enabled": true,
+    "retention_days": {
+      "articles": 365,
+      "logs": 90,
+      "metrics": 30,
+      "cache": 7
+    },
+    "compression": {
+      "enabled": true,
+      "algorithm": "gzip",
+      "level": 6
+    },
+    "anonymization": {
+      "enabled": true,
+      "fields": [
+        "ip_address",
+        "user_agent",
+        "session_id"
+      ]
+    }
+  },
+  "performance": {
+    "optimization_level": "balanced",
+    "memory_pool_size_mb": 1024,
+    "thread_pool_size": 10,
+    "async_queue_size": 1000,
+    "cache_settings": {
+      "enabled": true,
+      "ttl_seconds": 3600,
+      "max_size_mb": 512
+    }
+  },
+  "external_services": {
+    "news_sources": {
+      "verification_required": true,
+      "max_age_days": 30,
+      "auto_discovery": false
+    },
+    "apis": {
+      "timeout_seconds": 10,
+      "retry_attempts": 3,
+      "rate_limit_per_minute": 100
+    }
+  }
+}

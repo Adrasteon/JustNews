@@ -21,7 +21,13 @@ import hashlib
 import copy
 
 from common.observability import get_logger
-from ..schemas import JustNewsConfig, Environment, load_config_from_file, create_default_config
+from ..schemas import (
+    JustNewsConfig,
+    Environment,
+    load_config_from_file,
+    create_default_config,
+    save_config_to_file,
+)
 
 logger = get_logger(__name__)
 
@@ -107,9 +113,22 @@ class ConfigurationManager:
                 logger.debug(f"Found configuration file: {path}")
                 return path
 
-        raise ConfigurationNotFoundError(
-            f"No configuration file found in search paths: {[str(p) for p in search_paths]}"
-        )
+        # No configuration file found, create a default one so callers can continue
+        default_path = Path.cwd() / "config" / "system_config.json"
+        default_path.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            default_config = create_default_config()
+            save_config_to_file(default_config, default_path)
+            logger.info(
+                "✅ Created default configuration at %s as no existing configuration was found",
+                default_path,
+            )
+            return default_path
+        except Exception as exc:
+            raise ConfigurationNotFoundError(
+                f"No configuration file found or could be created. Searched: {[str(p) for p in search_paths]}"
+            ) from exc
 
     def reload(self) -> JustNewsConfig:
         """

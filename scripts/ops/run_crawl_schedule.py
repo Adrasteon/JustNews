@@ -31,7 +31,9 @@ from agents.crawler_control.crawl_schedule import (
     CrawlSchedule,
     CrawlScheduleError,
     load_crawl_schedule,
+    load_crawl_schedule_from_sources,
 )
+from agents.crawler.crawler_utils import get_active_sources
 from common.metrics import JustNewsMetrics
 
 DEFAULT_SCHEDULE_PATH = Path("config/crawl_schedule.yaml")
@@ -94,6 +96,23 @@ def _parse_args() -> argparse.Namespace:
         type=int,
         default=None,
         help="Override HTTP timeout for crawl requests",
+    )
+    parser.add_argument(
+        "--testrun",
+        action="store_true",
+        help="Use the static schedule file instead of database-driven source discovery",
+    )
+    parser.add_argument(
+        "--db-limit",
+        type=int,
+        default=None,
+        help="Limit number of sources fetched from the database when building dynamic schedule",
+    )
+    parser.add_argument(
+        "--db-chunk-size",
+        type=int,
+        default=10,
+        help="Number of domains per run when generating schedule from database sources (default: 10)",
     )
     return parser.parse_args()
 
@@ -214,10 +233,40 @@ def main() -> int:
     args = _parse_args()
 
     try:
-        schedule: CrawlSchedule = load_crawl_schedule(args.schedule)
+        base_schedule: CrawlSchedule = load_crawl_schedule(args.schedule)
     except CrawlScheduleError as exc:
         print(f"[scheduler] failed to load schedule: {exc}", file=sys.stderr)
         return 2
+
+    schedule: CrawlSchedule = base_schedule
+
+    if args.testrun:
+        print("[scheduler] test run flag enabled; using static schedule", file=sys.stderr)
+    else:
+        sources = get_active_sources(limit=args.db_limit)
+        if sources:
+            overrides = {
+                "target_articles_per_hour": base_schedule.global_config.target_articles_per_hour,
+                "default_max_articles_per_site": base_schedule.global_config.default_max_articles_per_site,
+                "default_concurrent_sites": base_schedule.global_config.default_concurrent_sites,
+                "default_timeout_seconds": base_schedule.global_config.default_timeout_seconds,
+                "strategy": base_schedule.global_config.strategy,
+                "enable_ai_enrichment": base_schedule.global_config.enable_ai_enrichment,
+                "governance": base_schedule.global_config.governance,
+            }
+            metadata = dict(base_schedule.metadata)
+            try:
+                schedule = load_crawl_schedule_from_sources(
+                    sources,
+                    chunk_size=args.db_chunk_size,
+                    metadata=metadata,
+                    global_overrides=overrides,
+                )
+                print("[scheduler] using database-backed source list", file=sys.stderr)
+            except CrawlScheduleError as exc:
+                print(f"[scheduler] database schedule build failed: {exc}; falling back to static configuration", file=sys.stderr)
+        else:
+            print("[scheduler] no database sources returned; falling back to static schedule", file=sys.stderr)
 
     reference_time = _now()
     due_runs = schedule.due_runs(reference_time)
@@ -316,10 +365,17 @@ def main() -> int:
                 result = {}
 
         domains_count = len(run.domains)
-        articles_count = int(result.get("articles_ingested", result.get("articles", 0))) if status == "completed" else 0
+        if status == "completed":
+            articles_value = result.get("articles_ingested", result.get("total_articles", 0))
+            try:
+                articles_count = int(articles_value)
+            except (TypeError, ValueError):
+                articles_count = 0
+        else:
+            articles_count = 0
 
         if status == "completed":
-            remaining_articles = max(remaining_articles - (articles_count or (effective_limit * domains_count)), 0)
+            remaining_articles = max(remaining_articles - articles_count, 0)
             total_domains += domains_count
             total_articles += articles_count
             last_success_epoch = run_start.timestamp()

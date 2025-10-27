@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
+from urllib.parse import urlparse
 
 import yaml
 
@@ -188,6 +189,93 @@ def load_crawl_schedule(path: Path) -> CrawlSchedule:
     )
 
 
+def _normalize_domain_from_source(source: Dict[str, Any]) -> Optional[str]:
+    """Best-effort extraction of a domain from a database source row."""
+    raw_domain = str(source.get("domain") or "").strip()
+    if raw_domain:
+        parsed = urlparse(raw_domain)
+        domain = parsed.netloc or parsed.path or raw_domain
+        return domain.lower() or None
+
+    raw_url = str(source.get("url") or "").strip()
+    if not raw_url:
+        return None
+    parsed = urlparse(raw_url if "://" in raw_url else f"https://{raw_url}")
+    if not parsed.netloc:
+        return None
+    return parsed.netloc.lower()
+
+
+def load_crawl_schedule_from_sources(
+    sources: Iterable[Dict[str, Any]],
+    *,
+    chunk_size: int = 10,
+    metadata: Optional[Dict[str, Any]] = None,
+    global_overrides: Optional[Dict[str, Any]] = None,
+) -> CrawlSchedule:
+    """Build a crawl schedule dynamically from database sources."""
+
+    if chunk_size <= 0:
+        raise CrawlScheduleError("chunk_size must be greater than zero")
+
+    seen: set[str] = set()
+    domains: List[str] = []
+    for source in sources:
+        domain = _normalize_domain_from_source(source or {})
+        if not domain or domain in seen:
+            continue
+        seen.add(domain)
+        domains.append(domain)
+
+    if not domains:
+        raise CrawlScheduleError("No crawlable domains discovered in sources dataset")
+
+    domains.sort()
+
+    overrides = global_overrides or {}
+    global_config = GlobalScheduleConfig(
+        target_articles_per_hour=int(overrides.get("target_articles_per_hour", 500)),
+        default_max_articles_per_site=int(overrides.get("default_max_articles_per_site", 25)),
+        default_concurrent_sites=int(overrides.get("default_concurrent_sites", 3)),
+        default_timeout_seconds=int(overrides.get("default_timeout_seconds", 480)),
+        strategy=str(overrides.get("strategy", "auto")),
+        enable_ai_enrichment=bool(overrides.get("enable_ai_enrichment", True)),
+        governance=overrides.get("governance", {}) or {},
+    )
+
+    runs: List[CrawlRun] = []
+    num_runs = max(1, (len(domains) + chunk_size - 1) // chunk_size)
+    minute_step = max(1, 60 // num_runs)
+    for index in range(0, len(domains), chunk_size):
+        chunk = domains[index : index + chunk_size]
+        cadence = CrawlCadence(every_hours=1, minute_offset=(index // chunk_size * minute_step) % 60)
+        run = CrawlRun(
+            name=f"database_sources_{index // chunk_size + 1}",
+            domains=chunk,
+            cadence=cadence,
+            enabled=True,
+            priority=index // chunk_size + 1,
+            max_articles_per_site=global_config.default_max_articles_per_site,
+            concurrent_sites=global_config.default_concurrent_sites,
+            notes="Generated from sources table",
+        )
+        runs.append(run)
+
+    schedule_metadata = metadata or {}
+    combined_metadata = {
+        "description": "Generated from database sources",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    combined_metadata.update(schedule_metadata)
+
+    return CrawlSchedule(
+        version=1,
+        metadata=combined_metadata,
+        global_config=global_config,
+        runs=runs,
+    )
+
+
 __all__ = [
     "CrawlCadence",
     "CrawlRun",
@@ -195,4 +283,5 @@ __all__ = [
     "CrawlScheduleError",
     "GlobalScheduleConfig",
     "load_crawl_schedule",
+    "load_crawl_schedule_from_sources",
 ]

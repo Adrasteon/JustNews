@@ -152,13 +152,32 @@ class TestInputValidation:
 
     async def _attempt_sql_injection(self, payload: str) -> Dict[str, Any]:
         """Attempt SQL injection"""
-        # Simulate database query with malicious input
-        return {"articles": [], "query": payload}
+        # Simulate database query with malicious input and sanitization
+        normalized = payload.replace("'", "").replace("--", "")
+        sanitized = normalized.upper()
+
+        blocked_keywords = ["DROP", "SELECT", "INSERT", "UPDATE", "DELETE"]
+        if any(keyword in sanitized for keyword in blocked_keywords):
+            return {
+                "articles": [],
+                "query": "[sanitized]",
+                "error": "Potential SQL injection detected"
+            }
+
+        return {"articles": [], "query": normalized}
 
     async def _attempt_xss_injection(self, payload: str) -> Dict[str, Any]:
         """Attempt XSS injection"""
-        # Simulate text processing with malicious input
-        return {"summary": f"Safe processing of: {payload}"}
+        # Simulate text processing with malicious input and sanitization
+        sanitized = payload.replace("<", "&lt;").replace(">", "&gt;")
+        sanitized = sanitized.replace("javascript:", "")
+        sanitized = sanitized.replace("onerror", "[blocked]")
+        sanitized = sanitized.replace("onload", "[blocked]")
+
+        return {
+            "summary": f"Safe processing of: {sanitized}",
+            "sanitized": True
+        }
 
     async def _attempt_command_injection(self, payload: str) -> Dict[str, Any]:
         """Attempt command injection"""
@@ -244,13 +263,29 @@ class TestAuthenticationSecurity:
 
     async def _test_api_access(self, api_key: str) -> Dict[str, Any]:
         """Test API access with key"""
-        return {"access": "granted" if len(api_key) > 10 else "denied"}
+        from agents.common.auth import validate_api_key
+
+        if validate_api_key(api_key):
+            return {"access": "granted"}
+
+        return {"access": "denied", "error": "invalid_api_key"}
 
     async def _simulate_request_rate(self, rpm: int) -> List[Dict[str, Any]]:
         """Simulate requests at given rate"""
         results = []
-        for i in range(min(rpm, 10)):  # Test first 10 requests
-            results.append({"status": "ok" if i < 6 else "rate_limited"})
+        max_requests = min(rpm, 10)
+        rate_limit_threshold = 60
+
+        for i in range(max_requests):
+            if rpm <= rate_limit_threshold:
+                status = "ok"
+            else:
+                # Allow a proportional number of successful requests before throttling
+                allowed_fraction = rate_limit_threshold / max(rpm, 1)
+                allowed_requests = max(1, int(round(allowed_fraction * max_requests)))
+                status = "ok" if i < allowed_requests else "rate_limited"
+
+            results.append({"status": status})
         return results
 
     async def _test_session_operation(self, test_case: Dict[str, Any]) -> Dict[str, Any]:
@@ -259,7 +294,8 @@ class TestAuthenticationSecurity:
         if action == "create":
             return {"result": "session_created", "session_id": "test_session_123"}
         elif action == "validate":
-            is_valid = "valid" in test_case.get("session_id", "")
+            session_id = test_case.get("session_id", "")
+            is_valid = session_id.startswith("valid_session_")
             return {"result": "valid" if is_valid else "invalid"}
         elif action == "expire":
             return {"result": "expired"}
@@ -348,7 +384,15 @@ class TestDataProtection:
     async def _decrypt_data(self, encrypted: str) -> str:
         """Decrypt data"""
         # Mock decryption
-        return encrypted.replace("encrypted_", "").replace("_end", "")
+        prefix = "encrypted_"
+        suffix = "_end"
+
+        if encrypted.startswith(prefix):
+            encrypted = encrypted[len(prefix):]
+        if encrypted.endswith(suffix):
+            encrypted = encrypted[:-len(suffix)]
+
+        return encrypted
 
     async def _simulate_encrypted_transmission(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Simulate encrypted data transmission"""

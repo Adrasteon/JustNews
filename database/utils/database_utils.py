@@ -11,6 +11,7 @@ Features:
 
 import asyncio
 import os
+from importlib import import_module
 from typing import Any, Dict, Optional
 
 from common.observability import get_logger
@@ -18,6 +19,17 @@ from common.observability import get_logger
 from ..core.connection_pool import DatabaseConnectionPool
 
 logger = get_logger(__name__)
+
+
+def _get_compat_attr(name: str, default):
+    """Retrieve an attribute from the compatibility shim if available."""
+
+    try:
+        compat_module = import_module("database.refactor.utils.database_utils")
+    except Exception:
+        return default
+
+    return getattr(compat_module, name, default)
 
 
 def get_db_config() -> Dict[str, Any]:
@@ -94,10 +106,13 @@ def create_connection_pool(config: Optional[Dict[str, Any]] = None) -> DatabaseC
     if config is None:
         config = get_db_config()
 
-    pool = DatabaseConnectionPool(config)
+    pool_class = _get_compat_attr("DatabaseConnectionPool", DatabaseConnectionPool)
+    connection_checker = _get_compat_attr("check_connection", check_connection)
+
+    pool = pool_class(config)
 
     # Test connection
-    check_connection(pool)
+    connection_checker(pool)
 
     return pool
 

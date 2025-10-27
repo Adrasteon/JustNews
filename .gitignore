@@ -7,3 +7,11 @@ archive_storage/*
 __pycache__/
 *.py[cod]
 
+# JustNews runtime artifacts
+agents/newsreader/model_cache/
+agents/synthesizer/models/
+agents/synthesizer/config/
+agents/reasoning/reasoning_state.json
+*.log
+.pytest_cache/
+

@@ -21,6 +21,9 @@ This directory contains the native (no Docker/K8s) deployment scaffold for runni
 
 Troubleshooting? See the Quick Reference and Comprehensive guide below.
 
+If the synthesizer service remains degraded, confirm the dashboard-hosted transparency endpoint is reachable:
+`curl -fsS http://127.0.0.1:8013/transparency/status | jq '.integrity.status'`. Analytics health should report `{"status":"healthy"}` via `curl -fsS http://127.0.0.1:8011/health`.
+
 ## Documents
 
 - Quick Reference (copy-paste commands, port map, troubleshooting)
@@ -39,6 +42,7 @@ Incident reference:
 - `enable_all.sh` – enable/disable/start/stop/restart/fresh for all services
 - `health_check.sh` – table view of systemd/port/HTTP/READY status
 - `preflight.sh` – validation and ExecStartPre gating (with `--gate-only`)
+- `canonical_system_startup.sh` – verifies env + data mount + database, then runs a full reset/start with health summary
 - `wait_for_mcp.sh` – helper used by unit template to gate on the MCP bus
 - `justnews-start-agent.sh` – unit ExecStart wrapper
 
@@ -62,6 +66,7 @@ Helpers (optional, recommended):
 - Optional overrides: `/etc/justnews/crawl_scheduler.env`
 	- `CRAWLER_AGENT_URL=http://127.0.0.1:8015`
 	- `CRAWL_SCHEDULE_PATH=/etc/justnews/crawl_schedule.yaml` (if relocating config)
+	- `CRAWL_PROFILE_PATH=/etc/justnews/crawl_profiles.yaml` (optional path to the Crawl4AI profile registry)
 	- `CRAWL_SCHEDULER_METRICS=/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom`
 	- `CRAWL_SCHEDULER_STATE=/var/log/justnews/crawl_scheduler_state.json`
 	- `CRAWL_SCHEDULER_SUCCESS=/var/log/justnews/crawl_scheduler_success.json`

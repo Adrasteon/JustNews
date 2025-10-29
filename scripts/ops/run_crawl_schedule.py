@@ -14,27 +14,32 @@ import argparse
 import json
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Ensure project root is importable when executed as a standalone script
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-import requests
-from prometheus_client import CollectorRegistry, Gauge, write_to_textfile
+import requests  # noqa: E402
+from prometheus_client import CollectorRegistry, Gauge, write_to_textfile  # noqa: E402
 
-from agents.crawler_control.crawl_schedule import (
+from agents.crawler.crawler_utils import get_active_sources  # noqa: E402
+from agents.crawler_control.crawl_profiles import (  # noqa: E402
+    CrawlProfileError,
+    CrawlProfileRegistry,
+    load_crawl_profiles,
+)
+from agents.crawler_control.crawl_schedule import (  # noqa: E402
     CrawlRun,
     CrawlSchedule,
     CrawlScheduleError,
     load_crawl_schedule,
     load_crawl_schedule_from_sources,
 )
-from agents.crawler.crawler_utils import get_active_sources
-from common.metrics import JustNewsMetrics
+from common.metrics import JustNewsMetrics  # noqa: E402
 
 DEFAULT_SCHEDULE_PATH = Path("config/crawl_schedule.yaml")
 DEFAULT_STATE_PATH = Path("logs/analytics/crawl_scheduler_state.json")
@@ -114,6 +119,12 @@ def _parse_args() -> argparse.Namespace:
         default=10,
         help="Number of domains per run when generating schedule from database sources (default: 10)",
     )
+    parser.add_argument(
+        "--profiles",
+        type=Path,
+        default=Path("config/crawl_profiles.yaml"),
+        help="Path to Crawl4AI profile configuration (default: config/crawl_profiles.yaml)",
+    )
     return parser.parse_args()
 
 
@@ -122,7 +133,7 @@ def _ensure_parent(path: Path) -> None:
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _sleep_until(target: datetime) -> None:
@@ -146,7 +157,14 @@ def _effective_limit(remaining: int, run: CrawlRun) -> int:
     return limit if limit > 0 else 0
 
 
-def _build_payload(run: CrawlRun, max_articles: int, timeout_seconds: int, strategy: str, enable_ai: bool) -> Dict[str, Any]:
+def _build_payload(
+    run: CrawlRun,
+    max_articles: int,
+    timeout_seconds: int,
+    strategy: str,
+    enable_ai: bool,
+    profile_overrides: dict[str, dict[str, Any]] | None,
+) -> dict[str, Any]:
     concurrency = run.concurrent_sites
     kwargs = {
         "max_articles_per_site": max_articles,
@@ -158,10 +176,12 @@ def _build_payload(run: CrawlRun, max_articles: int, timeout_seconds: int, strat
         "priority": run.priority,
         "max_sites": len(run.domains),
     }
+    if profile_overrides:
+        kwargs["profile_overrides"] = profile_overrides
     return {"args": [run.domains], "kwargs": kwargs}
 
 
-def _await_job(base_url: str, job_id: str, timeout_seconds: int) -> Dict[str, Any]:
+def _await_job(base_url: str, job_id: str, timeout_seconds: int) -> dict[str, Any]:
     deadline = time.time() + timeout_seconds
     status_url = f"{base_url}/job_status/{job_id}"
 
@@ -183,15 +203,15 @@ def _await_job(base_url: str, job_id: str, timeout_seconds: int) -> Dict[str, An
         time.sleep(DEFAULT_CRAWLER_POLL_INTERVAL)
 
 
-def _write_json(path: Path, payload: Dict[str, Any]) -> None:
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
     _ensure_parent(path)
     path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
 
 
-def _append_success(path: Path, entry: Dict[str, Any]) -> None:
+def _append_success(path: Path, entry: dict[str, Any]) -> None:
     _ensure_parent(path)
     if not path.exists():
-        history: List[Dict[str, Any]] = []
+        history: list[dict[str, Any]] = []
     else:
         try:
             history = json.loads(path.read_text(encoding="utf-8"))
@@ -201,7 +221,7 @@ def _append_success(path: Path, entry: Dict[str, Any]) -> None:
     path.write_text(json.dumps(history[-200:], indent=2), encoding="utf-8")
 
 
-def _init_metrics() -> tuple[CollectorRegistry, Dict[str, Gauge]]:
+def _init_metrics() -> tuple[CollectorRegistry, dict[str, Gauge]]:
     registry = CollectorRegistry()
     JustNewsMetrics("crawler_scheduler", registry=registry)
     gauges = {
@@ -268,6 +288,16 @@ def main() -> int:
         else:
             print("[scheduler] no database sources returned; falling back to static schedule", file=sys.stderr)
 
+    profile_registry: CrawlProfileRegistry | None = None
+    if args.profiles:
+        try:
+            profile_registry = load_crawl_profiles(args.profiles)
+            print(f"[scheduler] loaded crawl profiles from {args.profiles}", file=sys.stderr)
+        except FileNotFoundError:
+            print(f"[scheduler] crawl profile file not found: {args.profiles}", file=sys.stderr)
+        except CrawlProfileError as exc:
+            print(f"[scheduler] failed to load crawl profiles: {exc}", file=sys.stderr)
+
     reference_time = _now()
     due_runs = schedule.due_runs(reference_time)
     if not due_runs:
@@ -282,8 +312,8 @@ def main() -> int:
     total_domains = 0
     total_articles = 0
     worst_lag = 0.0
-    last_success_epoch: Optional[float] = None
-    run_results: List[Dict[str, Any]] = []
+    last_success_epoch: float | None = None
+    run_results: list[dict[str, Any]] = []
 
     for run in due_runs:
         scheduled_start = run.scheduled_start(reference_time)
@@ -318,17 +348,22 @@ def main() -> int:
         lag_seconds = max((run_start - scheduled_start).total_seconds(), 0.0)
         worst_lag = max(worst_lag, lag_seconds)
 
+        profile_overrides = (
+            profile_registry.build_overrides(run.domains) if profile_registry else {}
+        )
+
         payload = _build_payload(
             run,
             max_articles=effective_limit,
             timeout_seconds=timeout_seconds,
             strategy=schedule.global_config.strategy,
             enable_ai=schedule.global_config.enable_ai_enrichment,
+            profile_overrides=profile_overrides,
         )
 
-        result: Dict[str, Any]
+        result: dict[str, Any]
         status: str
-        message: Optional[str] = None
+        message: str | None = None
 
         if args.dry_run:
             status = "dry-run"

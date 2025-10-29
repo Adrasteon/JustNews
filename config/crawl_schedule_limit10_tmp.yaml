@@ -1,0 +1,78 @@
+version: 1
+metadata:
+  description: Curated crawl schedule used by the Stage B ingestion scheduler
+  owner: news-platform-ops
+  last_review: '2025-10-25'
+global:
+  target_articles_per_hour: 500
+  default_max_articles_per_site: 10
+  default_concurrent_sites: 3
+  default_timeout_seconds: 480
+  strategy: auto
+  enable_ai_enrichment: true
+  governance:
+    review_window_hours:
+    - 6
+    - 18
+    review_notes: Editorial ops reviews ingestion KPIs at 06:15 and 18:15 UTC daily.
+    escalation_contact: governance@justnews.ai
+runs:
+- name: priority_us_national
+  enabled: true
+  cadence:
+    every_hours: 1
+    minute_offset: 0
+  priority: 1
+  domains:
+  - nytimes.com
+  - washingtonpost.com
+  - apnews.com
+  - reuters.com
+  - npr.org
+  max_articles_per_site: 10
+  concurrent_sites: 2
+  notes: High-cadence U.S. national outlets
+- name: global_wire_services
+  enabled: true
+  cadence:
+    every_hours: 1
+    minute_offset: 10
+  priority: 2
+  domains:
+  - bbc.com
+  - dw.com
+  - theguardian.com
+  - aljazeera.com
+  - france24.com
+  max_articles_per_site: 10
+  concurrent_sites: 2
+  notes: Global wire services and public broadcasters
+- name: regional_rotation
+  enabled: true
+  cadence:
+    every_hours: 3
+    minute_offset: 20
+  priority: 3
+  domains:
+  - cbc.ca
+  - abc.net.au
+  - scmp.com
+  - indiatoday.in
+  - globo.com
+  max_articles_per_site: 10
+  concurrent_sites: 2
+  notes: Regional rotation to broaden coverage footprint
+- name: special_topics_tech
+  enabled: true
+  cadence:
+    every_hours: 2
+    minute_offset: 40
+  priority: 4
+  domains:
+  - theverge.com
+  - wired.com
+  - arstechnica.com
+  - techcrunch.com
+  max_articles_per_site: 10
+  concurrent_sites: 2
+  notes: Technology-focused outlets for product & policy coverage

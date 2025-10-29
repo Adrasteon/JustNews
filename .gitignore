@@ -18,4 +18,8 @@ agents/reasoning/reasoning_state.json
 # Editor helpers
 .copilot-instructions
 .vscode/
+unrefactored/
+.env
+global.env
+model_store
 

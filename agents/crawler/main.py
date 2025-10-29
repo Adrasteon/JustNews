@@ -5,20 +5,20 @@ Unified production crawling agent with MCP integration.
 # main.py for Crawler Agent
 
 import os
+import uuid
 from contextlib import asynccontextmanager
-from typing import Dict, Any
+from typing import Any
 
 import requests
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
-import uuid
-import asyncio
 
-from common.observability import get_logger
 from common.metrics import JustNewsMetrics
+from common.observability import get_logger
+
 from .crawler_engine import CrawlerEngine
 from .tools import get_crawler_info
 
@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 
 ready = False
 # In-memory storage of crawl job statuses
-crawl_jobs: Dict[str, Any] = {}
+crawl_jobs: dict[str, Any] = {}
 
 # Environment variables
 CRAWLER_AGENT_PORT = int(os.environ.get("CRAWLER_AGENT_PORT", 8015))
@@ -41,8 +41,9 @@ CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://loca
 async def execute_crawl(
     domains: list[str],
     max_articles_per_site: int = 25,
-    concurrent_sites: int = 3
-) -> Dict[str, Any]:
+    concurrent_sites: int = 3,
+    profile_overrides: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Execute a crawl synchronously for legacy integrations and tests.
 
     The production workflow relies on the background job endpoint, but certain
@@ -53,7 +54,12 @@ async def execute_crawl(
 
     async with CrawlerEngine() as crawler:
         await crawler._load_ai_models()
-        return await crawler.run_unified_crawl(domains, max_articles_per_site, concurrent_sites)
+        return await crawler.run_unified_crawl(
+            domains,
+            max_articles_per_site,
+            concurrent_sites,
+            profile_overrides=profile_overrides,
+        )
 
 class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
@@ -130,13 +136,19 @@ async def unified_production_crawl_endpoint(call: ToolCall, background_tasks: Ba
     max_articles = call.kwargs.get("max_articles_per_site", 25)
     concurrent = call.kwargs.get("concurrent_sites", 3)
     logger.info(f"Enqueueing background crawl job {job_id} for {len(domains)} domains")
+    profile_overrides = call.kwargs.get("profile_overrides")
     # Define background task
-    async def _crawl_task(domains, max_articles, concurrent, job_id):
+    async def _crawl_task(domains, max_articles, concurrent, job_id, profile_overrides):
         try:
             crawl_jobs[job_id]["status"] = "running"
             async with CrawlerEngine() as crawler:
                 await crawler._load_ai_models()
-                result = await crawler.run_unified_crawl(domains, max_articles, concurrent)
+                result = await crawler.run_unified_crawl(
+                    domains,
+                    max_articles,
+                    concurrent,
+                    profile_overrides=profile_overrides,
+                )
             # Store result in job status
             crawl_jobs[job_id] = {"status": "completed", "result": result}
             logger.info(f"Background crawl {job_id} complete. Articles: {len(result.get('articles', []))}")
@@ -144,7 +156,7 @@ async def unified_production_crawl_endpoint(call: ToolCall, background_tasks: Ba
             crawl_jobs[job_id] = {"status": "failed", "error": str(e)}
             logger.error(f"Background crawl {job_id} failed: {e}")
     # Schedule the task
-    background_tasks.add_task(_crawl_task, domains, max_articles, concurrent, job_id)
+    background_tasks.add_task(_crawl_task, domains, max_articles, concurrent, job_id, profile_overrides)
     # Return accepted status with job ID
     return JSONResponse(status_code=202, content={"status": "accepted", "job_id": job_id})
 
@@ -200,7 +212,7 @@ def get_crawler_info_endpoint(call: ToolCall):
         return get_crawler_info(*call.args, **call.kwargs)
     except Exception as e:
         logger.error(f"An error occurred in get_crawler_info: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/get_performance_metrics")
 def get_performance_metrics_endpoint(call: ToolCall):
@@ -211,7 +223,7 @@ def get_performance_metrics_endpoint(call: ToolCall):
         return monitor.get_current_metrics()
     except Exception as e:
         logger.error(f"An error occurred in get_performance_metrics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.get("/health")
 def health():

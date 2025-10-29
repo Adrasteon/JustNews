@@ -10,7 +10,7 @@
   "mcp_bus": {
     "host": "localhost",
     "port": 8000,
-    "url": null,
+    "url": "http://localhost:8000",
     "timeout_seconds": 30.0,
     "max_retries": 3,
     "retry_delay_seconds": 1.0
@@ -20,7 +20,7 @@
     "port": 5432,
     "database": "justnews",
     "user": "justnews_user",
-    "password": "",
+    "password": "password123",
     "connection_pool": {
       "min_connections": 2,
       "max_connections": 10,

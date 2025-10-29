@@ -110,6 +110,7 @@ A7. Baseline validation (refactor sanity)
 - Hit health endpoints directly:
   - `curl -fsS http://127.0.0.1:8014/health` (orchestrator)
   - `curl -fsS http://127.0.0.1:8000/health` (mcp_bus), etc.
+  - `curl -fsS http://127.0.0.1:8011/health` (analytics — expects `{"status":"healthy"}` after the wrapper alias fix)
 - Trigger a small end-to-end flow (minimal crawl → analyze → synthesize) and verify artifacts/logs.
 - Capture a baseline diagnostics bundle (for regressions):
   - Use any provided helpers under `infrastructure/systemd/scripts/` (e.g., status panels, `health_check.sh --panel`).
@@ -133,6 +134,7 @@ B0. Gating
 
 B1. Curated seed list and run scheduling
 - Build `config/crawl_schedule.yaml` (or similar) enumerating priority sources, sections, update cadence, and per-run article caps. **Implementation note:** The repository now ships `config/crawl_schedule.yaml` with governance metadata for the primary cohorts.
+- Define per-domain Crawl4AI profiles in `config/crawl_profiles.yaml` so operators can control depth, link filters, and JS automation without code changes. Align schedule cohorts with the matching profile slugs (e.g., `standard_crawl4ai`, `deep_financial_sections`, `legacy_generic`).
 - Implement an hourly scheduler (systemd timer or cron) that invokes the crawler agent with batched domain lists, respecting the global target of top **X** stories (default 500). **Implementation note:** Use `scripts/ops/run_crawl_schedule.py` + `infrastructure/systemd/scripts/run_crawl_schedule.sh`, driven by the `justnews-crawl-scheduler.timer` unit.
 - Add health metrics: last successful run timestamp, domains crawled, articles accepted, scheduler lag. **Implemented via** Prometheus textfile output at `logs/analytics/crawl_scheduler.prom` (overridable) with gauges `justnews_crawler_scheduler_*`.
 - Establish governance cadence: document source terms-of-use, rate limits, and review schedule (e.g., weekly curation audit). Track violations and remediation steps in an ops log (see `logs/governance/crawl_terms_audit.md`).
@@ -234,6 +236,7 @@ D1. Weighted synthesis pipeline
 - Consume cluster outputs and GTV-weighted facts to draft unbiased articles via synthesis agent or editorial tooling.
 - Make weighting logic explicit: record which facts were emphasized, suppressed, or excluded with reasons tied to GTV and bias metrics.
 - Block synthesis readiness until `/transparency/status` returns `integrity.status` of `ok` or `degraded`; fail start when transparency audits are unavailable.
+- Systemd baseline: ensure `EVIDENCE_AUDIT_BASE_URL=http://localhost:8013/transparency` so the synthesizer gate hits the dashboard agent’s evidence API before reporting ready.
 
 D2. Editorial review and ethics compliance
 - Provide human editor workbench to review synthesized drafts, adjust weights, and approve publication.

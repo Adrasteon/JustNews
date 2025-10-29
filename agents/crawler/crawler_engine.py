@@ -10,35 +10,31 @@ import asyncio
 import json
 import os
 import time
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 from urllib.parse import urlparse
+
 import requests
 
 # Database imports
 from common.observability import get_logger
-from ..sites.generic_site_crawler import GenericSiteCrawler, MultiSiteCrawler, SiteConfig
-from .crawler_utils import (
-    CanonicalMetadata,
-    ModalDismisser,
-    RateLimiter,
-    RobotsChecker,
-    get_active_sources,
-    get_sources_by_domain,
-    update_source_crawling_strategy,
-    record_crawling_performance,
-    get_source_performance_history,
-    get_optimal_sources_for_strategy,
-    create_crawling_performance_table,
-    initialize_connection_pool,
-)
+
 from ..performance_monitoring import (
-    PerformanceMetrics,
     PerformanceOptimizer,
     get_performance_monitor,
     start_performance_monitoring,
-    stop_performance_monitoring,
-    export_performance_metrics
+)
+from ..sites.generic_site_crawler import (
+    GenericSiteCrawler,
+    MultiSiteCrawler,
+    SiteConfig,
+)
+from .crawler_utils import (
+    RateLimiter,
+    RobotsChecker,
+    create_crawling_performance_table,
+    get_source_performance_history,
+    get_sources_by_domain,
+    initialize_connection_pool,
 )
 
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
@@ -91,7 +87,12 @@ class CrawlerEngine:
             "articles_processed": 0,
             "sites_crawled": 0,
             "errors": 0,
-            "mode_usage": {"ultra_fast": 0, "ai_enhanced": 0, "generic": 0}
+            "mode_usage": {
+                "ultra_fast": 0,
+                "ai_enhanced": 0,
+                "generic": 0,
+                "crawl4ai_profiled": 0,
+            },
         }
 
         # Start monitoring if enabled
@@ -134,9 +135,9 @@ class CrawlerEngine:
     async def _cleanup_orphaned_processes(self):
         """Aggressively cleanup orphaned browser processes - only kill very old processes"""
         try:
-            import subprocess
-            import signal
             import os
+            import signal
+            import subprocess
 
             # Kill Chrome processes older than 10 minutes (very conservative)
             try:
@@ -290,17 +291,6 @@ class CrawlerEngine:
                     logger.info(f"🎯 Using performance-optimized strategy for {domain}: {best_strategy} ({best_avg_performance:.2f} articles/sec)")
                     return best_strategy
 
-        # Fallback to rule-based strategy selection
-        ultra_fast_domains = [
-            'bbc.com', 'bbc.co.uk', 'cnn.com', 'reuters.com',
-            'apnews.com', 'npr.org', 'nytimes.com', 'washingtonpost.com'
-        ]
-
-        ai_enhanced_domains = [
-            'wsj.com', 'ft.com', 'economist.com', 'newyorker.com',
-            'theatlantic.com', 'foreignaffairs.com'
-        ]
-
         # 1. Check for pre-defined ultra-fast sites
         # These are high-volume, well-structured sites with dedicated parsers
         if any(d in domain for d in ["bbc.co.uk", "cnn.com", "reuters.com"]):
@@ -318,7 +308,7 @@ class CrawlerEngine:
         # Default to generic strategy
         return "generic"
 
-    async def _crawl_ultra_fast_mode(self, site_config: SiteConfig, max_articles: int = 50) -> List[Dict]:
+    async def _crawl_ultra_fast_mode(self, site_config: SiteConfig, max_articles: int = 50) -> list[dict]:
         """
         Ultra-fast crawling mode (8.14+ articles/sec)
         Optimized for high-volume sites with reliable structure
@@ -355,7 +345,7 @@ class CrawlerEngine:
             # Always cleanup after ultra-fast mode
             await self._cleanup_orphaned_processes()
 
-    async def _crawl_ai_enhanced_mode(self, site_config: SiteConfig, max_articles: int = 25) -> List[Dict]:
+    async def _crawl_ai_enhanced_mode(self, site_config: SiteConfig, max_articles: int = 25) -> list[dict]:
         """AI-enhanced crawling stub: delegates to generic mode"""
         logger.info(f"🤖 AI-enhanced crawling stub: delegating to generic mode for {site_config.name}")
         try:
@@ -366,7 +356,7 @@ class CrawlerEngine:
             # Always cleanup after AI-enhanced crawling
             await self._cleanup_orphaned_processes()
 
-    async def _crawl_generic_mode(self, site_config: SiteConfig, max_articles: int = 25) -> List[Dict]:
+    async def _crawl_generic_mode(self, site_config: SiteConfig, max_articles: int = 25) -> list[dict]:
         """
         Generic crawling mode with Crawl4AI-first strategy
         Supports any news source with graceful fallbacks
@@ -387,7 +377,45 @@ class CrawlerEngine:
             # Always cleanup after generic crawling
             await self._cleanup_orphaned_processes()
 
-    async def _apply_ai_analysis(self, article: Dict) -> Dict:
+    async def _crawl_with_profile(
+        self,
+        site_config: SiteConfig,
+        profile: dict[str, Any],
+        max_articles: int | None,
+    ) -> list[dict[str, Any]]:
+        """Execute a crawl using an explicit profile override."""
+        effective_limit = max_articles or profile.get("max_pages") or 25
+        engine = str(profile.get("engine", "crawl4ai")).lower() or "crawl4ai"
+
+        if engine == "generic":
+            return await self._crawl_generic_mode(site_config, effective_limit)
+
+        if engine != "crawl4ai":
+            logger.warning(
+                "Unknown crawl engine '%s' for %s; falling back to generic",
+                engine,
+                site_config.name,
+            )
+            return await self._crawl_generic_mode(site_config, effective_limit)
+
+        try:
+            from .crawl4ai_adapter import crawl_site_with_crawl4ai
+        except ImportError:
+            logger.warning(
+                "Crawl4AI integration not available; falling back to generic crawl for %s",
+                site_config.name,
+            )
+            return await self._crawl_generic_mode(site_config, effective_limit)
+
+        try:
+            return await crawl_site_with_crawl4ai(site_config, profile, effective_limit)
+        except Exception as exc:  # noqa: BLE001 - resilience over strict typing
+            logger.error("Crawl4AI profiled crawl failed for %s: %s", site_config.name, exc)
+            return []
+        finally:
+            await self._cleanup_orphaned_processes()
+
+    async def _apply_ai_analysis(self, article: dict) -> dict:
         """Delegate AI analysis to Analyst agent via MCP bus"""
         content = article.get('content', '')
         if not content or len(content) < 100:
@@ -402,7 +430,7 @@ class CrawlerEngine:
             logger.error(f"Remote AI analysis failed: {e}")
         return article
 
-    async def crawl_site(self, site_config: SiteConfig, max_articles: int = 25) -> List[Dict]:
+    async def crawl_site(self, site_config: SiteConfig, max_articles: int = 25) -> list[dict]:
         """
         Crawl a single site using the optimal strategy
         """
@@ -415,7 +443,14 @@ class CrawlerEngine:
         else:  # generic
             return await self._crawl_generic_mode(site_config, max_articles)
 
-    async def run_unified_crawl(self, domains: List[str], max_articles_per_site: int = 25, concurrent_sites: int = 3) -> Dict[str, Any]:
+    async def run_unified_crawl(
+        self,
+        domains: list[str],
+        max_articles_per_site: int = 25,
+        concurrent_sites: int = 3,
+        *,
+        profile_overrides: dict[str, dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         """
         Main entry point for unified crawling - converts domains to SiteConfig objects and runs crawl
         """
@@ -461,66 +496,85 @@ class CrawlerEngine:
             return {"error": "No valid domains provided"}
 
         # Execute the crawl
-        return await self.crawl_multiple_sites(site_configs, max_articles_per_site, concurrent_sites)
+        return await self.crawl_multiple_sites(
+            site_configs,
+            max_articles_per_site,
+            concurrent_sites,
+            profile_overrides=profile_overrides,
+        )
 
-    async def crawl_multiple_sites(self, site_configs: List[SiteConfig],
-                                 max_articles_per_site: int = 25,
-                                 concurrent_sites: int = 3) -> Dict[str, Any]:
-        """
-        Crawl multiple sites concurrently using optimal strategies
-        """
+    async def crawl_multiple_sites(
+        self,
+        site_configs: list[SiteConfig],
+        max_articles_per_site: int = 25,
+        concurrent_sites: int = 3,
+        *,
+        profile_overrides: dict[str, dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Crawl multiple sites concurrently using optimal strategies."""
         logger.info(f"🚀 Starting unified multi-site crawl: {len(site_configs)} sites")
 
         start_time = time.time()
-        site_articles: Dict[str, List[Dict[str, Any]]] = {}
-        site_metrics: Dict[str, Dict[str, Any]] = {}
+        site_articles: dict[str, list[dict[str, Any]]] = {}
+        site_metrics: dict[str, dict[str, Any]] = {}
         ingestion_totals = {"new_articles": 0, "duplicates": 0, "errors": 0}
         total_attempted = 0
-        all_articles: List[Dict[str, Any]] = []
+        all_articles: list[dict[str, Any]] = []
+
+        resolved_profiles: dict[str, dict[str, Any]] = {}
+        if profile_overrides:
+            resolved_profiles = {
+                (key or "").lower(): value
+                for key, value in profile_overrides.items()
+                if key
+            }
+
+        def _lookup_profile(config: SiteConfig) -> dict[str, Any] | None:
+            if not resolved_profiles:
+                return None
+            candidates = [
+                (config.domain or "").lower(),
+                (config.name or "").lower(),
+            ]
+            for candidate in candidates:
+                if candidate and candidate in resolved_profiles:
+                    return resolved_profiles[candidate]
+            return None
 
         semaphore = asyncio.Semaphore(max(1, concurrent_sites))
         aggregation_lock = asyncio.Lock()
 
         async def crawl_site_with_limit(site_config: SiteConfig):
+            nonlocal total_attempted
             async with semaphore:
                 domain_key = site_config.domain or site_config.name or "unknown"
                 site_attempted = 0
                 site_ingested = 0
                 site_duplicates = 0
                 site_errors = 0
-                site_articles_local: List[Dict[str, Any]] = []
-                site_details: List[Dict[str, Any]] = []
-                seen_keys: Set[str] = set()
-                remaining_budget: Optional[int] = (
+                site_articles_local: list[dict[str, Any]] = []
+                site_details: list[dict[str, Any]] = []
+                seen_keys: set[str] = set()
+                remaining_budget: int | None = (
                     max_articles_per_site if max_articles_per_site is not None else None
                 )
-                exhaustion_reason: Optional[str] = None
+                exhaustion_reason: str | None = None
                 batches_run = 0
 
+                profile_override = _lookup_profile(site_config)
+
                 try:
-                    while True:
-                        if remaining_budget is not None and remaining_budget <= 0:
-                            exhaustion_reason = "limit_reached"
-                            break
-                        if batches_run >= MAX_SITE_BATCHES:
-                            exhaustion_reason = "max_batches_reached"
-                            break
-
-                        request_cap = (
-                            remaining_budget
-                            if remaining_budget is not None and remaining_budget > 0
-                            else max_articles_per_site
+                    if profile_override and profile_override.get("engine", "crawl4ai") != "generic":
+                        budget_hint = remaining_budget if remaining_budget is not None else max_articles_per_site
+                        raw_batch = await self._crawl_with_profile(
+                            site_config,
+                            profile_override,
+                            budget_hint,
                         )
-                        request_cap = request_cap or max_articles_per_site or 25
-                        request_cap = max(1, request_cap)
+                        self.performance_metrics["mode_usage"]["crawl4ai_profiled"] += 1
 
-                        raw_batch = await self.crawl_site(site_config, request_cap)
-                        if not raw_batch:
-                            exhaustion_reason = "no_candidates"
-                            break
-
-                        filtered_batch: List[Dict[str, Any]] = []
-                        for article in raw_batch:
+                        filtered_batch: list[dict[str, Any]] = []
+                        for article in raw_batch or []:
                             key = article.get('url_hash') or article.get('normalized_url') or article.get('url')
                             if key and key in seen_keys:
                                 continue
@@ -528,33 +582,85 @@ class CrawlerEngine:
                                 seen_keys.add(key)
                             filtered_batch.append(article)
 
-                        if not filtered_batch:
-                            exhaustion_reason = "no_new_candidates"
-                            break
+                        if filtered_batch:
+                            take = remaining_budget if remaining_budget is not None else None
+                            if take is not None:
+                                filtered_batch = filtered_batch[:take]
 
-                        if remaining_budget is not None:
-                            filtered_batch = filtered_batch[:remaining_budget]
+                            site_attempted += len(filtered_batch)
+                            ingestion_result = await self._ingest_articles(filtered_batch)
+                            site_articles_local.extend(filtered_batch)
+                            site_details.extend(ingestion_result.get('details', []))
+                            site_ingested += ingestion_result['new_articles']
+                            site_duplicates += ingestion_result['duplicates']
+                            site_errors += ingestion_result['errors']
 
-                        site_attempted += len(filtered_batch)
+                            if remaining_budget is not None:
+                                remaining_budget = max(remaining_budget - ingestion_result['new_articles'], 0)
 
-                        ingestion_result = await self._ingest_articles(filtered_batch)
-                        site_articles_local.extend(filtered_batch)
-                        site_details.extend(ingestion_result.get('details', []))
-                        site_ingested += ingestion_result['new_articles']
-                        site_duplicates += ingestion_result['duplicates']
-                        site_errors += ingestion_result['errors']
+                        exhaustion_reason = exhaustion_reason or "profile_completed"
+                    else:
+                        while True:
+                            if remaining_budget is not None and remaining_budget <= 0:
+                                exhaustion_reason = "limit_reached"
+                                break
+                            if batches_run >= MAX_SITE_BATCHES:
+                                exhaustion_reason = "max_batches_reached"
+                                break
 
-                        if remaining_budget is not None:
-                            remaining_budget = max(remaining_budget - ingestion_result['new_articles'], 0)
+                            request_cap = (
+                                remaining_budget
+                                if remaining_budget is not None and remaining_budget > 0
+                                else max_articles_per_site
+                            )
+                            request_cap = request_cap or max_articles_per_site or 25
+                            request_cap = max(1, request_cap)
 
-                        batches_run += 1
+                            raw_batch = await self.crawl_site(site_config, request_cap)
+                            if not raw_batch:
+                                exhaustion_reason = "no_candidates"
+                                break
 
-                        if ingestion_result['new_articles'] == 0:
-                            exhaustion_reason = "ingestion_stalled"
-                            break
+                            filtered_batch: list[dict[str, Any]] = []
+                            for article in raw_batch:
+                                key = article.get('url_hash') or article.get('normalized_url') or article.get('url')
+                                if key and key in seen_keys:
+                                    continue
+                                if key:
+                                    seen_keys.add(key)
+                                filtered_batch.append(article)
 
-                    if exhaustion_reason is None:
-                        exhaustion_reason = "limit_reached" if remaining_budget is not None and remaining_budget <= 0 else None
+                            if not filtered_batch:
+                                exhaustion_reason = "no_new_candidates"
+                                break
+
+                            if remaining_budget is not None:
+                                filtered_batch = filtered_batch[:remaining_budget]
+
+                            site_attempted += len(filtered_batch)
+
+                            ingestion_result = await self._ingest_articles(filtered_batch)
+                            site_articles_local.extend(filtered_batch)
+                            site_details.extend(ingestion_result.get('details', []))
+                            site_ingested += ingestion_result['new_articles']
+                            site_duplicates += ingestion_result['duplicates']
+                            site_errors += ingestion_result['errors']
+
+                            if remaining_budget is not None:
+                                remaining_budget = max(remaining_budget - ingestion_result['new_articles'], 0)
+
+                            batches_run += 1
+
+                            if ingestion_result['new_articles'] == 0:
+                                exhaustion_reason = "ingestion_stalled"
+                                break
+
+                        if exhaustion_reason is None:
+                            exhaustion_reason = (
+                                "limit_reached"
+                                if remaining_budget is not None and remaining_budget <= 0
+                                else None
+                            )
 
                 except Exception as exc:  # noqa: BLE001 - resilience over strict typing
                     exhaustion_reason = exhaustion_reason or "error"
@@ -588,7 +694,6 @@ class CrawlerEngine:
                             exhaustion_reason or "limit_reached",
                         )
 
-                    # Cleanup after each site crawl
                     await self._cleanup_orphaned_processes()
 
         tasks = [crawl_site_with_limit(config) for config in site_configs]
@@ -635,13 +740,13 @@ class CrawlerEngine:
         )
         return summary
 
-    async def _ingest_articles(self, articles: List[Dict]) -> Dict[str, Any]:
+    async def _ingest_articles(self, articles: list[dict]) -> dict[str, Any]:
         """Ingest articles via the memory agent and annotate ingestion status."""
         MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
         new_articles = 0
         duplicates = 0
         errors = 0
-        details: List[Dict[str, Any]] = []
+        details: list[dict[str, Any]] = []
 
         for article in articles:
             try:
@@ -755,7 +860,7 @@ class CrawlerEngine:
             'details': details,
         }
 
-    def get_performance_report(self) -> Dict[str, Any]:
+    def get_performance_report(self) -> dict[str, Any]:
         """Get current performance metrics"""
         return {
             "articles_processed": self.performance_metrics["articles_processed"],

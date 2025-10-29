@@ -38,7 +38,7 @@ sudo systemctl enable --now justnews@fact_intel
 
 Enable `justnews@cluster_pipeline` only after fact intelligence services (e.g., `justnews@fact_intel`) have run successfully; the clustering stage consumes Grounded Truth scores emitted by the fact pipeline.
 
-The crawl scheduler service (`justnews-crawl-scheduler.service`) is a oneshot wrapper around `scripts/ops/run_crawl_schedule.py`. Override paths or crawler URL via `/etc/justnews/crawl_scheduler.env`; Prometheus textfile metrics default to `logs/analytics/crawl_scheduler.prom` unless `CRAWL_SCHEDULER_METRICS` is set.
+The crawl scheduler service (`justnews-crawl-scheduler.service`) is a oneshot wrapper around `scripts/ops/run_crawl_schedule.py`. Override paths or crawler URL via `/etc/justnews/crawl_scheduler.env`; include `CRAWL_PROFILE_PATH` if Crawl4AI profiles live outside the repo checkout. Prometheus textfile metrics default to `logs/analytics/crawl_scheduler.prom` unless `CRAWL_SCHEDULER_METRICS` is set.
 
 These services rely on the configuration described in `docs/operations/systemd-baseline-then-k8s-phased-plan.md`.
 

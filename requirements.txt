@@ -38,3 +38,6 @@ extruct>=0.17.0
 w3lib>=2.1.2
 langdetect>=1.0.9
 lxml>=4.9.3
+
+# Embedding models
+sentence-transformers>=3.0.1

@@ -112,8 +112,8 @@ ARTICLE_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 ARTICLE_URL_HASH_ALGO=sha256
 ARTICLE_URL_NORMALIZATION=strict
 CLUSTER_SIMILARITY_THRESHOLD=0.85
-TRANSPARENCY_PORTAL_BASE_URL=https://news.example.com/transparency
-EVIDENCE_AUDIT_BASE_URL=https://news.example.com/api/evidence
+TRANSPARENCY_PORTAL_BASE_URL=http://localhost:8013/transparency
+EVIDENCE_AUDIT_BASE_URL=http://localhost:8013/transparency
 TRANSPARENCY_DATA_DIR=/var/lib/justnews/transparency-archive
 REQUIRE_TRANSPARENCY_AUDIT=1
 # Optional: override Prometheus textfile output for the crawl scheduler
@@ -125,6 +125,8 @@ Per-instance (example `/etc/justnews/analyst.env`):
 ```
 CUDA_VISIBLE_DEVICES=0
 ```
+
+Use `https://news.example.com/*` style URLs when the transparency portal is exposed publicly; the local defaults above target the dashboard agent on port 8013 so the synthesizer gate can pass in lab environments.
 
 ## NVIDIA MPS Setup (Enterprise GPU Isolation)
 
@@ -160,11 +162,13 @@ sudo ./infrastructure/systemd/scripts/enable_all.sh restart
 sudo systemctl status justnews-crawl-scheduler.service
 sudo systemctl status justnews@cluster_pipeline
 sudo systemctl status justnews@fact_intel
+curl -fsS http://127.0.0.1:8011/health
+curl -fsS http://127.0.0.1:8013/transparency/status | jq '.integrity.status'
 ```
 
 Sequence tip: ensure fact intelligence services complete before starting clustering jobs so that GTV weights inform cluster creation.
 
-Transparency tip: keep any transparency portal service (e.g., `justnews@transparency_portal`) and evidence APIs healthy; check `curl -fsS "$TRANSPARENCY_PORTAL_BASE_URL/status"` during daily ops.
+Transparency tip: keep any transparency portal service (e.g., `justnews@transparency_portal`) and evidence APIs healthy; locally confirm with `curl -fsS http://127.0.0.1:8013/transparency/status`.
 Synthesizer gate: if `/transparency/status` fails, `justnews@synthesizer` readiness will remain false until integrity recovers.
 
 ## Orderly shutdown (all agents)
@@ -261,7 +265,7 @@ sudo chmod +x /usr/local/bin/run_crawl_schedule.sh
 sudo cp infrastructure/systemd/units/justnews-crawl-scheduler.* /etc/systemd/system/
 sudo systemctl daemon-reload
 ```
-3. Provide optional overrides in `/etc/justnews/crawl_scheduler.env` (paths, crawler URL, Prometheus textfile location).
+3. Provide optional overrides in `/etc/justnews/crawl_scheduler.env` (paths, crawler URL, Prometheus textfile location). Include `CRAWL_PROFILE_PATH` if profile YAML lives outside the repo checkout.
 4. Enable the hourly timer:
 ```
 sudo systemctl enable --now justnews-crawl-scheduler.timer
@@ -282,7 +286,7 @@ Outputs:
 
 Dry-run (no crawler calls):
 ```
-sudo conda run -n justnews-v2-py312 python scripts/ops/run_crawl_schedule.py --dry-run
+sudo conda run -n justnews-v2-py312 python scripts/ops/run_crawl_schedule.py --dry-run --profiles config/crawl_profiles.yaml
 ```
 ```
 

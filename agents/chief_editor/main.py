@@ -34,6 +34,7 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -681,23 +682,36 @@ async def capabilities_endpoint():
         "editorial_priorities": ["urgent", "high", "medium", "low", "review"]
     }
 
+@app.get("/metrics")
+async def metrics_endpoint():
+    """Prometheus metrics endpoint."""
+    if not metrics:
+        return Response(
+            status_code=503,
+            content="# metrics unavailable\n",
+            media_type="text/plain; charset=utf-8"
+        )
+    return Response(content=metrics.get_metrics(), media_type="text/plain; charset=utf-8")
+
 # Error handlers
 @app.exception_handler(500)
 async def internal_error_handler(request, exc):
     """Handle internal server errors."""
     logger.error(f"500 Internal Server Error: {exc}")
-    return {
+    payload = {
         "error": "Internal server error",
         "detail": str(exc) if os.getenv("DEBUG", "").lower() == "true" else "An unexpected error occurred"
     }
+    return JSONResponse(status_code=500, content=payload)
 
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
     """Handle 404 not found errors."""
-    return {
+    payload = {
         "error": "Not found",
         "detail": f"Endpoint {request.url.path} not found"
     }
+    return JSONResponse(status_code=404, content=payload)
 
 if __name__ == "__main__":
     import uvicorn

@@ -5,6 +5,7 @@
 # restart all services followed by a consolidated health check.
 #
 # Options:
+#   stop / --stop / --shutdown Stop all services and monitoring without health checks
 #   --dry-run / --check-only   Run prerequisite checks without restarting services
 #   --help                     Display usage information
 
@@ -14,8 +15,10 @@ GLOBAL_ENV_DEFAULT="/etc/justnews/global.env"
 DATA_MOUNT_DEFAULT="/media/adra/Data"
 RESET_SCRIPT_NAME="reset_and_start.sh"
 HEALTH_SCRIPT_NAME="health_check.sh"
+MONITORING_INSTALL_RELATIVE_PATH="scripts/install_monitoring_stack.sh"
 
 DRY_RUN=false
+REQUEST_STOP=false
 SHOW_USAGE=false
 declare -a FORWARDED_ARGS=()
 
@@ -38,6 +41,7 @@ Performs environment, storage, and database checks, then restarts all JustNews
 systemd services via reset_and_start.sh followed by a health summary.
 
 Options:
+  stop, --stop, --shutdown  Stop all JustNews services and monitoring stack.
   --dry-run, --check-only  Validate prerequisites only; do not restart services.
   --help                   Show this message and exit.
 
@@ -48,6 +52,10 @@ EOF
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
+      stop|--stop|--shutdown)
+        REQUEST_STOP=true
+        shift
+        ;;
       --dry-run|--check-only)
         DRY_RUN=true
         shift
@@ -216,6 +224,133 @@ run_health_summary() {
   fi
 }
 
+start_monitoring_stack() {
+  local repo_root="$1"
+  local install_script="$repo_root/infrastructure/systemd/$MONITORING_INSTALL_RELATIVE_PATH"
+  local prom_service="justnews-prometheus.service"
+  local grafana_service="justnews-grafana.service"
+  local node_service="justnews-node-exporter.service"
+  local env_file="/etc/justnews/monitoring.env"
+  local prom_bin=""
+  local grafana_bin=""
+  local node_bin=""
+
+  if ! id -u justnews >/dev/null 2>&1; then
+    log_warn "System user 'justnews' not present; skipping monitoring stack startup"
+    return 0
+  fi
+
+  if [[ ! -x "$install_script" ]]; then
+    log_warn "Monitoring install script not available at $install_script; skipping monitoring stack startup"
+    return 0
+  fi
+
+  if [[ -r "$env_file" ]]; then
+    # shellcheck disable=SC1090
+    source "$env_file"
+    prom_bin="${PROMETHEUS_BIN:-}"
+    grafana_bin="${GRAFANA_BIN:-}"
+    node_bin="${NODE_EXPORTER_BIN:-}"
+  fi
+
+  if systemctl is-active --quiet "$prom_service" \
+     && systemctl is-active --quiet "$grafana_service" \
+     && systemctl is-active --quiet "$node_service"; then
+    log_info "Monitoring services already active; skipping reinstall"
+    return 0
+  fi
+
+  local -a extra_args=(--enable --start)
+  if [[ ! -r "$env_file" ]]; then
+    log_warn "Monitoring environment file missing; installer will bootstrap binaries and defaults"
+    extra_args+=(--install-binaries)
+  fi
+
+  local binaries_missing=false
+  if [[ -z "$prom_bin" || ! -x "$prom_bin" ]]; then
+    binaries_missing=true
+  fi
+  if [[ -z "$grafana_bin" || ! -x "$grafana_bin" ]]; then
+    binaries_missing=true
+  fi
+  if [[ -z "$node_bin" || ! -x "$node_bin" ]]; then
+    binaries_missing=true
+  fi
+
+  if [[ "$binaries_missing" == true ]]; then
+    log_warn "Monitoring binaries missing; installer will fetch official releases"
+    extra_args+=(--install-binaries)
+  fi
+
+  log_info "Provisioning monitoring stack via install_monitoring_stack.sh"
+  if "$install_script" "${extra_args[@]}"; then
+    local failures=()
+    systemctl is-active --quiet "$node_service" || failures+=("$node_service")
+    systemctl is-active --quiet "$prom_service" || failures+=("$prom_service")
+    systemctl is-active --quiet "$grafana_service" || failures+=("$grafana_service")
+
+    if [[ ${#failures[@]} -eq 0 ]]; then
+      log_success "Monitoring stack running (node_exporter, Prometheus, Grafana)"
+    else
+      log_warn "Monitoring install completed but the following services are not active: ${failures[*]}"
+    fi
+  else
+    log_error "Monitoring stack install script reported an error"
+    return 1
+  fi
+}
+
+stop_application_services() {
+  local repo_root="$1"
+  local enable_script="$repo_root/infrastructure/systemd/scripts/enable_all.sh"
+
+  if [[ ! -x "$enable_script" ]]; then
+    log_error "Service control script missing: $enable_script"
+    exit 1
+  fi
+
+  log_info "Stopping JustNews application services"
+  if "$enable_script" stop; then
+    log_success "Application services stopped"
+  else
+    log_warn "enable_all.sh stop reported issues"
+  fi
+
+  log_info "Disabling JustNews application services"
+  if "$enable_script" disable; then
+    log_success "Application services disabled"
+  else
+    log_warn "enable_all.sh disable reported issues"
+  fi
+}
+
+stop_monitoring_stack() {
+  local services=(
+    "justnews-grafana.service"
+    "justnews-prometheus.service"
+    "justnews-node-exporter.service"
+  )
+  local found_active=false
+
+  for service in "${services[@]}"; do
+    if systemctl list-unit-files "$service" >/dev/null 2>&1; then
+      if systemctl is-active --quiet "$service"; then
+        found_active=true
+        log_info "Stopping $service"
+        if systemctl stop "$service"; then
+          log_success "$service stopped"
+        else
+          log_warn "Failed to stop $service"
+        fi
+      fi
+    fi
+  done
+
+  if [[ "$found_active" == false ]]; then
+    log_info "Monitoring services already stopped or not installed"
+  fi
+}
+
 main() {
   parse_args "$@"
   if [[ "$SHOW_USAGE" == true ]]; then
@@ -224,6 +359,22 @@ main() {
   fi
 
   require_root
+  require_command systemctl
+
+  if [[ "$REQUEST_STOP" == true ]]; then
+    local repo_root
+    repo_root="$(resolve_repo_root)"
+    if [[ "$DRY_RUN" == true ]]; then
+      log_info "Dry-run requested; skipping service shutdown"
+      log_success "Prerequisite checks completed (dry run)"
+    else
+      stop_application_services "$repo_root"
+      stop_monitoring_stack
+      log_success "Canonical system shutdown completed"
+    fi
+    return 0
+  fi
+
   require_command mountpoint
   require_command mount
   load_environment
@@ -241,6 +392,9 @@ main() {
     log_info "Dry-run requested; skipping service restart"
   else
     run_reset_and_start "$repo_root" "${FORWARDED_ARGS[@]}"
+    if ! start_monitoring_stack "$repo_root"; then
+      exit 1
+    fi
     run_health_summary "$repo_root"
   fi
 

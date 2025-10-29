@@ -14,8 +14,8 @@ profiles:
     description: "Default Crawl4AI-assisted landing crawl"
     engine: crawl4ai
     mode: landing
-    follow_internal_links: false
-    max_pages: 4
+    follow_internal_links: true
+    max_pages: 50
     start_urls:
       - "https://{domain}"
     run_config:
@@ -26,7 +26,7 @@ profiles:
     link_preview:
       include_internal: true
       include_external: false
-      max_links: 12
+      max_links: 100
       concurrency: 3
   deep_financial_sections:
     description: "Deeper section crawl for complex financial publishers"

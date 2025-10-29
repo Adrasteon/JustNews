@@ -38,6 +38,24 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now justnews-boot-smoke.timer
 ```
 
+## Monitoring stack (Prometheus, Grafana, node_exporter)
+
+### First-time setup
+
+```bash
+sudo ./infrastructure/systemd/scripts/install_monitoring_stack.sh --install-binaries --enable --start
+```
+
+### Routine operations
+
+```bash
+sudo systemctl status justnews-node-exporter.service
+sudo systemctl restart justnews-prometheus.service justnews-grafana.service
+sudo journalctl -u justnews-grafana.service -f
+```
+
+Configuration lives in `/etc/justnews/monitoring.env` and `/etc/justnews/monitoring/`. Grafana is available at `http://localhost:3000/` (default credentials: `admin / change_me`).
+
 ## One-command fresh restart (recommended)
 
 ```

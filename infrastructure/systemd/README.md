@@ -42,7 +42,8 @@ Incident reference:
 - `enable_all.sh` – enable/disable/start/stop/restart/fresh for all services
 - `health_check.sh` – table view of systemd/port/HTTP/READY status
 - `preflight.sh` – validation and ExecStartPre gating (with `--gate-only`)
-- `canonical_system_startup.sh` – verifies env + data mount + database, then runs a full reset/start with health summary
+- `canonical_system_startup.sh` – verifies env + data mount + database, then runs a full reset/start with health summary (use `sudo ./infrastructure/systemd/canonical_system_startup.sh stop` for a coordinated shutdown)
+- `install_monitoring_stack.sh` – installs Prometheus, Grafana, and node_exporter (plus dashboards) and wires up their systemd units
 - `wait_for_mcp.sh` – helper used by unit template to gate on the MCP bus
 - `justnews-start-agent.sh` – unit ExecStart wrapper
 
@@ -103,4 +104,35 @@ CUDA_VISIBLE_DEVICES=0
 ```
 
 See Quick Reference for the full port map and more examples.
+
+## Monitoring stack (Prometheus + Grafana + node_exporter)
+
+The monitoring assets live under `infrastructure/systemd/monitoring`. Install and manage them with:
+
+```bash
+sudo ./infrastructure/systemd/scripts/install_monitoring_stack.sh --install-binaries --enable --start
+```
+
+This command downloads the official Prometheus, Grafana, and node_exporter builds into `/opt/justnews/monitoring`, lays down `/etc/justnews/monitoring.env`, publishes dashboards, and enables the following services:
+
+- `justnews-node-exporter.service`
+- `justnews-prometheus.service`
+- `justnews-grafana.service`
+
+Key paths:
+
+- Prometheus config: `/etc/justnews/monitoring/prometheus.yml`
+- Grafana config: `/etc/justnews/monitoring/grafana.ini`
+- Dashboards: `/etc/justnews/monitoring/grafana/dashboards`
+- Textfile collector: `/var/lib/node_exporter/textfile_collector`
+
+Routine operations:
+
+```bash
+sudo systemctl status justnews-node-exporter.service
+sudo systemctl restart justnews-prometheus.service justnews-grafana.service
+sudo journalctl -u justnews-grafana.service -e -n 200
+```
+
+Grafana defaults to `http://localhost:3000/` with `admin / change_me`. Update credentials via the UI after first login.
 

@@ -6,7 +6,7 @@ metadata:
 global:
   target_articles_per_hour: 500
   default_max_articles_per_site: 10
-  default_concurrent_sites: 3
+  default_concurrent_sites: 5
   default_timeout_seconds: 480
   strategy: auto
   enable_ai_enrichment: true

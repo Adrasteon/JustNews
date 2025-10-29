@@ -186,10 +186,18 @@ def _await_job(base_url: str, job_id: str, timeout_seconds: int) -> dict[str, An
     status_url = f"{base_url}/job_status/{job_id}"
 
     while True:
+        request_deadline = max(deadline - time.time(), 0)
+        # Give the crawler a generous window to respond while still honouring the overall deadline.
+        per_request_timeout = max(min(request_deadline, 30), 5)
+
         try:
-            response = requests.get(status_url, timeout=10)
+            response = requests.get(status_url, timeout=per_request_timeout)
             response.raise_for_status()
             payload = response.json()
+        except requests.Timeout:
+            if time.time() >= deadline:
+                raise TimeoutError(f"Job {job_id} exceeded timeout {timeout_seconds}s")
+            continue
         except requests.RequestException as exc:
             raise RuntimeError(f"Failed to fetch job status for {job_id}: {exc}") from exc
 

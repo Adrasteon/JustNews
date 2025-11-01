@@ -226,6 +226,8 @@ class MemoryEngine:
                     "url": article_payload.get("url"),
                     "normalized_url": article_payload.get("normalized_url"),
                     "title": article_payload.get("title"),
+                    "summary": article_payload.get("summary"),
+                    "analyzed": article_payload.get("analyzed", False),
                     "domain": article_payload.get("domain"),
                     "publisher_meta": article_payload.get("publisher_meta", {}),
                     "confidence": article_payload.get("confidence", 0.5),
@@ -244,6 +246,7 @@ class MemoryEngine:
                     "raw_html_ref": article_payload.get("raw_html_ref"),
                     "needs_review": article_payload.get("needs_review", False),
                     "review_reasons": article_payload.get("review_reasons", []),
+                    "source_id": chosen_source_id,
                 }
 
                 if content:  # Only save if there's actual content

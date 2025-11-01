@@ -99,3 +99,11 @@
 - Scheduler submits crawl runs with per-domain overrides from `config/crawl_profiles.yaml`; the path is configurable via `--profiles` or the `CRAWL_PROFILE_PATH` environment variable.
 - `agents/crawler_control/crawl_profiles.py` normalises hostnames and expands `{domain}` tokens before handing payloads to the crawler agent.
 - `agents/crawler/crawl4ai_adapter.py` instantiates `BrowserConfig` and `CrawlerRunConfig` based on those payloads, follows scored internal links when requested, and feeds cleaned HTML back into the Trafilatura-first extraction pipeline.
+
+### Recent integration notes (Oct–Nov 2025)
+
+- Adaptive crawling: `agents/crawler/crawl4ai_adapter.py` now supports using `AdaptiveCrawler` when profile `adaptive` blocks and an `extra.query` are present. When adaptive runs emit content, the adapter transforms the adaptive docs back into our article shape and records adaptive metadata (confidence, pages_crawled, stop_reason, source_score). The adapter short-circuits traversal and returns adaptive results when they are available and sufficient.
+- Metrics: adaptive telemetry is emitted through Stage B metrics helpers under names like `adaptive_runs_total`, `adaptive_articles_emitted`, `adaptive_confidence`, `adaptive_pages_crawled`, and `adaptive_coverage_<metric>`. The metrics helpers are tolerant of environments without Prometheus or GPU libs.
+- Optional GPU dependency: the adapter and the shared `common.metrics` module gracefully handle missing GPU helper packages (e.g., `GPUtil`). GPU metrics are best-effort and disabled when the optional dependency is unavailable.
+- Tests: unit tests for the adapter were added (`tests/agents/crawler/test_crawl4ai_adapter.py`) to validate run-config building, adaptive document transformation, and metadata emission. These tests stub out metrics to keep unit scope hermetic.
+- CLI/flags: local schema-generation tooling exposes configurable chunking via `--chunk-size` and `--chunk-overlap` to reduce GPU memory pressure during LLM-based extraction.

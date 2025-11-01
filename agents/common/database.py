@@ -176,7 +176,7 @@ def execute_query_single(query: str, params: tuple = None) -> dict | None:
     Returns:
         Single result row as dict, or None if no results
     """
-    with get_db_cursor() as (conn, cursor):
+    with get_db_cursor(commit=True) as (conn, cursor):
         cursor.execute(query, params or ())
         result = cursor.fetchone()
         return dict(result) if result else None

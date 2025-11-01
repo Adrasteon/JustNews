@@ -9,13 +9,18 @@ remains unchanged.
 from __future__ import annotations
 
 import importlib
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urljoin, urlparse
+from types import SimpleNamespace
 
 from agents.sites.generic_site_crawler import GenericSiteCrawler, SiteConfig
 from common.observability import get_logger
+try:  # Metrics are optional; crawler operates without Prometheus stack.
+    from common.metrics import get_metrics
+except ImportError:  # pragma: no cover - metrics disabled in some environments
+    get_metrics = None  # type: ignore
 
 logger = get_logger(__name__)
 
@@ -150,6 +155,10 @@ def _build_run_config(profile: dict[str, Any]):
     if profile.get("js_code") and "js_code" not in run_config_def:
         run_config_def["js_code"] = profile["js_code"]
 
+    markdown_generator_def = None
+    if "markdown_generator" in run_config_def:
+        markdown_generator_def = run_config_def.pop("markdown_generator")
+
     kwargs = {key: run_config_def[key] for key in _ALLOWED_RUN_CONFIG_KEYS if key in run_config_def}
 
     for list_key in ("js_code", "target_elements", "excluded_tags"):
@@ -160,18 +169,83 @@ def _build_run_config(profile: dict[str, Any]):
     if link_preview_cfg:
         kwargs["link_preview_config"] = link_preview_cfg
 
+    if markdown_generator_def:
+        generator = _build_markdown_generator(markdown_generator_def)
+        if generator is not None:
+            kwargs["markdown_generator"] = generator
+
+    adaptive_kwargs = profile.get("adaptive") or {}
+
     if crawl4ai is None:  # pragma: no cover - surfaced to caller fallback
         raise ImportError("crawl4ai is not installed")
 
     CacheMode = getattr(crawl4ai, "CacheMode", None)
     CrawlerRunConfig = getattr(crawl4ai, "CrawlerRunConfig", None)
+    AdaptiveConfig = getattr(crawl4ai, "AdaptiveConfig", None)
     if CacheMode is None or CrawlerRunConfig is None:
         raise ImportError("crawl4ai CacheMode or CrawlerRunConfig missing")
 
     cache_mode = profile.get("run_config", {}).get("cache_mode", "bypass")
     cache_mode_enum = getattr(CacheMode, str(cache_mode).upper(), CacheMode.BYPASS)
 
-    return CrawlerRunConfig(cache_mode=cache_mode_enum, **kwargs)
+    config = CrawlerRunConfig(cache_mode=cache_mode_enum, **kwargs)
+
+    if AdaptiveConfig is not None and adaptive_kwargs:
+        try:
+            adaptive_config = AdaptiveConfig(**adaptive_kwargs)
+        except TypeError:
+            adaptive_config = None
+        if adaptive_config is not None:
+            config.adaptive_config = adaptive_config  # type: ignore[attr-defined]
+
+    return config
+
+
+def _build_content_filter(settings: Mapping[str, Any] | None):
+    if not settings:
+        return None
+    if crawl4ai is None:
+        return None
+
+    try:
+        content_mod = importlib.import_module("crawl4ai.content_filter_strategy")
+        BM25ContentFilter = getattr(content_mod, "BM25ContentFilter", None)
+        PruningContentFilter = getattr(content_mod, "PruningContentFilter", None)
+    except ImportError:  # pragma: no cover - optional dependency missing
+        return None
+
+    filter_type = str(settings.get("type", "")).strip().lower()
+    options = dict(settings)
+    options.pop("type", None)
+
+    if filter_type in {"bm25", "bm25contentfilter"} and BM25ContentFilter is not None:
+        return BM25ContentFilter(**options)
+    if filter_type in {"pruning", "pruningcontentfilter"} and PruningContentFilter is not None:
+        return PruningContentFilter(**options)
+    return None
+
+
+def _build_markdown_generator(settings: Mapping[str, Any] | None):
+    if not settings:
+        return None
+    if crawl4ai is None:
+        return None
+
+    DefaultMarkdownGenerator = getattr(crawl4ai, "DefaultMarkdownGenerator", None)
+    if DefaultMarkdownGenerator is None:
+        try:
+            markdown_module = importlib.import_module("crawl4ai.markdown_generation_strategy")
+            DefaultMarkdownGenerator = getattr(markdown_module, "DefaultMarkdownGenerator", None)
+        except ImportError:  # pragma: no cover - optional dependency missing
+            DefaultMarkdownGenerator = None
+    if DefaultMarkdownGenerator is None:
+        return None
+
+    kwargs: dict[str, Any] = {}
+    content_filter = _build_content_filter(settings.get("content_filter") if isinstance(settings, Mapping) else None)
+    if content_filter is not None:
+        kwargs["content_filter"] = content_filter
+    return DefaultMarkdownGenerator(**kwargs)
 
 
 def _select_link_candidates(
@@ -250,10 +324,221 @@ def _build_article_from_result(
             "link_preview_count": len(getattr(result, "links", {}).get("internal", [])) if getattr(result, "links", None) else 0,
         }
     )
+
+    adaptive_settings = profile.get("adaptive") or {}
+    if adaptive_settings:
+        crawl_meta["adaptive_profile"] = dict(adaptive_settings)
+
+    profile_query = (profile.get("extra") or {}).get("query")
+    if profile_query:
+        hints = crawl_meta.setdefault("hints", {})
+        hints["query"] = profile_query
+
     page_metadata = getattr(result, "metadata", None)
     if page_metadata:
         crawl_meta["page_metadata"] = page_metadata
     return article
+
+
+def _build_article_from_adaptive_doc(
+    builder: GenericSiteCrawler,
+    doc: Mapping[str, Any],
+    profile: dict[str, Any],
+    adaptive: Any,
+    state: Any,
+) -> dict[str, Any] | None:
+    target_url = str(doc.get("url") or "").strip()
+
+    html = doc.get("cleaned_html") or doc.get("html") or doc.get("raw_html")
+    markdown_content = doc.get("content")
+    markdown_ns: SimpleNamespace | None = None
+    if not html and markdown_content:
+        html = f"<article>{markdown_content}</article>"
+    if markdown_content:
+        markdown_ns = SimpleNamespace(raw_markdown=markdown_content)
+
+    if not html and not markdown_ns:
+        return None
+
+    result = SimpleNamespace(
+        cleaned_html=html,
+        markdown=markdown_ns,
+        url=target_url,
+        metadata=doc.get("metadata"),
+        links=doc.get("links"),
+    )
+
+    links_followed = len(getattr(state, "crawled_urls", []) or [])
+    article = _build_article_from_result(
+        builder,
+        target_url or getattr(state, "start_url", ""),
+        result,
+        profile,
+        links_followed=links_followed,
+    )
+    if not article:
+        return None
+
+    crawl_meta = article.setdefault("extraction_metadata", {}).setdefault("crawl4ai", {})
+    adaptive_run = crawl_meta.setdefault("adaptive_run", {})
+    confidence = getattr(adaptive, "confidence", None)
+    if confidence is not None:
+        adaptive_run["confidence"] = float(confidence)
+    coverage_stats = getattr(adaptive, "coverage_stats", None)
+    if coverage_stats:
+        adaptive_run["coverage_stats"] = dict(coverage_stats)
+    if hasattr(adaptive, "is_sufficient"):
+        adaptive_run["is_sufficient"] = bool(getattr(adaptive, "is_sufficient"))
+    pages_crawled = len(getattr(state, "crawled_urls", []) or [])
+    if pages_crawled:
+        adaptive_run["pages_crawled"] = pages_crawled
+    stop_reason = getattr(state, "stop_reason", None)
+    if stop_reason:
+        adaptive_run["stop_reason"] = stop_reason
+    score = doc.get("score")
+    if score is not None:
+        adaptive_run["source_score"] = score
+
+    return article
+
+
+def _record_adaptive_metrics(
+    adaptive: Any,
+    state: Any,
+    emitted_count: int,
+    profile: Mapping[str, Any] | None,
+) -> None:
+    """Push adaptive crawl telemetry into the metrics store."""
+    if get_metrics is None:
+        return
+
+    try:
+        metrics = get_metrics("crawler")
+    except Exception:  # pragma: no cover - metrics backend unavailable
+        return
+
+    try:
+        metrics.increment("adaptive_runs_total")
+
+        metrics.gauge("adaptive_articles_emitted", float(max(0, emitted_count)))
+
+        confidence = getattr(adaptive, "confidence", None)
+        if confidence is not None:
+            metrics.gauge("adaptive_confidence", float(confidence))
+
+        is_sufficient = getattr(adaptive, "is_sufficient", None)
+        if is_sufficient is not None:
+            metrics.gauge("adaptive_is_sufficient", 1.0 if bool(is_sufficient) else 0.0)
+
+        pages_crawled = 0
+        stop_reason = None
+        if state is not None:
+            crawled_urls = getattr(state, "crawled_urls", []) or []
+            try:
+                pages_crawled = len(crawled_urls)
+            except TypeError:
+                pages_crawled = 0
+            stop_reason = getattr(state, "stop_reason", None)
+
+        metrics.gauge("adaptive_pages_crawled", float(pages_crawled))
+
+        if stop_reason:
+            metrics.increment(f"adaptive_stop_reason_{stop_reason}")
+
+        coverage_stats = getattr(adaptive, "coverage_stats", None)
+        if isinstance(coverage_stats, Mapping):
+            for key, value in coverage_stats.items():
+                try:
+                    metrics.gauge(f"adaptive_coverage_{key}", float(value))
+                except (TypeError, ValueError):
+                    continue
+
+        profile_slug = (profile or {}).get("profile_slug") if profile else None
+        if profile_slug:
+            metrics.increment(f"adaptive_profile_runs_{profile_slug}")
+
+    except Exception as exc:  # pragma: no cover - metrics should not break crawl
+        logger.debug("Adaptive metrics recording failed: %s", exc)
+
+
+async def _run_adaptive_crawl(
+    async_webcrawler_cls: Any,
+    browser_config: Any,
+    run_config: Any,
+    adaptive_config: Any,
+    start_urls: Sequence[str],
+    query: str,
+    builder: GenericSiteCrawler,
+    profile: dict[str, Any],
+    max_articles: int,
+) -> list[dict[str, Any]]:
+    AdaptiveCrawler = getattr(crawl4ai, "AdaptiveCrawler", None)
+    if AdaptiveCrawler is None:
+        return []
+
+    articles: list[dict[str, Any]] = []
+    seen_urls: set[str] = set()
+
+    crawler_args = {}
+    if browser_config is not None:
+        crawler_args["config"] = browser_config
+
+    async with async_webcrawler_cls(**crawler_args) as crawler:
+        for url in start_urls:
+            if len(articles) >= max_articles:
+                break
+            url = str(url or "").strip()
+            if not url:
+                continue
+            adaptive = None
+            state = None
+            emitted_before = len(articles)
+            try:
+                try:
+                    adaptive = AdaptiveCrawler(crawler, config=adaptive_config)
+                except TypeError:  # pragma: no cover - older signatures
+                    adaptive = AdaptiveCrawler(crawler, adaptive_config)
+
+                current_run_config = run_config
+                if hasattr(run_config, "clone"):
+                    try:
+                        current_run_config = run_config.clone()
+                    except Exception:  # pragma: no cover - defensive
+                        current_run_config = run_config
+
+                try:
+                    state = await adaptive.digest(url, query, run_config=current_run_config)
+                except TypeError:
+                    state = await adaptive.digest(url, query)
+            except Exception as exc:  # noqa: BLE001 - prefer resilience
+                logger.warning("Adaptive crawl failed for %s: %s", url, exc)
+                continue
+
+            remaining = max_articles - len(articles)
+            if remaining <= 0:
+                break
+
+            docs = []
+            if hasattr(adaptive, "get_relevant_content"):
+                try:
+                    docs = adaptive.get_relevant_content(top_k=remaining) or []
+                except Exception:  # pragma: no cover - best effort fallback
+                    docs = []
+
+            for doc in docs:
+                doc_url = str(doc.get("url") or "").strip()
+                if doc_url and doc_url in seen_urls:
+                    continue
+                article = _build_article_from_adaptive_doc(builder, doc, profile, adaptive, state)
+                if article:
+                    seen_urls.add(article.get("url") or doc_url)
+                    articles.append(article)
+                if len(articles) >= max_articles:
+                    break
+
+            _record_adaptive_metrics(adaptive, state, len(articles) - emitted_before, profile)
+
+    return articles
 
 
 async def crawl_site_with_crawl4ai(
@@ -307,6 +592,23 @@ async def crawl_site_with_crawl4ai(
     visited: set[str] = set()
     queue: list[str] = list(unique_urls)
     pages_fetched = 0
+
+    adaptive_config = getattr(run_config, "adaptive_config", None)
+    profile_query = (profile.get("extra") or {}).get("query")
+    if adaptive_config is not None and profile_query:
+        adaptive_articles = await _run_adaptive_crawl(
+            AsyncWebCrawler,
+            browser_config,
+            run_config,
+            adaptive_config,
+            unique_urls,
+            profile_query,
+            builder,
+            profile,
+            context.max_articles,
+        )
+        if adaptive_articles:
+            return adaptive_articles[: context.max_articles]
 
     crawler_factory = AsyncWebCrawler(config=browser_config) if browser_config else AsyncWebCrawler()
     async with crawler_factory as crawler:

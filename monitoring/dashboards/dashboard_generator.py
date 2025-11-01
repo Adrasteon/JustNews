@@ -144,7 +144,57 @@ class DashboardGenerator:
                     }],
                     grid_pos={"h": 8, "w": 16, "x": 8, "y": 8},
                     description="MCP Bus request rate over time"
-                )
+                ),
+                PanelConfig(
+                    title="Adaptive Articles Produced",
+                    type="stat",
+                    targets=[{
+                        "expr": "justnews_crawler_scheduler_adaptive_articles_total",
+                        "legendFormat": "Adaptive Articles"
+                    }],
+                    grid_pos={"h": 4, "w": 6, "x": 0, "y": 16},
+                    description="Adaptive Crawl4AI article output for the latest scheduler window"
+                ),
+                PanelConfig(
+                    title="Adaptive Sufficiency Rate",
+                    type="stat",
+                    targets=[{
+                        "expr": "justnews_crawler_scheduler_adaptive_articles_sufficient_total / clamp_min(justnews_crawler_scheduler_adaptive_articles_total, 1) * 100",
+                        "legendFormat": "Sufficient %"
+                    }],
+                    grid_pos={"h": 4, "w": 6, "x": 6, "y": 16},
+                    description="Percentage of adaptive articles meeting sufficiency criteria"
+                ),
+                PanelConfig(
+                    title="Adaptive Confidence Average",
+                    type="stat",
+                    targets=[{
+                        "expr": "justnews_crawler_scheduler_adaptive_confidence_average",
+                        "legendFormat": "Confidence"
+                    }],
+                    grid_pos={"h": 4, "w": 6, "x": 12, "y": 16},
+                    description="Average model confidence emitted by adaptive runs"
+                ),
+                PanelConfig(
+                    title="Adaptive Pages per Article",
+                    type="stat",
+                    targets=[{
+                        "expr": "justnews_crawler_scheduler_adaptive_pages_crawled_average",
+                        "legendFormat": "Pages"
+                    }],
+                    grid_pos={"h": 4, "w": 6, "x": 18, "y": 16},
+                    description="Average Crawl4AI pages crawled per adaptive article"
+                ),
+                PanelConfig(
+                    title="Adaptive Stop Reasons",
+                    type="bargauge",
+                    targets=[{
+                        "expr": "sum by(reason) (justnews_crawler_scheduler_adaptive_stop_reasons_total)",
+                        "legendFormat": "{{reason}}"
+                    }],
+                    grid_pos={"h": 8, "w": 24, "x": 0, "y": 20},
+                    description="Distribution of adaptive stop reasons captured by the scheduler"
+                ),
             ],
             variables=[
                 {

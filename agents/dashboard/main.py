@@ -646,6 +646,22 @@ async def get_crawl_status():
         raise HTTPException(status_code=500, detail=f"Failed to get crawl status: {str(e)}")
 
 
+@app.get("/api/crawl/scheduler")
+async def get_crawl_scheduler(include_runs: bool = True, history_limit: int = 20):
+    """Return the latest crawl scheduler snapshot with adaptive metrics."""
+
+    try:
+        snapshot = dashboard_engine.get_crawl_scheduler_snapshot(include_runs=include_runs)
+        if history_limit:
+            snapshot["history"] = dashboard_engine.get_crawl_scheduler_history(limit=history_limit)
+        else:
+            snapshot["history"] = []
+        return snapshot
+    except Exception as exc:
+        logger.error(f"Failed to load crawl scheduler snapshot: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed to load crawl scheduler snapshot: {exc}")
+
+
 @app.get("/api/metrics/crawler")
 async def get_crawler_metrics():
     """Get crawler performance metrics"""

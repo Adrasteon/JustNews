@@ -23,3 +23,9 @@ unrefactored/
 global.env
 model_store
 
+# Ignore any local model caches in agents/ directories
+agents/**/models/
+
+# Archive of experimental spikes
+archive/experimental/
+

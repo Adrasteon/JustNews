@@ -16,7 +16,7 @@ import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 # Ensure project root is importable when executed as a standalone script
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -26,6 +26,7 @@ if str(REPO_ROOT) not in sys.path:
 import requests  # noqa: E402
 from prometheus_client import CollectorRegistry, Gauge, write_to_textfile  # noqa: E402
 
+from agents.crawler.adaptive_metrics import summarise_adaptive_articles  # noqa: E402
 from agents.crawler.crawler_utils import get_active_sources  # noqa: E402
 from agents.crawler_control.crawl_profiles import (  # noqa: E402
     CrawlProfileError,
@@ -47,6 +48,8 @@ DEFAULT_SUCCESS_PATH = Path("logs/analytics/crawl_scheduler_success.json")
 DEFAULT_METRICS_OUTPUT = Path("logs/analytics/crawl_scheduler.prom")
 DEFAULT_CRAWLER_URL = "http://127.0.0.1:8015"
 DEFAULT_CRAWLER_POLL_INTERVAL = 5.0
+
+STOP_REASON_LABELS: set[str] = set()
 
 
 def _parse_args() -> argparse.Namespace:
@@ -157,6 +160,19 @@ def _effective_limit(remaining: int, run: CrawlRun) -> int:
     return limit if limit > 0 else 0
 
 
+def _iter_adaptive_articles(runs: list[dict[str, Any]]):
+    for run in runs:
+        result = run.get("result")
+        if not isinstance(result, Mapping):
+            continue
+        articles = result.get("articles")
+        if not isinstance(articles, list):
+            continue
+        for article in articles:
+            if isinstance(article, Mapping):
+                yield article
+
+
 def _build_payload(
     run: CrawlRun,
     max_articles: int,
@@ -251,6 +267,32 @@ def _init_metrics() -> tuple[CollectorRegistry, dict[str, Gauge]]:
         "timestamp": Gauge(
             "justnews_crawler_scheduler_last_successful_run_timestamp",
             "Unix timestamp of last successful crawl batch",
+            registry=registry,
+        ),
+        "adaptive_articles": Gauge(
+            "justnews_crawler_scheduler_adaptive_articles_total",
+            "Articles produced via adaptive Crawl4AI pipeline this window",
+            registry=registry,
+        ),
+        "adaptive_sufficient": Gauge(
+            "justnews_crawler_scheduler_adaptive_articles_sufficient_total",
+            "Adaptive articles meeting sufficiency criteria",
+            registry=registry,
+        ),
+        "adaptive_confidence": Gauge(
+            "justnews_crawler_scheduler_adaptive_confidence_average",
+            "Average adaptive confidence score across the window",
+            registry=registry,
+        ),
+        "adaptive_pages": Gauge(
+            "justnews_crawler_scheduler_adaptive_pages_crawled_average",
+            "Average pages crawled per adaptive article",
+            registry=registry,
+        ),
+        "adaptive_stop_reasons": Gauge(
+            "justnews_crawler_scheduler_adaptive_stop_reasons_total",
+            "Adaptive stop reason occurrence counts",
+            ["reason"],
             registry=registry,
         ),
     }
@@ -443,6 +485,33 @@ def main() -> int:
             }
         )
 
+    successful = [run for run in run_results if run["status"] == "completed"]
+    adaptive_summary = summarise_adaptive_articles(_iter_adaptive_articles(successful))
+
+    articles_block = adaptive_summary.get("articles", {}) if adaptive_summary else {}
+    adaptive_total = float(articles_block.get("total", 0) or 0)
+    adaptive_sufficient = float(articles_block.get("sufficient", 0) or 0)
+
+    confidence_avg = None
+    if adaptive_summary:
+        confidence_avg = adaptive_summary.get("confidence", {}).get("average")
+    pages_avg = None
+    if adaptive_summary:
+        pages_avg = adaptive_summary.get("pages_crawled", {}).get("average")
+
+    gauges["adaptive_articles"].set(adaptive_total)
+    gauges["adaptive_sufficient"].set(adaptive_sufficient)
+    gauges["adaptive_confidence"].set(float(confidence_avg) if confidence_avg is not None else 0.0)
+    gauges["adaptive_pages"].set(float(pages_avg) if pages_avg is not None else 0.0)
+
+    stop_reasons = adaptive_summary.get("stop_reasons", {}) if adaptive_summary else {}
+    if stop_reasons:
+        for reason, count in stop_reasons.items():
+            STOP_REASON_LABELS.add(reason)
+            gauges["adaptive_stop_reasons"].labels(reason=reason).set(float(count))
+    for reason in STOP_REASON_LABELS - set(stop_reasons):
+        gauges["adaptive_stop_reasons"].labels(reason=reason).set(0.0)
+
     gauges["domains"].set(total_domains)
     gauges["articles"].set(total_articles)
     gauges["lag"].set(worst_lag)
@@ -462,9 +531,10 @@ def main() -> int:
         "dry_run": args.dry_run,
         "crawler_url": args.crawler_url,
     }
+    if adaptive_summary:
+        state_payload["adaptive_summary"] = adaptive_summary
     _write_json(args.state_output, state_payload)
 
-    successful = [run for run in run_results if run["status"] == "completed"]
     if successful:
         summary_entry = {
             "timestamp": reference_time.isoformat(),

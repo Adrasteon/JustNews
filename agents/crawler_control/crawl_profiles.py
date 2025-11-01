@@ -61,6 +61,7 @@ class CrawlProfile:
     run_config: dict[str, Any] = field(default_factory=dict)
     link_preview: dict[str, Any] = field(default_factory=dict)
     browser_config: dict[str, Any] = field(default_factory=dict)
+    adaptive: dict[str, Any] = field(default_factory=dict)
     js_code: list[str] = field(default_factory=list)
     wait_for: str | None = None
     extra: dict[str, Any] = field(default_factory=dict)
@@ -78,6 +79,7 @@ class CrawlProfile:
             "run_config": _expand_placeholders(self.run_config, domain),
             "link_preview": _expand_placeholders(self.link_preview, domain),
             "browser_config": _expand_placeholders(self.browser_config, domain),
+            "adaptive": _expand_placeholders(self.adaptive, domain),
             "js_code": _expand_placeholders(self.js_code, domain),
             "wait_for": _expand_placeholders(self.wait_for, domain),
             "extra": _expand_placeholders(self.extra, domain),
@@ -173,6 +175,7 @@ def load_crawl_profiles(path: Path) -> CrawlProfileRegistry:
         run_config = _coerce_mapping(data.get("run_config"), context=f"profile '{slug}' run_config")
         link_preview = _coerce_mapping(data.get("link_preview"), context=f"profile '{slug}' link_preview")
         browser_config = _coerce_mapping(data.get("browser_config"), context=f"profile '{slug}' browser_config")
+        adaptive = _coerce_mapping(data.get("adaptive"), context=f"profile '{slug}' adaptive")
         extra = _coerce_mapping(data.get("extra"), context=f"profile '{slug}' extra")
         description = data.get("description")
         js_code = data.get("js_code") or []
@@ -193,6 +196,7 @@ def load_crawl_profiles(path: Path) -> CrawlProfileRegistry:
             run_config=run_config,
             link_preview=link_preview,
             browser_config=browser_config,
+            adaptive=adaptive,
             js_code=js_code,
             wait_for=wait_for,
             extra=extra,

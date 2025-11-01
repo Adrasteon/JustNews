@@ -208,10 +208,12 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
         review_reasons_json = json.dumps(metadata.get("review_reasons") or [])
 
         insertion_params = (
+            raw_url,
             metadata.get("title"),
             content,
-            (authors[0] if authors else metadata.get("author")),
-            raw_url,
+            metadata.get("summary"),
+            bool(metadata.get("analyzed", False)),
+            metadata.get("source_id"),
             normalized_url,
             hash_value,
             hash_algorithm,
@@ -219,25 +221,27 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
             metadata.get("section"),
             tags or None,
             json.dumps(authors) if authors else None,
-            publication_dt,
-            collection_dt,
             metadata.get("raw_html_ref"),
             float(metadata.get("confidence", 0.0)) if metadata.get("confidence") is not None else None,
             bool(metadata.get("needs_review", False)),
             review_reasons_json,
             json.dumps(metadata.get("extraction_metadata") or {}),
             json.dumps(metadata.get("structured_metadata") or {}),
+            publication_dt,
             metadata_payload,
+            collection_dt,
             list(map(float, embedding)),
         )
 
         inserted = execute_query_single(
             """
             INSERT INTO articles (
+                url,
                 title,
                 content,
-                author,
-                source_url,
+                summary,
+                analyzed,
+                source_id,
                 normalized_url,
                 url_hash,
                 url_hash_algo,
@@ -245,21 +249,21 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
                 section,
                 tags,
                 authors,
-                published_at,
-                collection_timestamp,
                 raw_html_ref,
                 extraction_confidence,
                 needs_review,
                 review_reasons,
                 extraction_metadata,
                 structured_metadata,
+                publication_date,
                 metadata,
+                collection_timestamp,
                 embedding,
                 created_at,
                 updated_at
             )
             VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s, NOW(), NOW()
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s, %s::jsonb, %s, %s, NOW(), NOW()
             )
             RETURNING id
             """,

@@ -18,6 +18,12 @@
 - **Scheduler-aware profiles:** `scripts/ops/run_crawl_schedule.py` now accepts `--profiles` (defaults to `config/crawl_profiles.yaml`) and inlines the resolved payload into each crawl job as `profile_overrides`.
 - **Profile registry:** `agents/crawler_control/crawl_profiles.py` loads YAML profiles, expands `{domain}` placeholders, and maps `www.`/bare hostnames so operators only touch configuration.
 - **Crawler adapter:** `agents/crawler/crawl4ai_adapter.py` translates profile dictionaries into Crawl4AI `BrowserConfig`/`CrawlerRunConfig` objects, follows scored internal links within the declared `max_pages`, and still feeds the Trafilatura pipeline.
+
+### Adaptive crawling & telemetry (Oct–Nov 2025)
+
+- The adapter will now use `AdaptiveCrawler` when a profile provides an `adaptive` block and a `query` hint. Adaptive runs are used to focus crawl effort and can replace full traversal when they return sufficient coverage. Adaptive output is converted back into the existing article shape so downstream agents see the same payloads.
+- We emit lightweight adaptive metrics and counters into the Stage B metrics API (e.g. `adaptive_runs_total`, `adaptive_confidence`, `adaptive_articles_emitted`, `adaptive_pages_crawled`). These metrics are intentionally conservative and resilient to missing Prometheus/GPU packages.
+- Operational note: because adaptive runs may be short-circuited, operators should inspect `extraction_metadata.crawl4ai.adaptive_run` in stored articles to audit run confidence and stop reasons.
 - **Engine fallback:** `CrawlerEngine.run_unified_crawl(...)` applies overrides per domain and falls back to the legacy `GenericSiteCrawler` when Crawl4AI is unavailable or a profile opts out via `engine: generic`.
 
 ### Editing profiles

@@ -5,12 +5,13 @@ This module contains the core business logic for the dashboard agent,
 including GPU monitoring, storage operations, and system health checks.
 """
 
+import json
 import logging
 import os
 import subprocess
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, Iterable, List, Mapping, Optional
 from contextlib import asynccontextmanager
 
 import requests
@@ -19,6 +20,7 @@ from pydantic import BaseModel
 
 from .storage import get_storage
 from agents.common.gpu_manager_production import get_gpu_manager
+from agents.crawler.adaptive_metrics import summarise_adaptive_articles
 
 logger = logging.getLogger(__name__)
 
@@ -352,9 +354,18 @@ class DashboardEngine:
     """Core dashboard engine handling monitoring, storage, and system operations."""
 
     def __init__(self):
+        self.repo_root = Path(__file__).resolve().parents[2]
         self.gpu_monitor = EnhancedGPUMonitor()
         self.storage = get_storage()
         self.config = self._load_config()
+        self.scheduler_state_path = self._resolve_optional_path(
+            self.config.get("crawler_scheduler_state_path"),
+            self.repo_root / "logs" / "analytics" / "crawl_scheduler_state.json",
+        )
+        self.scheduler_success_path = self._resolve_optional_path(
+            self.config.get("crawler_scheduler_success_path"),
+            self.repo_root / "logs" / "analytics" / "crawl_scheduler_success.json",
+        )
 
     def _load_config(self) -> dict:
         """Load dashboard configuration."""
@@ -367,6 +378,22 @@ class DashboardEngine:
             except Exception as e:
                 logger.warning(f"Failed to load config: {e}")
         return {}
+
+    def _resolve_optional_path(self, configured_path: Any, default: Path) -> Path:
+        """Resolve optional path configuration relative to the repository root."""
+
+        if not configured_path:
+            return default
+
+        try:
+            candidate = Path(str(configured_path))
+        except (TypeError, ValueError):
+            return default
+
+        if not candidate.is_absolute():
+            candidate = (self.repo_root / candidate).resolve()
+
+        return candidate
 
     def save_config(self, config: dict):
         """Save dashboard configuration."""
@@ -448,6 +475,183 @@ class DashboardEngine:
         except Exception as e:
             logger.error(f"Error updating GPU config: {e}")
             raise HTTPException(status_code=500, detail=str(e))
+
+    def get_crawl_scheduler_snapshot(self, include_runs: bool = True) -> dict[str, Any]:
+        """Return the most recent crawl scheduler state with adaptive metrics."""
+
+        snapshot: dict[str, Any] = {
+            "state_available": False,
+            "path": str(self.scheduler_state_path),
+            "timestamp": time.time(),
+            "adaptive_summary": {},
+            "adaptive_metrics": {},
+        }
+
+        if include_runs:
+            snapshot["runs"] = []
+
+        try:
+            raw_state = self._read_json_file(self.scheduler_state_path)
+        except FileNotFoundError:
+            logger.debug("Scheduler state file %s not found", self.scheduler_state_path)
+            return snapshot
+        except Exception as exc:
+            snapshot["error"] = f"failed to load scheduler state: {exc}"
+            logger.warning("Failed to load scheduler state: %s", exc)
+            return snapshot
+
+        if not isinstance(raw_state, Mapping):
+            snapshot["error"] = "scheduler state is not a mapping"
+            logger.warning("Unexpected scheduler state payload type: %s", type(raw_state))
+            return snapshot
+
+        snapshot["state_available"] = True
+        for key in ("executed_at", "target_articles", "remaining_articles", "governance", "dry_run", "crawler_url"):
+            if key in raw_state:
+                snapshot[key] = raw_state[key]
+
+        executed_at = raw_state.get("executed_at")
+        if isinstance(executed_at, str):
+            snapshot["executed_at_epoch"] = self._parse_iso8601_to_epoch(executed_at)
+
+        runs = raw_state.get("runs") if isinstance(raw_state.get("runs"), list) else []
+        if include_runs:
+            snapshot["runs"] = runs
+
+        adaptive_summary = raw_state.get("adaptive_summary")
+        if not isinstance(adaptive_summary, Mapping):
+            adaptive_summary = self._derive_adaptive_summary(runs)
+
+        snapshot["adaptive_summary"] = adaptive_summary or {}
+        snapshot["adaptive_metrics"] = self._build_adaptive_metrics(adaptive_summary)
+        return snapshot
+
+    def get_crawl_scheduler_history(self, limit: int = 20) -> List[dict[str, Any]]:
+        """Return recent crawl scheduler success history entries."""
+
+        limit = max(int(limit or 0), 0)
+        if limit == 0:
+            return []
+
+        try:
+            history_payload = self._read_json_file(self.scheduler_success_path)
+        except FileNotFoundError:
+            logger.debug("Scheduler success history file %s not found", self.scheduler_success_path)
+            return []
+        except Exception as exc:
+            logger.warning("Failed to load scheduler success history: %s", exc)
+            return []
+
+        if not isinstance(history_payload, list):
+            logger.warning("Scheduler success history payload is not a list (type=%s)", type(history_payload))
+            return []
+
+        if limit and len(history_payload) > limit:
+            return history_payload[-limit:]
+        return history_payload
+
+    def _read_json_file(self, path: Path) -> Any:
+        """Safely read a JSON document from disk."""
+
+        with path.open("r", encoding="utf-8") as handle:
+            return json.load(handle)
+
+    def _derive_adaptive_summary(self, runs: Iterable[Any]) -> dict[str, Any] | None:
+        """Derive adaptive summary when absent from the scheduler state payload."""
+
+        articles_iter = self._iter_adaptive_articles(runs)
+        return summarise_adaptive_articles(articles_iter) or {}
+
+    def _iter_adaptive_articles(self, runs: Iterable[Any]) -> Iterable[Mapping[str, Any]]:
+        for run in runs or []:
+            if not isinstance(run, Mapping):
+                continue
+            result = run.get("result")
+            if not isinstance(result, Mapping):
+                continue
+            articles = result.get("articles")
+            if not isinstance(articles, list):
+                continue
+            for article in articles:
+                if isinstance(article, Mapping):
+                    yield article
+
+    def _build_adaptive_metrics(self, summary: Mapping[str, Any] | None) -> dict[str, Any]:
+        """Compute high-level adaptive metrics for dashboard consumption."""
+
+        metrics: dict[str, Any] = {
+            "articles_total": 0,
+            "articles_sufficient": 0,
+            "articles_insufficient": 0,
+            "confidence_average": None,
+            "pages_crawled_average": None,
+            "source_score_average": None,
+            "stop_reasons": [],
+        }
+
+        if not summary:
+            return metrics
+
+        if isinstance(summary, Mapping):
+            articles_block = summary.get("articles")
+        else:
+            articles_block = None
+
+        if isinstance(articles_block, Mapping):
+            metrics["articles_total"] = int(articles_block.get("total", 0) or 0)
+            metrics["articles_sufficient"] = int(articles_block.get("sufficient", 0) or 0)
+            metrics["articles_insufficient"] = int(
+                articles_block.get("insufficient", 0) or max(metrics["articles_total"] - metrics["articles_sufficient"], 0)
+            )
+
+        confidence_block = summary.get("confidence") if isinstance(summary, Mapping) else None
+        if isinstance(confidence_block, Mapping):
+            confidence_avg = confidence_block.get("average")
+            if confidence_avg is not None:
+                try:
+                    metrics["confidence_average"] = float(confidence_avg)
+                except (TypeError, ValueError):
+                    metrics["confidence_average"] = None
+
+        pages_block = summary.get("pages_crawled") if isinstance(summary, Mapping) else None
+        if isinstance(pages_block, Mapping):
+            pages_avg = pages_block.get("average")
+            if pages_avg is not None:
+                try:
+                    metrics["pages_crawled_average"] = float(pages_avg)
+                except (TypeError, ValueError):
+                    metrics["pages_crawled_average"] = None
+
+        source_block = summary.get("source_score") if isinstance(summary, Mapping) else None
+        if isinstance(source_block, Mapping):
+            source_avg = source_block.get("average")
+            if source_avg is not None:
+                try:
+                    metrics["source_score_average"] = float(source_avg)
+                except (TypeError, ValueError):
+                    metrics["source_score_average"] = None
+
+        stop_reasons = summary.get("stop_reasons") if isinstance(summary, Mapping) else None
+        if isinstance(stop_reasons, Mapping):
+            items: list[dict[str, Any]] = []
+            for reason, count in stop_reasons.items():
+                try:
+                    count_value = float(count)
+                except (TypeError, ValueError):
+                    continue
+                items.append({"reason": str(reason), "count": count_value})
+            metrics["stop_reasons"] = sorted(items, key=lambda item: item["count"], reverse=True)
+
+        coverage_stats = summary.get("coverage_stats") if isinstance(summary, Mapping) else None
+        if isinstance(coverage_stats, Mapping):
+            filtered: dict[str, Any] = {}
+            for key, value in coverage_stats.items():
+                if isinstance(value, Mapping):
+                    filtered[str(key)] = value
+            if filtered:
+                metrics["coverage_stats"] = filtered
+
+        return metrics
 
     def get_gpu_manager_status(self) -> dict:
         """Get comprehensive GPU manager system status."""

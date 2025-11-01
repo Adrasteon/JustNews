@@ -28,6 +28,7 @@ from ..sites.generic_site_crawler import (
     MultiSiteCrawler,
     SiteConfig,
 )
+from .adaptive_metrics import summarise_adaptive_articles
 from .crawler_utils import (
     RateLimiter,
     RobotsChecker,
@@ -730,6 +731,10 @@ class CrawlerEngine:
             },
             "articles": all_articles,
         }
+
+        adaptive_summary = summarise_adaptive_articles(all_articles)
+        if adaptive_summary:
+            summary["adaptive_summary"] = adaptive_summary
 
         logger.info(
             "✅ Unified crawl completed: %s ingested (%s attempted) in %.2fs (%.2f new articles/sec)",

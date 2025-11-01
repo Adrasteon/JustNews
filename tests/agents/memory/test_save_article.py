@@ -59,20 +59,20 @@ def _install_db_stubs(monkeypatch):
 
         if normalized_q.startswith("insert into articles"):
             new_id = len(stored_rows) + 1
-            metadata_payload = params[19] if len(params) > 19 else None
+            metadata_payload = params[20] if len(params) > 20 else None
             review_reasons_payload = params[16] if len(params) > 16 else None
             stored_rows.append(
                 {
                     "id": new_id,
-                    "source_url": params[3],
-                    "normalized_url": params[4],
-                    "url_hash": params[5],
-                    "url_hash_algo": params[6],
+                    "source_url": params[0],
+                    "normalized_url": params[6],
+                    "url_hash": params[7],
+                    "url_hash_algo": params[8],
                     "metadata": json.loads(metadata_payload) if metadata_payload else {},
-                    "embedding": params[20] if len(params) > 20 else [],
+                    "embedding": params[22] if len(params) > 22 else [],
                     "needs_review": params[15] if len(params) > 15 else False,
                     "review_reasons": json.loads(review_reasons_payload) if review_reasons_payload else [],
-                    "collection_timestamp": params[12] if len(params) > 12 else None,
+                    "collection_timestamp": params[21] if len(params) > 21 else None,
                 }
             )
             return {"id": new_id}

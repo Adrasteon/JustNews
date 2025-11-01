@@ -4,6 +4,7 @@ description: Auto-generated description for Changelog
 tags: [documentation]
 status: current
 last_updated: 2025-09-12
+last_updated: 2025-11-01
 ---
 
 # Changelog
@@ -33,6 +34,19 @@ All notable changes to this project will be documented in this file.
 - **README Refresh**: Quick start and feature list now highlight the Stage B2 pipeline and provide crawler test guidance.
 
 **Status**: **STAGE B2 EXTRACTION UPGRADE COMPLETE** – High-precision ingestion active with governance-ready metadata and automated regression tests.
+
+## [0.9.2] - 2025-11-01 - **CRAWL4AI ADAPTIVE INTEGRATION & METRICS**
+
+### 🤖 Adaptive crawling
+- The Crawl4AI adapter (`agents/crawler/crawl4ai_adapter.py`) now supports `AdaptiveCrawler` when profiles contain `adaptive` blocks and an `extra.query` hint. Adaptive runs produce knowledge-base slices that are converted into articles and annotated with adaptive metadata (`extraction_metadata.crawl4ai.adaptive_run`).
+
+### 📊 Metrics & observability
+- Adaptive telemetry is emitted to Stage B metrics with conservative names (`adaptive_runs_total`, `adaptive_articles_emitted`, `adaptive_confidence`, `adaptive_pages_crawled`, `adaptive_coverage_<metric>`). The metrics module is defensive and operates without optional GPU helper packages.
+
+### ✅ Tests & compatibility
+- Unit tests for the adapter were added (`tests/agents/crawler/test_crawl4ai_adapter.py`). The metrics helpers expose compatibility methods (`increment`, `gauge`, `timing`) so legacy test harnesses and stubs function correctly in CI.
+
+**Status**: Adaptive integration implemented; follow-up: full E2E validation, scheduler/dashboard wiring for metrics, and batched runs for low-confidence domains.
 
 ## [0.9.0] - 2025-10-23 - **BUILD & CI/CD SYSTEM - COMPREHENSIVE REFACTORING COMPLETE**
 

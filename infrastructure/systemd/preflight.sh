@@ -303,7 +303,7 @@ check_environment_files() {
         log_success "All critical environment files present"
     else
         log_info "Missing environment files: ${missing_files[*]}"
-        log_info "These can be created from templates in deploy/systemd/examples/"
+    log_info "These can be created from templates in infrastructure/systemd/examples/"
     fi
 
     return 0

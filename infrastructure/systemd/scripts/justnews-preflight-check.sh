@@ -45,7 +45,7 @@ check_agent_python_deps() {
         fi
     fi
     if [[ -z "$py_cmd" ]]; then
-        local py="${PYTHON_BIN:-/opt/justnews/venv/bin/python}"
+    local py="${PYTHON_BIN:-/home/adra/miniconda3/envs/justnews-v2-py312/bin/python}"
         if [[ ! -x "$py" ]]; then
             py="$(command -v python3 || command -v python || true)"
         fi

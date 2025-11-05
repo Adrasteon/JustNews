@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "justnews.fullname" . }}-chromadb
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: chromadb
+    component: vector-db
+spec:
+  replicas: {{ .Values.chromadb.persistence.enabled | ternary 1 1 }}
+  selector:
+    matchLabels:
+      app: chromadb
+  template:
+    metadata:
+      labels:
+        app: chromadb
+        component: vector-db
+    spec:
+      containers:
+      - name: chromadb
+        image: {{ .Values.chromadb.image.registry }}/{{ .Values.chromadb.image.repository }}:{{ .Values.chromadb.image.tag }}
+        imagePullPolicy: {{ include "justnews.imagePullPolicy" . }}
+        ports:
+        - containerPort: 8000
+          name: chromadb
+        env:
+        - name: CHROMA_SERVER_HOST
+          value: "0.0.0.0"
+        - name: CHROMA_SERVER_HTTP_PORT
+          value: "8000"
+        volumeMounts:
+        - name: chromadb-data
+          mountPath: /chroma/chroma
+        resources:
+          limits:
+            cpu: {{ .Values.chromadb.resources.limits.cpu }}
+            memory: {{ .Values.chromadb.resources.limits.memory }}
+          requests:
+            cpu: {{ .Values.chromadb.resources.requests.cpu }}
+            memory: {{ .Values.chromadb.resources.requests.memory }}
+        livenessProbe:
+          httpGet:
+            path: /api/v1/heartbeat
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /api/v1/heartbeat
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: chromadb-data
+        persistentVolumeClaim:
+          claimName: {{ include "justnews.fullname" . }}-chromadb-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "justnews.fullname" . }}-chromadb
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: chromadb
+    component: vector-db
+spec:
+  selector:
+    app: chromadb
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: chromadb
+  type: ClusterIP

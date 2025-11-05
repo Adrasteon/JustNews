@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "justnews.fullname" . }}-grafana-config
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: grafana
+data:
+  grafana.ini: |
+    [server]
+    http_port = 3000
+    domain = localhost
+
+    [security]
+    admin_user = ${GF_SECURITY_ADMIN_USER}
+    admin_password = ${GF_SECURITY_ADMIN_PASSWORD}
+    allow_sign_up = false
+
+    [auth.anonymous]
+    enabled = true
+    org_name = Main Org.
+    org_role = Viewer
+
+    [database]
+    type = sqlite3
+    path = /var/lib/grafana/grafana.db
+
+    [log]
+    mode = console
+    level = info
+
+  datasources.yml: |
+    apiVersion: 1
+    datasources:
+    - name: Prometheus
+      type: prometheus
+      access: proxy
+      url: http://{{ include "justnews.fullname" . }}-prometheus:9090
+      isDefault: true
+      editable: true
+
+  dashboards.yml: |
+    apiVersion: 1
+    providers:
+    - name: 'justnews'
+      type: file
+      disableDeletion: false
+      updateIntervalSeconds: 10
+      allowUiUpdates: true
+      options:
+        path: /var/lib/grafana/dashboards

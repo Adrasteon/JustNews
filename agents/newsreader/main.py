@@ -23,10 +23,12 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, HttpUrl
 
 from common.observability import get_logger
+from common.metrics import JustNewsMetrics
 from .newsreader_engine import NewsReaderEngine, NewsReaderConfig, ProcessingMode
 from .tools import process_article_content, health_check, memory_monitor, cleanup_temp_files
 
@@ -167,6 +169,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Initialize metrics
+metrics: Optional[JustNewsMetrics]
+try:
+    metrics = JustNewsMetrics("newsreader")
+    app.middleware("http")(metrics.request_middleware)
+except Exception as exc:
+    logger.warning(f"Metrics initialization failed: {exc}")
+    metrics = None
+
 # Global startup time
 startup_time = time.time()
 
@@ -292,32 +303,58 @@ async def capabilities_endpoint():
         }
     }
 
+@app.get("/metrics")
+async def metrics_endpoint():
+    """Prometheus metrics endpoint."""
+    if not metrics:
+        return Response(
+            status_code=503,
+            content="# metrics unavailable\n",
+            media_type="text/plain; charset=utf-8"
+        )
+    return Response(content=metrics.get_metrics(), media_type="text/plain; charset=utf-8")
+
 # Error handlers
 @app.exception_handler(500)
 async def internal_error_handler(request, exc):
     """Handle internal server errors."""
     logger.error(f"500 Internal Server Error: {exc}")
-    return {
+    payload = {
         "error": "Internal server error",
         "detail": str(exc) if os.getenv("DEBUG", "").lower() == "true" else "An unexpected error occurred"
     }
+    return JSONResponse(status_code=500, content=payload)
 
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
     """Handle 404 not found errors."""
-    return {
+    payload = {
         "error": "Not found",
         "detail": f"Endpoint {request.url.path} not found"
     }
+    return JSONResponse(status_code=404, content=payload)
 
 if __name__ == "__main__":
     import uvicorn
 
-    # Run with uvicorn for development
+    host = os.environ.get("NEWSREADER_HOST", "0.0.0.0")
+    port = int(os.environ.get("NEWSREADER_PORT", os.environ.get("PORT", "8002")))
+    reload_flag = os.environ.get("UVICORN_RELOAD", os.environ.get("NEWSREADER_RELOAD", "false")).lower() == "true"
+    log_level = os.environ.get("UVICORN_LOG_LEVEL", os.environ.get("NEWSREADER_LOG_LEVEL", "info"))
+
+    target = f"{__package__}.main:app" if __package__ else "main:app"
+
+    logger.info(
+        "Starting Newsreader Service on %s:%s (reload=%s)",
+        host,
+        port,
+        reload_flag,
+    )
+
     uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=int(os.getenv("PORT", "8002")),
-        reload=True,
-        log_level="info"
+        target,
+        host=host,
+        port=port,
+        reload=reload_flag,
+        log_level=log_level,
     )

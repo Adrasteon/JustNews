@@ -34,6 +34,7 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -292,7 +293,11 @@ async def assess_content_quality_endpoint(request: QualityAssessmentRequest):
             format=request.format_output
         )
 
-        logger.info(".2f"        return response
+        logger.info(
+            "✅ Content quality assessment completed in %.2f seconds",
+            processing_time,
+        )
+        return response
 
     except Exception as e:
         processing_time = time.time() - start_time
@@ -334,7 +339,11 @@ async def categorize_content_endpoint(request: CategorizationRequest):
             format=request.format_output
         )
 
-        logger.info(".2f"        return response
+        logger.info(
+            "✅ Content categorization completed in %.2f seconds",
+            processing_time,
+        )
+        return response
 
     except Exception as e:
         processing_time = time.time() - start_time
@@ -376,7 +385,11 @@ async def analyze_editorial_sentiment_endpoint(request: SentimentAnalysisRequest
             format=request.format_output
         )
 
-        logger.info(".2f"        return response
+        logger.info(
+            "✅ Editorial sentiment analysis completed in %.2f seconds",
+            processing_time,
+        )
+        return response
 
     except Exception as e:
         processing_time = time.time() - start_time
@@ -418,7 +431,11 @@ async def generate_editorial_commentary_endpoint(request: CommentaryRequest):
             format=request.format_output
         )
 
-        logger.info(".2f"        return response
+        logger.info(
+            "✅ Editorial commentary generation completed in %.2f seconds",
+            processing_time,
+        )
+        return response
 
     except Exception as e:
         processing_time = time.time() - start_time
@@ -460,7 +477,11 @@ async def make_editorial_decision_endpoint(request: EditorialDecisionRequest):
             format=request.format_output
         )
 
-        logger.info(".2f"        return response
+        logger.info(
+            "✅ Editorial decision completed in %.2f seconds",
+            processing_time,
+        )
+        return response
 
     except Exception as e:
         processing_time = time.time() - start_time
@@ -502,7 +523,11 @@ async def request_story_brief_endpoint(request: StoryBriefRequest):
             format=request.format_output
         )
 
-        logger.info(".2f"        return response
+        logger.info(
+            "✅ Story brief generated in %.2f seconds",
+            processing_time,
+        )
+        return response
 
     except Exception as e:
         processing_time = time.time() - start_time
@@ -544,7 +569,11 @@ async def publish_story_endpoint(request: PublishRequest):
             format=request.format_output
         )
 
-        logger.info(".2f"        return response
+        logger.info(
+            "✅ Story publishing pipeline completed in %.2f seconds",
+            processing_time,
+        )
+        return response
 
     except Exception as e:
         processing_time = time.time() - start_time
@@ -577,7 +606,11 @@ async def review_evidence_endpoint(request: EvidenceReviewRequest):
             format="json"
         )
 
-        logger.info(".2f"        return response
+        logger.info(
+            "✅ Evidence review queued in %.2f seconds",
+            processing_time,
+        )
+        return response
 
     except Exception as e:
         processing_time = time.time() - start_time
@@ -649,32 +682,58 @@ async def capabilities_endpoint():
         "editorial_priorities": ["urgent", "high", "medium", "low", "review"]
     }
 
+@app.get("/metrics")
+async def metrics_endpoint():
+    """Prometheus metrics endpoint."""
+    if not metrics:
+        return Response(
+            status_code=503,
+            content="# metrics unavailable\n",
+            media_type="text/plain; charset=utf-8"
+        )
+    return Response(content=metrics.get_metrics(), media_type="text/plain; charset=utf-8")
+
 # Error handlers
 @app.exception_handler(500)
 async def internal_error_handler(request, exc):
     """Handle internal server errors."""
     logger.error(f"500 Internal Server Error: {exc}")
-    return {
+    payload = {
         "error": "Internal server error",
         "detail": str(exc) if os.getenv("DEBUG", "").lower() == "true" else "An unexpected error occurred"
     }
+    return JSONResponse(status_code=500, content=payload)
 
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
     """Handle 404 not found errors."""
-    return {
+    payload = {
         "error": "Not found",
         "detail": f"Endpoint {request.url.path} not found"
     }
+    return JSONResponse(status_code=404, content=payload)
 
 if __name__ == "__main__":
     import uvicorn
 
-    # Run with uvicorn for development
+    host = os.environ.get("CHIEF_EDITOR_HOST", "0.0.0.0")
+    port = int(os.environ.get("CHIEF_EDITOR_PORT", "8001"))
+    reload_flag = os.environ.get("UVICORN_RELOAD", os.environ.get("CHIEF_EDITOR_RELOAD", "false")).lower() == "true"
+    log_level = os.environ.get("UVICORN_LOG_LEVEL", os.environ.get("CHIEF_EDITOR_LOG_LEVEL", "info"))
+
+    target = f"{__package__}.main:app" if __package__ else "main:app"
+
+    logger.info(
+        "Starting Chief Editor Service on %s:%s (reload=%s)",
+        host,
+        port,
+        reload_flag,
+    )
+
     uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=int(os.getenv("CHIEF_EDITOR_PORT", "8001")),
-        reload=True,
-        log_level="info"
+        target,
+        host=host,
+        port=port,
+        reload=reload_flag,
+        log_level=log_level,
     )

@@ -361,15 +361,23 @@ async def service_unavailable_handler(request, exc):
 if __name__ == "__main__":
     import uvicorn
 
-    # Run with uvicorn for development
     host = os.environ.get("MCP_BUS_HOST", "0.0.0.0")
     port = int(os.environ.get("MCP_BUS_PORT", "8000"))
 
-    logger.info(f"Starting MCP Bus Agent on {host}:{port}")
+    reload_flag = os.environ.get("UVICORN_RELOAD", "false").lower() == "true"
+    log_level = os.environ.get("UVICORN_LOG_LEVEL", "info")
+
+    # When invoked via `python -m agents.mcp_bus.main` (systemd path), Uvicorn must
+    # receive the fully-qualified module path; otherwise reload workers try to
+    # import bare "main" which fails. Falling back keeps local `python main.py`
+    # workflows functional.
+    target = f"{__package__}.main:app" if __package__ else "main:app"
+
+    logger.info("Starting MCP Bus Agent on %s:%s (reload=%s)", host, port, reload_flag)
     uvicorn.run(
-        "main:app",
+        target,
         host=host,
         port=port,
-        reload=True,
-        log_level="info"
+        reload=reload_flag,
+        log_level=log_level,
     )

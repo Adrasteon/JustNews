@@ -10,7 +10,11 @@ import os
 from typing import Any, Dict, List, Optional
 
 from common.observability import get_logger
-from agents.common.advanced_analytics import get_analytics_engine, start_analytics_engine, stop_analytics_engine
+from agents.common.advanced_analytics import (
+    get_analytics_engine as get_core_analytics_engine,
+    start_analytics_engine,
+    stop_analytics_engine
+)
 
 logger = get_logger(__name__)
 
@@ -43,7 +47,7 @@ class AnalyticsEngine:
             logger.info("📊 Initializing Analytics Engine...")
 
             # Get the global analytics engine instance
-            self._analytics_engine = get_analytics_engine()
+            self._analytics_engine = get_core_analytics_engine()
 
             # Start the analytics engine if not already running
             start_analytics_engine()

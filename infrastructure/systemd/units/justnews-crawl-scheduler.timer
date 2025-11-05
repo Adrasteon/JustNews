@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the JustNews crawl scheduler hourly
+Requires=justnews-crawl-scheduler.service
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=300
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

@@ -1,21 +1,30 @@
-"""
-JustNews Metrics Library - Prometheus Integration
-Provides standardized metrics collection for all JustNews agents
-"""
+"""JustNews Metrics Library - Prometheus Integration."""
 
+from __future__ import annotations
+
+import logging
+import re
 import time
-from typing import Optional, Dict, Any
 from contextlib import contextmanager
 from functools import wraps
+from typing import Any, Dict, Optional
 
 from prometheus_client import (
-    Counter, Gauge, Histogram, Summary,
-    CollectorRegistry, generate_latest, CONTENT_TYPE_LATEST
+    CONTENT_TYPE_LATEST,
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+    Summary,
+    generate_latest,
 )
 from prometheus_client.multiprocess import MultiProcessCollector
 import psutil
-import GPUtil
-import logging
+
+try:  # Optional dependency - GPU metrics degrade gracefully when absent.
+    import GPUtil  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover - depends on environment tooling.
+    GPUtil = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +49,8 @@ class JustNewsMetrics:
         'dashboard': 'web-dashboard-agent',
         'analytics': 'system-analytics-agent',
         'chief_editor': 'workflow-orchestration-agent',
-        'crawler': 'content-crawling-agent',
+    'crawler': 'content-crawling-agent',
+    'crawler_scheduler': 'content-crawl-scheduler',
         'gpu_orchestrator': 'gpu-resource-orchestrator',
         'mcp_bus': 'communication-bus'
     }
@@ -97,12 +107,20 @@ class JustNewsMetrics:
         self.display_name = self.AGENT_DISPLAY_NAMES.get(agent_name, f'{agent_name}-agent')
         self.registry = registry or CollectorRegistry()
 
-        # Initialize standard metrics
         self._init_standard_metrics()
         self._init_agent_specific_metrics()
         self._init_system_metrics()
 
-        logger.info(f"Initialized metrics for agent: {agent_name} (display: {self.display_name})")
+        # Lazy metric registries for backwards-compatibility helper methods.
+        self._custom_counters: Dict[str, Counter] = {}
+        self._custom_histograms: Dict[str, Histogram] = {}
+        self._custom_gauges: Dict[str, Gauge] = {}
+
+        logger.info(
+            "Initialized metrics for agent: %s (display: %s)",
+            agent_name,
+            self.display_name,
+        )
 
     def _init_standard_metrics(self):
         """Initialize standard HTTP and request metrics."""
@@ -183,7 +201,12 @@ class JustNewsMetrics:
             registry=self.registry
         )
 
-        # GPU metrics (if available)
+        if GPUtil is None:
+            logger.info("GPUtil not available; GPU metrics disabled")
+            self.gpu_memory_used_bytes = None
+            self.gpu_utilization_percent = None
+            return
+
         try:
             gpu_count = len(GPUtil.getGPUs())
             if gpu_count > 0:
@@ -200,8 +223,13 @@ class JustNewsMetrics:
                     ['agent', 'agent_display_name', 'gpu_id', 'gpu_display_name'],
                     registry=self.registry
                 )
-        except Exception as e:
-            logger.warning(f"Could not initialize GPU metrics: {e}")
+            else:
+                self.gpu_memory_used_bytes = None
+                self.gpu_utilization_percent = None
+        except Exception as exc:  # pragma: no cover - depends on GPU availability.
+            logger.warning("Could not initialize GPU metrics: %s", exc)
+            self.gpu_memory_used_bytes = None
+            self.gpu_utilization_percent = None
 
     def record_request(self, method: str, endpoint: str, status: int, duration: float):
         """Record an HTTP request."""
@@ -300,27 +328,27 @@ class JustNewsMetrics:
                 agent_display_name=self.display_name
             ).set(cpu_percent)
 
-            # GPU metrics
-            try:
-                gpus = GPUtil.getGPUs()
-                for i, gpu in enumerate(gpus):
-                    gpu_display = f'gpu-{i}'
+            if GPUtil and self.gpu_memory_used_bytes and self.gpu_utilization_percent:
+                try:
+                    gpus = GPUtil.getGPUs()
+                    for i, gpu in enumerate(gpus):
+                        gpu_display = f'gpu-{i}'
 
-                    self.gpu_memory_used_bytes.labels(
-                        agent=self.agent_name,
-                        agent_display_name=self.display_name,
-                        gpu_id=str(i),
-                        gpu_display_name=gpu_display
-                    ).set(gpu.memoryUsed * 1024 * 1024)  # Convert MB to bytes
+                        self.gpu_memory_used_bytes.labels(
+                            agent=self.agent_name,
+                            agent_display_name=self.display_name,
+                            gpu_id=str(i),
+                            gpu_display_name=gpu_display
+                        ).set(gpu.memoryUsed * 1024 * 1024)  # Convert MB to bytes
 
-                    self.gpu_utilization_percent.labels(
-                        agent=self.agent_name,
-                        agent_display_name=self.display_name,
-                        gpu_id=str(i),
-                        gpu_display_name=gpu_display
-                    ).set(gpu.load * 100)
-            except Exception as e:
-                logger.debug(f"Could not update GPU metrics: {e}")
+                        self.gpu_utilization_percent.labels(
+                            agent=self.agent_name,
+                            agent_display_name=self.display_name,
+                            gpu_id=str(i),
+                            gpu_display_name=gpu_display
+                        ).set(gpu.load * 100)
+                except Exception as exc:  # pragma: no cover - GPU availability dependent.
+                    logger.debug("Could not update GPU metrics: %s", exc)
 
         except Exception as e:
             logger.warning(f"Could not update system metrics: {e}")
@@ -328,6 +356,33 @@ class JustNewsMetrics:
     def get_metrics(self) -> str:
         """Get metrics in Prometheus format."""
         return generate_latest(self.registry).decode('utf-8')
+
+    # ------------------------------------------------------------------
+    # Compatibility helpers (legacy code expects generic metric helpers)
+    # ------------------------------------------------------------------
+    def increment(self, metric_name: str, amount: float = 1.0) -> None:
+        """Increment a counter metric by ``amount``."""
+        counter = self._get_or_create_counter(metric_name)
+        counter.labels(
+            agent=self.agent_name,
+            agent_display_name=self.display_name
+        ).inc(amount)
+
+    def timing(self, metric_name: str, value: float) -> None:
+        """Record a timing value via a histogram."""
+        histogram = self._get_or_create_histogram(metric_name)
+        histogram.labels(
+            agent=self.agent_name,
+            agent_display_name=self.display_name
+        ).observe(value)
+
+    def gauge(self, metric_name: str, value: float) -> None:
+        """Set a gauge metric to ``value``."""
+        gauge = self._get_or_create_gauge(metric_name)
+        gauge.labels(
+            agent=self.agent_name,
+            agent_display_name=self.display_name
+        ).set(value)
 
     @contextmanager
     def measure_time(self, operation_type: str):
@@ -393,6 +448,47 @@ class JustNewsMetrics:
                 agent=self.agent_name,
                 agent_display_name=self.display_name
             ).dec()
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+    def _sanitize_metric_key(self, name: str) -> str:
+        """Normalize metric names to Prometheus-safe keys."""
+        sanitized = re.sub(r'[^a-zA-Z0-9_]', '_', name)
+        return sanitized.lower().strip('_') or 'metric'
+
+    def _get_or_create_counter(self, metric_name: str) -> Counter:
+        key = self._sanitize_metric_key(metric_name)
+        if key not in self._custom_counters:
+            self._custom_counters[key] = Counter(
+                f'justnews_custom_counter_{key}',
+                f'Custom counter metric for {metric_name}',
+                ['agent', 'agent_display_name'],
+                registry=self.registry
+            )
+        return self._custom_counters[key]
+
+    def _get_or_create_histogram(self, metric_name: str) -> Histogram:
+        key = self._sanitize_metric_key(metric_name)
+        if key not in self._custom_histograms:
+            self._custom_histograms[key] = Histogram(
+                f'justnews_custom_histogram_{key}',
+                f'Custom histogram metric for {metric_name}',
+                ['agent', 'agent_display_name'],
+                registry=self.registry
+            )
+        return self._custom_histograms[key]
+
+    def _get_or_create_gauge(self, metric_name: str) -> Gauge:
+        key = self._sanitize_metric_key(metric_name)
+        if key not in self._custom_gauges:
+            self._custom_gauges[key] = Gauge(
+                f'justnews_custom_gauge_{key}',
+                f'Custom gauge metric for {metric_name}',
+                ['agent', 'agent_display_name'],
+                registry=self.registry
+            )
+        return self._custom_gauges[key]
 
 
 # Global metrics instance (can be overridden per agent)

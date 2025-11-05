@@ -27,10 +27,12 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from common.observability import get_logger
+from common.metrics import JustNewsMetrics
 from .scout_engine import ScoutEngine, ScoutConfig, CrawlMode
 from .tools import (
     discover_sources_tool,
@@ -211,6 +213,10 @@ app = FastAPI(
     version="2.0.0",
     lifespan=lifespan
 )
+
+# Metrics setup
+metrics = JustNewsMetrics("scout")
+app.middleware("http")(metrics.request_middleware)
 
 # Add CORS middleware
 app.add_middleware(
@@ -457,27 +463,48 @@ async def capabilities_endpoint():
 async def internal_error_handler(request, exc):
     """Handle internal server errors."""
     logger.error(f"500 Internal Server Error: {exc}")
-    return {
+    payload = {
         "error": "Internal server error",
         "detail": str(exc) if os.getenv("DEBUG", "").lower() == "true" else "An unexpected error occurred"
     }
+    return JSONResponse(status_code=500, content=payload)
 
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
     """Handle 404 not found errors."""
-    return {
+    payload = {
         "error": "Not found",
         "detail": f"Endpoint {request.url.path} not found"
     }
+    return JSONResponse(status_code=404, content=payload)
+
+
+@app.get("/metrics")
+async def metrics_endpoint():
+    """Prometheus metrics endpoint."""
+    return Response(content=metrics.get_metrics(), media_type="text/plain; charset=utf-8")
 
 if __name__ == "__main__":
     import uvicorn
 
-    # Run with uvicorn for development
+    host = os.environ.get("SCOUT_HOST", "0.0.0.0")
+    port = int(os.environ.get("SCOUT_PORT", os.environ.get("PORT", "8002")))
+    reload_flag = os.environ.get("UVICORN_RELOAD", os.environ.get("SCOUT_RELOAD", "false")).lower() == "true"
+    log_level = os.environ.get("UVICORN_LOG_LEVEL", os.environ.get("SCOUT_LOG_LEVEL", "info"))
+
+    target = f"{__package__}.main:app" if __package__ else "main:app"
+
+    logger.info(
+        "Starting Scout Service on %s:%s (reload=%s)",
+        host,
+        port,
+        reload_flag,
+    )
+
     uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=int(os.getenv("PORT", "8002")),
-        reload=True,
-        log_level="info"
+        target,
+        host=host,
+        port=port,
+        reload=reload_flag,
+        log_level=log_level,
     )

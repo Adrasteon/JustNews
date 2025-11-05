@@ -13,7 +13,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SYSTEMD_ROOT="$SCRIPT_DIR"
+PROJECT_ROOT="$(cd "$SYSTEMD_ROOT/../.." && pwd)"
 
 # Colors
 RED='\033[0;31m'
@@ -39,20 +40,22 @@ HEALTH_CHECK=true
 DRY_RUN=false
 
 PORTS=(8000 8001 8002 8003 8004 8005 8006 8007 8008 8009 8011 8012 8013 8014 8015 8016)
-UNIT_TEMPLATE_SRC="$PROJECT_ROOT/deploy/systemd/units/justnews@.service"
+UNIT_TEMPLATE_SRC="$SYSTEMD_ROOT/units/justnews@.service"
 UNIT_TEMPLATE_DST="/etc/systemd/system/justnews@.service"
-START_SCRIPT_SRC="$PROJECT_ROOT/deploy/systemd/justnews-start-agent.sh"
+START_SCRIPT_SRC="$SYSTEMD_ROOT/scripts/justnews-start-agent.sh"
 START_SCRIPT_DST="/usr/local/bin/justnews-start-agent.sh"
-WAIT_SCRIPT_SRC="$PROJECT_ROOT/deploy/systemd/scripts/wait_for_mcp.sh"
+WAIT_SCRIPT_SRC="$SYSTEMD_ROOT/scripts/wait_for_mcp.sh"
 WAIT_SCRIPT_DST="/usr/local/bin/wait_for_mcp.sh"
-ENV_SRC_DIR="$PROJECT_ROOT/deploy/systemd/env"
+PRECHECK_SCRIPT_SRC="$SYSTEMD_ROOT/scripts/justnews-preflight-check.sh"
+PRECHECK_SCRIPT_DST="/usr/local/bin/justnews-preflight-check.sh"
+ENV_SRC_DIR="$SYSTEMD_ROOT/examples"
 ENV_DST_DIR="/etc/justnews"
 GLOBAL_ENV="$ENV_DST_DIR/global.env"
 WRAPPER_MAP=(
-  "/usr/local/bin/enable_all.sh|$PROJECT_ROOT/deploy/systemd/scripts/enable_all.sh"
-  "/usr/local/bin/health_check.sh|$PROJECT_ROOT/deploy/systemd/scripts/health_check.sh"
-  "/usr/local/bin/reset_and_start.sh|$PROJECT_ROOT/deploy/systemd/scripts/reset_and_start.sh"
-  "/usr/local/bin/cold_start.sh|$PROJECT_ROOT/deploy/systemd/scripts/cold_start.sh"
+  "/usr/local/bin/enable_all.sh|$SYSTEMD_ROOT/scripts/enable_all.sh"
+  "/usr/local/bin/health_check.sh|$SYSTEMD_ROOT/scripts/health_check.sh"
+  "/usr/local/bin/reset_and_start.sh|$SYSTEMD_ROOT/scripts/reset_and_start.sh"
+  "/usr/local/bin/cold_start.sh|$SYSTEMD_ROOT/scripts/cold_start.sh"
 )
 
 require_root() {
@@ -136,8 +139,8 @@ stop_disable_services() {
   if [[ "$DRY_RUN" == true ]]; then
     echo "DRY-RUN: $SCRIPT_DIR/enable_all.sh stop/disable"; return 0
   fi
-  "$SCRIPT_DIR/enable_all.sh" stop || true
-  "$SCRIPT_DIR/enable_all.sh" disable || true
+  "$SYSTEMD_ROOT/scripts/enable_all.sh" stop || true
+  "$SYSTEMD_ROOT/scripts/enable_all.sh" disable || true
 }
 
 kill_ports() {
@@ -184,7 +187,7 @@ reinstall_units_scripts() {
   if [[ "$REINSTALL_SCRIPTS" == true ]]; then
     log_info "Reinstalling helper scripts..."
     if [[ "$DRY_RUN" == true ]]; then
-      echo "DRY-RUN: cp $START_SCRIPT_SRC $START_SCRIPT_DST; cp $WAIT_SCRIPT_SRC $WAIT_SCRIPT_DST"
+      echo "DRY-RUN: cp $START_SCRIPT_SRC $START_SCRIPT_DST; cp $WAIT_SCRIPT_SRC $WAIT_SCRIPT_DST; cp $PRECHECK_SCRIPT_SRC $PRECHECK_SCRIPT_DST"
     else
       backup_file "$START_SCRIPT_DST" || true
       cp "$START_SCRIPT_SRC" "$START_SCRIPT_DST"
@@ -192,6 +195,11 @@ reinstall_units_scripts() {
       backup_file "$WAIT_SCRIPT_DST" || true
       cp "$WAIT_SCRIPT_SRC" "$WAIT_SCRIPT_DST"
       chmod +x "$WAIT_SCRIPT_DST"
+      if [[ -f "$PRECHECK_SCRIPT_SRC" ]]; then
+        backup_file "$PRECHECK_SCRIPT_DST" || true
+        cp "$PRECHECK_SCRIPT_SRC" "$PRECHECK_SCRIPT_DST"
+        chmod +x "$PRECHECK_SCRIPT_DST"
+      fi
       log_success "Helper scripts installed"
     fi
   fi
@@ -216,10 +224,15 @@ sync_env_files() {
     return 0
   fi
   mkdir -p "$ENV_DST_DIR"
-  for f in "$ENV_SRC_DIR"/*.env; do
+  shopt -s nullglob
+  for f in "$ENV_SRC_DIR"/*.env "$ENV_SRC_DIR"/*.env.example; do
     local base
     base="$(basename "$f")"
-    local dst="$ENV_DST_DIR/$base"
+    local dst_name="$base"
+    if [[ "$base" == *.env.example ]]; then
+      dst_name="${base%.env.example}.env"
+    fi
+    local dst="$ENV_DST_DIR/$dst_name"
     if [[ -f "$dst" && "$FORCE_SYNC_ENV" == true ]]; then
       backup_file "$dst"
       cp "$f" "$dst"
@@ -230,6 +243,7 @@ sync_env_files() {
       cp "$f" "$dst"; log_info "Copied $dst"
     fi
   done
+  shopt -u nullglob
 }
 
 toggle_safe_mode() {
@@ -264,7 +278,7 @@ fresh_start() {
   if [[ "$DRY_RUN" == true ]]; then
     echo "DRY-RUN: $SCRIPT_DIR/enable_all.sh fresh"; return 0
   fi
-  "$SCRIPT_DIR/enable_all.sh" fresh
+  "$SYSTEMD_ROOT/scripts/enable_all.sh" fresh
 }
 
 health_check() {
@@ -272,8 +286,8 @@ health_check() {
   if [[ "$DRY_RUN" == true ]]; then
     echo "DRY-RUN: $SCRIPT_DIR/health_check.sh"; return 0
   fi
-  if [[ -x "$SCRIPT_DIR/health_check.sh" ]]; then
-    "$SCRIPT_DIR/health_check.sh" || log_warn "Health check reported issues"
+  if [[ -x "$SYSTEMD_ROOT/scripts/health_check.sh" ]]; then
+    "$SYSTEMD_ROOT/scripts/health_check.sh" || log_warn "Health check reported issues"
   else
     log_warn "health_check.sh not found/executable"
   fi

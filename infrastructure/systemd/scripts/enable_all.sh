@@ -5,7 +5,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SYSTEMD_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SYSTEMD_ROOT/../.." && pwd)"
 
 # Service definitions in startup order
 SERVICES=(
@@ -74,7 +75,7 @@ check_services_installed() {
     if [[ ! -f "/etc/systemd/system/justnews@.service" ]]; then
         log_error "Missing systemd service template file"
         log_error "Please install the systemd unit template first:"
-        log_error "  sudo cp $PROJECT_ROOT/deploy/systemd/units/justnews@.service /etc/systemd/system/"
+        log_error "  sudo cp $SYSTEMD_ROOT/units/justnews@.service /etc/systemd/system/"
         log_error "  sudo systemctl daemon-reload"
         exit 1
     fi
@@ -83,7 +84,7 @@ check_services_installed() {
     if [[ ! -f "/usr/local/bin/justnews-start-agent.sh" ]]; then
         log_error "Missing justnews-start-agent.sh script"
         log_error "Please install the startup script:"
-    log_error "  sudo cp $PROJECT_ROOT/deploy/systemd/justnews-start-agent.sh /usr/local/bin/"
+        log_error "  sudo cp $SYSTEMD_ROOT/scripts/justnews-start-agent.sh /usr/local/bin/"
         log_error "  sudo chmod +x /usr/local/bin/justnews-start-agent.sh"
         exit 1
     fi
@@ -91,8 +92,16 @@ check_services_installed() {
     if [[ ! -f "/usr/local/bin/wait_for_mcp.sh" ]]; then
         log_error "Missing wait_for_mcp.sh script"
         log_error "Please install the MCP wait script:"
-    log_error "  sudo cp $PROJECT_ROOT/deploy/systemd/wait_for_mcp.sh /usr/local/bin/"
+        log_error "  sudo cp $SYSTEMD_ROOT/scripts/wait_for_mcp.sh /usr/local/bin/"
         log_error "  sudo chmod +x /usr/local/bin/wait_for_mcp.sh"
+        exit 1
+    fi
+
+    if [[ ! -f "/usr/local/bin/justnews-preflight-check.sh" ]]; then
+        log_error "Missing justnews-preflight-check.sh script"
+        log_error "Please install the preflight helper:"
+        log_error "  sudo cp $SYSTEMD_ROOT/scripts/justnews-preflight-check.sh /usr/local/bin/"
+        log_error "  sudo chmod +x /usr/local/bin/justnews-preflight-check.sh"
         exit 1
     fi
 }
@@ -100,8 +109,8 @@ check_services_installed() {
 # Ensure operator PATH wrappers exist (best-effort, idempotent)
 ensure_path_wrappers() {
     local pairs=(
-        "/usr/local/bin/enable_all.sh|$PROJECT_ROOT/deploy/systemd/scripts/enable_all.sh"
-        "/usr/local/bin/health_check.sh|$PROJECT_ROOT/deploy/systemd/scripts/health_check.sh"
+        "/usr/local/bin/enable_all.sh|$SYSTEMD_ROOT/scripts/enable_all.sh"
+        "/usr/local/bin/health_check.sh|$SYSTEMD_ROOT/scripts/health_check.sh"
     )
     for pair in "${pairs[@]}"; do
         IFS='|' read -r dst src <<<"$pair"

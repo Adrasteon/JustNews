@@ -1,0 +1,49 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: justnews-base
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# Include all base manifests
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secrets.yaml
+  - persistent-volumes.yaml
+  - postgres.yaml
+  - chromadb.yaml
+  - redis.yaml
+  - gpu-support.yaml
+  - ingress.yaml
+  - prometheus.yaml
+  - grafana.yaml
+  - security.yaml
+  - autoscaling.yaml
+  - agents/balancer-deployment.yaml
+  - agents/newsreader-deployment.yaml
+  - agents/synthesizer-deployment.yaml
+  - agents/critic-deployment.yaml
+  - agents/dashboard-deployment.yaml
+  - agents/analytics-deployment.yaml
+  - agents/memory-deployment.yaml
+  - agents/chief-editor-deployment.yaml
+  - agents/analyst-deployment.yaml
+  - agents/scout-deployment.yaml
+  - agents/archive-deployment.yaml
+  - agents/fact-checker-deployment.yaml
+  - agents/gpu-orchestrator-deployment.yaml
+  - agents/mcp-bus-deployment.yaml
+  - agents/reasoning-deployment.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: justnews
+  app.kubernetes.io/component: agent-system
+  app.kubernetes.io/part-of: justnews
+
+# Common annotations
+commonAnnotations:
+  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/created-by: justnews-deployment

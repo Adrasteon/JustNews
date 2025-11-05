@@ -10,6 +10,7 @@ from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
 
 from common.observability import get_logger
+from common.dev_db_fallback import apply_test_db_env_fallback
 
 # Configure centralized logging
 logger = get_logger(__name__)
@@ -26,6 +27,11 @@ def get_db_config():
                 if line.strip() and not line.startswith('#'):
                     key, value = line.strip().split('=', 1)
                     os.environ[key] = value
+
+    # Apply development fallback credentials if required
+    applied = apply_test_db_env_fallback(logger)
+    if applied:
+        logger.warning("Development DB fallback variables applied: %s", ",".join(applied))
 
     # Then try individual POSTGRES_* variables
     config = {
@@ -170,7 +176,7 @@ def execute_query_single(query: str, params: tuple = None) -> dict | None:
     Returns:
         Single result row as dict, or None if no results
     """
-    with get_db_cursor() as (conn, cursor):
+    with get_db_cursor(commit=True) as (conn, cursor):
         cursor.execute(query, params or ())
         result = cursor.fetchone()
         return dict(result) if result else None

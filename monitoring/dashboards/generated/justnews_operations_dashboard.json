@@ -1,0 +1,817 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "JustNews Operations Dashboard",
+    "description": "Comprehensive dashboard for JustNews content processing operations and metrics",
+    "tags": [
+      "justnews",
+      "operations",
+      "content",
+      "monitoring"
+    ],
+    "timezone": "UTC",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": []
+    },
+    "panels": [
+      {
+        "id": null,
+        "title": "Domains Crawled",
+        "type": "stat",
+        "description": "Total number of domains crawled by the scheduler",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "justnews_crawler_scheduler_domains_crawled_total",
+            "legendFormat": "Domains Crawled",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Articles Accepted",
+        "type": "stat",
+        "description": "Total number of articles accepted during scheduler windows",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "justnews_crawler_scheduler_articles_accepted_total",
+            "legendFormat": "Articles Accepted",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Adaptive Articles",
+        "type": "stat",
+        "description": "Total number of articles produced via adaptive Crawl4AI pipeline",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "justnews_crawler_scheduler_adaptive_articles_total",
+            "legendFormat": "Adaptive Articles",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Scheduler Lag",
+        "type": "stat",
+        "description": "Lag between scheduled and actual crawl start time",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        },
+        "targets": [
+          {
+            "expr": "justnews_crawler_scheduler_lag_seconds",
+            "legendFormat": "Lag (seconds)",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Crawler Requests",
+        "type": "timeseries",
+        "description": "Rate of crawler requests over time",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 4
+        },
+        "targets": [
+          {
+            "expr": "rate(justnews_requests_total{agent=\"crawler\"}[5m])",
+            "legendFormat": "Requests/min",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {
+          "tooltip": {
+            "mode": "single"
+          },
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "linear",
+              "barAlignment": 0,
+              "lineWidth": 1,
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "spanNulls": false,
+              "showPoints": "never",
+              "pointSize": 5,
+              "stacking": {
+                "mode": "none",
+                "group": "A"
+              },
+              "axisPlacement": "auto",
+              "axisLabel": "",
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "hideFrom": {
+                "vis": false,
+                "tooltip": false,
+                "legend": false
+              }
+            },
+            "color": {
+              "mode": "palette-classic"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Active Connections",
+        "type": "stat",
+        "description": "Current number of active connections",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 4
+        },
+        "targets": [
+          {
+            "expr": "justnews_active_connections",
+            "legendFormat": "Active Connections",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Total Errors",
+        "type": "stat",
+        "description": "Total number of errors encountered",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 4
+        },
+        "targets": [
+          {
+            "expr": "justnews_errors_total",
+            "legendFormat": "Total Errors",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "CPU Usage",
+        "type": "gauge",
+        "description": "Current CPU utilization percentage",
+        "gridPos": {
+          "h": 6,
+          "w": 6,
+          "x": 0,
+          "y": 12
+        },
+        "targets": [
+          {
+            "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+            "legendFormat": "CPU Usage %",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 100,
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Memory Usage",
+        "type": "gauge",
+        "description": "Current memory utilization percentage",
+        "gridPos": {
+          "h": 6,
+          "w": 6,
+          "x": 6,
+          "y": 12
+        },
+        "targets": [
+          {
+            "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100",
+            "legendFormat": "Memory Usage %",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 100,
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "System Load (1m)",
+        "type": "stat",
+        "description": "1-minute system load average",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "node_load1",
+            "legendFormat": "Load Average (1m)",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "none"
+          },
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Avg Request Duration",
+        "type": "stat",
+        "description": "Average request duration in seconds",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 8
+        },
+        "targets": [
+          {
+            "expr": "avg(justnews_request_duration_seconds_sum / justnews_request_duration_seconds_count)",
+            "legendFormat": "Avg Duration (s)",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Disk Usage",
+        "type": "gauge",
+        "description": "Root filesystem disk usage percentage",
+        "gridPos": {
+          "h": 6,
+          "w": 6,
+          "x": 12,
+          "y": 12
+        },
+        "targets": [
+          {
+            "expr": "(1 - node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"}) * 100",
+            "legendFormat": "Disk Usage %",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 100,
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Network I/O",
+        "type": "timeseries",
+        "description": "Network traffic in bytes per second",
+        "gridPos": {
+          "h": 6,
+          "w": 6,
+          "x": 18,
+          "y": 12
+        },
+        "targets": [
+          {
+            "expr": "rate(node_network_receive_bytes_total[5m])",
+            "legendFormat": "Receive (bytes/s)",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          },
+          {
+            "expr": "rate(node_network_transmit_bytes_total[5m])",
+            "legendFormat": "Transmit (bytes/s)",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {
+          "tooltip": {
+            "mode": "single"
+          },
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "linear",
+              "barAlignment": 0,
+              "lineWidth": 1,
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "spanNulls": false,
+              "showPoints": "never",
+              "pointSize": 5,
+              "stacking": {
+                "mode": "none",
+                "group": "A"
+              },
+              "axisPlacement": "auto",
+              "axisLabel": "",
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "hideFrom": {
+                "vis": false,
+                "tooltip": false,
+                "legend": false
+              }
+            },
+            "color": {
+              "mode": "palette-classic"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "Bps"
+          },
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "GPU Utilization",
+        "type": "gauge",
+        "description": "Current GPU utilization percentage",
+        "gridPos": {
+          "h": 6,
+          "w": 6,
+          "x": 0,
+          "y": 18
+        },
+        "targets": [
+          {
+            "expr": "nvidia_gpu_utilization_ratio * 100",
+            "legendFormat": "GPU Utilization %",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 100,
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "GPU Memory Usage",
+        "type": "gauge",
+        "description": "GPU memory utilization percentage",
+        "gridPos": {
+          "h": 6,
+          "w": 6,
+          "x": 6,
+          "y": 18
+        },
+        "targets": [
+          {
+            "expr": "nvidia_gpu_memory_utilization_ratio * 100",
+            "legendFormat": "GPU Memory %",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 100,
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "GPU Temperature",
+        "type": "stat",
+        "description": "GPU temperature in Celsius",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "nvidia_gpu_temperature_celsius",
+            "legendFormat": "GPU Temperature (°C)",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "celsius"
+          },
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "GPU Power Draw",
+        "type": "stat",
+        "description": "GPU power consumption in watts",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "nvidia_gpu_power_draw_watts",
+            "legendFormat": "Power Draw (W)",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "watt"
+          },
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "GPU Memory Details",
+        "type": "table",
+        "description": "Detailed GPU memory information",
+        "gridPos": {
+          "h": 6,
+          "w": 12,
+          "x": 12,
+          "y": 18
+        },
+        "targets": [
+          {
+            "expr": "nvidia_gpu_memory_total_bytes / (1024*1024*1024)",
+            "legendFormat": "Total Memory (GB)",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          },
+          {
+            "expr": "nvidia_gpu_memory_used_bytes / (1024*1024*1024)",
+            "legendFormat": "Used Memory (GB)",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          },
+          {
+            "expr": "nvidia_gpu_memory_free_bytes / (1024*1024*1024)",
+            "legendFormat": "Free Memory (GB)",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {
+          "showHeader": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            },
+            "unit": "deckbytes"
+          },
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "GPU Utilization Over Time",
+        "type": "timeseries",
+        "description": "GPU utilization and memory usage over time",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 24
+        },
+        "targets": [
+          {
+            "expr": "nvidia_gpu_utilization_ratio * 100",
+            "legendFormat": "GPU Utilization %",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          },
+          {
+            "expr": "nvidia_gpu_memory_utilization_ratio * 100",
+            "legendFormat": "Memory Utilization %",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "PBFA97CFB590B2093"
+            }
+          }
+        ],
+        "options": {
+          "tooltip": {
+            "mode": "single"
+          },
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom"
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "linear",
+              "barAlignment": 0,
+              "lineWidth": 1,
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "spanNulls": false,
+              "showPoints": "never",
+              "pointSize": 5,
+              "stacking": {
+                "mode": "none",
+                "group": "A"
+              },
+              "axisPlacement": "auto",
+              "axisLabel": "",
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "hideFrom": {
+                "vis": false,
+                "tooltip": false,
+                "legend": false
+              }
+            },
+            "color": {
+              "mode": "palette-classic"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "percent"
+          },
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      }
+    ],
+    "version": 1,
+    "schemaVersion": 36,
+    "style": "dark"
+  },
+  "overwrite": true
+}

@@ -4,6 +4,9 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_SRC_DIR="$SCRIPT_DIR/examples"
+
 echo "🚀 JustNews PostgreSQL Completion Script"
 echo "========================================"
 
@@ -127,7 +130,17 @@ echo -e "${BLUE}📝 Updating environment files...${NC}"
 
 # Copy updated environment files to /etc/justnews/
 sudo mkdir -p /etc/justnews
-sudo cp deploy/systemd/env/*.env /etc/justnews/
+shopt -s nullglob
+for src in "$ENV_SRC_DIR"/*.env "$ENV_SRC_DIR"/*.env.example; do
+    base="$(basename "$src")"
+    if [[ "$base" == *.env.example ]]; then
+        dest_name="${base%.env.example}.env"
+    else
+        dest_name="$base"
+    fi
+    sudo cp "$src" "/etc/justnews/$dest_name"
+done
+shopt -u nullglob
 
 echo -e "${GREEN}✅ Environment files updated${NC}"
 
@@ -201,6 +214,6 @@ echo "Backup location: /var/backups/postgresql/"
 echo "Backup script: /usr/local/bin/justnews-postgres-backup.sh"
 echo ""
 echo "Next steps:"
-echo "  1. Enable systemd services: sudo ./deploy/systemd/enable_all.sh enable"
-echo "  2. Start all services: sudo ./deploy/systemd/enable_all.sh start"
-echo "  3. Health check: sudo ./deploy/systemd/health_check.sh"
+echo "  1. Enable systemd services: sudo ./infrastructure/systemd/scripts/enable_all.sh enable"
+echo "  2. Start all services: sudo ./infrastructure/systemd/scripts/enable_all.sh start"
+echo "  3. Health check: sudo ./infrastructure/systemd/scripts/health_check.sh"

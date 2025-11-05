@@ -12,11 +12,11 @@ resolve_root() {
     if [[ -n "${JUSTNEWS_ROOT:-}" ]]; then echo "$JUSTNEWS_ROOT"; return 0; fi
     if [[ -n "${SERVICE_DIR:-}" ]]; then echo "$SERVICE_DIR"; return 0; fi
   fi
-  echo "/home/adra/justnewsagent/JustNewsAgent"
+  echo "/home/adra/JustNewsAgent-Clean"
 }
 
 ROOT="$(resolve_root)"
-SCRIPT="$ROOT/deploy/systemd/health_check.sh"
+SCRIPT="$ROOT/infrastructure/systemd/health_check.sh"
 if [[ -x "$SCRIPT" ]]; then
   exec "$SCRIPT" "$@"
 else

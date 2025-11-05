@@ -1,0 +1,22 @@
+[Unit]
+Description=JustNews Node Exporter Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=justnews
+Group=justnews
+Environment=NODE_EXPORTER_BIN=/usr/local/bin/node_exporter
+Environment=NODE_EXPORTER_TEXTFILE_DIR=/var/lib/node_exporter/textfile_collector
+EnvironmentFile=-/etc/justnews/monitoring.env
+ExecStartPre=/usr/bin/install -d -o justnews -g justnews ${NODE_EXPORTER_TEXTFILE_DIR}
+ExecStart=/usr/bin/env bash -c "exec ${NODE_EXPORTER_BIN} \
+  --web.listen-address=${NODE_EXPORTER_LISTEN_ADDRESS:-0.0.0.0:9100} \
+  --collector.textfile.directory=${NODE_EXPORTER_TEXTFILE_DIR} \
+  ${NODE_EXPORTER_EXTRA_FLAGS:-}"
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

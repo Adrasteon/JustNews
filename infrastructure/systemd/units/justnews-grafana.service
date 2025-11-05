@@ -1,0 +1,30 @@
+[Unit]
+Description=JustNews Grafana Dashboard Service
+After=network-online.target justnews-prometheus.service
+Wants=network-online.target justnews-prometheus.service
+
+[Service]
+Type=simple
+User=justnews
+Group=justnews
+Environment=GRAFANA_BIN=/usr/sbin/grafana-server
+Environment=GRAFANA_HOME_PATH=/usr/share/grafana
+Environment=GRAFANA_CONFIG_FILE=/etc/justnews/monitoring/grafana.ini
+Environment=GF_PATHS_DATA=/var/lib/justnews/grafana
+Environment=GF_PATHS_LOGS=/var/log/justnews/grafana
+Environment=GF_PATHS_PLUGINS=/var/lib/justnews/grafana/plugins
+Environment=GF_PATHS_PROVISIONING=/etc/justnews/monitoring/grafana/provisioning
+Environment=GF_SERVER_HTTP_PORT=3000
+Environment=GF_SERVER_HTTP_ADDR=0.0.0.0
+Environment=GF_SERVER_DOMAIN=localhost
+Environment=GF_SECURITY_ADMIN_USER=admin
+Environment=GF_SECURITY_ADMIN_PASSWORD=admin
+EnvironmentFile=-/etc/justnews/monitoring.env
+ExecStartPre=/usr/bin/install -d -o justnews -g justnews ${GF_PATHS_DATA} ${GF_PATHS_LOGS} ${GF_PATHS_PLUGINS}
+ExecStart=/usr/bin/env bash -c "exec ${GRAFANA_BIN} --config=${GRAFANA_CONFIG_FILE} --homepath=${GRAFANA_HOME_PATH}"
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

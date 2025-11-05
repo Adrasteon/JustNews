@@ -60,6 +60,26 @@ MEMORY_AGENT_PORT = int(os.environ.get("MEMORY_AGENT_PORT", 8007))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
 
+def query_articles(query: str, limit: int = 10) -> list[dict]:
+    """Lightweight helper for querying stored articles.
+
+    Provides a stable import target for legacy code and tests that patch the
+    memory agent's query functionality. When the vector engine is available we
+    delegate to its local search implementation; otherwise we return an empty
+    list to indicate no matches.
+    """
+
+    if vector_engine is None:
+        logger.debug("Vector engine not initialized; returning no articles for query")
+        return []
+
+    try:
+        return vector_engine.vector_search_articles_local(query, limit)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        logger.warning("Vector search failed for query '%s': %s", query, exc)
+        return []
+
+
 # Pydantic models
 class Article(BaseModel):
     content: str

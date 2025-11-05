@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+  namespace: justnews
+  labels:
+    app: dashboard
+    component: agent
+    gpu-required: false
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dashboard
+  template:
+    metadata:
+      labels:
+        app: dashboard
+        component: agent
+        gpu-required: false
+    spec:
+      containers:
+      - name: dashboard
+        image: justnews/dashboard:latest
+        ports:
+        - containerPort: 8013
+          name: http
+        envFrom:
+        - configMapRef:
+            name: justnews-config
+        - secretRef:
+            name: justnews-secrets
+        env:
+        - name: AGENT_NAME
+          value: "dashboard"
+        - name: AGENT_PORT
+          value: "8013"
+        resources:
+          limits:
+            memory: 2Gi
+            cpu: 1000m
+          requests:
+            memory: 1Gi
+            cpu: 500m
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-service
+  namespace: justnews
+  labels:
+    app: dashboard
+    component: agent
+spec:
+  selector:
+    app: dashboard
+  ports:
+  - port: 8013
+    targetPort: http
+    name: http
+  type: ClusterIP
+
+---

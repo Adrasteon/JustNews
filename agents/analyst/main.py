@@ -1,631 +1,558 @@
 """
-Analyst Agent - Main FastAPI Application
-
-This is the main entry point for the Analyst agent, providing RESTful APIs
-for quantitative news content analysis including entity extraction, statistical
-analysis, sentiment/bias detection, and trend analysis.
-
-Features:
-- FastAPI web server with MCP bus integration
-- Comprehensive quantitative analysis endpoints
-- GPU-accelerated sentiment and bias analysis
-- Health checks and monitoring
-- Production-ready error handling and logging
-
-Endpoints:
-- POST /identify_entities: Extract named entities from text
-- POST /analyze_text_statistics: Comprehensive text statistical analysis
-- POST /extract_key_metrics: Extract numerical and statistical metrics
-- POST /analyze_content_trends: Analyze trends across multiple content pieces
-- POST /analyze_sentiment: Sentiment analysis with GPU acceleration
-- POST /detect_bias: Bias detection with GPU acceleration
-- POST /analyze_sentiment_and_bias: Combined sentiment and bias analysis
-- GET /health: Health check endpoint
-- GET /stats: Processing statistics
-
-All endpoints include security validation, error handling, and comprehensive logging.
+Main file for the Analyst Agent.
 """
 
 import os
 import time
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+import requests
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from pydantic import BaseModel
 
-from common.observability import get_logger
+from database.utils.migrated_database_utils import create_database_service
 from common.metrics import JustNewsMetrics
+from common.observability import get_logger
 from common.version_utils import get_version
 
 from .tools import (
-    identify_entities,
+    analyze_content_trends,
     analyze_text_statistics,
     extract_key_metrics,
-    analyze_content_trends,
-    analyze_sentiment,
-    detect_bias,
-    analyze_sentiment_and_bias,
-    health_check,
-    validate_analysis_result,
-    format_analysis_output
+    identify_entities,
+    log_feedback,
 )
 
-# MCP Bus integration
+# Import security utilities
 try:
-    from common.mcp_bus_client import MCPBusClient
-    MCP_AVAILABLE = True
+    from .security_utils import (
+        log_security_event,
+        sanitize_content,
+        validate_content_size,
+    )
+    SECURITY_AVAILABLE = True
 except ImportError:
-    MCPBusClient = None
-    MCP_AVAILABLE = False
+    SECURITY_AVAILABLE = False
+    def validate_content_size(content: str) -> bool:
+        return len(content) < 1000000  # 1MB limit
+    def sanitize_content(content: str) -> str:
+        return content
+    def log_security_event(event: str, details: dict[str, Any]):
+        pass
 
+# Configure centralized logging
 logger = get_logger(__name__)
 
-# Environment variables
-ANALYST_AGENT_PORT = int(os.environ.get("ANALYST_AGENT_PORT", 8004))
+"""Analyst agent FastAPI app
+
+Environment configuration (unified):
+    - ANALYST_PORT:        Primary port for both server bind and MCP registration (default: 8004)
+    - ANALYST_HOST:        Bind host for the uvicorn server (default: 0.0.0.0)
+    - ANALYST_PUBLIC_HOST: Hostname used to advertise to MCP bus (default: localhost)
+    - ANALYST_PUBLIC_SCHEME: Scheme used for MCP registration URL (default: http)
+
+Backward compatibility:
+    - If ANALYST_PORT is not set, we also respect ANALYST_AGENT_PORT.
+"""
+
+# Readiness flag
+ready = False
+
+# Environment variables (unified + backward compatible)
+def _resolve_port() -> int:
+        """Resolve the analyst service port with backward compatibility.
+
+        Prefers ANALYST_PORT, falls back to ANALYST_AGENT_PORT, then 8004.
+        """
+        port_str = os.environ.get("ANALYST_PORT") or os.environ.get("ANALYST_AGENT_PORT")
+        try:
+                return int(port_str) if port_str else 8004
+        except ValueError:
+                return 8004
+
+ANALYST_PORT: int = _resolve_port()
+ANALYST_HOST: str = os.environ.get("ANALYST_HOST", "0.0.0.0")
+ANALYST_PUBLIC_HOST: str = os.environ.get("ANALYST_PUBLIC_HOST", "localhost")
+ANALYST_PUBLIC_SCHEME: str = os.environ.get("ANALYST_PUBLIC_SCHEME", "http")
+
+MODEL_PATH = os.environ.get("MISTRAL_7B_PATH", "./models/mistral-7b-instruct-v0.2")
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
-# Request/Response Models
-class AnalysisRequest(BaseModel):
-    """Base request model for analysis operations."""
-    text: str = Field(..., min_length=1, max_length=1000000, description="Text content to analyze")
-    format_output: str = Field("json", description="Output format (json, text, markdown)")
+# Pydantic models
+class ToolCall(BaseModel):
+    args: list[Any]
+    kwargs: dict[str, Any]
 
-class EntitiesRequest(AnalysisRequest):
-    """Request model for entity extraction."""
-    pass
 
-class StatisticsRequest(AnalysisRequest):
-    """Request model for text statistics analysis."""
-    pass
+class MCPBusClient:
+    def __init__(self, base_url: str = MCP_BUS_URL):
+        self.base_url = base_url
 
-class MetricsRequest(AnalysisRequest):
-    """Request model for key metrics extraction."""
-    url: Optional[str] = Field(None, description="Article URL for context")
-
-class TrendsRequest(BaseModel):
-    """Request model for content trends analysis."""
-    texts: List[str] = Field(..., min_items=1, description="List of texts to analyze")
-    urls: Optional[List[str]] = Field(None, description="Corresponding URLs for context")
-    format_output: str = Field("json", description="Output format (json, text, markdown)")
-
-class SentimentRequest(AnalysisRequest):
-    """Request model for sentiment analysis."""
-    pass
-
-class BiasRequest(AnalysisRequest):
-    """Request model for bias detection."""
-    pass
-
-class CombinedAnalysisRequest(AnalysisRequest):
-    """Request model for combined sentiment and bias analysis."""
-    pass
-
-class AnalysisResponse(BaseModel):
-    """Base response model for analysis operations."""
-    success: bool = Field(..., description="Analysis success status")
-    result: Dict[str, Any] = Field(..., description="Analysis result data")
-    processing_time: float = Field(..., description="Processing time in seconds")
-    timestamp: float = Field(..., description="Response timestamp")
-    format: str = Field(..., description="Output format used")
-
-class HealthResponse(BaseModel):
-    """Response model for health checks."""
-    timestamp: float = Field(..., description="Health check timestamp")
-    overall_status: str = Field(..., description="Overall health status")
-    components: Dict[str, Any] = Field(..., description="Component health status")
-    processing_stats: Dict[str, Any] = Field(..., description="Processing statistics")
-    issues: Optional[List[str]] = Field(None, description="List of issues found")
-
-class StatsResponse(BaseModel):
-    """Response model for statistics."""
-    total_processed: int = Field(..., description="Total analyses processed")
-    entities_extracted: int = Field(..., description="Total entities extracted")
-    sentiment_analyses: int = Field(..., description="Total sentiment analyses")
-    bias_detections: int = Field(..., description="Total bias detections")
-    average_processing_time: float = Field(..., description="Average processing time")
-    uptime: float = Field(..., description="Service uptime in seconds")
-
-# Global startup time
-startup_time = time.time()
-
-# Lifespan management
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan manager for startup and shutdown."""
-    logger.info("🔍 Starting Analyst Agent - Quantitative Analysis Engine")
-    logger.info("📊 Focus: Entity extraction, statistical analysis, sentiment/bias detection")
-    logger.info("🎯 Specialization: Text metrics, trend analysis, GPU-accelerated NLP")
-    logger.info("🤝 Integration: Works with Scout for content analysis, Synthesizer for insights")
-
-    try:
-        # Register with MCP Bus if available
-        if MCP_AVAILABLE:
-            await register_with_mcp_bus()
-
-        logger.info("✅ Analyst Agent started successfully")
-
-        yield
-
-    except Exception as e:
-        logger.error(f"❌ Failed to start Analyst Agent: {e}")
-        raise
-    finally:
-        logger.info("🛑 Analyst Agent shutdown completed")
-
-async def register_with_mcp_bus():
-    """Register agent with MCP Bus."""
-    if not MCP_AVAILABLE:
-        logger.warning("MCP Bus client not available - skipping registration")
-        return
-
-    try:
-        mcp_bus_url = MCP_BUS_URL
-        client = MCPBusClient(mcp_bus_url)
-
-        agent_info = {
-            "name": "analyst",
-            "description": "Quantitative news content analysis with GPU acceleration",
-            "version": "2.0.0",
-            "capabilities": [
-                "entity_extraction",
-                "text_statistics",
-                "key_metrics",
-                "trend_analysis",
-                "sentiment_analysis",
-                "bias_detection",
-                "combined_analysis"
-            ],
-            "endpoints": {
-                "identify_entities": "/identify_entities",
-                "analyze_text_statistics": "/analyze_text_statistics",
-                "extract_key_metrics": "/extract_key_metrics",
-                "analyze_content_trends": "/analyze_content_trends",
-                "analyze_sentiment": "/analyze_sentiment",
-                "detect_bias": "/detect_bias",
-                "analyze_sentiment_and_bias": "/analyze_sentiment_and_bias",
-                "health": "/health",
-                "stats": "/stats"
-            }
+    def register_agent(self, agent_name: str, agent_address: str, tools: list[str]):
+        registration_data = {
+            "name": agent_name,
+            "address": agent_address,
+            "tools": tools,
         }
 
-        await client.register_agent(agent_info)
-        logger.info("✅ Registered with MCP Bus")
+        max_retries = 5
+        backoff_factor = 2
 
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(3, 10))
+                response.raise_for_status()
+                logger.info(f"Successfully registered {agent_name} with MCP Bus.")
+                return
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Attempt {attempt + 1}/{max_retries} failed to register {agent_name} with MCP Bus: {e}")
+                if attempt < max_retries - 1:
+                    sleep_time = backoff_factor ** attempt
+                    logger.info(f"Retrying in {sleep_time} seconds...")
+                    time.sleep(sleep_time)
+                else:
+                    logger.error(f"Failed to register {agent_name} with MCP Bus after {max_retries} attempts.")
+                    raise
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Handles startup and shutdown events for the FastAPI application."""
+    logger.info("🔍 Analyst Agent V2 - Specialized Quantitative Analysis")
+    logger.info("📊 Focus: Entity extraction, statistical analysis, numerical metrics")
+    logger.info("🎯 Specialization: Text statistics, trends, financial/temporal data")
+    logger.info("🤝 Integration: Works with Scout V2 for comprehensive content analysis")
+
+    logger.info("Specialized analysis modules loaded and ready")
+
+    # Register agent with MCP Bus
+    mcp_bus_client = MCPBusClient()
+    try:
+        # Build the publicly reachable URL for registration; avoid advertising 0.0.0.0
+        agent_address = f"{ANALYST_PUBLIC_SCHEME}://{ANALYST_PUBLIC_HOST}:{ANALYST_PORT}"
+
+        mcp_bus_client.register_agent(
+            agent_name="analyst",
+            agent_address=agent_address,
+            tools=[
+                "identify_entities",
+                "analyze_text_statistics",
+                "extract_key_metrics",
+                "analyze_content_trends",
+                "analyze_sentiment",
+                "detect_bias",
+                "score_sentiment",
+                "score_bias",
+                "analyze_sentiment_and_bias"
+            ],
+        )
+        logger.info("Registered tools with MCP Bus.")
     except Exception as e:
-        logger.error(f"❌ MCP Bus registration failed: {e}")
+        logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+    # Mark ready after successful startup tasks
+    global ready
+    ready = True
+    yield
 
-# Create FastAPI app
-app = FastAPI(
-    title="Analyst Agent",
-    description="Quantitative analysis engine for news content processing",
-    version="2.0.0",
-    lifespan=lifespan
-)
+    # Cleanup on shutdown
+    logger.info("✅ Analyst agent shutdown completed.")
 
-# Add CORS middleware
+    logger.info("Analyst agent is shutting down.")
+
+app = FastAPI(lifespan=lifespan)
+
+# Initialize metrics
+metrics = JustNewsMetrics("analyst")
+
+# Add security middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://example.com"],  # Replace with actual allowed origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Initialize metrics
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["*"]  # Configure appropriately for production
+)
+
+# Metrics middleware (must be added after security middleware)
+app.middleware("http")(metrics.request_middleware)
+
+# Security middleware
+@app.middleware("http")
+async def security_middleware(request: Request, call_next):
+    """Security middleware for input validation and rate limiting"""
+    if SECURITY_AVAILABLE:
+        # Log security events
+        logger.info(f"Request: {request.method} {request.url.path} from {request.client.host}")
+
+    response = await call_next(request)
+    return response
+
+# Register shutdown endpoint if available
 try:
-    metrics = JustNewsMetrics("analyst")
-    # Metrics middleware
-    app.middleware("http")(metrics.request_middleware)
-except Exception as e:
-    logger.warning(f"Metrics initialization failed: {e}")
-    metrics = None
+    from agents.common.shutdown import register_shutdown_endpoint
+    register_shutdown_endpoint(app)
+except Exception:
+    logger.debug("shutdown endpoint not registered for analyst")
 
-@app.get("/")
-async def root():
-    """Root endpoint with basic information."""
+# Register reload endpoint if available
+try:
+    from agents.common.reload import register_reload_endpoint
+    register_reload_endpoint(app)
+except Exception:
+    logger.debug("reload endpoint not registered for analyst")
+
+@app.get("/health")
+@app.post("/health")
+async def health(request: Request):
+    """Health check endpoint that accepts optional body."""
     return {
-        "name": "Analyst Agent",
-        "version": "2.0.0",
-        "description": "Quantitative analysis engine for news content",
-        "status": "running",
-        "capabilities": [
-            "entity_extraction",
-            "text_statistics",
-            "sentiment_analysis",
-            "bias_detection",
-            "trend_analysis"
-        ]
+        "status": "ok",
+        "security_enabled": SECURITY_AVAILABLE,
+        "version": get_version()
     }
 
-@app.post("/identify_entities", response_model=AnalysisResponse)
-async def identify_entities_endpoint(request: EntitiesRequest):
-    """
-    Extract named entities from text content.
+@app.get("/ready")
+def ready_endpoint():
+    """Readiness endpoint for startup gating."""
+    return {"ready": ready}
 
-    This endpoint identifies and categorizes named entities such as persons,
-    organizations, locations, dates, and other proper nouns in the provided text.
-    """
-    start_time = time.time()
+@app.get("/metrics")
+def metrics_endpoint():
+    """Prometheus metrics endpoint"""
+    from fastapi.responses import Response
+    return Response(metrics.get_metrics(), media_type="text/plain; charset=utf-8")
 
+# RESTORED ENDPOINTS - Sentiment and bias analysis capabilities restored
+# These endpoints provide the Analyst Agent with its own sentiment analysis capabilities
+
+@app.post("/score_bias")
+def score_bias_endpoint(call: ToolCall):
+    """Score bias in provided text content."""
     try:
-        logger.info(f"🔍 Processing entity extraction request: {len(request.text)} characters")
+        # Security validation
+        if call.kwargs and 'text' in call.kwargs:
+            if not validate_content_size(call.kwargs['text']):
+                log_security_event('content_size_exceeded', {'function': 'score_bias_endpoint'})
+                raise HTTPException(status_code=400, detail="Content size exceeds maximum allowed limit")
 
-        # Perform analysis
-        result = identify_entities(request.text)
+            call.kwargs['text'] = sanitize_content(call.kwargs['text'])
 
-        # Validate result
-        if not validate_analysis_result(result):
-            raise HTTPException(status_code=500, detail="Invalid analysis result")
+        from .tools import score_bias
+        logger.info(f"Calling score_bias with args: {call.args} and kwargs: {call.kwargs}")
+        return score_bias(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in score_bias: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
-        # Format output if requested
-        if request.format_output != "json":
-            formatted_result = format_analysis_output(result, request.format_output)
-            result = {"formatted_output": formatted_result}
+@app.post("/score_sentiment")
+def score_sentiment_endpoint(call: ToolCall):
+    """Score sentiment in provided text content."""
+    try:
+        # Security validation
+        if call.kwargs and 'text' in call.kwargs:
+            if not validate_content_size(call.kwargs['text']):
+                log_security_event('content_size_exceeded', {'function': 'score_sentiment_endpoint'})
+                raise HTTPException(status_code=400, detail="Content size exceeds maximum allowed limit")
 
-        processing_time = time.time() - start_time
+            call.kwargs['text'] = sanitize_content(call.kwargs['text'])
 
-        response = AnalysisResponse(
-            success=True,
-            result=result,
-            processing_time=processing_time,
-            timestamp=time.time(),
-            format=request.format_output
+        from .tools import score_sentiment
+        logger.info(f"Calling score_sentiment with args: {call.args} and kwargs: {call.kwargs}")
+        return score_sentiment(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in score_sentiment: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.post("/analyze_sentiment_and_bias")
+def analyze_sentiment_and_bias_endpoint(call: ToolCall):
+    """Analyze both sentiment and bias in provided text content."""
+    try:
+        # Security validation
+        if call.kwargs and 'text' in call.kwargs:
+            if not validate_content_size(call.kwargs['text']):
+                log_security_event('content_size_exceeded', {'function': 'analyze_sentiment_and_bias_endpoint'})
+                raise HTTPException(status_code=400, detail="Content size exceeds maximum allowed limit")
+
+            call.kwargs['text'] = sanitize_content(call.kwargs['text'])
+
+        from .tools import analyze_sentiment_and_bias
+        logger.info(f"Calling analyze_sentiment_and_bias with args: {call.args} and kwargs: {call.kwargs}")
+
+        # Debug: Check GPU analyst status
+        from .gpu_analyst import get_gpu_analyst
+        gpu_analyst = get_gpu_analyst()
+        logger.info(f"GPU analyst status - models_loaded: {gpu_analyst.models_loaded}, gpu_available: {gpu_analyst.gpu_available}")
+        safe, reason = gpu_analyst.is_gpu_safe_to_use()
+        logger.info(f"GPU safe to use: {safe}, reason: {reason}")
+
+        result = analyze_sentiment_and_bias(*call.args, **call.kwargs)
+        logger.info("analyze_sentiment_and_bias completed successfully")
+        logger.info(f"Result methods - sentiment: {result.get('sentiment_analysis', {}).get('method')}, bias: {result.get('bias_analysis', {}).get('method')}")
+        return result
+    except Exception as e:
+        logger.error(f"An error occurred in analyze_sentiment_and_bias: {e}")
+        logger.error(f"Error details: {type(e).__name__}: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.post("/analyze_sentiment")
+def analyze_sentiment_endpoint(call: ToolCall):
+    """Analyze sentiment in provided text content."""
+    try:
+        # Security validation
+        if call.kwargs and 'text' in call.kwargs:
+            if not validate_content_size(call.kwargs['text']):
+                log_security_event('content_size_exceeded', {'function': 'analyze_sentiment_endpoint'})
+                raise HTTPException(status_code=400, detail="Content size exceeds maximum allowed limit")
+
+            call.kwargs['text'] = sanitize_content(call.kwargs['text'])
+
+        from .tools import analyze_sentiment
+        logger.info(f"Calling analyze_sentiment with args: {call.args} and kwargs: {call.kwargs}")
+        return analyze_sentiment(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in analyze_sentiment: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.post("/detect_bias")
+def detect_bias_endpoint(call: ToolCall):
+    """Detect bias in provided text content."""
+    try:
+        # Security validation
+        if call.kwargs and 'text' in call.kwargs:
+            if not validate_content_size(call.kwargs['text']):
+                log_security_event('content_size_exceeded', {'function': 'detect_bias_endpoint'})
+                raise HTTPException(status_code=400, detail="Content size exceeds maximum allowed limit")
+
+            call.kwargs['text'] = sanitize_content(call.kwargs['text'])
+
+        from .tools import detect_bias
+        logger.info(f"Calling detect_bias with args: {call.args} and kwargs: {call.kwargs}")
+        return detect_bias(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in detect_bias: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.post("/identify_entities")
+def identify_entities_endpoint(call: ToolCall):
+    """Identifies entities in a given text."""
+    try:
+        # Security validation
+        if call.kwargs and 'text' in call.kwargs:
+            if not validate_content_size(call.kwargs['text']):
+                log_security_event('content_size_exceeded', {'function': 'identify_entities_endpoint'})
+                raise HTTPException(status_code=400, detail="Content size exceeds maximum allowed limit")
+
+            call.kwargs['text'] = sanitize_content(call.kwargs['text'])
+
+        return identify_entities(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in identify_entities: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.post("/log_feedback")
+def log_feedback_endpoint(call: ToolCall):
+    """Logs feedback."""
+    try:
+        feedback = call.kwargs.get("feedback", {})
+        log_feedback("log_feedback", feedback)
+        return {"status": "logged"}
+    except Exception as e:
+        logger.error(f"An error occurred while logging feedback: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.post("/analyze_article")
+def analyze_article_endpoint(call: ToolCall):
+    """Analyze an article and update its analyzed status."""
+    try:
+        logger.debug("Received analyze_article request with payload: %s", call.kwargs)
+
+        # Security validation
+        if call.kwargs and 'article_id' in call.kwargs:
+            article_id = call.kwargs['article_id']
+            logger.debug("Processing article_id: %s", article_id)
+
+            # Fetch article from database
+            article = fetch_article_from_db(article_id)
+            logger.debug("Fetched article: %s", article)
+
+            if not article:
+                logger.error("Article not found for article_id: %s", article_id)
+                raise HTTPException(status_code=404, detail="Article not found")
+
+            if article.get("analyzed", False):
+                logger.info("Article %s already analyzed. Skipping.", article_id)
+                return {"status": "skipped", "message": "Article already analyzed"}
+
+            # Perform analysis
+            logger.debug("Performing analysis on article content.")
+            analysis_result = perform_analysis(article["content"])
+            logger.debug("Analysis result: %s", analysis_result)
+
+            # Update article as analyzed
+            logger.debug("Updating article %s as analyzed.", article_id)
+            update_article_status(article_id, analyzed=True)
+
+            logger.info("Successfully analyzed and updated article %s.", article_id)
+            return {"status": "success", "analysis_result": analysis_result}
+
+        else:
+            logger.error("Missing article_id in request payload.")
+            raise HTTPException(status_code=400, detail="Missing article_id in request")
+
+    except Exception as e:
+        logger.error("An error occurred in analyze_article: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+def fetch_article_from_db(article_id: int) -> dict:
+    """Fetch article from the database."""
+    try:
+        db_service = create_database_service()
+        cursor = db_service.mb_conn.cursor(dictionary=True)
+        cursor.execute(
+            "SELECT id, content, analyzed FROM articles WHERE id = %s",
+            (article_id,)
         )
+        article = cursor.fetchone()
+        cursor.close()
+        db_service.close()
 
-        logger.info(f"✅ Entity extraction completed: {processing_time:.2f}s")
-        return response
-
+        if article:
+            return {
+                "id": article["id"],
+                "content": article["content"],
+                "analyzed": article["analyzed"],
+            }
+        else:
+            return {}
     except Exception as e:
-        processing_time = time.time() - start_time
-        logger.error(f"❌ Entity extraction failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Entity extraction failed: {str(e)}")
+        logger.error(f"Failed to fetch article {article_id} from database: {e}")
+        return {}
 
-@app.post("/analyze_text_statistics", response_model=AnalysisResponse)
-async def analyze_text_statistics_endpoint(request: StatisticsRequest):
-    """
-    Perform comprehensive statistical analysis of text content.
-
-    This endpoint analyzes various text metrics including word count, sentence
-    structure, readability scores, vocabulary diversity, and complexity indicators.
-    """
-    start_time = time.time()
-
+def update_article_status(article_id: int, analyzed: bool):
+    """Update the analyzed status of an article in the database."""
     try:
-        logger.info(f"📊 Processing text statistics request: {len(request.text)} characters")
-
-        # Perform analysis
-        result = analyze_text_statistics(request.text)
-
-        # Validate result
-        if not validate_analysis_result(result):
-            raise HTTPException(status_code=500, detail="Invalid analysis result")
-
-        # Format output if requested
-        if request.format_output != "json":
-            formatted_result = format_analysis_output(result, request.format_output)
-            result = {"formatted_output": formatted_result}
-
-        processing_time = time.time() - start_time
-
-        response = AnalysisResponse(
-            success=True,
-            result=result,
-            processing_time=processing_time,
-            timestamp=time.time(),
-            format=request.format_output
+        db_service = create_database_service()
+        cursor = db_service.mb_conn.cursor()
+        cursor.execute(
+            "UPDATE articles SET analyzed = %s WHERE id = %s",
+            (analyzed, article_id)
         )
+        db_service.mb_conn.commit()
+        cursor.close()
+        db_service.close()
 
-        logger.info(f"✅ Text statistics analysis completed: {processing_time:.2f}s")
-        return response
-
+        logger.info(f"Article {article_id} status updated to analyzed={analyzed}")
     except Exception as e:
-        processing_time = time.time() - start_time
-        logger.error(f"❌ Text statistics analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Text statistics analysis failed: {str(e)}")
+        logger.error(f"Failed to update article {article_id} status: {e}")
 
-@app.post("/extract_key_metrics", response_model=AnalysisResponse)
-async def extract_key_metrics_endpoint(request: MetricsRequest):
-    """
-    Extract key numerical and statistical metrics from news text.
-
-    This endpoint identifies financial metrics, temporal references,
-    statistical data, and geographic information in news content.
-    """
-    start_time = time.time()
-
-    try:
-        logger.info(f"🔍 Processing key metrics extraction: {len(request.text)} characters")
-
-        # Perform analysis
-        result = extract_key_metrics(request.text, request.url)
-
-        # Validate result
-        if not validate_analysis_result(result):
-            raise HTTPException(status_code=500, detail="Invalid analysis result")
-
-        # Format output if requested
-        if request.format_output != "json":
-            formatted_result = format_analysis_output(result, request.format_output)
-            result = {"formatted_output": formatted_result}
-
-        processing_time = time.time() - start_time
-
-        response = AnalysisResponse(
-            success=True,
-            result=result,
-            processing_time=processing_time,
-            timestamp=time.time(),
-            format=request.format_output
-        )
-
-        logger.info(f"✅ Key metrics extraction completed: {processing_time:.2f}s")
-        return response
-
-    except Exception as e:
-        processing_time = time.time() - start_time
-        logger.error(f"❌ Key metrics extraction failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Key metrics extraction failed: {str(e)}")
-
-@app.post("/analyze_content_trends", response_model=AnalysisResponse)
-async def analyze_content_trends_endpoint(request: TrendsRequest):
-    """
-    Analyze trends and patterns across multiple content pieces.
-
-    This endpoint identifies common entities, trending topics, and patterns
-    across a collection of news articles or content pieces.
-    """
-    start_time = time.time()
-
-    try:
-        logger.info(f"📈 Processing content trends analysis: {len(request.texts)} texts")
-
-        # Perform analysis
-        result = analyze_content_trends(request.texts, request.urls)
-
-        # Validate result
-        if not validate_analysis_result(result):
-            raise HTTPException(status_code=500, detail="Invalid analysis result")
-
-        # Format output if requested
-        if request.format_output != "json":
-            formatted_result = format_analysis_output(result, request.format_output)
-            result = {"formatted_output": formatted_result}
-
-        processing_time = time.time() - start_time
-
-        response = AnalysisResponse(
-            success=True,
-            result=result,
-            processing_time=processing_time,
-            timestamp=time.time(),
-            format=request.format_output
-        )
-
-        logger.info(f"✅ Content trends analysis completed: {processing_time:.2f}s")
-        return response
-
-    except Exception as e:
-        processing_time = time.time() - start_time
-        logger.error(f"❌ Content trends analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Content trends analysis failed: {str(e)}")
-
-@app.post("/analyze_sentiment", response_model=AnalysisResponse)
-async def analyze_sentiment_endpoint(request: SentimentRequest):
-    """
-    Analyze sentiment of text content.
-
-    This endpoint determines the overall sentiment (positive, negative, neutral)
-    of the provided text using advanced NLP models with GPU acceleration.
-    """
-    start_time = time.time()
-
-    try:
-        logger.info(f"😊 Processing sentiment analysis: {len(request.text)} characters")
-
-        # Perform analysis
-        result = analyze_sentiment(request.text)
-
-        # Validate result
-        if not validate_analysis_result(result):
-            raise HTTPException(status_code=500, detail="Invalid analysis result")
-
-        # Format output if requested
-        if request.format_output != "json":
-            formatted_result = format_analysis_output(result, request.format_output)
-            result = {"formatted_output": formatted_result}
-
-        processing_time = time.time() - start_time
-
-        response = AnalysisResponse(
-            success=True,
-            result=result,
-            processing_time=processing_time,
-            timestamp=time.time(),
-            format=request.format_output
-        )
-
-        logger.info(f"✅ Sentiment analysis completed: {processing_time:.2f}s")
-        return response
-
-    except Exception as e:
-        processing_time = time.time() - start_time
-        logger.error(f"❌ Sentiment analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Sentiment analysis failed: {str(e)}")
-
-@app.post("/detect_bias", response_model=AnalysisResponse)
-async def detect_bias_endpoint(request: BiasRequest):
-    """
-    Detect bias in text content.
-
-    This endpoint analyzes text for potential bias indicators including
-    political bias, emotional bias, and factual bias using advanced models.
-    """
-    start_time = time.time()
-
-    try:
-        logger.info(f"⚖️ Processing bias detection: {len(request.text)} characters")
-
-        # Perform analysis
-        result = detect_bias(request.text)
-
-        # Validate result
-        if not validate_analysis_result(result):
-            raise HTTPException(status_code=500, detail="Invalid analysis result")
-
-        # Format output if requested
-        if request.format_output != "json":
-            formatted_result = format_analysis_output(result, request.format_output)
-            result = {"formatted_output": formatted_result}
-
-        processing_time = time.time() - start_time
-
-        response = AnalysisResponse(
-            success=True,
-            result=result,
-            processing_time=processing_time,
-            timestamp=time.time(),
-            format=request.format_output
-        )
-
-        logger.info(f"✅ Bias detection completed: {processing_time:.2f}s")
-        return response
-
-    except Exception as e:
-        processing_time = time.time() - start_time
-        logger.error(f"❌ Bias detection failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Bias detection failed: {str(e)}")
-
-@app.post("/analyze_sentiment_and_bias", response_model=AnalysisResponse)
-async def analyze_sentiment_and_bias_endpoint(request: CombinedAnalysisRequest):
-    """
-    Perform comprehensive analysis combining sentiment and bias detection.
-
-    This endpoint provides a complete analysis including individual sentiment
-    and bias assessments plus combined reliability scoring and recommendations.
-    """
-    start_time = time.time()
-
-    try:
-        logger.info(f"🔍 Processing combined sentiment and bias analysis: {len(request.text)} characters")
-
-        # Perform analysis
-        result = analyze_sentiment_and_bias(request.text)
-
-        # Validate result
-        if not validate_analysis_result(result):
-            raise HTTPException(status_code=500, detail="Invalid analysis result")
-
-        # Format output if requested
-        if request.format_output != "json":
-            formatted_result = format_analysis_output(result, request.format_output)
-            result = {"formatted_output": formatted_result}
-
-        processing_time = time.time() - start_time
-
-        response = AnalysisResponse(
-            success=True,
-            result=result,
-            processing_time=processing_time,
-            timestamp=time.time(),
-            format=request.format_output
-        )
-
-        logger.info(f"✅ Combined analysis completed: {processing_time:.2f}s")
-        return response
-
-    except Exception as e:
-        processing_time = time.time() - start_time
-        logger.error(f"❌ Combined analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Combined analysis failed: {str(e)}")
-
-@app.get("/health", response_model=HealthResponse)
-async def health_endpoint():
-    """Health check endpoint for monitoring and load balancers."""
-    try:
-        health_result = await health_check()
-        return HealthResponse(**health_result)
-    except Exception as e:
-        logger.error(f"❌ Health check error: {e}")
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
-
-@app.get("/stats", response_model=StatsResponse)
-async def stats_endpoint():
-    """Get processing statistics and performance metrics."""
-    try:
-        from .tools import get_analyst_engine
-        engine = get_analyst_engine()
-
-        uptime = time.time() - startup_time
-
-        stats = StatsResponse(
-            total_processed=engine.processing_stats['total_processed'],
-            entities_extracted=engine.processing_stats['entities_extracted'],
-            sentiment_analyses=engine.processing_stats['sentiment_analyses'],
-            bias_detections=engine.processing_stats['bias_detections'],
-            average_processing_time=engine.processing_stats['average_processing_time'],
-            uptime=uptime
-        )
-
-        return stats
-
-    except Exception as e:
-        logger.error(f"❌ Stats retrieval error: {e}")
-        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}")
-
-@app.get("/capabilities")
-async def capabilities_endpoint():
-    """Get agent capabilities and supported features."""
+def perform_analysis(content: str) -> dict:
+    """Perform the actual analysis on the article content."""
+    # Placeholder for analysis logic
     return {
-        "name": "Analyst Agent",
-        "version": "2.0.0",
-        "capabilities": [
-            "entity_extraction",
-            "text_statistics",
-            "key_metrics_extraction",
-            "content_trends_analysis",
-            "sentiment_analysis",
-            "bias_detection",
-            "combined_sentiment_bias_analysis"
-        ],
-        "supported_formats": ["json", "text", "markdown"],
-        "gpu_acceleration": True,
-        "max_text_length": 1000000,
-        "supported_languages": ["en"],
-        "models": {
-            "entity_extraction": "spaCy en_core_web_sm + BERT fallback",
-            "sentiment_analysis": "cardiffnlp/twitter-roberta-base-sentiment-latest",
-            "bias_detection": "unitary/toxic-bert"
-        }
+        "sentiment": "positive",
+        "bias": "neutral",
+        "entities": ["entity1", "entity2"]
     }
 
-# Error handlers
-@app.exception_handler(500)
-async def internal_error_handler(request, exc):
-    """Handle internal server errors."""
-    logger.error(f"500 Internal Server Error: {exc}")
-    return {
-        "error": "Internal server error",
-        "detail": str(exc) if os.getenv("DEBUG", "").lower() == "true" else "An unexpected error occurred"
-    }
+def verify_db_connection() -> bool:
+    """Verify the database connection and cursor setup."""
+    try:
+        db_service = create_database_service()
+        cursor = db_service.mb_conn.cursor()
+        cursor.execute("SELECT 1;")
+        cursor.close()
+        db_service.close()
 
-@app.exception_handler(404)
-async def not_found_handler(request, exc):
-    """Handle 404 not found errors."""
-    return {
-        "error": "Not found",
-        "detail": f"Endpoint {request.url.path} not found"
-    }
+        logger.info("Database connection verified successfully.")
+        return True
+    except Exception as e:
+        logger.error(f"Database connection verification failed: {e}")
+        return False
+
+# REMOVED ENDPOINTS - All sentiment and bias analysis centralized in Scout V2 Agent
+# Use Scout V2 for all sentiment and bias analysis (including batch operations):
+# - POST /comprehensive_content_analysis (includes sentiment + bias)
+# - POST /analyze_sentiment (dedicated sentiment analysis)
+# - POST /detect_bias (dedicated bias detection)
+
+# The following TensorRT batch endpoints have been removed from Analyst:
+# - POST /score_bias_batch - REMOVED (use Scout V2 batch analysis)
+# - POST /score_sentiment_batch - REMOVED (use Scout V2 batch analysis)
+# - POST /analyze_article - REMOVED (use Scout V2 comprehensive analysis)
+# - POST /analyze_articles_batch - REMOVED (use Scout V2 batch analysis)
+
+# Engine information endpoint
+@app.post("/analyze_text_statistics")
+def analyze_text_statistics_endpoint(call: ToolCall):
+    """Analyzes text statistics including readability and complexity."""
+    try:
+        # Security validation
+        if call.kwargs and 'text' in call.kwargs:
+            if not validate_content_size(call.kwargs['text']):
+                log_security_event('content_size_exceeded', {'function': 'analyze_text_statistics_endpoint'})
+                raise HTTPException(status_code=400, detail="Content size exceeds maximum allowed limit")
+
+            call.kwargs['text'] = sanitize_content(call.kwargs['text'])
+
+        return analyze_text_statistics(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in analyze_text_statistics: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.post("/extract_key_metrics")
+def extract_key_metrics_endpoint(call: ToolCall):
+    """Extracts key numerical and statistical metrics from text."""
+    try:
+        # Security validation
+        if call.kwargs and 'text' in call.kwargs:
+            if not validate_content_size(call.kwargs['text']):
+                log_security_event('content_size_exceeded', {'function': 'extract_key_metrics_endpoint'})
+                raise HTTPException(status_code=400, detail="Content size exceeds maximum allowed limit")
+
+            call.kwargs['text'] = sanitize_content(call.kwargs['text'])
+
+        return extract_key_metrics(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in extract_key_metrics: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+@app.post("/analyze_content_trends")
+def analyze_content_trends_endpoint(call: ToolCall):
+    """Analyzes trends across multiple content pieces."""
+    try:
+        # Security validation for content arrays
+        if call.kwargs and 'content_list' in call.kwargs:
+            content_list = call.kwargs['content_list']
+            if isinstance(content_list, list):
+                for i, content in enumerate(content_list):
+                    if isinstance(content, str):
+                        if not validate_content_size(content):
+                            log_security_event('content_size_exceeded', {'function': 'analyze_content_trends_endpoint', 'item': i})
+                            raise HTTPException(status_code=400, detail=f"Content item {i} size exceeds maximum allowed limit")
+                        content_list[i] = sanitize_content(content)
+
+        return analyze_content_trends(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in analyze_content_trends: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+# REMOVED ENDPOINT - Combined sentiment and bias analysis centralized in Scout V2 Agent
+# Use Scout V2 /comprehensive_content_analysis endpoint for combined analysis
+
+# @app.post("/analyze_sentiment_and_bias") - REMOVED
 
 if __name__ == "__main__":
     import uvicorn
 
-    # Run with uvicorn for development
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=int(os.getenv("ANALYST_PORT", "8004")),
-        reload=True,
-        log_level="info"
-    )
+    # Use unified resolved host/port
+    logger.info(f"Starting Analyst Agent on {ANALYST_HOST}:{ANALYST_PORT}")
+    uvicorn.run(app, host=ANALYST_HOST, port=ANALYST_PORT)

@@ -1,0 +1,24 @@
+# Development environment patches
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: justnews-config
+  namespace: justnews
+data:
+  ENVIRONMENT: "development"
+  LOG_LEVEL: "DEBUG"
+  DEBUG_MODE: "true"
+  GPU_ENABLED: "false"  # Disable GPU in development by default
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: justnews-secrets
+  namespace: justnews
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: "dev_password_change_in_production"
+  REDIS_PASSWORD: ""
+  SECRET_KEY: "dev_secret_key_change_in_production"
+  JWT_SECRET_KEY: "dev_jwt_secret_key_change_in_production"

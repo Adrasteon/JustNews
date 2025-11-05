@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: justnews
+  labels:
+    name: justnews
+    app: justnews-agent-system
+    environment: development
+  annotations:
+    description: "Namespace for JustNewsAgent distributed AI news processing system"

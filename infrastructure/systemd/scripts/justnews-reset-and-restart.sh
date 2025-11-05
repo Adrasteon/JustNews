@@ -11,8 +11,18 @@ PROJECT_ROOT="$(realpath "$SCRIPT_DIR/../../..")"
 ENV_FILE="/etc/justnews/global.env"
 
 # Activate Conda environment
-source ~/miniconda3/etc/profile.d/conda.sh
-conda activate justnews-v2-py312
+if [[ -n "$SUDO_USER" ]]; then
+    CONDA_BASE="$(sudo -Hiu "$SUDO_USER" bash -lc 'echo "$HOME"')/miniconda3"
+else
+    CONDA_BASE="$HOME/miniconda3"
+fi
+if [[ -f "$CONDA_BASE/etc/profile.d/conda.sh" ]]; then
+    source "$CONDA_BASE/etc/profile.d/conda.sh"
+    conda activate justnews-v2-py312
+else
+    echo "Conda initialization script not found at $CONDA_BASE/etc/profile.d/conda.sh"
+    exit 1
+fi
 
 # Print environment variables for debugging
 echo "Environment variables for debugging:" >&2
@@ -31,7 +41,7 @@ fi
 
 # Step 1: Preflight Checks
 echo "Running preflight checks..."
-$PROJECT_ROOT/deploy/systemd/scripts/justnews-preflight-check.sh --gate-only
+$PROJECT_ROOT/infrastructure/systemd/scripts/justnews-preflight-check.sh --gate-only
 
 # Step 2: Shutdown Services
 echo "Stopping all JustNews services..."
@@ -48,11 +58,11 @@ rm -rf /tmp/justnews/*
 
 # Step 5: Restart Services
 echo "Starting all JustNews services..."
-$PROJECT_ROOT/deploy/systemd/scripts/enable_all.sh start
+$PROJECT_ROOT/infrastructure/systemd/scripts/enable_all.sh start
 
 # Step 6: Verify Status
 echo "Verifying system status..."
-$PROJECT_ROOT/deploy/systemd/scripts/justnews-system-status.sh
+$PROJECT_ROOT/infrastructure/systemd/scripts/justnews-system-status.sh
 
 # Debug NVML Initialization
 echo "Testing NVML Initialization..."

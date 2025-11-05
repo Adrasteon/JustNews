@@ -1,0 +1,13 @@
+{
+  "performance_history": [],
+  "profiles": {
+    "MultiAgentGPUManager_embedding": {
+      "agent_name": "MultiAgentGPUManager",
+      "model_type": "embedding",
+      "optimal_batch_sizes": {},
+      "memory_usage_patterns": {},
+      "last_updated": "2025-11-04T13:25:08.270278"
+    }
+  },
+  "saved_at": "2025-11-04T19:00:08.347738"
+}

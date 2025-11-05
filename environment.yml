@@ -32,22 +32,22 @@ dependencies:
   - pytest-asyncio>=0.21.1
 
   - pip:
-    # Core ML packages (stable versions)
-    - torch==2.4.1
-    - torchvision==0.19.1
-    - torchaudio==2.4.1
-    - transformers==4.56.0
-    - tokenizers==0.22.0
-    - accelerate==1.10.1
-    - sentence-transformers==2.2.2
-    - safetensors==0.4.3
-    - bitsandbytes==0.47.0
+      # Core ML packages (stable versions)
+      - torch==2.4.1
+      - torchvision==0.19.1
+      - torchaudio==2.4.1
+      - transformers==4.56.0
+      - tokenizers==0.22.0
+      - accelerate==1.10.1
+      - sentence-transformers==3.0.1
+      - safetensors==0.4.3
+      - bitsandbytes==0.47.0
 
-    # NVIDIA packages (specific versions)
-    - nvidia-ml-py3==7.352.0
+      # NVIDIA packages (specific versions)
+      - nvidia-ml-py3==7.352.0
 
-    # Additional pip packages from requirements file
-    - -r requirements.txt
+      # Additional pip packages from requirements file
+      - -r requirements.txt
 
 # Notes:
 # - Used specific package versions to avoid dependency conflicts

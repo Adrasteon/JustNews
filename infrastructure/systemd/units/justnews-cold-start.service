@@ -7,7 +7,7 @@ After=network-online.target
 Type=oneshot
 User=root
 Group=root
-ExecStart=/home/adra/justnewsagent/JustNewsAgent/deploy/systemd/scripts/justnews-cold-start.sh
+ExecStart=/usr/local/bin/justnews-cold-start.sh
 
 [Install]
 WantedBy=multi-user.target

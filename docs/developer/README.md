@@ -77,8 +77,8 @@ Each agent is a microservice with specific responsibilities:
 - **NVIDIA MPS**: GPU memory sharing and isolation
 
 #### Data Processing
-- **PostgreSQL**: Primary data storage with vector extensions
-- **pgvector**: Vector similarity search
+- **MariaDB**: Primary relational data storage
+- **ChromaDB**: Vector similarity search and embeddings
 - **Pandas/Polars**: Data manipulation and analysis
 - **NumPy**: Numerical computing
 
@@ -520,6 +520,12 @@ mypy agents/my_agent/
 2. **Integration Tests**: Test agent-to-agent communication
 3. **Performance Tests**: Test under load with realistic data
 4. **E2E Tests**: Full workflow testing with MCP bus
+
+### Recent changes (Oct–Nov 2025)
+
+- Adaptive Crawl4AI integration: The crawler adapter (`agents/crawler/crawl4ai_adapter.py`) can now invoke `AdaptiveCrawler` using profile-provided `adaptive` settings and `extra.query` hints. Adaptive results are mapped back to existing article structures and annotated with `extraction_metadata.crawl4ai.adaptive_run` for auditing.
+- Metrics & observability: Adaptive telemetry is recorded via the Stage B metrics helpers. The `common.metrics` module is tolerant of environments missing optional GPU helper libraries (`GPUtil`) and exposes compatibility helpers (`increment`, `gauge`, `timing`) used by legacy test harnesses.
+- Developer test notes: New unit tests were added under `tests/agents/crawler/` for the Crawl4AI adapter; run `pytest tests/agents/crawler -q` to exercise adapter-specific behavior. Integration tests for memory and ingestion were also updated.
 
 ### Code Quality Standards
 - **PEP 8**: 88-character line limit

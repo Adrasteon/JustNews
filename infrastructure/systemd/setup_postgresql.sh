@@ -356,8 +356,8 @@ main() {
     echo "Next steps:"
     echo "1. Update /etc/justnews/global.env with database URLs"
     echo "2. Update /etc/justnews/memory.env with database URLs"
-    echo "3. Run JustNews preflight check: ./deploy/systemd/preflight.sh"
-    echo "4. Start services: sudo ./deploy/systemd/enable_all.sh"
+    echo "3. Run JustNews preflight check: ./infrastructure/systemd/preflight.sh"
+    echo "4. Start services: sudo ./infrastructure/systemd/scripts/enable_all.sh start"
 }
 
 # Run main function

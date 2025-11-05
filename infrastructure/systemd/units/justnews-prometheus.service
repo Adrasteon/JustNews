@@ -1,0 +1,31 @@
+[Unit]
+Description=JustNews Prometheus Metrics Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=justnews
+Group=justnews
+Environment=PROMETHEUS_BIN=/usr/local/bin/prometheus
+Environment=PROMETHEUS_CONFIG_FILE=/etc/justnews/monitoring/prometheus.yml
+Environment=PROMETHEUS_DATA_DIR=/var/lib/justnews/prometheus
+Environment=PROMETHEUS_RETENTION=30d
+Environment=PROMETHEUS_CONSOLE_TEMPLATES=/usr/share/prometheus/consoles
+Environment=PROMETHEUS_CONSOLE_LIBRARIES=/usr/share/prometheus/console_libraries
+EnvironmentFile=-/etc/justnews/monitoring.env
+ExecStartPre=/usr/bin/install -d -o justnews -g justnews ${PROMETHEUS_DATA_DIR}
+ExecStart=/usr/bin/env bash -c "exec ${PROMETHEUS_BIN} \
+  --config.file=${PROMETHEUS_CONFIG_FILE} \
+  --storage.tsdb.path=${PROMETHEUS_DATA_DIR} \
+  --storage.tsdb.retention.time=${PROMETHEUS_RETENTION} \
+  --web.console.templates=${PROMETHEUS_CONSOLE_TEMPLATES} \
+  --web.console.libraries=${PROMETHEUS_CONSOLE_LIBRARIES} \
+  ${PROMETHEUS_EXTRA_FLAGS:-}"
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

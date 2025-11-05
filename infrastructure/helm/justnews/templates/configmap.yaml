@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "justnews.fullname" . }}-config
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+data:
+  # Database Configuration
+  DATABASE_URL: "mysql://{{ .Values.mariadb.auth.username }}:{{ .Values.mariadb.auth.password }}@{{ include "justnews.fullname" . }}-mariadb:3306/{{ .Values.mariadb.auth.database }}"
+  REDIS_URL: "redis://:{{ .Values.redis.auth.password }}@{{ include "justnews.fullname" . }}-redis:6379/0"
+
+  # Vector Database Configuration
+  CHROMA_HOST: "{{ include "justnews.fullname" . }}-chromadb"
+  CHROMA_PORT: "8000"
+
+  # MCP Bus Configuration
+  MCP_BUS_URL: "http://{{ include "justnews.fullname" . }}-mcp-bus:{{ .Values.mcpBus.port }}"
+
+  # Monitoring Configuration
+  PROMETHEUS_URL: "http://{{ include "justnews.fullname" . }}-prometheus:9090"
+  GRAFANA_URL: "http://{{ include "justnews.fullname" . }}-grafana:3000"
+
+  # Application Settings
+  LOG_LEVEL: {{ .Values.justnews.logLevel | quote }}
+  ENVIRONMENT: {{ .Values.justnews.environment | quote }}
+  DEBUG: {{ .Values.justnews.debug | quote }}
+
+  # GPU Configuration
+  GPU_ENABLED: {{ .Values.justnews.gpu.enabled | quote }}
+  GPU_MEMORY_FRACTION: {{ .Values.justnews.gpu.memoryFraction | quote }}
+
+  # Security Settings
+  SECRET_KEY: {{ .Values.justnews.security.secretKey | quote }}
+  JWT_SECRET_KEY: {{ .Values.justnews.security.jwtSecretKey | quote }}
+
+  # Archive Storage
+  ARCHIVE_STORAGE_PATH: {{ .Values.justnews.archive.storagePath | quote }}
+  ARCHIVE_RETENTION_DAYS: {{ .Values.justnews.archive.retentionDays | quote }}
+
+  # Training Configuration
+  ONLINE_TRAINING_ENABLED: {{ .Values.justnews.training.online.enabled | quote }}
+  TRAINING_DATA_PATH: {{ .Values.justnews.training.dataPath | quote }}
+
+  # Metrics Configuration
+  METRICS_ENABLED: {{ .Values.justnews.metrics.enabled | quote }}
+  METRICS_PORT: {{ .Values.justnews.metrics.port | quote }}

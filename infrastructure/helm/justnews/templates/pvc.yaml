@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "justnews.fullname" . }}-mariadb-pvc
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: mariadb
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.mariadb.primary.persistence.size }}
+  storageClassName: {{ .Values.mariadb.primary.persistence.storageClass | default "" }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "justnews.fullname" . }}-chromadb-pvc
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: chromadb
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.chromadb.persistence.size }}
+  storageClassName: {{ .Values.chromadb.persistence.storageClass | default "" }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "justnews.fullname" . }}-redis-pvc
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: redis
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.redis.master.persistence.size }}
+  storageClassName: {{ .Values.redis.master.persistence.storageClass | default "" }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "justnews.fullname" . }}-prometheus-pvc
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: prometheus
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.prometheus.server.persistentVolume.size }}
+  storageClassName: {{ .Values.prometheus.server.persistentVolume.storageClass | default "" }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "justnews.fullname" . }}-grafana-pvc
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: grafana
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.grafana.persistence.size }}
+  storageClassName: {{ .Values.grafana.persistence.storageClass | default "" }}

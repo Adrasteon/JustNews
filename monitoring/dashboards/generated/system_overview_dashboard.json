@@ -125,6 +125,126 @@
           "overrides": []
         },
         "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Adaptive Articles Produced",
+        "type": "stat",
+        "description": "Adaptive Crawl4AI article output for the latest scheduler window",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "justnews_crawler_scheduler_adaptive_articles_total",
+            "legendFormat": "Adaptive Articles"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Adaptive Sufficiency Rate",
+        "type": "stat",
+        "description": "Percentage of adaptive articles meeting sufficiency criteria",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "justnews_crawler_scheduler_adaptive_articles_sufficient_total / clamp_min(justnews_crawler_scheduler_adaptive_articles_total, 1) * 100",
+            "legendFormat": "Sufficient %"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Adaptive Confidence Average",
+        "type": "stat",
+        "description": "Average model confidence emitted by adaptive runs",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "justnews_crawler_scheduler_adaptive_confidence_average",
+            "legendFormat": "Confidence"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Adaptive Pages per Article",
+        "type": "stat",
+        "description": "Average Crawl4AI pages crawled per adaptive article",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 16
+        },
+        "targets": [
+          {
+            "expr": "justnews_crawler_scheduler_adaptive_pages_crawled_average",
+            "legendFormat": "Pages"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
+      },
+      {
+        "id": null,
+        "title": "Adaptive Stop Reasons",
+        "type": "bargauge",
+        "description": "Distribution of adaptive stop reasons captured by the scheduler",
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 20
+        },
+        "targets": [
+          {
+            "expr": "sum by(reason) (justnews_crawler_scheduler_adaptive_stop_reasons_total)",
+            "legendFormat": "{{reason}}"
+          }
+        ],
+        "options": {},
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "pluginVersion": "8.0.0"
       }
     ],
     "version": 1,

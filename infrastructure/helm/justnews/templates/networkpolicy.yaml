@@ -1,0 +1,75 @@
+{{- if .Values.networkPolicy.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "justnews.fullname" . }}-allow-internal
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 5432  # PostgreSQL
+    - protocol: TCP
+      port: 6379  # Redis
+    - protocol: TCP
+      port: 9090  # Prometheus
+    - protocol: TCP
+      port: 3000  # Grafana
+    - protocol: TCP
+      port: 80    # HTTP ports for agents
+    - protocol: TCP
+      port: 443   # HTTPS ports for agents
+  egress:
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 53    # DNS
+    - protocol: UDP
+      port: 53    # DNS
+  - to:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80    # HTTP outbound
+    - protocol: TCP
+      port: 443   # HTTPS outbound
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "justnews.fullname" . }}-deny-external
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      component: database
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          component: agent
+    - podSelector:
+        matchLabels:
+          component: communication
+    - podSelector:
+        matchLabels:
+          component: monitoring
+  ports:
+  - protocol: TCP
+    port: 5432  # PostgreSQL
+  - protocol: TCP
+    port: 6379  # Redis
+{{- end }}

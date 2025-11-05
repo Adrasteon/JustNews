@@ -8,12 +8,11 @@ PartOf=justnews-agents.target
 Type=simple
 User=adra
 Group=adra
-WorkingDirectory=/home/adra/justnewsagent/JustNewsAgent
+WorkingDirectory=/
 
 # Environment configuration
 EnvironmentFile=-/etc/justnews/global.env
 EnvironmentFile=-/etc/justnews/%i.env
-Environment=PYTHONPATH=/home/adra/justnewsagent/JustNewsAgent
 
 # Crawler agent specific environment
 Environment=CRAWLER_AGENT_PORT=8015
@@ -24,7 +23,7 @@ Environment=UNIFIED_CRAWLER_AI_ANALYSIS=true
 Environment=UNIFIED_CRAWLER_PERFORMANCE_MONITORING=true
 
 # Start the Crawler agent
-ExecStart=/home/adra/justnewsagent/JustNewsAgent/deploy/systemd/scripts/justnews-start-agent.sh %i
+ExecStart=/usr/local/bin/justnews-start-agent.sh %i
 ExecReload=/bin/kill -HUP $MAINPID
 
 # Resource limits for production crawling

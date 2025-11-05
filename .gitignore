@@ -1,0 +1,45 @@
+# Workspace hygiene exclusions
+stored_archive/
+logs/
+archive_storage/*
+!archive_storage/transparency/
+!archive_storage/transparency/**
+
+__pycache__/
+*.py[cod]
+
+# JustNews runtime artifacts
+agents/newsreader/model_cache/
+agents/synthesizer/models/
+agents/synthesizer/config/
+agents/reasoning/reasoning_state.json
+*.log
+.pytest_cache/
+
+# Editor helpers
+.copilot-instructions
+.vscode/
+unrefactored/
+.env
+global.env
+model_store
+
+# Ignore any local model caches in agents/ directories
+agents/**/models/
+
+# Migration framework and temporary files
+migration_*.py
+AGENT_MODEL_MAP.json
+health-report-*.json
+test_*.py
+*.bak_*
+start_services_daemon.sh
+
+# Migration documentation and planning
+MIGRATION_README.md
+database_migration_plan.md
+robust_migration_implementation.md
+
+# Archive of experimental spikes
+archive/experimental/
+

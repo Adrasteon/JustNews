@@ -22,12 +22,11 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from common.json_utils import make_json_safe
 from common.observability import get_logger
 
 # Import database utilities
-from agents.common.database import close_connection_pool, initialize_connection_pool
-from agents.common.database import execute_query, execute_query_single
-from agents.common.database import get_db_connection as get_pooled_connection
+from database.utils.migrated_database_utils import create_database_service
 
 # Import tools
 from agents.memory.tools import get_embedding_model, log_feedback, save_article
@@ -41,15 +40,16 @@ class MemoryEngine:
 
     def __init__(self):
         self.db_initialized = False
+        self.db_service = None
         self.embedding_model = None
 
     async def initialize(self):
         """Initialize the memory engine"""
         try:
-            # Initialize database connection pool
-            initialize_connection_pool()
+            # Initialize migrated database service
+            self.db_service = create_database_service()
             self.db_initialized = True
-            logger.info("Database connection pool initialized for memory engine")
+            logger.info("Migrated database service initialized for memory engine")
 
             # Pre-warm embedding model
             self.embedding_model = get_embedding_model()
@@ -62,11 +62,12 @@ class MemoryEngine:
     async def shutdown(self):
         """Shutdown the memory engine"""
         try:
-            if self.db_initialized:
-                close_connection_pool()
-                logger.info("Database connection pool closed in memory engine")
+            if self.db_initialized and self.db_service:
+                self.db_service.close()
+                logger.info("Migrated database service closed in memory engine")
 
-            # Clear embedding model reference
+            # Clear references
+            self.db_service = None
             self.embedding_model = None
 
         except Exception as e:
@@ -85,11 +86,21 @@ class MemoryEngine:
     def get_article(self, article_id: int) -> Optional[dict]:
         """Retrieves an article from the database by its ID"""
         try:
-            article = execute_query_single(
-                "SELECT id, content, metadata FROM articles WHERE id = %s",
-                (article_id,)
-            )
+            if not self.db_service:
+                return None
+
+            cursor = self.db_service.mb_conn.cursor(dictionary=True)
+            cursor.execute("SELECT id, content, metadata FROM articles WHERE id = %s", (article_id,))
+            article = cursor.fetchone()
+            cursor.close()
+
             if article:
+                # Parse metadata JSON if it's a string
+                if isinstance(article.get("metadata"), str):
+                    try:
+                        article["metadata"] = json.loads(article["metadata"])
+                    except Exception:
+                        pass
                 return article
             else:
                 return None
@@ -100,7 +111,14 @@ class MemoryEngine:
     def get_all_article_ids(self) -> dict:
         """Retrieves all article IDs from the database"""
         try:
-            rows = execute_query("SELECT id FROM articles")
+            if not self.db_service:
+                return {"article_ids": []}
+
+            cursor = self.db_service.mb_conn.cursor(dictionary=True)
+            cursor.execute("SELECT id FROM articles")
+            rows = cursor.fetchall()
+            cursor.close()
+
             if rows:
                 article_ids = [row['id'] for row in rows]
                 logger.info(f"Found {len(article_ids)} article IDs")
@@ -115,11 +133,16 @@ class MemoryEngine:
     def get_recent_articles(self, limit: int = 10) -> list:
         """Returns the most recent articles"""
         try:
-            # Fetch most recent articles by id (no created_at column guaranteed)
-            rows = execute_query(
+            if not self.db_service:
+                return []
+
+            cursor = self.db_service.mb_conn.cursor(dictionary=True)
+            cursor.execute(
                 "SELECT id, content, metadata FROM articles ORDER BY id DESC LIMIT %s",
                 (limit,)
-            ) or []
+            )
+            rows = cursor.fetchall()
+            cursor.close()
 
             # Ensure JSON-serializable metadata
             for r in rows:
@@ -138,12 +161,17 @@ class MemoryEngine:
     def log_training_example(self, task: str, input_data: dict, output_data: dict, critique: str) -> dict:
         """Logs a training example to the database"""
         try:
+            if not self.db_service:
+                return {"error": "database_not_initialized"}
+
             # Insert training example
-            execute_query(
+            cursor = self.db_service.mb_conn.cursor()
+            cursor.execute(
                 "INSERT INTO training_examples (task, input, output, critique) VALUES (%s, %s, %s, %s)",
-                (task, json.dumps(input_data), json.dumps(output_data), critique),
-                fetch=False
+                (task, json.dumps(input_data), json.dumps(output_data), critique)
             )
+            self.db_service.mb_conn.commit()
+            cursor.close()
 
             log_feedback("log_training_example", {
                 "task": task,
@@ -183,6 +211,15 @@ class MemoryEngine:
             if not article_payload:
                 raise ValueError("Missing article_payload")
 
+            article_payload = make_json_safe(article_payload)
+            if not isinstance(article_payload, dict):
+                article_payload = {"value": article_payload}
+
+            statements = statements or []
+            statements = make_json_safe(statements)
+            if not isinstance(statements, list):
+                statements = [statements]
+
             logger.info(f"Ingesting article: {article_payload.get('url')}")
 
             # Execute statements transactionally
@@ -193,12 +230,18 @@ class MemoryEngine:
                         # Execute each statement - the crawler builds the right SQL
                         if "RETURNING id" in sql.upper():
                             # For statements that return IDs (like source upsert)
-                            result = execute_query_single(sql, tuple(params))
+                            cursor = self.db_service.mb_conn.cursor(dictionary=True)
+                            cursor.execute(sql, tuple(params))
+                            result = cursor.fetchone()
+                            cursor.close()
                             if result and 'id' in result:
                                 chosen_source_id = result['id']
                         else:
                             # For regular inserts
-                            execute_query(sql, tuple(params), fetch=False)
+                            cursor = self.db_service.mb_conn.cursor()
+                            cursor.execute(sql, tuple(params))
+                            self.db_service.mb_conn.commit()
+                            cursor.close()
                     except Exception as stmt_e:
                         # Handle duplicate key errors for sources gracefully
                         if "unique constraint" in str(stmt_e).lower() or "duplicate key" in str(stmt_e).lower():
@@ -207,7 +250,10 @@ class MemoryEngine:
                             if "sources" in sql and "domain" in str(params):
                                 domain = params[1] if len(params) > 1 else None
                                 if domain:
-                                    existing_source = execute_query_single("SELECT id FROM sources WHERE domain = %s", (domain,))
+                                    cursor = self.db_service.mb_conn.cursor(dictionary=True)
+                                    cursor.execute("SELECT id FROM sources WHERE domain = %s", (domain,))
+                                    existing_source = cursor.fetchone()
+                                    cursor.close()
                                     if existing_source:
                                         chosen_source_id = existing_source['id']
                                         logger.debug(f"Using existing source ID: {chosen_source_id}")
@@ -224,15 +270,30 @@ class MemoryEngine:
                 content = article_payload.get("content", "")
                 metadata = {
                     "url": article_payload.get("url"),
+                    "normalized_url": article_payload.get("normalized_url"),
                     "title": article_payload.get("title"),
+                    "summary": article_payload.get("summary"),
+                    "analyzed": article_payload.get("analyzed", False),
                     "domain": article_payload.get("domain"),
                     "publisher_meta": article_payload.get("publisher_meta", {}),
                     "confidence": article_payload.get("confidence", 0.5),
                     "paywall_flag": article_payload.get("paywall_flag", False),
                     "extraction_metadata": article_payload.get("extraction_metadata", {}),
+                    "structured_metadata": article_payload.get("structured_metadata", {}),
                     "timestamp": article_payload.get("timestamp"),
                     "url_hash": article_payload.get("url_hash"),
+                    "url_hash_algorithm": article_payload.get("url_hash_algorithm"),
                     "canonical": article_payload.get("canonical"),
+                    "language": article_payload.get("language"),
+                    "authors": article_payload.get("authors", []),
+                    "section": article_payload.get("section"),
+                    "tags": article_payload.get("tags", []),
+                    "publication_date": article_payload.get("publication_date"),
+                    "raw_html_ref": article_payload.get("raw_html_ref"),
+                    "needs_review": article_payload.get("needs_review", False),
+                    "review_reasons": article_payload.get("review_reasons", []),
+                    "source_id": chosen_source_id,
+                    "disable_dedupe": article_payload.get("disable_dedupe"),
                 }
 
                 if content:  # Only save if there's actual content
@@ -270,7 +331,14 @@ class MemoryEngine:
     def get_article_count(self) -> int:
         """Get total count of articles in database"""
         try:
-            result = execute_query_single("SELECT COUNT(*) as count FROM articles")
+            if not self.db_service:
+                return 0
+
+            cursor = self.db_service.mb_conn.cursor(dictionary=True)
+            cursor.execute("SELECT COUNT(*) as count FROM articles")
+            result = cursor.fetchone()
+            cursor.close()
+
             return result.get("count", 0) if result else 0
         except Exception as e:
             logger.error(f"Error getting article count: {e}")
@@ -279,10 +347,17 @@ class MemoryEngine:
     def get_sources(self, limit: int = 10) -> list:
         """Get list of sources from the database"""
         try:
-            sources = execute_query(
+            if not self.db_service:
+                return []
+
+            cursor = self.db_service.mb_conn.cursor(dictionary=True)
+            cursor.execute(
                 "SELECT id, url, domain, name, description, country, language FROM sources ORDER BY id LIMIT %s",
                 (limit,)
             )
+            sources = cursor.fetchall()
+            cursor.close()
+
             return sources or []
         except Exception as e:
             logger.error(f"Error getting sources: {e}")

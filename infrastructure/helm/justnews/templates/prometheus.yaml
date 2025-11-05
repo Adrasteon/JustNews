@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "justnews.fullname" . }}-prometheus
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: prometheus
+    component: monitoring
+spec:
+  replicas: {{ .Values.prometheus.server.persistentVolume.enabled | ternary 1 1 }}
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+        component: monitoring
+    spec:
+      containers:
+      - name: prometheus
+        image: {{ .Values.prometheus.image.registry }}/{{ .Values.prometheus.image.repository }}:{{ .Values.prometheus.image.tag }}
+        imagePullPolicy: {{ include "justnews.imagePullPolicy" . }}
+        ports:
+        - containerPort: 9090
+          name: http
+        args:
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --storage.tsdb.path=/prometheus
+        - --web.console.libraries=/etc/prometheus/console_libraries
+        - --web.console.templates=/etc/prometheus/consoles
+        - --storage.tsdb.retention.time=200h
+        - --web.enable-lifecycle
+        volumeMounts:
+        - name: prometheus-config
+          mountPath: /etc/prometheus
+        - name: prometheus-data
+          mountPath: /prometheus
+        resources:
+          limits:
+            cpu: {{ .Values.prometheus.server.resources.limits.cpu }}
+            memory: {{ .Values.prometheus.server.resources.limits.memory }}
+          requests:
+            cpu: {{ .Values.prometheus.server.resources.requests.cpu }}
+            memory: {{ .Values.prometheus.server.resources.requests.memory }}
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: 9090
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: 9090
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: prometheus-config
+        configMap:
+          name: {{ include "justnews.fullname" . }}-prometheus-config
+      - name: prometheus-data
+        persistentVolumeClaim:
+          claimName: {{ include "justnews.fullname" . }}-prometheus-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "justnews.fullname" . }}-prometheus
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: prometheus
+    component: monitoring
+spec:
+  selector:
+    app: prometheus
+  ports:
+  - port: 9090
+    targetPort: 9090
+    name: http
+  type: ClusterIP

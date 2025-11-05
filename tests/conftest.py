@@ -33,8 +33,11 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 
-# Add project root to path for clean imports
-project_root = Path(__file__).parent.parent.parent
+# Add the repository root to sys.path so project packages import cleanly regardless
+# of how pytest is launched (e.g. via `conda run`). The previous logic walked one
+# directory too far up and missed the actual repo root, so imports like
+# `common.observability` would fail when PYTHONPATH was not manually set.
+project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 # Import common utilities

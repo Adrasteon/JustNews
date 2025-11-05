@@ -1,0 +1,82 @@
+{{- define "justnews.agent.deployment" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "justnews.fullname" . }}-{{ include "justnews.agentName" . }}
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: {{ include "justnews.agentName" . }}
+    component: agent
+    gpu-required: {{ .agent.gpuRequired | quote }}
+spec:
+  replicas: {{ .agent.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "justnews.agentName" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "justnews.agentName" . }}
+        component: agent
+        gpu-required: {{ .agent.gpuRequired | quote }}
+    spec:
+      {{- if .Values.justnews.serviceAccount.create }}
+      serviceAccountName: {{ include "justnews.serviceAccountName" . }}
+      {{- end }}
+      containers:
+      - name: {{ include "justnews.agentName" . }}
+        image: busybox:latest
+        command: ["sh", "-c", "echo 'Agent {{ .agent.name }} starting...' && sleep 3600"]
+        imagePullPolicy: {{ include "justnews.imagePullPolicy" . }}
+        ports:
+        - containerPort: {{ .agent.port }}
+          name: http
+        envFrom:
+        - configMapRef:
+            name: {{ include "justnews.fullname" . }}-config
+        - secretRef:
+            name: {{ include "justnews.fullname" . }}-secrets
+        env:
+        - name: AGENT_NAME
+          value: "{{ .agent.name }}"
+        - name: AGENT_PORT
+          value: "{{ .agent.port }}"
+        resources:
+          limits:
+            cpu: {{ .Values.justnews.resources.limits.cpu }}
+            memory: {{ .Values.justnews.resources.limits.memory }}
+            {{- if and .Values.justnews.gpu.enabled .agent.gpuRequired }}
+            nvidia.com/gpu: {{ .Values.justnews.gpu.resourceCount | quote }}
+            {{- end }}
+          requests:
+            cpu: {{ .Values.justnews.resources.requests.cpu }}
+            memory: {{ .Values.justnews.resources.requests.memory }}
+            {{- if and .Values.justnews.gpu.enabled .agent.gpuRequired }}
+            nvidia.com/gpu: {{ .Values.justnews.gpu.resourceCount | quote }}
+            {{- end }}
+      {{- if .agent.gpuRequired }}
+      nodeSelector:
+        accelerator: nvidia-tesla-k80
+      tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "justnews.agentName" . }}-service
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: {{ include "justnews.agentName" . }}
+    component: agent
+spec:
+  selector:
+    app: {{ include "justnews.agentName" . }}
+  ports:
+  - port: {{ .agent.port }}
+    targetPort: http
+    name: http
+  type: ClusterIP
+{{- end -}}

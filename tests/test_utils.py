@@ -140,7 +140,8 @@ class MockFactory:
                         "data": {
                             "sentiment": "neutral",
                             "confidence": 0.85,
-                            "scores": {"positive": 0.3, "neutral": 0.5, "negative": 0.2}
+                            "scores": {"positive": 0.3, "neutral": 0.5, "negative": 0.2},
+                            "result": "mock_analyst_analyze_sentiment_result"
                         },
                         "processing_time": 0.1
                     }
@@ -150,7 +151,8 @@ class MockFactory:
                         "data": {
                             "entities": ["technology", "advancements", "innovation"],
                             "confidence": 0.88,
-                            "entity_types": ["NOUN", "NOUN", "NOUN"]
+                            "entity_types": ["NOUN", "NOUN", "NOUN"],
+                            "result": "mock_analyst_extract_entities_result"
                         },
                         "processing_time": 0.12
                     }
@@ -160,7 +162,8 @@ class MockFactory:
                         "data": {
                             "verdict": "verified",
                             "confidence": 0.92,
-                            "sources_checked": 3
+                            "sources_checked": 3,
+                            "result": "mock_fact_checker_verify_facts_result"
                         },
                         "processing_time": 0.15
                     }
@@ -170,7 +173,8 @@ class MockFactory:
                         "data": {
                             "credibility_score": 0.85,
                             "rating": "high",
-                            "factors": ["reputable_source", "fact_checking_history"]
+                            "factors": ["reputable_source", "fact_checking_history"],
+                            "result": "mock_fact_checker_assess_credibility_result"
                         },
                         "processing_time": 0.08
                     }
@@ -180,7 +184,8 @@ class MockFactory:
                         "data": {
                             "summary": "This is a mock synthesized summary of the provided articles.",
                             "word_count": 12,
-                            "topics_covered": ["technology", "news"]
+                            "topics_covered": ["technology", "news"],
+                            "result": "mock_synthesizer_synthesize_summary_result"
                         },
                         "processing_time": 0.2
                     }
@@ -190,7 +195,8 @@ class MockFactory:
                         "data": {
                             "topics": ["technology", "innovation", "advancements"],
                             "topic_weights": [0.4, 0.3, 0.3],
-                            "confidence": 0.76
+                            "confidence": 0.76,
+                            "result": "mock_synthesizer_extract_topics_result"
                         },
                         "processing_time": 0.18
                     }

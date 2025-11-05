@@ -992,14 +992,14 @@ Update frequency: Real-time
 
         async function loadSystemStats() {
             try {
-                // Load system statistics
-                const response = await fetch('/api/public/stats');
+                // Load system statistics from our search API
+                const response = await fetch('/api/public/search/stats');
                 if (response.ok) {
                     const stats = await response.json();
                     document.getElementById('totalArticles').textContent = stats.total_articles?.toLocaleString() || '0';
-                    document.getElementById('sourcesTracked').textContent = stats.sources_tracked?.toLocaleString() || '0';
-                    document.getElementById('accuracyRate').textContent = stats.accuracy_rate || '95%';
-                    document.getElementById('dailyUpdates').textContent = (stats.daily_updates || 500) + '+';
+                    document.getElementById('sourcesTracked').textContent = stats.total_sources?.toLocaleString() || '0';
+                    document.getElementById('accuracyRate').textContent = '95%'; // Static for now
+                    document.getElementById('dailyUpdates').textContent = '500+'; // Static for now
                 }
             } catch (error) {
                 console.error('Error loading system stats:', error);
@@ -1008,31 +1008,36 @@ Update frequency: Real-time
 
         async function loadArticles(page = 1, append = false) {
             try {
-                const params = new URLSearchParams({
-                    page: page,
-                    filter: currentFilter,
-                    search: searchQuery,
-                    sort: sortOrder,
-                    limit: 10
-                });
+                // Use semantic search for articles
+                let apiUrl;
+                let params = new URLSearchParams();
 
-                const response = await fetch(`/api/public/articles?${params}`);
+                if (searchQuery) {
+                    // Use semantic search when there's a query
+                    apiUrl = '/api/public/search/semantic';
+                    params.set('q', searchQuery);
+                    params.set('n', '10');
+                } else {
+                    // Use recent articles when no search query
+                    apiUrl = '/api/public/search/recent';
+                    params.set('n', '10');
+                }
+
+                const response = await fetch(`${apiUrl}?${params}`);
                 if (response.ok) {
                     const data = await response.json();
-                    displayArticles(data.articles, append);
-
-                    // Update load more button
-                    const loadMoreBtn = document.getElementById('loadMoreBtn');
-                    if (data.has_more) {
-                        loadMoreBtn.style.display = 'block';
-                        currentPage = page;
-                    } else {
-                        loadMoreBtn.style.display = 'none';
+                    displayArticles(data.results || [], append);
+                } else {
+                    console.error('API response not ok:', response.status);
+                    if (!append) {
+                        document.getElementById('newsFeed').innerHTML = '<p class="text-center text-muted">Unable to load articles. Please try again later.</p>';
                     }
                 }
             } catch (error) {
                 console.error('Error loading articles:', error);
-                document.getElementById('newsFeed').innerHTML = '<p class="text-center text-muted">Unable to load articles. Please try again later.</p>';
+                if (!append) {
+                    document.getElementById('newsFeed').innerHTML = '<p class="text-center text-muted">Unable to load articles. Please try again later.</p>';
+                }
             }
         }
 
@@ -1057,41 +1062,60 @@ Update frequency: Real-time
         }
 
         function createArticleHTML(article) {
-            const sentimentClass = getSentimentClass(article.sentiment_score);
-            const credibilityClass = getCredibilityClass(article.source_credibility);
-            const sourceClass = getSourceClass(article.source_reliability);
+            // Map SearchResult fields to expected format
+            const mappedArticle = {
+                id: article.article_id,
+                title: article.title,
+                content: article.content,
+                summary: article.content.substring(0, 200) + '...',
+                source: article.source_name,
+                published_date: article.published_date,
+                topics: [], // Not available in SearchResult
+                source_credibility: 85, // Default credibility score
+                source_reliability: 'medium', // Default reliability
+                sentiment_score: 0, // Neutral sentiment
+                fact_check_score: 80, // Default fact check score
+                bias_score: 0, // Neutral bias
+                emotional_tone: 'Neutral',
+                readability_score: 'Standard',
+                comment_count: 0
+            };
+
+            const sentimentClass = getSentimentClass(mappedArticle.sentiment_score);
+            const credibilityClass = getCredibilityClass(mappedArticle.source_credibility);
+            const sourceClass = getSourceClass(mappedArticle.source_reliability);
 
             return `
                 <div class="article-card">
                     <div class="article-header">
                         <h2 class="article-title">
-                            <a href="/article/${article.id}">${article.title}</a>
+                            <a href="/article/${mappedArticle.id}">${mappedArticle.title}</a>
                         </h2>
                         <div class="article-meta">
                             <span class="source-badge ${sourceClass}">
                                 <i class="bi bi-globe"></i>
-                                ${article.source}
+                                ${mappedArticle.source}
                             </span>
                             <span class="credibility-score ${credibilityClass}">
                                 <i class="bi bi-shield-check"></i>
-                                ${article.source_credibility}/100
+                                ${mappedArticle.source_credibility}/100
                             </span>
                             <span class="sentiment-indicator ${sentimentClass}">
-                                <i class="bi ${getSentimentIcon(article.sentiment_score)}"></i>
-                                ${getSentimentLabel(article.sentiment_score)}
+                                <i class="bi ${getSentimentIcon(mappedArticle.sentiment_score)}"></i>
+                                ${getSentimentLabel(mappedArticle.sentiment_score)}
                             </span>
                             <span>
                                 <i class="bi bi-clock"></i>
-                                ${formatDate(article.published_date)}
+                                ${formatDate(mappedArticle.published_date)}
                             </span>
                         </div>
                         <div class="article-tags">
-                            ${article.topics?.map(topic => `<span class="tag">${topic}</span>`).join('') || ''}
+                            ${mappedArticle.topics?.map(topic => `<span class="tag">${topic}</span>`).join('') || ''}
                         </div>
                     </div>
 
                     <div class="article-content">
-                        <p class="article-summary">${article.summary || article.content?.substring(0, 200) + '...'}</p>
+                        <p class="article-summary">${mappedArticle.summary}</p>
 
                         <div class="analysis-panel">
                             <div class="analysis-header">
@@ -1100,27 +1124,27 @@ Update frequency: Real-time
                             </div>
                             <div class="analysis-grid">
                                 <div class="analysis-item">
-                                    <div class="analysis-label">Fact Check Score</div>
-                                    <div class="analysis-value ${getScoreColor(article.fact_check_score)}">
-                                        ${article.fact_check_score || 0}/100
+                                    <div class="analysis-label">Similarity Score</div>
+                                    <div class="analysis-value text-primary">
+                                        ${(article.similarity_score * 100).toFixed(1)}%
                                     </div>
                                 </div>
                                 <div class="analysis-item">
-                                    <div class="analysis-label">Bias Level</div>
-                                    <div class="analysis-value ${getBiasColor(article.bias_score)}">
-                                        ${getBiasLabel(article.bias_score)}
+                                    <div class="analysis-label">Fact Check Score</div>
+                                    <div class="analysis-value ${getScoreColor(mappedArticle.fact_check_score)}">
+                                        ${mappedArticle.fact_check_score}/100
                                     </div>
                                 </div>
                                 <div class="analysis-item">
                                     <div class="analysis-label">Emotional Tone</div>
                                     <div class="analysis-value">
-                                        ${article.emotional_tone || 'Neutral'}
+                                        ${mappedArticle.emotional_tone}
                                     </div>
                                 </div>
                                 <div class="analysis-item">
                                     <div class="analysis-label">Readability</div>
                                     <div class="analysis-value">
-                                        ${article.readability_score || 'N/A'}
+                                        ${mappedArticle.readability_score}
                                     </div>
                                 </div>
                             </div>
@@ -1129,22 +1153,22 @@ Update frequency: Real-time
 
                     <div class="article-footer">
                         <div class="article-actions">
-                            <a href="/article/${article.id}" class="action-btn btn-primary">
+                            <a href="/article/${mappedArticle.id}" class="action-btn btn-primary">
                                 <i class="bi bi-eye"></i>
                                 Read Full Article
                             </a>
-                            <button class="action-btn btn-outline" onclick="shareArticle('${article.id}')">
+                            <button class="action-btn btn-outline" onclick="shareArticle('${mappedArticle.id}')">
                                 <i class="bi bi-share"></i>
                                 Share
                             </button>
-                            <button class="action-btn btn-outline" onclick="bookmarkArticle('${article.id}')">
+                            <button class="action-btn btn-outline" onclick="bookmarkArticle('${mappedArticle.id}')">
                                 <i class="bi bi-bookmark"></i>
                                 Save
                             </button>
                         </div>
                         <div class="article-stats">
                             <small class="text-muted">
-                                <i class="bi bi-chat-dots"></i> ${article.comment_count || 0} comments
+                                <i class="bi bi-chat-dots"></i> ${mappedArticle.comment_count} comments
                             </small>
                         </div>
                     </div>

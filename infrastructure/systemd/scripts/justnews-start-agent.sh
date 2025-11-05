@@ -19,7 +19,7 @@ resolve_project_root() {
     # Helper: consider a directory a valid repo root only if it contains expected agent folders
     _is_valid_root() {
         local root="$1"
-        [[ -d "$root/agents" ]] && [[ -d "$root/agents/gpu_orchestrator" ]] && [[ -d "$root/deploy" ]]
+        [[ -d "$root/agents" ]] && [[ -d "$root/agents/gpu_orchestrator" ]] && [[ -d "$root/infrastructure/systemd" ]]
     }
 
     local cwd; cwd="$(pwd)"
@@ -38,17 +38,20 @@ resolve_project_root() {
         if _is_valid_root "$SERVICE_DIR/JustNewsAgent"; then
             echo "$SERVICE_DIR/JustNewsAgent"; return 0
         fi
+        if _is_valid_root "$SERVICE_DIR/JustNewsAgent-Clean"; then
+            echo "$SERVICE_DIR/JustNewsAgent-Clean"; return 0
+        fi
     fi
 
     # Try two levels up from this script (useful when running from repo, not after install)
     local script_dir; script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local candidate; candidate="$(cd "$script_dir/../.." && pwd)"
+    local candidate; candidate="$(cd "$script_dir/../../.." && pwd)"
     if _is_valid_root "$candidate"; then
         echo "$candidate"; return 0
     fi
 
     # Final fallback: known path on this machine
-    echo "/home/adra/justnewsagent/JustNewsAgent"; return 0
+    echo "/home/adra/JustNewsAgent-Clean"; return 0
 }
 
 PROJECT_ROOT="$(resolve_project_root)"
@@ -84,7 +87,7 @@ validate_agent_name() {
     if [[ -z "$agent" ]]; then
         log_error "Agent name is required"
         log_info "Usage: $SCRIPT_NAME <agent_name>"
-    log_info "Available agents: mcp_bus, chief_editor, scout, fact_checker, analyst, synthesizer, critic, memory, reasoning, newsreader, dashboard, analytics, balancer, archive, gpu_orchestrator, crawler, crawler_control"
+        log_info "Available agents: mcp_bus, chief_editor, scout, fact_checker, analyst, synthesizer, critic, memory, reasoning, newsreader, dashboard, analytics, balancer, archive, gpu_orchestrator, crawler, crawler_control"
         exit 1
     fi
 
@@ -208,8 +211,8 @@ wait_for_dependencies() {
     if [[ "${REQUIRE_BUS:-1}" != "0" && "$agent" != "mcp_bus" && "$agent" != "gpu_orchestrator" ]]; then
         log_info "Waiting for MCP Bus dependency..."
 
-        if [[ -x "$PROJECT_ROOT/deploy/systemd/wait_for_mcp.sh" ]]; then
-            if ! "$PROJECT_ROOT/deploy/systemd/wait_for_mcp.sh" -q; then
+        if [[ -x "$PROJECT_ROOT/infrastructure/systemd/scripts/wait_for_mcp.sh" ]]; then
+            if ! "$PROJECT_ROOT/infrastructure/systemd/scripts/wait_for_mcp.sh" -q; then
                 log_error "Failed to connect to MCP Bus"
                 exit 1
             fi
@@ -256,7 +259,7 @@ check_python_deps_and_exit_if_missing() {
         fi
     fi
     if [[ -z "$py_cmd" ]]; then
-        local py="${PYTHON_BIN:-/opt/justnews/venv/bin/python}"
+    local py="${PYTHON_BIN:-/home/adra/miniconda3/envs/justnews-v2-py312/bin/python}"
         if [[ ! -x "$py" ]]; then
             py="$(command -v python3 || command -v python || true)"
         fi
@@ -274,14 +277,44 @@ check_python_deps_and_exit_if_missing() {
     fi
 
     local modules_var="${modules[*]}"
-    local missing
-    missing=$(eval "$py_cmd - <<PYCODE 2>/dev/null
-import importlib, sys
-mods = \"${modules_var}\".split()
-missing = [m for m in mods if importlib.util.find_spec(m) is None]
+    local missing=""
+
+    # Split the interpreter command for safe invocation (supports values like "conda run -n env python")
+    local -a py_parts
+    local IFS=' '
+    read -r -a py_parts <<< "$py_cmd"
+    if [[ ${#py_parts[@]} -eq 0 ]]; then
+        log_error "Unable to resolve python command for dependency probe"
+        exit 1
+    fi
+
+    # Run the dependency probe while suppressing errors from terminating the script under set -e
+    set +e
+    local probe_output
+    probe_output="$(
+        "${py_parts[@]}" - <<PYCODE 2>/dev/null
+import sys
+import importlib.util
+
+mods = "${modules_var}".split()
+missing = []
+for name in mods:
+    try:
+        if importlib.util.find_spec(name) is None:
+            missing.append(name)
+    except Exception:
+        missing.append(name)
+
 sys.stdout.write(' '.join(missing))
 PYCODE
-")
+    )"
+    local probe_status=$?
+    set -e
+
+    if [[ $probe_status -ne 0 ]]; then
+        log_warning "Dependency probe encountered an error (status=$probe_status); continuing"
+    fi
+    missing="$probe_output"
 
     if [[ -n "$missing" ]]; then
         log_error "Missing python modules for agent '$agent': $missing"
@@ -316,23 +349,32 @@ start_agent() {
     else
         py_interpreter="${PYTHON_BIN:-python3}"
     fi
-    if ! command -v $(echo "$py_interpreter" | awk '{print $1}') >/dev/null 2>&1; then
+    local -a py_cmd_parts
+    local IFS=' '
+    read -r -a py_cmd_parts <<< "$py_interpreter"
+    if [[ ${#py_cmd_parts[@]} -eq 0 ]]; then
+        log_error "Resolved Python command is empty"
+        exit 1
+    fi
+    local py_executable="${py_cmd_parts[0]}"
+    if ! command -v "$py_executable" >/dev/null 2>&1; then
         log_warning "Configured PYTHON_BIN not found (PYTHON_BIN='${PYTHON_BIN:-}'), falling back to 'python3'"
-        py_interpreter="python3"
+        py_cmd_parts=("python3")
+        py_executable="python3"
     fi
     local cmd
     if [[ "$agent" == "gpu_orchestrator" ]]; then
         # Prefer uvicorn runner for orchestrator for clearer server logs and binding
         local port="${GPU_ORCHESTRATOR_PORT:-8014}"
-        if $py_interpreter -c "import uvicorn" >/dev/null 2>&1; then
-            cmd=("$py_interpreter" "-m" "uvicorn" "agents.gpu_orchestrator.main:app" "--host" "0.0.0.0" "--port" "$port" "--log-level" "info")
+        if "${py_cmd_parts[@]}" -c "import uvicorn" >/dev/null 2>&1; then
+            cmd=("${py_cmd_parts[@]}" "-m" "uvicorn" "agents.gpu_orchestrator.main:app" "--host" "0.0.0.0" "--port" "$port" "--log-level" "info")
             log_info "Using uvicorn runner on port $port"
         else
             log_warning "uvicorn not available; falling back to module runner"
-            cmd=("$py_interpreter" "-m" "agents.${agent}.main")
+            cmd=("${py_cmd_parts[@]}" "-m" "agents.${agent}.main")
         fi
     else
-        cmd=("$py_interpreter" "-m" "agents.${agent}.main")
+        cmd=("${py_cmd_parts[@]}" "-m" "agents.${agent}.main")
     fi
 
     # Add any additional arguments from environment
@@ -343,7 +385,7 @@ start_agent() {
     fi
 
     # Log the command (without sensitive info)
-    log_info "Using Python: $(command -v "$py_interpreter" || echo "$py_interpreter")"
+    log_info "Using Python: $(command -v "$py_executable" || echo "$py_executable")"
     log_info "Executing: ${cmd[*]}"
 
     # Execute the agent

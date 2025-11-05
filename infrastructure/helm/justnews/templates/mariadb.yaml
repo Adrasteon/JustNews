@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "justnews.fullname" . }}-mariadb
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: mariadb
+    component: database
+spec:
+  replicas: {{ .Values.mariadb.primary.persistence.enabled | ternary 1 1 }}
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+        component: database
+    spec:
+      containers:
+      - name: mariadb
+        image: {{ .Values.mariadb.image.registry }}/{{ .Values.mariadb.image.repository }}:{{ .Values.mariadb.image.tag }}
+        imagePullPolicy: {{ include "justnews.imagePullPolicy" . }}
+        ports:
+        - containerPort: 3306
+          name: mariadb
+        envFrom:
+        - secretRef:
+            name: {{ include "justnews.fullname" . }}-mariadb-secrets
+        volumeMounts:
+        - name: mariadb-data
+          mountPath: /var/lib/mysql
+        resources:
+          limits:
+            cpu: {{ .Values.mariadb.primary.resources.limits.cpu }}
+            memory: {{ .Values.mariadb.primary.resources.limits.memory }}
+          requests:
+            cpu: {{ .Values.mariadb.primary.resources.requests.cpu }}
+            memory: {{ .Values.mariadb.primary.resources.requests.memory }}
+        livenessProbe:
+          exec:
+            command:
+            - mysqladmin
+            - ping
+            - -h
+            - localhost
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          exec:
+            command:
+            - mysqladmin
+            - ping
+            - -h
+            - localhost
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: mariadb-data
+        persistentVolumeClaim:
+          claimName: {{ include "justnews.fullname" . }}-mariadb-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "justnews.fullname" . }}-mariadb
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: mariadb
+    component: database
+spec:
+  selector:
+    app: mariadb
+  ports:
+  - port: 3306
+    targetPort: 3306
+    name: mariadb
+  type: ClusterIP

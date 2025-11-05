@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 User=root
-ExecStart=/home/adra/justnewsagent/JustNewsAgent/deploy/systemd/scripts/justnews-boot-smoke.sh
+ExecStart=/usr/local/bin/justnews-boot-smoke.sh
 Nice=10
 IOSchedulingClass=best-effort
 

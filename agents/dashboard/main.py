@@ -10,6 +10,7 @@ import os
 import time
 from pathlib import Path
 from contextlib import asynccontextmanager
+from typing import Any
 
 import requests
 import uvicorn
@@ -19,15 +20,101 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from agents.common.observability import get_logger
-from agents.common.gpu_manager_production import GPU_MANAGER_AVAILABLE, get_gpu_manager
-from agents.common.config import load_config, save_config
-from agents.common.constants import PUBLIC_API_AVAILABLE, include_public_api
-from agents.common.metrics import JustNewsMetrics
+from common.observability import get_logger
+from common.metrics import JustNewsMetrics
+
+try:
+    from agents.common.gpu_manager_production import get_gpu_manager
+    GPU_MANAGER_AVAILABLE = True
+except Exception:  # pragma: no cover - GPU manager optional in some environments
+    GPU_MANAGER_AVAILABLE = False
+
+    def get_gpu_manager():  # type: ignore[override]
+        raise RuntimeError("GPU manager not available in this environment")
+
+try:
+    from config import get_config as _get_global_config, get_config_manager as _get_config_manager
+except Exception:  # pragma: no cover - unified config not available in this runtime
+    _get_global_config = None  # type: ignore[assignment]
+    _get_config_manager = None  # type: ignore[assignment]
+
+from .transparency_router import router as transparency_router
 
 from .dashboard_engine import dashboard_engine
 
 logger = get_logger(__name__)
+
+PUBLIC_API_AVAILABLE = os.getenv("JUSTNEWS_ENABLE_PUBLIC_API", "0").lower() in {"1", "true", "yes"}
+
+
+def include_public_api(app: FastAPI) -> None:
+    """Conditionally register public API routes for the dashboard agent."""
+    if not PUBLIC_API_AVAILABLE:
+        logger.debug("Public API disabled; skipping registration.")
+        return
+
+    try:
+        from agents.dashboard import public_api  # Local import to keep dependency optional
+
+        if hasattr(public_api, "include_public_api"):
+            public_api.include_public_api(app)
+            logger.info("Public API routes registered for dashboard agent.")
+        else:
+            logger.warning("Public API module missing include_public_api(); skipping registration.")
+    except ModuleNotFoundError:
+        logger.warning("Public API module not found; skipping registration.")
+
+
+def load_config() -> dict[str, Any]:
+    """Load dashboard configuration from the unified configuration system."""
+    if _get_global_config is None:
+        logger.debug("Unified configuration unavailable; using dashboard defaults.")
+        return {}
+
+    try:
+        unified = _get_global_config()
+        dashboard_port = getattr(getattr(unified.agents, "ports", None), "dashboard", 8014)
+        mcp_bus = getattr(unified, "mcp_bus", None)
+
+        if mcp_bus is not None:
+            base_url = getattr(mcp_bus, "url", None)
+            if base_url:
+                mcp_bus_url = str(base_url).rstrip("/")
+            else:
+                host = getattr(mcp_bus, "host", "localhost")
+                port = getattr(mcp_bus, "port", 8000)
+                mcp_bus_url = f"http://{host}:{port}"
+        else:
+            mcp_bus_url = "http://localhost:8000"
+
+        return {
+            "dashboard_port": dashboard_port,
+            "mcp_bus_url": mcp_bus_url,
+        }
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        logger.warning("Failed to load unified configuration for dashboard: %s", exc)
+        return {}
+
+
+def save_config(updated_config: dict[str, Any]) -> None:
+    """Persist dashboard-specific overrides when the unified configuration is available."""
+    if _get_config_manager is None:
+        logger.debug("No configuration manager available; skipping dashboard config persistence.")
+        return
+
+    try:
+        manager = _get_config_manager()
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        logger.warning("Failed to acquire configuration manager: %s", exc)
+        return
+
+    if "dashboard_port" in updated_config:
+        try:
+            manager.set("agents.ports.dashboard", int(updated_config["dashboard_port"]), persist=True)
+            logger.info("Persisted dashboard port override to unified configuration.")
+        except Exception as exc:  # pragma: no cover - defensive fallback
+            logger.warning("Unable to persist dashboard port: %s", exc)
+
 
 # Load configuration
 config = load_config()
@@ -99,6 +186,13 @@ app.add_middleware(
 static_path = Path(__file__).parent / "static"
 static_path.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+
+# Mount transparency and evidence audit endpoints
+app.include_router(transparency_router)
+
+# Include search API endpoints
+from .search_api import router as search_router
+app.include_router(search_router)
 
 # Include public API routes
 if PUBLIC_API_AVAILABLE:
@@ -556,6 +650,22 @@ async def get_crawl_status():
         raise HTTPException(status_code=500, detail=f"Failed to get crawl status: {str(e)}")
 
 
+@app.get("/api/crawl/scheduler")
+async def get_crawl_scheduler(include_runs: bool = True, history_limit: int = 20):
+    """Return the latest crawl scheduler snapshot with adaptive metrics."""
+
+    try:
+        snapshot = dashboard_engine.get_crawl_scheduler_snapshot(include_runs=include_runs)
+        if history_limit:
+            snapshot["history"] = dashboard_engine.get_crawl_scheduler_history(limit=history_limit)
+        else:
+            snapshot["history"] = []
+        return snapshot
+    except Exception as exc:
+        logger.error(f"Failed to load crawl scheduler snapshot: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed to load crawl scheduler snapshot: {exc}")
+
+
 @app.get("/api/metrics/crawler")
 async def get_crawler_metrics():
     """Get crawler performance metrics"""
@@ -866,7 +976,7 @@ def get_fallback_public_website_html():
 
 if __name__ == "__main__":
     host = os.environ.get("DASHBOARD_HOST", "0.0.0.0")
-    port = int(os.environ.get("DASHBOARD_PORT", 8013))
+    port = int(os.environ.get("DASHBOARD_PORT", DASHBOARD_AGENT_PORT))
 
     logger.info(f"Starting Dashboard Agent on {host}:{port}")
     uvicorn.run(app, host=host, port=port)

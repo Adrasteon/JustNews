@@ -23,9 +23,11 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 from common.observability import get_logger
+from common.metrics import JustNewsMetrics
 
 # Configure logging
 logger = get_logger(__name__)
@@ -118,6 +120,10 @@ app = FastAPI(
     title="JustNews V4 Reasoning Agent (Nucleoid)",
     description="Symbolic reasoning and fact validation for news analysis"
 )
+
+metrics = JustNewsMetrics("reasoning")
+
+app.middleware("http")(metrics.request_middleware)
 
 # Lifespan context manager
 @asynccontextmanager
@@ -652,8 +658,7 @@ async def ready():
 @app.get("/metrics")
 async def get_metrics():
     """Prometheus metrics endpoint."""
-    # Placeholder for metrics implementation
-    return {"status": "metrics_not_implemented"}
+    return Response(metrics.get_metrics(), media_type="text/plain; charset=utf-8")
 
 # MCP Bus integration
 @app.post("/call")

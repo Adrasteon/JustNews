@@ -1,18 +1,46 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: justnews-postgres
+  mariadb:
+    image: mariadb:10.11
+    container_name: justnews-mariadb
     environment:
-      POSTGRES_DB: justnews
-      POSTGRES_USER: justnews
-      POSTGRES_PASSWORD: change_me
+      MYSQL_ROOT_PASSWORD: change_me_root
+      MYSQL_DATABASE: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
     ports:
-      - "5432:5432"
+      - "3306:3306"
     networks:
       - justnews-network
     restart: unless-stopped
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./init-mariadb.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  chromadb:
+    image: chromadb/chroma:0.4.18
+    container_name: justnews-chromadb
+    ports:
+      - "8000:8000"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    volumes:
+      - chromadb_data:/chroma/chroma
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   redis:
     image: redis:7-alpine
@@ -26,15 +54,17 @@ services:
   mcp-bus:
     build:
       context: ../../
-      dockerfile: deploy/refactor/docker/Dockerfile.mcp-bus
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.mcp-bus
     container_name: justnews-mcp-bus
     environment:
       DEPLOY_ENV: development
       LOG_LEVEL: INFO
-      POSTGRES_HOST: postgres
-      POSTGRES_DB: justnews
-      POSTGRES_USER: justnews
-      POSTGRES_PASSWORD: change_me
+      MYSQL_HOST: mariadb
+      MYSQL_DB: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
       REDIS_HOST: redis
     ports:
       - "8000:8000"
@@ -42,11 +72,406 @@ services:
       - justnews-network
     restart: unless-stopped
     depends_on:
-      - postgres
-      - redis
+      mariadb:
+        condition: service_healthy
+      chromadb:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  scout:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.scout
+    container_name: justnews-scout
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      MYSQL_HOST: mariadb
+      MYSQL_DB: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      REDIS_HOST: redis
+      MCP_BUS_HOST: mcp-bus
+      MCP_BUS_PORT: 8000
+    ports:
+      - "8002:8002"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      mcp-bus:
+        condition: service_started
+
+  analyst:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.analyst
+    container_name: justnews-analyst
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      MYSQL_HOST: mariadb
+      MYSQL_DB: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      REDIS_HOST: redis
+      MCP_BUS_HOST: mcp-bus
+      MCP_BUS_PORT: 8000
+    ports:
+      - "8004:8004"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      mcp-bus:
+        condition: service_started
+
+  synthesizer:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.synthesizer
+    container_name: justnews-synthesizer
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      MYSQL_HOST: mariadb
+      MYSQL_DB: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      REDIS_HOST: redis
+      MCP_BUS_HOST: mcp-bus
+      MCP_BUS_PORT: 8000
+    ports:
+      - "8005:8005"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      mcp-bus:
+        condition: service_started
+
+  fact-checker:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.fact-checker
+    container_name: justnews-fact-checker
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      MYSQL_HOST: mariadb
+      MYSQL_DB: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      REDIS_HOST: redis
+      MCP_BUS_HOST: mcp-bus
+      MCP_BUS_PORT: 8000
+    ports:
+      - "8003:8003"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      mcp-bus:
+        condition: service_started
+
+  memory:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.memory
+    container_name: justnews-memory
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      MYSQL_HOST: mariadb
+      MYSQL_DB: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      REDIS_HOST: redis
+      MCP_BUS_HOST: mcp-bus
+      MCP_BUS_PORT: 8000
+    ports:
+      - "8007:8007"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      mcp-bus:
+        condition: service_started
+
+  chief-editor:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.chief-editor
+    container_name: justnews-chief-editor
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      MYSQL_HOST: mariadb
+      MYSQL_DB: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      REDIS_HOST: redis
+      MCP_BUS_HOST: mcp-bus
+      MCP_BUS_PORT: 8000
+    ports:
+      - "8001:8001"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      mcp-bus:
+        condition: service_started
+
+  reasoning:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.reasoning
+    container_name: justnews-reasoning
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      MYSQL_HOST: mariadb
+      MYSQL_DB: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      REDIS_HOST: redis
+      MCP_BUS_HOST: mcp-bus
+      MCP_BUS_PORT: 8000
+    ports:
+      - "8008:8008"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      mcp-bus:
+        condition: service_started
+
+  newsreader:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.newsreader
+    container_name: justnews-newsreader
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      MYSQL_HOST: mariadb
+      MYSQL_DB: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      REDIS_HOST: redis
+      MCP_BUS_HOST: mcp-bus
+      MCP_BUS_PORT: 8000
+    ports:
+      - "8009:8009"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      mcp-bus:
+        condition: service_started
+
+  critic:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.critic
+    container_name: justnews-critic
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      MYSQL_HOST: mariadb
+      MYSQL_DB: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      REDIS_HOST: redis
+      MCP_BUS_HOST: mcp-bus
+      MCP_BUS_PORT: 8000
+    ports:
+      - "8006:8006"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      mcp-bus:
+        condition: service_started
+
+  dashboard:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.dashboard
+    container_name: justnews-dashboard
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      MYSQL_HOST: mariadb
+      MYSQL_DB: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      REDIS_HOST: redis
+      MCP_BUS_HOST: mcp-bus
+      MCP_BUS_PORT: 8000
+    ports:
+      - "8013:8013"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      mcp-bus:
+        condition: service_started
+
+  analytics:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.analytics
+    container_name: justnews-analytics
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      MYSQL_HOST: mariadb
+      MYSQL_DB: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      REDIS_HOST: redis
+      MCP_BUS_HOST: mcp-bus
+      MCP_BUS_PORT: 8000
+    ports:
+      - "8011:8011"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      mcp-bus:
+        condition: service_started
+
+  archive:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.archive
+    container_name: justnews-archive
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      MYSQL_HOST: mariadb
+      MYSQL_DB: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      REDIS_HOST: redis
+      MCP_BUS_HOST: mcp-bus
+      MCP_BUS_PORT: 8000
+    ports:
+      - "8012:8012"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      mcp-bus:
+        condition: service_started
+
+  balancer:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.balancer
+    container_name: justnews-balancer
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      MYSQL_HOST: mariadb
+      MYSQL_DB: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      REDIS_HOST: redis
+      MCP_BUS_HOST: mcp-bus
+      MCP_BUS_PORT: 8000
+    ports:
+      - "8010:8010"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      mcp-bus:
+        condition: service_started
+
+  crawler:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.crawler
+    container_name: justnews-crawler
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      MYSQL_HOST: mariadb
+      MYSQL_DB: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      REDIS_HOST: redis
+      MCP_BUS_HOST: mcp-bus
+      MCP_BUS_PORT: 8000
+    ports:
+      - "8014:8014"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      mcp-bus:
+        condition: service_started
+
+  gpu-orchestrator:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.gpu-orchestrator
+    container_name: justnews-gpu-orchestrator
+    environment:
+      DEPLOY_ENV: development
+      LOG_LEVEL: INFO
+      MYSQL_HOST: mariadb
+      MYSQL_DB: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: change_me
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      REDIS_HOST: redis
+      MCP_BUS_HOST: mcp-bus
+      MCP_BUS_PORT: 8000
+    ports:
+      - "8015:8015"
+    networks:
+      - justnews-network
+    restart: unless-stopped
+    depends_on:
+      mcp-bus:
+        condition: service_started
 
 volumes:
-  postgres_data:
+  mariadb_data:
+  chromadb_data:
   redis_data:
 
 networks:

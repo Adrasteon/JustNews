@@ -173,7 +173,7 @@ justnews:
 
 # PostgreSQL configuration
 postgresql:
-  enabled: true
+  enabled: false
   image:
     registry: docker.io
     repository: postgres
@@ -196,6 +196,51 @@ postgresql:
       requests:
         cpu: 500m
         memory: 1Gi
+
+# MariaDB configuration
+mariadb:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: mariadb
+    tag: "10.11"
+  auth:
+    rootPassword: "change_me_in_production"
+    username: justnews
+    password: "change_me_in_production"
+    database: justnews
+  architecture: standalone
+  primary:
+    persistence:
+      enabled: true
+      size: 50Gi
+      storageClass: ""
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+
+# ChromaDB configuration
+chromadb:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: chromadb/chroma
+    tag: "0.4.18"
+  persistence:
+    enabled: true
+    size: 100Gi
+    storageClass: ""
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 4Gi
+    requests:
+      cpu: 500m
+      memory: 2Gi
 
 # Redis configuration
 redis:

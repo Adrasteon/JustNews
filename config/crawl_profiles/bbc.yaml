@@ -1,0 +1,74 @@
+version: 1
+profiles:
+  bbc_high_volume:
+    description: "High-volume Crawl4AI pass for BBC News"
+    engine: crawl4ai
+    mode: link_preview
+    domains:
+      - bbc.co.uk
+      - bbc.com
+    follow_internal_links: true
+    max_pages: 150
+    start_urls:
+      - "https://www.bbc.co.uk/news"
+      - "https://www.bbc.com/news"
+      - "https://www.bbc.co.uk/news/world"
+      - "https://www.bbc.co.uk/news/uk"
+      - "https://www.bbc.co.uk/news/business"
+      - "https://www.bbc.co.uk/news/politics"
+      - "https://www.bbc.co.uk/news/science_and_environment"
+      - "https://www.bbc.co.uk/news/technology"
+      - "https://www.bbc.co.uk/news/entertainment_arts"
+      - "https://www.bbc.co.uk/news/world/us_and_canada"
+      - "https://www.bbc.co.uk/news/world/asia"
+      - "https://www.bbc.co.uk/news/world/europe"
+      - "https://www.bbc.com/news/world"
+      - "https://www.bbc.com/news/uk"
+      - "https://www.bbc.com/news/business"
+      - "https://www.bbc.com/news/politics"
+      - "https://www.bbc.com/news/science_and_environment"
+      - "https://www.bbc.com/news/technology"
+      - "https://www.bbc.com/news/entertainment_and_arts"
+      - "https://www.bbc.com/news/world/us_and_canada"
+      - "https://www.bbc.com/news/world/asia"
+      - "https://www.bbc.com/news/world/europe"
+    run_config:
+      word_count_threshold: 70
+      exclude_external_links: true
+      remove_overlay_elements: true
+      process_iframes: false
+      table_score_threshold: 8
+    link_preview:
+      include_internal: true
+      include_external: false
+      max_links: 120
+      concurrency: 1
+      timeout: 15
+      query: "latest news"
+      score_threshold: 0.0
+      include_patterns:
+        - "/news/articles/"
+        - "/news/"
+      exclude_patterns:
+        - "/news/live/"
+        - "/news/av/"
+        - "/news/topics/"
+        - "/news/video"
+        - "/newsround/"
+        - "/sport/"
+        - "/weather/"
+        - "news/live/"
+        - "news/av/"
+        - "news/topics/"
+        - "news/video"
+        - "newsround/"
+        - "sport/"
+        - "weather/"
+        - "account.bbc.com"
+        - "session.bbc.co.uk"
+    extra:
+      query: "bbc latest headlines"
+      disable_dedupe: true
+      skip_seed_articles: true
+      strict_skip_seed_articles: true
+      require_article_like_url: true

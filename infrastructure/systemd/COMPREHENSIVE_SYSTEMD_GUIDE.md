@@ -327,7 +327,7 @@ Optional overrides live in `/etc/justnews/crawl_scheduler.env`:
 ```
 CRAWLER_AGENT_URL=http://127.0.0.1:8015
 CRAWL_SCHEDULE_PATH=/etc/justnews/crawl_schedule.yaml
-CRAWL_PROFILE_PATH=/etc/justnews/crawl_profiles.yaml
+CRAWL_PROFILE_PATH=/etc/justnews/crawl_profiles
 CRAWL_SCHEDULER_METRICS=/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom
 CRAWL_SCHEDULER_STATE=/var/log/justnews/crawl_scheduler_state.json
 CRAWL_SCHEDULER_SUCCESS=/var/log/justnews/crawl_scheduler_success.json
@@ -344,7 +344,7 @@ journalctl -u justnews-crawl-scheduler.service -e -n 200 -f
 Outputs land in the paths above; Prometheus gauges (`justnews_crawler_scheduler_*`) are emitted via the textfile target. For a dry run without touching the crawler agent:
 
 ```
-conda run -n justnews-v2-py312 python scripts/ops/run_crawl_schedule.py --dry-run --profiles config/crawl_profiles.yaml
+conda run -n justnews-v2-py312 python scripts/ops/run_crawl_schedule.py --dry-run --profiles config/crawl_profiles
 ```
 
 Governance notes and rate-limit reviews belong in `logs/governance/crawl_terms_audit.md`.

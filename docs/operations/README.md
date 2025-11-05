@@ -21,13 +21,13 @@ This guide covers production deployment, scaling, and operational procedures for
 ### Staging Environment
 - **Purpose**: Integration testing and validation
 - **Components**: Kubernetes with 2-3 replicas
-- **Persistence**: PostgreSQL with test data
+- **Persistence**: MariaDB with test data
 - **Monitoring**: Prometheus/Grafana dashboards
 
 ### Production Environment
 - **Purpose**: Live system serving real traffic
 - **Components**: Kubernetes with auto-scaling
-- **Persistence**: PostgreSQL cluster with backups
+- **Persistence**: MariaDB cluster with backups
 - **Monitoring**: Full observability stack
 
 ## Prerequisites
@@ -44,7 +44,8 @@ This guide covers production deployment, scaling, and operational procedures for
 # Software requirements
 - Kubernetes 1.25+
 - NVIDIA GPU Operator
-- PostgreSQL 15+
+- MariaDB 10.11+
+- ChromaDB 0.4.18+
 - Redis 7+
 - Docker 24+
 ```
@@ -83,11 +84,19 @@ sudo mv linux-amd64/helm /usr/local/bin/
 # Create namespace
 kubectl create namespace justnews
 
-# Deploy PostgreSQL
+# Deploy MariaDB
 helm repo add bitnami https://charts.bitnami.com/bitnami
-helm install postgres bitnami/postgresql \
+helm install mariadb bitnami/mariadb \
   --namespace justnews \
-  --set auth.postgresPassword=your_password
+  --set auth.rootPassword=your_password \
+  --set auth.database=justnews \
+  --set auth.username=justnews \
+  --set auth.password=your_password
+
+# Deploy ChromaDB
+helm repo add chromadb https://chromadb.github.io/helm
+helm install chromadb chromadb/chromadb \
+  --namespace justnews
 
 # Deploy Redis
 helm install redis bitnami/redis \
@@ -114,7 +123,8 @@ kubectl get services -n justnews
 # Create secrets
 kubectl create secret generic justnews-secrets \
   --namespace justnews \
-  --from-literal=database-url=postgresql://... \
+  --from-literal=database-url=mysql://... \
+  --from-literal=chromadb-url=http://... \
   --from-literal=redis-url=redis://... \
   --from-literal=api-keys=...
 
@@ -289,8 +299,11 @@ open http://localhost:8013
 
 ### Database Backup
 ```bash
-# PostgreSQL backup
-pg_dump -h localhost -U justnews -d justnews_db > backup_$(date +%Y%m%d).sql
+# MariaDB backup
+mysqldump -h localhost -u justnews -p justnews_db > backup_$(date +%Y%m%d).sql
+
+# ChromaDB backup (copy data directory)
+cp -r /chroma/chroma /backup/chroma_$(date +%Y%m%d)
 
 # Automated backup script
 ./scripts/backup_database.sh
@@ -313,7 +326,7 @@ kubectl get all -n justnews -o yaml > k8s_backup.yaml
 kubectl scale deployment --all --replicas=0 -n justnews
 
 # Restore database
-psql -h localhost -U justnews -d justnews_db < backup_file.sql
+mysql -h localhost -u justnews -p justnews_db < backup_file.sql
 
 # Restart services
 kubectl scale deployment --all --replicas=1 -n justnews

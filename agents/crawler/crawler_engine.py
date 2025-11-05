@@ -10,10 +10,16 @@ import asyncio
 import json
 import os
 import time
+from collections.abc import Mapping, Sequence
 from typing import Any
 from urllib.parse import urlparse
 
 import requests
+
+try:
+    from lxml import etree as lxml_etree  # type: ignore[import-not-found]
+except ImportError:  # pragma: no cover
+    lxml_etree = None
 
 # Database imports
 from common.observability import get_logger
@@ -29,6 +35,7 @@ from ..sites.generic_site_crawler import (
     SiteConfig,
 )
 from .adaptive_metrics import summarise_adaptive_articles
+from common.json_utils import make_json_safe
 from .crawler_utils import (
     RateLimiter,
     RobotsChecker,
@@ -780,6 +787,7 @@ class CrawlerEngine:
                     'canonical': article.get('canonical'),
                     'needs_review': article.get('needs_review'),
                     'review_reasons': article.get('extraction_metadata', {}).get('review_reasons', []),
+                    'disable_dedupe': article.get('disable_dedupe'),
                 }
 
                 # Build SQL statements for source upsert and article insertion
@@ -804,18 +812,60 @@ class CrawlerEngine:
                     [source_sql, list(source_params)]
                 ]
 
+                safe_article_payload = make_json_safe(article_payload)
+
+                if lxml_etree is not None:
+                    def _find_non_jsonable(value: Any, path: str = "payload") -> str | None:
+                        if isinstance(value, (str, int, float, bool)) or value is None:
+                            return None
+                        if isinstance(value, bytes):
+                            return None
+                        if isinstance(value, Mapping):
+                            for key, val in value.items():
+                                found = _find_non_jsonable(val, f"{path}.{key}")
+                                if found:
+                                    return found
+                            return None
+                        if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+                            for index, item in enumerate(value):
+                                found = _find_non_jsonable(item, f"{path}[{index}]")
+                                if found:
+                                    return found
+                            return None
+                        if isinstance(value, set):
+                            for index, item in enumerate(value):
+                                found = _find_non_jsonable(item, f"{path}{{{index}}}")
+                                if found:
+                                    return found
+                            return None
+                        if hasattr(lxml_etree, "_Element") and isinstance(value, lxml_etree._Element):  # type: ignore[attr-defined]
+                            return path
+                        return None
+
+                    non_jsonable_path = _find_non_jsonable(safe_article_payload)
+                    if non_jsonable_path:
+                        logger.warning("Non-JSONable element present after sanitisation at %s", non_jsonable_path)
+
                 payload = {
                     'agent': 'memory',
                     'tool': 'ingest_article',
                     'args': [],
                     'kwargs': {
-                        'article_payload': article_payload,
+                        'article_payload': safe_article_payload,
                         'statements': statements
                     }
                 }
 
+                payload = make_json_safe(payload)
+                payload_json = json.dumps(payload, default=str)
+
                 # Make MCP bus call to memory agent
-                response = requests.post(f"{MCP_BUS_URL}/call", json=payload, timeout=(2, 10))
+                response = requests.post(
+                    f"{MCP_BUS_URL}/call",
+                    data=payload_json,
+                    headers={"Content-Type": "application/json"},
+                    timeout=(2, 10),
+                )
                 response.raise_for_status()
                 result = response.json()
 

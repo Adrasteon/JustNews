@@ -9,8 +9,8 @@
   },
   "mcp_bus": {
     "host": "localhost",
-    "port": 8000,
-    "url": "http://localhost:8000",
+    "port": 8017,
+    "url": "http://localhost:8017",
     "timeout_seconds": 30.0,
     "max_retries": 3,
     "retry_delay_seconds": 1.0
@@ -96,7 +96,7 @@
       "chief_editor": 8001,
       "memory": 8007,
       "reasoning": 8008,
-      "dashboard": 8013
+      "dashboard": 8014
     },
     "timeouts": {
       "agent_response_timeout_seconds": 300,

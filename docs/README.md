@@ -519,6 +519,13 @@ python docs/catalogue_maintenance.py --performance-report --profile
 - Preflight gating runbook: `../markdown_docs/agent_documentation/preflight_runbook.md`
 - Daily Ops Quick Reference: `../markdown_docs/agent_documentation/OPERATIONS_QUICK_REFERENCE.md`
 
+## 📊 Monitoring & Observability
+
+- **Systemd Monitoring Stack**: `operations/systemd-monitoring.md` - Complete monitoring setup and operations
+- **GPU Monitoring Guide**: `operations/gpu-monitoring.md` - Comprehensive GPU monitoring documentation
+- **Dashboard Quick Reference**: `operations/dashboard-quick-reference.md` - JustNews Operations Dashboard guide
+- **Monitoring Architecture**: `../monitoring/README.md` - Unified observability platform design
+
 ## See also
 
 - Technical Architecture: markdown_docs/TECHNICAL_ARCHITECTURE.md

@@ -277,14 +277,44 @@ check_python_deps_and_exit_if_missing() {
     fi
 
     local modules_var="${modules[*]}"
-    local missing
-    missing=$(eval "$py_cmd - <<PYCODE 2>/dev/null
-import importlib, sys
-mods = \"${modules_var}\".split()
-missing = [m for m in mods if importlib.util.find_spec(m) is None]
+    local missing=""
+
+    # Split the interpreter command for safe invocation (supports values like "conda run -n env python")
+    local -a py_parts
+    local IFS=' '
+    read -r -a py_parts <<< "$py_cmd"
+    if [[ ${#py_parts[@]} -eq 0 ]]; then
+        log_error "Unable to resolve python command for dependency probe"
+        exit 1
+    fi
+
+    # Run the dependency probe while suppressing errors from terminating the script under set -e
+    set +e
+    local probe_output
+    probe_output="$(
+        "${py_parts[@]}" - <<PYCODE 2>/dev/null
+import sys
+import importlib.util
+
+mods = "${modules_var}".split()
+missing = []
+for name in mods:
+    try:
+        if importlib.util.find_spec(name) is None:
+            missing.append(name)
+    except Exception:
+        missing.append(name)
+
 sys.stdout.write(' '.join(missing))
 PYCODE
-")
+    )"
+    local probe_status=$?
+    set -e
+
+    if [[ $probe_status -ne 0 ]]; then
+        log_warning "Dependency probe encountered an error (status=$probe_status); continuing"
+    fi
+    missing="$probe_output"
 
     if [[ -n "$missing" ]]; then
         log_error "Missing python modules for agent '$agent': $missing"

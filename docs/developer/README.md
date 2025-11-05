@@ -77,8 +77,8 @@ Each agent is a microservice with specific responsibilities:
 - **NVIDIA MPS**: GPU memory sharing and isolation
 
 #### Data Processing
-- **PostgreSQL**: Primary data storage with vector extensions
-- **pgvector**: Vector similarity search
+- **MariaDB**: Primary relational data storage
+- **ChromaDB**: Vector similarity search and embeddings
 - **Pandas/Polars**: Data manipulation and analysis
 - **NumPy**: Numerical computing
 

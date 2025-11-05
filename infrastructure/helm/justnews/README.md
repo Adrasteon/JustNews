@@ -73,9 +73,10 @@ justnews:
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `postgres.database` | PostgreSQL database name | `justnews` |
-| `postgres.auth.username` | PostgreSQL username | `justnews` |
-| `postgres.auth.password` | PostgreSQL password | Random |
+| `mariadb.database` | MariaDB database name | `justnews` |
+| `mariadb.auth.username` | MariaDB username | `justnews` |
+| `mariadb.auth.password` | MariaDB password | Random |
+| `chromadb.persistence.enabled` | Enable ChromaDB persistence | `true` |
 | `redis.auth.password` | Redis password | Random |
 
 ### Monitoring Configuration
@@ -111,7 +112,7 @@ justnews:
     replicas: 3
     gpuRequired: false
 
-postgres:
+mariadb:
   auth:
     password: "my-secret-password"
 
@@ -164,7 +165,8 @@ The chart supports:
 
 All stateful components include persistent volume claims:
 
-- PostgreSQL data
+- MariaDB data
+- ChromaDB data
 - Redis data
 - Prometheus metrics
 - Grafana dashboards and configuration
@@ -208,7 +210,7 @@ View logs for specific components:
 
 ```bash
 kubectl logs -l app=analyst
-kubectl logs -l app=postgres
+kubectl logs -l app=mariadb
 ```
 
 ### Monitoring

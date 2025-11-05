@@ -1,0 +1,431 @@
+"""
+Migrated Database Utilities - MariaDB + ChromaDB Support
+Updated utilities for the migrated JustNews database system
+
+Features:
+- MariaDB connection and operations
+- ChromaDB vector database integration
+- Semantic search capabilities
+- Backward compatibility with existing code
+"""
+
+import os
+import asyncio
+from typing import Any, Dict, Optional, List, Union
+from importlib import import_module
+
+import mysql.connector
+import chromadb
+from sentence_transformers import SentenceTransformer
+
+from common.observability import get_logger
+
+from database.models.migrated_models import MigratedDatabaseService
+
+logger = get_logger(__name__)
+
+
+def _get_compat_attr(name: str, default):
+    """Retrieve an attribute from the compatibility shim if available."""
+    try:
+        compat_module = import_module("database.refactor.utils.database_utils")
+    except Exception:
+        return default
+
+    return getattr(compat_module, name, default)
+
+
+def get_db_config() -> Dict[str, Any]:
+    """
+    Get database configuration from environment and config files
+
+    Returns:
+        Database configuration dictionary with MariaDB and ChromaDB settings
+    """
+    # Load global.env file first if it exists
+    env_file_path = '/etc/justnews/global.env'
+    if os.path.exists(env_file_path):
+        logger.info(f"Loading environment variables from {env_file_path}")
+        with open(env_file_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    if '=' in line:
+                        key, value = line.split('=', 1)
+                        os.environ[key.strip()] = value.strip()
+
+    # Get configuration from system_config.json
+    try:
+        import json
+        config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'config', 'system_config.json')
+        with open(config_path, 'r') as f:
+            system_config = json.load(f)
+
+        db_config = system_config.get('database', {})
+
+        # Set default values if not specified
+        mariadb_config = db_config.get('mariadb', {
+            'host': 'localhost',
+            'port': 3306,
+            'database': 'justnews',
+            'user': 'justnews',
+            'password': 'migration_password_2024'
+        })
+
+        chromadb_config = db_config.get('chromadb', {
+            'host': 'localhost',
+            'port': 8000,
+            'collection': 'articles'
+        })
+
+        embedding_config = db_config.get('embedding', {
+            'model': 'all-MiniLM-L6-v2',
+            'dimensions': 384,
+            'device': 'cpu'
+        })
+
+        config = {
+            'mariadb': mariadb_config,
+            'chromadb': chromadb_config,
+            'embedding': embedding_config,
+            'connection_pool': {
+                'min_connections': 2,
+                'max_connections': 10,
+                'connection_timeout_seconds': 3.0,
+                'command_timeout_seconds': 30.0
+            }
+        }
+
+    except Exception as e:
+        logger.warning(f"Failed to load system config, using defaults: {e}")
+        config = {
+            'mariadb': {
+                'host': os.environ.get('MARIADB_HOST', 'localhost'),
+                'port': int(os.environ.get('MARIADB_PORT', '3306')),
+                'database': os.environ.get('MARIADB_DB', 'justnews'),
+                'user': os.environ.get('MARIADB_USER', 'justnews'),
+                'password': os.environ.get('MARIADB_PASSWORD', 'migration_password_2024')
+            },
+            'chromadb': {
+                'host': os.environ.get('CHROMADB_HOST', 'localhost'),
+                'port': int(os.environ.get('CHROMADB_PORT', '8000')),
+                'collection': os.environ.get('CHROMADB_COLLECTION', 'articles')
+            },
+            'embedding': {
+                'model': os.environ.get('EMBEDDING_MODEL', 'all-MiniLM-L6-v2'),
+                'dimensions': int(os.environ.get('EMBEDDING_DIMENSIONS', '384')),
+                'device': os.environ.get('EMBEDDING_DEVICE', 'cpu')
+            },
+            'connection_pool': {
+                'min_connections': 2,
+                'max_connections': 10,
+                'connection_timeout_seconds': 3.0,
+                'command_timeout_seconds': 30.0
+            }
+        }
+
+    # Validate required fields
+    required_mariadb = ['host', 'database', 'user', 'password']
+    missing_mariadb = [field for field in required_mariadb if not config['mariadb'].get(field)]
+
+    if missing_mariadb:
+        raise ValueError(f"Missing required MariaDB configuration fields: {missing_mariadb}")
+
+    return config
+
+
+def create_database_service(config: Optional[Dict[str, Any]] = None) -> MigratedDatabaseService:
+    """
+    Create and initialize the migrated database service
+
+    Args:
+        config: Database configuration (uses get_db_config() if not provided)
+
+    Returns:
+        Initialized MigratedDatabaseService instance
+    """
+    if config is None:
+        config = get_db_config()
+
+    # Create a full config dict for the service
+    full_config = {'database': config}
+
+    service = MigratedDatabaseService(full_config)
+
+    # Test connections
+    check_database_connections(service)
+
+    return service
+
+
+def check_database_connections(service: MigratedDatabaseService) -> bool:
+    """
+    Check database connections for the migrated service
+
+    Args:
+        service: Database service to check
+
+    Returns:
+        True if all connections successful
+    """
+    try:
+        # Test MariaDB connection
+        cursor = service.mb_conn.cursor()
+        cursor.execute("SELECT 1 as test")
+        result = cursor.fetchone()
+        cursor.close()
+
+        if not result or result[0] != 1:
+            logger.error("MariaDB connection test failed - unexpected result")
+            return False
+
+        logger.info("MariaDB connection test successful")
+
+        # Test ChromaDB connection
+        collections = service.chroma_client.list_collections()
+        if service.collection.name not in [c.name for c in collections]:
+            logger.error(f"ChromaDB collection '{service.collection.name}' not found")
+            return False
+
+        logger.info("ChromaDB connection test successful")
+
+        # Test embedding model
+        test_embedding = service.embedding_model.encode("test")
+        if len(test_embedding) != 384:
+            logger.error(f"Embedding model returned wrong dimensions: {len(test_embedding)}")
+            return False
+
+        logger.info("Embedding model test successful")
+
+        return True
+
+    except Exception as e:
+        logger.error(f"Database connection test failed: {e}")
+        return False
+
+
+async def execute_query_async(
+    service: MigratedDatabaseService,
+    query: str,
+    params: tuple = None,
+    fetch: bool = True
+) -> list:
+    """
+    Execute MariaDB query asynchronously
+
+    Args:
+        service: Database service
+        query: SQL query string
+        params: Query parameters
+        fetch: Whether to fetch results
+
+    Returns:
+        Query results or empty list
+    """
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        None, execute_mariadb_query, service, query, params, fetch
+    )
+
+
+def execute_mariadb_query(
+    service: MigratedDatabaseService,
+    query: str,
+    params: tuple = None,
+    fetch: bool = True
+) -> list:
+    """
+    Execute MariaDB query
+
+    Args:
+        service: Database service
+        query: SQL query string
+        params: Query parameters
+        fetch: Whether to fetch results
+
+    Returns:
+        Query results or empty list
+    """
+    try:
+        cursor = service.mb_conn.cursor()
+        cursor.execute(query, params or ())
+
+        if fetch:
+            results = cursor.fetchall()
+        else:
+            results = []
+            service.mb_conn.commit()
+
+        cursor.close()
+        return results
+
+    except Exception as e:
+        logger.error(f"MariaDB query failed: {e}")
+        service.mb_conn.rollback()
+        return []
+
+
+def execute_transaction(
+    service: MigratedDatabaseService,
+    queries: list,
+    params_list: Optional[list] = None
+) -> bool:
+    """
+    Execute multiple MariaDB queries in a transaction
+
+    Args:
+        service: Database service
+        queries: List of SQL queries
+        params_list: List of parameter tuples (optional)
+
+    Returns:
+        True if transaction successful
+    """
+    if params_list is None:
+        params_list = [None] * len(queries)
+
+    if len(queries) != len(params_list):
+        raise ValueError("queries and params_list must have the same length")
+
+    try:
+        cursor = service.mb_conn.cursor()
+
+        for query, params in zip(queries, params_list):
+            cursor.execute(query, params or ())
+
+        service.mb_conn.commit()
+        cursor.close()
+
+        logger.info(f"Transaction executed successfully with {len(queries)} queries")
+        return True
+
+    except Exception as e:
+        logger.error(f"Transaction failed: {e}")
+        service.mb_conn.rollback()
+        return False
+
+
+def get_database_stats(service: MigratedDatabaseService) -> Dict[str, Any]:
+    """
+    Get comprehensive database statistics for migrated system
+
+    Args:
+        service: Database service
+
+    Returns:
+        Database statistics dictionary
+    """
+    stats = {
+        'mariadb': {},
+        'chromadb': {},
+        'total_articles': 0,
+        'total_sources': 0,
+        'total_vectors': 0
+    }
+
+    try:
+        # MariaDB stats
+        cursor = service.mb_conn.cursor()
+
+        # Article count
+        cursor.execute("SELECT COUNT(*) FROM articles")
+        stats['mariadb']['articles'] = cursor.fetchone()[0]
+        stats['total_articles'] = stats['mariadb']['articles']
+
+        # Source count
+        cursor.execute("SELECT COUNT(*) FROM sources")
+        stats['mariadb']['sources'] = cursor.fetchone()[0]
+        stats['total_sources'] = stats['mariadb']['sources']
+
+        # Article-source mappings
+        cursor.execute("SELECT COUNT(*) FROM article_source_map")
+        stats['mariadb']['mappings'] = cursor.fetchone()[0]
+
+        cursor.close()
+
+        # ChromaDB stats
+        stats['chromadb']['vectors'] = service.collection.count()
+        stats['total_vectors'] = stats['chromadb']['vectors']
+
+        # Collections
+        collections = service.chroma_client.list_collections()
+        stats['chromadb']['collections'] = [c.name for c in collections]
+
+    except Exception as e:
+        logger.warning(f"Failed to get database stats: {e}")
+
+    return stats
+
+
+def semantic_search(
+    service: MigratedDatabaseService,
+    query: str,
+    n_results: int = 5
+) -> List[Dict[str, Any]]:
+    """
+    Perform semantic search using the migrated database service
+
+    Args:
+        service: Database service
+        query: Search query
+        n_results: Number of results to return
+
+    Returns:
+        List of search results with full article data
+    """
+    return service.semantic_search(query, n_results)
+
+
+def search_articles_by_text(
+    service: MigratedDatabaseService,
+    query: str,
+    limit: int = 10
+) -> List[Dict[str, Any]]:
+    """
+    Search articles by text content
+
+    Args:
+        service: Database service
+        query: Search query
+        limit: Maximum number of results
+
+    Returns:
+        List of matching articles
+    """
+    return service.search_articles_by_text(query, limit)
+
+
+def get_recent_articles(
+    service: MigratedDatabaseService,
+    limit: int = 10
+) -> List[Dict[str, Any]]:
+    """
+    Get recent articles
+
+    Args:
+        service: Database service
+        limit: Maximum number of articles to return
+
+    Returns:
+        List of recent articles
+    """
+    return service.get_recent_articles(limit)
+
+
+def get_articles_by_source(
+    service: MigratedDatabaseService,
+    source_id: Union[int, str],
+    limit: int = 10
+) -> List[Dict[str, Any]]:
+    """
+    Get articles by source
+
+    Args:
+        service: Database service
+        source_id: Source ID
+        limit: Maximum number of articles to return
+
+    Returns:
+        List of articles from the source
+    """
+    return service.get_articles_by_source(source_id, limit)

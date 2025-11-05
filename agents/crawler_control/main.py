@@ -19,15 +19,15 @@ from common.metrics import JustNewsMetrics
 from .crawler_control_engine import CrawlerControlEngine
 from .tools import get_sources_with_limit
 
-# Import database functions
-from agents.common.database import execute_query, initialize_connection_pool
-from common.dev_db_fallback import apply_test_db_env_fallback
+# Import database functions - REMOVED: migrated to database.utils.migrated_database_utils
+# from agents.common.database import execute_query, initialize_connection_pool
+from common.dev_db_fallback import apply_test_db_fallback
 
 # Apply database environment fallback for development
-apply_test_db_env_fallback()
+apply_test_db_fallback()
 
-# Initialize database connection pool
-initialize_connection_pool()
+# REMOVED: Database connection pool initialization - now handled by migrated database service
+# initialize_connection_pool()
 
 # Configure logging
 logger = get_logger(__name__)

@@ -391,9 +391,7 @@ class GPUOrchestratorEngine:
         try:
             from agents.common.model_loader import load_sentence_transformer
             self.logger.info(f"Validating and loading model {model_id} for agent {agent} (strict={strict})")
-            success, error = load_sentence_transformer(model_id, agent=agent)
-            if not success:
-                raise RuntimeError(error)
+            load_sentence_transformer(model_id, agent=agent)
             return True, None
         except Exception as e:
             self.logger.error(f"Error validating/loading model {model_id} for agent {agent}: {e}")

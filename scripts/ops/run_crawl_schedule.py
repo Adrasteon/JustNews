@@ -125,8 +125,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--profiles",
         type=Path,
-        default=Path("config/crawl_profiles.yaml"),
-        help="Path to Crawl4AI profile configuration (default: config/crawl_profiles.yaml)",
+        default=Path("config/crawl_profiles"),
+        help="Path to Crawl4AI profile configuration directory or YAML file (default: config/crawl_profiles)",
     )
     return parser.parse_args()
 

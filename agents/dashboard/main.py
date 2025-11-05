@@ -190,6 +190,10 @@ app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 # Mount transparency and evidence audit endpoints
 app.include_router(transparency_router)
 
+# Include search API endpoints
+from .search_api import router as search_router
+app.include_router(search_router)
+
 # Include public API routes
 if PUBLIC_API_AVAILABLE:
     include_public_api(app)
@@ -972,7 +976,7 @@ def get_fallback_public_website_html():
 
 if __name__ == "__main__":
     host = os.environ.get("DASHBOARD_HOST", "0.0.0.0")
-    port = int(os.environ.get("DASHBOARD_PORT", 8013))
+    port = int(os.environ.get("DASHBOARD_PORT", DASHBOARD_AGENT_PORT))
 
     logger.info(f"Starting Dashboard Agent on {host}:{port}")
     uvicorn.run(app, host=host, port=port)

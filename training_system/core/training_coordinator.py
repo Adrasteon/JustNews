@@ -21,7 +21,7 @@ from typing import Any, List
 
 import torch
 
-from agents.common.database import execute_query, get_db_connection
+from database.utils.migrated_database_utils import create_database_service
 from common.observability import get_logger
 
 # Lazy import placeholders for heavy training utilities
@@ -809,12 +809,12 @@ class OnTheFlyTrainingCoordinator:
             logger.error(f"Model rollback failed for {agent_name}: {e}")
 
     def _persist_training_example(self, example: TrainingExample):
-        """Store training example in database for persistence using new database layer"""
+        """Store training example in database for persistence using migrated database service"""
         try:
-            from agents.common.database import execute_query
+            db_service = create_database_service()
 
-            # Use the new execute_query function
-            execute_query("""
+            cursor = db_service.mb_conn.cursor()
+            cursor.execute("""
                 INSERT INTO training_examples
                 (agent_name, task_type, input_text, expected_output, uncertainty_score,
                  importance_score, source_url, timestamp, user_feedback, correction_priority)
@@ -830,7 +830,10 @@ class OnTheFlyTrainingCoordinator:
                 example.timestamp,
                 example.user_feedback,
                 example.correction_priority
-            ), fetch=False)
+            ))
+            db_service.mb_conn.commit()
+            cursor.close()
+            db_service.close()
 
         except Exception as e:
             logger.error(f"Failed to persist training example: {e}")

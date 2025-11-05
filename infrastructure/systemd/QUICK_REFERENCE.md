@@ -122,7 +122,7 @@ Global (`/etc/justnews/global.env`):
 ```
 JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-v2-py312/bin/python
 SERVICE_DIR=/home/adra/JustNewsAgent-Clean
-JUSTNEWS_DB_URL=postgresql://user:pass@localhost:5432/justnews
+JUSTNEWS_DB_URL=mysql://user:pass@localhost:3306/justnews
 ENABLE_MPS=true
 UNIFIED_CRAWLER_ENABLE_HTTP_FETCH=true
 ARTICLE_EXTRACTOR_PRIMARY=trafilatura
@@ -197,7 +197,7 @@ sudo ./infrastructure/systemd/scripts/enable_all.sh stop
 
 Notes:
 - Stops all JustNews instances in reverse dependency order.
-- Does not stop PostgreSQL (managed separately by your OS/service).
+- Does not stop MariaDB (managed separately by your OS/service).
 - To also stop the orchestrator explicitly:
 
 ```
@@ -283,7 +283,7 @@ sudo chmod +x /usr/local/bin/run_crawl_schedule.sh
 sudo cp infrastructure/systemd/units/justnews-crawl-scheduler.* /etc/systemd/system/
 sudo systemctl daemon-reload
 ```
-3. Provide optional overrides in `/etc/justnews/crawl_scheduler.env` (paths, crawler URL, Prometheus textfile location). Include `CRAWL_PROFILE_PATH` if profile YAML lives outside the repo checkout.
+3. Provide optional overrides in `/etc/justnews/crawl_scheduler.env` (paths, crawler URL, Prometheus textfile location). Include `CRAWL_PROFILE_PATH` if the crawl profile directory lives outside the repo checkout. The loader accepts a directory path or a single YAML file.
 4. Enable the hourly timer:
 ```
 sudo systemctl enable --now justnews-crawl-scheduler.timer
@@ -304,7 +304,7 @@ Outputs:
 
 Dry-run (no crawler calls):
 ```
-sudo conda run -n justnews-v2-py312 python scripts/ops/run_crawl_schedule.py --dry-run --profiles config/crawl_profiles.yaml
+sudo conda run -n justnews-v2-py312 python scripts/ops/run_crawl_schedule.py --dry-run --profiles config/crawl_profiles
 ```
 ```
 

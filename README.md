@@ -6,7 +6,7 @@ A production-ready multi-agent news analysis system featuring GPU-accelerated pr
 
 ### Prerequisites
 - Python 3.10+ (via conda environment)
-- PostgreSQL 14+
+- MariaDB 10.11+ and ChromaDB (for vector operations)
 - Docker & Docker Compose (optional)
 - GPU with CUDA support (recommended)
 - Miniconda or Anaconda installed

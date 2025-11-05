@@ -56,10 +56,10 @@
   ```
 - Dry-run the Stage B scheduler against the finance cohort while loading explicit profile overrides:
   ```bash
-  CRAWL_PROFILE_PATH=config/crawl_profiles.yaml python scripts/ops/run_crawl_schedule.py \
+  CRAWL_PROFILE_PATH=config/crawl_profiles python scripts/ops/run_crawl_schedule.py \
     --dry-run \
     --testrun \
-    --profiles config/crawl_profiles.yaml \
+    --profiles config/crawl_profiles \
     --schedule config/crawl_schedule.yaml
   ```
 - Trigger a background crawl job directly against the agent API with a profile override for `markets.example.com`:
@@ -96,7 +96,7 @@
 6. Integrate with services through REST endpoints, streaming responses, or embed C4A scripts for deterministic DOM workflows.
 
 ## Internal Integration (JustNews)
-- Scheduler submits crawl runs with per-domain overrides from `config/crawl_profiles.yaml`; the path is configurable via `--profiles` or the `CRAWL_PROFILE_PATH` environment variable.
+- Scheduler submits crawl runs with per-domain overrides from the files in `config/crawl_profiles`; the path is configurable via `--profiles` or the `CRAWL_PROFILE_PATH` environment variable (directory or single YAML file).
 - `agents/crawler_control/crawl_profiles.py` normalises hostnames and expands `{domain}` tokens before handing payloads to the crawler agent.
 - `agents/crawler/crawl4ai_adapter.py` instantiates `BrowserConfig` and `CrawlerRunConfig` based on those payloads, follows scored internal links when requested, and feeds cleaned HTML back into the Trafilatura-first extraction pipeline.
 

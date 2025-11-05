@@ -30,8 +30,8 @@ If the synthesizer service remains degraded, confirm the dashboard-hosted transp
 	- `./QUICK_REFERENCE.md`
 - Comprehensive systemd guide (gating internals, drop-ins, tuning)
 	- `./COMPREHENSIVE_SYSTEMD_GUIDE.md`
-- PostgreSQL integration guide (DB URL and checks)
-	- `./postgresql_integration.md`
+- MariaDB integration guide (DB URL and checks)
+	- `./mariadb_integration.md`
 
 Incident reference:
 - Systemd Orchestrator Incident Report — Sept 13, 2025
@@ -92,7 +92,7 @@ JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-v2-py312/bin/python
 SERVICE_DIR=/home/adra/JustNewsAgent-Clean
 
 # database URL for Memory agent (adjust as needed)
-JUSTNEWS_DB_URL=postgresql://user:pass@localhost:5432/justnews
+JUSTNEWS_DB_URL=mysql://user:pass@localhost:3306/justnews
 ```
 
 Per-instance: `/etc/justnews/analyst.env`

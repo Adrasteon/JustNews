@@ -34,3 +34,22 @@ tags: ["stage-b", "ops", "evidence"]
 - Dashboard snapshot capture deferred pending Grafana GUI export by ops (metrics validated in Prometheus textfile).
 - 2025-10-26T19:41:35Z — Migration 003 reapplied via `bash scripts/ops/apply_stage_b_migration.sh postgresql://postgres@localhost/justnews --record`; transcript stored under `logs/operations/migrations/migration_003_20251026T194119Z.log`.
 - 2025-10-26T19:43:10Z — Duplicate suppression query executed; results archived under `logs/operations/evidence/dedupe_query_20251026.txt`.
+
+## 2025-11-02 — BBC profile verification
+- **Operator**: GitHub Copilot (automation assist)
+- **Environment**: systemd baseline host after canonical restart (`conda env justnews-v2-py312`)
+- **Scope**: validate BBC Crawl4AI profile after JSON sanitization fixes
+
+### Evidence Summary
+| Item | Status | Notes | Proof Reference |
+| --- | --- | --- | --- |
+| Canonical restart | Complete | `sudo ./infrastructure/systemd/canonical_system_startup.sh` run; all 17 services healthy post-check. | Terminal transcript 2025-11-02T16:25Z (ticket attachment)
+| Scheduler rerun | Complete | `PYTHONPATH=. conda run -n justnews-v2-py312 python scripts/ops/run_crawl_schedule.py --schedule config/crawl_schedule_bbc.yaml --profiles config/crawl_profiles --testrun --no-wait`. | `logs/analytics/crawl_scheduler_state.json`
+| Ingestion outcome | Complete | Latest state shows 60 attempted, 60 ingested, 0 duplicates/errors for bbc.co.uk. | `logs/analytics/crawl_scheduler_state.json`
+| Sample verification | Complete | Random sampler captured article titles/text for three newly ingested URLs. | Terminal snippet `sample_bbc_articles_20251102.txt`
+| Metrics check | Complete | Stage B counters show success-only increments post-run. | `logs/analytics/crawl_scheduler.prom`
+
+### Follow-Up Actions
+- 2025-11-02T16:18Z — Canonical restart executed to load shared `make_json_safe` logic across crawler and memory agents.
+- 2025-11-02T16:31Z — BBC scheduler test run completed (`--testrun`), producing all-new ingestion entries with zero serialization errors.
+- 2025-11-02T16:34Z — Random sample script recorded titles/text snippets for audit; attached to bring-up ticket and stored under `logs/operations/evidence/sample_bbc_articles_20251102.txt`.

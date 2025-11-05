@@ -25,7 +25,7 @@ Scripts for administrative tasks and system configuration.
 ### deploy/
 Scripts for deployment, database setup, and infrastructure provisioning.
 
-- `setup_postgres.sh` - PostgreSQL installation and configuration
+- `setup_mariadb.sh` - MariaDB installation and configuration
 - `init_database.py` - Database schema initialization and user setup
 
 ### dev/
@@ -87,7 +87,8 @@ All Python scripts support these standard options:
 ## Environment Variables
 
 Scripts use these common environment variables:
-- `POSTGRES_HOST`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` - Database configuration
+- `MYSQL_HOST`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD` - MariaDB configuration
+- `CHROMA_HOST`, `CHROMA_PORT` - ChromaDB configuration
 - `MODEL_STORE_ROOT` - Model storage directory
 - `BASE_MODEL_DIR` - Agent model cache directory
 - `CONDA_DEFAULT_ENV` - Conda environment name

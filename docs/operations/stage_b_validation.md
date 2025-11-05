@@ -19,15 +19,15 @@ This playbook captures the operational steps required to consider Stage B comple
 ## 2. Scheduler Bring-Up
 
 - Ensure `config/crawl_schedule.yaml` matches the target source cohorts and governance metadata.
-- Review `config/crawl_profiles.yaml` for the profile slugs each domain should receive (defaults, deep section overrides, explicit generic fallbacks). Keep this YAML under version control; runtime changes do not require Python edits.
+- Review the files under `config/crawl_profiles/` for the profile slugs each domain should receive (defaults, deep section overrides, explicit generic fallbacks). Keep this directory under version control; runtime changes do not require Python edits.
 - Deploy the systemd timer:
   - Install `infrastructure/systemd/scripts/run_crawl_schedule.sh` and the associated unit/timer under `/etc/systemd/system/` (e.g., `justnews-crawl-scheduler.service` / `.timer`).
   - Set environment values in `/etc/justnews/global.env`: `SERVICE_DIR`, `JUSTNEWS_PYTHON`, `CRAWL_SCHEDULE_PATH` (optional), and overrides for output paths if needed.
-  - Add `CRAWL_PROFILE_PATH=/etc/justnews/crawl_profiles.yaml` (or your custom path) if the default YAML lives outside the repo checkout.
+  - Add `CRAWL_PROFILE_PATH=/etc/justnews/crawl_profiles` (or your custom path) if the default profiles live outside the repo checkout. The loader accepts either a directory or a single YAML file for backwards compatibility.
   - Ensure the analytics directory exists and is writable by the scheduler user: `sudo mkdir -p "$SERVICE_DIR/logs/analytics" && sudo chown -R <scheduler-user>:<scheduler-group> "$SERVICE_DIR/logs"`.
   - Run `sudo systemctl daemon-reload && sudo systemctl enable --now justnews-crawl-scheduler.timer`.
 - Capture dry-run evidence:
-  - Execute `JUSTNEWS_PYTHON scripts/ops/run_crawl_schedule.py --dry-run --max-target 100 --profiles config/crawl_profiles.yaml` to show planned batches (and expanded profile payloads) without invoking the crawler.
+  - Execute `JUSTNEWS_PYTHON scripts/ops/run_crawl_schedule.py --dry-run --max-target 100 --profiles config/crawl_profiles` to show planned batches (and expanded profile payloads) without invoking the crawler.
 - Capture live-run evidence:
   - Tail the timer journal (`journalctl -u justnews-crawl-scheduler.service -n 200`) and archive the latest `logs/analytics/crawl_scheduler_state.json` snapshot.
 

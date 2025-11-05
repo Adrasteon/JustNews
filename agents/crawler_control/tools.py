@@ -3,23 +3,30 @@ Tools and utilities for the Crawler Control Agent.
 """
 from typing import List
 
-from agents.common.database import execute_query
+from database.utils.migrated_database_utils import create_database_service
 
 
 def get_sources_with_limit(limit: int = None) -> List[str]:
     """Get active sources from database, optionally limited"""
     try:
+        db_service = create_database_service()
+
         query = """
             SELECT domain
-            FROM public.sources
+            FROM sources
             WHERE last_verified IS NOT NULL
-            AND last_verified > now() - interval '30 days'
+            AND last_verified > DATE_SUB(NOW(), INTERVAL 30 DAY)
             ORDER BY last_verified DESC, name ASC
         """
         if limit:
             query += f" LIMIT {limit}"
 
-        sources = execute_query(query)
+        cursor = db_service.mb_conn.cursor(dictionary=True)
+        cursor.execute(query)
+        sources = cursor.fetchall()
+        cursor.close()
+        db_service.close()
+
         domains = [source['domain'] for source in sources]
         return domains
 

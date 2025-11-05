@@ -67,7 +67,8 @@ cp config/environments/production.env.example config/environments/production.env
 nano config/environments/production.env
 
 # Required variables:
-# - POSTGRES_HOST, POSTGRES_USER, POSTGRES_PASSWORD
+# - MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD
+# - CHROMA_HOST, CHROMA_PORT
 # - REDIS_HOST, REDIS_PASSWORD
 # - GPU_ORCHESTRATOR_HOST
 # - MCP_BUS_HOST, MCP_BUS_PORT
@@ -115,7 +116,8 @@ nano config/environments/production.env
 
 | Service | Type | Ports | Description |
 |---------|------|-------|-------------|
-| **postgresql** | Database | 5432 | Primary data storage |
+| **mariadb** | Database | 3306 | Primary relational data storage |
+| **chromadb** | Vector DB | 8000 | Vector embeddings and semantic search |
 | **redis** | Cache | 6379 | Session and cache storage |
 | **grafana** | Monitoring | 3000 | Dashboard and visualization |
 | **prometheus** | Monitoring | 9090 | Metrics collection |
@@ -173,11 +175,15 @@ sudo systemctl status justnews-mcp-bus
 
 ```bash
 # Database Configuration
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=justnews
-POSTGRES_USER=justnews
-POSTGRES_PASSWORD=secure_password
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DATABASE=justnews
+MYSQL_USER=justnews
+MYSQL_PASSWORD=secure_password
+
+# Vector Database Configuration
+CHROMA_HOST=localhost
+CHROMA_PORT=8000
 
 # Redis Configuration
 REDIS_HOST=localhost
@@ -207,12 +213,56 @@ LOG_FORMAT=json
 ```bash
 # Using Kubernetes secrets
 kubectl create secret generic justnews-secrets \
-  --from-literal=postgres-password=secure_password \
+  --from-literal=mysql-root-password=secure_root_password \
+  --from-literal=mysql-password=secure_password \
   --from-literal=redis-password=secure_password \
   --from-literal=grafana-admin-password=admin_password
 
 # Using Docker secrets
-echo "secure_password" | docker secret create postgres_password -
+echo "secure_password" | docker secret create mysql_password -
+```
+
+### Configuration Examples
+
+#### Docker Compose Configuration
+```yaml
+services:
+  mariadb:
+    image: mariadb:10.11
+    environment:
+      MYSQL_ROOT_PASSWORD: secure_root_password
+      MYSQL_DATABASE: justnews
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: secure_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+  chromadb:
+    image: chromadb/chroma:0.4.18
+    ports:
+      - "8000:8000"
+    volumes:
+      - chromadb_data:/chroma/chroma
+
+volumes:
+  mariadb_data:
+  chromadb_data:
+```
+
+#### Kubernetes Configuration
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: justnews-config
+data:
+  MYSQL_HOST: "mariadb-service"
+  MYSQL_PORT: "3306"
+  MYSQL_DATABASE: "justnews"
+  CHROMA_HOST: "chromadb-service"
+  CHROMA_PORT: "8000"
 ```
 
 ## Service Dependencies
@@ -221,9 +271,9 @@ echo "secure_password" | docker secret create postgres_password -
 mcp-bus (8000) ←─┐
                    ├── scout (8002)
                    ├── analyst (8004)
-postgresql (5432) ←─┼── synthesizer (8005)
-redis (6379) ←─────┼── fact-checker (8003)
-                   ├── memory (8007)
+mariadb (3306) ←──┼── synthesizer (8005)
+chromadb (8000) ←─┼── fact-checker (8003)
+redis (6379) ←────┼── memory (8007)
                    ├── chief-editor (8001)
                    ├── reasoning (8008)
                    ├── newsreader (8009)
@@ -324,8 +374,11 @@ spec:
 ### Database Backup
 
 ```bash
-# PostgreSQL backup
-pg_dump -h localhost -U justnews justnews > backup_$(date +%Y%m%d_%H%M%S).sql
+# MariaDB backup
+mysqldump -h localhost -u justnews -p justnews > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# ChromaDB backup (copy data directory)
+cp -r /chroma/chroma /backup/chroma_$(date +%Y%m%d_%H%M%S)
 
 # Redis backup
 redis-cli save
@@ -359,12 +412,16 @@ docker-compose up -d
 
 2. **Database Connection Issues**
    ```bash
-   # Test connection
-   psql -h localhost -U justnews -d justnews
+   # Test MariaDB connection
+   mysql -h localhost -u justnews -p justnews -e "SELECT 1;"
+
+   # Test ChromaDB connection
+   curl http://localhost:8000/api/v1/heartbeat
 
    # Check service status
-   sudo systemctl status postgresql
-   kubectl get pods -l app=postgresql
+   sudo systemctl status mariadb
+   kubectl get pods -l app=mariadb
+   kubectl get pods -l app=chromadb
    ```
 
 3. **GPU Resource Conflicts**
@@ -479,5 +536,4 @@ For deployment issues:
 2. Verify configuration and environment variables
 3. Test network connectivity between services
 4. Review resource allocation and scaling settings
-5. Check platform-specific documentation (Docker, Kubernetes, systemd)</content>
-<parameter name="filePath">/home/adra/JustNewsAgent/deploy/refactor/README.md
+5. Check platform-specific documentation (Docker, Kubernetes, systemd)

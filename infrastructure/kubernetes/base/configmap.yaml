@@ -5,10 +5,14 @@ metadata:
   namespace: justnews
 data:
   # Database Configuration
-  POSTGRES_HOST: "postgres-service"
-  POSTGRES_PORT: "5432"
-  POSTGRES_DB: "justnews"
-  POSTGRES_USER: "justnews"
+  MYSQL_HOST: "mariadb-service"
+  MYSQL_PORT: "3306"
+  MYSQL_DATABASE: "justnews"
+  MYSQL_USER: "justnews"
+
+  # Vector Database Configuration
+  CHROMA_HOST: "chromadb-service"
+  CHROMA_PORT: "8000"
 
   # Redis Configuration
   REDIS_HOST: "redis-service"

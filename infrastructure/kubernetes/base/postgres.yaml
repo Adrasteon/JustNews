@@ -1,47 +1,52 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: postgres
+  name: mariadb
   namespace: justnews
   labels:
-    app: postgres
+    app: mariadb
     component: database
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: postgres
+      app: mariadb
   template:
     metadata:
       labels:
-        app: postgres
+        app: mariadb
         component: database
     spec:
       containers:
-      - name: postgres
-        image: postgres:15-alpine
+      - name: mariadb
+        image: mariadb:10.11
         ports:
-        - containerPort: 5432
-          name: postgres
+        - containerPort: 3306
+          name: mariadb
         env:
-        - name: POSTGRES_DB
-          valueFrom:
-            configMapKeyRef:
-              name: justnews-config
-              key: POSTGRES_DB
-        - name: POSTGRES_USER
-          valueFrom:
-            configMapKeyRef:
-              name: justnews-config
-              key: POSTGRES_USER
-        - name: POSTGRES_PASSWORD
+        - name: MYSQL_ROOT_PASSWORD
           valueFrom:
             secretKeyRef:
               name: justnews-secrets
-              key: POSTGRES_PASSWORD
+              key: MYSQL_ROOT_PASSWORD
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: justnews-config
+              key: MYSQL_DATABASE
+        - name: MYSQL_USER
+          valueFrom:
+            configMapKeyRef:
+              name: justnews-config
+              key: MYSQL_USER
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: justnews-secrets
+              key: MYSQL_PASSWORD
         volumeMounts:
-        - name: postgres-storage
-          mountPath: /var/lib/postgresql/data
+        - name: mariadb-storage
+          mountPath: /var/lib/mysql
         resources:
           limits:
             memory: 2Gi
@@ -52,11 +57,10 @@ spec:
         livenessProbe:
           exec:
             command:
-              - pg_isready
-              - -U
-              - $(POSTGRES_USER)
-              - -d
-              - $(POSTGRES_DB)
+              - mysqladmin
+              - ping
+              - -h
+              - localhost
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
@@ -64,34 +68,33 @@ spec:
         readinessProbe:
           exec:
             command:
-              - pg_isready
-              - -U
-              - $(POSTGRES_USER)
-              - -d
-              - $(POSTGRES_DB)
+              - mysqladmin
+              - ping
+              - -h
+              - localhost
           initialDelaySeconds: 5
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
       volumes:
-      - name: postgres-storage
+      - name: mariadb-storage
         persistentVolumeClaim:
-          claimName: postgres-pvc
+          claimName: mariadb-pvc
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: postgres-service
+  name: mariadb-service
   namespace: justnews
   labels:
-    app: postgres
+    app: mariadb
     component: database
 spec:
   selector:
-    app: postgres
+    app: mariadb
   ports:
-  - port: 5432
-    targetPort: 5432
-    name: postgres
+  - port: 3306
+    targetPort: 3306
+    name: mariadb
   type: ClusterIP

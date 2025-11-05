@@ -13,6 +13,7 @@ resources:
   - secrets.yaml
   - persistent-volumes.yaml
   - postgres.yaml
+  - chromadb.yaml
   - redis.yaml
   - gpu-support.yaml
   - ingress.yaml

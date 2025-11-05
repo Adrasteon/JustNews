@@ -197,12 +197,16 @@ database/refactor/
 ### Environment Variables
 
 ```bash
-# Database Connection
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=justnews
-POSTGRES_USER=justnews
-POSTGRES_PASSWORD=your_password
+# MariaDB Connection
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DATABASE=justnews
+MYSQL_USER=justnews
+MYSQL_PASSWORD=your_password
+
+# ChromaDB Connection
+CHROMA_HOST=localhost
+CHROMA_PORT=8000
 
 # Connection Pool
 DB_MIN_CONNECTIONS=1
@@ -212,7 +216,7 @@ DB_MAX_RETRIES=3
 DB_RETRY_DELAY=1.0
 
 # Alternative DATABASE_URL format
-DATABASE_URL=postgresql://user:password@localhost:5432/justnews
+DATABASE_URL=mysql://user:password@localhost:3306/justnews
 ```
 
 ### Backup Configuration
@@ -248,7 +252,7 @@ Each migration file should contain both UP and DOWN SQL:
 ```sql
 -- Create articles table
 CREATE TABLE articles (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     content TEXT,
     author VARCHAR(100),

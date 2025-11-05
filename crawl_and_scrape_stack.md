@@ -15,7 +15,7 @@
 - **Leverage built-in strategies sparingly.** Invoke `RegexExtractionStrategy`, `LLMExtractionStrategy`, or `CosineStrategy` only when a site clearly benefits. Default to our current article body extraction unless proven insufficient.
 
 ## 4. Implementation Snapshot (Oct 2025)
-- **Scheduler-aware profiles:** `scripts/ops/run_crawl_schedule.py` now accepts `--profiles` (defaults to `config/crawl_profiles.yaml`) and inlines the resolved payload into each crawl job as `profile_overrides`.
+- **Scheduler-aware profiles:** `scripts/ops/run_crawl_schedule.py` now accepts `--profiles` (defaults to `config/crawl_profiles`) and inlines the resolved payload into each crawl job as `profile_overrides`.
 - **Profile registry:** `agents/crawler_control/crawl_profiles.py` loads YAML profiles, expands `{domain}` placeholders, and maps `www.`/bare hostnames so operators only touch configuration.
 - **Crawler adapter:** `agents/crawler/crawl4ai_adapter.py` translates profile dictionaries into Crawl4AI `BrowserConfig`/`CrawlerRunConfig` objects, follows scored internal links within the declared `max_pages`, and still feeds the Trafilatura pipeline.
 
@@ -27,12 +27,12 @@
 - **Engine fallback:** `CrawlerEngine.run_unified_crawl(...)` applies overrides per domain and falls back to the legacy `GenericSiteCrawler` when Crawl4AI is unavailable or a profile opts out via `engine: generic`.
 
 ### Editing profiles
-1. Update or add entries under `config/crawl_profiles.yaml`.
+1. Add or update the appropriate YAML file under `config/crawl_profiles/` (one profile file per site).
 2. Run the scheduler in dry-run mode to validate payload expansion:
 	```bash
-	JUSTNEWS_PYTHON scripts/ops/run_crawl_schedule.py --dry-run --profiles config/crawl_profiles.yaml
+	JUSTNEWS_PYTHON scripts/ops/run_crawl_schedule.py --dry-run --profiles config/crawl_profiles
 	```
-3. Deploy profile updates by syncing the YAML to the scheduler host; no Python code changes required.
+3. Deploy profile updates by syncing the directory to the scheduler host; no Python code changes required.
 
 ## 5. Incremental Migration Plan
 1. **Prototype wrapper:** ✅ Complete – scheduler/adapter path in place for selected domains.

@@ -1,7 +1,7 @@
 """Profile registry for Crawl4AI-backed crawling.
 
 This module centralises the logic for loading per-domain Crawl4AI profiles
-from ``config/crawl_profiles.yaml``.  The scheduler imports these helpers to
+from ``config/crawl_profiles``.  The scheduler imports these helpers to
 attach the resolved profile payload to each crawler submission so runtime
 behaviour stays configuration-driven.
 """
@@ -138,17 +138,7 @@ def _coerce_mapping(value: Any, *, context: str) -> dict[str, Any]:
     return dict(value)
 
 
-def load_crawl_profiles(path: Path) -> CrawlProfileRegistry:
-    """Load the Crawl4AI profile configuration from YAML."""
-    try:
-        raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    except FileNotFoundError as exc:
-        raise exc
-    except OSError as exc:  # pragma: no cover - surfaced to caller
-        raise CrawlProfileError(f"Unable to read crawl profiles: {path}") from exc
-    except yaml.YAMLError as exc:  # pragma: no cover
-        raise CrawlProfileError(f"Invalid crawl profile YAML: {path}") from exc
-
+def _build_registry(raw: Mapping[str, Any]) -> CrawlProfileRegistry:
     profiles_section = _coerce_mapping(raw.get("profiles"), context="profiles")
     if not profiles_section:
         raise CrawlProfileError("profiles section cannot be empty")
@@ -221,3 +211,68 @@ def load_crawl_profiles(path: Path) -> CrawlProfileRegistry:
         domain_assignments=domain_assignments,
         default_slug=default_slug,
     )
+
+
+def _load_yaml_documents(path: Path) -> list[tuple[Path, dict[str, Any]]]:
+    if path.is_dir():
+        candidates = sorted(p for p in path.glob("*.y*ml") if p.is_file())
+        if not candidates:
+            raise CrawlProfileError(f"No crawl profile YAML files found in {path}")
+        sources = candidates
+    else:
+        sources = [path]
+
+    documents: list[tuple[Path, dict[str, Any]]] = []
+    for source in sources:
+        try:
+            raw = yaml.safe_load(source.read_text(encoding="utf-8")) or {}
+        except FileNotFoundError as exc:
+            raise exc
+        except OSError as exc:  # pragma: no cover - surfaced to caller
+            raise CrawlProfileError(f"Unable to read crawl profiles: {source}") from exc
+        except yaml.YAMLError as exc:  # pragma: no cover
+            raise CrawlProfileError(f"Invalid crawl profile YAML: {source}") from exc
+        documents.append((source, raw))
+    return documents
+
+
+def load_crawl_profiles(path: Path) -> CrawlProfileRegistry:
+    """Load Crawl4AI profile configuration from a YAML file or directory."""
+
+    documents = _load_yaml_documents(path)
+
+    aggregated_defaults: dict[str, Any] | None = None
+    aggregated_profiles: dict[str, Any] = {}
+    version_seen: set[Any] = set()
+
+    for source, raw in documents:
+        version = raw.get("version")
+        if version is not None:
+            version_seen.add(version)
+
+        doc_defaults = raw.get("defaults")
+        if doc_defaults:
+            defaults_mapping = _coerce_mapping(doc_defaults, context=f"{source} defaults")
+            if aggregated_defaults is None:
+                aggregated_defaults = defaults_mapping
+            elif defaults_mapping != aggregated_defaults:
+                raise CrawlProfileError(
+                    f"Conflicting defaults across crawl profile files: {source}"
+                )
+
+        doc_profiles = _coerce_mapping(raw.get("profiles"), context=f"{source} profiles")
+        for slug, body in doc_profiles.items():
+            if slug in aggregated_profiles:
+                raise CrawlProfileError(f"Duplicate profile slug '{slug}' found in {source}")
+            aggregated_profiles[slug] = body
+
+    if not aggregated_profiles:
+        raise CrawlProfileError("profiles section cannot be empty")
+
+    combined: dict[str, Any] = {"profiles": aggregated_profiles}
+    if aggregated_defaults:
+        combined["defaults"] = aggregated_defaults
+    if len(version_seen) == 1:
+        combined["version"] = version_seen.pop()
+
+    return _build_registry(combined)

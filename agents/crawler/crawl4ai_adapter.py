@@ -9,13 +9,16 @@ remains unchanged.
 from __future__ import annotations
 
 import importlib
+import asyncio
 from collections.abc import Mapping, Sequence
+import re
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urljoin, urlparse
 from types import SimpleNamespace
 
 from agents.sites.generic_site_crawler import GenericSiteCrawler, SiteConfig
+from common.json_utils import make_json_safe
 from common.observability import get_logger
 try:  # Metrics are optional; crawler operates without Prometheus stack.
     from common.metrics import get_metrics
@@ -261,6 +264,7 @@ def _select_link_candidates(
     exclude_patterns = context.profile.get("link_preview", {}).get("exclude_patterns") or []
     include_patterns = include_patterns if isinstance(include_patterns, list) else [include_patterns]
     exclude_patterns = exclude_patterns if isinstance(exclude_patterns, list) else [exclude_patterns]
+    require_article_like = bool((context.profile.get("extra") or {}).get("require_article_like_url"))
 
     def _score(entry: dict[str, Any]) -> float:
         for key in ("total_score", "contextual_score", "intrinsic_score"):
@@ -272,6 +276,21 @@ def _select_link_candidates(
                     continue
         return 0.0
 
+    allowed_domains: set[str] = set()
+    if context.site_config.domain:
+        allowed_domains.add(str(context.site_config.domain).lower())
+    for url in context.profile.get("start_urls", []) or []:
+        parsed = urlparse(str(url))
+        if parsed.netloc:
+            allowed_domains.add(parsed.netloc.lower())
+
+    extra_domains = (context.profile.get("extra") or {}).get("alternate_domains")
+    if extra_domains:
+        if isinstance(extra_domains, str):
+            allowed_domains.add(extra_domains.lower())
+        else:
+            allowed_domains.update(str(item).lower() for item in extra_domains if item)
+
     filtered: list[tuple[float, str]] = []
     for item in links:
         href = item.get("href")
@@ -281,12 +300,17 @@ def _select_link_candidates(
         if not absolute or absolute in visited:
             continue
         parsed = urlparse(absolute)
-        if context.site_config.domain and parsed.netloc and context.site_config.domain not in parsed.netloc:
+        netloc = parsed.netloc.lower()
+        if allowed_domains and netloc and not any(domain in netloc for domain in allowed_domains if domain):
             continue
         if include_patterns and not any(pattern in absolute for pattern in include_patterns):
             continue
         if exclude_patterns and any(pattern in absolute for pattern in exclude_patterns):
             continue
+        if require_article_like:
+            path = parsed.path.lower()
+            if not ("/articles/" in path or re.search(r"-\d{4,}", path)):
+                continue
         filtered.append((_score(item), absolute))
 
     filtered.sort(key=lambda entry: entry[0], reverse=True)
@@ -327,7 +351,7 @@ def _build_article_from_result(
 
     adaptive_settings = profile.get("adaptive") or {}
     if adaptive_settings:
-        crawl_meta["adaptive_profile"] = dict(adaptive_settings)
+        crawl_meta["adaptive_profile"] = make_json_safe(dict(adaptive_settings))
 
     profile_query = (profile.get("extra") or {}).get("query")
     if profile_query:
@@ -336,7 +360,10 @@ def _build_article_from_result(
 
     page_metadata = getattr(result, "metadata", None)
     if page_metadata:
-        crawl_meta["page_metadata"] = page_metadata
+        crawl_meta["page_metadata"] = make_json_safe(page_metadata)
+
+    if (profile.get("extra") or {}).get("disable_dedupe"):
+        article["disable_dedupe"] = True
     return article
 
 
@@ -386,7 +413,7 @@ def _build_article_from_adaptive_doc(
         adaptive_run["confidence"] = float(confidence)
     coverage_stats = getattr(adaptive, "coverage_stats", None)
     if coverage_stats:
-        adaptive_run["coverage_stats"] = dict(coverage_stats)
+        adaptive_run["coverage_stats"] = make_json_safe(dict(coverage_stats))
     if hasattr(adaptive, "is_sufficient"):
         adaptive_run["is_sufficient"] = bool(getattr(adaptive, "is_sufficient"))
     pages_crawled = len(getattr(state, "crawled_urls", []) or [])
@@ -579,6 +606,10 @@ async def crawl_site_with_crawl4ai(
     follow_internal_links = bool(profile.get("follow_internal_links", True))
     page_budget = int(profile.get("max_pages") or article_limit or len(unique_urls))
     page_budget = max(page_budget, len(unique_urls))
+    seed_urls = set(unique_urls)
+    extra_config = profile.get("extra") or {}
+    skip_seed_articles = bool(extra_config.get("skip_seed_articles"))
+    strict_skip_seed_articles = bool(extra_config.get("strict_skip_seed_articles"))
     context = CrawlContext(
         site_config=site_config,
         profile=profile,
@@ -589,6 +620,7 @@ async def crawl_site_with_crawl4ai(
 
     builder = GenericSiteCrawler(site_config, enable_http_fetch=False)
     articles: list[dict[str, Any]] = []
+    seed_buffer: list[dict[str, Any]] = []
     visited: set[str] = set()
     queue: list[str] = list(unique_urls)
     pages_fetched = 0
@@ -610,46 +642,93 @@ async def crawl_site_with_crawl4ai(
         if adaptive_articles:
             return adaptive_articles[: context.max_articles]
 
-    crawler_factory = AsyncWebCrawler(config=browser_config) if browser_config else AsyncWebCrawler()
-    async with crawler_factory as crawler:
-        while queue and pages_fetched < context.page_budget and len(articles) < context.max_articles:
-            current_url = queue.pop(0)
-            if not current_url or current_url in visited:
-                continue
-            visited.add(current_url)
+    recoverable_markers = (
+        "browsercontext.new_page",
+        "connection closed while reading from the driver",
+        "pipe closed by peer",
+    )
+
+    def _is_recoverable_error(message: str | None) -> bool:
+        if not message:
+            return False
+        lower = message.lower()
+        return any(marker in lower for marker in recoverable_markers)
+
+    async def _fetch_with_retries(target_url: str):
+        attempts = 3
+        for attempt in range(1, attempts + 1):
             try:
-                result = await crawler.arun(current_url, config=run_config)
+                crawler_factory = AsyncWebCrawler(config=browser_config) if browser_config else AsyncWebCrawler()
+                async with crawler_factory as crawler:
+                    result = await crawler.arun(target_url, config=run_config)
             except Exception as exc:  # noqa: BLE001 - robustness first
-                logger.warning("Crawl4AI failed for %s: %s", current_url, exc)
+                message = str(exc)
+                logger.warning(
+                    "Crawl4AI failed for %s (attempt %s/%s): %s",
+                    target_url,
+                    attempt,
+                    attempts,
+                    message,
+                )
+                if attempt == attempts or not _is_recoverable_error(message):
+                    return None
+                await asyncio.sleep(0.5 * attempt)
                 continue
 
-            pages_fetched += 1
-            if not getattr(result, "success", True):
-                logger.debug("Crawl4AI returned unsuccessful result for %s", current_url)
-                continue
+            if getattr(result, "success", True):
+                return result
 
-            article = _build_article_from_result(
-                builder,
-                current_url,
-                result,
-                profile,
-                links_followed=max(0, len(visited) - len(unique_urls)),
-            )
-            if article:
+            error_text = str(getattr(result, "error", "") or getattr(result, "message", ""))
+            logger.debug("Crawl4AI returned unsuccessful result for %s", target_url)
+            if attempt == attempts or not _is_recoverable_error(error_text):
+                return result
+            await asyncio.sleep(0.5 * attempt)
+
+        return None
+
+    while queue and pages_fetched < context.page_budget and len(articles) < context.max_articles:
+        current_url = queue.pop(0)
+        if not current_url or current_url in visited:
+            continue
+        visited.add(current_url)
+
+        result = await _fetch_with_retries(current_url)
+        if result is None:
+            continue
+
+        pages_fetched += 1
+        if not getattr(result, "success", True):
+            continue
+
+        article = _build_article_from_result(
+            builder,
+            current_url,
+            result,
+            profile,
+            links_followed=max(0, len(visited) - len(unique_urls)),
+        )
+        if article:
+            if skip_seed_articles and current_url in seed_urls:
+                seed_buffer.append(article)
+            else:
                 articles.append(article)
                 if len(articles) >= context.max_articles:
                     break
 
-            if (
-                context.follow_internal_links
-                and len(articles) < context.max_articles
-                and getattr(result, "links", None)
-            ):
-                remaining_pages = context.page_budget - pages_fetched
-                candidates = result.links.get("internal", []) if result.links else []
-                next_urls = _select_link_candidates(candidates, context, visited, remaining_pages)
-                for url in next_urls:
-                    if url not in queue and url not in visited:
-                        queue.append(url)
+        if (
+            context.follow_internal_links
+            and len(articles) < context.max_articles
+            and getattr(result, "links", None)
+        ):
+            remaining_pages = context.page_budget - pages_fetched
+            candidates = result.links.get("internal", []) if result.links else []
+            next_urls = _select_link_candidates(candidates, context, visited, remaining_pages)
+            for url in next_urls:
+                if url not in queue and url not in visited:
+                    queue.append(url)
+
+    if skip_seed_articles and not strict_skip_seed_articles and len(articles) < context.max_articles:
+        needed = context.max_articles - len(articles)
+        articles.extend(seed_buffer[:needed])
 
     return articles[: context.max_articles]

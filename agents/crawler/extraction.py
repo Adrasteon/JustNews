@@ -14,7 +14,7 @@ import os
 import re
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
@@ -58,6 +58,9 @@ except ImportError:  # pragma: no cover
     DetectorFactory = None
     LangDetectException = Exception
     detect_language = None
+
+# Shared JSON-sanitising helper
+from common.json_utils import make_json_safe
 
 # Heuristic thresholds (configurable via env)
 _MIN_WORDS = int(os.environ.get("ARTICLE_MIN_WORDS", "120"))
@@ -126,12 +129,16 @@ def _extract_with_trafilatura(html: str, url: str) -> Optional[Dict[str, Any]]:
             include_comments=False,
             include_tables=False,
             target_language=None,
-            output_format="plain",
+            output_format="txt",
             fast=True,
         )
         if not text:
             return None
-        meta_obj = _trafilatura_extract_metadata(html, url=url)
+        try:
+            meta_obj = _trafilatura_extract_metadata(html, default_url=url)
+        except TypeError:
+            # Older versions expect the keyword 'url'; keep backward compatibility.
+            meta_obj = _trafilatura_extract_metadata(html, url=url)
         if meta_obj is None:
             meta_dict: Dict[str, Any] = {}
         else:
@@ -356,6 +363,9 @@ def extract_article_content(html: str, url: str) -> ExtractionOutcome:
             outcome.language = detect_language(outcome.text)
         except LangDetectException:
             outcome.language = None
+
+    outcome.metadata = make_json_safe(outcome.metadata)
+    outcome.structured_metadata = make_json_safe(outcome.structured_metadata)
 
     # Heuristics
     outcome.word_count = len(outcome.text.split()) if outcome.text else 0

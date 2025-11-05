@@ -29,9 +29,9 @@ This plan restores the proven systemd deployment first, validates the refactor u
 - GPU: NVIDIA drivers installed and healthy (`nvidia-smi` OK).
 - Python: 3.11/3.12 supported by this repo (see `requirements.txt` / `environment.yml`).
 - Conda environment available: justnews-v2-py312.
-- Postgres: local or external (version per `infrastructure/systemd/setup_postgresql.sh`).
+- MariaDB: local or external (version per `infrastructure/systemd/setup_mariadb.sh`).
 - Tooling: `git`, `curl`, `jq`, `psql`, `python`, `pip` (or conda), `virtualenv`.
-- Content tooling: ensure packages for extraction and embeddings are available (`trafilatura`, `readability-lxml`, `jusText`, `extruct`, `langdetect`, `sentence-transformers`, `faiss-cpu` or `pgvector` bindings). Pin versions in `requirements.txt` before deployment.
+- Content tooling: ensure packages for extraction and embeddings are available (`trafilatura`, `readability-lxml`, `jusText`, `extruct`, `langdetect`, `sentence-transformers`, `chromadb`). Pin versions in `requirements.txt` before deployment.
 
 Required: NVIDIA MPS. MPS is an essential part of the design to protect GPU stability under concurrent workloads, reduce memory fragmentation, and mitigate hard GPU crashes from OOM conditions and memory leaks.
 
@@ -52,7 +52,7 @@ A2. Secrets and config
 - Global environment file for systemd: `/etc/justnews/global.env`:
   - `JUSTNEWS_PYTHON=/abs/path/to/python`
   - `SERVICE_DIR=/abs/path/to/repo/root`
-  - `JUSTNEWS_DB_URL=postgresql://user:pass@localhost:5432/justnews`
+  - `JUSTNEWS_DB_URL=mysql://user:pass@localhost:3306/justnews`
   - Optional GPU tuning: `ENABLE_MPS=true`
 - Content pipeline configuration (same file or service-specific overrides):
   - `UNIFIED_CRAWLER_ENABLE_HTTP_FETCH=true`
@@ -66,8 +66,8 @@ A2. Secrets and config
   - Any per-instance tuning or overrides supported by the units/scripts.
 
 A3. Database
-- Initialize local PostgreSQL (or point at an external DB):
-  - See `infrastructure/systemd/setup_postgresql.sh` for supported flows.
+- Initialize local MariaDB (or point at an external DB):
+  - See `infrastructure/systemd/setup_mariadb.sh` for supported flows.
   - Initialize/migrate schema (pick one, depending on repo conventions):
     - `scripts/setup_postgres.sh` then `scripts/init_database.py`
     - or run migrations in `database/migrations/` via your migration tool.
@@ -132,9 +132,15 @@ Rollback (for Stage A):
 B0. Gating
 - Stage A acceptance checks must be green. Baseline services stay under systemd control throughout this stage.
 
+**Current Execution Plan (Nov 2025)**
+- Run a controlled, non-test BBC crawl end to end to validate crawler → memory agent → MariaDB ingestion (watch scheduler metrics and raw HTML drops).
+- Once ingestion is verified, port additional high-priority domains into `config/crawl_profiles/`, validating each with the probe script before enabling them in the schedule.
+- With multiple sources ingesting cleanly, begin exercising the “Top X” workflow (clustering, fact search) using the new BBC-derived articles as seed data.
+- 2025-11-02 status: canonical restart applied via `infrastructure/systemd/canonical_system_startup.sh`, BBC profile rerun with `scripts/ops/run_crawl_schedule.py --testrun` ingested 60/60 articles, zero ingestion errors, dedupe zero, Stage B metrics clean; evidence captured in `logs/analytics/crawl_scheduler_state.json` and sampler snippets stored in the bring-up ticket.
+
 B1. Curated seed list and run scheduling
 - Build `config/crawl_schedule.yaml` (or similar) enumerating priority sources, sections, update cadence, and per-run article caps. **Implementation note:** The repository now ships `config/crawl_schedule.yaml` with governance metadata for the primary cohorts.
-- Define per-domain Crawl4AI profiles in `config/crawl_profiles.yaml` so operators can control depth, link filters, and JS automation without code changes. Align schedule cohorts with the matching profile slugs (e.g., `standard_crawl4ai`, `deep_financial_sections`, `legacy_generic`).
+- Define per-domain Crawl4AI profiles under `config/crawl_profiles/` (one YAML per domain) so operators can control depth, link filters, and JS automation without code changes. Align schedule cohorts with the matching profile slugs (e.g., `standard_crawl4ai`, `deep_financial_sections`, `legacy_generic`).
 - Implement an hourly scheduler (systemd timer or cron) that invokes the crawler agent with batched domain lists, respecting the global target of top **X** stories (default 500). **Implementation note:** Use `scripts/ops/run_crawl_schedule.py` + `infrastructure/systemd/scripts/run_crawl_schedule.sh`, driven by the `justnews-crawl-scheduler.timer` unit.
 - Add health metrics: last successful run timestamp, domains crawled, articles accepted, scheduler lag. **Implemented via** Prometheus textfile output at `logs/analytics/crawl_scheduler.prom` (overridable) with gauges `justnews_crawler_scheduler_*`.
 - Establish governance cadence: document source terms-of-use, rate limits, and review schedule (e.g., weekly curation audit). Track violations and remediation steps in an ops log (see `logs/governance/crawl_terms_audit.md`).
@@ -155,7 +161,7 @@ B3. Storage and schema updates
 
 B4. Embedding generation and clustering preparation
 - Package Sentence-BERT (`all-MiniLM-L6-v2` recommended) with a local cache; expose `ARTICLE_EMBEDDING_MODEL` env to switch models.
-- Compute embeddings during ingestion; store in pg_vector (or FAISS mirror for offline analysis).
+- Compute embeddings during ingestion; store in ChromaDB (or FAISS mirror for offline analysis).
 - Defer cross-source clustering until each article completes fact-check scoring; embeddings are tagged with the latest GTV once Stage C runs so cluster creation can weight articles appropriately.
 - Maintain metrics: embeddings generated, cluster candidate count (post Stage C), embedding latency, and model cache hit rate.
   - **Implemented by** extended `StageBMetrics` counters/histograms consumed in `agents/memory/tools.save_article`; includes cache-label latency tracking and model availability counters.
@@ -168,6 +174,16 @@ B5. Validation and monitoring
 - Launch a human-in-the-loop sampling program (by language/region) with QA dashboards to surface extractor drift.
 - Publish governance dashboards tracking source coverage, robots compliance, and ingestion error budgets; alert when thresholds (e.g., >20% ingestion failures or QA alerts) are exceeded.
 - Define rollback: disable scheduler timer and revert to manual crawl if errors exceed agreed threshold or governance alerts trigger.
+
+B6. Automated crawl-profile author roadmap
+- Goal: deliver a cron-driven service that fingerprints each source in the `sources` table, generates or adjusts its `config/crawl_profiles/<slug>.yaml`, validates the change, and promotes the update with evidence.
+- Phase 0 (prereqs): catalogue current profiles, codify schema (JSONSchema + lint), stand up isolated test runner plus HTML snapshot store.
+- Phase 1 (fingerprinting): Playwright-based sampler collects landing pages, link graphs, pagination hints, DOM metrics; artifacts versioned under `logs/operations/profile_author/` for diffing.
+- Phase 2 (synthesis engine): heuristics convert fingerprints into draft profiles—start URLs, link filters, `target_elements`, adaptive knobs—rendered via template + schema validation with provenance metadata.
+- Phase 3 (evaluation loop): execute short Crawl4AI runs against drafts, score recall/precision, auto-adjust selectors, and persist metrics (attempts, ingestion success, fallback usage) in a dedicated table for trend tracking.
+- Phase 4 (drift detection): nightly job compares fresh fingerprints to baselines, triggers re-generation when DOM hashes or ingestion failure rate exceed thresholds, and stores profile versions with diff reports.
+- Phase 5 (operations): integrate with systemd timer/cron, emit Prometheus counters, open change requests when automation confidence < approved threshold, and maintain manual override path. Wire dashboards to show last profile refresh, drift alerts, and pending operator reviews.
+- Rollout gating: keep automation in shadow mode until it produces two consecutive clean runs (zero ingestion errors, recall within tolerance) for BBC baseline; expand cohort-by-cohort with ops sign-off.
 
 Exit criteria for Stage B:
 - Scheduler reliably delivers top-X articles each run with success metrics logged.
@@ -301,7 +317,7 @@ Exit criteria for Stage D:
   - `infrastructure/systemd/scripts/reset_and_start.sh`
   - `infrastructure/systemd/scripts/cold_start.sh`
   - `infrastructure/systemd/scripts/health_check.sh`
-  - `infrastructure/systemd/setup_postgresql.sh`
+  - `infrastructure/systemd/setup_mariadb.sh`
 - Content pipeline assets:
   - `config/` (seed list, crawl schedule, extractor settings)
   - `agents/sites/` (extractor implementations and fallbacks)

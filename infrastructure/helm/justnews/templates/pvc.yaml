@@ -1,17 +1,32 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "justnews.fullname" . }}-postgres-pvc
+  name: {{ include "justnews.fullname" . }}-mariadb-pvc
   labels:
     {{- include "justnews.labels" . | nindent 4 }}
-    app: postgres
+    app: mariadb
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
-      storage: {{ .Values.postgresql.primary.persistence.size }}
-  storageClassName: {{ .Values.postgresql.primary.persistence.storageClass | default "" }}
+      storage: {{ .Values.mariadb.primary.persistence.size }}
+  storageClassName: {{ .Values.mariadb.primary.persistence.storageClass | default "" }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "justnews.fullname" . }}-chromadb-pvc
+  labels:
+    {{- include "justnews.labels" . | nindent 4 }}
+    app: chromadb
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.chromadb.persistence.size }}
+  storageClassName: {{ .Values.chromadb.persistence.storageClass | default "" }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

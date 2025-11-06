@@ -3,9 +3,8 @@ Tests for JustNewsAgent JSON Utilities
 """
 
 import json
-import pytest
-from datetime import datetime, date
-from unittest.mock import patch
+from datetime import date, datetime
+from unittest.mock import Mock, patch
 
 from common.json_utils import make_json_safe
 
@@ -19,8 +18,8 @@ class TestMakeJsonSafe:
         assert make_json_safe("string") == "string"
         assert make_json_safe(42) == 42
         assert make_json_safe(3.14) == 3.14
-        assert make_json_safe(True) == True
-        assert make_json_safe(False) == False
+        assert make_json_safe(True) is True
+        assert make_json_safe(False) is False
 
     def test_bytes_conversion(self):
         """Test bytes to string conversion"""

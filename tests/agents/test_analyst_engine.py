@@ -10,19 +10,16 @@ Comprehensive tests for the AnalystEngine class covering:
 - Error handling and edge cases
 """
 
-import pytest
-import json
-import tempfile
-from pathlib import Path
-from unittest.mock import patch, mock_open, MagicMock, Mock
 import sys
-from datetime import datetime
+from pathlib import Path
+from unittest.mock import Mock, mock_open, patch
 
 # Add agents to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'agents'))
 
 # Mock the module-level imports before importing AnalystEngine
 import importlib.util
+
 original_find_spec = importlib.util.find_spec
 
 def mock_find_spec(name, package=None):
@@ -31,7 +28,7 @@ def mock_find_spec(name, package=None):
 
 importlib.util.find_spec = mock_find_spec
 
-from analyst.analyst_engine import AnalystEngine, AnalystConfig
+from analyst.analyst_engine import AnalystConfig, AnalystEngine  # noqa: E402
 
 
 class TestAnalystEngineInitialization:
@@ -47,21 +44,6 @@ class TestAnalystEngineInitialization:
             assert isinstance(engine, AnalystEngine)
             assert isinstance(engine.config, AnalystConfig)
             assert engine.processing_stats is not None
-
-    def test_init_custom_config(self):
-        """Test initialization with custom configuration"""
-        custom_config = AnalystConfig()
-        custom_config.max_text_length = 5000
-        custom_config.use_gpu = False
-
-        with patch('agents.analyst.analyst_engine._import_spacy', return_value=(None, None)), \
-             patch('agents.analyst.analyst_engine._import_transformers_pipeline', return_value=(None, None)):
-
-            engine = AnalystEngine(config=custom_config)
-
-            assert engine.config is custom_config
-            assert engine.config.max_text_length == 5000
-            assert engine.config.use_gpu is False
 
     def test_init_custom_config(self):
         """Test initialization with custom configuration"""

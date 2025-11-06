@@ -151,7 +151,7 @@ def _extract_with_trafilatura(html: str, url: str) -> Optional[Dict[str, Any]]:
                     if not key.startswith("_") and not callable(getattr(meta_obj, key))
                 }
         title = meta_dict.get("headline") or meta_dict.get("title") or ""
-        canonical = meta_dict.get("canonical-url") or meta_dict.get("url")
+        canonical = meta_dict.get("canonical-url")
         publication_date = meta_dict.get("date") or meta_dict.get("date-publish")
         authors = meta_dict.get("authors") or []
         if isinstance(authors, str):

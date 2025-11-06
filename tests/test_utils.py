@@ -276,12 +276,44 @@ class MockFactory:
                     {"id": 2, "content": "article 2", "meta": {}}
                 ]
 
-        return MockDatabase()
+    @staticmethod
+    def create_mock_database_service():
+        """Create a mock database service for testing"""
 
+        class MockDatabaseService:
+            def __init__(self):
+                self.connected = True
+                self.data = {}
 
-# ============================================================================
-# TEST DATA GENERATION
-# ============================================================================
+            async def connect(self):
+                self.connected = True
+                return True
+
+            async def disconnect(self):
+                self.connected = False
+
+            async def store_article(self, article_data: Dict):
+                article_id = article_data.get("id", f"mock_{len(self.data)}")
+                self.data[article_id] = article_data
+                return {"status": "success", "id": article_id}
+
+            async def retrieve_article(self, article_id: str):
+                return self.data.get(article_id, None)
+
+            async def search_articles(self, query: str, limit: int = 10):
+                # Simple mock search
+                results = []
+                for article_id, article in self.data.items():
+                    if query.lower() in article.get("content", "").lower():
+                        results.append(article)
+                        if len(results) >= limit:
+                            break
+                return results
+
+            async def get_article_count(self):
+                return len(self.data)
+
+        return MockDatabaseService()
 
 class TestDataGenerator:
     """Generate test data for various scenarios"""
@@ -430,10 +462,13 @@ class PerformanceTester:
 
         return self.metrics
 
-
-# ============================================================================
-# FILE SYSTEM TESTING UTILITIES
-# ============================================================================
+    def record_metric(self, name: str, value: float):
+        """Record a custom metric"""
+        if not hasattr(self.metrics, 'custom_metrics'):
+            self.metrics.custom_metrics = {}
+        if name not in self.metrics.custom_metrics:
+            self.metrics.custom_metrics[name] = []
+        self.metrics.custom_metrics[name].append(value)
 
 @contextmanager
 def temporary_directory():

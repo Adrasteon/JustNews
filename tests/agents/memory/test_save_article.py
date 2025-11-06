@@ -38,48 +38,117 @@ def stage_b_metrics():
 def _install_db_stubs(monkeypatch):
     stored_rows: list[dict] = []
 
-    def fake_execute_query_single(query: str, params=None):
-        nonlocal stored_rows
-        params = params or ()
-        normalized_q = " ".join(query.split()).lower()
+    class MockCursor:
+        def __init__(self):
+            self.query = None
+            self.params = None
+            self._result = None
+            self._lastrowid = None
 
-        if "from articles where url_hash" in normalized_q:
-            target = params[0]
-            for row in stored_rows:
-                if row.get("url_hash") == target:
-                    return {"id": row["id"]}
+        def execute(self, query: str, params=None):
+            self.query = query
+            self.params = params or ()
+            normalized_q = " ".join(query.split()).lower()
+
+            # Store for fetchone
+            if "from articles where url_hash" in normalized_q:
+                target = self.params[0]
+                for row in stored_rows:
+                    if row.get("url_hash") == target:
+                        self._result = ((row["id"],),)
+                        return
+                self._result = None
+            elif "from articles where normalized_url" in normalized_q:
+                target = self.params[0]
+                for row in stored_rows:
+                    if row.get("normalized_url") == target:
+                        self._result = ((row["id"],),)
+                        return
+                self._result = None
+            elif "select last_insert_id()" in normalized_q:
+                # Return the last inserted ID
+                if self._lastrowid:
+                    self._result = ((self._lastrowid,),)
+                else:
+                    self._result = ((len(stored_rows),),)
+            elif normalized_q.startswith("insert into articles"):
+                new_id = len(stored_rows) + 1
+                metadata_payload = self.params[20] if len(self.params) > 20 else None
+                review_reasons_payload = self.params[16] if len(self.params) > 16 else None
+                stored_rows.append(
+                    {
+                        "id": new_id,
+                        "source_url": self.params[0],
+                        "normalized_url": self.params[6],
+                        "url_hash": self.params[7],
+                        "url_hash_algo": self.params[8],
+                        "metadata": json.loads(metadata_payload) if metadata_payload else {},
+                        "embedding": self.params[22] if len(self.params) > 22 else [],
+                        "needs_review": self.params[15] if len(self.params) > 15 else False,
+                        "review_reasons": json.loads(review_reasons_payload) if review_reasons_payload else [],
+                        "collection_timestamp": self.params[21] if len(self.params) > 21 else None,
+                    }
+                )
+                self._lastrowid = new_id
+                self._result = None
+            else:
+                self._result = None
+
+        def fetchone(self):
+            if self._result:
+                return self._result[0]
             return None
 
-        if "from articles where normalized_url" in normalized_q:
-            target = params[0]
-            for row in stored_rows:
-                if row.get("normalized_url") == target:
-                    return {"id": row["id"]}
-            return None
+        @property
+        def lastrowid(self):
+            return self._lastrowid
 
-        if normalized_q.startswith("insert into articles"):
-            new_id = len(stored_rows) + 1
-            metadata_payload = params[20] if len(params) > 20 else None
-            review_reasons_payload = params[16] if len(params) > 16 else None
-            stored_rows.append(
-                {
-                    "id": new_id,
-                    "source_url": params[0],
-                    "normalized_url": params[6],
-                    "url_hash": params[7],
-                    "url_hash_algo": params[8],
-                    "metadata": json.loads(metadata_payload) if metadata_payload else {},
-                    "embedding": params[22] if len(params) > 22 else [],
-                    "needs_review": params[15] if len(params) > 15 else False,
-                    "review_reasons": json.loads(review_reasons_payload) if review_reasons_payload else [],
-                    "collection_timestamp": params[21] if len(params) > 21 else None,
-                }
+        def close(self):
+            pass
+
+    class MockDBConnection:
+        def cursor(self):
+            return MockCursor()
+
+        def commit(self):
+            pass
+
+    class MockDBService:
+        def __init__(self):
+            self.mb_conn = MockDBConnection()
+            self.cb_conn = SimpleNamespace(
+                get_or_create_collection=lambda name: SimpleNamespace(
+                    add=lambda **kwargs: None
+                )
             )
-            return {"id": new_id}
+            # Track embeddings added to collection
+            self._added_embeddings = []
+            
+            def mock_collection_add(**kwargs):
+                # Store the embedding for verification
+                if 'embeddings' in kwargs and kwargs['embeddings']:
+                    embedding = kwargs['embeddings'][0]
+                    article_id = int(kwargs['ids'][0]) if kwargs.get('ids') else len(stored_rows)
+                    # Update the stored row with the embedding
+                    for row in stored_rows:
+                        if row['id'] == article_id:
+                            row['embedding'] = embedding
+                            break
+            
+            self.collection = SimpleNamespace(
+                add=mock_collection_add
+            )
+            self.embedding_model = StubEmbeddingModel()
 
-        return None
+        def close(self):
+            pass
 
-    monkeypatch.setattr(tools, "execute_query_single", fake_execute_query_single)
+    def mock_create_db_service(*args, **kwargs):
+        return MockDBService()
+
+    # Patch create_database_service in the tools module
+    import database.utils.migrated_database_utils as db_utils
+    monkeypatch.setattr(db_utils, "create_database_service", mock_create_db_service)
     monkeypatch.setattr(tools, "log_feedback", lambda *args, **kwargs: None)
     monkeypatch.setattr(tools, "get_embedding_model", lambda: StubEmbeddingModel())
 

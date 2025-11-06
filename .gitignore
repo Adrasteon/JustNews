@@ -27,6 +27,9 @@ model_store
 # Ignore any local model caches in agents/ directories
 agents/**/models/
 
+# Root level model cache
+models/
+
 # Migration framework and temporary files
 migration_*.py
 AGENT_MODEL_MAP.json

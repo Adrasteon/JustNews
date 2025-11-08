@@ -171,12 +171,22 @@ class SemanticSearchService:
                 # Get full article data from MariaDB
                 article_data = self._get_article_by_id(int(article_id))
                 if article_data:
+                    # Handle publication_date conversion
+                    pub_date = article_data.get('publication_date')
+                    if pub_date is None:
+                        pub_date_str = ''
+                    elif isinstance(pub_date, str):
+                        pub_date_str = pub_date
+                    else:
+                        # Assume it's a datetime object
+                        pub_date_str = pub_date.isoformat() if hasattr(pub_date, 'isoformat') else str(pub_date)
+                    
                     result = SearchResult(
                         article_id=int(article_id),
-                        title=article_data['title'],
-                        content=article_data['content'],
-                        source_name=article_data['source_name'],
-                        published_date=article_data['published_date'],
+                        title=article_data.get('title', ''),
+                        content=article_data.get('content', ''),
+                        source_name=article_data.get('source_name', 'Unknown Source'),
+                        published_date=pub_date_str,
                         similarity_score=similarity_score,
                         metadata=chroma_results['metadatas'][0][i] if chroma_results['metadatas'] else {}
                     )
@@ -203,12 +213,22 @@ class SemanticSearchService:
 
         results = []
         for article in articles:
+            # Handle publication_date conversion
+            pub_date = article.get('publication_date')
+            if pub_date is None:
+                pub_date_str = ''
+            elif isinstance(pub_date, str):
+                pub_date_str = pub_date
+            else:
+                # Assume it's a datetime object
+                pub_date_str = pub_date.isoformat() if hasattr(pub_date, 'isoformat') else str(pub_date)
+            
             result = SearchResult(
                 article_id=article['id'],
-                title=article['title'],
-                content=article['content'],
-                source_name=article['source_name'],
-                published_date=article['publication_date'],
+                title=article.get('title', ''),
+                content=article.get('content', ''),
+                source_name=article.get('source_name', 'Unknown Source'),
+                published_date=pub_date_str,
                 similarity_score=1.0,  # Text search doesn't have similarity scores
                 metadata={}
             )
@@ -273,9 +293,9 @@ class SemanticSearchService:
             cursor = self.db_service.mb_conn.cursor(dictionary=True)
             query = """
                 SELECT a.id, a.title, a.content, a.publication_date,
-                       s.name as source_name
+                       COALESCE(s.name, 'Unknown Source') as source_name
                 FROM articles a
-                JOIN sources s ON a.source_id = s.id
+                LEFT JOIN sources s ON a.source_id = s.id
                 WHERE a.id = %s
             """
             cursor.execute(query, (article_id,))
@@ -364,12 +384,22 @@ class SemanticSearchService:
 
             results = []
             for article in articles:
+                # Handle publication_date conversion
+                pub_date = article.get('publication_date')
+                if pub_date is None:
+                    pub_date_str = ''
+                elif isinstance(pub_date, str):
+                    pub_date_str = pub_date
+                else:
+                    # Assume it's a datetime object
+                    pub_date_str = pub_date.isoformat() if hasattr(pub_date, 'isoformat') else str(pub_date)
+                
                 result = SearchResult(
                     article_id=article['id'],
-                    title=article['title'],
-                    content=article['content'],
-                    source_name=article['source_name'],
-                    published_date=article['publication_date'],
+                    title=article.get('title', ''),
+                    content=article.get('content', ''),
+                    source_name=article.get('source_name', 'Unknown Source'),
+                    published_date=pub_date_str,
                     similarity_score=1.0,
                     metadata={}
                 )

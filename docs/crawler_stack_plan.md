@@ -56,3 +56,69 @@ These updates implement the highest-priority fix from the audit (restore the sum
 - Implement domain-specific custom filters if needed (e.g., finance, politics, sports).
 - Introduce conditional multi-model reconciliation when adaptive confidence < 0.75.
 - Expand dashboards with automation for rollback recommendations when crawl quality regresses.
+
+## Phase 5 – Crawler Resilience Enhancements (COMPLETED)
+
+### Advanced Anti-Detection & Content Access Features
+1. **Modal Handling**: Automatic detection and removal of consent overlays, cookie banners, and sign-in modals
+   - Synthetic cookie injection for consent management
+   - Pre-extraction HTML processing to remove modal interference
+   - Configurable consent cookie values and modal detection patterns
+
+2. **Paywall Detection**: Multi-layered paywall analysis and content filtering
+   - Heuristic detection based on content patterns and access restrictions
+   - Optional MCP-based remote analysis for complex paywall identification
+   - Article metadata annotation with confidence scores and skip decisions
+   - Configurable detection thresholds and analysis depth
+
+3. **User Agent Rotation**: Intelligent browser fingerprinting management
+   - Domain-specific user agent pools for targeted site compatibility
+   - Deterministic rotation strategies with configurable pool sizes
+   - Fallback mechanisms for unsupported or problematic user agents
+
+4. **Proxy Pool Management**: IP diversity and anti-detection through proxy rotation
+   - Round-robin proxy selection with configurable pool management
+   - Proxy health monitoring and automatic failure recovery
+   - Support for HTTP/HTTPS proxies with authentication
+
+5. **Stealth Headers**: Browser simulation and fingerprinting evasion
+   - Configurable header profiles mimicking real browser behavior
+   - Accept-Language and Accept-Encoding customization
+   - Header injection for requests with stealth factory patterns
+
+### Implementation Architecture
+- **Modular Design**: Independent enhancement components in `agents/crawler/enhancements/` package
+- **Configuration-Driven**: Full Pydantic schema integration with runtime toggles
+- **Optional Features**: All enhancements default to disabled for backward compatibility
+- **Engine Integration**: Seamless integration into `CrawlerEngine` and `GenericSiteCrawler`
+- **Error Resilience**: Comprehensive exception handling with graceful degradation
+
+### Configuration Schema
+```json
+{
+  "crawling": {
+    "enhancements": {
+      "enable_user_agent_rotation": false,
+      "enable_proxy_pool": false,
+      "enable_modal_handler": false,
+      "enable_paywall_detector": false,
+      "enable_stealth_headers": false,
+      "user_agent_pool": [],
+      "per_domain_user_agents": {},
+      "proxy_pool": [],
+      "stealth_profiles": [],
+      "consent_cookie": {"name": "justnews_cookie_consent", "value": "1"},
+      "paywall_detector": {"enable_remote_analysis": false, "max_remote_chars": 6000}
+    }
+  }
+}
+```
+
+### Production Benefits
+- **Enterprise-Grade Scraping**: Robust web scraping for complex, protected news sites
+- **Anti-Detection Resilience**: Multiple evasion techniques for reliable data collection
+- **Content Quality Improvement**: Enhanced article extraction through modal removal and paywall handling
+- **Operational Reliability**: Graceful handling of site restrictions and access barriers
+- **Future-Proof Architecture**: Modular design supports additional enhancements without disruption
+
+**Status**: **PHASE 5 COMPLETE** - Advanced crawler resilience features fully implemented and production-ready

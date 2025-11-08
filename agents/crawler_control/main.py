@@ -21,10 +21,10 @@ from .tools import get_sources_with_limit
 
 # Import database functions - REMOVED: migrated to database.utils.migrated_database_utils
 # from agents.common.database import execute_query, initialize_connection_pool
-from common.dev_db_fallback import apply_test_db_fallback
+from common.dev_db_fallback import apply_test_db_env_fallback
 
 # Apply database environment fallback for development
-apply_test_db_fallback()
+apply_test_db_env_fallback()
 
 # REMOVED: Database connection pool initialization - now handled by migrated database service
 # initialize_connection_pool()

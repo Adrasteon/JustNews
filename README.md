@@ -61,6 +61,7 @@ make start
 - **Multi-Platform Deployment**: Docker, Kubernetes, systemd support
 - **Comprehensive Testing**: 41% test coverage with pytest-cov, comprehensive unit tests for utilities, agents, integration, operations, monitoring, and configuration
 - **Production Monitoring**: Real-time dashboards and alerting
+- **Advanced Crawler Resilience**: Modal handling, paywall detection, user-agent rotation, proxy pools, and stealth headers for robust web scraping
 
 ## 🛠️ Development
 

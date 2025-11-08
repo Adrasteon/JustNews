@@ -38,28 +38,33 @@ ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(","
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:8000").split(",")
 
 
-async def execute_crawl(
+async def run_crawl_background(
+    job_id: str,
     domains: list[str],
-    max_articles_per_site: int = 25,
-    concurrent_sites: int = 3,
-    profile_overrides: dict[str, dict[str, Any]] | None = None,
-) -> dict[str, Any]:
-    """Execute a crawl synchronously for legacy integrations and tests.
-
-    The production workflow relies on the background job endpoint, but certain
-    callers import ``execute_crawl`` directly (including security tests that
-    patch the function). This helper provides a thin wrapper around the
-    ``CrawlerEngine`` so those imports remain valid in Stage B.
-    """
-
-    async with CrawlerEngine() as crawler:
-        await crawler._load_ai_models()
-        return await crawler.run_unified_crawl(
-            domains,
-            max_articles_per_site,
-            concurrent_sites,
-            profile_overrides=profile_overrides,
-        )
+    max_articles: int,
+    concurrent: int,
+    profile_overrides: dict[str, dict[str, Any]] | None,
+):
+    """Background task to execute a crawl job."""
+    try:
+        crawl_jobs[job_id]["status"] = "running"
+        logger.info(f"Starting background crawl task {job_id} for domains: {domains}")
+        async with CrawlerEngine() as crawler:
+            await crawler._load_ai_models()
+            result = await crawler.run_unified_crawl(
+                domains,
+                max_articles,
+                concurrent,
+                profile_overrides=profile_overrides,
+            )
+        # Store result in job status
+        crawl_jobs[job_id] = {"status": "completed", "result": result}
+        logger.info(f"Background crawl {job_id} complete. Articles: {len(result.get('articles', []))}")
+    except Exception as e:
+        crawl_jobs[job_id] = {"status": "failed", "error": str(e)}
+        logger.error(f"Background crawl {job_id} failed: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
 
 class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
@@ -137,26 +142,10 @@ async def unified_production_crawl_endpoint(call: ToolCall, background_tasks: Ba
     concurrent = call.kwargs.get("concurrent_sites", 3)
     logger.info(f"Enqueueing background crawl job {job_id} for {len(domains)} domains")
     profile_overrides = call.kwargs.get("profile_overrides")
-    # Define background task
-    async def _crawl_task(domains, max_articles, concurrent, job_id, profile_overrides):
-        try:
-            crawl_jobs[job_id]["status"] = "running"
-            async with CrawlerEngine() as crawler:
-                await crawler._load_ai_models()
-                result = await crawler.run_unified_crawl(
-                    domains,
-                    max_articles,
-                    concurrent,
-                    profile_overrides=profile_overrides,
-                )
-            # Store result in job status
-            crawl_jobs[job_id] = {"status": "completed", "result": result}
-            logger.info(f"Background crawl {job_id} complete. Articles: {len(result.get('articles', []))}")
-        except Exception as e:
-            crawl_jobs[job_id] = {"status": "failed", "error": str(e)}
-            logger.error(f"Background crawl {job_id} failed: {e}")
-    # Schedule the task
-    background_tasks.add_task(_crawl_task, domains, max_articles, concurrent, job_id, profile_overrides)
+    
+    # Enqueue background task
+    background_tasks.add_task(run_crawl_background, job_id, domains, max_articles, concurrent, profile_overrides)
+    
     # Return accepted status with job ID
     return JSONResponse(status_code=202, content={"status": "accepted", "job_id": job_id})
 

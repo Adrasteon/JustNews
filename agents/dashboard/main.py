@@ -118,8 +118,8 @@ def save_config(updated_config: dict[str, Any]) -> None:
 
 # Load configuration
 config = load_config()
-# Default dashboard port set to 8014 for public website (8013 was internal dashboard)
-DASHBOARD_AGENT_PORT = config.get("dashboard_port", 8014)
+# Default dashboard port set to 8013 for transparency and public website
+DASHBOARD_AGENT_PORT = config.get("dashboard_port", 8013)
 MCP_BUS_URL = config.get("mcp_bus_url", "http://localhost:8000")
 GPU_ORCHESTRATOR_URL = os.environ.get("GPU_ORCHESTRATOR_URL", "http://localhost:8014").rstrip("/")
 

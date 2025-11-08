@@ -11,6 +11,7 @@ from psycopg2.extras import RealDictCursor
 
 from common.observability import get_logger
 from common.dev_db_fallback import apply_test_db_env_fallback
+from common.env_loader import load_global_env
 
 # Configure centralized logging
 logger = get_logger(__name__)
@@ -18,15 +19,8 @@ logger = get_logger(__name__)
 # Environment variables (read at runtime, not import time)
 def get_db_config():
     """Get database configuration from environment variables"""
-    # Load global.env file first
-    env_file_path = '/etc/justnews/global.env'
-    if os.path.exists(env_file_path):
-        logger.info(f"Loading environment variables from {env_file_path}")
-        with open(env_file_path) as f:
-            for line in f:
-                if line.strip() and not line.startswith('#'):
-                    key, value = line.strip().split('=', 1)
-                    os.environ[key] = value
+    # Load global.env file first (development environments often rely on the repo-local copy)
+    load_global_env(logger=logger)
 
     # Apply development fallback credentials if required
     applied = apply_test_db_env_fallback(logger)

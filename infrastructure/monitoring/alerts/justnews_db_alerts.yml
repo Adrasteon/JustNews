@@ -1,0 +1,20 @@
+groups:
+  - name: justnews-db.rules
+    rules:
+      - alert: ChromaDBDown
+        expr: justnews_chromadb_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ChromaDB unreachable on {{ $labels.instance }}"
+          description: "The ChromaDB instance reported by justnews_chromadb_up is 0 for more than 1 minute. Investigate connectivity and ChromaDB process."
+
+      - alert: MariaDBDown
+        expr: justnews_mariadb_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MariaDB TCP connect failed on {{ $labels.instance }}"
+          description: "The MariaDB TCP probe (justnews_mariadb_up) is 0 for more than 1 minute. Check MariaDB process, networking, and host reachability."

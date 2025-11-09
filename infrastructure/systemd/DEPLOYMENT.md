@@ -47,3 +47,18 @@ These services rely on the configuration described in `docs/operations/systemd-b
 - Comprehensive Guide: `infrastructure/systemd/COMPREHENSIVE_SYSTEMD_GUIDE.md`
 - PostgreSQL Integration: `infrastructure/systemd/postgresql_integration.md`
 
+## Crawl4AI bridge (managed agent)
+
+The Crawl4AI bridge is managed as a normal JustNews agent via the instance template `justnews@.service` and is available as `justnews@crawl4ai`.
+
+Deployment notes:
+- The agent is started by the standard flows (`reset_and_start.sh` / `enable_all.sh`) and therefore participates in the canonical ordering and health checks.
+- Configure runtime variables in `/etc/justnews/global.env` or a per-instance env file `/etc/justnews/crawl4ai.env`. Important variables:
+	- CRAWL4AI_HOST (default 127.0.0.1)
+	- CRAWL4AI_PORT (default 3308)
+	- CRAWL4AI_BASE_URL (optional override)
+	- CRAWL4AI_USE_LLM (true/false)
+	- CRAWL4AI_MODEL_CACHE_DIR (local model cache directory)
+
+If you previously used the standalone unit `infrastructure/systemd/crawl4ai-bridge.service`, switch to `justnews@crawl4ai` to avoid duplication. The repository includes an agent wrapper at `agents/crawl4ai/main.py` which launches the FastAPI bridge (`agents.c4ai.server:app`) under the configured Python runtime.
+

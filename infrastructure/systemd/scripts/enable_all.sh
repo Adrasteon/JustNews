@@ -25,6 +25,7 @@ SERVICES=(
     "analytics"      # Analytics service (port 8011 per canonical mapping)
     "archive"        # Archive agent (port 8012)
     "dashboard"      # Dashboard agent (port 8013)
+    "crawl4ai"       # Crawl4AI bridge service (local HTTP bridge)
     "crawler"        # Unified Production Crawler - intelligent multi-strategy
     "crawler_control" # Crawler Control web interface (port 8016)
 )

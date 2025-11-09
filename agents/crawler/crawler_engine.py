@@ -43,6 +43,7 @@ from .crawler_utils import (
     get_source_performance_history,
     get_sources_by_domain,
     initialize_connection_pool,
+    record_paywall_detection,
 )
 from config import get_crawling_config
 from agents.crawler.enhancements import (
@@ -59,6 +60,13 @@ try:
 except (TypeError, ValueError):
     _site_batches_env = 4
 MAX_SITE_BATCHES = max(1, _site_batches_env)
+
+try:
+    PAYWALL_SKIP_ACTIVATION_THRESHOLD = max(
+        1, int(os.environ.get("UNIFIED_CRAWLER_PAYWALL_SKIP_THRESHOLD", "3"))
+    )
+except (TypeError, ValueError):
+    PAYWALL_SKIP_ACTIVATION_THRESHOLD = 3
 
 def call_analyst_tool(tool: str, *args, **kwargs) -> Any:
     payload = {"agent": "analyst", "tool": tool, "args": list(args), "kwargs": kwargs}
@@ -829,6 +837,33 @@ class CrawlerEngine:
                     logger.error(f"Crawl failed for {domain_key}: {exc}")
 
                 finally:
+                    should_persist_paywall = (
+                        site_paywalls > 0
+                        and site_ingested == 0
+                        and (site_config.domain or site_config.source_id is not None)
+                    )
+                    if should_persist_paywall:
+                        try:
+                            status_changed = record_paywall_detection(
+                                source_id=site_config.source_id,
+                                domain=site_config.domain,
+                                skip_count=site_paywalls,
+                                threshold=PAYWALL_SKIP_ACTIVATION_THRESHOLD,
+                                paywall_type="hard",
+                            )
+                            if status_changed:
+                                logger.info(
+                                    "🚫 Marked %s as paywalled after %s skipped articles",
+                                    domain_key,
+                                    site_paywalls,
+                                )
+                        except Exception as err:  # pragma: no cover - defensive logging
+                            logger.debug(
+                                "Unable to persist paywall state for %s: %s",
+                                domain_key,
+                                err,
+                            )
+
                     async with aggregation_lock:
                         site_articles[domain_key] = site_articles_local
                         site_metrics[domain_key] = {

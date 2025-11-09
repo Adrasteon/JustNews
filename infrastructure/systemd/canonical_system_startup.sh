@@ -395,6 +395,10 @@ main() {
     if ! start_monitoring_stack "$repo_root"; then
       exit 1
     fi
+    # The Crawl4AI bridge is managed as a regular justnews@ service named
+    # 'crawl4ai' and will be enabled/started by the reset_and_start ->
+    # enable_all.sh flow. No dedicated enable/start is required here.
+    log_info "Crawl4AI bridge will be started by enable_all.sh as justnews@crawl4ai"
     run_health_summary "$repo_root"
   fi
 

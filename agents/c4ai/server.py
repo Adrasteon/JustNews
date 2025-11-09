@@ -1,0 +1,266 @@
+"""Crawl4AI bridge HTTP server.
+
+Small, robust FastAPI wrapper for local Crawl4AI usage. This implementation
+performs lazy imports of optional crawler enhancements (UA rotation,
+proxy manager, stealth browser, modal/cookie handler, paywall detector,
+robots checker and rate limiter) and uses a small SQLite-based
+paywall aggregator if available to avoid recording single transient
+detections immediately.
+
+The server exposes:
+- GET /health
+- POST /crawl  -> accepts JSON {"urls":[...], "mode":"...", "use_llm":true}
+
+The implementation is defensive: missing optional modules are ignored and
+the endpoint will return a 503 if the core `crawl4ai` package is missing.
+"""
+from __future__ import annotations
+
+import os
+from typing import Any, Dict, List
+from urllib.parse import urlparse
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+app = FastAPI(title="JustNewsAgent Crawl4AI Bridge")
+
+
+class CrawlRequest(BaseModel):
+    urls: List[str]
+    mode: str = "standard"
+    use_llm: bool = True
+
+
+@app.get("/health")
+async def health() -> Dict[str, Any]:
+    return {"status": "ok", "service": "crawl4ai-bridge"}
+
+
+@app.post("/crawl")
+async def crawl(req: CrawlRequest) -> Dict[str, Any]:
+    # core dependency
+    try:
+        from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode  # type: ignore
+    except Exception as exc:  # pragma: no cover - dependency may be missing in test envs
+        raise HTTPException(status_code=503, detail=f"crawl4ai not available: {exc}")
+
+    # best-effort optional helpers
+    try:
+        from agents.crawler.crawler_utils import record_paywall_detection, RobotsChecker, RateLimiter  # type: ignore
+    except Exception:
+        record_paywall_detection = None  # type: ignore
+        RobotsChecker = None  # type: ignore
+        RateLimiter = None  # type: ignore
+
+    try:
+        from agents.crawler.paywall_aggregator import increment_and_check  # type: ignore
+    except Exception:
+        increment_and_check = None  # type: ignore
+
+    try:
+        from agents.crawler.enhancements.ua_rotation import UserAgentProvider, UserAgentConfig  # type: ignore
+    except Exception:
+        UserAgentProvider = None  # type: ignore
+        UserAgentConfig = None  # type: ignore
+
+    try:
+        from agents.crawler.enhancements.stealth_browser import StealthBrowserFactory  # type: ignore
+    except Exception:
+        StealthBrowserFactory = None  # type: ignore
+
+    try:
+        from agents.crawler.enhancements.proxy_manager import ProxyManager  # type: ignore
+    except Exception:
+        ProxyManager = None  # type: ignore
+
+    try:
+        from agents.crawler.enhancements.paywall_detector import PaywallDetector  # type: ignore
+    except Exception:
+        PaywallDetector = None  # type: ignore
+
+    try:
+        from agents.crawler.enhancements.modal_handler import ModalHandler  # type: ignore
+    except Exception:
+        ModalHandler = None  # type: ignore
+
+    # runtime flags
+    persist_paywalls = os.getenv("CRAWL4AI_PERSIST_PAYWALLS", "true").lower() in ("1", "true", "yes")
+
+    # instantiate helpers best-effort
+    robots_checker = RobotsChecker() if RobotsChecker is not None else None
+    rate_limiter = RateLimiter() if RateLimiter is not None else None
+    modal_handler = ModalHandler() if ModalHandler is not None else None
+    paywall_detector = PaywallDetector() if PaywallDetector is not None else None
+
+    stealth_factory = None
+    if StealthBrowserFactory is not None:
+        try:
+            stealth_factory = StealthBrowserFactory()
+        except Exception:
+            stealth_factory = None
+
+    ua_provider = None
+    if UserAgentProvider is not None and UserAgentConfig is not None:
+        try:
+            ua_cfg = UserAgentConfig(pool=[], per_domain_overrides={}, default=None)
+            ua_provider = UserAgentProvider(ua_cfg)
+        except Exception:
+            ua_provider = None
+
+    proxy_manager = None
+    if ProxyManager is not None:
+        try:
+            proxy_manager = ProxyManager()
+        except Exception:
+            proxy_manager = None
+
+    results: List[Dict[str, Any]] = []
+
+    # Per-URL crawling
+    for url in req.urls:
+        # robots check
+        if robots_checker is not None:
+            try:
+                if not robots_checker.is_allowed(url):
+                    results.append({"url": url, "error": "disallowed_by_robots", "success": False})
+                    continue
+            except Exception:
+                pass
+
+        # rate limiter
+        if rate_limiter is not None:
+            try:
+                domain = urlparse(url).netloc
+                rate_limiter.acquire(domain)
+            except Exception:
+                pass
+
+        # Build browser kwargs
+        browser_kwargs: dict = {"headless": True}
+        # user-agent
+        try:
+            if ua_provider is not None:
+                ua = getattr(ua_provider, "choose", lambda **k: None)(domain=None)
+                if ua:
+                    browser_kwargs["user_agent"] = ua
+            elif stealth_factory is not None:
+                prof = getattr(stealth_factory, "random_profile", lambda: None)()
+                if prof is not None:
+                    browser_kwargs["user_agent"] = getattr(prof, "user_agent", None)
+        except Exception:
+            pass
+
+        # proxy
+        try:
+            if proxy_manager is not None:
+                p = None
+                if hasattr(proxy_manager, "next_proxy"):
+                    p = proxy_manager.next_proxy()
+                elif hasattr(proxy_manager, "get_proxy"):
+                    p = proxy_manager.get_proxy()
+                if p is not None:
+                    browser_kwargs["proxy"] = getattr(p, "url", None) or str(p)
+        except Exception:
+            pass
+
+        # Construct browser config (safe fallback)
+        try:
+            browser_cfg = BrowserConfig(**browser_kwargs)
+        except Exception:
+            try:
+                browser_cfg = BrowserConfig(headless=True)
+                for k, v in browser_kwargs.items():
+                    try:
+                        setattr(browser_cfg, k, v)
+                    except Exception:
+                        pass
+            except Exception:
+                browser_cfg = None
+
+        if browser_cfg is None:
+            results.append({"url": url, "error": "unable_to_construct_browser_config", "success": False})
+            continue
+
+        # run crawler for this URL
+        try:
+            async with AsyncWebCrawler(config=browser_cfg) as crawler:
+                try:
+                    run_conf = CrawlerRunConfig(cache_mode=CacheMode.BYPASS)
+                    res = await crawler.arun(url, config=run_conf)
+                except Exception:
+                    res = await crawler.arun(url)
+
+                html = getattr(res, "html", None) or ""
+                markdown = getattr(res, "markdown", None)
+
+                # modal handling
+                if modal_handler is not None and html:
+                    try:
+                        mh = modal_handler.process(html)
+                        html = getattr(mh, "cleaned_html", html)
+                    except Exception:
+                        pass
+
+                # paywall detection
+                skip_ingest = False
+                paywall_meta = None
+                if paywall_detector is not None:
+                    try:
+                        pw_res = await paywall_detector.analyze(url=url, html=html, text=markdown)
+                        skip_ingest = bool(getattr(pw_res, "should_skip", False))
+                        paywall_meta = pw_res
+                    except Exception:
+                        pass
+
+                # persistence: prefer aggregator if available
+                if skip_ingest and persist_paywalls:
+                    try:
+                        domain = urlparse(url).netloc
+                        if increment_and_check is not None:
+                            try:
+                                threshold = int(os.getenv("CRAWL4AI_PAYWALL_THRESHOLD", "3"))
+                            except Exception:
+                                threshold = 3
+                            try:
+                                count, reached = increment_and_check(domain, threshold=threshold)
+                                if reached and record_paywall_detection is not None:
+                                    record_paywall_detection(source_id=None, domain=domain, skip_count=count, threshold=threshold, paywall_type="detected")
+                            except Exception:
+                                if record_paywall_detection is not None:
+                                    try:
+                                        record_paywall_detection(source_id=None, domain=domain, skip_count=1, threshold=1, paywall_type="detected")
+                                    except Exception:
+                                        pass
+                        else:
+                            if record_paywall_detection is not None:
+                                try:
+                                    record_paywall_detection(source_id=None, domain=domain, skip_count=1, threshold=1, paywall_type="detected")
+                                except Exception:
+                                    pass
+                    except Exception:
+                        pass
+
+                entry = {
+                    "url": getattr(res, "url", url),
+                    "title": getattr(res, "title", None),
+                    "html": html,
+                    "markdown": markdown,
+                    "links": getattr(res, "links", []),
+                    "status_code": getattr(res, "status_code", None),
+                    "success": getattr(res, "success", True),
+                    "skip_ingest": skip_ingest,
+                }
+
+                if paywall_meta is not None:
+                    entry["paywall"] = {
+                        "is_paywall": getattr(paywall_meta, "is_paywall", False),
+                        "confidence": float(getattr(paywall_meta, "confidence", 0.0)),
+                        "reasons": getattr(paywall_meta, "reasons", []),
+                    }
+
+                results.append(entry)
+        except Exception as exc:
+            results.append({"url": url, "error": str(exc), "success": False})
+
+    return {"results": results}

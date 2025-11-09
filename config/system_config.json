@@ -27,24 +27,7 @@
       "connection_timeout_seconds": 3.0,
       "command_timeout_seconds": 30.0
     },
-    "ssl_mode": "prefer",
-    "mariadb": {
-      "host": "127.0.0.1",
-      "port": 3306,
-      "database": "justnews",
-      "user": "justnews",
-      "password": "migration_password_2024"
-    },
-    "chromadb": {
-      "host": "localhost",
-      "port": 3307,
-      "collection": "articles"
-    },
-    "embedding": {
-      "model": "all-MiniLM-L6-v2",
-      "dimensions": 384,
-      "device": "cpu"
-    }
+    "ssl_mode": "prefer"
   },
   "crawling": {
     "enabled": true,
@@ -55,7 +38,7 @@
       "enable_modal_handler": true,
       "enable_paywall_detector": true,
       "enable_stealth_headers": true,
-  "enable_pia_socks5": false,
+      "enable_pia_socks5": true,
       "user_agent_pool": [
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

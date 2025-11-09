@@ -27,8 +27,12 @@ import mysql.connector
 from mysql.connector import pooling
 
 from common.observability import get_logger
+from common.env_loader import load_global_env
 
 logger = get_logger(__name__)
+
+# Ensure MariaDB credentials from global.env are available when running ad-hoc scripts
+load_global_env(logger=logger)
 
 _POOL_LOCK = threading.Lock()
 _CONNECTION_POOL: Optional[pooling.MySQLConnectionPool] = None
@@ -208,8 +212,20 @@ def _normalize_row(row: Dict[str, Any]) -> Dict[str, Any]:
     return normalised
 
 
-def get_active_sources(limit: Optional[int] = None) -> List[Dict[str, Any]]:
-    sql = "SELECT * FROM sources ORDER BY last_verified IS NULL, last_verified DESC"
+def get_active_sources(
+    limit: Optional[int] = None,
+    *,
+    include_paywalled: bool = False,
+) -> List[Dict[str, Any]]:
+    conditions: List[str] = []
+    if not include_paywalled:
+        conditions.append("COALESCE(paywall, 0) = 0")
+
+    sql = "SELECT * FROM sources"
+    if conditions:
+        sql += " WHERE " + " AND ".join(conditions)
+    sql += " ORDER BY last_verified IS NULL, last_verified DESC"
+
     params: Tuple[Any, ...] = ()
     if limit is not None:
         sql += " LIMIT %s"
@@ -302,6 +318,95 @@ def record_crawling_performance(
         logger.debug("Could not record crawling performance for %s", domain or source_id)
 
 
+def record_paywall_detection(
+    *,
+    source_id: Optional[int] = None,
+    domain: Optional[str] = None,
+    skip_count: int,
+    threshold: int,
+    paywall_type: str | None = "hard",
+) -> bool:
+    """Persist paywall skip telemetry and flag the source when the threshold is reached.
+
+    Returns True when the paywall flag transitions from false to true.
+    """
+
+    if skip_count <= 0:
+        return False
+    identifier: Tuple[str, Tuple[Any, ...]] | None = None
+    if source_id is not None:
+        identifier = ("id = %s", (source_id,))
+    elif domain:
+        identifier = ("LOWER(domain) = %s", (domain.lower(),))
+
+    if identifier is None:
+        return False
+
+    where_clause, where_params = identifier
+
+    try:
+        with _get_conn() as conn:
+            cursor = conn.cursor(dictionary=True)
+            try:
+                cursor.execute(
+                    f"SELECT id, domain, paywall, paywall_type, metadata FROM sources WHERE {where_clause} LIMIT 1",
+                    where_params,
+                )
+                row = cursor.fetchone()
+                if not row:
+                    return False
+
+                metadata_raw = row.get("metadata")
+                metadata = _maybe_json(metadata_raw, {})
+                if not isinstance(metadata, dict):
+                    metadata = {}
+
+                paywall_meta = metadata.get("paywall_detection")
+                if not isinstance(paywall_meta, dict):
+                    paywall_meta = {}
+
+                existing_missed = int(paywall_meta.get("skip_streak", 0) or 0)
+                total_skips = int(paywall_meta.get("total_skips", 0) or 0)
+
+                new_skip_streak = existing_missed + skip_count
+                new_total_skips = total_skips + skip_count
+
+                paywall_meta.update(
+                    {
+                        "skip_streak": new_skip_streak,
+                        "total_skips": new_total_skips,
+                        "last_detected_at": datetime.utcnow().isoformat() + "Z",
+                        "threshold": threshold,
+                    }
+                )
+                metadata["paywall_detection"] = paywall_meta
+
+                was_paywalled = bool(row.get("paywall"))
+                should_flag = new_skip_streak >= max(1, threshold)
+                now_paywalled = was_paywalled or should_flag
+
+                resolved_paywall_type = row.get("paywall_type")
+                if now_paywalled and not resolved_paywall_type and paywall_type:
+                    resolved_paywall_type = paywall_type
+
+                cursor.execute(
+                    "UPDATE sources SET paywall = %s, paywall_type = %s, metadata = %s, updated_at = NOW() WHERE id = %s",
+                    (
+                        now_paywalled,
+                        resolved_paywall_type,
+                        json.dumps(metadata, default=str),
+                        row["id"],
+                    ),
+                )
+                conn.commit()
+                return now_paywalled and not was_paywalled
+            finally:
+                cursor.close()
+    except mysql.connector.Error:
+        logger.debug("Failed to persist paywall detection for %s", domain or source_id)
+        return False
+
+
 def get_source_performance_history(identifier: Any, limit: int = 5) -> List[Dict[str, Any]]:
     if identifier is None:
         return []
@@ -361,5 +466,6 @@ __all__ = [
     "get_sources_by_domain",
     "initialize_connection_pool",
     "record_crawling_performance",
+    "record_paywall_detection",
     "update_source_crawling_strategy",
 ]

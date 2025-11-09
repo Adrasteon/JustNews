@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
+import pytest_asyncio
 import torch
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
@@ -84,14 +85,14 @@ def gpu_manager_stub(monkeypatch):
     sys.modules.pop("common.gpu_utils", None)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def mock_gpu_manager():
     """Create a mock GPU manager."""
     manager = StubGPUManager()
     return manager
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def synthesizer_engine(mock_gpu_manager):
     """Create a SynthesizerEngine instance with mocked dependencies."""
     with patch('agents.synthesizer.synthesizer_engine.GPUManager', return_value=mock_gpu_manager), \
@@ -373,8 +374,9 @@ class TestSynthesizerEngineSynthesizeGPU:
         """Test GPU synthesis under memory pressure."""
         articles = [{"content": "Test", "id": 1}]
 
-        # Simulate low GPU memory
-        mock_gpu_manager.get_available_memory.return_value = 1 * 1024 * 1024 * 1024  # 1GB
+        # Simulate low GPU memory (make method a Mock so tests can adjust return)
+        from unittest.mock import Mock as _Mock
+        mock_gpu_manager.get_available_memory = _Mock(return_value=1 * 1024 * 1024 * 1024)  # 1GB
 
         # Mock components
         synthesizer_engine.bertopic_model = StubBERTopicModel()

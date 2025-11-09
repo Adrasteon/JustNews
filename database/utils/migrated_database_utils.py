@@ -95,7 +95,24 @@ def get_db_config() -> Dict[str, Any]:
                 'command_timeout_seconds': 30.0
             }
         }
+        
+        # Allow explicit environment variable overrides for important runtime
+        # values. system_config.json may not include chromadb entries (older
+        # configs), and we must prefer CHROMADB_* environment variables when
+        # present (for example /etc/justnews/global.env used on the host).
+        chroma_host = os.environ.get('CHROMADB_HOST')
+        chroma_port = os.environ.get('CHROMADB_PORT')
+        chroma_collection = os.environ.get('CHROMADB_COLLECTION')
 
+        if chroma_host:
+            config['chromadb']['host'] = chroma_host
+        if chroma_port:
+            try:
+                config['chromadb']['port'] = int(chroma_port)
+            except Exception:
+                logger.warning(f"Invalid CHROMADB_PORT='{chroma_port}', using config value {config['chromadb'].get('port')}")
+        if chroma_collection:
+            config['chromadb']['collection'] = chroma_collection
     except Exception as e:
         logger.warning(f"Failed to load system config, using defaults: {e}")
         config = {
@@ -132,6 +149,7 @@ def get_db_config() -> Dict[str, Any]:
         raise ValueError(f"Missing required MariaDB configuration fields: {missing_mariadb}")
 
     return config
+
 
 
 def create_database_service(config: Optional[Dict[str, Any]] = None) -> MigratedDatabaseService:

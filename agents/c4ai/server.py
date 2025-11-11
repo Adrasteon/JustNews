@@ -16,7 +16,9 @@ the endpoint will return a 503 if the core `crawl4ai` package is missing.
 """
 from __future__ import annotations
 
+import importlib
 import os
+import sys
 from typing import Any, Dict, List
 from urllib.parse import urlparse
 
@@ -46,12 +48,20 @@ async def crawl(req: CrawlRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=503, detail=f"crawl4ai not available: {exc}")
 
     # best-effort optional helpers
-    try:
-        from agents.crawler.crawler_utils import record_paywall_detection, RobotsChecker, RateLimiter  # type: ignore
-    except Exception:
-        record_paywall_detection = None  # type: ignore
-        RobotsChecker = None  # type: ignore
-        RateLimiter = None  # type: ignore
+    def _get_crawler_utils_module():
+        module = sys.modules.get("agents.crawler.crawler_utils")
+        if module is not None:
+            return module
+        try:
+            return importlib.import_module("agents.crawler.crawler_utils")
+        except Exception:
+            return None
+
+    crawler_utils_module = _get_crawler_utils_module()
+
+    record_paywall_detection = getattr(crawler_utils_module, "record_paywall_detection", None) if crawler_utils_module else None  # type: ignore[index]
+    RobotsChecker = getattr(crawler_utils_module, "RobotsChecker", None) if crawler_utils_module else None  # type: ignore[assignment]
+    RateLimiter = getattr(crawler_utils_module, "RateLimiter", None) if crawler_utils_module else None  # type: ignore[assignment]
 
     try:
         from agents.crawler.paywall_aggregator import increment_and_check  # type: ignore
@@ -215,6 +225,7 @@ async def crawl(req: CrawlRequest) -> Dict[str, Any]:
 
                 # persistence: prefer aggregator if available
                 if skip_ingest and persist_paywalls:
+                    crawler_utils_module = _get_crawler_utils_module()
                     try:
                         domain = urlparse(url).netloc
                         if increment_and_check is not None:
@@ -224,18 +235,27 @@ async def crawl(req: CrawlRequest) -> Dict[str, Any]:
                                 threshold = 3
                             try:
                                 count, reached = increment_and_check(domain, threshold=threshold)
-                                if reached and record_paywall_detection is not None:
-                                    record_paywall_detection(source_id=None, domain=domain, skip_count=count, threshold=threshold, paywall_type="detected")
+                                record_fn = getattr(crawler_utils_module, "record_paywall_detection", None) if crawler_utils_module is not None else None
+                                if record_fn is None:
+                                    record_fn = record_paywall_detection
+                                if reached and record_fn is not None:
+                                    record_fn(source_id=None, domain=domain, skip_count=count, threshold=threshold, paywall_type="detected")
                             except Exception:
-                                if record_paywall_detection is not None:
+                                record_fn = getattr(crawler_utils_module, "record_paywall_detection", None) if crawler_utils_module is not None else None
+                                if record_fn is None:
+                                    record_fn = record_paywall_detection
+                                if record_fn is not None:
                                     try:
-                                        record_paywall_detection(source_id=None, domain=domain, skip_count=1, threshold=1, paywall_type="detected")
+                                        record_fn(source_id=None, domain=domain, skip_count=1, threshold=1, paywall_type="detected")
                                     except Exception:
                                         pass
                         else:
-                            if record_paywall_detection is not None:
+                            record_fn = getattr(crawler_utils_module, "record_paywall_detection", None) if crawler_utils_module is not None else None
+                            if record_fn is None:
+                                record_fn = record_paywall_detection
+                            if record_fn is not None:
                                 try:
-                                    record_paywall_detection(source_id=None, domain=domain, skip_count=1, threshold=1, paywall_type="detected")
+                                    record_fn(source_id=None, domain=domain, skip_count=1, threshold=1, paywall_type="detected")
                                 except Exception:
                                     pass
                     except Exception:

@@ -11,8 +11,7 @@ from datetime import datetime, timezone, timedelta
 from enum import Enum
 
 import jwt
-from psycopg2 import pool
-from psycopg2.extras import RealDictCursor
+from database.utils.migrated_database_utils import create_database_service
 from pydantic import BaseModel, EmailStr
 
 from common.observability import get_logger
@@ -28,82 +27,42 @@ AUTH_POOL_MIN_CONNECTIONS = int(os.environ.get("AUTH_DB_POOL_MIN_CONNECTIONS", "
 AUTH_POOL_MAX_CONNECTIONS = int(os.environ.get("AUTH_DB_POOL_MAX_CONNECTIONS", "5"))
 
 # Authentication connection pool (separate from main app pool)
-_auth_connection_pool: pool.ThreadedConnectionPool | None = None
+_auth_service = None
 
 logger = get_logger(__name__)
 
-def initialize_auth_connection_pool():
-    """
-    Initialize the authentication database connection pool.
-    Should be called once at application startup.
-    """
-    global _auth_connection_pool
+def initialize_auth_db_service():
+    """Initialize or return the migrated DB service to be used for auth storage."""
+    global _auth_service
+    if _auth_service is not None:
+        return _auth_service
 
-    if _auth_connection_pool is not None:
-        return _auth_connection_pool
+    _auth_service = create_database_service()
+    logger.info("Authentication database service initialized via migrated DB service")
+    return _auth_service
 
-    try:
-        _auth_connection_pool = pool.ThreadedConnectionPool(
-            minconn=AUTH_POOL_MIN_CONNECTIONS,
-            maxconn=AUTH_POOL_MAX_CONNECTIONS,
-            host=AUTH_POSTGRES_HOST,
-            database=AUTH_POSTGRES_DB,
-            user=AUTH_POSTGRES_USER,
-            password=AUTH_POSTGRES_PASSWORD,
-            connect_timeout=3,
-            options='-c search_path=public'
-        )
-        logger.info(f"🔐 Authentication database connection pool initialized with {AUTH_POOL_MIN_CONNECTIONS}-{AUTH_POOL_MAX_CONNECTIONS} connections")
-        return _auth_connection_pool
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize authentication connection pool: {e}")
-        raise
-
-def get_auth_connection_pool():
-    """
-    Get the authentication connection pool instance.
-    Initializes it if not already done.
-    """
-    if _auth_connection_pool is None:
-        return initialize_auth_connection_pool()
-    return _auth_connection_pool
 
 @contextmanager
-def get_auth_db_connection():
-    """
-    Context manager for getting an authentication database connection from the pool.
-    Automatically returns the connection to the pool when done.
-    """
-    pool = get_auth_connection_pool()
-    conn = None
+def get_auth_db_cursor(commit: bool = False, dictionary: bool = True):
+    """Yield (conn, cursor) using the migrated MariaDB connection for auth operations."""
+    service = initialize_auth_db_service()
+    conn = service.mb_conn
+    cursor = conn.cursor(dictionary=dictionary)
     try:
-        conn = pool.getconn()
-        yield conn
-    except Exception as e:
-        logger.error(f"Authentication database connection error: {e}")
+        yield conn, cursor
+        if commit:
+            conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         raise
     finally:
-        if conn:
-            pool.putconn(conn)
-
-@contextmanager
-def get_auth_db_cursor(commit: bool = False):
-    """
-    Context manager for getting an authentication database cursor with connection.
-    Automatically handles connection pooling and optional commit.
-    """
-    with get_auth_db_connection() as conn:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
         try:
-            yield conn, cursor
-            if commit:
-                conn.commit()
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Authentication database operation error: {e}")
-            raise
-        finally:
             cursor.close()
+        except Exception:
+            pass
 
 def auth_execute_query(query: str, params: tuple = None, fetch: bool = True) -> list | None:
     """
@@ -117,10 +76,15 @@ def auth_execute_query(query: str, params: tuple = None, fetch: bool = True) -> 
     Returns:
         List of results if fetch=True and it's a SELECT query, None otherwise
     """
-    with get_auth_db_cursor(commit=True) as (conn, cursor):
+    # Default to commit True for data-changing ops to preserve prior behavior
+    commit = not query.strip().upper().startswith('SELECT')
+    with get_auth_db_cursor(commit=commit) as (conn, cursor):
         cursor.execute(query, params or ())
         if fetch and query.strip().upper().startswith('SELECT'):
             return cursor.fetchall()
+        # For inserts, attempt to return lastrowid for compatibility
+        if commit and hasattr(cursor, 'lastrowid'):
+            return [{'lastrowid': cursor.lastrowid}]
         return None
 
 def auth_execute_query_single(query: str, params: tuple = None, commit: bool = False) -> dict | None:
@@ -137,6 +101,11 @@ def auth_execute_query_single(query: str, params: tuple = None, commit: bool = F
     """
     with get_auth_db_cursor(commit=commit) as (conn, cursor):
         cursor.execute(query, params or ())
+        # If query was an INSERT and commit requested, try to return lastrowid
+        if commit and ('INSERT' in query.strip().upper()):
+            last = getattr(cursor, 'lastrowid', None)
+            if last:
+                return {'lastrowid': last}
         result = cursor.fetchone()
         return dict(result) if result else None
 
@@ -284,7 +253,7 @@ def create_user_tables():
     queries = [
         """
         CREATE TABLE IF NOT EXISTS users (
-            user_id SERIAL PRIMARY KEY,
+            user_id INT AUTO_INCREMENT PRIMARY KEY,
             email VARCHAR(255) UNIQUE NOT NULL,
             username VARCHAR(100) UNIQUE NOT NULL,
             full_name VARCHAR(255) NOT NULL,
@@ -301,8 +270,9 @@ def create_user_tables():
         """,
         """
         CREATE TABLE IF NOT EXISTS user_sessions (
-            session_id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
+            session_id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INTEGER,
+            -- FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE,
             refresh_token_hash VARCHAR(255) UNIQUE NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             expires_at TIMESTAMP NOT NULL,
@@ -311,8 +281,9 @@ def create_user_tables():
         """,
         """
         CREATE TABLE IF NOT EXISTS password_reset_tokens (
-            token_id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
+            token_id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INTEGER,
+            -- FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE,
             token_hash VARCHAR(255) UNIQUE NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             expires_at TIMESTAMP NOT NULL,
@@ -320,16 +291,16 @@ def create_user_tables():
         )
         """,
         """
-        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)
+        CREATE INDEX idx_users_email ON users(email)
         """,
         """
-        CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)
+        CREATE INDEX idx_users_username ON users(username)
         """,
         """
-        CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id)
+        CREATE INDEX idx_user_sessions_user_id ON user_sessions(user_id)
         """,
         """
-        CREATE INDEX IF NOT EXISTS idx_user_sessions_refresh_token ON user_sessions(refresh_token_hash)
+        CREATE INDEX idx_user_sessions_refresh_token ON user_sessions(refresh_token_hash)
         """
     ]
 
@@ -365,10 +336,9 @@ def create_user(user_data: UserCreate) -> int | None:
     query = """
     INSERT INTO users (email, username, full_name, role, status, hashed_password, salt)
     VALUES (%s, %s, %s, %s, %s, %s, %s)
-    RETURNING user_id
     """
 
-    result = auth_execute_query_single(query, (
+    res = auth_execute_query_single(query, (
         user_data.email,
         user_data.username,
         user_data.full_name,
@@ -378,7 +348,9 @@ def create_user(user_data: UserCreate) -> int | None:
         salt
     ), commit=True)
 
-    return result.get('user_id') if result else None
+    if res and res.get('lastrowid'):
+        return res.get('lastrowid')
+    return None
 
 def update_user_login(user_id: int):
     """Update user's last login time"""

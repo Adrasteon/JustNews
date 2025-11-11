@@ -26,6 +26,7 @@ All endpoints support both MCP Bus format and direct API calls.
 """
 
 import asyncio
+import inspect
 import json
 import os
 from contextlib import asynccontextmanager
@@ -40,6 +41,12 @@ from common.observability import get_logger
 
 # Import metrics library
 from common.metrics import JustNewsMetrics
+
+# Compatibility: expose create_database_service for tests that patch agent modules
+try:
+    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+except Exception:
+    create_database_service = None
 
 # Configure logging
 logger = get_logger(__name__)
@@ -106,8 +113,85 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Initialize metrics
-metrics = JustNewsMetrics("fact_checker")
+# Initialize metrics lazily to allow tests to patch constructor
+_metrics_client: Optional[JustNewsMetrics] = None
+_metrics_factory: Any = JustNewsMetrics
+
+
+def get_metrics_client() -> JustNewsMetrics:
+    global _metrics_client, _metrics_factory
+    current_factory = JustNewsMetrics
+    if _metrics_client is None or _metrics_factory is not current_factory:
+        _metrics_factory = current_factory
+        _metrics_client = current_factory("fact_checker")
+    return _metrics_client
+
+# Lightweight helpers patched in tests
+def validate_content_size(content: Optional[str], max_bytes: int = 1_000_000) -> bool:
+    """Return True when content is within the configured size budget."""
+    if content is None:
+        return True
+    try:
+        return len(content.encode("utf-8")) <= max_bytes
+    except Exception:
+        return False
+
+
+def sanitize_content(content: Optional[str]) -> str:
+    """Trim whitespace and coerce non-string payloads into safe defaults."""
+    if content is None:
+        return ""
+    return content.strip() if isinstance(content, str) else str(content)
+
+
+def verify_facts(content: str, source_url: Optional[str] = None, context: Optional[str] = None) -> Dict[str, Any]:
+    from .tools import verify_facts as run_verify_facts
+
+    return run_verify_facts(content, source_url, context)
+
+
+def extract_claims(content: str) -> List[str]:
+    from .tools import extract_claims as run_extract_claims
+
+    return run_extract_claims(content)
+
+
+def run_validate_sources(
+    content: str,
+    sources: Optional[List[str]] = None,
+    domain: Optional[str] = None,
+    source_url: Optional[str] = None,
+) -> Dict[str, Any]:
+    from .tools import validate_sources as validate_tool
+
+    return validate_tool(content, sources, domain, source_url)
+
+
+def run_comprehensive_fact_check(
+    content: str,
+    source_url: Optional[str] = None,
+    context: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    from .tools import comprehensive_fact_check as comprehensive_tool
+
+    return comprehensive_tool(content, source_url, context, metadata)
+
+
+def run_assess_credibility(
+    content: Optional[str] = None,
+    domain: Optional[str] = None,
+    source_url: Optional[str] = None,
+) -> Dict[str, Any]:
+    from .tools import assess_credibility as assess_tool
+
+    return assess_tool(content, domain, source_url)
+
+
+def run_detect_contradictions(text_passages: List[str]) -> Dict[str, Any]:
+    from .tools import detect_contradictions as detect_tool
+
+    return detect_tool(text_passages)
 
 # Register shutdown endpoint if available
 try:
@@ -123,8 +207,18 @@ try:
 except Exception:
     logger.debug("reload endpoint not registered for fact_checker")
 
-# Add metrics middleware
-app.middleware("http")(metrics.request_middleware)
+
+@app.middleware("http")
+async def metrics_middleware(request, call_next):
+    """Proxy to the metrics middleware, instantiating on first use."""
+    middleware = get_metrics_client().request_middleware
+    if not inspect.iscoroutinefunction(middleware):
+        return await call_next(request)
+
+    response = middleware(request, call_next)
+    if inspect.isawaitable(response):
+        return await response
+    return response
 
 # Pydantic models for request/response validation
 class ToolCall(BaseModel):
@@ -151,7 +245,11 @@ class VerificationResult(BaseModel):
 @app.get("/health")
 def health():
     """Health check endpoint."""
-    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+    return {
+        "status": "healthy",
+        "service": "fact_checker",
+        "timestamp": datetime.now().isoformat(),
+    }
 
 @app.get("/ready")
 def ready_endpoint():
@@ -162,19 +260,48 @@ def ready_endpoint():
 def get_metrics():
     """Prometheus metrics endpoint."""
     from fastapi.responses import Response
-    return Response(metrics.get_metrics(), media_type="text/plain")
+    payload = get_metrics_client().get_metrics()
+    if isinstance(payload, bytes):
+        content = payload
+    else:
+        content = str(payload)
+    return Response(content, media_type="text/plain")
+
+
+@app.post("/verify")
+def verify_endpoint(request: FactCheckRequest) -> Dict[str, Any]:
+    """Lightweight verification endpoint used by synchronous callers."""
+    if not validate_content_size(request.content):
+        raise HTTPException(status_code=400, detail="Content too large")
+
+    cleaned_content = sanitize_content(request.content)
+    result = verify_facts(cleaned_content, request.source_url, request.context)
+    return result
+
+
+@app.post("/extract-claims")
+def extract_claims_endpoint(request: FactCheckRequest) -> List[str]:
+    """Convenience wrapper that returns extracted claims without MCP payload."""
+    if not validate_content_size(request.content):
+        raise HTTPException(status_code=400, detail="Content too large")
+
+    cleaned_content = sanitize_content(request.content)
+    result = extract_claims(cleaned_content)
+    if isinstance(result, dict):
+        return result.get("claims", [])
+    return result
 
 @app.post("/verify_facts")
-async def verify_facts(call: ToolCall) -> Dict[str, Any]:
+async def verify_facts_tool(call: ToolCall) -> Dict[str, Any]:
     """
     Primary fact verification endpoint.
 
     Verifies factual claims using AI models and evidence assessment.
     """
     try:
-        from .tools import verify_facts
+        from .tools import verify_facts as run_verify_facts
 
-        logger.info(f"Calling verify_facts with args: {call.args} and kwargs: {call.kwargs}")
+        logger.info(f"Calling verify_facts tool with args: {call.args} and kwargs: {call.kwargs}")
 
         # Extract parameters
         content = call.kwargs.get("content") or (call.args[0] if call.args else "")
@@ -184,7 +311,7 @@ async def verify_facts(call: ToolCall) -> Dict[str, Any]:
         if not content:
             raise HTTPException(status_code=400, detail="Content parameter is required")
 
-        result = await verify_facts(content, source_url, context)
+        result = run_verify_facts(content, source_url, context)
 
         logger.info(f"Fact verification completed with score: {result.get('verification_score', 0.0)}")
         return result
@@ -201,19 +328,24 @@ async def validate_sources(call: ToolCall) -> Dict[str, Any]:
     Evaluates the reliability and credibility of information sources.
     """
     try:
-        from .tools import validate_sources
-
         logger.info(f"Calling validate_sources with args: {call.args} and kwargs: {call.kwargs}")
 
         # Extract parameters
         content = call.kwargs.get("content") or (call.args[0] if call.args else "")
         source_url = call.kwargs.get("source_url", "")
         domain = call.kwargs.get("domain", "")
+        sources = call.kwargs.get("sources") or (call.args[1] if len(call.args) > 1 else None)
 
         if not content and not source_url:
             raise HTTPException(status_code=400, detail="Either content or source_url parameter is required")
 
-        result = await validate_sources(content, source_url, domain)
+        result = await asyncio.to_thread(
+            run_validate_sources,
+            content,
+            sources,
+            domain or None,
+            source_url or None,
+        )
 
         logger.info(f"Source validation completed with credibility score: {result.get('credibility_score', 0.0)}")
         return result
@@ -305,15 +437,14 @@ async def comprehensive_fact_check_endpoint(request: FactCheckRequest) -> Dict[s
     evidence assessment, and source credibility evaluation.
     """
     try:
-        from .tools import comprehensive_fact_check
-
         logger.info(f"Starting comprehensive fact check for content length: {len(request.content)}")
 
-        result = await comprehensive_fact_check(
+        result = await asyncio.to_thread(
+            run_comprehensive_fact_check,
             request.content,
             request.source_url,
             request.context,
-            request.metadata
+            request.metadata,
         )
 
         logger.info(f"Comprehensive fact check completed with overall score: {result.get('overall_score', 0.0)}")
@@ -324,15 +455,13 @@ async def comprehensive_fact_check_endpoint(request: FactCheckRequest) -> Dict[s
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/extract_claims")
-async def extract_claims(call: ToolCall) -> Dict[str, Any]:
+async def extract_claims_tool(call: ToolCall) -> Dict[str, Any]:
     """
     Claim extraction endpoint.
 
     Extracts verifiable claims from text content using NLP techniques.
     """
     try:
-        from .tools import extract_claims
-
         logger.info(f"Calling extract_claims with args: {call.args} and kwargs: {call.kwargs}")
 
         # Extract parameters
@@ -341,10 +470,14 @@ async def extract_claims(call: ToolCall) -> Dict[str, Any]:
         if not content:
             raise HTTPException(status_code=400, detail="Content parameter is required")
 
-        result = await extract_claims(content)
+        claims = await asyncio.to_thread(extract_claims, content)
+        claim_list = claims if isinstance(claims, list) else []
 
-        logger.info(f"Claim extraction completed: {result.get('claim_count', 0)} claims found")
-        return result
+        logger.info(f"Claim extraction completed: {len(claim_list)} claims found")
+        return {
+            "claims": claim_list,
+            "claim_count": len(claim_list),
+        }
 
     except Exception as e:
         logger.error(f"An error occurred in extract_claims: {e}")
@@ -358,8 +491,6 @@ async def assess_credibility(call: ToolCall) -> Dict[str, Any]:
     Evaluates the credibility and reliability of information sources.
     """
     try:
-        from .tools import assess_credibility
-
         logger.info(f"Calling assess_credibility with args: {call.args} and kwargs: {call.kwargs}")
 
         # Extract parameters
@@ -370,7 +501,12 @@ async def assess_credibility(call: ToolCall) -> Dict[str, Any]:
         if not content and not domain and not source_url:
             raise HTTPException(status_code=400, detail="At least one of content, domain, or source_url is required")
 
-        result = await assess_credibility(content, domain, source_url)
+        result = await asyncio.to_thread(
+            run_assess_credibility,
+            content or None,
+            domain or None,
+            source_url or None,
+        )
 
         logger.info(f"Credibility assessment completed with score: {result.get('credibility_score', 0.0)}")
         return result
@@ -387,8 +523,6 @@ async def detect_contradictions(call: ToolCall) -> Dict[str, Any]:
     Identifies logical contradictions and inconsistencies in text passages.
     """
     try:
-        from .tools import detect_contradictions
-
         logger.info(f"Calling detect_contradictions with args: {call.args} and kwargs: {call.kwargs}")
 
         # Extract parameters
@@ -397,7 +531,7 @@ async def detect_contradictions(call: ToolCall) -> Dict[str, Any]:
         if not text_passages or len(text_passages) < 2:
             raise HTTPException(status_code=400, detail="At least 2 text passages are required for contradiction detection")
 
-        result = await detect_contradictions(text_passages)
+        result = await asyncio.to_thread(run_detect_contradictions, text_passages)
 
         logger.info(f"Contradiction detection completed: {result.get('contradictions_found', 0)} contradictions found")
         return result

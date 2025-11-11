@@ -19,6 +19,12 @@ from pydantic import BaseModel
 from common.metrics import JustNewsMetrics
 from common.observability import get_logger
 
+# Compatibility: expose create_database_service for tests that patch agent modules
+try:
+    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+except Exception:
+    create_database_service = None
+
 from .crawler_engine import CrawlerEngine
 from .tools import get_crawler_info
 
@@ -237,3 +243,24 @@ if __name__ == "__main__":
         reload=False,
         log_level="info"
     )
+
+
+def execute_crawl(domains: list[str], max_articles_per_site: int = 25, concurrent_sites: int = 3, profile_overrides: dict | None = None):
+    """Compatibility wrapper for programmatic crawling calls used in tests.
+
+    Runs the unified crawl synchronously by executing the async engine via asyncio.run.
+    Tests often patch this function, so keeping a well-behaved wrapper makes tests stable.
+    """
+    import asyncio
+
+    async def _run():
+        async with CrawlerEngine() as crawler:
+            await crawler._load_ai_models()
+            return await crawler.run_unified_crawl(
+                domains,
+                max_articles_per_site,
+                concurrent_sites,
+                profile_overrides=profile_overrides,
+            )
+
+    return asyncio.run(_run())

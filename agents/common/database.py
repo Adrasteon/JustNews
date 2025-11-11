@@ -6,8 +6,7 @@ Provides connection pooling and async database operations
 import os
 from contextlib import contextmanager
 
-from psycopg2 import pool
-from psycopg2.extras import RealDictCursor
+# psycopg2 removed: use migrated MariaDB utilities instead
 
 from common.observability import get_logger
 from common.dev_db_fallback import apply_test_db_env_fallback
@@ -54,162 +53,126 @@ def get_db_config():
     
     return config
 
-# Connection pool configuration
-POOL_MIN_CONNECTIONS = int(os.environ.get("DB_POOL_MIN_CONNECTIONS", "2"))
-POOL_MAX_CONNECTIONS = int(os.environ.get("DB_POOL_MAX_CONNECTIONS", "10"))
+# Use the migrated MariaDB/Chroma database utilities
+from database.utils.migrated_database_utils import create_database_service, execute_mariadb_query
 
-# Global connection pool
-_connection_pool: pool.ThreadedConnectionPool | None = None
+# Global migrated DB service instance
+_db_service = None
+
+
+def initialize_database_service():
+    """Initialize and return the migrated MariaDB/Chroma database service.
+
+    This replaces the old Postgres-specific connection pool. It is idempotent.
+    """
+    global _db_service
+    if _db_service is not None:
+        return _db_service
+
+    # Ensure environment variables from global.env are loaded when present
+    try:
+        load_global_env(logger=logger)
+    except Exception:
+        # Non-fatal if the env file is missing
+        pass
+
+    _db_service = create_database_service()
+    logger.info("Migrated DatabaseService initialized (MariaDB + Chroma)")
+    return _db_service
+
 
 def initialize_connection_pool():
-    """
-    Initialize the PostgreSQL connection pool.
-    Should be called once at application startup.
-    """
-    global _connection_pool
+    """Compatibility shim for older callers that expect initialize_connection_pool.
 
-    if _connection_pool is not None:
-        return _connection_pool
-
-    try:
-        # Add debug prints to log resolved database configuration
-        config = get_db_config()
-        logger.debug(f"Resolved database configuration: {config}")
-
-        _connection_pool = pool.ThreadedConnectionPool(
-            minconn=POOL_MIN_CONNECTIONS,
-            maxconn=POOL_MAX_CONNECTIONS,
-            host=config['host'],
-            database=config['database'],
-            user=config['user'],
-            password=config['password'],
-            connect_timeout=3,
-            options='-c search_path=public'
-        )
-        logger.info(f"✅ Database connection pool initialized with {POOL_MIN_CONNECTIONS}-{POOL_MAX_CONNECTIONS} connections")
-        return _connection_pool
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize connection pool: {e}")
-        raise
-
-def get_connection_pool():
+    Returns the migrated DatabaseService (MariaDB + Chroma).
     """
-    Get the global connection pool instance.
-    Initializes it if not already done.
-    """
-    if _connection_pool is None:
-        return initialize_connection_pool()
-    return _connection_pool
+    return initialize_database_service()
+
 
 @contextmanager
 def get_db_connection():
+    """Context manager yielding a low-level MariaDB connection object.
+
+    Yields the mysql.connector connection (service.mb_conn) so callers that
+    previously used a psycopg2 connection can operate with a DB-agnostic API.
     """
-    Context manager for getting a database connection from the pool.
-    Automatically returns the connection to the pool when done.
-    """
-    pool = get_connection_pool()
-    conn = None
+    service = initialize_database_service()
+    conn = service.mb_conn
     try:
-        conn = pool.getconn()
         yield conn
-    except Exception as e:
-        logger.error(f"Database connection error: {e}")
-        raise
     finally:
-        if conn:
-            pool.putconn(conn)
+        # Do not close pooled connection here; the service manages lifecycle
+        pass
+
 
 @contextmanager
-def get_db_cursor(commit: bool = False):
+def get_db_cursor(commit: bool = False, dictionary: bool = True):
+    """Context manager for getting a cursor from the migrated DB service.
+
+    Args:
+        commit: whether to commit on exit
+        dictionary: return rows as dicts when supported
     """
-    Context manager for getting a database cursor with connection.
-    Automatically handles connection pooling and optional commit.
-    """
-    with get_db_connection() as conn:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+    service = initialize_database_service()
+    # mysql.connector supports dictionary=True to return dict rows
+    cursor = service.mb_conn.cursor(dictionary=dictionary)
+    try:
+        yield service.mb_conn, cursor
+        if commit:
+            service.mb_conn.commit()
+    except Exception as e:
         try:
-            logger.debug("Acquired database cursor.")
-            yield conn, cursor
-            if commit:
-                conn.commit()
-                logger.debug("Transaction committed.")
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"Database operation error: {e}")
-            raise
-        finally:
+            service.mb_conn.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        try:
             cursor.close()
-            logger.debug("Database cursor closed.")
+        except Exception:
+            pass
 
-def execute_query(query: str, params: tuple = None, fetch: bool = True) -> list | None:
+
+def execute_query(query: str, params: tuple = None, fetch: bool = True):
+    """Execute a MariaDB query via the migrated database service.
+
+    Returns fetched rows when fetch=True, otherwise returns None.
     """
-    Execute a database query with automatic connection management.
+    service = initialize_database_service()
+    results = execute_mariadb_query(service, query, params, fetch)
+    return results
 
-    Args:
-        query: SQL query string
-        params: Query parameters
-        fetch: Whether to fetch results (for SELECT queries)
 
-    Returns:
-        List of results if fetch=True and it's a SELECT query, None otherwise
-    """
-    with get_db_cursor(commit=True) as (conn, cursor):
-        cursor.execute(query, params or ())
-        if fetch and query.strip().upper().startswith('SELECT'):
-            return cursor.fetchall()
+def execute_query_single(query: str, params: tuple = None):
+    """Execute a query and return a single result row as dict or tuple."""
+    rows = execute_query(query, params, fetch=True)
+    if not rows:
         return None
+    # mysql.connector with dictionary=True returns dicts; fallback to tuple
+    first = rows[0]
+    return first
 
-def execute_query_single(query: str, params: tuple = None) -> dict | None:
-    """
-    Execute a query and return a single result row.
-
-    Args:
-        query: SQL query string
-        params: Query parameters
-
-    Returns:
-        Single result row as dict, or None if no results
-    """
-    with get_db_cursor(commit=True) as (conn, cursor):
-        cursor.execute(query, params or ())
-        result = cursor.fetchone()
-        return dict(result) if result else None
 
 def health_check() -> bool:
-    """
-    Perform a database health check.
-
-    Returns:
-        True if database is healthy, False otherwise
-    """
+    """Perform a basic MariaDB health check using the migrated service."""
     try:
-        result = execute_query_single("SELECT 1 as health_check")
-        return result is not None and result.get('health_check') == 1
+        service = initialize_database_service()
+        cursor = service.mb_conn.cursor()
+        cursor.execute("SELECT 1")
+        result = cursor.fetchone()
+        cursor.close()
+        return bool(result and result[0] == 1)
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
         return False
 
-def get_pool_stats() -> dict:
-    """
-    Get connection pool statistics.
 
-    Returns:
-        Dictionary with pool statistics
-    """
-    pool = get_connection_pool()
-    return {
-        "min_connections": POOL_MIN_CONNECTIONS,
-        "max_connections": POOL_MAX_CONNECTIONS,
-        "connections_in_use": len(pool._used),
-        "connections_available": len(pool._rused) - len(pool._used),
-        "total_connections": len(pool._rused)
-    }
-
-# Cleanup function for graceful shutdown
 def close_connection_pool():
-    """Close all connections in the pool. Call during application shutdown."""
-    global _connection_pool
-    if _connection_pool:
-        _connection_pool.closeall()
-        logger.info("Database connection pool closed")
-        _connection_pool = None
+    """Close the migrated database service (if present)."""
+    global _db_service
+    if _db_service:
+        try:
+            _db_service.close()
+        except Exception:
+            pass
+        _db_service = None

@@ -382,7 +382,7 @@ main() {
   ensure_env_value PYTHON_BIN
   check_python_runtime
   check_data_mount
-  check_database
+  # check_database  # Skipped as PostgreSQL is deprecated
 
   local repo_root
   repo_root="$(resolve_repo_root)"

@@ -42,6 +42,12 @@ from common.observability import get_logger
 from common.metrics import JustNewsMetrics
 from common.version_utils import get_version
 
+# Compatibility: expose create_database_service for tests that patch agent modules
+try:
+    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+except Exception:
+    create_database_service = None
+
 from .tools import (
     assess_content_quality,
     categorize_content,

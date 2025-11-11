@@ -15,9 +15,8 @@ import time
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
-import psycopg2
-import psycopg2.extras
-from psycopg2 import pool
+from typing import Tuple
+from database.utils.migrated_database_utils import create_database_service
 
 from common.observability import get_logger
 
@@ -36,19 +35,24 @@ class DatabaseConnectionPool:
         Args:
             config: Database configuration dictionary. If None, reads from environment variables.
         """
+        # Use the migrated database service (MariaDB) as the backing connection
+        # provider. If a specific config is not provided, the migrated utils will
+        # load config from system_config.json or environment.
         if config is None:
-            # Import here to avoid circular imports
-            from ..utils.database_utils import get_db_config
-            config = get_db_config()
+            service = create_database_service()
+            # service holds connections; we'll use its mb_conn as the primary
+            self.config = {}
+        else:
+            self.config = config
 
-        self.config = config
-        self.pool: Optional[pool.ThreadedConnectionPool] = None
-        self.backup_pools: List[pool.ThreadedConnectionPool] = []
-        self.min_connections = config.get('min_connections', 1)
-        self.max_connections = config.get('max_connections', 20)
-        self.health_check_interval = config.get('health_check_interval', 30)
-        self.max_retries = config.get('max_retries', 3)
-        self.retry_delay = config.get('retry_delay', 1.0)
+        self.service = create_database_service() if config is None else create_database_service()
+        self.pool = None
+        self.backup_pools = []
+        self.min_connections = self.config.get('min_connections', 1)
+        self.max_connections = self.config.get('max_connections', 20)
+        self.health_check_interval = self.config.get('health_check_interval', 30)
+        self.max_retries = self.config.get('max_retries', 3)
+        self.retry_delay = self.config.get('retry_delay', 1.0)
 
         # Performance metrics
         self.metrics = {
@@ -70,27 +74,14 @@ class DatabaseConnectionPool:
 
     def _initialize_pool(self):
         """Initialize the main connection pool"""
+        # No explicit pool initialization required; migrated service exposes
+        # a live connection via self.service.mb_conn
         try:
-            pool_config = {
-                'host': self.config['host'],
-                'database': self.config['database'],
-                'user': self.config['user'],
-                'password': self.config['password'],
-                'port': self.config.get('port', 5432),
-                'minconn': self.config.get('min_connections', 1),
-                'maxconn': self.config.get('max_connections', 20)
-            }
-
-            self.pool = pool.ThreadedConnectionPool(**pool_config)
-            self.is_healthy = True
-            logger.info(f"Database connection pool initialized with {pool_config['minconn']}-{pool_config['maxconn']} connections")
-
-            # Initialize backup pools if configured
-            if 'backup_hosts' in self.config:
-                self._initialize_backup_pools()
-
+            if self.service:
+                self.is_healthy = True
+                logger.info("Database connection service is available via migrated service")
         except Exception as e:
-            logger.error(f"Failed to initialize database connection pool: {e}")
+            logger.error(f"Failed to initialize migrated DB service: {e}")
             self.is_healthy = False
             raise
 
@@ -118,12 +109,11 @@ class DatabaseConnectionPool:
     def _perform_health_check(self) -> bool:
         """Perform health check on the database connection"""
         try:
-            conn = self.pool.getconn()
+            conn = self.service.mb_conn
             cursor = conn.cursor()
             cursor.execute("SELECT 1")
             cursor.fetchone()
             cursor.close()
-            self.pool.putconn(conn)
             return True
         except Exception as e:
             logger.warning(f"Health check failed: {e}")
@@ -140,11 +130,11 @@ class DatabaseConnectionPool:
 
         if self.is_healthy:
             try:
-                conn = self.pool.getconn()
+                conn = self.service.mb_conn
                 self.metrics['connections_acquired'] += 1
                 return conn
             except Exception as e:
-                logger.warning(f"Failed to get connection from main pool: {e}")
+                logger.warning(f"Failed to get connection from migrated service: {e}")
                 self.is_healthy = False
 
         # Try backup pools
@@ -177,18 +167,9 @@ class DatabaseConnectionPool:
             logger.error(f"Database connection error: {e}")
             raise
         finally:
+            # No explicit return-to-pool needed for migrated service
             if conn:
-                try:
-                    if conn in self.pool._used:  # Check if connection is from main pool
-                        self.pool.putconn(conn)
-                    else:  # Check backup pools
-                        for backup_pool in self.backup_pools:
-                            if conn in backup_pool._used:
-                                backup_pool.putconn(conn)
-                                break
-                    self.metrics['connections_released'] += 1
-                except Exception as e:
-                    logger.warning(f"Error releasing connection: {e}")
+                self.metrics['connections_released'] += 1
 
     def execute_query(self, query: str, params: tuple = None, fetch: bool = True) -> List[tuple]:
         """
@@ -203,7 +184,8 @@ class DatabaseConnectionPool:
             Query results if fetch=True, empty list otherwise
         """
         with self.get_connection() as conn:
-            cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            # conn is a mysql.connector connection
+            cursor = conn.cursor(dictionary=True)
             try:
                 cursor.execute(query, params or ())
                 if fetch:
@@ -213,11 +195,17 @@ class DatabaseConnectionPool:
                     conn.commit()
                     return []
             except Exception as e:
-                conn.rollback()
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
                 logger.error(f"Query execution failed: {query} - {e}")
                 raise
             finally:
-                cursor.close()
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
 
     async def execute_query_async(self, query: str, params: tuple = None, fetch: bool = True) -> List[dict]:
         """

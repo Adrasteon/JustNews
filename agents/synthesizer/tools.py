@@ -329,6 +329,26 @@ async def synthesize_gpu_tool(
             "processing_time": time.time() - time.time()
         }
 
+def synthesize_content(
+    engine: SynthesizerEngine,
+    articles: List[Dict[str, Any]],
+    max_clusters: int = 5,
+    context: str = "news analysis"
+) -> Any:
+    """Backward compatible wrapper that drives the async synthesis pipeline."""
+    async def _run():
+        return await synthesize_gpu_tool(engine, articles, max_clusters=max_clusters, context=context)
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(_run())
+
+    if loop.is_running():
+        return loop.create_task(_run())
+
+    return loop.run_until_complete(_run())
+
 async def health_check(engine: SynthesizerEngine) -> Dict[str, Any]:
     """
     Perform comprehensive health check on synthesizer components.
@@ -663,6 +683,7 @@ __all__ = [
     'neutralize_text_tool',
     'aggregate_cluster_tool',
     'synthesize_gpu_tool',
+    'synthesize_content',
     'health_check',
     'get_stats',
     'validate_clustering_request',

@@ -501,9 +501,8 @@ class SynthesizerEngine:
                     bertopic = None
 
             if not bertopic:
-                # Fallback to kmeans small implementation (tests patch KMeans when needed)
+                # Fallback only when an explicit kmeans_model has been injected.
                 try:
-                    # If a test injected a `kmeans_model`, prefer it
                     if getattr(self, 'kmeans_model', None) is not None:
                         kmeans = self.kmeans_model
                         embeddings = self.embedding_model.encode(texts) if self.embedding_model else [[0]] * len(texts)
@@ -516,25 +515,8 @@ class SynthesizerEngine:
                         topic_info = []
                         return {"status": "success", "clusters": clusters, "topic_info": topic_info}
 
-                    # If embedding model exists try to encode, otherwise simple single-cluster fallback
-                    if self.embedding_model and KMeans:
-                        embeddings = self.embedding_model.encode(texts)
-                        n_clusters = min(n_clusters, len(texts))
-                        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-                        labels = kmeans.fit_predict(embeddings)
-                        clusters = []
-                        for i in range(n_clusters):
-                            cluster_indices = [idx for idx, lab in enumerate(labels) if lab == i]
-                            if cluster_indices:
-                                clusters.append(cluster_indices)
-                        topic_info = []
-                        return {"status": "success", "clusters": clusters, "topic_info": topic_info}
-
-                    else:
-                        # No fallback clustering available: surface an explicit error so
-                        # callers/tests know clustering could not be performed.
-                        logger.error("No clustering methods available (BERTopic unavailable, KMeans not configured)")
-                        return {"status": "error", "error": "clustering_failed", "details": "no clustering methods available"}
+                    logger.error("No clustering methods available (BERTopic unavailable, KMeans not configured)")
+                    return {"status": "error", "error": "clustering_failed", "details": "no clustering methods available"}
                 except Exception as e:
                     logger.error(f"KMeans fallback failed: {e}")
                     return {"status": "error", "error": "clustering_failed", "details": str(e)}

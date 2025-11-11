@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Live Crawl Test: 20 sites × 5 articles = 100 articles total
+Live Crawl Test: 100 sites × 40 articles = 4,000 articles total
 Tests the full crawling pipeline with our enhancements
 """
 
@@ -17,11 +17,11 @@ from agents.crawler.crawler_engine import CrawlerEngine
 from agents.common.database import get_db_connection
 
 async def run_crawl_test():
-    """Run comprehensive crawl test with 20 sites × 5 articles each"""
+    """Run comprehensive crawl test with 100 sites × 40 articles each"""
 
     print("🚀 JustNews Live Crawl Test")
     print("=" * 50)
-    print("Testing: 20 sites × 5 articles each = 100 articles total")
+    print("Testing: 100 sites × 40 articles each = 4,000 articles total")
     print()
 
     # Define test sites - mix of major news sources
@@ -45,7 +45,93 @@ async def run_crawl_test():
         "globo.com",
         "folha.uol.com.br",
         "ledevoir.com",
-        "channel4.com"
+        "channel4.com",
+        # Additional 20 sites for higher load testing
+        "reuters.com",
+        "apnews.com",
+        "bloomberg.com",
+        "cnn.com",
+        "foxnews.com",
+        "nbcnews.com",
+        "cbsnews.com",
+        "npr.org",
+        "pbs.org",
+        "politico.com",
+        "axios.com",
+        "huffpost.com",
+        "msnbc.com",
+        "usatoday.com",
+        "latimes.com",
+        "chicago.suntimes.com",
+        "nypost.com",
+        "newsweek.com",
+        "time.com",
+        "forbes.com",
+        # Additional 10 sites for maximum load testing
+        "wsj.com",
+        "ft.com",
+        "economist.com",
+        "slate.com",
+        "salon.com",
+        "motherjones.com",
+        "prospect.org",
+        "jacobinmag.com",
+        "thenation.com",
+        "newyorker.com",
+        # Additional 50 sites for extreme load testing
+        "guardian.co.uk",
+        "telegraph.co.uk",
+        "independent.co.uk",
+        "dailymail.co.uk",
+        "mirror.co.uk",
+        "sky.com",
+        "itv.com",
+        "standard.co.uk",
+        "metro.co.uk",
+        "express.co.uk",
+        "sun.co.uk",
+        "huffingtonpost.co.uk",
+        "buzzfeed.com",
+        "businessinsider.com",
+        "cnbc.com",
+        "marketwatch.com",
+        "yahoo.com",
+        "msn.com",
+        "aol.com",
+        "drudgereport.com",
+        "breitbart.com",
+        "dailywire.com",
+        "theblaze.com",
+        "newsmax.com",
+        "oann.com",
+        "epochtimes.com",
+        "gatewaypundit.com",
+        "townhall.com",
+        "pjmedia.com",
+        "redstate.com",
+        "twitchy.com",
+        "weaselzippers.us",
+        "thefederalist.com",
+        "dailycaller.com",
+        "ijr.com",
+        "westernjournal.com",
+        "libertyheadlines.com",
+        "100percentfedup.com",
+        "conservativereview.com",
+        "truthrevolt.org",
+        "allenwestrepublic.com",
+        "madworldnews.com",
+        "shoebat.com",
+        "christianpost.com",
+        "faithwire.com",
+        "relevantmagazine.com",
+        "sojourners.org",
+        "patheos.com",
+        "beliefnet.com",
+        "catholicnewsagency.com",
+        "ncronline.org",
+        "cruxnow.com",
+        "angelusnews.com"
     ]
 
     print(f"📋 Selected {len(test_sites)} test sites:")
@@ -69,8 +155,8 @@ async def run_crawl_test():
 
             result = await crawler.run_unified_crawl(
                 domains=test_sites,
-                max_articles_per_site=5,
-                concurrent_sites=3  # Conservative concurrency for testing
+                max_articles_per_site=40,
+                concurrent_sites=10  # Increased concurrency for extreme load testing
             )
 
             crawl_time = time.time() - crawl_start
@@ -195,9 +281,9 @@ async def run_crawl_test():
 
             # Assess success criteria
             success_criteria = {
-                "Sites with articles": sites_crawled >= 15,  # At least 75% success rate
-                "Total articles": total_ingested >= 50,       # At least 50 articles
-                "Average per site": total_ingested / sites_crawled >= 2.5 if sites_crawled > 0 else False,
+                "Sites with articles": sites_crawled >= 70,  # At least 70% success rate (70/100)
+                "Total articles": total_ingested >= 1000,     # At least 1,000 articles (25% of potential 4,000)
+                "Average per site": total_ingested / sites_crawled >= 10.0 if sites_crawled > 0 else False,
                 "Low error rate": errors / max(total_candidates, 1) < 0.5
             }
 

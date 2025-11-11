@@ -101,36 +101,27 @@ class SemanticSearchService:
         """
         start_time = time.time()
 
-        try:
-            if search_type == 'semantic':
-                results = self._semantic_search(query, n_results, min_score)
-            elif search_type == 'text':
-                results = self._text_search(query, n_results)
-            elif search_type == 'hybrid':
-                results = self._hybrid_search(query, n_results, min_score)
-            else:
-                raise ValueError(f"Unsupported search type: {search_type}")
+        # Validate search_type and perform appropriate search. For unsupported
+        # types we raise a ValueError (tests expect this behavior).
+        if search_type == 'semantic':
+            results = self._semantic_search(query, n_results, min_score)
+        elif search_type == 'text':
+            results = self._text_search(query, n_results)
+        elif search_type == 'hybrid':
+            results = self._hybrid_search(query, n_results, min_score)
+        else:
+            logger.error(f"Search failed: Unsupported search type: {search_type}")
+            raise ValueError(f"Unsupported search type: {search_type}")
 
-            search_time = time.time() - start_time
+        search_time = time.time() - start_time
 
-            return SearchResponse(
-                query=query,
-                results=results,
-                total_results=len(results),
-                search_time=search_time,
-                search_type=search_type
-            )
-
-        except Exception as e:
-            logger.error(f"Search failed: {e}")
-            search_time = time.time() - start_time
-            return SearchResponse(
-                query=query,
-                results=[],
-                total_results=0,
-                search_time=search_time,
-                search_type=search_type
-            )
+        return SearchResponse(
+            query=query,
+            results=results,
+            total_results=len(results),
+            search_time=search_time,
+            search_type=search_type,
+        )
 
     def _semantic_search(
         self,
@@ -150,14 +141,25 @@ class SemanticSearchService:
             List of SearchResult objects
         """
         # Generate embedding for the query
-        query_embedding = self.embedding_model.encode(query).tolist()
+        emb = self.embedding_model.encode(query)
+        # Accept numpy arrays or plain lists from different embedding backends/mocks
+        if hasattr(emb, "tolist"):
+            query_embedding = emb.tolist()
+        else:
+            # Ensure a plain list
+            query_embedding = list(emb)
 
-        # Search in ChromaDB
-        chroma_results = self.db_service.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=n_results * 2,  # Get more results for filtering
-            include=['documents', 'metadatas', 'distances']
-        )
+        # Search in ChromaDB. Wrap in try/except so backend failures return
+        # an empty result set instead of raising (tests expect graceful handling).
+        try:
+            chroma_results = self.db_service.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=n_results * 2,  # Get more results for filtering
+                include=['documents', 'metadatas', 'distances']
+            )
+        except Exception as e:
+            logger.error(f"Chroma query failed: {e}")
+            return []
 
         results = []
         if chroma_results['ids']:

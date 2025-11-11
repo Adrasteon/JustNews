@@ -23,6 +23,12 @@ from pydantic import BaseModel
 from common.observability import get_logger
 from common.metrics import JustNewsMetrics
 
+# Compatibility: expose create_database_service for tests that patch agent modules
+try:
+    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+except Exception:
+    create_database_service = None
+
 try:
     from agents.common.gpu_manager_production import get_gpu_manager
     GPU_MANAGER_AVAILABLE = True

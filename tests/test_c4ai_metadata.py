@@ -60,7 +60,7 @@ def make_fake_crawl4ai():
 def test_crawl_includes_ua_proxy_and_modal(monkeypatch):
     # Prepare fake crawl4ai module
     fake_crawl4ai = make_fake_crawl4ai()
-    sys.modules["crawl4ai"] = fake_crawl4ai
+    monkeypatch.setitem(sys.modules, "crawl4ai", fake_crawl4ai)
 
     # Provide a fake UA rotation module
     ua_mod = types.SimpleNamespace()
@@ -78,7 +78,7 @@ def test_crawl_includes_ua_proxy_and_modal(monkeypatch):
 
     ua_mod.UserAgentConfig = UserAgentConfig
     ua_mod.UserAgentProvider = UserAgentProvider
-    sys.modules["agents.crawler.enhancements.ua_rotation"] = ua_mod
+    monkeypatch.setitem(sys.modules, "agents.crawler.enhancements.ua_rotation", ua_mod)
 
     # Provide a fake proxy manager
     proxy_mod = types.SimpleNamespace()
@@ -95,7 +95,7 @@ def test_crawl_includes_ua_proxy_and_modal(monkeypatch):
             return Proxy("socks5://1.2.3.4:1080")
 
     proxy_mod.ProxyManager = ProxyManager
-    sys.modules["agents.crawler.enhancements.proxy_manager"] = proxy_mod
+    monkeypatch.setitem(sys.modules, "agents.crawler.enhancements.proxy_manager", proxy_mod)
 
     # Provide a fake modal handler that marks HTML as cleaned
     modal_mod = types.SimpleNamespace()
@@ -109,7 +109,7 @@ def test_crawl_includes_ua_proxy_and_modal(monkeypatch):
             return R(cleaned_html=html + "<!--MODAL_CLEANED-->")
 
     modal_mod.ModalHandler = ModalHandler
-    sys.modules["agents.crawler.enhancements.modal_handler"] = modal_mod
+    monkeypatch.setitem(sys.modules, "agents.crawler.enhancements.modal_handler", modal_mod)
 
     # Fake paywall detector returning no paywall
     pw_mod = types.SimpleNamespace()
@@ -125,7 +125,7 @@ def test_crawl_includes_ua_proxy_and_modal(monkeypatch):
             return R()
 
     pw_mod.PaywallDetector = PaywallDetector
-    sys.modules["agents.crawler.enhancements.paywall_detector"] = pw_mod
+    monkeypatch.setitem(sys.modules, "agents.crawler.enhancements.paywall_detector", pw_mod)
 
     # Provide crawler utils (record_paywall_detection, RobotsChecker, RateLimiter)
     utils_mod = types.SimpleNamespace()
@@ -145,7 +145,7 @@ def test_crawl_includes_ua_proxy_and_modal(monkeypatch):
     utils_mod.record_paywall_detection = record_paywall_detection
     utils_mod.RobotsChecker = RobotsChecker
     utils_mod.RateLimiter = RateLimiter
-    sys.modules["agents.crawler.crawler_utils"] = utils_mod
+    monkeypatch.setitem(sys.modules, "agents.crawler.crawler_utils", utils_mod)
 
     # Provide a noop paywall aggregator so server takes the aggregator branch but does nothing
     agg_mod = types.SimpleNamespace()
@@ -154,7 +154,7 @@ def test_crawl_includes_ua_proxy_and_modal(monkeypatch):
         return (1, False)
 
     agg_mod.increment_and_check = increment_and_check
-    sys.modules["agents.crawler.paywall_aggregator"] = agg_mod
+    monkeypatch.setitem(sys.modules, "agents.crawler.paywall_aggregator", agg_mod)
 
     # Now import the app and run the client
     from agents.c4ai import server

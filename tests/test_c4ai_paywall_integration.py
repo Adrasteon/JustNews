@@ -81,7 +81,7 @@ async def test_paywall_aggregator_threshold(monkeypatch, tmp_path):
     crawl4ai_mod.CrawlerRunConfig = FakeCrawlerRunConfig
     crawl4ai_mod.CacheMode = FakeCacheMode
 
-    sys.modules["crawl4ai"] = crawl4ai_mod
+    monkeypatch.setitem(sys.modules, "crawl4ai", crawl4ai_mod)
 
     # Fake paywall detector module
     paywall_mod = types.ModuleType("agents.crawler.enhancements.paywall_detector")
@@ -91,7 +91,7 @@ async def test_paywall_aggregator_threshold(monkeypatch, tmp_path):
             return DummyPaywall(should_skip=True)
 
     paywall_mod.PaywallDetector = FakePaywallDetector
-    sys.modules["agents.crawler.enhancements.paywall_detector"] = paywall_mod
+    monkeypatch.setitem(sys.modules, "agents.crawler.enhancements.paywall_detector", paywall_mod)
 
     # Fake crawler_utils module with record_paywall_detection, RobotsChecker, RateLimiter
     cu_mod = types.ModuleType("agents.crawler.crawler_utils")
@@ -111,11 +111,12 @@ async def test_paywall_aggregator_threshold(monkeypatch, tmp_path):
     cu_mod.record_paywall_detection = fake_record_paywall_detection
     cu_mod.RobotsChecker = FakeRobotsChecker
     cu_mod.RateLimiter = FakeRateLimiter
-    sys.modules["agents.crawler.crawler_utils"] = cu_mod
+    monkeypatch.setitem(sys.modules, "agents.crawler.crawler_utils", cu_mod)
 
     # Now import server module
     import importlib
 
+    sys.modules.pop("agents.c4ai.server", None)
     server_mod = importlib.import_module("agents.c4ai.server")
 
     # Track calls to record_paywall_detection via monkeypatching the crawler_utils module
@@ -141,6 +142,15 @@ async def test_paywall_aggregator_threshold(monkeypatch, tmp_path):
     assert r2.status_code == 200
     j2 = r2.json()
     assert j2["results"][0]["skip_ingest"] is True
+
+    import sqlite3
+
+    with sqlite3.connect(dbfile) as conn:
+        cur = conn.execute("SELECT count FROM paywall_counts WHERE domain = ?", ("example.com",))
+        row = cur.fetchone()
+
+    assert row is not None
+    assert row[0] >= 2
 
     # Now aggregator should have caused a single record call
     assert len(calls) == 1

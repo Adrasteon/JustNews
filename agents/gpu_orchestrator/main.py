@@ -27,6 +27,12 @@ from .tools import (
     get_mps_allocation, get_metrics
 )
 
+# Compatibility: expose create_database_service for tests that patch agent modules
+try:
+    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+except Exception:
+    create_database_service = None
+
 # Constants
 GPU_ORCHESTRATOR_PORT = int(os.environ.get("GPU_ORCHESTRATOR_PORT", "8008"))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
@@ -318,3 +324,15 @@ async def orchestrator_startup():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=GPU_ORCHESTRATOR_PORT)
+
+
+# Backwards-compatibility: expose ALLOCATIONS at module level for tests that import it
+try:
+    try:
+        ALLOCATIONS = get_allocations()
+    except Exception:
+        # Fall back to an empty allocation mapping if retrieving allocations fails at import-time
+        ALLOCATIONS = {}
+except NameError:
+    # If get_allocations isn't available for some reason, expose an empty dict
+    ALLOCATIONS = {}

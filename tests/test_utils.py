@@ -124,6 +124,21 @@ class MockFactory:
                 }
                 self.calls = []
 
+            def register_agent(self, registration: Dict[str, Any]):
+                """Register an agent with minimal validation for integration tests."""
+                agent = registration.get("agent")
+                address = registration.get("address") or f"http://localhost:{registration.get('port', 0)}"
+                if not agent:
+                    return False
+                self.agents[agent] = address
+                self.calls.append({
+                    "action": "register_agent",
+                    "agent": agent,
+                    "address": address,
+                    "timestamp": time.time()
+                })
+                return True
+
             async def call_agent(self, agent: str, tool: str, **kwargs):
                 call_record = {
                     "agent": agent,
@@ -284,6 +299,17 @@ class MockFactory:
             def __init__(self):
                 self.connected = True
                 self.data = {}
+                self.executed_queries: List[Dict[str, Any]] = []
+
+                class _Collection:
+                    def __init__(self):
+                        self.records: List[Dict[str, Any]] = []
+
+                    def add(self, **kwargs):
+                        self.records.append(kwargs)
+                        return None
+
+                self.collection = _Collection()
 
             async def connect(self):
                 self.connected = True
@@ -312,6 +338,15 @@ class MockFactory:
 
             async def get_article_count(self):
                 return len(self.data)
+
+            def execute_query(self, query: str, params: Optional[Any] = None):
+                """Synchronous helper mirroring production execute_query signature."""
+                record = {"query": query, "params": params}
+                self.executed_queries.append(record)
+                # Return mock primary key if INSERT detected to satisfy integration tests
+                if isinstance(query, str) and query.strip().lower().startswith("insert"):
+                    return {"article_id": len(self.executed_queries)}
+                return {"status": "ok"}
 
         return MockDatabaseService()
 
@@ -393,6 +428,8 @@ class PerformanceMetrics:
     @property
     def p95_time(self) -> float:
         sorted_times = sorted(self.execution_times)
+        if not sorted_times:
+            return 0.0
         index = int(len(sorted_times) * 0.95)
         return sorted_times[min(index, len(sorted_times) - 1)]
 
@@ -553,6 +590,27 @@ class CustomAssertions:
         assert isinstance(registration_data["port"], int), "Port must be integer"
         assert isinstance(registration_data["capabilities"], list), "Capabilities must be list"
         assert len(registration_data["capabilities"]) > 0, "Must have at least one capability"
+
+    @staticmethod
+    def assert_valid_news_processing_result(result: Dict[str, Any]):
+        """Validate final news processing payload used in integration tests."""
+        required_fields = {
+            "article_id": int,
+            "title": str,
+            "summary": str,
+            "sentiment": str,
+            "fact_check_verdict": str,
+            "source_credibility": (int, float),
+            "processing_time": (int, float),
+        }
+
+        for field, expected_type in required_fields.items():
+            assert field in result, f"Result missing required field: {field}"
+            assert isinstance(result[field], expected_type), \
+                f"Field {field} expected type {expected_type}, got {type(result[field])}"
+
+        assert result["summary"].strip(), "Summary cannot be empty"
+        assert result["processing_time"] >= 0, "Processing time must be non-negative"
 
 
 # ============================================================================

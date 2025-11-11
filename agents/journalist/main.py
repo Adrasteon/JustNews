@@ -16,6 +16,12 @@ from fastapi import FastAPI
 from .journalist_engine import JournalistEngine
 from .tools import health_check
 
+# Compatibility: expose create_database_service for tests that patch agent modules
+try:
+    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+except Exception:
+    create_database_service = None
+
 logger = logging.getLogger(__name__)
 
 engine: JournalistEngine | None = None

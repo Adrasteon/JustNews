@@ -16,6 +16,12 @@ from pydantic import BaseModel
 from database.utils.migrated_database_utils import create_database_service
 from common.metrics import JustNewsMetrics
 from common.observability import get_logger
+
+# Compatibility: expose create_database_service for tests that patch agent modules
+try:
+    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+except Exception:
+    create_database_service = None
 from common.version_utils import get_version
 
 from .tools import (
@@ -462,6 +468,15 @@ def perform_analysis(content: str) -> dict:
         "bias": "neutral",
         "entities": ["entity1", "entity2"]
     }
+
+
+def analyze_text(text: str) -> dict:
+    """Compatibility helper for tests and external callers expecting `analyze_text`.
+
+    Delegates to `analyze_text_statistics` which provides the core synchronous
+    text analysis used by agent endpoints. Tests often patch this symbol.
+    """
+    return analyze_text_statistics(text=text)
 
 def verify_db_connection() -> bool:
     """Verify the database connection and cursor setup."""

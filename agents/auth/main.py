@@ -17,6 +17,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from common.observability import get_logger
+
+# Compatibility: expose create_database_service for tests that patch agent modules
+try:
+    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+except Exception:
+    create_database_service = None
 from agents.auth.auth_engine import get_auth_engine, initialize_auth_engine, shutdown_auth_engine
 from agents.common.auth_api import router as auth_router
 

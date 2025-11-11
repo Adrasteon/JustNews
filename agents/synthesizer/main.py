@@ -35,6 +35,12 @@ from pydantic import BaseModel
 from common.observability import get_logger
 from common.metrics import JustNewsMetrics
 
+# Compatibility: expose create_database_service for tests that patch agent modules
+try:
+    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+except Exception:
+    create_database_service = None
+
 # Import refactored components
 from .synthesizer_engine import SynthesizerEngine
 from .tools import (

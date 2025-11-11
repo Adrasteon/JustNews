@@ -186,45 +186,58 @@ class TestEndToEndNewsProcessingPipeline:
                 "health_endpoint": "/health"
             }
 
-            with patch.object(mock_bus, 'register_agent', return_value=True) as mock_register:
-                result = mock_register(registration)
+            with patch.object(mock_bus, 'register_agent', wraps=mock_bus.register_agent) as mock_register:
+                result = mock_bus.register_agent(registration)
                 assert result is True
+                mock_register.assert_called_once()
 
         # Test inter-agent call chain
         test_content = "Test news article content for processing."
 
         # Crawler -> Analyst
-        with patch.object(mock_bus, 'call_agent') as mock_call:
-            mock_call.return_value = {
+        with patch.object(
+            mock_bus,
+            'call_agent',
+            new=AsyncMock(return_value={
                 "status": "success",
                 "entities": [{"text": "Test", "type": "MISC"}],
                 "sentiment": "neutral"
-            }
+            })
+        ) as mock_call:
 
-            analyst_result = mock_call("analyst", "analyze", content=test_content)
+            analyst_result = await mock_bus.call_agent("analyst", "analyze", content=test_content)
             assert analyst_result["status"] == "success"
+            mock_call.assert_awaited_once()
 
         # Analyst -> Fact Checker
-        with patch.object(mock_bus, 'call_agent') as mock_call:
-            mock_call.return_value = {
+        with patch.object(
+            mock_bus,
+            'call_agent',
+            new=AsyncMock(return_value={
                 "status": "success",
                 "verdict": "true",
                 "confidence": 0.8
-            }
+            })
+        ) as mock_call:
 
-            fact_check_result = mock_call("fact_checker", "verify", content=test_content)
+            fact_check_result = await mock_bus.call_agent("fact_checker", "verify", content=test_content)
             assert fact_check_result["verdict"] == "true"
+            mock_call.assert_awaited_once()
 
         # Fact Checker -> Synthesizer
-        with patch.object(mock_bus, 'call_agent') as mock_call:
-            mock_call.return_value = {
+        with patch.object(
+            mock_bus,
+            'call_agent',
+            new=AsyncMock(return_value={
                 "status": "success",
                 "summary": "Test article summary",
                 "topics": ["Test"]
-            }
+            })
+        ) as mock_call:
 
-            synthesis_result = mock_call("synthesizer", "synthesize", content=test_content)
+            synthesis_result = await mock_bus.call_agent("synthesizer", "synthesize", content=test_content)
             assert synthesis_result["summary"] is not None
+            mock_call.assert_awaited_once()
 
     @pytest.mark.asyncio
     @pytest.mark.integration

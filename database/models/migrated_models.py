@@ -242,24 +242,34 @@ class MigratedDatabaseService:
         import os
         os.environ["CHROMA_TELEMETRY_ENABLED"] = "false"
         
-        # Monkey patch to avoid authentication issues
-        from chromadb.api import UserIdentity
-        original_get_user_identity = chromadb.api.client.Client.get_user_identity
-        
-        def patched_get_user_identity(self):
-            return UserIdentity(user_id="anonymous", tenant="default", databases=["default"])
-        
-        # Apply the monkey patch before creating client
-        chromadb.api.client.Client.get_user_identity = patched_get_user_identity
-        
+        # Try to connect without authentication first (works with ChromaDB 1.3.2)
         try:
             self.chroma_client = chromadb.HttpClient(
                 host=chroma_config['host'],
                 port=chroma_config['port']
             )
-        finally:
-            # Restore the original method
-            chromadb.api.client.Client.get_user_identity = original_get_user_identity
+            # Test the connection
+            self.chroma_client.heartbeat()
+        except Exception as e:
+            logger.warning(f"Direct ChromaDB connection failed, trying with auth bypass: {e}")
+            # Monkey patch to avoid authentication issues
+            from chromadb.api import UserIdentity
+            original_get_user_identity = chromadb.api.client.Client.get_user_identity
+            
+            def patched_get_user_identity(self):
+                return UserIdentity(user_id="anonymous", tenant="default", databases=["default"])
+            
+            # Apply the monkey patch before creating client
+            chromadb.api.client.Client.get_user_identity = patched_get_user_identity
+            
+            try:
+                self.chroma_client = chromadb.HttpClient(
+                    host=chroma_config['host'],
+                    port=chroma_config['port']
+                )
+            finally:
+                # Restore the original method
+                chromadb.api.client.Client.get_user_identity = original_get_user_identity
         
         # Create collection if it doesn't exist
         collection_name = chroma_config['collection']

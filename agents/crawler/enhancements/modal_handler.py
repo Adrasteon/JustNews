@@ -95,10 +95,11 @@ class ModalHandler:
         lowered = html.lower()
         return any(keyword in lowered for keyword in self.CONSENT_KEYWORDS)
 
-    def _remove_overlay_nodes(self, tree: "lxml_html.HtmlElement") -> int:
+    def _remove_overlay_nodes(self, tree) -> int:
         """Heuristically remove modal containers from an lxml tree."""
 
         patterns: Iterable[str] = (
+            # Original patterns - divs and sections
             "//div[contains(@class, 'cookie')]",
             "//div[contains(@class, 'consent')]",
             "//div[contains(@class, 'modal')]",
@@ -106,6 +107,68 @@ class ModalHandler:
             "//div[contains(@id, 'consent')]",
             "//section[contains(@class, 'cookie')]",
             "//section[contains(@id, 'cookie')]",
+            
+            # Modern cookie banner patterns
+            "//div[contains(@class, 'gdpr')]",
+            "//div[contains(@class, 'privacy')]",
+            "//div[contains(@class, 'banner')]",
+            "//div[contains(@class, 'overlay')]",
+            "//div[contains(@class, 'popup')]",
+            "//div[contains(@class, 'dialog')]",
+            "//div[contains(@class, 'notification')]",
+            "//div[contains(@id, 'gdpr')]",
+            "//div[contains(@id, 'privacy')]",
+            "//div[contains(@id, 'banner')]",
+            "//div[contains(@id, 'overlay')]",
+            "//div[contains(@id, 'popup')]",
+            "//div[contains(@id, 'dialog')]",
+            "//div[contains(@id, 'notification')]",
+            
+            # Data attributes
+            "//div[contains(@data-testid, 'cookie')]",
+            "//div[contains(@data-testid, 'gdpr')]",
+            "//div[contains(@data-testid, 'consent')]",
+            "//div[contains(@data-testid, 'privacy')]",
+            "//div[contains(@data-testid, 'banner')]",
+            
+            # ARIA attributes
+            "//div[contains(@role, 'dialog')]",
+            "//div[contains(@role, 'alertdialog')]",
+            "//div[contains(@aria-label, 'cookie')]",
+            "//div[contains(@aria-label, 'consent')]",
+            "//div[contains(@aria-label, 'privacy')]",
+            "//div[contains(@aria-label, 'gdpr')]",
+            
+            # Generic overlay patterns
+            "//div[contains(@class, 'fixed') and contains(@class, 'bottom')]",
+            "//div[contains(@class, 'fixed') and contains(@class, 'top')]",
+            "//div[contains(@style, 'position: fixed')]",
+            "//div[contains(@style, 'position:fixed')]",
+            
+            # Common framework classes
+            "//div[contains(@class, 'fc-consent')]",  # Foundry CMP
+            "//div[contains(@class, 'onetrust')]",    # OneTrust
+            "//div[contains(@class, 'cookiebot')]",   # Cookiebot
+            "//div[contains(@class, 'cmp')]",         # Generic CMP
+            "//div[contains(@class, 'cc-banner')]",   # Cookie Consent
+            
+            # Other element types
+            "//section[contains(@class, 'cookie')]",
+            "//section[contains(@class, 'consent')]",
+            "//section[contains(@class, 'gdpr')]",
+            "//section[contains(@class, 'privacy')]",
+            "//section[contains(@class, 'banner')]",
+            "//aside[contains(@class, 'cookie')]",
+            "//aside[contains(@class, 'consent')]",
+            "//aside[contains(@class, 'gdpr')]",
+            "//aside[contains(@class, 'privacy')]",
+            "//aside[contains(@class, 'banner')]",
+            
+            # Iframes that might be cookie-related
+            "//iframe[contains(@src, 'cookie')]",
+            "//iframe[contains(@src, 'consent')]",
+            "//iframe[contains(@src, 'gdpr')]",
+            "//iframe[contains(@src, 'privacy')]",
         )
         removed = 0
         for xpath in patterns:

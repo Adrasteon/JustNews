@@ -28,6 +28,7 @@ from .training_coordinator import (
     add_user_correction,
     get_online_training_status,
     get_training_coordinator,
+    initialize_online_training,
 )
 
 logger = get_logger(__name__)
@@ -360,6 +361,97 @@ class SystemWideTrainingManager:
                 "export_timestamp": datetime.now(UTC).isoformat(),
                 "error": str(e)
             }
+
+    def process_hitl_label(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Convert a HITL label payload into a training example and enqueue it."""
+        label_value = str(payload.get("label", "")).lower() or "unknown"
+        candidate: dict[str, Any] = payload.get("candidate") or {}
+
+        # Ensure coordinator exists before attempting to enqueue
+        if self.coordinator is None:
+            self.coordinator = get_training_coordinator() or initialize_online_training()
+
+        if self.coordinator is None:
+            raise RuntimeError("Training coordinator is not initialized")
+
+        agent_name = "scout"
+        task_type = "news_classification"
+
+        text_candidates = [
+            candidate.get("extracted_text"),
+            candidate.get("extracted_title"),
+            payload.get("cleaned_text"),
+        ]
+        input_text = next((txt for txt in text_candidates if txt), None)
+        if not input_text:
+            url = candidate.get("url") or ""
+            input_text = f"Candidate {candidate.get('id', payload.get('candidate_id', 'unknown'))} {url}".strip()
+
+        uncertainty_map = {
+            "valid_news": 0.1,
+            "messy_news": 0.25,
+            "not_news": 0.45,
+        }
+        uncertainty_score = uncertainty_map.get(label_value, 0.3)
+
+        treat_as_valid = bool(payload.get("treat_as_valid"))
+        needs_cleanup = bool(payload.get("needs_cleanup"))
+        qa_sampled = bool(payload.get("qa_sampled"))
+
+        importance_score = 0.6
+        if treat_as_valid:
+            importance_score = 0.85
+        if needs_cleanup:
+            importance_score = max(importance_score, 0.95)
+        if qa_sampled:
+            importance_score = max(importance_score, 0.9)
+
+        priority = 0
+        if needs_cleanup:
+            priority = 2
+        elif treat_as_valid:
+            priority = 1
+
+        expected_output: dict[str, Any] = {
+            "label": label_value,
+            "needs_cleanup": needs_cleanup,
+            "treat_as_valid": treat_as_valid,
+            "qa_sampled": qa_sampled,
+            "candidate_id": payload.get("candidate_id"),
+            "label_id": payload.get("label_id"),
+        }
+
+        self.coordinator.add_training_example(
+            agent_name=agent_name,
+            task_type=task_type,
+            input_text=input_text,
+            expected_output=expected_output,
+            uncertainty_score=uncertainty_score,
+            importance_score=importance_score,
+            source_url=candidate.get("url") or "",
+            user_feedback=f"HITL label: {label_value}",
+            correction_priority=priority,
+        )
+
+        buffer = self.coordinator.training_buffers.get(agent_name)
+        buffer_size = len(buffer) if buffer is not None else 0
+
+        logger.info(
+            "📥 HITL label processed for training: candidate=%s label=%s priority=%s",
+            payload.get("candidate_id"),
+            label_value,
+            priority,
+        )
+
+        return {
+            "agent_name": agent_name,
+            "task_type": task_type,
+            "label": label_value,
+            "treat_as_valid": treat_as_valid,
+            "needs_cleanup": needs_cleanup,
+            "qa_sampled": qa_sampled,
+            "buffer_size": buffer_size,
+        }
 
 # Global system-wide training manager
 _training_manager = None

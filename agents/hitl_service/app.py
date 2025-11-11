@@ -292,6 +292,8 @@ async def tool_submit_label(call: ToolCallRequest) -> Dict[str, Any]:
     result = store_label(label_req)
     if result.get("enqueue_ingest") and result.get("ingest_payload"):
         asyncio.create_task(dispatch_ingest(result["ingest_payload"], result["label_id"]))
+    if result.get("training_payload"):
+        asyncio.create_task(forward_training_label(result["training_payload"], result["label_id"]))
     return result
 
 
@@ -564,13 +566,45 @@ def update_ingest_status(label_id: str, status: str, timestamp: Optional[str]) -
     conn.close()
 
 
+def build_training_payload(
+    label_id: str,
+    req: LabelRequest,
+    created_at: str,
+    treat_as_valid: bool,
+    needs_cleanup: bool,
+    qa_sampled: bool,
+    ingest_job_id: Optional[str],
+    candidate: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Construct the training-forward payload produced for every label."""
+    payload: Dict[str, Any] = {
+        "label_id": label_id,
+        "candidate_id": req.candidate_id,
+        "label": req.label.lower(),
+        "annotator_id": req.annotator_id,
+        "source": "ui",
+        "cleaned_text": req.cleaned_text,
+        "treat_as_valid": treat_as_valid,
+        "needs_cleanup": needs_cleanup,
+        "qa_sampled": qa_sampled,
+        "ingest_job_id": ingest_job_id,
+        "created_at": created_at,
+        "ingestion_status": "pending" if treat_as_valid else "skipped",
+    }
+    if candidate:
+        payload["candidate"] = candidate
+    else:
+        payload["candidate"] = None
+    return payload
+
+
 def store_label(req: LabelRequest) -> Dict[str, Any]:
     lid = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     label_low = req.label.lower()
-    treat_as_valid = 1 if label_low in ("valid_news", "messy_news") else 0
-    needs_cleanup = 1 if label_low == "messy_news" else 0
-    qa_sampled = 1 if random.random() < 0.05 else 0
+    treat_as_valid_bool = label_low in ("valid_news", "messy_news")
+    needs_cleanup_bool = label_low == "messy_news"
+    qa_sampled_bool = random.random() < 0.05
     candidate = fetch_candidate(req.candidate_id)
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
@@ -584,17 +618,17 @@ def store_label(req: LabelRequest) -> Dict[str, Any]:
             req.annotator_id,
             now,
             "ui",
-            treat_as_valid,
-            needs_cleanup,
-            qa_sampled,
+            1 if treat_as_valid_bool else 0,
+            1 if needs_cleanup_bool else 0,
+            1 if qa_sampled_bool else 0,
             None,
-            "pending" if treat_as_valid else "skipped",
+            "pending" if treat_as_valid_bool else "skipped",
         ),
     )
     # update candidate status
     cur.execute("UPDATE hitl_candidates SET status='labeled' WHERE id=?", (req.candidate_id,))
     qa_entry_id: Optional[str] = None
-    if qa_sampled:
+    if qa_sampled_bool:
         qa_entry_id = str(uuid.uuid4())
         cur.execute(
             "INSERT INTO hitl_qa_queue (id,label_id,candidate_id,created_at,review_status,reviewer_id,notes,reviewed_at) VALUES (?,?,?,?,?,?,?,?)",
@@ -612,28 +646,41 @@ def store_label(req: LabelRequest) -> Dict[str, Any]:
     conn.commit()
     conn.close()
     update_queue_metrics()
-    ingest_job_id = str(uuid.uuid4()) if treat_as_valid else None
+    ingest_job_id = str(uuid.uuid4()) if treat_as_valid_bool else None
     ingest_payload = None
-    if treat_as_valid and candidate:
+    if treat_as_valid_bool and candidate:
         ingest_payload = {
             "job_id": ingest_job_id,
             "candidate_id": req.candidate_id,
             "label_id": lid,
             "label": req.label,
-            "needs_cleanup": bool(needs_cleanup),
+            "needs_cleanup": needs_cleanup_bool,
             "annotator_id": req.annotator_id,
             "cleaned_text": req.cleaned_text,
             "candidate": candidate,
             "created_at": now,
         }
 
+    training_payload = build_training_payload(
+        lid,
+        req,
+        now,
+        treat_as_valid_bool,
+        needs_cleanup_bool,
+        qa_sampled_bool,
+        ingest_job_id,
+        candidate,
+    )
+    metrics.increment("hitl_training_events_total")
+
     return {
         "label_id": lid,
-        "enqueue_ingest": bool(treat_as_valid and ingest_payload),
+        "enqueue_ingest": bool(treat_as_valid_bool and ingest_payload),
         "ingest_job_id": ingest_job_id,
         "ingest_payload": ingest_payload,
-        "qa_sampled": bool(qa_sampled),
+        "qa_sampled": qa_sampled_bool,
         "qa_queue_id": qa_entry_id,
+        "training_payload": training_payload,
     }
 
 
@@ -679,6 +726,49 @@ async def dispatch_ingest(job_payload: Dict[str, Any], label_id: str) -> str:
     logger.error("Exceeded ingest dispatch retries; marking label %s as error", label_id)
     update_ingest_status(label_id, "error", None)
     update_queue_metrics()
+    return "error"
+
+
+async def forward_training_label(payload: Dict[str, Any], label_id: str) -> str:
+    if not payload:
+        metrics.increment("hitl_training_forward_skipped_total")
+        return "skipped"
+
+    if not HITL_TRAINING_FORWARD_ENABLED:
+        metrics.increment("hitl_training_forward_skipped_total")
+        return "skipped"
+
+    metrics.increment("hitl_training_forward_attempts_total")
+    start_time = time.time()
+    attempt = 0
+    max_attempts = max(1, HITL_FORWARD_MAX_RETRIES)
+
+    while attempt < max_attempts:
+        attempt += 1
+        try:
+            await asyncio.to_thread(
+                mcp_client.call_tool,
+                HITL_TRAINING_FORWARD_AGENT,
+                HITL_TRAINING_FORWARD_TOOL,
+                [],
+                payload,
+            )
+            metrics.increment("hitl_training_forward_success_total")
+            metrics.timing("hitl_training_forward_duration_seconds", time.time() - start_time)
+            return "sent"
+        except Exception as exc:  # noqa: BLE001
+            metrics.increment("hitl_training_forward_failure_total")
+            logger.warning(
+                "Training forward attempt %s/%s via MCP Bus failed: %s",
+                attempt,
+                max_attempts,
+                exc,
+            )
+            if attempt < max_attempts:
+                backoff = HITL_FORWARD_RETRY_BACKOFF_SECONDS * (2 ** (attempt - 1))
+                await asyncio.sleep(backoff)
+
+    logger.error("Exceeded training forward retries for label %s", label_id)
     return "error"
 
 
@@ -821,6 +911,8 @@ async def api_post_label(req: LabelRequest):
     out = store_label(req)
     if out.get("enqueue_ingest") and out.get("ingest_payload"):
         asyncio.create_task(dispatch_ingest(out["ingest_payload"], out["label_id"]))
+    if out.get("training_payload"):
+        asyncio.create_task(forward_training_label(out["training_payload"], out["label_id"]))
     return out
 
 

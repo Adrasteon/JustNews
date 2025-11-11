@@ -15,7 +15,7 @@ This document captures the design and operational policy for the Human-In-The-Lo
 - Candidate labeling UI consumes `GET /api/next`, while annotator submissions flow through `POST /api/label` with retrying ingest dispatch to downstream MCP tools.
 - QA operations now include queue health monitoring, Prometheus metrics, reviewer endpoints (`/api/qa/pending`, `/api/qa/history`, `/api/qa/export`), and alert thresholds driven by environment toggles.
 - MCP tool router (`POST /call`) exposes `receive_candidate`, `submit_label`, and `fetch_stats` for direct bus invocations; candidate fan-out is configurable via `HITL_CANDIDATE_FORWARD_*` settings.
-- Training forward path is scaffolded behind `HITL_TRAINING_FORWARD_*` toggles but still awaiting downstream consumer wiring and contract finalisation.
+- Training forward path streams labels to the training system via the `training_system.receive_hitl_label` MCP tool when `HITL_TRAINING_FORWARD_*` toggles are enabled.
 
 ## Contract (inputs, outputs, acceptance)
 
@@ -220,7 +220,7 @@ Service integration details:
 - MCP Bus registration runs automatically; configure `MCP_BUS_URL`, `HITL_AGENT_NAME`, and `HITL_SERVICE_ADDRESS` per environment.
 - Downstream ingest dispatch is controlled via `HITL_FORWARD_AGENT` and `HITL_FORWARD_TOOL` so targets can be changed without redeploying code.
 - Optional candidate fan-out is enabled by `HITL_CANDIDATE_FORWARD_AGENT` and `HITL_CANDIDATE_FORWARD_TOOL` for any additional consumers.
-- Training-forward plumbing is guarded behind `HITL_TRAINING_FORWARD_AGENT` and `HITL_TRAINING_FORWARD_TOOL`; once the training service exposes an MCP tool, enable these toggles to stream labels automatically.
+- Training-forward plumbing is controlled by `HITL_TRAINING_FORWARD_AGENT` and `HITL_TRAINING_FORWARD_TOOL`; point these at `training_system` / `receive_hitl_label` to stream labels automatically.
 - Use `HITL_DB_PATH` to select the SQLite file path (defaults to `agents/hitl_service/hitl_staging.db`).
 - Supply `HITL_PRIORITY_SITES` (comma-separated) to boost key sources in the queueing heuristic.
 - Configure QA monitoring via `HITL_QA_BACKLOG_ALERT_THRESHOLD`, `HITL_QA_FAILURE_RATE_ALERT_THRESHOLD`, `HITL_QA_FAILURE_MIN_SAMPLE`, and `HITL_QA_MONITOR_INTERVAL_SECONDS` to align with reviewer capacity.
@@ -251,7 +251,7 @@ Service integration details:
 
 ## Next steps (recommended)
 
-1. Finalise training-forward MCP contract and enable `HITL_TRAINING_FORWARD_*` for automated dataset streaming.
+1. Enable `HITL_TRAINING_FORWARD_*` in staging and validate the `receive_hitl_label` pipeline with Prometheus metrics before production rollout.
 2. Integrate the reviewer dashboard with the new QA listing and export endpoints; add automated coverage to prevent regressions.
 3. Expand monitoring dashboards/alerts to include new Prometheus gauges and ingest dispatch counters; validate thresholds in staging before production rollout.
 4. Continue tuning annotator UI throughput (batch sizing, hotkeys) based on live telemetry and QA outcomes.

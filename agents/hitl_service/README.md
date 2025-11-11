@@ -26,3 +26,4 @@ Notes:
 - Set `HITL_DB_PATH` to change the SQLite database location; defaults to `agents/hitl_service/hitl_staging.db`.
 - Annotators must supply their ID in the UI; it is cached locally in the browser for convenience.
 - QA reviewers can resolve samples via `POST /api/qa/review` with a `pass`/`fail` status to drain the QA queue.
+- Enable training-forward dispatch by exporting `HITL_TRAINING_FORWARD_AGENT=training_system` and `HITL_TRAINING_FORWARD_TOOL=receive_hitl_label`; monitor `hitl_training_forward_success_total` together with the training system counter `justnews_training_examples_total{example_type="hitl_label"}` to confirm end-to-end flow.

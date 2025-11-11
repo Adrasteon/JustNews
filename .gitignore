@@ -20,6 +20,9 @@ agents/memory/http:/
 .coverage
 kg_storage/
 
+# GPU optimization history artifacts
+agents/memory/config/gpu/optimization_history.json
+
 # Editor helpers
 .copilot-instructions
 .vscode/

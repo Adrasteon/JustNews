@@ -17,6 +17,8 @@ agents/reasoning/reasoning_state.json
 .pytest_cache/
 database_backups/
 agents/memory/http:/
+.coverage
+kg_storage/
 
 # Editor helpers
 .copilot-instructions

@@ -12,7 +12,8 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 import requests
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 
 from common.metrics import JustNewsMetrics
@@ -55,6 +56,8 @@ HITL_QA_FAILURE_RATE_ALERT_THRESHOLD = float(
     os.environ.get("HITL_QA_FAILURE_RATE_ALERT_THRESHOLD", "0.05")
 )
 HITL_QA_FAILURE_MIN_SAMPLE = int(os.environ.get("HITL_QA_FAILURE_MIN_SAMPLE", "20"))
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+INDEX_FILE_PATH = os.path.join(STATIC_DIR, "index.html")
 
 logger = get_logger(__name__)
 
@@ -66,6 +69,11 @@ app = FastAPI(
 
 metrics = JustNewsMetrics("hitl_service")
 app.middleware("http")(metrics.request_middleware)
+
+if os.path.isdir(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+else:
+    logger.warning("Static directory %s not found; HITL UI assets unavailable", STATIC_DIR)
 
 
 def ensure_db():
@@ -1096,3 +1104,10 @@ async def api_stats():
         "qa_pending": qa_pending,
         "avg_label_to_ingest_latency_seconds": round(avg_latency, 2),
     }
+
+
+@app.get("/", include_in_schema=False)
+async def serve_root():
+    if os.path.isfile(INDEX_FILE_PATH):
+        return FileResponse(INDEX_FILE_PATH, media_type="text/html")
+    raise HTTPException(status_code=404, detail="HITL UI not found")

@@ -11,6 +11,7 @@ import json
 import os
 import time
 from collections.abc import Mapping, Sequence
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlparse
 
@@ -213,6 +214,25 @@ class CrawlerEngine:
         # Background cleanup management
         self.cleanup_task = None
         self._start_background_cleanup()
+
+        # HITL integration controls
+        def _parse_int(env_key: str, default: int, minimum: int) -> int:
+            try:
+                return max(minimum, int(os.environ.get(env_key, str(default))))
+            except (TypeError, ValueError):
+                return default
+
+        self.hitl_base_url = (
+            os.environ.get("HITL_SERVICE_URL")
+            or os.environ.get("HITL_SERVICE_ADDRESS")
+            or "http://localhost:8040"
+        ).rstrip("/")
+        self.hitl_enabled = os.environ.get("ENABLE_HITL_PIPELINE", "true").lower() != "false"
+        self.hitl_stats_interval = _parse_int("HITL_STATS_INTERVAL_SECONDS", 60, 0)
+        self.hitl_backoff_seconds = _parse_int("HITL_FAILURE_BACKOFF_SECONDS", 180, 30)
+        self._hitl_last_stats_check = 0.0
+        self._hitl_failure_streak = 0
+        self._hitl_suspended_until = 0.0
 
     def _start_background_cleanup(self):
         """Start background cleanup task - disabled to prevent conflicts with async context manager"""
@@ -741,6 +761,7 @@ class CrawlerEngine:
                                 if paywall_skipped:
                                     exhaustion_reason = exhaustion_reason or "paywalls_only"
                                 else:
+                                    await self._submit_hitl_candidates(filtered_batch, site_config)
                                     exhaustion_reason = exhaustion_reason or "no_new_candidates"
                             else:
                                 take = remaining_budget if remaining_budget is not None else None
@@ -805,6 +826,7 @@ class CrawlerEngine:
                             if remaining_budget is not None:
                                 filtered_batch = filtered_batch[:remaining_budget]
 
+                            await self._submit_hitl_candidates(filtered_batch, site_config)
                             site_candidates += len(filtered_batch)
 
                             ingestion_result = await self._ingest_articles(filtered_batch)
@@ -951,6 +973,113 @@ class CrawlerEngine:
             articles_per_second,
         )
         return summary
+
+    def _build_hitl_candidate_payload(self, article: dict, site_config: SiteConfig | None) -> dict[str, Any] | None:
+        """Create the payload expected by the HITL candidate endpoint."""
+        url = article.get('url')
+        if not url:
+            return None
+
+        extracted_text = article.get('content') or article.get('extracted_text') or ""
+        features: dict[str, Any] = {}
+        if extracted_text:
+            features["word_count"] = len(extracted_text.split())
+
+        extraction_meta = article.get('extraction_metadata') or {}
+        link_density = extraction_meta.get('link_density')
+        if isinstance(link_density, (int, float)):
+            features["link_density"] = float(link_density)
+
+        if article.get('confidence') is not None:
+            features["confidence"] = article.get('confidence')
+        if article.get('paywall_flag') is not None:
+            features["paywall_flag"] = bool(article.get('paywall_flag'))
+        if article.get('language'):
+            features["language"] = article.get('language')
+
+        candidate = {
+            "url": url,
+            "site_id": article.get('source_id') or getattr(site_config, "source_id", None),
+            "extracted_title": article.get('title') or article.get('extracted_title'),
+            "extracted_text": extracted_text,
+            "raw_html_ref": article.get('raw_html_ref'),
+            "features": features or None,
+            "crawler_ts": article.get('timestamp') or datetime.now(timezone.utc).isoformat(),
+            "crawler_job_id": article.get('crawler_job_id'),
+        }
+        return candidate
+
+    def _post_hitl_candidate_sync(self, payload: dict[str, Any]) -> bool:
+        """Synchronously post a single candidate to the HITL service."""
+        url = f"{self.hitl_base_url}/api/candidates"
+        try:
+            response = requests.post(url, json=payload, timeout=(2, 6))
+            response.raise_for_status()
+            self._hitl_failure_streak = 0
+            return True
+        except Exception as exc:  # noqa: BLE001 - avoid failing the crawl on HITL issues
+            self._hitl_failure_streak += 1
+            if self._hitl_failure_streak == 1:
+                logger.warning("HITL candidate submission failed (%s): %s", payload.get('url'), exc)
+            if self._hitl_failure_streak >= 3:
+                self._hitl_suspended_until = time.time() + self.hitl_backoff_seconds
+                logger.warning(
+                    "Suspending HITL submissions for %ss after %s consecutive failures",
+                    self.hitl_backoff_seconds,
+                    self._hitl_failure_streak,
+                )
+            return False
+
+    async def _submit_hitl_candidates(self, articles: list[dict], site_config: SiteConfig | None) -> None:
+        """Submit a batch of candidates to the HITL service and optionally log queue depth."""
+        if not self.hitl_enabled or not self.hitl_base_url:
+            return
+        if not articles:
+            return
+        now = time.time()
+        if self._hitl_suspended_until and now < self._hitl_suspended_until:
+            return
+
+        tasks = []
+        for article in articles:
+            payload = self._build_hitl_candidate_payload(article, site_config)
+            if not payload:
+                continue
+            tasks.append(asyncio.to_thread(self._post_hitl_candidate_sync, payload))
+
+        if not tasks:
+            return
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        if any(isinstance(result, bool) and result for result in results):
+            await self._maybe_log_hitl_stats()
+
+    async def _maybe_log_hitl_stats(self) -> None:
+        """Fetch and log HITL queue metrics at a controlled interval."""
+        if self.hitl_stats_interval <= 0 or not self.hitl_base_url:
+            return
+        now = time.time()
+        if now - self._hitl_last_stats_check < self.hitl_stats_interval:
+            return
+        self._hitl_last_stats_check = now
+
+        def _fetch() -> dict[str, Any] | None:
+            try:
+                response = requests.get(f"{self.hitl_base_url}/api/stats", timeout=(2, 6))
+                response.raise_for_status()
+                return response.json()
+            except Exception as exc:  # noqa: BLE001 - log softly, continue crawl
+                logger.debug("HITL stats fetch failed: %s", exc)
+                return None
+
+        stats = await asyncio.to_thread(_fetch)
+        if stats:
+            logger.info(
+                "HITL queue depth → pending=%s in_review=%s ingest_queue=%s",
+                stats.get("pending"),
+                stats.get("in_review"),
+                stats.get("ingest_queue_len"),
+            )
 
     async def _ingest_articles(self, articles: list[dict]) -> dict[str, Any]:
         """Ingest articles via the memory agent and annotate ingestion status."""

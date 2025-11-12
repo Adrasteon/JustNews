@@ -5,19 +5,105 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>HITL Staging - Annotator</title>
     <style>
-      body { font-family: system-ui, Arial; margin: 20px; max-width: 960px; }
-      #candidate { border: 1px solid #ddd; padding: 12px; border-radius: 6px; margin-top: 16px; }
-      .title { font-weight: 700; margin-bottom: 8px; }
-      .url { font-size: 0.9em; color: #555; margin-bottom:8px }
-      #text { white-space: pre-wrap; margin-bottom: 8px }
+      :root { color-scheme: dark; }
+      body {
+        font-family: system-ui, Arial;
+        margin: 40px auto;
+        padding: 0 24px;
+        max-width: 1200px;
+        background: #0f172a;
+        color: #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-size: 1.5rem;
+        line-height: 1.6;
+      }
+      a { color: #60a5fa; }
+  h2 { align-self: flex-start; margin-bottom: 16px; font-size: 2.1rem; }
+      #candidate {
+        border: 1px solid #1f2937;
+        padding: 12px;
+        border-radius: 6px;
+        margin-top: 16px;
+        background: #111827;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.6);
+        width: 100%;
+        max-width: 900px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .title { font-weight: 700; margin-bottom: 8px; color: #f8fafc; }
+      .url { font-size: 0.9em; color: #94a3b8; margin-bottom:8px; word-break: break-all; }
+      #text {
+        white-space: pre-wrap;
+        margin-bottom: 8px;
+        background: #0b1120;
+        padding: 12px;
+        border-radius: 6px;
+        border: 1px solid #1f2937;
+        color: #cbd5f5;
+        min-height: 180px;
+      }
       #controls { margin-top: 12px }
-      button { padding: 8px 12px; margin-right: 6px }
-      textarea { width: 100%; height: 160px }
-      #topbar { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+      button {
+        padding: 8px 12px;
+        margin-right: 6px;
+        border: none;
+        border-radius: 6px;
+        background: #2563eb;
+        color: #f8fafc;
+        cursor: pointer;
+        transition: background 0.15s ease;
+        font-size: 1rem;
+      }
+      button:hover { background: #1d4ed8; }
+      button:disabled { background: #334155; cursor: default; }
+      textarea {
+        width: 100%;
+        height: 160px;
+        background: #0b1120;
+        color: #e2e8f0;
+        border: 1px solid #1f2937;
+        border-radius: 6px;
+        padding: 10px;
+        font-size: 1rem;
+        resize: vertical;
+        overflow-y: auto;
+        box-sizing: border-box;
+        max-width: 900px;
+      }
+      #topbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px;
+        align-items: flex-end;
+        width: 100%;
+      }
       #topbar > div { display: flex; flex-direction: column; }
-      label { font-size: 0.85em; color: #444; margin-bottom: 4px; }
-      #stats { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; font-size: 0.95em; }
-      #stats span { background: #f3f4f6; padding: 6px 10px; border-radius: 6px; }
+      label { font-size: 0.85em; color: #cbd5f5; margin-bottom: 4px; }
+      input[type="text"] {
+        background: #0b1120;
+        color: #e2e8f0;
+        border: 1px solid #1f2937;
+        border-radius: 6px;
+        padding: 8px;
+        font-size: 1rem;
+      }
+      #stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 12px;
+        font-size: 0.95em;
+        width: 100%;
+      }
+      #stats span {
+        background: #1e293b;
+        padding: 6px 10px;
+        border-radius: 6px;
+        color: #cbd5f5;
+      }
     </style>
   </head>
   <body>

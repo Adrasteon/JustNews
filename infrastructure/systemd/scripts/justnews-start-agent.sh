@@ -87,7 +87,7 @@ validate_agent_name() {
     if [[ -z "$agent" ]]; then
         log_error "Agent name is required"
         log_info "Usage: $SCRIPT_NAME <agent_name>"
-        log_info "Available agents: mcp_bus, chief_editor, scout, fact_checker, analyst, synthesizer, critic, memory, reasoning, newsreader, dashboard, analytics, balancer, archive, gpu_orchestrator, crawler, crawler_control"
+        log_info "Available agents: mcp_bus, chief_editor, scout, fact_checker, analyst, synthesizer, critic, memory, reasoning, newsreader, dashboard, analytics, balancer, archive, hitl_service, crawl4ai, gpu_orchestrator, crawler, crawler_control"
         exit 1
     fi
 
@@ -107,6 +107,7 @@ validate_agent_name() {
         "analytics"
         "balancer"
         "archive"
+        "hitl_service"
         "crawl4ai"
         "gpu_orchestrator"
         "crawler"
@@ -280,6 +281,9 @@ check_python_deps_and_exit_if_missing() {
         # Crawl4AI bridge requires uvicorn for serving and crawl4ai/aiohttp for crawling
         modules=(uvicorn crawl4ai aiohttp)
     fi
+        if [[ "$agent" == "hitl_service" ]]; then
+            modules=(uvicorn fastapi requests)
+        fi
 
     local modules_var="${modules[*]}"
     local missing=""
@@ -427,10 +431,11 @@ AGENTS:
     analytics       System analytics and monitoring
     balancer        Load balancing and resource management
     archive         Content archiving and retrieval
-        crawl4ai        Crawl4AI bridge (local HTTP crawler bridge)
-        gpu_orchestrator GPU telemetry and allocation coordinator (SAFE_MODE-aware)
-        crawler         Content crawling and data collection
-        crawler_control Web interface for crawler management and monitoring
+    crawl4ai        Crawl4AI bridge (local HTTP crawler bridge)
+    hitl_service    Human-in-the-loop labeling service (port 8040 by default)
+    gpu_orchestrator GPU telemetry and allocation coordinator (SAFE_MODE-aware)
+    crawler         Content crawling and data collection
+    crawler_control Web interface for crawler management and monitoring
 
 OPTIONS:
     -h, --help      Show this help message

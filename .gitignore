@@ -22,6 +22,7 @@ kg_storage/
 
 # GPU optimization history artifacts
 agents/memory/config/gpu/optimization_history.json
+agents/hitl_service/*.db
 
 # Editor helpers
 .copilot-instructions

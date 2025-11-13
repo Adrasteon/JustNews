@@ -145,7 +145,7 @@ def ensure_db():
 
 
 class CandidateEvent(BaseModel):
-    id: Optional[str]
+    id: Optional[str] = None
     url: str
     site_id: Optional[str] = None
     extracted_title: Optional[str] = None

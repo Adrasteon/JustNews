@@ -1,3 +1,46 @@
+# HITL Service (agents/hitl_service)
+
+Short guide for the Human-in-the-Loop (HITL) annotator service used by the
+JustNews system.
+
+Purpose
+- Provides a FastAPI-based annotator UI and a small staging DB for candidate
+  review and programmatic labeling.
+
+Run locally
+- Start the service (development):
+  - Ensure dependencies are installed (see project `requirements.txt`).
+  - Run: `uvicorn agents.hitl_service.app:app --reload --host 127.0.0.1 --port 8040`
+- The static annotator UI is served at `http://127.0.0.1:8040/`.
+
+Important environment variables
+- `HITL_SERVICE_ADDRESS`: URL advertised to other services (default `http://127.0.0.1:8040`).
+- `HITL_DB_PATH`: Path to the local SQLite staging DB (default `agents/hitl_service/hitl_staging.db`).
+- `ENABLE_HITL_PIPELINE`: When `false` the crawler will not POST candidates to HITL.
+- `HITL_STATS_INTERVAL_SECONDS`: Interval (seconds) for periodic stats polling/logging.
+- `HITL_FAILURE_BACKOFF_SECONDS`: Backoff used by the crawler when POSTs to HITL fail.
+- Forwarding knobs:
+  - `HITL_FORWARD_AGENT` / `HITL_FORWARD_TOOL` — configure to enable automatic
+    ingest-forwarding of labeled items via the MCP Bus.
+
+DB notes
+- The default staging DB is local and ignored by git. For production or shared
+  environments, set `HITL_DB_PATH` to an accessible location and ensure the
+  service has write permissions.
+
+Tests
+- Unit and integration tests for the HITL service live under `tests/agents/`.
+- Recommended CI: run `pytest -q` in the repo root (CI workflow added).
+
+Troubleshooting
+- 422 validation errors: ensure incoming candidate payloads match the
+  `CandidateEvent` schema (the `id` field is optional).
+- If the crawler reports repeated submission failures, check `HITL_SERVICE_ADDRESS`
+  and `HITL_FAILURE_BACKOFF_SECONDS`.
+
+Contact
+- For operational questions, contact the engineering team maintaining the
+  JustNews HITL integration.
 # HITL Service
 
 Human-in-the-loop ingestion service that stores annotator decisions in SQLite and integrates with the shared MCP Bus for ingest dispatch.

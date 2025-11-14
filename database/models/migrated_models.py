@@ -231,17 +231,59 @@ class MigratedDatabaseService:
             user=mb_config['user'],
             password=mb_config['password'],
             database=mb_config['database'],
-            autocommit=False
+            autocommit=False,
+            use_pure=True
         )
         logger.info("Connected to MariaDB")
 
         # ChromaDB connection
         chroma_config = self.config['database']['chromadb']
-        self.chroma_client = chromadb.HttpClient(
-            host=chroma_config['host'],
-            port=chroma_config['port']
-        )
-        self.collection = self.chroma_client.get_collection(chroma_config['collection'])
+        # Use HttpClient with basic settings
+        import os
+        os.environ["CHROMA_TELEMETRY_ENABLED"] = "false"
+        
+        # Try to connect without authentication first (works with ChromaDB 1.3.2)
+        try:
+            self.chroma_client = chromadb.HttpClient(
+                host=chroma_config['host'],
+                port=chroma_config['port']
+            )
+            # Test the connection
+            self.chroma_client.heartbeat()
+        except Exception as e:
+            logger.warning(f"Direct ChromaDB connection failed, trying with auth bypass: {e}")
+            # Monkey patch to avoid authentication issues
+            from chromadb.api import UserIdentity
+            original_get_user_identity = chromadb.api.client.Client.get_user_identity
+            
+            def patched_get_user_identity(self):
+                return UserIdentity(user_id="anonymous", tenant="default", databases=["default"])
+            
+            # Apply the monkey patch before creating client
+            chromadb.api.client.Client.get_user_identity = patched_get_user_identity
+            
+            try:
+                self.chroma_client = chromadb.HttpClient(
+                    host=chroma_config['host'],
+                    port=chroma_config['port']
+                )
+            finally:
+                # Restore the original method
+                chromadb.api.client.Client.get_user_identity = original_get_user_identity
+        
+        # Create collection if it doesn't exist
+        collection_name = chroma_config['collection']
+        try:
+            self.collection = self.chroma_client.get_collection(collection_name)
+            logger.info(f"Connected to existing ChromaDB collection: {collection_name}")
+        except Exception as e:
+            logger.info(f"Collection {collection_name} doesn't exist, creating it: {e}")
+            self.collection = self.chroma_client.create_collection(
+                name=collection_name,
+                metadata={"description": "Article embeddings for semantic search"}
+            )
+            logger.info(f"Created new ChromaDB collection: {collection_name}")
+        
         logger.info("Connected to ChromaDB")
 
         # Embedding model

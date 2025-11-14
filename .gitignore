@@ -15,6 +15,14 @@ agents/synthesizer/config/
 agents/reasoning/reasoning_state.json
 *.log
 .pytest_cache/
+database_backups/
+agents/memory/http:/
+.coverage
+kg_storage/
+
+# GPU optimization history artifacts
+agents/memory/config/gpu/optimization_history.json
+agents/hitl_service/*.db
 
 # Editor helpers
 .copilot-instructions
@@ -27,11 +35,13 @@ model_store
 # Ignore any local model caches in agents/ directories
 agents/**/models/
 
+# Root level model cache
+models/
+
 # Migration framework and temporary files
 migration_*.py
 AGENT_MODEL_MAP.json
 health-report-*.json
-test_*.py
 *.bak_*
 start_services_daemon.sh
 

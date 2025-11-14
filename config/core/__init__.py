@@ -21,6 +21,7 @@ import hashlib
 import copy
 
 from common.observability import get_logger
+from common.env_loader import load_global_env
 from ..schemas import (
     JustNewsConfig,
     Environment,
@@ -141,6 +142,9 @@ class ConfigurationManager:
             ConfigurationError: If loading or validation fails
         """
         try:
+            # Ensure environment variables from global.env are available before loading configuration
+            load_global_env(logger=logger)
+
             # Load configuration
             config = load_config_from_file(self.config_file)
 

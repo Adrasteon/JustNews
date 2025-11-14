@@ -239,6 +239,38 @@ class PredictionFeedback(BaseModel):
     confidence_score: float = Field(..., ge=0.0, le=1.0, description="Confidence score of the prediction")
 
 
+class HitlCandidate(BaseModel):
+    """Nested candidate payload passed from the HITL service."""
+
+    id: Optional[str] = None
+    url: Optional[str] = None
+    site_id: Optional[str] = None
+    extracted_title: Optional[str] = None
+    extracted_text: Optional[str] = None
+    raw_html_ref: Optional[str] = None
+    features: Dict[str, Any] = Field(default_factory=dict)
+    candidate_ts: Optional[str] = None
+    crawler_job_id: Optional[str] = None
+
+
+class HitlLabelPayload(BaseModel):
+    """Training-forward payload originating from the HITL service."""
+
+    label_id: str
+    candidate_id: str
+    label: str
+    annotator_id: Optional[str] = None
+    source: Optional[str] = None
+    cleaned_text: Optional[str] = None
+    treat_as_valid: bool = False
+    needs_cleanup: bool = False
+    qa_sampled: bool = False
+    ingest_job_id: Optional[str] = None
+    created_at: Optional[str] = None
+    ingestion_status: Optional[str] = None
+    candidate: Optional[HitlCandidate] = None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup/shutdown context manager for training system"""
@@ -272,7 +304,8 @@ async def lifespan(app: FastAPI):
                 "get_training_status",
                 "get_system_training_dashboard",
                 "force_agent_update",
-                "get_training_metrics"
+                "get_training_metrics",
+                "receive_hitl_label",
             ],
         )
         logger.info("Training System registered with MCP Bus")
@@ -383,6 +416,28 @@ async def add_prediction_feedback(request: PredictionFeedback):
 
     except Exception as e:
         logger.error(f"Failed to add prediction feedback: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/tool/receive_hitl_label")
+async def receive_hitl_label(payload: HitlLabelPayload):
+    """Accept a HITL label payload and enqueue it for training."""
+
+    try:
+        training_manager = get_system_training_manager()
+        result = training_manager.process_hitl_label(payload.model_dump(mode="python"))
+
+        training_metrics.record_training_example(result["agent_name"], "hitl_label")
+        training_metrics.update_buffer_size(result["agent_name"], result.get("buffer_size", 0))
+
+        return {
+            "status": "success",
+            "message": "HITL label accepted for training",
+            "data": result,
+        }
+    except Exception as e:
+        logger.error(f"Failed to process HITL label payload: {e}")
+        training_metrics.record_error("hitl_label_error", "/tool/receive_hitl_label")
         raise HTTPException(status_code=500, detail=str(e))
 
 

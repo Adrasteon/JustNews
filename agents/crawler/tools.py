@@ -6,6 +6,7 @@ from typing import Dict, Any
 
 from ..performance_monitoring import get_performance_monitor
 from .crawler_engine import CrawlerEngine
+from .extraction import extract_article_content
 
 
 def get_crawler_info(*args, **kwargs) -> Dict[str, Any]:

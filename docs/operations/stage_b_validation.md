@@ -14,6 +14,8 @@ This playbook captures the operational steps required to consider Stage B comple
 - Verify the ingestion agent populates new fields:
   - Invoke `agents/memory/tools.save_article` via unit tests (`tests/agents/memory/test_save_article.py`) or an ad-hoc ingestion to confirm `collection_timestamp`, dedupe hashes, review flags, and embeddings reach the database.
   - Inspect a sample row with `SELECT title, normalized_url, url_hash, needs_review, collection_timestamp FROM articles ORDER BY id DESC LIMIT 5;`.
+  - Confirm Chroma metadata accepts the payload: run a spot check (for example, `python - <<'PY' ... collection.get(ids=['<article_id>']) ... PY`) and verify every metadata field is a scalar or JSON string. Null values or nested dicts must be stripped/serialized before ingestion; otherwise Chroma rejects the write with `metadatas[0].<field>: data did not match any variant of untagged enum MetadataValue`.
+  - When adding new metadata fields, update the sanitization helpers in `agents/memory/tools._make_chroma_metadata_safe` (and keep optional fields nullable in MariaDB) so embeddings continue to store cleanly.
 - Document the migration execution (timestamp, operator, target database) in your ops log or ticket system.
 
 ## 2. Scheduler Bring-Up

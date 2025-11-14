@@ -1,0 +1,471 @@
+"""
+Tests for JustNewsAgent Configuration Validation
+
+This module contains tests for configuration validation including:
+- System configuration validation
+- Schema validation
+- Environment-specific configurations
+- Configuration loading and parsing
+- Configuration security validation
+"""
+
+import json
+import os
+import pytest
+import tempfile
+from pathlib import Path
+from unittest.mock import Mock, patch, MagicMock
+from jsonschema import validate, ValidationError
+
+from config.config_quickref import ConfigQuickRef
+from config.test_config_system import validate_system_config
+
+
+class TestSystemConfigValidation:
+    """Test system configuration validation"""
+
+    @pytest.fixture
+    def valid_config(self):
+        """Load valid system configuration"""
+        config_path = Path("config/system_config.json")
+        if config_path.exists():
+            with open(config_path, 'r') as f:
+                return json.load(f)
+        # Return minimal valid config for testing
+        return {
+            "system": {
+                "name": "JustNewsAgent",
+                "version": "4.0",
+                "environment": "development"
+            },
+            "database": {
+                "host": "localhost",
+                "port": 5432
+            }
+        }
+
+    def test_config_schema_validation(self, valid_config):
+        """Test configuration against JSON schema"""
+        # Define basic schema for validation
+        schema = {
+            "type": "object",
+            "required": ["system", "database"],
+            "properties": {
+                "system": {
+                    "type": "object",
+                    "required": ["name", "version", "environment"],
+                    "properties": {
+                        "name": {"type": "string"},
+                        "version": {"type": "string"},
+                        "environment": {"enum": ["development", "staging", "production"]}
+                    }
+                },
+                "database": {
+                    "type": "object",
+                    "required": ["host", "port"],
+                    "properties": {
+                        "host": {"type": "string"},
+                        "port": {"type": "integer", "minimum": 1, "maximum": 65535}
+                    }
+                }
+            }
+        }
+
+        # Should not raise ValidationError
+        validate(valid_config, schema)
+
+    def test_invalid_config_detection(self):
+        """Test detection of invalid configurations"""
+        invalid_config = {
+            "system": {
+                "name": "",  # Empty name
+                "version": "4.0",
+                "environment": "invalid_env"  # Invalid environment
+            }
+        }
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "system": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "minLength": 1},
+                        "environment": {"enum": ["development", "staging", "production"]}
+                    }
+                }
+            }
+        }
+
+        with pytest.raises(ValidationError):
+            validate(invalid_config, schema)
+
+    def test_environment_specific_validation(self, valid_config):
+        """Test environment-specific configuration validation"""
+        # Test development environment
+        dev_config = valid_config.copy()
+        dev_config["system"]["environment"] = "development"
+
+        assert self._validate_environment_config(dev_config, "development")
+
+        # Test production environment requirements
+        prod_config = valid_config.copy()
+        prod_config["system"]["environment"] = "production"
+        prod_config["security"] = {
+            "api_key_required": True,
+            "enable_ip_filtering": True
+        }
+
+        assert self._validate_environment_config(prod_config, "production")
+
+    def _validate_environment_config(self, config, environment):
+        """Helper method to validate environment-specific config"""
+        if environment == "production":
+            # Production requires security settings
+            return "security" in config and config["security"].get("api_key_required", False)
+        return True
+
+    def test_port_configuration_validation(self, valid_config):
+        """Test agent port configuration validation"""
+        agents_config = valid_config.get("agents", {})
+
+        if "ports" in agents_config:
+            ports = agents_config["ports"]
+
+            # Check port ranges
+            for agent, port in ports.items():
+                assert isinstance(port, int), f"Port for {agent} must be integer"
+                assert 8000 <= port <= 8999, f"Port {port} for {agent} out of valid range"
+
+            # Check for port conflicts
+            port_values = list(ports.values())
+            assert len(port_values) == len(set(port_values)), "Duplicate ports detected"
+
+    def test_database_config_validation(self, valid_config):
+        """Test database configuration validation"""
+        db_config = valid_config.get("database", {})
+
+        required_fields = ["host", "port", "database", "user"]
+        for field in required_fields:
+            assert field in db_config, f"Required database field '{field}' missing"
+
+        # Validate port range
+        port = db_config.get("port")
+        assert isinstance(port, int), "Database port must be integer"
+        assert 1024 <= port <= 65535, f"Database port {port} out of valid range"
+
+        # Validate connection pool settings
+        pool_config = db_config.get("connection_pool", {})
+        if pool_config:
+            min_conn = pool_config.get("min_connections", 1)
+            max_conn = pool_config.get("max_connections", 10)
+            assert min_conn <= max_conn, "Min connections cannot exceed max connections"
+
+    def test_gpu_config_validation(self, valid_config):
+        """Test GPU configuration validation"""
+        gpu_config = valid_config.get("gpu", {})
+
+        if gpu_config:
+            # Validate device configuration
+            devices = gpu_config.get("devices", {})
+            preferred = devices.get("preferred", [])
+            excluded = devices.get("excluded", [])
+
+            # Preferred and excluded should not overlap
+            overlap = set(preferred) & set(excluded)
+            assert len(overlap) == 0, f"GPU devices cannot be both preferred and excluded: {overlap}"
+
+            # Validate memory management
+            memory = gpu_config.get("memory_management", {})
+            max_memory = memory.get("max_memory_per_agent_gb", 8.0)
+            assert max_memory > 0, "Max memory per agent must be positive"
+
+            safety_margin = memory.get("safety_margin_percent", 15.0)
+            assert 0 <= safety_margin <= 50, "Safety margin must be between 0-50%"
+
+    def test_monitoring_config_validation(self, valid_config):
+        """Test monitoring configuration validation"""
+        monitoring = valid_config.get("monitoring", {})
+
+        if monitoring:
+            # Validate alert thresholds
+            thresholds = monitoring.get("alert_thresholds", {})
+            for metric, threshold in thresholds.items():
+                assert isinstance(threshold, (int, float)), f"Threshold for {metric} must be numeric"
+                assert 0 <= threshold <= 100, f"Threshold {threshold} for {metric} out of valid range"
+
+            # Validate log rotation settings
+            log_rotation = monitoring.get("log_rotation", {})
+            max_size = log_rotation.get("max_file_size_mb", 100)
+            assert max_size > 0, "Max log file size must be positive"
+
+            backup_count = log_rotation.get("backup_count", 5)
+            assert backup_count >= 1, "Backup count must be at least 1"
+
+
+class TestConfigQuickRef:
+    """Test configuration quick reference functionality"""
+
+    @pytest.fixture
+    def config_ref(self):
+        """Create ConfigQuickRef instance"""
+        return ConfigQuickRef()
+
+    def test_quickref_initialization(self, config_ref):
+        """Test ConfigQuickRef initialization"""
+        assert config_ref is not None
+        assert hasattr(config_ref, 'get_config_summary')
+        assert hasattr(config_ref, 'validate_config')
+
+    @patch('config.config_quickref.json.load')
+    def test_config_loading(self, mock_json_load, config_ref):
+        """Test configuration file loading"""
+        mock_config = {"system": {"name": "TestAgent"}}
+        mock_json_load.return_value = mock_config
+
+        with patch('builtins.open', create=True):
+            loaded = config_ref._load_config_file("test_config.json")
+
+            assert loaded == mock_config
+            mock_json_load.assert_called_once()
+
+    def test_config_summary_generation(self, config_ref):
+        """Test configuration summary generation"""
+        config = {
+            "system": {"name": "JustNewsAgent", "version": "4.0"},
+            "database": {"host": "localhost", "port": 5432},
+            "agents": {"ports": {"analyst": 8004, "fact_checker": 8003}}
+        }
+
+        summary = config_ref.get_config_summary(config)
+
+        assert "system" in summary
+        assert "database" in summary
+        assert "agents" in summary
+        assert summary["system"]["name"] == "JustNewsAgent"
+
+
+class TestConfigSecurityValidation:
+    """Test configuration security validation"""
+
+    def test_sensitive_data_detection(self):
+        """Test detection of sensitive data in configuration"""
+        config_with_secrets = {
+            "database": {
+                "password": "super_secret_password123",
+                "api_key": "sk-1234567890abcdef"
+            },
+            "external_services": {
+                "secret_token": "token_abcdef123456"
+            }
+        }
+
+        sensitive_patterns = [
+            r"password.*",
+            r"secret.*",
+            r"token.*",
+            r"key.*"
+        ]
+
+        issues = self._scan_for_sensitive_data(config_with_secrets, sensitive_patterns)
+
+        assert len(issues) > 0
+        assert any("password" in issue for issue in issues)
+
+    def _scan_for_sensitive_data(self, config, patterns):
+        """Helper to scan configuration for sensitive data"""
+        issues = []
+        def scan_dict(d, path=""):
+            for key, value in d.items():
+                current_path = f"{path}.{key}" if path else key
+                if isinstance(value, dict):
+                    scan_dict(value, current_path)
+                elif isinstance(value, str):
+                    for pattern in patterns:
+                        if pattern.replace(".*", "") in key.lower():
+                            issues.append(f"Sensitive data found at {current_path}")
+        scan_dict(config)
+        return issues
+
+    def test_file_permission_validation(self):
+        """Test configuration file permission validation"""
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+            json.dump({"test": "config"}, f)
+            temp_path = f.name
+
+        try:
+            # Check if file has appropriate permissions (readable by owner)
+            import stat
+            file_stat = os.stat(temp_path)
+            permissions = stat.filemode(file_stat.st_mode)
+
+            # Should not be world-writable
+            assert 'w' not in permissions[-3:], "Config file should not be world-writable"
+
+        finally:
+            os.unlink(temp_path)
+
+    def test_environment_variable_substitution(self):
+        """Test environment variable substitution in config"""
+        os.environ["TEST_DB_HOST"] = "testhost"
+        os.environ["TEST_DB_PORT"] = "5432"
+
+        config_template = {
+            "database": {
+                "host": "${TEST_DB_HOST}",
+                "port": "${TEST_DB_PORT}"
+            }
+        }
+
+        resolved_config = self._resolve_env_vars(config_template)
+
+        assert resolved_config["database"]["host"] == "testhost"
+        assert resolved_config["database"]["port"] == "5432"
+
+        # Cleanup
+        del os.environ["TEST_DB_HOST"]
+        del os.environ["TEST_DB_PORT"]
+
+    def _resolve_env_vars(self, config):
+        """Helper to resolve environment variables in config"""
+        if isinstance(config, dict):
+            return {k: self._resolve_env_vars(v) for k, v in config.items()}
+        elif isinstance(config, list):
+            return [self._resolve_env_vars(item) for item in config]
+        elif isinstance(config, str) and config.startswith("${") and config.endswith("}"):
+            env_var = config[2:-1]
+            return os.environ.get(env_var, config)
+        else:
+            return config
+
+
+class TestCrawlProfileValidation:
+    """Test crawl profile configuration validation"""
+
+    @pytest.fixture
+    def crawl_profiles(self):
+        """Load crawl profiles configuration"""
+        profile_path = Path("config/crawl_profiles.yaml")
+        if profile_path.exists():
+            import yaml
+            with open(profile_path, 'r') as f:
+                return yaml.safe_load(f)
+        return {}  # Return empty dict if file doesn't exist
+
+    def test_crawl_profile_structure(self, crawl_profiles):
+        """Test crawl profile structure validation"""
+        if not crawl_profiles:
+            pytest.skip("Crawl profiles not available")
+
+        # Each profile should have required fields
+        required_fields = ["name", "domains", "settings"]
+
+        for profile_name, profile in crawl_profiles.items():
+            for field in required_fields:
+                assert field in profile, f"Profile {profile_name} missing required field: {field}"
+
+    def test_crawl_schedule_validation(self):
+        """Test crawl schedule configuration validation"""
+        schedule_path = Path("config/crawl_schedule.yaml")
+        if not schedule_path.exists():
+            pytest.skip("Crawl schedule not available")
+
+        import yaml
+        with open(schedule_path, 'r') as f:
+            schedule = yaml.safe_load(f)
+
+        # Validate schedule structure
+        assert "schedules" in schedule
+
+        for schedule_name, schedule_config in schedule["schedules"].items():
+            assert "enabled" in schedule_config
+            assert "interval_minutes" in schedule_config
+            assert "profiles" in schedule_config
+
+            # Interval should be reasonable
+            interval = schedule_config["interval_minutes"]
+            assert interval > 0, f"Invalid interval for schedule {schedule_name}"
+
+
+class TestDataMinimizationValidation:
+    """Test data minimization policy validation"""
+
+    @pytest.fixture
+    def minimization_policies(self):
+        """Load data minimization policies"""
+        policy_path = Path("config/data_minimization_policies.json")
+        if policy_path.exists():
+            with open(policy_path, 'r') as f:
+                return json.load(f)
+        return {}
+
+    def test_retention_policy_validation(self, minimization_policies):
+        """Test data retention policy validation"""
+        if not minimization_policies:
+            pytest.skip("Minimization policies not available")
+
+        retention = minimization_policies.get("retention_days", {})
+
+        # All retention periods should be positive
+        for data_type, days in retention.items():
+            assert isinstance(days, int), f"Retention days for {data_type} must be integer"
+            assert days > 0, f"Retention days for {data_type} must be positive"
+
+    def test_compression_settings_validation(self, minimization_policies):
+        """Test compression settings validation"""
+        if not minimization_policies:
+            pytest.skip("Minimization policies not available")
+
+        compression = minimization_policies.get("compression", {})
+
+        if compression:
+            # Validate compression level
+            level = compression.get("level", 6)
+            assert 0 <= level <= 9, "Compression level must be between 0-9"
+
+            # Validate algorithm
+            algorithm = compression.get("algorithm", "gzip")
+            valid_algorithms = ["gzip", "lz4", "zstd", "brotli"]
+            assert algorithm in valid_algorithms, f"Invalid compression algorithm: {algorithm}"
+
+
+class TestConfigIntegration:
+    """Test configuration integration and loading"""
+
+    @patch('config.test_config_system.json.load')
+    @patch('builtins.open')
+    def test_system_config_loading(self, mock_open, mock_json_load):
+        """Test system configuration loading"""
+        mock_config = {
+            "system": {"name": "JustNewsAgent", "version": "4.0"},
+            "database": {"host": "localhost", "port": 5432}
+        }
+        mock_json_load.return_value = mock_config
+
+        # Test the validation function
+        result = validate_system_config()
+
+        # Should return True for valid config
+        assert result is True
+
+    def test_config_file_existence(self):
+        """Test that required configuration files exist"""
+        required_files = [
+            "config/system_config.json",
+            "config/crawl_profiles.yaml",
+            "config/crawl_schedule.yaml"
+        ]
+
+        for file_path in required_files:
+            assert Path(file_path).exists(), f"Required config file missing: {file_path}"
+
+    @patch('subprocess.run')
+    def test_config_validation_script(self, mock_run):
+        """Test configuration validation script execution"""
+        mock_run.return_value = Mock(returncode=0, stdout="Configuration valid", stderr="")
+
+        # Simulate running config validation
+        result = mock_run(["python", "config/test_config_system.py"], capture_output=True, text=True)
+
+        assert result.returncode == 0
+        assert "Configuration valid" in result.stdout

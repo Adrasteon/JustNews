@@ -74,14 +74,17 @@ async def process_analysis_request(
         elif analysis_type == "sentiment_and_bias":
             result = engine.analyze_sentiment_and_bias(text)
         else:
-            result = {"error": f"Unknown analysis type: {analysis_type}"}
+            result = {
+                "error": f"Unknown analysis type: {analysis_type}",
+                "supported_types": ["sentiment", "entities", "statistics", "metrics", "bias", "sentiment_and_bias"]
+            }
 
         logger.info(f"✅ {analysis_type.capitalize()} analysis completed")
         return result
 
     except Exception as e:
         logger.error(f"❌ {analysis_type} analysis failed: {e}")
-        return {"error": str(e)}
+        return {"error": str(e), "details": f"Analysis type: {analysis_type}. Exception: {str(e)}"}
 
 def identify_entities(text: str) -> Dict[str, Any]:
     """

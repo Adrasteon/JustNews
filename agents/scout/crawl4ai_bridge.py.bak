@@ -1,0 +1,26 @@
+"""Deprecated scout-local bridge shim.
+
+The canonical bridge utilities moved to `agents.c4ai.bridge`. This module
+keeps a small compatibility shim that warns on import and re-exports the
+primary helper `crawl_via_local_server` when available.
+"""
+from warnings import warn
+
+warn(
+    "agents.scout.crawl4ai_bridge is deprecated; import agents.c4ai.bridge instead",
+    DeprecationWarning,
+)
+
+try:
+    from agents.c4ai.bridge import crawl_via_local_server  # type: ignore
+
+    __all__ = ["crawl_via_local_server"]
+except Exception:  # pragma: no cover - fallback
+    async def crawl_via_local_server(url: str, *_, **__) -> dict:
+        """Fallback minimal implementation when canonical bridge can't be imported.
+
+        Returns a simple error dict so callers don't raise on import-time calls.
+        """
+        return {"url": url, "error": "canonical_bridge_unavailable", "success": False}
+
+    __all__ = ["crawl_via_local_server"]

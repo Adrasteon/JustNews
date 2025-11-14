@@ -23,6 +23,12 @@ from pydantic import BaseModel
 from common.observability import get_logger
 from common.metrics import JustNewsMetrics
 
+# Compatibility: expose create_database_service for tests that patch agent modules
+try:
+    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+except Exception:
+    create_database_service = None
+
 try:
     from agents.common.gpu_manager_production import get_gpu_manager
     GPU_MANAGER_AVAILABLE = True
@@ -118,8 +124,8 @@ def save_config(updated_config: dict[str, Any]) -> None:
 
 # Load configuration
 config = load_config()
-# Default dashboard port set to 8014 for public website (8013 was internal dashboard)
-DASHBOARD_AGENT_PORT = config.get("dashboard_port", 8014)
+# Default dashboard port set to 8013 for transparency and public website
+DASHBOARD_AGENT_PORT = config.get("dashboard_port", 8013)
 MCP_BUS_URL = config.get("mcp_bus_url", "http://localhost:8000")
 GPU_ORCHESTRATOR_URL = os.environ.get("GPU_ORCHESTRATOR_URL", "http://localhost:8014").rstrip("/")
 

@@ -105,6 +105,28 @@ def _parse_publication_date(value: Any) -> Optional[datetime]:
     return None
 
 
+def _make_chroma_metadata_safe(metadata: dict) -> dict:
+    """Convert metadata values to Chroma-compatible scalar representations."""
+    safe_metadata: dict[str, Any] = {}
+    for key, value in (metadata or {}).items():
+        # Drop unset values entirely to avoid sending nulls that Chroma rejects
+        if value is None:
+            continue
+        if isinstance(value, (str, int, float, bool)):
+            safe_metadata[key] = value
+        elif isinstance(value, datetime):
+            safe_metadata[key] = value.isoformat()
+        else:
+            try:
+                serialized = json.dumps(value, default=str)
+                if serialized == "null":
+                    continue
+                safe_metadata[key] = serialized
+            except Exception:
+                safe_metadata[key] = str(value)
+    return safe_metadata
+
+
 def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
     """Saves an article to the migrated MariaDB + ChromaDB system.
 
@@ -297,10 +319,11 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
         # Add embedding to ChromaDB
         try:
             embedding_list = list(map(float, embedding))
+            chroma_metadata = _make_chroma_metadata_safe(metadata)
             db_service.collection.add(
                 ids=[str(next_id)],
                 embeddings=[embedding_list],
-                metadatas=[metadata],
+                metadatas=[chroma_metadata],
                 documents=[content]
             )
             logger.debug(f"Added embedding to ChromaDB for article {next_id}")

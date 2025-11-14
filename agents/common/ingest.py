@@ -8,23 +8,20 @@ agent-driven transactions via `mcp_bus`.
 import json
 from typing import Any
 
-try:
-    import psycopg2
-    from psycopg2.extras import RealDictCursor
-except Exception:
-    psycopg2 = None
+# This module intentionally avoids DB driver imports at top-level. For
+# production use we route to the migrated MariaDB helper when needed.
 
 
 def build_source_upsert(payload: dict[str, Any]) -> tuple[str, tuple]:
-    """Return a simple SQL upsert (Postgres) and params for `public.sources`.
+    """Return a MariaDB-compatible upsert SQL and params for `sources`.
 
-    Fields expected on payload: url, url_hash, domain, canonical, publisher_meta
+    Uses `INSERT ... ON DUPLICATE KEY UPDATE` and does not rely on RETURNING.
+    The caller should obtain the inserted id via cursor.lastrowid when needed.
     """
     sql = (
-        "INSERT INTO public.sources (url, url_hash, domain, canonical, metadata, created_at)"
-        " VALUES (%s, %s, %s, %s, %s, now())"
-        " ON CONFLICT (url_hash) DO UPDATE SET canonical = EXCLUDED.canonical, metadata = EXCLUDED.metadata, updated_at = now()"
-        " RETURNING id;"
+        "INSERT INTO sources (url, url_hash, domain, canonical, metadata, created_at)"
+        " VALUES (%s, %s, %s, %s, %s, NOW())"
+        " ON DUPLICATE KEY UPDATE canonical=VALUES(canonical), metadata=VALUES(metadata), updated_at=NOW();"
     )
 
     params = (
@@ -121,59 +118,67 @@ def ingest_article(article_payload: dict[str, Any], db_execute) -> dict[str, Any
 
 
 def ingest_article_db(article_payload: dict[str, Any], dsn: str) -> dict[str, Any]:
-    """Execute the ingest using a real Postgres connection (psycopg2).
+    """Execute the ingest using the migrated MariaDB-backed service.
 
-    This helper will run the source upsert and article_source_map insert inside
-    a single transaction and return the resulting source_id and canonical
-    selection (uses the simple in-process canonical rule to decide). This is
-    intentionally lightweight; for production you'd prefer a stored-proc that
-    performs canonical selection server-side.
-
-    Raises a RuntimeError when psycopg2 is not installed or DSN missing.
+    This will perform the source upsert and insert article_source_map inside
+    a single transaction and return the chosen canonical candidate.
     """
-    if psycopg2 is None:
-        raise RuntimeError("psycopg2 is required for ingest_article_db but is not installed")
+    # Use the migrated DB service so we don't depend on a specific DB driver
+    from database.utils.migrated_database_utils import create_database_service
 
-    if not dsn:
-        raise RuntimeError("No DSN provided to ingest_article_db")
+    service = create_database_service()
 
     source_sql, source_params = build_source_upsert(article_payload)
     asm_sql, asm_params = build_article_source_map_insert(article_payload.get('article_id', 1), article_payload)
 
-    conn = psycopg2.connect(dsn)
     try:
-        with conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                # Upsert source and get id
-                cur.execute(source_sql, source_params)
+        cursor = service.mb_conn.cursor()
+        try:
+            # Run source upsert
+            cursor.execute(source_sql, source_params)
+            # Obtain inserted/updated id: prefer lastrowid, fallback to select
+            source_id = cursor.lastrowid if hasattr(cursor, 'lastrowid') else None
+            if not source_id:
+                # Try to lookup by url_hash
                 try:
-                    row = cur.fetchone()
+                    lookup_cur = service.mb_conn.cursor(dictionary=True)
+                    lookup_cur.execute("SELECT id FROM sources WHERE url_hash = %s", (article_payload.get('url_hash'),))
+                    row = lookup_cur.fetchone()
+                    lookup_cur.close()
                     source_id = row.get('id') if row else None
                 except Exception:
                     source_id = None
 
-                # Insert article_source_map
-                cur.execute(asm_sql, asm_params)
+            # Insert article_source_map
+            cursor.execute(asm_sql, asm_params)
 
-                # Simulate candidate build for canonical selection
-                candidate = {
-                    'source_id': source_id,
-                    'url_hash': article_payload.get('url_hash'),
-                    'confidence': article_payload.get('confidence', 0.5),
-                    'timestamp': article_payload.get('timestamp'),
-                    'matched_by': article_payload.get('matched_by', 'ingest')
-                }
+            # Commit transaction
+            service.mb_conn.commit()
 
-                canonical = canonical_selection_rule([candidate])
+            # Build candidate and canonical rule
+            candidate = {
+                'source_id': source_id,
+                'url_hash': article_payload.get('url_hash'),
+                'confidence': article_payload.get('confidence', 0.5),
+                'timestamp': article_payload.get('timestamp'),
+                'matched_by': article_payload.get('matched_by', 'ingest')
+            }
 
-                # Note: we deliberately do not update articles.source_id here; that
-                # should be done either by a stored proc or by a higher-level
-                # orchestrator to keep DB-side logic explicit.
+            canonical = canonical_selection_rule([candidate])
 
-                return {
-                    'source_id': source_id,
-                    'article_id': article_payload.get('article_id', 1),
-                    'canonical': canonical
-                }
-    finally:
-        conn.close()
+            return {
+                'source_id': source_id,
+                'article_id': article_payload.get('article_id', 1),
+                'canonical': canonical
+            }
+        finally:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+    except Exception as e:
+        try:
+            service.mb_conn.rollback()
+        except Exception:
+            pass
+        raise

@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>HITL Staging - Annotator</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        font-family: system-ui, Arial;
+        margin: 40px auto;
+        padding: 0 24px;
+        max-width: 1200px;
+        background: #0f172a;
+        color: #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-size: 1.5rem;
+        line-height: 1.6;
+      }
+      a { color: #60a5fa; }
+  h2 { align-self: flex-start; margin-bottom: 16px; font-size: 2.1rem; }
+      #candidate {
+        border: 1px solid #1f2937;
+        padding: 12px;
+        border-radius: 6px;
+        margin-top: 16px;
+        background: #111827;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.6);
+        width: 100%;
+        max-width: 900px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .title { font-weight: 700; margin-bottom: 8px; color: #f8fafc; }
+      .url { font-size: 0.9em; color: #94a3b8; margin-bottom:8px; word-break: break-all; }
+      #text {
+        white-space: pre-wrap;
+        margin-bottom: 8px;
+        background: #0b1120;
+        padding: 12px;
+        border-radius: 6px;
+        border: 1px solid #1f2937;
+        color: #cbd5f5;
+        min-height: 180px;
+      }
+      #controls { margin-top: 12px }
+      button {
+        padding: 8px 12px;
+        margin-right: 6px;
+        border: none;
+        border-radius: 6px;
+        background: #2563eb;
+        color: #f8fafc;
+        cursor: pointer;
+        transition: background 0.15s ease;
+        font-size: 1rem;
+      }
+      button:hover { background: #1d4ed8; }
+      button:disabled { background: #334155; cursor: default; }
+      textarea {
+        width: 100%;
+        height: 160px;
+        background: #0b1120;
+        color: #e2e8f0;
+        border: 1px solid #1f2937;
+        border-radius: 6px;
+        padding: 10px;
+        font-size: 1rem;
+        resize: vertical;
+        overflow-y: auto;
+        box-sizing: border-box;
+        max-width: 900px;
+      }
+      #topbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px;
+        align-items: flex-end;
+        width: 100%;
+      }
+      #topbar > div { display: flex; flex-direction: column; }
+      label { font-size: 0.85em; color: #cbd5f5; margin-bottom: 4px; }
+      input[type="text"] {
+        background: #0b1120;
+        color: #e2e8f0;
+        border: 1px solid #1f2937;
+        border-radius: 6px;
+        padding: 8px;
+        font-size: 1rem;
+      }
+      #stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 12px;
+        font-size: 0.95em;
+        width: 100%;
+      }
+      #stats span {
+        background: #1e293b;
+        padding: 6px 10px;
+        border-radius: 6px;
+        color: #cbd5f5;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>HITL Staging - Annotator</h2>
+    <div id="topbar">
+      <div>
+        <label for="annotatorId">Annotator ID</label>
+        <input id="annotatorId" type="text" placeholder="enter your handle" />
+      </div>
+      <div>
+        <label>Queue Depth</label>
+        <div><span id="queueDepth">0</span></div>
+      </div>
+    </div>
+    <div id="stats">
+      <span>Pending: <strong id="statPending">0</strong></span>
+      <span>In Review: <strong id="statInReview">0</strong></span>
+      <span>Ingest Queue: <strong id="statIngest">0</strong></span>
+      <span>QA Sampled Today: <strong id="statQa">0</strong></span>
+  <span>QA Pending: <strong id="statQaPending">0</strong></span>
+      <span>Labels Today: <strong id="statLabelsToday">0</strong></span>
+      <span>Labels Last Hour: <strong id="statLabelsHour">0</strong></span>
+      <span>Avg Label→Ingest (s): <strong id="statLatency">0</strong></span>
+    </div>
+    <div id="candidate">
+      <div class="title" id="title">No candidate</div>
+      <div class="url" id="url"></div>
+      <div id="text"></div>
+      <div>
+        <label>Cleaned text (optional)</label>
+        <textarea id="cleaned"></textarea>
+      </div>
+      <div id="controls">
+        <button id="btnV">V - Valid</button>
+        <button id="btnM">M - Messy</button>
+        <button id="btnN">N - Not news</button>
+        <button id="btnNext">Next</button>
+      </div>
+    </div>
+
+    <script>
+      let batch = [];
+      let idx = 0;
+      const annotatorInput = document.getElementById('annotatorId');
+
+      function loadAnnotatorId(){
+        const saved = localStorage.getItem('hitlAnnotatorId');
+        if(saved){
+          annotatorInput.value = saved;
+        }
+      }
+
+      annotatorInput.addEventListener('change', ()=>{
+        const value = annotatorInput.value.trim();
+        if(value){
+          localStorage.setItem('hitlAnnotatorId', value);
+        } else {
+          localStorage.removeItem('hitlAnnotatorId');
+        }
+      });
+
+      async function fetchBatch(){
+        const res = await fetch('/api/next?batch=10');
+        const j = await res.json();
+        batch = j.candidates || [];
+        idx = 0;
+        document.getElementById('queueDepth').innerText = j.count;
+        showCurrent();
+        refreshStats();
+      }
+
+      async function refreshStats(){
+        try {
+          const res = await fetch('/api/stats');
+          const data = await res.json();
+          document.getElementById('statPending').innerText = data.pending ?? 0;
+          document.getElementById('statInReview').innerText = data.in_review ?? 0;
+          document.getElementById('statIngest').innerText = data.ingest_queue_len ?? 0;
+          document.getElementById('statQa').innerText = data.qa_sampled_today ?? 0;
+          document.getElementById('statQaPending').innerText = data.qa_pending ?? 0;
+          document.getElementById('statLabelsToday').innerText = data.labels_today ?? 0;
+          document.getElementById('statLabelsHour').innerText = data.labels_last_hour ?? 0;
+          document.getElementById('statLatency').innerText = data.avg_label_to_ingest_latency_seconds ?? 0;
+          if(typeof data.pending_total !== 'undefined'){
+            document.getElementById('queueDepth').innerText = data.pending_total;
+          }
+        } catch (err) {
+          console.error('Failed to refresh stats', err);
+        }
+      }
+
+      function showCurrent(){
+        const elTitle = document.getElementById('title');
+        const elUrl = document.getElementById('url');
+        const elText = document.getElementById('text');
+        const elClean = document.getElementById('cleaned');
+        if(!batch || batch.length===0){
+          elTitle.innerText = 'No candidate'; elUrl.innerText=''; elText.innerText=''; elClean.value='';
+          return;
+        }
+        const c = batch[idx];
+        elTitle.innerText = c.extracted_title || '(no title)';
+        elUrl.innerText = c.url || '';
+        elText.innerText = c.extracted_text || '';
+        elClean.value = c.extracted_text || '';
+      }
+
+      async function submitLabel(label){
+        if(!batch || batch.length===0) return;
+        const annotatorId = annotatorInput.value.trim();
+        if(!annotatorId){
+          alert('Set your annotator ID before labeling.');
+          annotatorInput.focus();
+          return;
+        }
+        const c = batch[idx];
+        const payload = {
+          candidate_id: c.id,
+          label: label,
+          cleaned_text: document.getElementById('cleaned').value,
+          annotator_id: annotatorId
+        };
+        await fetch('/api/label', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(payload)});
+        // advance
+        idx++;
+        if(idx >= batch.length){
+          await fetchBatch();
+        } else {
+          showCurrent();
+        }
+        refreshStats();
+      }
+
+      document.getElementById('btnV').addEventListener('click', ()=>submitLabel('valid_news'));
+      document.getElementById('btnM').addEventListener('click', ()=>submitLabel('messy_news'));
+      document.getElementById('btnN').addEventListener('click', ()=>submitLabel('not_news'));
+      document.getElementById('btnNext').addEventListener('click', ()=>{ idx++; if(idx>=batch.length) fetchBatch(); else showCurrent(); });
+
+      document.addEventListener('keydown', (e)=>{
+        if(e.key==='v' || e.key==='V') submitLabel('valid_news');
+        if(e.key==='m' || e.key==='M') submitLabel('messy_news');
+        if(e.key==='n' || e.key==='N') submitLabel('not_news');
+        if(e.key===' ') { e.preventDefault(); submitLabel('valid_news'); }
+      });
+
+      // initial
+      loadAnnotatorId();
+      fetchBatch();
+      refreshStats();
+    </script>
+  </body>
+</html>

@@ -10,6 +10,14 @@ and fall back to no-op behaviour in offline environments.
 from __future__ import annotations
 
 import asyncio
+from agents.crawler.enhancements import (
+    ModalHandler,
+    ModalHandlingResult,
+    PaywallDetector,
+    ProxyManager,
+    StealthBrowserFactory,
+    UserAgentProvider,
+)
 import json
 import os
 from collections.abc import Mapping, Sequence
@@ -19,6 +27,11 @@ from typing import Any, Dict, Iterable, List, Optional
 from urllib.parse import urlparse, urlunparse
 
 import requests
+
+try:  # readability-lxml (HTML → Article fallback)
+    from lxml import html as lxml_html  # type: ignore[import-not-found]
+except ImportError:  # pragma: no cover
+    lxml_html = None
 
 from agents.crawler.extraction import ExtractionOutcome, extract_article_content
 from common.observability import get_logger
@@ -139,6 +152,12 @@ class GenericSiteCrawler:
         *,
         enable_http_fetch: Optional[bool] = None,
         session: Optional[requests.Session] = None,
+        user_agent_provider: UserAgentProvider | None = None,
+        proxy_manager: ProxyManager | None = None,
+        stealth_factory: StealthBrowserFactory | None = None,
+        modal_handler: ModalHandler | None = None,
+        paywall_detector: PaywallDetector | None = None,
+        enable_stealth_headers: Optional[bool] = None,
     ):
         self.site_config = site_config
         self.concurrent_browsers = concurrent_browsers
@@ -149,6 +168,14 @@ class GenericSiteCrawler:
         )
         self.enable_http_fetch = resolved
         self.session = session or requests.Session()
+        self.user_agent_provider = user_agent_provider
+        self.proxy_manager = proxy_manager
+        self.stealth_factory = stealth_factory
+        self.modal_handler = modal_handler
+        self.paywall_detector = paywall_detector
+        self.enable_stealth_headers = enable_stealth_headers if enable_stealth_headers is not None else bool(stealth_factory)
+        self._modal_dismissals = 0
+        self._cookie_consents = 0
 
     async def crawl_site(self, max_articles: int = 25) -> List[Dict[str, Any]]:
         if not self.enable_http_fetch:
@@ -175,19 +202,90 @@ class GenericSiteCrawler:
             logger.warning("No URL configured for site %s; skipping", self.site_config.name)
             return []
 
-        logger.debug("Generic crawler fetching %s", target_url)
+        logger.info("Generic crawler fetching homepage: %s", target_url)
 
         try:
             html = await asyncio.to_thread(self._fetch_url, target_url)
         except Exception as exc:  # noqa: BLE001 - we keep the crawler resilient
-            logger.warning("Failed to fetch %s: %s", target_url, exc)
+            logger.warning("Failed to fetch homepage %s: %s", target_url, exc)
             return []
 
         if not html:
             return []
 
-        article = self._build_article(target_url, html)
-        return [article] if article else []
+        html, _ = self._apply_modal_handler(html, context="homepage")
+
+        # Extract article links from homepage
+        article_urls = self._extract_article_links(html, target_url)
+        if not article_urls:
+            logger.warning("No article links found on homepage %s", target_url)
+            # Fallback: try to extract from homepage itself as a single article
+            article = self._build_article(target_url, html)
+            return [article] if article else []
+
+        # Fetch and extract articles from the discovered URLs
+        articles = []
+        semaphore = asyncio.Semaphore(self.concurrent_browsers)
+
+        async def fetch_article(url: str):
+            async with semaphore:
+                try:
+                    logger.debug("Fetching article: %s", url)
+                    article_html = await asyncio.to_thread(self._fetch_url, url)
+                    if article_html:
+                        article_html, modal_result = self._apply_modal_handler(article_html, context="article")
+                        article = self._build_article(url, article_html)
+                        if article and self.paywall_detector:
+                            detection = await self.paywall_detector.analyze(
+                                url=url,
+                                html=article_html,
+                                text=article.get("content"),
+                            )
+                            metadata = article.setdefault("extraction_metadata", {})
+                            metadata["paywall_detection"] = {
+                                "is_paywall": detection.is_paywall,
+                                "confidence": detection.confidence,
+                                "reasons": detection.reasons,
+                            }
+                            article["paywall_flag"] = detection.is_paywall
+                            if detection.should_skip:
+                                logger.debug("Skipping paywalled article %s", url)
+                                return None
+                        if article:
+                            metadata = article.setdefault("extraction_metadata", {})
+                            modal_info = {
+                                "modal_detected": bool(modal_result.modals_detected) if modal_result else False,
+                                "consent_cookies": len(modal_result.applied_cookies) if modal_result else 0,
+                            }
+                            metadata["modal_handler"] = modal_info
+                        return article
+                except Exception as exc:
+                    logger.debug("Failed to fetch article %s: %s", url, exc)
+                return None
+
+        # Create tasks for fetching articles
+        tasks = [fetch_article(url) for url in article_urls[:max_articles]]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Collect successful articles
+        for result in results:
+            if isinstance(result, Exception):
+                logger.debug("Article fetch failed with exception: %s", result)
+                continue
+            if result:
+                articles.append(result)
+
+        logger.info("Successfully extracted %d articles from %s", len(articles), self.site_config.domain)
+        return articles
+
+    def _notify_proxy_failure(self, error: Exception) -> None:
+        handler = getattr(self.proxy_manager, "report_failure", None) if self.proxy_manager else None
+        if not callable(handler):
+            return
+        try:
+            handler(error)
+        except Exception as exc:  # noqa: BLE001 - keep crawler resilient
+            logger.debug("Proxy failure callback raised: %s", exc)
 
     def _normalise_target_url(self, candidate: Any) -> str:
         """Best-effort URL normaliser that strips duplicate schemes and fills defaults."""
@@ -234,9 +332,49 @@ class GenericSiteCrawler:
         return normalised.rstrip("/") or normalised
 
     def _fetch_url(self, url: str) -> str:
-        response = self.session.get(url, timeout=10, headers={"User-Agent": "JustNewsCrawler/1.0"})
-        response.raise_for_status()
-        return response.text
+        headers: Dict[str, str] = {}
+        domain = self.site_config.domain or ""
+        if not domain:
+            parsed = urlparse(url)
+            domain = parsed.netloc
+
+        user_agent = None
+        if self.user_agent_provider:
+            try:
+                user_agent = self.user_agent_provider.choose(domain=domain)
+            except Exception as exc:  # noqa: BLE001 - rotation is optional
+                logger.debug("UserAgentProvider failure for %s: %s", domain, exc)
+
+        profile = None
+        if self.stealth_factory and self.enable_stealth_headers:
+            if user_agent:
+                profile = self.stealth_factory.profile_for_user_agent(user_agent)
+            if profile is None:
+                profile = self.stealth_factory.random_profile()
+            headers.setdefault("Accept-Language", profile.accept_language)
+            headers.setdefault("Accept-Encoding", profile.accept_encoding)
+            for key, value in profile.headers.items():
+                headers.setdefault(key, value)
+            user_agent = user_agent or profile.user_agent
+
+        headers.setdefault("User-Agent", user_agent or "JustNewsCrawler/1.0")
+
+        proxies = None
+        proxy_in_use = False
+        if self.proxy_manager:
+            proxy = self.proxy_manager.next_proxy()
+            if proxy:
+                proxies = {"http": proxy.url, "https": proxy.url}
+                proxy_in_use = True
+
+        try:
+            response = self.session.get(url, timeout=10, headers=headers, proxies=proxies)
+            response.raise_for_status()
+            return response.text
+        except requests.exceptions.RequestException as exc:
+            if proxy_in_use:
+                self._notify_proxy_failure(exc)
+            raise
 
     def _build_article(self, url: str, html: str) -> Optional[Dict[str, Any]]:
         extraction: ExtractionOutcome = extract_article_content(html, url)
@@ -292,12 +430,136 @@ class GenericSiteCrawler:
 
         return article
 
+    def _apply_modal_handler(self, html: str, *, context: str) -> tuple[str, ModalHandlingResult | None]:
+        """Run the modal handler while tracking dismissals and consent cookies."""
+        if not self.modal_handler:
+            return html, None
+
+        modal_result = self.modal_handler.process(html)
+        if modal_result.applied_cookies:
+            self.session.cookies.update(modal_result.applied_cookies)
+            self._cookie_consents += len(modal_result.applied_cookies)
+        if modal_result.modals_detected:
+            self._modal_dismissals += 1
+            notes = "; ".join(modal_result.notes) if modal_result.notes else context
+            logger.debug("Consent modal detected for %s (%s)", self.site_config.domain, notes)
+        return modal_result.cleaned_html, modal_result
+
+    def _extract_article_links(self, html: str, base_url: str) -> List[str]:
+        """Extract article links from homepage HTML."""
+        if lxml_html is None:
+            logger.warning("lxml not available for link extraction")
+            return []
+
+        try:
+            tree = lxml_html.fromstring(html)
+        except Exception as exc:
+            logger.warning("Failed to parse HTML for link extraction: %s", exc)
+            return []
+
+        # Extract all links
+        links = tree.xpath("//a/@href")
+        article_urls = []
+
+        for link in links:
+            if not link or not isinstance(link, str):
+                continue
+
+            # Convert relative URLs to absolute
+            if link.startswith('/'):
+                # Use the base URL's scheme and netloc
+                from urllib.parse import urljoin
+                link = urljoin(base_url, link)
+            elif not link.startswith('http'):
+                continue  # Skip non-HTTP links
+
+            # Filter for article-like URLs
+            if self._is_article_url(link):
+                article_urls.append(link)
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_urls = []
+        for url in article_urls:
+            if url not in seen:
+                seen.add(url)
+                unique_urls.append(url)
+
+        logger.debug(f"Extracted {len(unique_urls)} potential article URLs from {self.site_config.domain}")
+        return unique_urls[:50]  # Limit to prevent excessive crawling
+
+    def _is_article_url(self, url: str) -> bool:
+        """Determine if a URL likely points to an article."""
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+
+            # Must be on the same domain (allow www. prefix)
+            base_domain = self.site_config.domain.replace('www.', '')
+            url_domain = parsed.netloc.replace('www.', '')
+            if base_domain not in url_domain:
+                return False
+
+            path = parsed.path.lower()
+
+            # BBC-specific patterns
+            if 'bbc' in self.site_config.domain.lower():
+                # Article patterns for BBC
+                if any(pattern in path for pattern in ['/news/', '/sport/', '/business/', '/world/', '/politics/', '/technology/', '/science/', '/health/', '/entertainment/', '/arts/']):
+                    # Exclude non-article paths
+                    if any(exclude in path for exclude in ['/weather/', '/iplayer/', '/sounds/', '/programmes/', '/video/', '/audio/', '/photos/', '/gallery/']):
+                        return False
+                    # Must have article ID pattern (alphanumeric string at end)
+                    last_segment = path.split('/')[-1]
+                    if last_segment and len(last_segment) > 5:  # Article IDs are typically long alphanumeric strings
+                        return True
+
+            # CNN patterns
+            elif 'cnn' in self.site_config.domain.lower():
+                if '/202' in path or '/index.html' in path:  # Recent articles
+                    return True
+
+            # Reuters patterns
+            elif 'reuters' in self.site_config.domain.lower():
+                if '/article/' in path or '/world/' in path or '/business/' in path:
+                    return True
+
+            # Generic patterns for other news sites
+            else:
+                # Look for year patterns in URL (common in news sites)
+                if '/202' in path or '/201' in path:
+                    return True
+                # Look for article-like paths
+                if any(pattern in path for pattern in ['/article/', '/story/', '/news/']):
+                    return True
+
+            return False
+
+        except Exception:
+            return False
+
 
 class MultiSiteCrawler:
     """Coordinator that uses the generic crawler for multiple sites."""
 
-    def __init__(self, *, enable_http_fetch: Optional[bool] = None):
+    def __init__(
+        self,
+        *,
+        enable_http_fetch: Optional[bool] = None,
+        user_agent_provider: UserAgentProvider | None = None,
+        proxy_manager: ProxyManager | None = None,
+        stealth_factory: StealthBrowserFactory | None = None,
+        modal_handler: ModalHandler | None = None,
+        paywall_detector: PaywallDetector | None = None,
+        enable_stealth_headers: Optional[bool] = None,
+    ):
         self.enable_http_fetch = enable_http_fetch
+        self.user_agent_provider = user_agent_provider
+        self.proxy_manager = proxy_manager
+        self.stealth_factory = stealth_factory
+        self.modal_handler = modal_handler
+        self.paywall_detector = paywall_detector
+        self.enable_stealth_headers = enable_stealth_headers
 
     async def crawl_sites(
         self,
@@ -314,6 +576,12 @@ class MultiSiteCrawler:
                 crawler = GenericSiteCrawler(
                     config,
                     enable_http_fetch=self.enable_http_fetch,
+                    user_agent_provider=self.user_agent_provider,
+                    proxy_manager=self.proxy_manager,
+                    stealth_factory=self.stealth_factory,
+                    modal_handler=self.modal_handler,
+                    paywall_detector=self.paywall_detector,
+                    enable_stealth_headers=self.enable_stealth_headers,
                 )
                 articles = await crawler.crawl_site(max_articles=max_articles_per_site)
                 results[config.domain or config.name] = articles

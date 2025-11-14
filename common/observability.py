@@ -8,7 +8,7 @@ from typing import Optional
 from logging.handlers import RotatingFileHandler
 
 # Ensure LOG_DIR is defined
-LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'logs')
+LOG_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'logs'))
 if not os.path.exists(LOG_DIR):
     os.makedirs(LOG_DIR)
 
@@ -24,39 +24,48 @@ def get_logger(name: str) -> logging.Logger:
     Returns:
         Configured logger instance
     """
-    # Derive a log file name from the logger name
-    log_file_name = name.split('.')[1] if '.' in name else 'app'
+    # Derive a log file name from the logger name. Use the last component
+    # after any dots so callers like "test.module" map to "module.log" as
+    # expected by tests.
+    log_file_name = name.split('.')[-1] if name else 'app'
     log_file_path = os.path.join(LOG_DIR, f'{log_file_name}.log')
 
     logger = logging.getLogger(name)
-    
-    # Prevent duplicate handlers if logger is already configured
-    if logger.hasHandlers():
-        return logger
 
-    # Set logging level to DEBUG for detailed information
+    # Always ensure the logger has our expected configuration. Do not early-return
+    # just because handlers exist; tests rely on specific handlers and levels.
     logger.setLevel(logging.DEBUG)
-    
-    # Create a rotating file handler
-    handler = RotatingFileHandler(
-        log_file_path,
-        maxBytes=10*1024*1024,  # 10 MB
-        backupCount=5,
-        encoding='utf-8'
+
+    # Create or attach a rotating file handler if none present
+    has_file = any(isinstance(h, RotatingFileHandler) for h in logger.handlers)
+    if not has_file:
+        file_handler = RotatingFileHandler(
+            log_file_path,
+            maxBytes=10 * 1024 * 1024,  # 10 MB
+            backupCount=5,
+            encoding="utf-8",
+        )
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
+    # Ensure a console handler exists. File handlers are also StreamHandlers, so
+    # we explicitly ensure we don't treat file handlers as console handlers.
+    has_console = any(
+        isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)
+        for h in logger.handlers
     )
-    
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
-    handler.setFormatter(formatter)
-    
-    logger.addHandler(handler)
-    
-    # Also add a console handler for immediate feedback during development
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
+    if not has_console:
+        console_handler = logging.StreamHandler()
+        console_formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+        console_handler.setFormatter(console_formatter)
+        logger.addHandler(console_handler)
 
     return logger
 
@@ -76,9 +85,13 @@ def setup_logging(level: int = logging.INFO, format_string: Optional[str] = None
     
     # This basicConfig will apply to any loggers that don't get configured
     # by get_logger, but our goal is to use get_logger everywhere.
-    logging.basicConfig(
-        level=level,
-        format=format_string,
-        datefmt="%Y-%m-%d %H:%M:%S",
-        handlers=[logging.StreamHandler()] # Default to console
-    )
+    # Configure the root logger to the requested level when requested
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
+    if not root_logger.handlers:
+        logging.basicConfig(
+            level=level,
+            format=format_string,
+            datefmt="%Y-%m-%d %H:%M:%S",
+            handlers=[logging.StreamHandler()],  # Default to console
+        )

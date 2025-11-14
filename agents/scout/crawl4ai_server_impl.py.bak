@@ -1,0 +1,26 @@
+"""Deprecated implementation copy for scout-local Crawl4AI server.
+
+This module used to contain a standalone implementation. The canonical
+bridge lives at `agents.c4ai.server`. Keep this shim for compatibility
+only; it warns on import and re-exports the canonical API when possible.
+"""
+from warnings import warn
+
+warn(
+    "agents.scout.crawl4ai_server_impl is deprecated; import agents.c4ai.server instead",
+    DeprecationWarning,
+)
+
+try:
+    from agents.c4ai.server import app, CrawlRequest, crawl, health  # type: ignore
+    __all__ = ["app", "CrawlRequest", "crawl", "health"]
+except Exception:  # pragma: no cover - fallback
+    from fastapi import FastAPI
+
+    app = FastAPI(title="deprecated-crawl4ai-impl")
+
+    @app.get("/health")
+    async def health() -> dict:
+        return {"status": "deprecated", "service": "crawl4ai-bridge-impl"}
+
+    __all__ = ["app", "health"]

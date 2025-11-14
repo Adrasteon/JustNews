@@ -24,368 +24,216 @@ from typing import Any, Dict, List, Optional
 
 from common.observability import get_logger
 
+from .fact_checker_engine import FactCheckerConfig, FactCheckerEngine
+
 # Configure logging
 logger = get_logger(__name__)
 
 # Global engine instance
 _engine: Optional[Any] = None
 
+# Operation aliases expected by tests/legacy code
+_OPERATION_ALIASES = {
+    "verify": "verify_facts",
+    "verify_facts": "verify_facts",
+    "validate": "validate_sources",
+    "validate_sources": "validate_sources",
+    "comprehensive": "comprehensive_fact_check",
+    "comprehensive_fact_check": "comprehensive_fact_check",
+    "extract": "extract_claims",
+    "extract_claims": "extract_claims",
+    "assess": "assess_credibility",
+    "assess_credibility": "assess_credibility",
+    "detect": "detect_contradictions",
+    "detect_contradictions": "detect_contradictions",
+}
+
+_SUPPORTED_TYPES = sorted(set(_OPERATION_ALIASES.values()))
+
+
 def get_fact_checker_engine():
     """Get or create the global fact checker engine instance."""
     global _engine
     if _engine is None:
-        from .fact_checker_engine import FactCheckerEngine, FactCheckerConfig
         config = FactCheckerConfig()
         _engine = FactCheckerEngine(config)
     return _engine
+
 
 async def process_fact_check_request(
     content: str,
     operation_type: str,
     **kwargs
 ) -> Dict[str, Any]:
-    """
-    Process a fact-checking request using the fact checker engine.
-
-    Args:
-        content: Content to fact-check
-        operation_type: Type of fact-checking operation to perform
-        **kwargs: Additional parameters for operation
-
-    Returns:
-        Fact-checking operation results dictionary
-    """
+    """Process a fact-checking request using the engine."""
     engine = get_fact_checker_engine()
+    normalized = _OPERATION_ALIASES.get(operation_type, operation_type)
+
+    if normalized not in _SUPPORTED_TYPES:
+        logger.warning("Unknown fact-check operation '%s'", operation_type)
+        return {
+            "error": f"Unknown operation type: {operation_type}",
+            "supported_types": _SUPPORTED_TYPES,
+        }
+
+    logger.info(
+        "🔍 Processing %s fact-checking operation for %s characters",
+        normalized,
+        len(content) if content is not None else 0,
+    )
 
     try:
-        logger.info(f"🔍 Processing {operation_type} fact-checking operation for {len(content)} characters")
-
-        if operation_type == "verify":
-            result = engine.verify_facts(content, kwargs.get("source_url"))
-        elif operation_type == "validate_sources":
-            result = engine.validate_sources(content, kwargs.get("source_url"), kwargs.get("domain"))
-        elif operation_type == "comprehensive":
-            result = engine.comprehensive_fact_check(content, kwargs.get("source_url"), kwargs.get("metadata"))
-        elif operation_type == "extract_claims":
+        if normalized == "verify_facts":
+            call_kwargs = {}
+            if kwargs.get("source_url") is not None:
+                call_kwargs["source_url"] = kwargs["source_url"]
+            if kwargs.get("context") is not None:
+                call_kwargs["context"] = kwargs["context"]
+            result = engine.verify_facts(content, **call_kwargs)
+        elif normalized == "validate_sources":
+            call_kwargs = {}
+            if kwargs.get("source_url") is not None:
+                call_kwargs["source_url"] = kwargs["source_url"]
+            if kwargs.get("domain") is not None:
+                call_kwargs["domain"] = kwargs["domain"]
+            if kwargs.get("sources") is not None:
+                call_kwargs["sources"] = kwargs["sources"]
+            result = engine.validate_sources(content, **call_kwargs)
+        elif normalized == "comprehensive_fact_check":
+            call_kwargs = {}
+            if kwargs.get("source_url") is not None:
+                call_kwargs["source_url"] = kwargs["source_url"]
+            if kwargs.get("context") is not None:
+                call_kwargs["context"] = kwargs["context"]
+            if kwargs.get("metadata") is not None:
+                call_kwargs["metadata"] = kwargs["metadata"]
+            result = engine.comprehensive_fact_check(content, **call_kwargs)
+        elif normalized == "extract_claims":
             result = engine.extract_claims(content)
-        elif operation_type == "assess_credibility":
-            result = engine.assess_credibility(content, kwargs.get("domain"), kwargs.get("source_url"))
-        elif operation_type == "detect_contradictions":
-            result = engine.detect_contradictions(kwargs.get("text_passages", []))
-        else:
-            result = {"error": f"Unknown operation type: {operation_type}"}
+        elif normalized == "assess_credibility":
+            call_kwargs = {}
+            if kwargs.get("domain") is not None:
+                call_kwargs["domain"] = kwargs["domain"]
+            if kwargs.get("source_url") is not None:
+                call_kwargs["source_url"] = kwargs["source_url"]
+            result = engine.assess_credibility(content, **call_kwargs)
+        elif normalized == "detect_contradictions":
+            passages = kwargs.get("text_passages") or kwargs.get("passages") or []
+            result = engine.detect_contradictions(passages)
+        else:  # pragma: no cover - safeguard
+            result = {"error": f"Operation '{normalized}' not implemented"}
 
-        logger.info(f"✅ {operation_type} fact-checking operation completed")
+        logger.info("✅ %s fact-checking operation completed", normalized)
         return result
 
-    except Exception as e:
-        logger.error(f"❌ {operation_type} fact-checking operation failed: {e}")
-        return {"error": str(e)}
+    except Exception as exc:  # noqa: BLE001
+        logger.error("❌ %s fact-checking operation failed: %s", normalized, exc)
+        return {"error": str(exc), "details": str(exc)}
 
-async def verify_facts(content: str, source_url: Optional[str] = None, context: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Primary fact verification function using AI models.
 
-    This function verifies factual claims using multiple AI models including
-    DistilBERT for fact classification and evidence assessment.
+def _await_if_needed(result: Any) -> Any:
+    """Return coroutine result synchronously if required."""
+    if asyncio.iscoroutine(result):
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(result)
+        else:
+            future = asyncio.ensure_future(result, loop=loop)
+            # In practice the wrappers are called from sync contexts, but guard anyway.
+            return loop.run_until_complete(future)  # pragma: no cover
+    return result
 
-    Args:
-        content: Content containing claims to verify
-        source_url: Source URL for context
-        context: Additional context for verification
 
-    Returns:
-        Dictionary containing verification results
-    """
-    if not content or not content.strip():
-        return {"verification_score": 0.0, "classification": "empty", "error": "Empty content provided"}
+def verify_facts(content: str, source_url: Optional[str] = None, context: Optional[str] = None) -> Dict[str, Any]:
+    call_kwargs: Dict[str, Any] = {"operation_type": "verify_facts", "content": content}
+    if source_url is not None:
+        call_kwargs["source_url"] = source_url
+    if context is not None:
+        call_kwargs["context"] = context
+    response = _await_if_needed(
+        process_fact_check_request(**call_kwargs)
+    )
+    return response or {}
 
-    try:
-        engine = get_fact_checker_engine()
 
-        # Perform fact verification
-        verification = engine.verify_facts(content, source_url, context)
+def validate_sources(content: str, sources: Optional[List[str]] = None, domain: Optional[str] = None, source_url: Optional[str] = None) -> Dict[str, Any]:
+    call_kwargs: Dict[str, Any] = {"operation_type": "validate_sources", "content": content}
+    if sources is not None:
+        call_kwargs["sources"] = sources
+    if domain is not None:
+        call_kwargs["domain"] = domain
+    if source_url is not None:
+        call_kwargs["source_url"] = source_url
+    response = _await_if_needed(
+        process_fact_check_request(**call_kwargs)
+    )
+    return response or {}
 
-        # Enhance with additional analysis
-        verification["analysis_metadata"] = {
-            "content_length": len(content),
-            "source_url": source_url,
-            "context_provided": context is not None,
-            "analysis_timestamp": datetime.now().isoformat(),
-            "analyzer_version": "fact_checker_v2_verify"
-        }
 
-        # Log feedback for training
-        engine.log_feedback("verify_facts", {
-            "verification_score": verification.get("verification_score", 0.0),
-            "classification": verification.get("classification", "unknown")
-        })
-
-        return verification
-
-    except Exception as e:
-        logger.error(f"Error in fact verification: {e}")
-        return {"error": str(e)}
-
-async def validate_sources(content: str, source_url: Optional[str] = None, domain: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Validate and assess source credibility.
-
-    This function evaluates the reliability and credibility of information sources
-    using domain analysis and content assessment.
-
-    Args:
-        content: Source content to evaluate
-        source_url: Source URL
-        domain: Domain name (extracted from URL if not provided)
-
-    Returns:
-        Dictionary containing credibility assessment
-    """
-    if not content and not source_url and not domain:
-        return {"error": "At least one of content, source_url, or domain must be provided"}
-
-    try:
-        engine = get_fact_checker_engine()
-
-        # Assess source credibility
-        credibility = engine.assess_credibility(content, domain, source_url)
-
-        # Add metadata
-        credibility["analysis_metadata"] = {
-            "content_length": len(content) if content else 0,
-            "source_url": source_url,
-            "domain": domain,
-            "analysis_timestamp": datetime.now().isoformat(),
-            "analyzer_version": "fact_checker_v2_credibility"
-        }
-
-        # Log feedback for training
-        engine.log_feedback("validate_sources", {
-            "credibility_score": credibility.get("credibility_score", 0.0),
-            "reliability": credibility.get("reliability", "unknown")
-        })
-
-        return credibility
-
-    except Exception as e:
-        logger.error(f"Error in source validation: {e}")
-        return {"error": str(e)}
-
-async def comprehensive_fact_check(
+def comprehensive_fact_check(
     content: str,
     source_url: Optional[str] = None,
     context: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """
-    Perform comprehensive fact-checking on full articles.
+    call_kwargs: Dict[str, Any] = {
+        "operation_type": "comprehensive_fact_check",
+        "content": content,
+    }
+    if source_url is not None:
+        call_kwargs["source_url"] = source_url
+    if context is not None:
+        call_kwargs["context"] = context
+    if metadata is not None:
+        call_kwargs["metadata"] = metadata
+    response = _await_if_needed(process_fact_check_request(**call_kwargs))
+    return response or {}
 
-    This function provides complete fact verification including claim extraction,
-    evidence assessment, contradiction detection, and source credibility evaluation.
 
-    Args:
-        content: Full article content to fact-check
-        source_url: Article source URL
-        context: Additional context
-        metadata: Article metadata
+def extract_claims(content: str) -> List[str]:
+    response = _await_if_needed(
+        process_fact_check_request(
+            content=content,
+            operation_type="extract_claims",
+        )
+    )
+    if isinstance(response, dict):
+        claims = response.get("claims", [])
+        return claims if isinstance(claims, list) else []
+    if isinstance(response, list):
+        return response
+    return []
 
-    Returns:
-        Dictionary containing comprehensive fact-checking results
-    """
-    if not content or not content.strip():
-        return {"overall_score": 0.0, "assessment": "empty", "error": "Empty content provided"}
 
-    try:
-        engine = get_fact_checker_engine()
-
-        # Perform comprehensive analysis
-        result = engine.comprehensive_fact_check(content, source_url, metadata)
-
-        # Add processing metadata
-        result["processing_metadata"] = {
-            "content_length": len(content),
-            "source_url": source_url,
-            "context_provided": context is not None,
-            "metadata_provided": metadata is not None,
-            "processing_timestamp": datetime.now().isoformat(),
-            "analyzer_version": "fact_checker_v2_comprehensive"
-        }
-
-        # Calculate overall assessment
-        overall_score = result.get("overall_score", 0.5)
-        if overall_score >= 0.8:
-            result["overall_assessment"] = "highly_reliable"
-        elif overall_score >= 0.6:
-            result["overall_assessment"] = "generally_reliable"
-        elif overall_score >= 0.4:
-            result["overall_assessment"] = "mixed_reliability"
-        else:
-            result["overall_assessment"] = "low_reliability"
-
-        # Log feedback for training
-        engine.log_feedback("comprehensive_fact_check", {
-            "overall_score": overall_score,
-            "assessment": result.get("overall_assessment", "unknown"),
-            "claims_analyzed": len(result.get("claims_analysis", {}).get("extracted_claims", []))
-        })
-
-        return result
-
-    except Exception as e:
-        logger.error(f"Error in comprehensive fact-check: {e}")
-        return {"error": str(e)}
-
-async def extract_claims(content: str) -> Dict[str, Any]:
-    """
-    Extract verifiable claims from text content.
-
-    This function uses NLP techniques to identify factual claims that can be verified
-    against available evidence and sources.
-
-    Args:
-        content: Text content to extract claims from
-
-    Returns:
-        Dictionary containing extracted claims and analysis
-    """
-    if not content or not content.strip():
-        return {"error": "Empty content provided for claim extraction"}
-
-    try:
-        engine = get_fact_checker_engine()
-
-        # Extract claims
-        claims_result = engine.extract_claims(content)
-
-        # Enhance with verification readiness assessment
-        claims = claims_result.get("claims", [])
-        verification_ready = []
-
-        for claim in claims:
-            # Simple heuristics for verification readiness
-            verification_indicators = sum([
-                1 for indicator in ["according to", "reported", "announced", "study", "data", "research"]
-                if indicator in claim.lower()
-            ])
-
-            if verification_indicators > 0 or len(claim.split()) > 5:
-                verification_ready.append(claim)
-
-        claims_result["verification_ready_claims"] = verification_ready
-        claims_result["verification_ready_count"] = len(verification_ready)
-
-        # Add metadata
-        claims_result["analysis_metadata"] = {
-            "content_length": len(content),
-            "claims_extracted": len(claims),
-            "verification_ready": len(verification_ready),
-            "analysis_timestamp": datetime.now().isoformat(),
-            "analyzer_version": "fact_checker_v2_extraction"
-        }
-
-        # Log feedback for training
-        engine.log_feedback("extract_claims", {
-            "total_claims": len(claims),
-            "verification_ready": len(verification_ready)
-        })
-
-        return claims_result
-
-    except Exception as e:
-        logger.error(f"Error in claim extraction: {e}")
-        return {"error": str(e)}
-
-async def assess_credibility(
+def assess_credibility(
     content: Optional[str] = None,
     domain: Optional[str] = None,
-    source_url: Optional[str] = None
+    source_url: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """
-    Assess the credibility and reliability of information sources.
+    call_kwargs: Dict[str, Any] = {
+        "operation_type": "assess_credibility",
+        "content": content or "",
+    }
+    if domain is not None:
+        call_kwargs["domain"] = domain
+    if source_url is not None:
+        call_kwargs["source_url"] = source_url
+    response = _await_if_needed(
+        process_fact_check_request(**call_kwargs)
+    )
+    return response or {}
 
-    This function evaluates source credibility using multiple factors including
-    domain reputation, content analysis, and historical reliability.
 
-    Args:
-        content: Source content (optional)
-        domain: Domain name (optional)
-        source_url: Full source URL (optional)
-
-    Returns:
-        Dictionary containing credibility assessment
-    """
-    if not any([content, domain, source_url]):
-        return {"error": "At least one parameter (content, domain, or source_url) must be provided"}
-
-    try:
-        engine = get_fact_checker_engine()
-
-        # Assess credibility
-        credibility = engine.assess_credibility(content, domain, source_url)
-
-        # Add metadata
-        credibility["analysis_metadata"] = {
-            "content_provided": content is not None,
-            "domain_provided": domain is not None,
-            "source_url_provided": source_url is not None,
-            "analysis_timestamp": datetime.now().isoformat(),
-            "analyzer_version": "fact_checker_v2_credibility"
-        }
-
-        # Log feedback for training
-        engine.log_feedback("assess_credibility", {
-            "credibility_score": credibility.get("credibility_score", 0.0),
-            "reliability": credibility.get("reliability", "unknown")
-        })
-
-        return credibility
-
-    except Exception as e:
-        logger.error(f"Error in credibility assessment: {e}")
-        return {"error": str(e)}
-
-async def detect_contradictions(text_passages: List[str]) -> Dict[str, Any]:
-    """
-    Detect logical contradictions and inconsistencies in text passages.
-
-    This function identifies contradictions between multiple text passages
-    using semantic analysis and logical reasoning.
-
-    Args:
-        text_passages: List of text passages to analyze for contradictions
-
-    Returns:
-        Dictionary containing contradiction analysis
-    """
-    if not text_passages or len(text_passages) < 2:
-        return {"error": "At least 2 text passages are required for contradiction detection"}
-
-    try:
-        engine = get_fact_checker_engine()
-
-        # Detect contradictions
-        contradictions = engine.detect_contradictions(text_passages)
-
-        # Add metadata
-        contradictions["analysis_metadata"] = {
-            "passages_analyzed": len(text_passages),
-            "contradictions_found": contradictions.get("contradictions_found", 0),
-            "analysis_timestamp": datetime.now().isoformat(),
-            "analyzer_version": "fact_checker_v2_contradictions"
-        }
-
-        # Log feedback for training
-        engine.log_feedback("detect_contradictions", {
-            "passages_count": len(text_passages),
-            "contradictions_found": contradictions.get("contradictions_found", 0)
-        })
-
-        return contradictions
-
-    except Exception as e:
-        logger.error(f"Error in contradiction detection: {e}")
-        return {"error": str(e)}
+def detect_contradictions(text_passages: List[str]) -> Dict[str, Any]:
+    response = _await_if_needed(
+        process_fact_check_request(
+            content="\n".join(text_passages or []),
+            operation_type="detect_contradictions",
+            text_passages=text_passages,
+        )
+    )
+    return response or {}
 
 # GPU-accelerated functions with CPU fallbacks
 async def validate_is_news_gpu(content: str) -> Dict[str, Any]:

@@ -301,6 +301,9 @@ def _init_metrics() -> tuple[CollectorRegistry, dict[str, Gauge]]:
 
 def main() -> int:
     args = _parse_args()
+    # Backwards-compatibility guard: ensure attributes tests expect exist
+    if not hasattr(args, 'profiles'):
+        args.profiles = None
 
     try:
         base_schedule: CrawlSchedule = load_crawl_schedule(args.schedule)

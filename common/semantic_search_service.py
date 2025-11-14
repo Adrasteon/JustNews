@@ -101,36 +101,27 @@ class SemanticSearchService:
         """
         start_time = time.time()
 
-        try:
-            if search_type == 'semantic':
-                results = self._semantic_search(query, n_results, min_score)
-            elif search_type == 'text':
-                results = self._text_search(query, n_results)
-            elif search_type == 'hybrid':
-                results = self._hybrid_search(query, n_results, min_score)
-            else:
-                raise ValueError(f"Unsupported search type: {search_type}")
+        # Validate search_type and perform appropriate search. For unsupported
+        # types we raise a ValueError (tests expect this behavior).
+        if search_type == 'semantic':
+            results = self._semantic_search(query, n_results, min_score)
+        elif search_type == 'text':
+            results = self._text_search(query, n_results)
+        elif search_type == 'hybrid':
+            results = self._hybrid_search(query, n_results, min_score)
+        else:
+            logger.error(f"Search failed: Unsupported search type: {search_type}")
+            raise ValueError(f"Unsupported search type: {search_type}")
 
-            search_time = time.time() - start_time
+        search_time = time.time() - start_time
 
-            return SearchResponse(
-                query=query,
-                results=results,
-                total_results=len(results),
-                search_time=search_time,
-                search_type=search_type
-            )
-
-        except Exception as e:
-            logger.error(f"Search failed: {e}")
-            search_time = time.time() - start_time
-            return SearchResponse(
-                query=query,
-                results=[],
-                total_results=0,
-                search_time=search_time,
-                search_type=search_type
-            )
+        return SearchResponse(
+            query=query,
+            results=results,
+            total_results=len(results),
+            search_time=search_time,
+            search_type=search_type,
+        )
 
     def _semantic_search(
         self,
@@ -150,14 +141,25 @@ class SemanticSearchService:
             List of SearchResult objects
         """
         # Generate embedding for the query
-        query_embedding = self.embedding_model.encode(query).tolist()
+        emb = self.embedding_model.encode(query)
+        # Accept numpy arrays or plain lists from different embedding backends/mocks
+        if hasattr(emb, "tolist"):
+            query_embedding = emb.tolist()
+        else:
+            # Ensure a plain list
+            query_embedding = list(emb)
 
-        # Search in ChromaDB
-        chroma_results = self.db_service.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=n_results * 2,  # Get more results for filtering
-            include=['documents', 'metadatas', 'distances']
-        )
+        # Search in ChromaDB. Wrap in try/except so backend failures return
+        # an empty result set instead of raising (tests expect graceful handling).
+        try:
+            chroma_results = self.db_service.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=n_results * 2,  # Get more results for filtering
+                include=['documents', 'metadatas', 'distances']
+            )
+        except Exception as e:
+            logger.error(f"Chroma query failed: {e}")
+            return []
 
         results = []
         if chroma_results['ids']:
@@ -171,12 +173,22 @@ class SemanticSearchService:
                 # Get full article data from MariaDB
                 article_data = self._get_article_by_id(int(article_id))
                 if article_data:
+                    # Handle publication_date conversion
+                    pub_date = article_data.get('publication_date')
+                    if pub_date is None:
+                        pub_date_str = ''
+                    elif isinstance(pub_date, str):
+                        pub_date_str = pub_date
+                    else:
+                        # Assume it's a datetime object
+                        pub_date_str = pub_date.isoformat() if hasattr(pub_date, 'isoformat') else str(pub_date)
+                    
                     result = SearchResult(
                         article_id=int(article_id),
-                        title=article_data['title'],
-                        content=article_data['content'],
-                        source_name=article_data['source_name'],
-                        published_date=article_data['published_date'],
+                        title=article_data.get('title', ''),
+                        content=article_data.get('content', ''),
+                        source_name=article_data.get('source_name', 'Unknown Source'),
+                        published_date=pub_date_str,
                         similarity_score=similarity_score,
                         metadata=chroma_results['metadatas'][0][i] if chroma_results['metadatas'] else {}
                     )
@@ -203,12 +215,22 @@ class SemanticSearchService:
 
         results = []
         for article in articles:
+            # Handle publication_date conversion
+            pub_date = article.get('publication_date')
+            if pub_date is None:
+                pub_date_str = ''
+            elif isinstance(pub_date, str):
+                pub_date_str = pub_date
+            else:
+                # Assume it's a datetime object
+                pub_date_str = pub_date.isoformat() if hasattr(pub_date, 'isoformat') else str(pub_date)
+            
             result = SearchResult(
                 article_id=article['id'],
-                title=article['title'],
-                content=article['content'],
-                source_name=article['source_name'],
-                published_date=article['publication_date'],
+                title=article.get('title', ''),
+                content=article.get('content', ''),
+                source_name=article.get('source_name', 'Unknown Source'),
+                published_date=pub_date_str,
                 similarity_score=1.0,  # Text search doesn't have similarity scores
                 metadata={}
             )
@@ -273,9 +295,9 @@ class SemanticSearchService:
             cursor = self.db_service.mb_conn.cursor(dictionary=True)
             query = """
                 SELECT a.id, a.title, a.content, a.publication_date,
-                       s.name as source_name
+                       COALESCE(s.name, 'Unknown Source') as source_name
                 FROM articles a
-                JOIN sources s ON a.source_id = s.id
+                LEFT JOIN sources s ON a.source_id = s.id
                 WHERE a.id = %s
             """
             cursor.execute(query, (article_id,))
@@ -364,12 +386,22 @@ class SemanticSearchService:
 
             results = []
             for article in articles:
+                # Handle publication_date conversion
+                pub_date = article.get('publication_date')
+                if pub_date is None:
+                    pub_date_str = ''
+                elif isinstance(pub_date, str):
+                    pub_date_str = pub_date
+                else:
+                    # Assume it's a datetime object
+                    pub_date_str = pub_date.isoformat() if hasattr(pub_date, 'isoformat') else str(pub_date)
+                
                 result = SearchResult(
                     article_id=article['id'],
-                    title=article['title'],
-                    content=article['content'],
-                    source_name=article['source_name'],
-                    published_date=article['publication_date'],
+                    title=article.get('title', ''),
+                    content=article.get('content', ''),
+                    source_name=article.get('source_name', 'Unknown Source'),
+                    published_date=pub_date_str,
                     similarity_score=1.0,
                     metadata={}
                 )

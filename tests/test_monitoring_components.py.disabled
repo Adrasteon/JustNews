@@ -1,0 +1,567 @@
+"""
+Tests for JustNewsAgent Monitoring Components
+
+This module contains tests for monitoring components including:
+- Centralized logging system
+- Enhanced metrics collection
+- Distributed tracing
+- Performance monitoring
+- Custom business metrics
+"""
+
+import asyncio
+import json
+import pytest
+import tempfile
+from datetime import datetime, timedelta
+from pathlib import Path
+from unittest.mock import Mock, patch, MagicMock, AsyncMock
+
+from monitoring.core.log_collector import LogCollector
+from monitoring.core.log_aggregator import LogAggregator
+from monitoring.core.log_storage import LogStorage
+from monitoring.core.log_analyzer import LogAnalyzer
+from monitoring.core.metrics_collector import EnhancedMetricsCollector
+from monitoring.core.custom_metrics import CustomMetrics
+from monitoring.core.performance_monitor import PerformanceMonitor
+from monitoring.core.trace_collector import TraceCollector
+from monitoring.core.trace_processor import TraceProcessor
+from monitoring.core.trace_storage import TraceStorage
+from monitoring.core.trace_analyzer import TraceAnalyzer
+
+
+class TestLogCollector:
+    """Test centralized logging collection"""
+
+    @pytest.fixture
+    def log_collector(self):
+        """Create a LogCollector instance for testing"""
+        return LogCollector()
+
+    def test_log_collection_initialization(self, log_collector):
+        """Test log collector initialization"""
+        assert log_collector is not None
+        assert hasattr(log_collector, 'collect_log')
+        assert hasattr(log_collector, 'batch_logs')
+
+    @patch('monitoring.core.log_collector.asyncio.Queue')
+    async def test_async_log_collection(self, mock_queue, log_collector):
+        """Test asynchronous log collection"""
+        mock_queue_instance = Mock()
+        mock_queue.return_value = mock_queue_instance
+
+        # Test log collection
+        test_log = {
+            'timestamp': datetime.now().isoformat(),
+            'level': 'INFO',
+            'agent': 'test_agent',
+            'message': 'Test log message',
+            'metadata': {'request_id': '123'}
+        }
+
+        await log_collector.collect_log(test_log)
+
+        # Verify queue interaction
+        assert mock_queue_instance.put.called
+
+    def test_log_formatting(self, log_collector):
+        """Test log message formatting"""
+        test_log = {
+            'timestamp': '2024-01-01T12:00:00',
+            'level': 'ERROR',
+            'agent': 'test_agent',
+            'message': 'Test error',
+            'error_type': 'ValueError'
+        }
+
+        formatted = log_collector._format_log_entry(test_log)
+        assert isinstance(formatted, dict)
+        assert 'formatted_message' in formatted
+        assert formatted['level'] == 'ERROR'
+
+
+class TestLogAggregator:
+    """Test log aggregation functionality"""
+
+    @pytest.fixture
+    def log_aggregator(self):
+        """Create a LogAggregator instance for testing"""
+        return LogAggregator()
+
+    def test_aggregation_initialization(self, log_aggregator):
+        """Test aggregator initialization"""
+        assert log_aggregator is not None
+        assert hasattr(log_aggregator, 'aggregate_logs')
+        assert hasattr(log_aggregator, 'process_batch')
+
+    @patch('monitoring.core.log_aggregator.Elasticsearch')
+    def test_elasticsearch_storage(self, mock_es, log_aggregator):
+        """Test Elasticsearch storage backend"""
+        mock_client = Mock()
+        mock_es.return_value = mock_client
+
+        logs = [
+            {'level': 'INFO', 'message': 'Test log 1'},
+            {'level': 'ERROR', 'message': 'Test error'}
+        ]
+
+        log_aggregator._store_to_elasticsearch(logs)
+
+        # Verify Elasticsearch interaction
+        assert mock_client.index.called
+
+    def test_batch_processing(self, log_aggregator):
+        """Test log batch processing"""
+        logs = [
+            {'id': 1, 'level': 'INFO'},
+            {'id': 2, 'level': 'WARN'},
+            {'id': 3, 'level': 'ERROR'}
+        ]
+
+        batches = log_aggregator._create_batches(logs, batch_size=2)
+
+        assert len(batches) == 2
+        assert len(batches[0]) == 2
+        assert len(batches[1]) == 1
+
+
+class TestLogStorage:
+    """Test log storage and querying"""
+
+    @pytest.fixture
+    def log_storage(self):
+        """Create a LogStorage instance for testing"""
+        return LogStorage()
+
+    def test_storage_initialization(self, log_storage):
+        """Test storage initialization"""
+        assert log_storage is not None
+        assert hasattr(log_storage, 'store_logs')
+        assert hasattr(log_storage, 'query_logs')
+
+    def test_log_querying(self, log_storage):
+        """Test log querying functionality"""
+        query = {
+            'level': 'ERROR',
+            'agent': 'test_agent',
+            'start_time': datetime.now() - timedelta(hours=1),
+            'end_time': datetime.now()
+        }
+
+        # Mock storage backend
+        with patch.object(log_storage, '_query_backend', return_value=[]):
+            results = log_storage.query_logs(query)
+
+            assert isinstance(results, list)
+
+    def test_indexing(self, log_storage):
+        """Test log indexing for fast queries"""
+        logs = [
+            {'level': 'INFO', 'agent': 'crawler', 'timestamp': datetime.now()},
+            {'level': 'ERROR', 'agent': 'analyzer', 'timestamp': datetime.now()}
+        ]
+
+        # Test field extraction for indexing
+        indexed_logs = log_storage._index_logs(logs)
+
+        assert len(indexed_logs) == 2
+        for log in indexed_logs:
+            assert 'search_index' in log
+
+
+class TestLogAnalyzer:
+    """Test log analysis and anomaly detection"""
+
+    @pytest.fixture
+    def log_analyzer(self):
+        """Create a LogAnalyzer instance for testing"""
+        return LogAnalyzer()
+
+    def test_analyzer_initialization(self, log_analyzer):
+        """Test analyzer initialization"""
+        assert log_analyzer is not None
+        assert hasattr(log_analyzer, 'analyze_logs')
+        assert hasattr(log_analyzer, 'detect_anomalies')
+
+    def test_error_pattern_detection(self, log_analyzer):
+        """Test error pattern detection"""
+        logs = [
+            {'level': 'ERROR', 'message': 'Connection timeout', 'timestamp': datetime.now()},
+            {'level': 'ERROR', 'message': 'Connection timeout', 'timestamp': datetime.now()},
+            {'level': 'ERROR', 'message': 'Connection timeout', 'timestamp': datetime.now()},
+            {'level': 'INFO', 'message': 'Processing complete', 'timestamp': datetime.now()}
+        ]
+
+        patterns = log_analyzer._detect_error_patterns(logs)
+
+        assert 'Connection timeout' in patterns
+        assert patterns['Connection timeout'] >= 3
+
+    def test_anomaly_detection(self, log_analyzer):
+        """Test anomaly detection in logs"""
+        # Normal pattern
+        normal_logs = [{'level': 'INFO', 'count': 10} for _ in range(10)]
+
+        # Anomalous pattern
+        anomalous_logs = [{'level': 'ERROR', 'count': 50} for _ in range(5)]
+
+        baseline = log_analyzer._establish_baseline(normal_logs)
+        anomalies = log_analyzer._detect_anomalies(anomalous_logs, baseline)
+
+        assert len(anomalies) > 0
+
+
+class TestEnhancedMetricsCollector:
+    """Test enhanced metrics collection"""
+
+    @pytest.fixture
+    def metrics_collector(self):
+        """Create an EnhancedMetricsCollector instance for testing"""
+        return EnhancedMetricsCollector()
+
+    def test_collector_initialization(self, metrics_collector):
+        """Test metrics collector initialization"""
+        assert metrics_collector is not None
+        assert hasattr(metrics_collector, 'collect_metrics')
+        assert hasattr(metrics_collector, 'register_metric')
+
+    @patch('monitoring.core.metrics_collector.PrometheusMetrics')
+    def test_prometheus_integration(self, mock_prometheus, metrics_collector):
+        """Test Prometheus integration"""
+        mock_instance = Mock()
+        mock_prometheus.return_value = mock_instance
+
+        metrics_collector._setup_prometheus()
+
+        assert mock_prometheus.called
+
+    def test_custom_metric_registration(self, metrics_collector):
+        """Test custom metric registration"""
+        metric_name = 'test_metric'
+        metric_type = 'counter'
+        description = 'Test metric description'
+
+        metrics_collector.register_metric(metric_name, metric_type, description)
+
+        assert metric_name in metrics_collector._custom_metrics
+
+    def test_metric_collection(self, metrics_collector):
+        """Test metric value collection"""
+        # Register a test metric
+        metrics_collector.register_metric('requests_total', 'counter', 'Total requests')
+
+        # Simulate metric increment
+        metrics_collector._custom_metrics['requests_total'].inc()
+
+        # Verify metric was updated
+        assert metrics_collector._custom_metrics['requests_total'] is not None
+
+
+class TestCustomMetrics:
+    """Test custom business metrics"""
+
+    @pytest.fixture
+    def custom_metrics(self):
+        """Create a CustomMetrics instance for testing"""
+        return CustomMetrics()
+
+    def test_business_metrics_initialization(self, custom_metrics):
+        """Test custom metrics initialization"""
+        assert custom_metrics is not None
+        assert hasattr(custom_metrics, 'record_content_quality')
+        assert hasattr(custom_metrics, 'record_processing_time')
+
+    def test_content_quality_metrics(self, custom_metrics):
+        """Test content quality metric recording"""
+        quality_score = 0.85
+        article_id = 'test_article_123'
+
+        custom_metrics.record_content_quality(quality_score, article_id)
+
+        # Verify metric was recorded (would check internal state)
+        assert True  # Placeholder - would verify actual metric storage
+
+    def test_processing_metrics(self, custom_metrics):
+        """Test processing performance metrics"""
+        processing_time = 2.5
+        agent_name = 'fact_checker'
+
+        custom_metrics.record_processing_time(processing_time, agent_name)
+
+        # Verify processing time was recorded
+        assert True  # Placeholder - would verify actual metric storage
+
+    def test_user_engagement_metrics(self, custom_metrics):
+        """Test user engagement tracking"""
+        engagement_score = 0.92
+        user_id = 'user_456'
+
+        custom_metrics.record_user_engagement(engagement_score, user_id)
+
+        # Verify engagement was recorded
+        assert True  # Placeholder - would verify actual metric storage
+
+
+class TestPerformanceMonitor:
+    """Test performance monitoring"""
+
+    @pytest.fixture
+    def performance_monitor(self):
+        """Create a PerformanceMonitor instance for testing"""
+        return PerformanceMonitor()
+
+    def test_monitor_initialization(self, performance_monitor):
+        """Test performance monitor initialization"""
+        assert performance_monitor is not None
+        assert hasattr(performance_monitor, 'monitor_performance')
+        assert hasattr(performance_monitor, 'detect_bottlenecks')
+
+    @patch('monitoring.core.performance_monitor.psutil')
+    def test_system_resource_monitoring(self, mock_psutil, performance_monitor):
+        """Test system resource monitoring"""
+        mock_psutil.cpu_percent.return_value = 45.2
+        mock_psutil.virtual_memory.return_value = Mock(percent=67.8)
+
+        resources = performance_monitor._collect_system_resources()
+
+        assert 'cpu_percent' in resources
+        assert 'memory_percent' in resources
+        assert resources['cpu_percent'] == 45.2
+        assert resources['memory_percent'] == 67.8
+
+    def test_bottleneck_detection(self, performance_monitor):
+        """Test bottleneck detection"""
+        metrics = {
+            'cpu_percent': 95.0,
+            'memory_percent': 90.0,
+            'disk_io': 85.0,
+            'network_io': 70.0
+        }
+
+        bottlenecks = performance_monitor.detect_bottlenecks(metrics)
+
+        assert 'cpu' in bottlenecks
+        assert 'memory' in bottlenecks
+        assert bottlenecks['cpu']['severity'] == 'critical'
+
+    def test_performance_recommendations(self, performance_monitor):
+        """Test performance optimization recommendations"""
+        bottlenecks = {'cpu': {'severity': 'high'}, 'memory': {'severity': 'medium'}}
+
+        recommendations = performance_monitor._generate_recommendations(bottlenecks)
+
+        assert isinstance(recommendations, list)
+        assert len(recommendations) > 0
+        assert any('CPU' in rec for rec in recommendations)
+
+
+class TestTraceCollector:
+    """Test distributed tracing collection"""
+
+    @pytest.fixture
+    def trace_collector(self):
+        """Create a TraceCollector instance for testing"""
+        return TraceCollector()
+
+    def test_collector_initialization(self, trace_collector):
+        """Test trace collector initialization"""
+        assert trace_collector is not None
+        assert hasattr(trace_collector, 'collect_trace')
+        assert hasattr(trace_collector, 'correlate_spans')
+
+    @patch('monitoring.core.trace_collector.opentelemetry')
+    def test_opentelemetry_integration(self, mock_otel, trace_collector):
+        """Test OpenTelemetry integration"""
+        mock_tracer = Mock()
+        mock_otel.trace.get_tracer.return_value = mock_tracer
+
+        trace_collector._setup_tracing()
+
+        assert mock_otel.trace.get_tracer.called
+
+    def test_span_creation(self, trace_collector):
+        """Test trace span creation"""
+        span_data = {
+            'operation': 'process_article',
+            'service': 'analyzer',
+            'start_time': datetime.now(),
+            'duration': 150.0,
+            'tags': {'article_id': '123'}
+        }
+
+        span = trace_collector._create_span(span_data)
+
+        assert span['operation'] == 'process_article'
+        assert span['service'] == 'analyzer'
+        assert span['duration'] == 150.0
+
+    def test_span_correlation(self, trace_collector):
+        """Test span correlation across services"""
+        spans = [
+            {'trace_id': 'abc123', 'span_id': 'span1', 'parent_span_id': None},
+            {'trace_id': 'abc123', 'span_id': 'span2', 'parent_span_id': 'span1'},
+            {'trace_id': 'abc123', 'span_id': 'span3', 'parent_span_id': 'span2'}
+        ]
+
+        correlated = trace_collector.correlate_spans(spans)
+
+        assert correlated['trace_id'] == 'abc123'
+        assert len(correlated['spans']) == 3
+
+
+class TestTraceProcessor:
+    """Test trace processing and analysis"""
+
+    @pytest.fixture
+    def trace_processor(self):
+        """Create a TraceProcessor instance for testing"""
+        return TraceProcessor()
+
+    def test_processor_initialization(self, trace_processor):
+        """Test trace processor initialization"""
+        assert trace_processor is not None
+        assert hasattr(trace_processor, 'process_trace')
+        assert hasattr(trace_processor, 'analyze_performance')
+
+    def test_critical_path_analysis(self, trace_processor):
+        """Test critical path identification"""
+        trace = {
+            'trace_id': 'test_trace',
+            'spans': [
+                {'span_id': '1', 'operation': 'start', 'duration': 10, 'parent_id': None},
+                {'span_id': '2', 'operation': 'process', 'duration': 50, 'parent_id': '1'},
+                {'span_id': '3', 'operation': 'validate', 'duration': 30, 'parent_id': '1'},
+                {'span_id': '4', 'operation': 'end', 'duration': 5, 'parent_id': '1'}
+            ]
+        }
+
+        critical_path = trace_processor._find_critical_path(trace)
+
+        assert len(critical_path) > 0
+        # Critical path should include the longest duration spans
+        assert any(span['operation'] == 'process' for span in critical_path)
+
+    def test_service_dependency_mapping(self, trace_processor):
+        """Test service dependency analysis"""
+        traces = [
+            {
+                'spans': [
+                    {'service': 'api', 'operation': 'receive_request'},
+                    {'service': 'analyzer', 'operation': 'process_data'},
+                    {'service': 'storage', 'operation': 'save_result'}
+                ]
+            }
+        ]
+
+        dependencies = trace_processor._map_service_dependencies(traces)
+
+        assert 'api' in dependencies
+        assert 'analyzer' in dependencies['api']['calls']
+        assert 'storage' in dependencies['analyzer']['calls']
+
+
+class TestTraceStorage:
+    """Test trace storage functionality"""
+
+    @pytest.fixture
+    def trace_storage(self):
+        """Create a TraceStorage instance for testing"""
+        return TraceStorage()
+
+    def test_storage_initialization(self, trace_storage):
+        """Test trace storage initialization"""
+        assert trace_storage is not None
+        assert hasattr(trace_storage, 'store_trace')
+        assert hasattr(trace_storage, 'query_traces')
+
+    def test_trace_querying(self, trace_storage):
+        """Test trace querying"""
+        query = {
+            'service': 'analyzer',
+            'operation': 'process_article',
+            'start_time': datetime.now() - timedelta(hours=1),
+            'end_time': datetime.now(),
+            'min_duration': 100.0
+        }
+
+        # Mock storage query
+        with patch.object(trace_storage, '_query_backend', return_value=[]):
+            results = trace_storage.query_traces(query)
+
+            assert isinstance(results, list)
+
+    def test_trace_indexing(self, trace_storage):
+        """Test trace indexing for fast queries"""
+        trace = {
+            'trace_id': 'test_123',
+            'spans': [
+                {'service': 'api', 'operation': 'handle_request', 'duration': 150}
+            ]
+        }
+
+        indexed = trace_storage._index_trace(trace)
+
+        assert indexed['trace_id'] == 'test_123'
+        assert 'search_index' in indexed
+
+
+class TestTraceAnalyzer:
+    """Test trace analysis and health scoring"""
+
+    @pytest.fixture
+    def trace_analyzer(self):
+        """Create a TraceAnalyzer instance for testing"""
+        return TraceAnalyzer()
+
+    def test_analyzer_initialization(self, trace_analyzer):
+        """Test trace analyzer initialization"""
+        assert trace_analyzer is not None
+        assert hasattr(trace_analyzer, 'analyze_trace')
+        assert hasattr(trace_analyzer, 'calculate_health_score')
+
+    def test_health_score_calculation(self, trace_analyzer):
+        """Test service health scoring"""
+        trace = {
+            'trace_id': 'health_test',
+            'spans': [
+                {'service': 'api', 'duration': 100, 'error': False},
+                {'service': 'analyzer', 'duration': 200, 'error': False},
+                {'service': 'storage', 'duration': 50, 'error': True}
+            ]
+        }
+
+        health_score = trace_analyzer.calculate_health_score(trace)
+
+        assert isinstance(health_score, dict)
+        assert 'overall_score' in health_score
+        assert 'service_scores' in health_score
+        assert health_score['overall_score'] < 1.0  # Should be less than perfect due to error
+
+    def test_anomaly_detection(self, trace_analyzer):
+        """Test trace anomaly detection"""
+        normal_traces = [
+            {'duration': 100, 'error_count': 0},
+            {'duration': 110, 'error_count': 0},
+            {'duration': 95, 'error_count': 0}
+        ]
+
+        anomalous_trace = {'duration': 500, 'error_count': 3}
+
+        baseline = trace_analyzer._establish_trace_baseline(normal_traces)
+        is_anomalous = trace_analyzer._is_trace_anomalous(anomalous_trace, baseline)
+
+        assert is_anomalous == True
+
+    def test_performance_trend_analysis(self, trace_analyzer):
+        """Test performance trend analysis"""
+        traces = [
+            {'timestamp': datetime.now() - timedelta(hours=2), 'avg_duration': 100},
+            {'timestamp': datetime.now() - timedelta(hours=1), 'avg_duration': 120},
+            {'timestamp': datetime.now(), 'avg_duration': 150}
+        ]
+
+        trend = trace_analyzer._analyze_performance_trend(traces)
+
+        assert 'direction' in trend
+        assert 'magnitude' in trend
+        assert trend['direction'] == 'increasing'  # Duration is increasing

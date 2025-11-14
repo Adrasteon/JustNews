@@ -11,6 +11,7 @@ import json
 import os
 import time
 from collections.abc import Mapping, Sequence
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlparse
 
@@ -43,6 +44,15 @@ from .crawler_utils import (
     get_source_performance_history,
     get_sources_by_domain,
     initialize_connection_pool,
+    record_paywall_detection,
+)
+from config import get_crawling_config
+from agents.crawler.enhancements import (
+    ModalHandler,
+    PaywallDetector,
+    ProxyManager,
+    StealthBrowserFactory,
+    UserAgentProvider,
 )
 
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
@@ -51,6 +61,13 @@ try:
 except (TypeError, ValueError):
     _site_batches_env = 4
 MAX_SITE_BATCHES = max(1, _site_batches_env)
+
+try:
+    PAYWALL_SKIP_ACTIVATION_THRESHOLD = max(
+        1, int(os.environ.get("UNIFIED_CRAWLER_PAYWALL_SKIP_THRESHOLD", "3"))
+    )
+except (TypeError, ValueError):
+    PAYWALL_SKIP_ACTIVATION_THRESHOLD = 3
 
 def call_analyst_tool(tool: str, *args, **kwargs) -> Any:
     payload = {"agent": "analyst", "tool": tool, "args": list(args), "kwargs": kwargs}
@@ -80,6 +97,80 @@ class CrawlerEngine:
         self.robots_checker = RobotsChecker()
 
         # AI analysis delegated to Analyst agent; no local model state
+
+        # Load crawling configuration and initialize enhancement helpers
+        crawling_config = get_crawling_config()
+        enhancements = crawling_config.enhancements
+
+        self.user_agent_provider = None
+        if enhancements.enable_user_agent_rotation:
+            try:
+                self.user_agent_provider = UserAgentProvider(
+                    pool=enhancements.user_agent_pool,
+                    per_domain=enhancements.per_domain_user_agents,
+                )
+                logger.info("✅ User agent rotation enabled")
+            except Exception as e:
+                logger.warning(f"Failed to initialize user agent provider: {e}")
+
+        self.proxy_manager = None
+        if enhancements.enable_proxy_pool and enhancements.proxy_pool:
+            try:
+                self.proxy_manager = ProxyManager(enhancements.proxy_pool)
+                logger.info("✅ Proxy pool enabled")
+            except Exception as e:
+                logger.warning(f"Failed to initialize proxy manager: {e}")
+
+        # PIA SOCKS5 proxy support (alternative to proxy pool)
+        self.pia_socks5_manager = None
+        if enhancements.enable_pia_socks5:
+            try:
+                from .enhancements import PIASocks5Manager
+                self.pia_socks5_manager = PIASocks5Manager(
+                    username=enhancements.pia_socks5_username,
+                    password=enhancements.pia_socks5_password
+                )
+                logger.info("✅ PIA SOCKS5 proxy enabled")
+            except Exception as e:
+                logger.warning(f"Failed to initialize PIA SOCKS5 manager: {e}")
+
+        self.stealth_factory = None
+        if enhancements.enable_stealth_headers and enhancements.stealth_profiles:
+            try:
+                self.stealth_factory = StealthBrowserFactory(enhancements.stealth_profiles)
+                logger.info("✅ Stealth headers enabled")
+            except Exception as e:
+                logger.warning(f"Failed to initialize stealth factory: {e}")
+
+        self.modal_handler = None
+        if enhancements.enable_modal_handler:
+            try:
+                consent_cookie = enhancements.consent_cookie or {}
+                cookie_name = consent_cookie.get("name", "justnews_cookie_consent")
+                cookie_value = consent_cookie.get("value", "1")
+                enable_cookie_injection = consent_cookie.get("enabled", True)
+                self.modal_handler = ModalHandler(
+                    enable_cookie_injection=enable_cookie_injection,
+                    consent_cookie_name=cookie_name,
+                    consent_cookie_value=cookie_value,
+                )
+                logger.info("✅ Modal handler enabled")
+            except Exception as e:
+                logger.warning(f"Failed to initialize modal handler: {e}")
+
+        self.paywall_detector = None
+        if enhancements.enable_paywall_detector:
+            try:
+                paywall_config = enhancements.paywall_detector
+                enable_remote = getattr(paywall_config, "enable_remote_analysis", False)
+                max_remote_chars = getattr(paywall_config, "max_remote_chars", 6000)
+                self.paywall_detector = PaywallDetector(
+                    enable_remote_analysis=enable_remote,
+                    max_remote_chars=max_remote_chars,
+                )
+                logger.info("✅ Paywall detector enabled")
+            except Exception as e:
+                logger.warning(f"Failed to initialize paywall detector: {e}")
 
         # Crawling components
         self.multi_site_crawler = MultiSiteCrawler()
@@ -123,6 +214,25 @@ class CrawlerEngine:
         # Background cleanup management
         self.cleanup_task = None
         self._start_background_cleanup()
+
+        # HITL integration controls
+        def _parse_int(env_key: str, default: int, minimum: int) -> int:
+            try:
+                return max(minimum, int(os.environ.get(env_key, str(default))))
+            except (TypeError, ValueError):
+                return default
+
+        self.hitl_base_url = (
+            os.environ.get("HITL_SERVICE_URL")
+            or os.environ.get("HITL_SERVICE_ADDRESS")
+            or "http://localhost:8040"
+        ).rstrip("/")
+        self.hitl_enabled = os.environ.get("ENABLE_HITL_PIPELINE", "true").lower() != "false"
+        self.hitl_stats_interval = _parse_int("HITL_STATS_INTERVAL_SECONDS", 60, 0)
+        self.hitl_backoff_seconds = _parse_int("HITL_FAILURE_BACKOFF_SECONDS", 180, 30)
+        self._hitl_last_stats_check = 0.0
+        self._hitl_failure_streak = 0
+        self._hitl_suspended_until = 0.0
 
     def _start_background_cleanup(self):
         """Start background cleanup task - disabled to prevent conflicts with async context manager"""
@@ -333,21 +443,37 @@ class CrawlerEngine:
                     self.performance_metrics["mode_usage"]["ultra_fast"] += 1
                     # BBC crawler returns summary with 'articles' key and handles its own ingestion
                     return results.get('articles', [])
-                except ImportError:
+                except Exception:
                     logger.warning("Ultra-fast BBC crawler not available, falling back to generic")
                 finally:
                     # Cleanup after BBC crawler
                     await self._cleanup_orphaned_processes()
 
             # Fallback to optimized generic crawling
-            crawler = GenericSiteCrawler(site_config, concurrent_browsers=3, batch_size=10)
+            logger.info(f"🔄 Executing generic fallback for {site_config.name}")
+            crawling_config = get_crawling_config()
+            enhancements = crawling_config.enhancements
+            crawler = GenericSiteCrawler(
+                site_config,
+                concurrent_browsers=3,
+                batch_size=10,
+                user_agent_provider=self.user_agent_provider,
+                proxy_manager=self.proxy_manager or self.pia_socks5_manager,
+                stealth_factory=self.stealth_factory,
+                modal_handler=self.modal_handler,
+                paywall_detector=self.paywall_detector,
+                enable_stealth_headers=enhancements.enable_stealth_headers,
+            )
             articles = await crawler.crawl_site(max_articles)
+            logger.info(f"🔄 Generic fallback returned {len(articles)} articles for {site_config.name}")
 
             self.performance_metrics["mode_usage"]["ultra_fast"] += 1
             return articles
 
         except Exception as e:
             logger.error(f"Ultra-fast crawling failed for {site_config.name}: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return []
         finally:
             # Always cleanup after ultra-fast mode
@@ -372,7 +498,19 @@ class CrawlerEngine:
         logger.info(f"🌐 Generic crawling: {site_config.name}")
 
         try:
-            crawler = GenericSiteCrawler(site_config, concurrent_browsers=2, batch_size=8)
+            crawling_config = get_crawling_config()
+            enhancements = crawling_config.enhancements
+            crawler = GenericSiteCrawler(
+                site_config,
+                concurrent_browsers=2,
+                batch_size=8,
+                user_agent_provider=self.user_agent_provider,
+                proxy_manager=self.proxy_manager or self.pia_socks5_manager,
+                stealth_factory=self.stealth_factory,
+                modal_handler=self.modal_handler,
+                paywall_detector=self.paywall_detector,
+                enable_stealth_headers=enhancements.enable_stealth_headers,
+            )
             articles = await crawler.crawl_site(max_articles)
 
             self.performance_metrics["mode_usage"]["generic"] += 1
@@ -525,8 +663,9 @@ class CrawlerEngine:
         start_time = time.time()
         site_articles: dict[str, list[dict[str, Any]]] = {}
         site_metrics: dict[str, dict[str, Any]] = {}
-        ingestion_totals = {"new_articles": 0, "duplicates": 0, "errors": 0}
-        total_attempted = 0
+        ingestion_totals = {"new_articles": 0, "duplicates": 0, "errors": 0, "paywalls": 0}
+        total_successful = 0
+        total_candidates = 0
         all_articles: list[dict[str, Any]] = []
 
         resolved_profiles: dict[str, dict[str, Any]] = {}
@@ -553,13 +692,14 @@ class CrawlerEngine:
         aggregation_lock = asyncio.Lock()
 
         async def crawl_site_with_limit(site_config: SiteConfig):
-            nonlocal total_attempted
+            nonlocal total_successful, total_candidates
             async with semaphore:
                 domain_key = site_config.domain or site_config.name or "unknown"
-                site_attempted = 0
+                site_candidates = 0
                 site_ingested = 0
                 site_duplicates = 0
                 site_errors = 0
+                site_paywalls = 0
                 site_articles_local: list[dict[str, Any]] = []
                 site_details: list[dict[str, Any]] = []
                 seen_keys: set[str] = set()
@@ -570,6 +710,30 @@ class CrawlerEngine:
                 batches_run = 0
 
                 profile_override = _lookup_profile(site_config)
+
+                def _filter_paywall_skips(batch: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
+                    """Separate paywalled articles from the batch and record skip metadata."""
+                    nonlocal site_articles_local, site_details, site_paywalls
+                    if not batch:
+                        return batch, 0
+
+                    paywall_skips = [article for article in batch if article.get('skip_ingest')]
+                    if paywall_skips:
+                        for article in paywall_skips:
+                            metadata = article.setdefault('extraction_metadata', {})
+                            paywall_meta = metadata.setdefault('paywall_detection', {})
+                            paywall_meta['skipped'] = True
+                            article['paywall_flag'] = True
+                            article['ingestion_status'] = 'paywall_skipped'
+                        site_articles_local.extend(paywall_skips)
+                        site_details.extend(
+                            {'url': article.get('url'), 'status': 'paywall_skipped'}
+                            for article in paywall_skips
+                        )
+                        site_paywalls += len(paywall_skips)
+
+                    remaining = [article for article in batch if not article.get('skip_ingest')]
+                    return remaining, len(paywall_skips)
 
                 try:
                     if profile_override and profile_override.get("engine", "crawl4ai") != "generic":
@@ -591,20 +755,29 @@ class CrawlerEngine:
                             filtered_batch.append(article)
 
                         if filtered_batch:
-                            take = remaining_budget if remaining_budget is not None else None
-                            if take is not None:
-                                filtered_batch = filtered_batch[:take]
+                            filtered_batch, paywall_skipped = _filter_paywall_skips(filtered_batch)
 
-                            site_attempted += len(filtered_batch)
-                            ingestion_result = await self._ingest_articles(filtered_batch)
-                            site_articles_local.extend(filtered_batch)
-                            site_details.extend(ingestion_result.get('details', []))
-                            site_ingested += ingestion_result['new_articles']
-                            site_duplicates += ingestion_result['duplicates']
-                            site_errors += ingestion_result['errors']
+                            if not filtered_batch:
+                                if paywall_skipped:
+                                    exhaustion_reason = exhaustion_reason or "paywalls_only"
+                                else:
+                                    await self._submit_hitl_candidates(filtered_batch, site_config)
+                                    exhaustion_reason = exhaustion_reason or "no_new_candidates"
+                            else:
+                                take = remaining_budget if remaining_budget is not None else None
+                                if take is not None:
+                                    filtered_batch = filtered_batch[:take]
 
-                            if remaining_budget is not None:
-                                remaining_budget = max(remaining_budget - ingestion_result['new_articles'], 0)
+                                site_candidates += len(filtered_batch)
+                                ingestion_result = await self._ingest_articles(filtered_batch)
+                                site_articles_local.extend(filtered_batch)
+                                site_details.extend(ingestion_result.get('details', []))
+                                site_ingested += ingestion_result['new_articles']
+                                site_duplicates += ingestion_result['duplicates']
+                                site_errors += ingestion_result['errors']
+
+                                if remaining_budget is not None:
+                                    remaining_budget = max(remaining_budget - ingestion_result['new_articles'], 0)
 
                         exhaustion_reason = exhaustion_reason or "profile_completed"
                     else:
@@ -625,6 +798,7 @@ class CrawlerEngine:
                             request_cap = max(1, request_cap)
 
                             raw_batch = await self.crawl_site(site_config, request_cap)
+                            batches_run += 1
                             if not raw_batch:
                                 exhaustion_reason = "no_candidates"
                                 break
@@ -638,14 +812,22 @@ class CrawlerEngine:
                                     seen_keys.add(key)
                                 filtered_batch.append(article)
 
+                            filtered_batch, paywall_skipped = _filter_paywall_skips(filtered_batch)
+
                             if not filtered_batch:
+                                if paywall_skipped:
+                                    if remaining_budget is not None and remaining_budget <= 0:
+                                        exhaustion_reason = "limit_reached"
+                                        break
+                                    continue
                                 exhaustion_reason = "no_new_candidates"
                                 break
 
                             if remaining_budget is not None:
                                 filtered_batch = filtered_batch[:remaining_budget]
 
-                            site_attempted += len(filtered_batch)
+                            await self._submit_hitl_candidates(filtered_batch, site_config)
+                            site_candidates += len(filtered_batch)
 
                             ingestion_result = await self._ingest_articles(filtered_batch)
                             site_articles_local.extend(filtered_batch)
@@ -657,11 +839,12 @@ class CrawlerEngine:
                             if remaining_budget is not None:
                                 remaining_budget = max(remaining_budget - ingestion_result['new_articles'], 0)
 
-                            batches_run += 1
-
                             if ingestion_result['new_articles'] == 0:
                                 exhaustion_reason = "ingestion_stalled"
                                 break
+
+                        if exhaustion_reason is None and site_ingested == 0 and site_paywalls > 0:
+                            exhaustion_reason = "paywalls_only"
 
                         if exhaustion_reason is None:
                             exhaustion_reason = (
@@ -676,29 +859,60 @@ class CrawlerEngine:
                     logger.error(f"Crawl failed for {domain_key}: {exc}")
 
                 finally:
+                    should_persist_paywall = (
+                        site_paywalls > 0
+                        and site_ingested == 0
+                        and (site_config.domain or site_config.source_id is not None)
+                    )
+                    if should_persist_paywall:
+                        try:
+                            status_changed = record_paywall_detection(
+                                source_id=site_config.source_id,
+                                domain=site_config.domain,
+                                skip_count=site_paywalls,
+                                threshold=PAYWALL_SKIP_ACTIVATION_THRESHOLD,
+                                paywall_type="hard",
+                            )
+                            if status_changed:
+                                logger.info(
+                                    "🚫 Marked %s as paywalled after %s skipped articles",
+                                    domain_key,
+                                    site_paywalls,
+                                )
+                        except Exception as err:  # pragma: no cover - defensive logging
+                            logger.debug(
+                                "Unable to persist paywall state for %s: %s",
+                                domain_key,
+                                err,
+                            )
+
                     async with aggregation_lock:
                         site_articles[domain_key] = site_articles_local
                         site_metrics[domain_key] = {
-                            "attempted": site_attempted,
+                            "attempted": site_ingested,
+                            "candidates": site_candidates,
                             "ingested": site_ingested,
                             "duplicates": site_duplicates,
                             "errors": site_errors,
+                            "paywalls": site_paywalls,
                             "exhaustion_reason": exhaustion_reason,
                             "details": site_details,
                         }
                         ingestion_totals["new_articles"] += site_ingested
                         ingestion_totals["duplicates"] += site_duplicates
                         ingestion_totals["errors"] += site_errors
-                        total_attempted += site_attempted
+                        ingestion_totals["paywalls"] += site_paywalls
+                        total_successful += site_ingested
+                        total_candidates += site_candidates
                         all_articles.extend(site_articles_local)
                         self.performance_metrics["articles_processed"] += site_ingested
                         self.performance_metrics["sites_crawled"] += 1
                         self.performance_metrics["errors"] += site_errors
                         logger.info(
-                            "🏁 Completed %s: %s new / %s attempted (reason=%s)",
+                            "🏁 Completed %s: %s ingested / %s candidates (reason=%s)",
                             site_config.name,
                             site_ingested,
-                            site_attempted,
+                            site_candidates,
                             exhaustion_reason or "limit_reached",
                         )
 
@@ -714,18 +928,26 @@ class CrawlerEngine:
         summary = {
             "unified_crawl": True,
             "sites_crawled": len(site_articles),
-            "total_articles_attempted": total_attempted,
+            "total_articles_attempted": total_successful,
+            "total_ingest_candidates": total_candidates,
             "total_articles": total_ingested,
             "articles_ingested": total_ingested,
             "duplicates_skipped": ingestion_totals["duplicates"],
             "ingestion_errors": ingestion_totals["errors"],
+            "total_paywalls_detected": ingestion_totals["paywalls"],
             "processing_time_seconds": total_time,
             "articles_per_second": articles_per_second,
             "strategy_breakdown": self.performance_metrics["mode_usage"],
             "site_breakdown": {domain: metrics["ingested"] for domain, metrics in site_metrics.items()},
             "site_attempted_breakdown": {domain: metrics["attempted"] for domain, metrics in site_metrics.items()},
+            "site_candidate_breakdown": {
+                domain: metrics["candidates"]
+                for domain, metrics in site_metrics.items()
+                if metrics["candidates"]
+            },
             "site_duplicate_breakdown": {domain: metrics["duplicates"] for domain, metrics in site_metrics.items() if metrics["duplicates"]},
             "site_error_breakdown": {domain: metrics["errors"] for domain, metrics in site_metrics.items() if metrics["errors"]},
+            "site_paywall_breakdown": {domain: metrics["paywalls"] for domain, metrics in site_metrics.items() if metrics["paywalls"]},
             "site_exhaustion": {
                 domain: metrics["exhaustion_reason"]
                 for domain, metrics in site_metrics.items()
@@ -744,13 +966,120 @@ class CrawlerEngine:
             summary["adaptive_summary"] = adaptive_summary
 
         logger.info(
-            "✅ Unified crawl completed: %s ingested (%s attempted) in %.2fs (%.2f new articles/sec)",
+            "✅ Unified crawl completed: %s ingested out of %s candidates in %.2fs (%.2f new articles/sec)",
             total_ingested,
-            total_attempted,
+            total_candidates,
             total_time,
             articles_per_second,
         )
         return summary
+
+    def _build_hitl_candidate_payload(self, article: dict, site_config: SiteConfig | None) -> dict[str, Any] | None:
+        """Create the payload expected by the HITL candidate endpoint."""
+        url = article.get('url')
+        if not url:
+            return None
+
+        extracted_text = article.get('content') or article.get('extracted_text') or ""
+        features: dict[str, Any] = {}
+        if extracted_text:
+            features["word_count"] = len(extracted_text.split())
+
+        extraction_meta = article.get('extraction_metadata') or {}
+        link_density = extraction_meta.get('link_density')
+        if isinstance(link_density, (int, float)):
+            features["link_density"] = float(link_density)
+
+        if article.get('confidence') is not None:
+            features["confidence"] = article.get('confidence')
+        if article.get('paywall_flag') is not None:
+            features["paywall_flag"] = bool(article.get('paywall_flag'))
+        if article.get('language'):
+            features["language"] = article.get('language')
+
+        candidate = {
+            "url": url,
+            "site_id": article.get('source_id') or getattr(site_config, "source_id", None),
+            "extracted_title": article.get('title') or article.get('extracted_title'),
+            "extracted_text": extracted_text,
+            "raw_html_ref": article.get('raw_html_ref'),
+            "features": features or None,
+            "crawler_ts": article.get('timestamp') or datetime.now(timezone.utc).isoformat(),
+            "crawler_job_id": article.get('crawler_job_id'),
+        }
+        return candidate
+
+    def _post_hitl_candidate_sync(self, payload: dict[str, Any]) -> bool:
+        """Synchronously post a single candidate to the HITL service."""
+        url = f"{self.hitl_base_url}/api/candidates"
+        try:
+            response = requests.post(url, json=payload, timeout=(2, 6))
+            response.raise_for_status()
+            self._hitl_failure_streak = 0
+            return True
+        except Exception as exc:  # noqa: BLE001 - avoid failing the crawl on HITL issues
+            self._hitl_failure_streak += 1
+            if self._hitl_failure_streak == 1:
+                logger.warning("HITL candidate submission failed (%s): %s", payload.get('url'), exc)
+            if self._hitl_failure_streak >= 3:
+                self._hitl_suspended_until = time.time() + self.hitl_backoff_seconds
+                logger.warning(
+                    "Suspending HITL submissions for %ss after %s consecutive failures",
+                    self.hitl_backoff_seconds,
+                    self._hitl_failure_streak,
+                )
+            return False
+
+    async def _submit_hitl_candidates(self, articles: list[dict], site_config: SiteConfig | None) -> None:
+        """Submit a batch of candidates to the HITL service and optionally log queue depth."""
+        if not self.hitl_enabled or not self.hitl_base_url:
+            return
+        if not articles:
+            return
+        now = time.time()
+        if self._hitl_suspended_until and now < self._hitl_suspended_until:
+            return
+
+        tasks = []
+        for article in articles:
+            payload = self._build_hitl_candidate_payload(article, site_config)
+            if not payload:
+                continue
+            tasks.append(asyncio.to_thread(self._post_hitl_candidate_sync, payload))
+
+        if not tasks:
+            return
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        if any(isinstance(result, bool) and result for result in results):
+            await self._maybe_log_hitl_stats()
+
+    async def _maybe_log_hitl_stats(self) -> None:
+        """Fetch and log HITL queue metrics at a controlled interval."""
+        if self.hitl_stats_interval <= 0 or not self.hitl_base_url:
+            return
+        now = time.time()
+        if now - self._hitl_last_stats_check < self.hitl_stats_interval:
+            return
+        self._hitl_last_stats_check = now
+
+        def _fetch() -> dict[str, Any] | None:
+            try:
+                response = requests.get(f"{self.hitl_base_url}/api/stats", timeout=(2, 6))
+                response.raise_for_status()
+                return response.json()
+            except Exception as exc:  # noqa: BLE001 - log softly, continue crawl
+                logger.debug("HITL stats fetch failed: %s", exc)
+                return None
+
+        stats = await asyncio.to_thread(_fetch)
+        if stats:
+            logger.info(
+                "HITL queue depth → pending=%s in_review=%s ingest_queue=%s",
+                stats.get("pending"),
+                stats.get("in_review"),
+                stats.get("ingest_queue_len"),
+            )
 
     async def _ingest_articles(self, articles: list[dict]) -> dict[str, Any]:
         """Ingest articles via the memory agent and annotate ingestion status."""

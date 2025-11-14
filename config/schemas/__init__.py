@@ -148,6 +148,48 @@ class CrawlingTimeouts(BaseModel):
     request_timeout_seconds: PositiveInt = Field(default=30, description="Request timeout")
 
 
+class ConsentCookieConfig(BaseModel):
+    """Synthetic consent cookie values."""
+
+    name: str = Field(default="justnews_cookie_consent", min_length=1)
+    value: str = Field(default="1", min_length=1)
+
+
+class PaywallDetectorConfig(BaseModel):
+    """Paywall detector configuration."""
+
+    enable_remote_analysis: bool = Field(default=False, description="Delegate to Analyst agent")
+    max_remote_chars: PositiveInt = Field(default=6000, description="Max characters for remote analysis")
+
+
+class StealthProfileConfig(BaseModel):
+    """Stealth browser profile configuration."""
+
+    user_agent: str = Field(..., description="User agent string")
+    accept_language: str = Field(default="en-US,en;q=0.9", description="Accept-Language header")
+    accept_encoding: str = Field(default="gzip, deflate, br", description="Accept-Encoding header")
+    headers: Dict[str, str] = Field(default_factory=dict, description="Additional HTTP headers")
+
+
+class CrawlingEnhancementsConfig(BaseModel):
+    """Optional enhancement toggles for the crawler."""
+
+    enable_user_agent_rotation: bool = Field(default=False, description="Rotate user agents")
+    enable_proxy_pool: bool = Field(default=False, description="Use proxy pool")
+    enable_modal_handler: bool = Field(default=False, description="Strip consent modals")
+    enable_paywall_detector: bool = Field(default=False, description="Detect paywalls")
+    enable_stealth_headers: bool = Field(default=False, description="Apply stealth HTTP headers")
+    enable_pia_socks5: bool = Field(default=False, description="Use PIA SOCKS5 proxy")
+    user_agent_pool: List[str] = Field(default_factory=list, description="User agent pool")
+    per_domain_user_agents: Dict[str, List[str]] = Field(default_factory=dict, description="Domain specific user agents")
+    proxy_pool: List[str] = Field(default_factory=list, description="Proxy URLs")
+    pia_socks5_username: Optional[str] = Field(default=None, description="PIA SOCKS5 username")
+    pia_socks5_password: Optional[str] = Field(default=None, description="PIA SOCKS5 password")
+    stealth_profiles: List[StealthProfileConfig] = Field(default_factory=list, description="Stealth header profiles")
+    consent_cookie: ConsentCookieConfig = Field(default_factory=ConsentCookieConfig)
+    paywall_detector: PaywallDetectorConfig = Field(default_factory=PaywallDetectorConfig)
+
+
 class CrawlingDelays(BaseModel):
     """Crawling delay settings"""
     between_batches_seconds: PositiveFloat = Field(default=0.5, description="Delay between batches")
@@ -159,6 +201,7 @@ class CrawlingConfig(BaseModel):
     """Web crawling configuration"""
     enabled: bool = Field(default=True, description="Enable crawling")
     obey_robots_txt: bool = Field(default=True, description="Respect robots.txt")
+    enhancements: CrawlingEnhancementsConfig = Field(default_factory=CrawlingEnhancementsConfig)
     respect_rate_limits: bool = Field(default=True, description="Respect rate limits")
     user_agent: str = Field(default="JustNewsAgent/4.0", description="HTTP user agent")
     robots_cache_hours: PositiveInt = Field(default=1, description="Robots.txt cache duration")

@@ -224,45 +224,102 @@ class MemoryEngine:
 
             # Execute statements transactionally
             chosen_source_id = None
+
+            def _clear_pending_results():
+                try:
+                    tmp_cursor = self.db_service.mb_conn.cursor()
+                    while tmp_cursor.nextset():
+                        pass
+                    tmp_cursor.close()
+                except Exception:
+                    pass
+
             try:
+                pending_commit = False
                 for sql, params in statements:
+                    cursor = None
                     try:
-                        # Execute each statement - the crawler builds the right SQL
-                        if "RETURNING id" in sql.upper():
-                            # For statements that return IDs (like source upsert)
-                            cursor = self.db_service.mb_conn.cursor(dictionary=True)
-                            cursor.execute(sql, tuple(params))
+                        sql_upper = sql.upper() if isinstance(sql, str) else ""
+                        params_tuple = tuple(params) if params is not None else ()
+
+                        if "RETURNING" in sql_upper:
+                            cursor = self.db_service.mb_conn.cursor(dictionary=True, buffered=True)
+                            cursor.execute(sql, params_tuple)
+                            pending_commit = True
+
                             result = cursor.fetchone()
-                            cursor.close()
                             if result and 'id' in result:
                                 chosen_source_id = result['id']
+
+                            try:
+                                while cursor.nextset():
+                                    cursor.fetchall()
+                            except Exception:
+                                pass
                         else:
-                            # For regular inserts
-                            cursor = self.db_service.mb_conn.cursor()
-                            cursor.execute(sql, tuple(params))
-                            self.db_service.mb_conn.commit()
-                            cursor.close()
+                            cursor = self.db_service.mb_conn.cursor(buffered=True)
+                            cursor.execute(sql, params_tuple)
+                            pending_commit = True
+
                     except Exception as stmt_e:
-                        # Handle duplicate key errors for sources gracefully
+                        try:
+                            if cursor is not None:
+                                while cursor.nextset():
+                                    cursor.fetchall()
+                        except Exception:
+                            pass
+
+                        try:
+                            self.db_service.mb_conn.rollback()
+                        except Exception:
+                            pass
+
+                        pending_commit = False
+
                         if "unique constraint" in str(stmt_e).lower() or "duplicate key" in str(stmt_e).lower():
                             logger.debug(f"Source already exists, skipping insert: {stmt_e}")
-                            # Try to get the existing source ID
-                            if "sources" in sql and "domain" in str(params):
-                                domain = params[1] if len(params) > 1 else None
+                            if "sources" in (sql or "") and params_tuple:
+                                domain = None
+                                if len(params_tuple) > 1:
+                                    domain = params_tuple[1]
                                 if domain:
-                                    cursor = self.db_service.mb_conn.cursor(dictionary=True)
-                                    cursor.execute("SELECT id FROM sources WHERE domain = %s", (domain,))
-                                    existing_source = cursor.fetchone()
-                                    cursor.close()
-                                    if existing_source:
-                                        chosen_source_id = existing_source['id']
-                                        logger.debug(f"Using existing source ID: {chosen_source_id}")
-                        else:
-                            # Re-raise non-duplicate errors
-                            raise stmt_e
+                                    lookup_cursor = None
+                                    try:
+                                        lookup_cursor = self.db_service.mb_conn.cursor(dictionary=True, buffered=True)
+                                        lookup_cursor.execute("SELECT id FROM sources WHERE domain = %s", (domain,))
+                                        existing_source = lookup_cursor.fetchone()
+                                        if existing_source:
+                                            chosen_source_id = existing_source['id']
+                                            logger.debug(f"Using existing source ID: {chosen_source_id}")
+                                    except Exception as lookup_error:
+                                        logger.debug(f"Failed to fetch existing source ID: {lookup_error}")
+                                    finally:
+                                        if lookup_cursor:
+                                            try:
+                                                lookup_cursor.close()
+                                            except Exception:
+                                                pass
+                            continue
+
+                        raise
+                    finally:
+                        if cursor:
+                            try:
+                                cursor.close()
+                            except Exception:
+                                pass
+
+                if pending_commit:
+                    try:
+                        self.db_service.mb_conn.commit()
+                    except Exception as commit_error:
+                        logger.error(f"Failed to commit transaction: {commit_error}")
+                        _clear_pending_results()
+                        return {"status": "error", "error": str(commit_error)}
 
             except Exception as e:
                 logger.error(f"Database transaction failed: {e}")
+                _clear_pending_results()
                 return {"status": "error", "error": str(e)}
 
             # Now save the article content
@@ -342,6 +399,14 @@ class MemoryEngine:
             return result.get("count", 0) if result else 0
         except Exception as e:
             logger.error(f"Error getting article count: {e}")
+            # Try to clear any unread results
+            try:
+                cursor = self.db_service.mb_conn.cursor()
+                while cursor.nextset():
+                    pass
+                cursor.close()
+            except Exception:
+                pass
             return 0
 
     def get_sources(self, limit: int = 10) -> list:

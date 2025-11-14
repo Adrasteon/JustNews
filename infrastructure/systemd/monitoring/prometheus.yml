@@ -27,18 +27,15 @@ scrape_configs:
   - job_name: justnews-agents
     static_configs:
       - targets:
-          - '127.0.0.1:8001'
-          - '127.0.0.1:8002'
-          - '127.0.0.1:8003'
-          - '127.0.0.1:8004'
-          - '127.0.0.1:8005'
-          - '127.0.0.1:8006'
-          - '127.0.0.1:8007'
-          - '127.0.0.1:8008'
-          - '127.0.0.1:8009'
-          - '127.0.0.1:8010'
-          - '127.0.0.1:8011'
-          - '127.0.0.1:8012'
+          - '127.0.0.1:8001'  # chief_editor
+          - '127.0.0.1:8002'  # scout
+          - '127.0.0.1:8003'  # fact_checker
+          - '127.0.0.1:8004'  # analyst
+          - '127.0.0.1:8005'  # synthesizer
+          - '127.0.0.1:8006'  # critic
+          - '127.0.0.1:8007'  # memory
+          - '127.0.0.1:8008'  # reasoning
+          - '127.0.0.1:8012'  # (additional agent port seen in netstat)
 
   - job_name: justnews-node-exporter
     static_configs:

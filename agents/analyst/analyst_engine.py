@@ -38,13 +38,22 @@ warnings.filterwarnings("ignore", category=UserWarning, module="torch")
 warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
 
 # Dependency detection
-_spacy_spec = importlib.util.find_spec("spacy")
+try:
+    _spacy_spec = importlib.util.find_spec("spacy")
+except ValueError:
+    _spacy_spec = None
 HAS_SPACY = _spacy_spec is not None
 
-_transformers_spec = importlib.util.find_spec("transformers")
+try:
+    _transformers_spec = importlib.util.find_spec("transformers")
+except ValueError:
+    _transformers_spec = None
 HAS_TRANSFORMERS = _transformers_spec is not None
 
-_torch_spec = importlib.util.find_spec("torch")
+try:
+    _torch_spec = importlib.util.find_spec("torch")
+except ValueError:
+    _torch_spec = None
 TORCH_AVAILABLE = _torch_spec is not None
 
 try:

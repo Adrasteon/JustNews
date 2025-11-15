@@ -30,7 +30,7 @@ def is_excluded(path):
 
 def find_issues():
     issues = []
-    for dirpath, dirnames, filenames in os.walk(ROOT):
+    for dirpath, _dirnames, filenames in os.walk(ROOT):
         for fname in filenames:
             if not fname.endswith(".py"):
                 continue

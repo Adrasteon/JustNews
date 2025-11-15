@@ -7,7 +7,25 @@ on:
     branches: [ main ]
 
 jobs:
+  processing_check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Processing time sanity check
+        run: |
+          make check-processing-time
+
   pytest:
+    needs: processing_check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -32,9 +50,10 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f environment.yml ]; then pip install -r requirements.txt || true; fi
 
-      - name: Processing time sanity check
+      - name: Install test dependencies
         run: |
-          python3 scripts/check_processing_time.py
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run tests
         run: |

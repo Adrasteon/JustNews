@@ -15,7 +15,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 PATTERNS = [
     # Exact no-op elapsed pattern (always zero)
-    re.compile(r"\btime\.time\(\)\s*-\s*time\.time\(\)\b"),
+    re.compile(r"time\.time\(\)\s*-\s*time\.time\(\)"),
     # Processing time assigned directly to time.time() without subtraction
     re.compile(r"[\'\"]processing_time[\'\"]\s*:\s*time\.time\(\)(?!\s*-)"),
     re.compile(r"\bprocessing_time\s*:\s*time\.time\(\)(?!\s*-)"),

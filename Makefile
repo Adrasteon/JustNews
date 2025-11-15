@@ -194,7 +194,7 @@ docs-validate:
 	$(call log_success,"Documentation validation completed")
 
 # CI validation targets
-ci-check: lint test security-check
+ci-check: check-processing-time lint test security-check
 	$(call log_success,"CI checks passed")
 
 security-check:

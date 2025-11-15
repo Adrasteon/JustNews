@@ -104,8 +104,15 @@ test-performance:
 	$(call log_success,"Performance tests completed")
 
 # Code quality targets
-lint: lint-code lint-docs
+
+lint: check-processing-time lint-code lint-docs
 	$(call log_success,"Code quality checks passed")
+
+# Repo-specific checks
+check-processing-time:
+	$(call log_info,"Checking processing_time usage patterns...")
+	python3 scripts/check_processing_time.py
+	$(call log_success,"Processing time checks completed")
 
 lint-code:
 	$(call log_info,"Running code linting...")
@@ -187,7 +194,7 @@ docs-validate:
 	$(call log_success,"Documentation validation completed")
 
 # CI validation targets
-ci-check: lint test security-check
+ci-check: check-processing-time lint test security-check
 	$(call log_success,"CI checks passed")
 
 security-check:

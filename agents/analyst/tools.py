@@ -17,19 +17,18 @@ Key Functions:
 All functions include robust error handling, validation, and fallbacks.
 """
 
-import asyncio
 import json
-import os
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from common.observability import get_logger
-from .analyst_engine import AnalystEngine, AnalystConfig
+
+from .analyst_engine import AnalystConfig, AnalystEngine
 
 logger = get_logger(__name__)
 
 # Global engine instance
-_engine: Optional[AnalystEngine] = None
+_engine: AnalystEngine | None = None
 
 def get_analyst_engine() -> AnalystEngine:
     """Get or create the global analyst engine instance."""
@@ -43,7 +42,7 @@ async def process_analysis_request(
     text: str,
     analysis_type: str,
     **kwargs
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Process an analysis request using the analyst engine.
 
@@ -86,7 +85,7 @@ async def process_analysis_request(
         logger.error(f"❌ {analysis_type} analysis failed: {e}")
         return {"error": str(e), "details": f"Analysis type: {analysis_type}. Exception: {str(e)}"}
 
-def identify_entities(text: str) -> Dict[str, Any]:
+def identify_entities(text: str) -> dict[str, Any]:
     """
     Extract named entities from text.
 
@@ -109,7 +108,7 @@ def identify_entities(text: str) -> Dict[str, Any]:
     engine = get_analyst_engine()
     return engine.extract_entities(text)
 
-def analyze_text_statistics(text: str) -> Dict[str, Any]:
+def analyze_text_statistics(text: str) -> dict[str, Any]:
     """
     Perform comprehensive statistical analysis of text content.
 
@@ -140,7 +139,7 @@ def analyze_text_statistics(text: str) -> Dict[str, Any]:
     engine = get_analyst_engine()
     return engine.analyze_text_statistics(text)
 
-def extract_key_metrics(text: str, url: str = None) -> Dict[str, Any]:
+def extract_key_metrics(text: str, url: str = None) -> dict[str, Any]:
     """
     Extract key numerical and statistical metrics from news text.
 
@@ -164,7 +163,7 @@ def extract_key_metrics(text: str, url: str = None) -> Dict[str, Any]:
     engine = get_analyst_engine()
     return engine.extract_key_metrics(text, url)
 
-def analyze_content_trends(texts: List[str], urls: List[str] = None) -> Dict[str, Any]:
+def analyze_content_trends(texts: list[str], urls: list[str] = None) -> dict[str, Any]:
     """
     Analyze trends and patterns across multiple content pieces.
 
@@ -192,7 +191,7 @@ def analyze_content_trends(texts: List[str], urls: List[str] = None) -> Dict[str
     engine = get_analyst_engine()
     return engine.analyze_content_trends(texts, urls)
 
-def analyze_sentiment(text: str) -> Dict[str, Any]:
+def analyze_sentiment(text: str) -> dict[str, Any]:
     """
     Analyze sentiment of text content.
 
@@ -216,7 +215,7 @@ def analyze_sentiment(text: str) -> Dict[str, Any]:
     engine = get_analyst_engine()
     return engine.analyze_sentiment(text)
 
-def detect_bias(text: str) -> Dict[str, Any]:
+def detect_bias(text: str) -> dict[str, Any]:
     """
     Detect bias in text content.
 
@@ -242,7 +241,7 @@ def detect_bias(text: str) -> Dict[str, Any]:
     engine = get_analyst_engine()
     return engine.detect_bias(text)
 
-def analyze_sentiment_and_bias(text: str) -> Dict[str, Any]:
+def analyze_sentiment_and_bias(text: str) -> dict[str, Any]:
     """
     Perform comprehensive analysis combining sentiment and bias detection.
 
@@ -265,7 +264,7 @@ def analyze_sentiment_and_bias(text: str) -> Dict[str, Any]:
     engine = get_analyst_engine()
     return engine.analyze_sentiment_and_bias(text)
 
-def score_sentiment(text: str) -> Dict[str, Any]:
+def score_sentiment(text: str) -> dict[str, Any]:
     """
     Legacy sentiment scoring function for backward compatibility.
 
@@ -277,7 +276,7 @@ def score_sentiment(text: str) -> Dict[str, Any]:
     """
     return analyze_sentiment(text)
 
-def score_bias(text: str) -> Dict[str, Any]:
+def score_bias(text: str) -> dict[str, Any]:
     """
     Legacy bias scoring function for backward compatibility.
 
@@ -289,7 +288,7 @@ def score_bias(text: str) -> Dict[str, Any]:
     """
     return detect_bias(text)
 
-def log_feedback(event: str, details: Dict[str, Any]) -> None:
+def log_feedback(event: str, details: dict[str, Any]) -> None:
     """
     Log analysis feedback for monitoring and improvement.
 
@@ -299,12 +298,18 @@ def log_feedback(event: str, details: Dict[str, Any]) -> None:
     """
     try:
         engine = get_analyst_engine()
-        # The engine handles feedback logging internally
-        logger.info(f"Feedback logged: {event}")
+        # If the engine has a feedback method, use it; otherwise, fall back to logging
+        if hasattr(engine, 'log_feedback'):
+            try:
+                engine.log_feedback(event, details)
+            except Exception:
+                logger.info(f"Feedback logged (engine failed): {event}")
+        else:
+            logger.info(f"Feedback logged: {event}")
     except Exception as e:
         logger.warning(f"Failed to log feedback: {e}")
 
-async def health_check() -> Dict[str, Any]:
+async def health_check() -> dict[str, Any]:
     """
     Perform health check on analyst components.
 
@@ -343,7 +348,7 @@ async def health_check() -> Dict[str, Any]:
             "error": str(e)
         }
 
-def validate_analysis_result(result: Dict[str, Any], expected_fields: List[str] = None) -> bool:
+def validate_analysis_result(result: dict[str, Any], expected_fields: list[str] = None) -> bool:
     """
     Validate analysis result structure.
 
@@ -366,7 +371,7 @@ def validate_analysis_result(result: Dict[str, Any], expected_fields: List[str] 
     # Basic validation for common fields
     return "method" in result or "total_entities" in result or "word_count" in result
 
-def format_analysis_output(result: Dict[str, Any], format_type: str = "json") -> str:
+def format_analysis_output(result: dict[str, Any], format_type: str = "json") -> str:
     """
     Format analysis result for output.
 

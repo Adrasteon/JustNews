@@ -45,8 +45,9 @@ async def discover_sources_tool(
     """
     logger.info(f"🔍 Discovering sources: domains={domains}, max_sources={max_sources}")
 
+    # start_time is outside the try/except so we can compute elapsed on exception paths as well
+    start_time = time.time()
     try:
-        start_time = time.time()
 
         # Discover sources
         sources = await engine.discover_sources(domains, max_sources)
@@ -68,7 +69,7 @@ async def discover_sources_tool(
             "sources": [],
             "total_found": 0,
             "error": str(e),
-            "processing_time": time.time() - time.time()
+            "processing_time": time.time() - start_time
         }
 
 async def crawl_url_tool(
@@ -137,16 +138,20 @@ async def deep_crawl_tool(
     """
     logger.info(f"🔬 Deep crawling site: {site_url} (max_pages: {max_pages})")
 
+    # start_time is outside the try/except to compute elapsed time on failure paths
+    start_time = time.time()
     try:
         # Perform deep crawl
         result = await engine.deep_crawl_site(site_url, max_pages)
+
+        processing_time = time.time() - start_time
 
         return {
             "success": result.get("success", False),
             "site_url": site_url,
             "pages_crawled": result.get("pages_crawled", 0),
             "articles_found": result.get("articles_found", []),
-            "processing_time": time.time()  # Approximate
+            "processing_time": processing_time
         }
 
     except Exception as e:
@@ -156,7 +161,8 @@ async def deep_crawl_tool(
             "site_url": site_url,
             "pages_crawled": 0,
             "articles_found": [],
-            "error": str(e)
+            "error": str(e),
+            "processing_time": time.time() - start_time
         }
 
 async def analyze_sentiment_tool(

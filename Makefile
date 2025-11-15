@@ -107,6 +107,12 @@ test-performance:
 lint: lint-code lint-docs
 	$(call log_success,"Code quality checks passed")
 
+# Repo-specific checks
+check-processing-time:
+	$(call log_info,"Checking processing_time usage patterns...")
+	python3 scripts/check_processing_time.py
+	$(call log_success,"Processing time checks completed")
+
 lint-code:
 	$(call log_info,"Running code linting...")
 	ruff check . --fix

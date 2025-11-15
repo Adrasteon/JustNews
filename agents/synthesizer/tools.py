@@ -43,8 +43,9 @@ async def cluster_articles_tool(
     """
     logger.info(f"🎯 Clustering {len(article_texts)} articles into {n_clusters} clusters")
 
+    # start_time is outside the try/except so we can compute elapsed on exception paths
+    start_time = time.time()
     try:
-        start_time = time.time()
 
         # Validate input
         if not article_texts:
@@ -96,7 +97,7 @@ async def cluster_articles_tool(
             "articles_processed": len(article_texts),
             "method": "error_fallback",
             "error": str(e),
-            "processing_time": time.time() - time.time()
+            "processing_time": time.time() - start_time
         }
 
 async def neutralize_text_tool(
@@ -115,8 +116,9 @@ async def neutralize_text_tool(
     """
     logger.info(f"⚖️ Neutralizing text ({len(text)} chars)")
 
+    # start_time is outside the try/except so we can compute elapsed on exception paths
+    start_time = time.time()
     try:
-        start_time = time.time()
 
         # Validate input
         if not text or not text.strip():
@@ -165,7 +167,7 @@ async def neutralize_text_tool(
             "original_text": text,
             "method": "error_fallback",
             "error": str(e),
-            "processing_time": time.time() - time.time()
+            "processing_time": time.time() - start_time
         }
 
 async def aggregate_cluster_tool(
@@ -184,8 +186,9 @@ async def aggregate_cluster_tool(
     """
     logger.info(f"📝 Aggregating {len(article_texts)} articles")
 
+    # start_time is outside the try/except so we can compute elapsed on exception paths
+    start_time = time.time()
     try:
-        start_time = time.time()
 
         # Validate input
         if not article_texts:
@@ -236,7 +239,7 @@ async def aggregate_cluster_tool(
             "method": "error_fallback",
             "articles_processed": len(article_texts),
             "error": str(e),
-            "processing_time": time.time() - time.time()
+            "processing_time": time.time() - start_time
         }
 
 async def synthesize_gpu_tool(
@@ -259,8 +262,9 @@ async def synthesize_gpu_tool(
     """
     logger.info(f"🚀 GPU synthesis: {len(articles)} articles, max_clusters={max_clusters}")
 
+    # start_time is outside the try/except so we can compute elapsed on exception paths
+    start_time = time.time()
     try:
-        start_time = time.time()
 
         # Validate input
         if not articles:
@@ -326,7 +330,7 @@ async def synthesize_gpu_tool(
             "method": "emergency_fallback",
             "articles_processed": len(articles),
             "error": str(e),
-            "processing_time": time.time() - time.time()
+            "processing_time": time.time() - start_time
         }
 
 def synthesize_content(

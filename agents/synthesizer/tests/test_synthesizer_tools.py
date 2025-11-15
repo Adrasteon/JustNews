@@ -1,10 +1,9 @@
 import pytest
-import pytest_asyncio
 
 from agents.synthesizer.tools import (
+    aggregate_cluster_tool,
     cluster_articles_tool,
     neutralize_text_tool,
-    aggregate_cluster_tool,
     synthesize_gpu_tool,
 )
 
@@ -85,7 +84,7 @@ async def test_neutralize_text_failure():
 @pytest.mark.asyncio
 async def test_aggregate_cluster_success():
     engine = FakeEngine()
-    res = await aggregate_cluster_tool(engine, article_texts=["a", "b"])    
+    res = await aggregate_cluster_tool(engine, article_texts=["a", "b"])
     assert res['success']
     assert 'summary' in res
     assert res['processing_time'] >= 0
@@ -95,7 +94,7 @@ async def test_aggregate_cluster_success():
 async def test_aggregate_cluster_failure():
     engine = FakeEngine()
     engine._raise = True
-    res = await aggregate_cluster_tool(engine, article_texts=["a", "b"])    
+    res = await aggregate_cluster_tool(engine, article_texts=["a", "b"])
     assert not res['success']
     assert res['processing_time'] >= 0
 

@@ -1,12 +1,10 @@
-import asyncio
-import types
 import pytest
 
 from agents.scout.tools import (
-    discover_sources_tool,
-    deep_crawl_tool,
     analyze_sentiment_tool,
+    deep_crawl_tool,
     detect_bias_tool,
+    discover_sources_tool,
 )
 
 

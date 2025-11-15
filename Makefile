@@ -104,7 +104,8 @@ test-performance:
 	$(call log_success,"Performance tests completed")
 
 # Code quality targets
-lint: lint-code lint-docs
+
+lint: check-processing-time lint-code lint-docs
 	$(call log_success,"Code quality checks passed")
 
 # Repo-specific checks

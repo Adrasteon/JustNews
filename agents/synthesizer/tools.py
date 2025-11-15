@@ -18,18 +18,19 @@ All functions include robust error handling and fallbacks.
 
 import asyncio
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from common.observability import get_logger
-from .synthesizer_engine import SynthesizerEngine, SynthesisResult
+
+from .synthesizer_engine import SynthesizerEngine
 
 logger = get_logger(__name__)
 
 async def cluster_articles_tool(
     engine: SynthesizerEngine,
-    article_texts: List[str],
+    article_texts: list[str],
     n_clusters: int = 3
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Cluster articles using advanced ML techniques.
 
@@ -103,7 +104,7 @@ async def cluster_articles_tool(
 async def neutralize_text_tool(
     engine: SynthesizerEngine,
     text: str
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Neutralize text for bias and aggressive language.
 
@@ -172,8 +173,8 @@ async def neutralize_text_tool(
 
 async def aggregate_cluster_tool(
     engine: SynthesizerEngine,
-    article_texts: List[str]
-) -> Dict[str, Any]:
+    article_texts: list[str]
+) -> dict[str, Any]:
     """
     Aggregate a cluster of articles into a synthesis.
 
@@ -244,10 +245,10 @@ async def aggregate_cluster_tool(
 
 async def synthesize_gpu_tool(
     engine: SynthesizerEngine,
-    articles: List[Dict[str, Any]],
+    articles: list[dict[str, Any]],
     max_clusters: int = 5,
     context: str = "news analysis"
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     GPU-accelerated full synthesis pipeline.
 
@@ -335,7 +336,7 @@ async def synthesize_gpu_tool(
 
 def synthesize_content(
     engine: SynthesizerEngine,
-    articles: List[Dict[str, Any]],
+    articles: list[dict[str, Any]],
     max_clusters: int = 5,
     context: str = "news analysis"
 ) -> Any:
@@ -353,7 +354,7 @@ def synthesize_content(
 
     return loop.run_until_complete(_run())
 
-async def health_check(engine: SynthesizerEngine) -> Dict[str, Any]:
+async def health_check(engine: SynthesizerEngine) -> dict[str, Any]:
     """
     Perform comprehensive health check on synthesizer components.
 
@@ -435,7 +436,7 @@ async def health_check(engine: SynthesizerEngine) -> Dict[str, Any]:
             "error": str(e)
         }
 
-async def get_stats(engine: SynthesizerEngine) -> Dict[str, Any]:
+async def get_stats(engine: SynthesizerEngine) -> dict[str, Any]:
     """
     Get comprehensive processing statistics and performance metrics.
 
@@ -472,7 +473,7 @@ async def get_stats(engine: SynthesizerEngine) -> Dict[str, Any]:
             "error": str(e)
         }
 
-def validate_clustering_request(article_texts: List[str], n_clusters: int) -> tuple[bool, str]:
+def validate_clustering_request(article_texts: list[str], n_clusters: int) -> tuple[bool, str]:
     """
     Validate clustering request parameters.
 
@@ -509,7 +510,7 @@ def validate_clustering_request(article_texts: List[str], n_clusters: int) -> tu
     except Exception as e:
         return False, f"Validation error: {e}"
 
-def validate_synthesis_request(articles: List[Dict[str, Any]]) -> tuple[bool, str]:
+def validate_synthesis_request(articles: list[dict[str, Any]]) -> tuple[bool, str]:
     """
     Validate synthesis request parameters.
 
@@ -547,7 +548,7 @@ def validate_synthesis_request(articles: List[Dict[str, Any]]) -> tuple[bool, st
     except Exception as e:
         return False, f"Validation error: {e}"
 
-def format_clustering_result(result: Dict[str, Any], format_type: str = "json") -> str:
+def format_clustering_result(result: dict[str, Any], format_type: str = "json") -> str:
     """
     Format clustering result for output.
 
@@ -610,7 +611,7 @@ def format_clustering_result(result: Dict[str, Any], format_type: str = "json") 
     except Exception as e:
         return f"Formatting error: {e}"
 
-def format_synthesis_result(result: Dict[str, Any], format_type: str = "json") -> str:
+def format_synthesis_result(result: dict[str, Any], format_type: str = "json") -> str:
     """
     Format synthesis result for output.
 

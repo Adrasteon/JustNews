@@ -39,7 +39,7 @@ def find_issues():
             if is_excluded(rel):
                 continue
             try:
-                with open(full, "r", encoding="utf-8") as f:
+                with open(full, encoding="utf-8") as f:
                     for n, line in enumerate(f, start=1):
                         for pattern in PATTERNS:
                             if pattern.search(line):

@@ -32,6 +32,10 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f environment.yml ]; then pip install -r requirements.txt || true; fi
 
+      - name: Processing time sanity check
+        run: |
+          python3 scripts/check_processing_time.py
+
       - name: Run tests
         run: |
           pytest -q

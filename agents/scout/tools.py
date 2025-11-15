@@ -16,21 +16,21 @@ Key Functions:
 All functions include robust error handling and fallbacks.
 """
 
-import asyncio
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from common.observability import get_logger
-from .scout_engine import ScoutEngine, CrawlMode
+
+from .scout_engine import CrawlMode, ScoutEngine
 
 logger = get_logger(__name__)
 
 async def discover_sources_tool(
     engine: ScoutEngine,
-    domains: Optional[List[str]] = None,
+    domains: list[str] | None = None,
     max_sources: int = 10,
     include_social: bool = True
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Discover news sources using intelligent algorithms.
 
@@ -78,7 +78,7 @@ async def crawl_url_tool(
     mode: CrawlMode = CrawlMode.STANDARD,
     max_depth: int = 2,
     follow_external: bool = False
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Crawl a specific URL for content extraction.
 
@@ -123,7 +123,7 @@ async def deep_crawl_tool(
     site_url: str,
     max_pages: int = 50,
     concurrent_requests: int = 5
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Perform deep crawling of a website.
 
@@ -169,7 +169,7 @@ async def analyze_sentiment_tool(
     engine: ScoutEngine,
     text: str,
     include_confidence: bool = True
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Analyze sentiment in text using AI models.
 
@@ -220,7 +220,7 @@ async def detect_bias_tool(
     engine: ScoutEngine,
     text: str,
     include_explanation: bool = True
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Detect bias in text using AI models.
 
@@ -282,7 +282,7 @@ def generate_bias_explanation(bias_score: float, bias_type: str) -> str:
     else:
         return f"Text exhibits strong {bias_type} bias. This content may present information in a one-sided manner."
 
-async def health_check(engine: ScoutEngine) -> Dict[str, Any]:
+async def health_check(engine: ScoutEngine) -> dict[str, Any]:
     """
     Perform health check on Scout components.
 
@@ -350,7 +350,7 @@ async def health_check(engine: ScoutEngine) -> Dict[str, Any]:
             "error": str(e)
         }
 
-async def get_stats(engine: ScoutEngine) -> Dict[str, Any]:
+async def get_stats(engine: ScoutEngine) -> dict[str, Any]:
     """
     Get processing statistics and performance metrics.
 
@@ -435,7 +435,7 @@ def validate_analysis_request(text: str) -> tuple[bool, str]:
     except Exception as e:
         return False, f"Validation error: {e}"
 
-def format_crawl_result(result: Dict[str, Any], format_type: str = "json") -> str:
+def format_crawl_result(result: dict[str, Any], format_type: str = "json") -> str:
     """
     Format crawl result for output.
 
@@ -490,7 +490,7 @@ def format_crawl_result(result: Dict[str, Any], format_type: str = "json") -> st
     except Exception as e:
         return f"Formatting error: {e}"
 
-def format_analysis_result(result: Dict[str, Any], format_type: str = "json") -> str:
+def format_analysis_result(result: dict[str, Any], format_type: str = "json") -> str:
     """
     Format analysis result for output.
 

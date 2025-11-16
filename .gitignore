@@ -24,10 +24,8 @@ kg_storage/
 agents/memory/config/gpu/optimization_history.json
 agents/hitl_service/*.db
 
-# Editor helpers
 .copilot-instructions
 .vscode/
-unrefactored/
 .env
 global.env
 model_store

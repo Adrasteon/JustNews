@@ -1,0 +1,33 @@
+C4Context
+  title JustNews - Analysis & HITL
+  Enterprise_Boundary(b0, "Analysis & HITL") {
+    System(synthesizer, "Synthesizer", "Clustering, neutralization, summaries")
+    System(fact_checker, "Fact Checker", "Claim verification and source credibility")
+    System(analyst, "Analyst", "Quantitative stats, NER, sentiment, bias")
+    System(critic, "Critic", "Editorial critique & quality scoring")
+    System(hitl, "HITL Service", "Human-in-the-loop candidate review")
+    System(chief_editor, "Chief Editor", "Editorial decisioning & publish control")
+  }
+
+  # flows
+  Rel(synthesizer, fact_checker, "Requests fact-checks")
+  Rel(synthesizer, memory, "Reads articles from memory for synthesis")
+  Rel(analyst, memory, "Reads articles for analytics")
+  Rel(critic, memory, "Reads articles for quality assessment")
+  Rel(chief_editor, synthesizer, "Requests synthesized summaries")
+  Rel(chief_editor, hitl, "Initiates HITL review for edge-cases")
+  Rel(hitl, fact_checker, "Uses fact-checking to inform reviewers")
+
+  UpdateElementStyle(synthesizer, $bgColor="#F9F2FF", $borderColor="#A44CFF")
+  UpdateElementStyle(fact_checker, $bgColor="#F7FFF3", $borderColor="#27AE60")
+  UpdateElementStyle(analyst, $bgColor="#F0F7FF", $borderColor="#2D9CDB")
+  UpdateElementStyle(critic, $bgColor="#FFF4EF", $borderColor="#FF8C42")
+  UpdateElementStyle(hitl, $bgColor="#FFF7F3", $borderColor="#FF6B6B")
+  UpdateElementStyle(chief_editor, $bgColor="#FFF8E6", $borderColor="#FFB703")
+
+  UpdateRelStyle(synthesizer, fact_checker, $textColor="#111", $lineColor="#27AE60", $offsetX="10")
+  UpdateRelStyle(chief_editor, hitl, $textColor="#111", $lineColor="#FF6B6B", $offsetX="5")
+  UpdateRelStyle(hitl, fact_checker, $textColor="#111", $lineColor="#FF6B6B", $offsetX="5")
+  UpdateRelStyle(synthesizer, memory, $textColor="#111", $lineColor="#A44CFF", $offsetX="10")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

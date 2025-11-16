@@ -1,0 +1,29 @@
+C4Context
+  title JustNews - Ingestion Pipeline
+  Enterprise_Boundary(b0, "Ingestion & Store") {
+    System(scout, "Scout", "Source discovery & discovery seeds")
+    System(c4ai, "C4AI Bridge", "External Crawl4AI integration")
+    System(crawler, "Crawler", "Crawl + extractor + job store")
+    System(journalist, "Journalist", "Publishing-driven discovery & assembly")
+    System(memory, "Memory/Vector Store", "Article ingestion, embeddings, Chroma + MariaDB")
+  }
+
+  # Edges
+  Rel(scout, crawler, "Seeds crawls (source discovery)")
+  Rel(c4ai, crawler, "Bridge – sends crawls to crawler / obtains extract results")
+  Rel(crawler, memory, "Ingests extracted articles to Memory (MariaDB + Chroma)", "SQL/Chroma")
+  Rel(journalist, c4ai, "Requests crawls / receives page snapshots")
+  Rel(memory, c4ai, "(Optional) Metadata enrichment from C4AI results")
+
+  UpdateElementStyle(scout, $bgColor="#FFF8E6", $borderColor="#F6A623")
+  UpdateElementStyle(c4ai, $bgColor="#F0F7FF", $borderColor="#2D9CDB")
+  UpdateElementStyle(crawler, $bgColor="#F7F3FF", $borderColor="#9B6BFF")
+  UpdateElementStyle(journalist, $bgColor="#FFEFF5", $borderColor="#FF6B9B")
+  UpdateElementStyle(memory, $bgColor="#F0FFF4", $borderColor="#2ECC71")
+
+  UpdateRelStyle(crawler, memory, $textColor="#333", $lineColor="#2ECC71", $offsetX="10")
+  UpdateRelStyle(scout, crawler, $textColor="#333", $lineColor="#9B6BFF", $offsetX="-10")
+  UpdateRelStyle(c4ai, crawler, $textColor="#333", $lineColor="#2D9CDB", $offsetX="5")
+  UpdateRelStyle(journalist, c4ai, $textColor="#333", $lineColor="#FF6B9B", $offsetX="5")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

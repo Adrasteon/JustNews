@@ -1,0 +1,20 @@
+C4Container
+  title Crawler Agent - Container View
+
+  Container_Boundary(cra, "Crawler Agent") {
+    Container(c_engine, "Crawler Engine", "Python, FastAPI", "Manages crawl jobs, concurrency and extraction")
+    Container(job_store, "Job Store", "MariaDB", "Persistent job store & recovery")
+    Container(playwright, "Headless Browser (Playwright)", "Node/Playwright/Chromium", "Headless browsing for JS-heavy pages")
+    Container(extraction, "Extraction Pipeline", "Python", "Extraction rules, language processors & text cleaning")
+  }
+
+  Rel(c_engine, job_store, "Reads/Writes crawl jobs / states", "SQL")
+  Rel(c_engine, playwright, "Fetch/render pages before extraction", "HTTP/Playwright")
+  Rel(c_engine, extraction, "Processes page content into articles")
+  Rel(c_engine, memory, "Ingests extracted articles (Memory)", "SQL + Chroma")
+
+  UpdateRelStyle(c_engine, job_store, $textColor="#333", $lineColor="#9B6BFF")
+  UpdateRelStyle(c_engine, playwright, $textColor="#333", $lineColor="#2D9CDB")
+  UpdateRelStyle(c_engine, memory, $textColor="#333", $lineColor="#2ECC71")
+
+  UpdateLayoutConfig($c4ShapeInRow="2")

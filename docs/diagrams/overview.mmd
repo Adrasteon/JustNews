@@ -1,0 +1,29 @@
+C4Context
+  title JustNews - Overview (Group-level)
+  Enterprise_Boundary(b0, "JustNews Overview") {
+    System(ingestion_grp, "Ingestion Group", "scout, crawler, c4ai, memory, journalist")
+    System(analysis_grp, "Analysis Group", "synthesizer, fact_checker, analyst, critic, hitl, chief_editor")
+    System(core_grp, "Core Infra", "mcp_bus, auth, balancer, gpu_orch")
+    System(storage_grp, "Storage & Dashboard", "memory, archive, dashboard, analytics")
+    System(reasoning_grp, "Reasoning Group", "reasoning, nucleoid_repo, newsreader")
+  }
+
+  Rel(ingestion_grp, storage_grp, "Ingests articles & embeddings")
+  Rel(storage_grp, analysis_grp, "Analysis & synthesis reads stored articles")
+  Rel(analysis_grp, core_grp, "Leases GPUs & communicates via MCP bus")
+  Rel(ingestion_grp, core_grp, "Uses MCP bus + auth for discovery & registration")
+  Rel(reasoning_grp, ingestion_grp, "Enriches ingestion for symbolic reasoning")
+
+  UpdateElementStyle(ingestion_grp, $bgColor="#FFF8E6", $borderColor="#F6A623")
+  UpdateElementStyle(analysis_grp, $bgColor="#F9F2FF", $borderColor="#A44CFF")
+  UpdateElementStyle(core_grp, $bgColor="#F7FFF3", $borderColor="#27AE60")
+  UpdateElementStyle(storage_grp, $bgColor="#F0FFF4", $borderColor="#2ECC71")
+  UpdateElementStyle(reasoning_grp, $bgColor="#FFF7F3", $borderColor="#FF6B6B")
+
+  UpdateRelStyle(ingestion_grp, storage_grp, $textColor="#111", $lineColor="#2ECC71", $offsetX="10")
+  UpdateRelStyle(storage_grp, analysis_grp, $textColor="#111", $lineColor="#A44CFF", $offsetX="10")
+  UpdateRelStyle(analysis_grp, core_grp, $textColor="#111", $lineColor="#27AE60", $offsetX="10")
+  UpdateRelStyle(ingestion_grp, core_grp, $textColor="#111", $lineColor="#2D9CDB", $offsetX="5")
+  UpdateRelStyle(reasoning_grp, ingestion_grp, $textColor="#111", $lineColor="#FF6B6B", $offsetX="5")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

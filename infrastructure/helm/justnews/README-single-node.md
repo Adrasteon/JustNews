@@ -20,23 +20,11 @@ The `values-single-node.yaml` includes these optimizations:
 - **Infrastructure**: Scaled down PostgreSQL, Redis, Prometheus, Grafana
 
 ### Agent Selection
-- **Enabled**: 15 agents total (13 single + 2 duplicated)
 ### GPU Usage
-- **Active GPU agents**: 5 (scout, analyst, synthesizer, fact-checker, newsreader) - all running concurrently with MPS sharing
-- **MPS configuration**: RTX3090 shared between multiple processes without context switching
-- **Total VRAM usage**: ~8-10GB peak (well within 24GB RTX3090 limit)
-- **Model efficiency**: MPS enables memory sharing between transformer models
 
 ### Training Features
-- **Online Training**: Enabled for continuous model improvement
-- **Training Data Path**: /data/training (local storage)
-- **GPU Acceleration**: Training workloads leverage MPS sharing
-- **CPU-only**: 8 infrastructure agents (MCP Bus, Chief Editor, Reasoning, Critic, Dashboard, Analytics, Archive, GPU Orchestrator)
-- **Duplicated**: Balancer (2 replicas), Memory (2 replicas) for improved performance
 
 ### Storage
-- **Local storage**: Uses `local-path` provisioner instead of cloud storage
-- **Reduced sizes**: Smaller persistent volumes for single-node setup
 
 ## Quick Start
 

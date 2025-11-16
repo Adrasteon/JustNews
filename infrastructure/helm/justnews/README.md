@@ -41,7 +41,6 @@ Each agent can be configured individually. The chart supports 15 agents:
 - analytics
 - archive
 - auth
-- balancer
 - chief_editor
 - common
 - crawler

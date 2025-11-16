@@ -110,7 +110,7 @@ nano config/environments/production.env
 | **dashboard** | FastAPI | 8013 | Web monitoring interface |
 | **analytics** | FastAPI | 8011 | Advanced analytics engine |
 | **archive** | FastAPI | 8012 | Document storage and retrieval |
-| **balancer** | FastAPI | 8010 | Load balancing and routing |
+| **balancer** | FastAPI | 8010 | Load balancing and routing |  # DEPRECATED - functionality moved to critic/analytics/gpu_orchestrator
 
 ### Infrastructure Services
 

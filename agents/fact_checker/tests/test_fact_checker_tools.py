@@ -1,12 +1,11 @@
-import pytest
 import asyncio
 
 from agents.fact_checker.tools import (
+    assess_credibility,
+    extract_claims,
+    validate_fact_check_result,
     validate_is_news_cpu,
     verify_claims_cpu,
-    validate_fact_check_result,
-    extract_claims,
-    assess_credibility,
 )
 
 

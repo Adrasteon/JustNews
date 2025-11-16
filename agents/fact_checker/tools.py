@@ -17,8 +17,8 @@ All functions include robust error handling, validation, and fallbacks.
 
 import asyncio
 import json
-from time import perf_counter
 from datetime import datetime
+from time import perf_counter
 from typing import Any
 
 from common.observability import get_logger

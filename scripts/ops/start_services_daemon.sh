@@ -31,7 +31,7 @@ AGENTS=(
   "db_worker|agents.db_worker.worker:app|8010"
   "dashboard|agents.dashboard.main:app|8011"
   "analytics|agents.analytics.dashboard:analytics_app|8012"
-  "balancer|agents.balancer.main:app|8013"
+  # Balancer removed - responsibilities moved to critic/analytics/gpu_orchestrator
   # Newly added GPU orchestrator service (was missing previously)
   "gpu_orchestrator|agents.gpu_orchestrator.main:app|8014"
   "archive_graphql|agents.archive.archive_graphql:app|8020"
@@ -179,13 +179,12 @@ export CHIEF_EDITOR_MODEL_CACHE="${CHIEF_EDITOR_MODEL_CACHE:-"$DEFAULT_BASE_MODE
 export FACT_CHECKER_MODEL_CACHE="${FACT_CHECKER_MODEL_CACHE:-"$DEFAULT_BASE_MODELS_DIR/agents/fact_checker/models"}"
 export CRITIC_MODEL_CACHE="${CRITIC_MODEL_CACHE:-"$DEFAULT_BASE_MODELS_DIR/agents/critic/models"}"
 export ANALYST_MODEL_CACHE="${ANALYST_MODEL_CACHE:-"$DEFAULT_BASE_MODELS_DIR/agents/analyst/models"}"
-export BALANCER_MODEL_CACHE="${BALANCER_MODEL_CACHE:-"$DEFAULT_BASE_MODELS_DIR/agents/balancer/models"}"
 export SCOUT_MODEL_CACHE="${SCOUT_MODEL_CACHE:-"$DEFAULT_BASE_MODELS_DIR/agents/scout/models"}"
 export REASONING_MODEL_CACHE="${REASONING_MODEL_CACHE:-"$DEFAULT_BASE_MODELS_DIR/agents/reasoning/models"}"
 
 # Ensure directories exist (no sudo) and warn about permissions if not writable by current user
 mkdir -p "$MODEL_STORE_ROOT" || true
-for d in "$BASE_MODEL_DIR" "$SYNTHESIZER_MODEL_CACHE" "$MEMORY_MODEL_CACHE" "$CHIEF_EDITOR_MODEL_CACHE" "$FACT_CHECKER_MODEL_CACHE" "$CRITIC_MODEL_CACHE" "$ANALYST_MODEL_CACHE" "$BALANCER_MODEL_CACHE" "$SCOUT_MODEL_CACHE" "$REASONING_MODEL_CACHE"; do
+for d in "$BASE_MODEL_DIR" "$SYNTHESIZER_MODEL_CACHE" "$MEMORY_MODEL_CACHE" "$CHIEF_EDITOR_MODEL_CACHE" "$FACT_CHECKER_MODEL_CACHE" "$CRITIC_MODEL_CACHE" "$ANALYST_MODEL_CACHE" "$SCOUT_MODEL_CACHE" "$REASONING_MODEL_CACHE"; do
   if [ ! -d "$d" ]; then
     mkdir -p "$d" 2>/dev/null || echo "WARNING: Could not create directory $d — check permissions"
   fi

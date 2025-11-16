@@ -16,22 +16,17 @@ Architecture: Streamlined for AI-first approach with specialized models for
 different analysis tasks.
 """
 
-import asyncio
-import json
-import os
 import re
 import time
 import warnings
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import requests
 import torch
 from transformers import (
-    AutoModelForSequenceClassification,
-    AutoTokenizer,
     pipeline,
 )
 
@@ -72,8 +67,8 @@ class CrawlResult:
     url: str
     content: str
     title: str
-    links: List[str]
-    metadata: Dict[str, Any]
+    links: list[str]
+    metadata: dict[str, Any]
     processing_time: float
     success: bool
 
@@ -269,7 +264,7 @@ class ScoutEngine:
                 success=False
             )
 
-    async def _crawl_with_crawl4ai(self, url: str, mode: CrawlMode) -> Dict[str, Any]:
+    async def _crawl_with_crawl4ai(self, url: str, mode: CrawlMode) -> dict[str, Any]:
         """Crawl using Crawl4AI."""
         try:
             async with AsyncWebCrawler() as crawler:
@@ -300,7 +295,7 @@ class ScoutEngine:
             logger.warning(f"Crawl4AI failed, falling back to requests: {e}")
             return await self._crawl_with_requests(url)
 
-    async def _crawl_with_requests(self, url: str) -> Dict[str, Any]:
+    async def _crawl_with_requests(self, url: str) -> dict[str, Any]:
         """Fallback crawling using requests."""
         try:
             headers = {'User-Agent': self.config.user_agent}
@@ -350,7 +345,7 @@ class ScoutEngine:
         title_match = re.search(r'<title[^>]*>(.*?)</title>', html, re.IGNORECASE | re.DOTALL)
         return title_match.group(1).strip() if title_match else ""
 
-    def _extract_links_from_html(self, html: str, base_url: str) -> List[str]:
+    def _extract_links_from_html(self, html: str, base_url: str) -> list[str]:
         """Extract links from HTML."""
         links = []
         link_pattern = re.compile(r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>', re.IGNORECASE)
@@ -457,7 +452,7 @@ class ScoutEngine:
         else:
             return "neutral"
 
-    def _fallback_sentiment_analysis(self, text: str) -> Tuple[str, float]:
+    def _fallback_sentiment_analysis(self, text: str) -> tuple[str, float]:
         """Simple rule-based sentiment analysis fallback."""
         positive_words = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic', 'love', 'like', 'best']
         negative_words = ['bad', 'terrible', 'awful', 'horrible', 'hate', 'worst', 'disappointing', 'poor']
@@ -535,7 +530,7 @@ class ScoutEngine:
                 model_used="error"
             )
 
-    def _fallback_bias_detection(self, text: str) -> Tuple[float, str]:
+    def _fallback_bias_detection(self, text: str) -> tuple[float, str]:
         """Simple rule-based bias detection fallback."""
         bias_indicators = [
             'fake news', 'liberal', 'conservative', 'left-wing', 'right-wing',
@@ -552,7 +547,7 @@ class ScoutEngine:
         else:
             return 0.2, "minimal_bias"
 
-    async def discover_sources(self, domains: Optional[List[str]] = None, max_sources: int = 10) -> List[Dict[str, Any]]:
+    async def discover_sources(self, domains: list[str] | None = None, max_sources: int = 10) -> list[dict[str, Any]]:
         """
         Discover news sources using intelligent algorithms.
 
@@ -588,7 +583,7 @@ class ScoutEngine:
                             "title": crawl_result.title,
                             "content_preview": crawl_result.content[:200] + "..." if len(crawl_result.content) > 200 else crawl_result.content,
                             "links_found": len(crawl_result.links),
-                            "discovered_at": datetime.now(timezone.utc).isoformat()
+                            "discovered_at": datetime.now(UTC).isoformat()
                         }
                         sources.append(source_info)
 
@@ -603,7 +598,7 @@ class ScoutEngine:
             logger.error(f"❌ Source discovery failed: {e}")
             return []
 
-    async def deep_crawl_site(self, site_url: str, max_pages: int = 50) -> Dict[str, Any]:
+    async def deep_crawl_site(self, site_url: str, max_pages: int = 50) -> dict[str, Any]:
         """
         Perform deep crawling of a website.
 
@@ -691,7 +686,7 @@ class ScoutEngine:
         if total_count > 0:
             self.processing_stats[key] = (current_avg * (total_count - 1) + processing_time) / total_count
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get information about loaded models."""
         return {
             'sentiment_model': {
@@ -705,7 +700,7 @@ class ScoutEngine:
             'crawl4ai_available': CRAWL4AI_AVAILABLE
         }
 
-    def get_processing_stats(self) -> Dict[str, Any]:
+    def get_processing_stats(self) -> dict[str, Any]:
         """Get processing statistics."""
         return self.processing_stats.copy()
 

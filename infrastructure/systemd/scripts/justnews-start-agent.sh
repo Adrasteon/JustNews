@@ -105,7 +105,6 @@ validate_agent_name() {
         "newsreader"
         "dashboard"
         "analytics"
-        "balancer"
         "archive"
         "hitl_service"
         "crawl4ai"
@@ -429,7 +428,7 @@ AGENTS:
     newsreader      News processing
     dashboard       Web interface
     analytics       System analytics and monitoring
-    balancer        Load balancing and resource management
+    # balancer removed: responsibilities moved to critic/analytics/gpu_orchestrator
     archive         Content archiving and retrieval
     crawl4ai        Crawl4AI bridge (local HTTP crawler bridge)
     hitl_service    Human-in-the-loop labeling service (port 8040 by default)

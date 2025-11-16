@@ -1,7 +1,7 @@
 [Unit]
 Description=JustNews MCP Bus Service
-After=network.target postgresql.service redis-server.service
-Requires=postgresql.service redis-server.service
+After=network.target redis-server.service
+Requires=redis-server.service
 
 [Service]
 Type=simple
@@ -10,11 +10,11 @@ Group=justnews
 WorkingDirectory=/opt/justnews
 Environment=DEPLOY_ENV=production
 Environment=LOG_LEVEL=INFO
-Environment=POSTGRES_HOST=localhost
-Environment=POSTGRES_PORT=5432
-Environment=POSTGRES_DB=justnews
-Environment=POSTGRES_USER=justnews
-Environment=POSTGRES_PASSWORD_FILE=/etc/justnews/secrets/postgres_password
+Environment=MARIADB_HOST=localhost
+Environment=MARIADB_PORT=3306
+Environment=MARIADB_DB=justnews
+Environment=MARIADB_USER=justnews
+Environment=MARIADB_PASSWORD_FILE=/etc/justnews/secrets/mariadb_password
 Environment=REDIS_HOST=localhost
 Environment=REDIS_PORT=6379
 Environment=REDIS_PASSWORD_FILE=/etc/justnews/secrets/redis_password

@@ -12,7 +12,7 @@ Features:
 import asyncio
 import os
 from importlib import import_module
-from typing import Any, Dict, Optional
+from typing import Any
 
 from common.observability import get_logger
 
@@ -32,7 +32,7 @@ def _get_compat_attr(name: str, default):
     return getattr(compat_module, name, default)
 
 
-def get_db_config() -> Dict[str, Any]:
+def get_db_config() -> dict[str, Any]:
     """
     Get database configuration from environment variables
 
@@ -43,7 +43,7 @@ def get_db_config() -> Dict[str, Any]:
     env_file_path = '/etc/justnews/global.env'
     if os.path.exists(env_file_path):
         logger.info(f"Loading environment variables from {env_file_path}")
-        with open(env_file_path, 'r', encoding='utf-8') as f:
+        with open(env_file_path, encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith('#'):
@@ -53,11 +53,12 @@ def get_db_config() -> Dict[str, Any]:
 
     # Get database configuration
     config = {
-        'host': os.environ.get('POSTGRES_HOST', 'localhost'),
-        'port': int(os.environ.get('POSTGRES_PORT', '5432')),
-        'database': os.environ.get('POSTGRES_DB', 'justnews'),
-        'user': os.environ.get('POSTGRES_USER', 'justnews'),
-        'password': os.environ.get('POSTGRES_PASSWORD', ''),
+        # Prefer MariaDB environment variables; fall back to sensible defaults
+        'host': os.environ.get('MARIADB_HOST', os.environ.get('POSTGRES_HOST', 'localhost')),
+        'port': int(os.environ.get('MARIADB_PORT', os.environ.get('POSTGRES_PORT', '3306'))),
+        'database': os.environ.get('MARIADB_DB', os.environ.get('POSTGRES_DB', 'justnews')),
+        'user': os.environ.get('MARIADB_USER', os.environ.get('POSTGRES_USER', 'justnews')),
+        'password': os.environ.get('MARIADB_PASSWORD', os.environ.get('POSTGRES_PASSWORD', '')),
         'min_connections': int(os.environ.get('DB_MIN_CONNECTIONS', '1')),
         'max_connections': int(os.environ.get('DB_MAX_CONNECTIONS', '20')),
         'health_check_interval': int(os.environ.get('DB_HEALTH_CHECK_INTERVAL', '30')),
@@ -93,7 +94,7 @@ def get_db_config() -> Dict[str, Any]:
     return config
 
 
-def create_connection_pool(config: Optional[Dict[str, Any]] = None) -> DatabaseConnectionPool:
+def create_connection_pool(config: dict[str, Any] | None = None) -> DatabaseConnectionPool:
     """
     Create and initialize database connection pool
 
@@ -173,7 +174,7 @@ async def execute_query_async(
 def execute_transaction(
     pool: DatabaseConnectionPool,
     queries: list,
-    params_list: Optional[list] = None
+    params_list: list | None = None
 ) -> bool:
     """
     Execute multiple queries in a database transaction
@@ -210,7 +211,7 @@ def execute_transaction(
         return False
 
 
-def get_database_stats(pool: DatabaseConnectionPool) -> Dict[str, Any]:
+def get_database_stats(pool: DatabaseConnectionPool) -> dict[str, Any]:
     """
     Get comprehensive database statistics
 

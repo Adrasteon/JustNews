@@ -13,13 +13,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel
 
-from database.utils.migrated_database_utils import create_database_service
 from common.metrics import JustNewsMetrics
 from common.observability import get_logger
+from database.utils.migrated_database_utils import create_database_service
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
-    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+    from database.utils.migrated_database_utils import (
+        create_database_service,  # type: ignore
+    )
 except Exception:
     create_database_service = None
 from common.version_utils import get_version

@@ -8,7 +8,8 @@ for authentication, authorization, encryption, compliance, and monitoring.
 
 import asyncio
 import logging
-from . import SecurityManager, SecurityConfig
+
+from . import SecurityConfig, SecurityManager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

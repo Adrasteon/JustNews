@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import requests
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse, Response
@@ -21,11 +21,22 @@ from common.observability import get_logger
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
-    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+    from database.utils.migrated_database_utils import (
+        create_database_service,  # type: ignore
+    )
 except Exception:
     create_database_service = None
 
 from .crawler_engine import CrawlerEngine
+from .job_store import (
+    clear_all,
+    create_job,
+    get_job,
+    recover_running_jobs,
+    set_error,
+    set_result,
+)
+from .job_store import list_jobs as jobstore_list_jobs
 from .tools import get_crawler_info
 
 # Configure logging
@@ -38,6 +49,27 @@ crawl_jobs: dict[str, Any] = {}
 # Environment variables
 CRAWLER_AGENT_PORT = int(os.environ.get("CRAWLER_AGENT_PORT", 8015))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
+def require_api_token(authorization: str | None = Header(None), x_api_token: str | None = Header(None)):
+    """Require an API token if `CRAWLER_API_TOKEN` is set; accept Authorization Bearer or X-Api-Token.
+
+    If the env var is not set, no auth is required (backwards compatible).
+    """
+    expected = os.environ.get("CRAWLER_API_TOKEN")
+    if not expected:
+        return None
+    token = None
+    if authorization:
+        if authorization.lower().startswith("bearer "):
+            token = authorization.split(None, 1)[1].strip()
+        else:
+            token = authorization.strip()
+    if not token and x_api_token:
+        token = x_api_token.strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing API token")
+    if token != expected:
+        raise HTTPException(status_code=403, detail="Invalid API token")
+    return None
 
 # Security configuration
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
@@ -64,10 +96,17 @@ async def run_crawl_background(
                 profile_overrides=profile_overrides,
             )
         # Store result in job status
-        crawl_jobs[job_id] = {"status": "completed", "result": result}
+        try:
+            set_result(job_id, result)
+        except Exception:
+            # best-effort fallback to memory for visibility
+            crawl_jobs[job_id] = {"status": "completed", "result": result}
         logger.info(f"Background crawl {job_id} complete. Articles: {len(result.get('articles', []))}")
     except Exception as e:
-        crawl_jobs[job_id] = {"status": "failed", "error": str(e)}
+        try:
+            set_error(job_id, str(e))
+        except Exception:
+            crawl_jobs[job_id] = {"status": "failed", "error": str(e)}
         logger.error(f"Background crawl {job_id} failed: {e}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
@@ -107,6 +146,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
     global ready
+    # Recover any jobs left in 'running' state after a previous service restart
+    try:
+        recovered = recover_running_jobs("service restart")
+        if recovered > 0:
+            logger.info("Recovered %s interrupted running jobs during startup", recovered)
+    except Exception as e:
+        logger.debug("Job recovery step failed: %s", e)
     ready = True
     yield
     logger.info("Crawler agent is shutting down.")
@@ -134,13 +180,17 @@ class ToolCall(BaseModel):
     kwargs: dict[str, Any]
 
 @app.post("/unified_production_crawl")
-async def unified_production_crawl_endpoint(call: ToolCall, background_tasks: BackgroundTasks):
+async def unified_production_crawl_endpoint(call: ToolCall, background_tasks: BackgroundTasks, token_ok: None = Depends(require_api_token)):
     """
     Enqueue a background unified production crawl job and return immediately with a job ID.
     """
     # Generate a unique job identifier
     job_id = uuid.uuid4().hex
     # Initialize job status
+    try:
+        create_job(job_id, status="pending")
+    except Exception as e:
+        logger.debug("Failed to persist job creation: %s", e)
     crawl_jobs[job_id] = {"status": "pending"}
     # Extract parameters
     domains = call.args[0] if call.args else call.kwargs.get("domains", [])
@@ -148,39 +198,50 @@ async def unified_production_crawl_endpoint(call: ToolCall, background_tasks: Ba
     concurrent = call.kwargs.get("concurrent_sites", 3)
     logger.info(f"Enqueueing background crawl job {job_id} for {len(domains)} domains")
     profile_overrides = call.kwargs.get("profile_overrides")
-    
+
     # Enqueue background task
     background_tasks.add_task(run_crawl_background, job_id, domains, max_articles, concurrent, profile_overrides)
-    
+
     # Return accepted status with job ID
     return JSONResponse(status_code=202, content={"status": "accepted", "job_id": job_id})
 
 @app.get("/job_status/{job_id}")
-def job_status(job_id: str):
+def job_status(job_id: str, token_ok: None = Depends(require_api_token)):
     """Retrieve status and result (if completed) for a crawl job."""
+    # Prefer persisted job view
+    try:
+        job = get_job(job_id)
+        if job is not None:
+            return job
+    except Exception:
+        pass
     if job_id not in crawl_jobs:
         raise HTTPException(status_code=404, detail=f"Job not found: {job_id}")
     return crawl_jobs[job_id]
 
 @app.get("/jobs")
-def list_jobs():
+def list_jobs(token_ok: None = Depends(require_api_token)):
     """List all current crawl job IDs with their status (without full results)."""
     # Return a mapping of job_id to status only for brevity
-    return {job_id: info.get("status") for job_id, info in crawl_jobs.items()}
+    try:
+        return jobstore_list_jobs()  # use job_store list_jobs
+    except Exception:
+        return {job_id: info.get("status") for job_id, info in crawl_jobs.items()}
 
 @app.post("/clear_jobs")
-def clear_jobs():
+def clear_jobs(token_ok: None = Depends(require_api_token)):
     """Clear completed and failed jobs from memory."""
     global crawl_jobs
-    cleared_jobs = []
-    for job_id in list(crawl_jobs.keys()):
-        del crawl_jobs[job_id]
-        cleared_jobs.append(job_id)
-
-    return {"cleared_jobs": cleared_jobs, "message": f"Cleared {len(cleared_jobs)} jobs from memory"}
+    try:
+        removed = clear_all()
+    except Exception:
+        # Fallback: clear in-memory only
+        removed = len(crawl_jobs)
+        crawl_jobs.clear()
+    return {"cleared_jobs": [], "message": f"Cleared {removed} jobs"}
 
 @app.post("/reset_crawler")
-def reset_crawler():
+def reset_crawler(token_ok: None = Depends(require_api_token)):
     """Completely reset the crawler state - clear all jobs and reset performance metrics."""
     global crawl_jobs
 

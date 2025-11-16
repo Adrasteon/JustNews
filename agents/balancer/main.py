@@ -6,19 +6,24 @@ Load balancing and workload distribution agent with MCP integration.
 
 import os
 from contextlib import asynccontextmanager
-from typing import Dict, Any
+from typing import Any
 
 import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import Response
 from pydantic import BaseModel
 
-from common.observability import get_logger
 from common.metrics import JustNewsMetrics
-from .balancer_engine import BalancerEngine
-from .tools import distribute_load, get_agent_status, balance_workload, monitor_performance
+from common.observability import get_logger
+
+from .tools import (
+    balance_workload,
+    distribute_load,
+    get_agent_status,
+    monitor_performance,
+)
 
 # Configure logging
 logger = get_logger(__name__)

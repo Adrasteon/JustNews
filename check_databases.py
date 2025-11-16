@@ -4,12 +4,10 @@ Database Verification Script
 Check MariaDB and ChromaDB for article ingestion and embedding correctness
 """
 
-import os
 import sys
-import json
-import mysql.connector
-import chromadb
 from pathlib import Path
+
+import chromadb
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -20,21 +18,24 @@ def check_mariadb():
 
     try:
         # Use migrated database utilities for proper connection
-        from database.utils.migrated_database_utils import create_database_service, get_database_stats
-        
+        from database.utils.migrated_database_utils import (
+            create_database_service,
+            get_database_stats,
+        )
+
         service = create_database_service()
         stats = get_database_stats(service)
-        
+
         article_count = stats.get('mariadb', {}).get('articles', 0)
         source_count = stats.get('mariadb', {}).get('sources', 0)
-        
+
         print(f"📊 Articles in MariaDB: {article_count}")
         print(f"📰 Sources in MariaDB: {source_count}")
 
         if article_count > 0:
             # Get recent articles using the service
             recent_articles = service.get_recent_articles(limit=5)
-            
+
             print("\n📝 Recent Articles:")
             for article in recent_articles:
                 article_id = article.get('id')

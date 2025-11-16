@@ -21,27 +21,24 @@ Key Features:
 All operations include robust error handling, validation, and fallbacks.
 """
 
-import asyncio
 import json
-import logging
 import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
-import numpy as np
 import torch
+from common.gpu_config_manager import GPUConfigManager
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
-    DistilBertTokenizer,
     DistilBertModel,
-    pipeline
+    DistilBertTokenizer,
+    pipeline,
 )
 
 from common.observability import get_logger
-from common.gpu_config_manager import GPUConfigManager
 
 # Configure logging
 logger = get_logger(__name__)
@@ -79,9 +76,9 @@ class ReviewResult:
     plagiarism_score: float = 0.0
     overall_score: float = 0.0
     assessment: str = ""
-    recommendations: List[str] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
     processing_time: float = 0.0
-    model_versions: Dict[str, str] = field(default_factory=dict)
+    model_versions: dict[str, str] = field(default_factory=dict)
 
 class CriticEngine:
     """
@@ -272,7 +269,7 @@ class CriticEngine:
             self.logger.error(f"Failed to load SentenceTransformer: {e}")
             self.models['sentence_transformer'] = None
 
-    def comprehensive_review(self, content: str, url: Optional[str] = None) -> ReviewResult:
+    def comprehensive_review(self, content: str, url: str | None = None) -> ReviewResult:
         """
         Perform comprehensive content review using all 5 models.
 
@@ -359,7 +356,7 @@ class CriticEngine:
                 processing_time=processing_time
             )
 
-    def critique_synthesis(self, content: str, url: Optional[str] = None) -> Dict[str, Any]:
+    def critique_synthesis(self, content: str, url: str | None = None) -> dict[str, Any]:
         """
         Synthesize comprehensive content critique.
 
@@ -390,7 +387,7 @@ class CriticEngine:
             self.logger.error(f"Critique synthesis failed: {e}")
             return {"error": str(e)}
 
-    def critique_neutrality(self, content: str, url: Optional[str] = None) -> Dict[str, Any]:
+    def critique_neutrality(self, content: str, url: str | None = None) -> dict[str, Any]:
         """
         Analyze content neutrality and bias.
 
@@ -416,7 +413,7 @@ class CriticEngine:
             self.logger.error(f"Neutrality analysis failed: {e}")
             return {"error": str(e)}
 
-    def analyze_argument_structure(self, content: str, url: Optional[str] = None) -> Dict[str, Any]:
+    def analyze_argument_structure(self, content: str, url: str | None = None) -> dict[str, Any]:
         """
         Analyze logical argument structure.
 
@@ -448,7 +445,7 @@ class CriticEngine:
             self.logger.error(f"Argument structure analysis failed: {e}")
             return {"error": str(e)}
 
-    def assess_editorial_consistency(self, content: str, url: Optional[str] = None) -> Dict[str, Any]:
+    def assess_editorial_consistency(self, content: str, url: str | None = None) -> dict[str, Any]:
         """
         Assess editorial consistency and coherence.
 
@@ -473,7 +470,7 @@ class CriticEngine:
             self.logger.error(f"Editorial consistency assessment failed: {e}")
             return {"error": str(e)}
 
-    def detect_logical_fallacies(self, content: str, url: Optional[str] = None) -> Dict[str, Any]:
+    def detect_logical_fallacies(self, content: str, url: str | None = None) -> dict[str, Any]:
         """
         Detect logical fallacies and reasoning errors.
 
@@ -510,7 +507,7 @@ class CriticEngine:
             self.logger.error(f"Logical fallacy detection failed: {e}")
             return {"error": str(e)}
 
-    def assess_source_credibility(self, content: str, url: Optional[str] = None) -> Dict[str, Any]:
+    def assess_source_credibility(self, content: str, url: str | None = None) -> dict[str, Any]:
         """
         Assess source credibility and evidence quality.
 
@@ -540,7 +537,7 @@ class CriticEngine:
             self.logger.error(f"Source credibility assessment failed: {e}")
             return {"error": str(e)}
 
-    def _assess_quality(self, content: str) -> Dict[str, Any]:
+    def _assess_quality(self, content: str) -> dict[str, Any]:
         """Assess content quality using BERT."""
         try:
             if not self.models.get('bert') or not self.tokenizers.get('bert'):
@@ -578,7 +575,7 @@ class CriticEngine:
             self.logger.error(f"BERT quality assessment failed: {e}")
             return {"score": 0.5, "error": str(e)}
 
-    def _detect_bias(self, content: str) -> Dict[str, Any]:
+    def _detect_bias(self, content: str) -> dict[str, Any]:
         """Detect bias using RoBERTa sentiment analysis."""
         try:
             if not self.pipelines.get('roberta'):
@@ -605,7 +602,7 @@ class CriticEngine:
             self.logger.error(f"RoBERTa bias detection failed: {e}")
             return {"score": 0.5, "error": str(e)}
 
-    def _check_factual_consistency(self, content: str) -> Dict[str, Any]:
+    def _check_factual_consistency(self, content: str) -> dict[str, Any]:
         """Check factual consistency using DeBERTa."""
         try:
             if not self.models.get('deberta') or not self.tokenizers.get('deberta'):
@@ -638,7 +635,7 @@ class CriticEngine:
             self.logger.error(f"DeBERTa consistency check failed: {e}")
             return {"score": 0.5, "error": str(e)}
 
-    def _assess_readability(self, content: str) -> Dict[str, Any]:
+    def _assess_readability(self, content: str) -> dict[str, Any]:
         """Assess readability using DistilBERT."""
         try:
             if not self.models.get('distilbert') or not self.tokenizers.get('distilbert'):
@@ -677,7 +674,7 @@ class CriticEngine:
             self.logger.error(f"DistilBERT readability assessment failed: {e}")
             return {"score": 0.5, "error": str(e)}
 
-    def _detect_plagiarism(self, content: str) -> Dict[str, Any]:
+    def _detect_plagiarism(self, content: str) -> dict[str, Any]:
         """Detect potential plagiarism using SentenceTransformer."""
         try:
             if not self.models.get('sentence_transformer'):
@@ -736,7 +733,7 @@ class CriticEngine:
         else:
             return "Very poor quality content - major revision needed"
 
-    def _generate_recommendations(self, quality, bias, consistency, readability, plagiarism) -> List[str]:
+    def _generate_recommendations(self, quality, bias, consistency, readability, plagiarism) -> list[str]:
         """Generate improvement recommendations based on analysis results."""
         recommendations = []
 
@@ -759,12 +756,12 @@ class CriticEngine:
             if not recommendations:
                 recommendations.append("Content meets quality standards - minor polishing recommended")
 
-        except Exception as e:
+        except Exception:
             recommendations.append("Manual review recommended due to analysis error")
 
         return recommendations
 
-    def _extract_citations(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_citations(self, content: str) -> list[dict[str, Any]]:
         """Extract citations and references from content."""
         citations = []
 
@@ -805,7 +802,7 @@ class CriticEngine:
         else:
             return 0.5
 
-    def _get_model_versions(self) -> Dict[str, str]:
+    def _get_model_versions(self) -> dict[str, str]:
         """Get current model versions."""
         return {
             "bert": self.config.bert_model_name,
@@ -815,7 +812,7 @@ class CriticEngine:
             "sentence_transformer": self.config.sentence_transformer_model
         }
 
-    def get_model_status(self) -> Dict[str, bool]:
+    def get_model_status(self) -> dict[str, bool]:
         """Get status of all models."""
         return {
             "bert": self.models.get('bert') is not None,
@@ -825,7 +822,7 @@ class CriticEngine:
             "sentence_transformer": self.models.get('sentence_transformer') is not None
         }
 
-    def log_feedback(self, operation: str, data: Dict[str, Any]):
+    def log_feedback(self, operation: str, data: dict[str, Any]):
         """Log feedback data for model improvement."""
         if not self.config.enable_feedback_collection:
             return

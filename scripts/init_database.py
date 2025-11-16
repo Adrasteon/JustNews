@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 import os
 import sys
-
 from pathlib import Path
 
 # Add the project root to Python path FIRST
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from common.observability import get_logger
-from agents.common.database import execute_query, initialize_connection_pool
 from agents.common.auth_models import create_user_tables
+from agents.common.database import execute_query, initialize_connection_pool
+from common.observability import get_logger
 
 """
 Database initialization script for JustNewsAgent Authentication System
@@ -24,7 +23,7 @@ logger = get_logger(__name__)
 
 def create_initial_admin_user():
     """Create an initial admin user for testing"""
-    from agents.common.auth_models import create_user, UserCreate, UserRole
+    from agents.common.auth_models import UserCreate, UserRole, create_user
 
     try:
         admin_user = UserCreate(
@@ -131,6 +130,26 @@ def create_knowledge_graph_tables():
             logger.error(f"❌ Error creating knowledge graph table {i}: {e}")
             raise
 
+
+def create_crawler_jobs_table():
+    """Create crawler job table used by crawler job_store."""
+    query = """
+    CREATE TABLE IF NOT EXISTS crawler_jobs (
+        job_id VARCHAR(64) PRIMARY KEY,
+        status VARCHAR(32) NOT NULL,
+        result TEXT NULL,
+        error TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB;
+    """
+    try:
+        execute_query(query, fetch=False)
+        logger.info("✅ crawler_jobs table created or already exists")
+    except Exception as e:
+        logger.error(f"❌ Error creating crawler_jobs table: {e}")
+        raise
+
 def main():
     """Main initialization function"""
     logger.info("🚀 Starting JustNewsAgent Database Initialization")
@@ -138,10 +157,10 @@ def main():
 
     # Check environment variables
     required_env_vars = [
-        "POSTGRES_HOST",
-        "POSTGRES_DB",
-        "POSTGRES_USER",
-        "POSTGRES_PASSWORD"
+        "MARIADB_HOST",
+        "MARIADB_DB",
+        "MARIADB_USER",
+        "MARIADB_PASSWORD"
     ]
 
     missing_vars = [var for var in required_env_vars if not os.environ.get(var)]
@@ -169,6 +188,11 @@ def main():
         logger.info("🕸️  Creating knowledge graph tables...")
         create_knowledge_graph_tables()
         logger.info("✅ Knowledge graph tables created")
+
+        # Create crawler jobs table
+        logger.info("🗄️  Creating crawler jobs table (job store)...")
+        create_crawler_jobs_table()
+        logger.info("✅ crawler jobs table created")
 
         # Create initial admin user
         logger.info("👤 Creating initial admin user...")

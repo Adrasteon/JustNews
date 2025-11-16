@@ -5,8 +5,7 @@ Wrapper functions for archive operations that can be called by other agents
 via the MCP protocol. Provides clean interfaces to archive functionality.
 """
 
-import asyncio
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from agents.archive.archive_engine import get_archive_engine
 from common.observability import get_logger
@@ -23,8 +22,8 @@ async def archive_articles(
     total_articles: int = 0,
     processing_time_seconds: float = 0.0,
     articles_per_second: float = 0.0,
-    articles: Optional[List[Dict[str, Any]]] = None
-) -> Dict[str, Any]:
+    articles: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
     """
     Archive articles from crawler results.
 
@@ -58,7 +57,7 @@ async def archive_articles(
         raise
 
 
-async def retrieve_article(storage_key: str) -> Optional[Dict[str, Any]]:
+async def retrieve_article(storage_key: str) -> dict[str, Any] | None:
     """
     Retrieve an archived article by storage key.
 
@@ -83,8 +82,8 @@ async def retrieve_article(storage_key: str) -> Optional[Dict[str, Any]]:
 
 async def search_archive(
     query: str,
-    filters: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    filters: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """
     Search archived articles by query and filters.
 
@@ -113,7 +112,7 @@ async def search_archive(
         raise
 
 
-def get_archive_stats() -> Dict[str, Any]:
+def get_archive_stats() -> dict[str, Any]:
     """
     Get comprehensive archive statistics.
 
@@ -135,17 +134,17 @@ async def store_single_article(
     title: str,
     content: str,
     domain: str,
-    url_hash: Optional[str] = None,
+    url_hash: str | None = None,
     extraction_method: str = "generic_dom",
     status: str = "success",
     crawl_mode: str = "generic_site",
-    canonical: Optional[str] = None,
+    canonical: str | None = None,
     paywall_flag: bool = False,
     confidence: float = 0.8,
-    publisher_meta: Optional[Dict[str, Any]] = None,
+    publisher_meta: dict[str, Any] | None = None,
     news_score: float = 0.7,
-    timestamp: Optional[str] = None
-) -> Dict[str, Any]:
+    timestamp: str | None = None
+) -> dict[str, Any]:
     """
     Store a single article with complete metadata.
 
@@ -202,7 +201,7 @@ async def store_single_article(
         raise
 
 
-async def get_article_entities(storage_key: str) -> Optional[Dict[str, Any]]:
+async def get_article_entities(storage_key: str) -> dict[str, Any] | None:
     """
     Get knowledge graph entities for an article.
 
@@ -225,7 +224,7 @@ async def get_article_entities(storage_key: str) -> Optional[Dict[str, Any]]:
         raise
 
 
-async def search_knowledge_graph(query: str) -> List[Dict[str, Any]]:
+async def search_knowledge_graph(query: str) -> list[dict[str, Any]]:
     """
     Search the knowledge graph for entities and relationships.
 
@@ -248,7 +247,7 @@ async def search_knowledge_graph(query: str) -> List[Dict[str, Any]]:
         raise
 
 
-async def link_entities(article_data: Dict[str, Any]) -> Dict[str, Any]:
+async def link_entities(article_data: dict[str, Any]) -> dict[str, Any]:
     """
     Link article entities to external knowledge bases.
 

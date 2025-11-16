@@ -10,13 +10,12 @@ This module contains comprehensive security tests that validate:
 - Vulnerability assessments
 """
 
-import asyncio
-import json
-import pytest
-from typing import Dict, List, Any, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Any
+from unittest.mock import patch
 
-from tests.test_utils import AsyncTestHelper, MockFactory, CustomAssertions
+import pytest
+
+from tests.test_utils import AsyncTestHelper, CustomAssertions, MockFactory
 
 
 class TestInputValidation:
@@ -150,7 +149,7 @@ class TestInputValidation:
                 # Verify traversal was prevented
                 assert isinstance(result.get("error"), str) or "not found" in str(result).lower()
 
-    async def _attempt_sql_injection(self, payload: str) -> Dict[str, Any]:
+    async def _attempt_sql_injection(self, payload: str) -> dict[str, Any]:
         """Attempt SQL injection"""
         # Simulate database query with malicious input and sanitization
         normalized = payload.replace("'", "").replace("--", "")
@@ -166,7 +165,7 @@ class TestInputValidation:
 
         return {"articles": [], "query": normalized}
 
-    async def _attempt_xss_injection(self, payload: str) -> Dict[str, Any]:
+    async def _attempt_xss_injection(self, payload: str) -> dict[str, Any]:
         """Attempt XSS injection"""
         # Simulate text processing with malicious input and sanitization
         sanitized = payload.replace("<", "&lt;").replace(">", "&gt;")
@@ -179,17 +178,17 @@ class TestInputValidation:
             "sanitized": True
         }
 
-    async def _attempt_command_injection(self, payload: str) -> Dict[str, Any]:
+    async def _attempt_command_injection(self, payload: str) -> dict[str, Any]:
         """Attempt command injection"""
         # Simulate command execution with malicious input
         return {"status": "completed", "command": payload}
 
-    async def _attempt_large_input(self, payload: str) -> Dict[str, Any]:
+    async def _attempt_large_input(self, payload: str) -> dict[str, Any]:
         """Attempt large input processing"""
         # Simulate processing of large input
         return {"sentiment": "neutral", "input_size": len(payload)}
 
-    async def _attempt_path_traversal(self, payload: str) -> Dict[str, Any]:
+    async def _attempt_path_traversal(self, payload: str) -> dict[str, Any]:
         """Attempt path traversal"""
         # Simulate file access with malicious path
         return {"error": "File not found", "path": payload}
@@ -261,7 +260,7 @@ class TestAuthenticationSecurity:
 
             assert result.get("result") == test_case["expected"]
 
-    async def _test_api_access(self, api_key: str) -> Dict[str, Any]:
+    async def _test_api_access(self, api_key: str) -> dict[str, Any]:
         """Test API access with key"""
         from agents.common.auth import validate_api_key
 
@@ -270,7 +269,7 @@ class TestAuthenticationSecurity:
 
         return {"access": "denied", "error": "invalid_api_key"}
 
-    async def _simulate_request_rate(self, rpm: int) -> List[Dict[str, Any]]:
+    async def _simulate_request_rate(self, rpm: int) -> list[dict[str, Any]]:
         """Simulate requests at given rate"""
         results = []
         max_requests = min(rpm, 10)
@@ -288,7 +287,7 @@ class TestAuthenticationSecurity:
             results.append({"status": status})
         return results
 
-    async def _test_session_operation(self, test_case: Dict[str, Any]) -> Dict[str, Any]:
+    async def _test_session_operation(self, test_case: dict[str, Any]) -> dict[str, Any]:
         """Test session operation"""
         action = test_case["action"]
         if action == "create":
@@ -394,7 +393,7 @@ class TestDataProtection:
 
         return encrypted
 
-    async def _simulate_encrypted_transmission(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    async def _simulate_encrypted_transmission(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Simulate encrypted data transmission"""
         return {
             "encrypted": True,
@@ -466,7 +465,7 @@ class TestAPISecurity:
             assert "onerror" not in str(sanitized)
             assert "../" not in str(sanitized)
 
-    async def _test_cors_headers(self, origin: str) -> Dict[str, Any]:
+    async def _test_cors_headers(self, origin: str) -> dict[str, Any]:
         """Test CORS headers for origin"""
         allowed_origins = ["https://justnews.com", "https://app.justnews.com"]
         return {
@@ -474,7 +473,7 @@ class TestAPISecurity:
             "credentials": "true" if origin in allowed_origins else "false"
         }
 
-    async def _sanitize_input(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def _sanitize_input(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Sanitize input data"""
         # Mock input sanitization
         sanitized = input_data.copy()

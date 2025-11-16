@@ -26,30 +26,32 @@ Endpoints:
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
 from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 
-from common.observability import get_logger
 from common.metrics import JustNewsMetrics
+from common.observability import get_logger
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
-    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+    from database.utils.migrated_database_utils import (
+        create_database_service,  # type: ignore
+    )
 except Exception:
     create_database_service = None
 
 # Import refactored components
 from .synthesizer_engine import SynthesizerEngine
 from .tools import (
-    cluster_articles_tool,
-    neutralize_text_tool,
     aggregate_cluster_tool,
-    synthesize_gpu_tool,
+    cluster_articles_tool,
+    get_stats,
     health_check,
-    get_stats
+    neutralize_text_tool,
+    synthesize_gpu_tool,
 )
 
 logger = get_logger(__name__)
@@ -57,16 +59,16 @@ logger = get_logger(__name__)
 # Environment variables
 SYNTHESIZER_AGENT_PORT: int = int(os.environ.get("SYNTHESIZER_AGENT_PORT", 8005))
 MCP_BUS_URL: str = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
-EVIDENCE_AUDIT_BASE_URL: Optional[str] = os.environ.get("EVIDENCE_AUDIT_BASE_URL")
+EVIDENCE_AUDIT_BASE_URL: str | None = os.environ.get("EVIDENCE_AUDIT_BASE_URL")
 TRANSPARENCY_HEALTH_TIMEOUT: float = float(os.environ.get("TRANSPARENCY_HEALTH_TIMEOUT", "3.0"))
 TRANSPARENCY_AUDIT_REQUIRED: bool = os.environ.get("REQUIRE_TRANSPARENCY_AUDIT", "1") != "0"
 
 # Global engine instance
-synthesizer_engine: Optional[SynthesizerEngine] = None
+synthesizer_engine: SynthesizerEngine | None = None
 transparency_gate_passed: bool = False
 
 
-def generate_summary(text: str, max_length: int = 256) -> Dict[str, Any]:
+def generate_summary(text: str, max_length: int = 256) -> dict[str, Any]:
     """Create a lightweight summary of ``text``.
 
     This helper offers a stable import surface for legacy integrations and
@@ -96,7 +98,7 @@ class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL) -> None:
         self.base_url = base_url
 
-    def register_agent(self, agent_name: str, agent_address: str, tools: List[str]) -> None:
+    def register_agent(self, agent_name: str, agent_address: str, tools: list[str]) -> None:
         """Register an agent with the MCP bus."""
         import requests
 
@@ -118,7 +120,7 @@ class MCPBusClient:
 
 def check_transparency_gateway(
     *,
-    base_url: Optional[str],
+    base_url: str | None,
     timeout: float,
     required: bool,
 ) -> bool:
@@ -135,7 +137,7 @@ def check_transparency_gateway(
     try:
         response = requests.get(status_url, timeout=timeout)
         response.raise_for_status()
-        payload: Dict[str, Any] = response.json()
+        payload: dict[str, Any] = response.json()
     except Exception as exc:  # pragma: no cover - exercised in unit tests via monkeypatch
         if required:
             raise RuntimeError(f"Transparency status request failed: {exc}") from exc
@@ -251,19 +253,19 @@ except Exception:
 
 class ToolCall(BaseModel):
     """Standard MCP tool call format."""
-    args: List[Any] = []
-    kwargs: Dict[str, Any] = {}
+    args: list[Any] = []
+    kwargs: dict[str, Any] = {}
 
 
 class SynthesisRequest(BaseModel):
     """Request model for synthesis operations."""
-    articles: List[Dict[str, Any]]
-    max_clusters: Optional[int] = 5
-    context: Optional[str] = "news analysis"
+    articles: list[dict[str, Any]]
+    max_clusters: int | None = 5
+    context: str | None = "news analysis"
 
 
 @app.get("/health")
-def health() -> Dict[str, str]:
+def health() -> dict[str, str]:
     """Liveness probe."""
     if synthesizer_engine is None:
         raise HTTPException(status_code=503, detail="Engine not initialized")
@@ -273,7 +275,7 @@ def health() -> Dict[str, str]:
 
 
 @app.get("/ready")
-def ready_endpoint() -> Dict[str, bool]:
+def ready_endpoint() -> dict[str, bool]:
     """Readiness probe."""
     return {"ready": synthesizer_engine is not None and transparency_gate_passed}
 
@@ -285,7 +287,7 @@ def get_metrics() -> Response:
 
 
 @app.post("/log_feedback")
-def log_feedback(call: ToolCall) -> Dict[str, Any]:
+def log_feedback(call: ToolCall) -> dict[str, Any]:
     """Log feedback sent from other agents or tests."""
     try:
         feedback_data = {
@@ -294,7 +296,7 @@ def log_feedback(call: ToolCall) -> Dict[str, Any]:
         }
         logger.info(f"📝 Logging feedback: {feedback_data}")
         return feedback_data
-    except Exception as e:
+    except Exception:
         logger.exception("❌ Failed to log feedback")
         raise HTTPException(status_code=500, detail="Failed to log feedback")
 
@@ -374,7 +376,7 @@ async def aggregate_cluster_endpoint(call: ToolCall) -> Any:
 
 
 @app.post("/synthesize_news_articles_gpu")
-async def synthesize_news_articles_gpu_endpoint(request: SynthesisRequest) -> Dict[str, Any]:
+async def synthesize_news_articles_gpu_endpoint(request: SynthesisRequest) -> dict[str, Any]:
     """GPU-accelerated news article synthesis endpoint."""
     if synthesizer_engine is None:
         raise HTTPException(status_code=503, detail="Engine not initialized")
@@ -401,7 +403,7 @@ async def synthesize_news_articles_gpu_endpoint(request: SynthesisRequest) -> Di
 
 
 @app.post("/get_synthesizer_performance")
-async def get_synthesizer_performance_endpoint(call: ToolCall) -> Dict[str, Any]:
+async def get_synthesizer_performance_endpoint(call: ToolCall) -> dict[str, Any]:
     """Get synthesizer performance statistics."""
     if synthesizer_engine is None:
         raise HTTPException(status_code=503, detail="Engine not initialized")
@@ -419,7 +421,7 @@ async def get_synthesizer_performance_endpoint(call: ToolCall) -> Dict[str, Any]
 
 # Health and stats endpoints
 @app.get("/stats")
-async def get_stats_endpoint() -> Dict[str, Any]:
+async def get_stats_endpoint() -> dict[str, Any]:
     """Get comprehensive synthesizer statistics."""
     if synthesizer_engine is None:
         return {"error": "Engine not initialized"}

@@ -15,19 +15,17 @@ Author: JustNewsAgent Development Team
 Date: October 22, 2025
 """
 
-import asyncio
-import json
 import logging
 import statistics
 import time
-from collections import defaultdict, Counter
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Set
 from enum import Enum
+from typing import Any
 
 from .trace_collector import TraceData, TraceSpan
-from .trace_processor import TraceAnalysis, PerformanceBottleneck, ServiceDependency
+from .trace_processor import TraceAnalysis
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +44,11 @@ class AnomalyAlert:
     anomaly_type: AnomalyType
     severity: str  # "low", "medium", "high", "critical"
     description: str
-    affected_services: List[str]
-    evidence: Dict[str, Any]
-    recommendations: List[str]
+    affected_services: list[str]
+    evidence: dict[str, Any]
+    recommendations: list[str]
     detected_at: datetime = field(default_factory=datetime.now)
-    resolved_at: Optional[datetime] = None
+    resolved_at: datetime | None = None
     status: str = "active"  # "active", "resolved", "acknowledged"
 
 @dataclass
@@ -62,8 +60,8 @@ class TrendAnalysis:
     trend_direction: str  # "improving", "degrading", "stable"
     trend_slope: float
     confidence: float
-    data_points: List[Tuple[datetime, float]]
-    forecast: Optional[List[Tuple[datetime, float]]] = None
+    data_points: list[tuple[datetime, float]]
+    forecast: list[tuple[datetime, float]] | None = None
     analysis_date: datetime = field(default_factory=datetime.now)
 
 @dataclass
@@ -76,7 +74,7 @@ class ServiceHealthScore:
     throughput_score: float
     dependency_score: float
     last_updated: datetime = field(default_factory=datetime.now)
-    contributing_factors: Dict[str, float] = field(default_factory=dict)
+    contributing_factors: dict[str, float] = field(default_factory=dict)
 
 class TraceAnalyzer:
     """
@@ -95,10 +93,10 @@ class TraceAnalyzer:
         self.anomaly_sensitivity = anomaly_sensitivity
 
         # Analysis data
-        self.recent_traces: List[TraceData] = []
-        self.anomaly_alerts: Dict[str, AnomalyAlert] = {}
-        self.service_health_scores: Dict[str, ServiceHealthScore] = {}
-        self.performance_baselines: Dict[str, Dict[str, float]] = {}
+        self.recent_traces: list[TraceData] = []
+        self.anomaly_alerts: dict[str, AnomalyAlert] = {}
+        self.service_health_scores: dict[str, ServiceHealthScore] = {}
+        self.performance_baselines: dict[str, dict[str, float]] = {}
 
         # Anomaly detection parameters
         self.anomaly_thresholds = {
@@ -117,7 +115,7 @@ class TraceAnalyzer:
 
         logger.info("TraceAnalyzer initialized")
 
-    def analyze_trace(self, trace_data: TraceData, trace_analysis: TraceAnalysis) -> List[AnomalyAlert]:
+    def analyze_trace(self, trace_data: TraceData, trace_analysis: TraceAnalysis) -> list[AnomalyAlert]:
         """
         Analyze a trace for anomalies and performance issues.
 
@@ -166,7 +164,7 @@ class TraceAnalyzer:
         if len(self.recent_traces) > 1000:
             self.recent_traces = self.recent_traces[-1000:]
 
-    def _detect_latency_anomalies(self, trace_data: TraceData) -> List[AnomalyAlert]:
+    def _detect_latency_anomalies(self, trace_data: TraceData) -> list[AnomalyAlert]:
         """Detect latency-based anomalies"""
         anomalies = []
 
@@ -213,7 +211,7 @@ class TraceAnalyzer:
 
         return anomalies
 
-    def _detect_error_anomalies(self, trace_data: TraceData) -> List[AnomalyAlert]:
+    def _detect_error_anomalies(self, trace_data: TraceData) -> list[AnomalyAlert]:
         """Detect error rate anomalies"""
         anomalies = []
 
@@ -259,7 +257,7 @@ class TraceAnalyzer:
 
         return anomalies
 
-    def _detect_pattern_anomalies(self, trace_data: TraceData, trace_analysis: TraceAnalysis) -> List[AnomalyAlert]:
+    def _detect_pattern_anomalies(self, trace_data: TraceData, trace_analysis: TraceAnalysis) -> list[AnomalyAlert]:
         """Detect unusual patterns in trace structure"""
         anomalies = []
 
@@ -322,7 +320,7 @@ class TraceAnalyzer:
 
         return anomalies
 
-    def _detect_dependency_anomalies(self, trace_analysis: TraceAnalysis) -> List[AnomalyAlert]:
+    def _detect_dependency_anomalies(self, trace_analysis: TraceAnalysis) -> list[AnomalyAlert]:
         """Detect anomalies in service dependencies"""
         anomalies = []
 
@@ -364,7 +362,7 @@ class TraceAnalyzer:
             health_score = self._calculate_service_health_score(service_name, spans, trace_analysis)
             self.service_health_scores[service_name] = health_score
 
-    def _calculate_service_health_score(self, service_name: str, spans: List[TraceSpan],
+    def _calculate_service_health_score(self, service_name: str, spans: list[TraceSpan],
                                       trace_analysis: TraceAnalysis) -> ServiceHealthScore:
         """Calculate health score for a service"""
         # Latency score (0-100, higher is better)
@@ -416,7 +414,7 @@ class TraceAnalyzer:
             }
         )
 
-    def _deduplicate_anomalies(self, anomalies: List[AnomalyAlert]) -> List[AnomalyAlert]:
+    def _deduplicate_anomalies(self, anomalies: list[AnomalyAlert]) -> list[AnomalyAlert]:
         """Remove duplicate anomalies based on type and affected services"""
         seen = set()
         unique_anomalies = []
@@ -506,8 +504,8 @@ class TraceAnalyzer:
         self.performance_baselines = new_baselines
         logger.info(f"Updated baselines for {len(new_baselines)} metrics")
 
-    def analyze_trends(self, service_name: Optional[str] = None,
-                      time_window: str = "medium") -> List[TrendAnalysis]:
+    def analyze_trends(self, service_name: str | None = None,
+                      time_window: str = "medium") -> list[TrendAnalysis]:
         """Analyze performance trends for services"""
         if time_window not in self.trend_windows:
             time_window = "medium"
@@ -570,7 +568,7 @@ class TraceAnalyzer:
 
         return trends
 
-    def _linear_regression(self, x_values: List[float], y_values: List[float]) -> Tuple[float, float]:
+    def _linear_regression(self, x_values: list[float], y_values: list[float]) -> tuple[float, float]:
         """Simple linear regression implementation"""
         n = len(x_values)
         if n < 2:
@@ -590,11 +588,11 @@ class TraceAnalyzer:
 
         return slope, intercept
 
-    def get_active_anomalies(self) -> List[AnomalyAlert]:
+    def get_active_anomalies(self) -> list[AnomalyAlert]:
         """Get currently active anomalies"""
         return [alert for alert in self.anomaly_alerts.values() if alert.status == "active"]
 
-    def get_service_health_scores(self) -> Dict[str, ServiceHealthScore]:
+    def get_service_health_scores(self) -> dict[str, ServiceHealthScore]:
         """Get current service health scores"""
         return self.service_health_scores.copy()
 
@@ -605,7 +603,7 @@ class TraceAnalyzer:
             self.anomaly_alerts[anomaly_id].status = "resolved"
             logger.info(f"Resolved anomaly: {anomaly_id}")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get analyzer statistics"""
         return {
             'recent_traces_count': len(self.recent_traces),

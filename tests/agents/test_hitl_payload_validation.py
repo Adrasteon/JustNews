@@ -1,6 +1,4 @@
-import json
 
-import pytest
 
 
 def _patch_crawler_init(monkeypatch):

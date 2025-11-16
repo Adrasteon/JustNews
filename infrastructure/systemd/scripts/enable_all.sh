@@ -21,7 +21,6 @@ SERVICES=(
     "memory"
     "reasoning"
     "newsreader"
-    "balancer"
     "analytics"      # Analytics service (port 8011 per canonical mapping)
     "archive"        # Archive agent (port 8012)
     "dashboard"      # Dashboard agent (port 8013)

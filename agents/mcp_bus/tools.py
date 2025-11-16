@@ -6,10 +6,11 @@ handling agent registration, tool calling, and communication coordination.
 """
 
 import time
-from typing import Any, Dict, List
+from typing import Any
 
 from common.observability import get_logger
-from .mcp_bus_engine import MCPBusEngine, MCPBusConfig
+
+from .mcp_bus_engine import MCPBusConfig, MCPBusEngine
 
 logger = get_logger(__name__)
 
@@ -25,7 +26,7 @@ def get_engine() -> MCPBusEngine:
     return _engine
 
 
-def register_agent(agent_name: str, agent_address: str) -> Dict[str, str]:
+def register_agent(agent_name: str, agent_address: str) -> dict[str, str]:
     """
     Register an agent with the MCP Bus.
 
@@ -46,7 +47,7 @@ def register_agent(agent_name: str, agent_address: str) -> Dict[str, str]:
         raise
 
 
-def unregister_agent(agent_name: str) -> Dict[str, str]:
+def unregister_agent(agent_name: str) -> dict[str, str]:
     """
     Unregister an agent from the MCP Bus.
 
@@ -69,7 +70,7 @@ def unregister_agent(agent_name: str) -> Dict[str, str]:
         raise
 
 
-def call_agent_tool(agent_name: str, tool_name: str, args: List[Any] = None, kwargs: Dict[str, Any] = None) -> Dict[str, Any]:
+def call_agent_tool(agent_name: str, tool_name: str, args: list[Any] = None, kwargs: dict[str, Any] = None) -> dict[str, Any]:
     """
     Call a tool on a registered agent.
 
@@ -104,7 +105,7 @@ def call_agent_tool(agent_name: str, tool_name: str, args: List[Any] = None, kwa
         raise
 
 
-def get_registered_agents() -> Dict[str, str]:
+def get_registered_agents() -> dict[str, str]:
     """
     Get all currently registered agents.
 
@@ -139,7 +140,7 @@ def is_agent_registered(agent_name: str) -> bool:
         raise
 
 
-def get_circuit_breaker_status() -> Dict[str, Dict[str, Any]]:
+def get_circuit_breaker_status() -> dict[str, dict[str, Any]]:
     """
     Get the current circuit breaker status for all agents.
 
@@ -156,7 +157,7 @@ def get_circuit_breaker_status() -> Dict[str, Dict[str, Any]]:
         raise
 
 
-def get_bus_health() -> Dict[str, Any]:
+def get_bus_health() -> dict[str, Any]:
     """
     Get comprehensive health status of the MCP Bus.
 
@@ -173,7 +174,7 @@ def get_bus_health() -> Dict[str, Any]:
         raise
 
 
-def get_bus_stats() -> Dict[str, Any]:
+def get_bus_stats() -> dict[str, Any]:
     """
     Get statistics about MCP Bus operations.
 
@@ -210,7 +211,7 @@ def notify_gpu_orchestrator() -> bool:
         return False
 
 
-def health_check() -> Dict[str, Any]:
+def health_check() -> dict[str, Any]:
     """
     Perform a comprehensive health check of the MCP Bus.
 

@@ -177,25 +177,13 @@ check_data_mount() {
   fi
 }
 
-check_database() {
-  require_command psql
-  local host="${JUSTNEWS_DB_HOST:-${POSTGRES_HOST:-localhost}}"
-  local port="${JUSTNEWS_DB_PORT:-${POSTGRES_PORT:-5432}}"
-  local name="${JUSTNEWS_DB_NAME:-${POSTGRES_DB:-justnews}}"
-  local user="${JUSTNEWS_DB_USER:-${POSTGRES_USER:-justnews_user}}"
-  local password="${JUSTNEWS_DB_PASSWORD:-${POSTGRES_PASSWORD:-password123}}"
-
-  log_info "Verifying connectivity to PostgreSQL database '$name' on $host:$port"
-  local output
-  if ! output=$(PGPASSWORD="$password" psql -h "$host" -p "$port" -U "$user" -d "$name" -c 'SELECT 1;' 2>&1); then
-    log_error "Unable to connect to database $name as $user"
-    log_error "psql error: $output"
-    log_error "Ensure PostgreSQL is running and credentials in /etc/justnews/global.env are correct."
-    log_error "Example manual check: PGPASSWORD=$password psql -h $host -p $port -U $user -d $name"
-    exit 1
-  fi
-  log_success "Database $name is reachable"
-}
+## PostgreSQL checks removed
+# Historically this script validated connectivity to a PostgreSQL server.
+# PostgreSQL is deprecated in this deployment (migrated to MariaDB + Chroma),
+# so the legacy psql-based connectivity checks were intentionally removed to
+# avoid requiring the `psql` client on the host. If you need database checks
+# for MariaDB in the future, add a dedicated check that uses the mysql client
+# or a small Python health probe.
 
 run_reset_and_start() {
   local repo_root="$1"
@@ -382,7 +370,7 @@ main() {
   ensure_env_value PYTHON_BIN
   check_python_runtime
   check_data_mount
-  # check_database  # Skipped as PostgreSQL is deprecated
+  # Database connectivity checks are intentionally skipped here (PostgreSQL deprecated)
 
   local repo_root
   repo_root="$(resolve_repo_root)"

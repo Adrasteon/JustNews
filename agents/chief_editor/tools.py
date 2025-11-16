@@ -17,19 +17,19 @@ Key Functions:
 All functions include robust error handling, validation, and fallbacks.
 """
 
-import asyncio
 import json
 import os
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from common.observability import get_logger
-from .chief_editor_engine import ChiefEditorEngine, ChiefEditorConfig
+
+from .chief_editor_engine import ChiefEditorConfig, ChiefEditorEngine
 
 logger = get_logger(__name__)
 
 # Global engine instance
-_engine: Optional[ChiefEditorEngine] = None
+_engine: ChiefEditorEngine | None = None
 
 def get_chief_editor_engine() -> ChiefEditorEngine:
     """Get or create the global chief editor engine instance."""
@@ -43,7 +43,7 @@ async def process_editorial_request(
     content: str,
     operation_type: str,
     **kwargs
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Process an editorial request using the chief editor engine.
 
@@ -82,7 +82,7 @@ async def process_editorial_request(
         logger.error(f"❌ {operation_type} editorial operation failed: {e}")
         return {"error": str(e)}
 
-def assess_content_quality(content: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def assess_content_quality(content: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     """
     Assess content quality using BERT-based analysis.
 
@@ -102,7 +102,7 @@ def assess_content_quality(content: str, metadata: Optional[Dict[str, Any]] = No
     engine = get_chief_editor_engine()
     return engine.assess_content_quality_bert(content)
 
-def categorize_content(content: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def categorize_content(content: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     """
     Categorize content using DistilBERT-based classification.
 
@@ -122,7 +122,7 @@ def categorize_content(content: str, metadata: Optional[Dict[str, Any]] = None) 
     engine = get_chief_editor_engine()
     return engine.categorize_content_distilbert(content)
 
-def analyze_editorial_sentiment(content: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def analyze_editorial_sentiment(content: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     """
     Analyze editorial sentiment using RoBERTa-based analysis.
 
@@ -142,7 +142,7 @@ def analyze_editorial_sentiment(content: str, metadata: Optional[Dict[str, Any]]
     engine = get_chief_editor_engine()
     return engine.analyze_editorial_sentiment_roberta(content)
 
-def generate_editorial_commentary(content: str, context: str = "news article") -> Dict[str, Any]:
+def generate_editorial_commentary(content: str, context: str = "news article") -> dict[str, Any]:
     """
     Generate editorial commentary using T5-based generation.
 
@@ -169,7 +169,7 @@ def generate_editorial_commentary(content: str, context: str = "news article") -
         "model": "t5"
     }
 
-def make_editorial_decision(content: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def make_editorial_decision(content: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     """
     Make comprehensive editorial decision using all 5 AI models.
 
@@ -201,7 +201,7 @@ def make_editorial_decision(content: str, metadata: Optional[Dict[str, Any]] = N
         "decision_timestamp": time.time()
     }
 
-def request_story_brief(topic: str, scope: str) -> Dict[str, Any]:
+def request_story_brief(topic: str, scope: str) -> dict[str, Any]:
     """
     Generate a story brief for editorial planning.
 
@@ -269,7 +269,7 @@ def request_story_brief(topic: str, scope: str) -> Dict[str, Any]:
         logger.error(f"Error generating story brief: {e}")
         return {"error": str(e)}
 
-def publish_story(story_id: str) -> Dict[str, Any]:
+def publish_story(story_id: str) -> dict[str, Any]:
     """
     Coordinate story publishing across the editorial workflow.
 
@@ -346,7 +346,7 @@ def publish_story(story_id: str) -> Dict[str, Any]:
         logger.error(f"Error publishing story: {e}")
         return {"error": str(e)}
 
-def review_evidence(evidence_manifest: str, reason: str) -> Dict[str, Any]:
+def review_evidence(evidence_manifest: str, reason: str) -> dict[str, Any]:
     """
     Queue evidence for human review and editorial oversight.
 
@@ -393,7 +393,7 @@ def review_evidence(evidence_manifest: str, reason: str) -> Dict[str, Any]:
         logger.error(f"Error queuing evidence review: {e}")
         return {"error": str(e)}
 
-async def health_check() -> Dict[str, Any]:
+async def health_check() -> dict[str, Any]:
     """
     Perform health check on chief editor components.
 
@@ -440,7 +440,7 @@ async def health_check() -> Dict[str, Any]:
             "error": str(e)
         }
 
-def validate_editorial_result(result: Dict[str, Any], expected_fields: List[str] = None) -> bool:
+def validate_editorial_result(result: dict[str, Any], expected_fields: list[str] = None) -> bool:
     """
     Validate editorial result structure.
 
@@ -464,7 +464,7 @@ def validate_editorial_result(result: Dict[str, Any], expected_fields: List[str]
     common_fields = ["model", "processing_time", "timestamp"]
     return any(field in result for field in common_fields)
 
-def format_editorial_output(result: Dict[str, Any], format_type: str = "json") -> str:
+def format_editorial_output(result: dict[str, Any], format_type: str = "json") -> str:
     """
     Format editorial result for output.
 

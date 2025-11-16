@@ -26,8 +26,6 @@ import asyncio
 import os
 import sys
 import types
-import warnings
-from typing import Any, Dict, List, Optional, Generator, AsyncGenerator
 from pathlib import Path
 
 import pytest
@@ -52,14 +50,14 @@ logger = get_logger(__name__)
 class MockResponse:
     """Unified mock response for HTTP calls"""
 
-    def __init__(self, status_code: int = 200, json_data: Optional[Dict] = None,
-                 text: str = "", headers: Optional[Dict] = None):
+    def __init__(self, status_code: int = 200, json_data: dict | None = None,
+                 text: str = "", headers: dict | None = None):
         self.status_code = status_code
         self._json = json_data or {}
         self.text = text
         self.headers = headers or {}
 
-    def json(self) -> Dict:
+    def json(self) -> dict:
         return self._json
 
     def raise_for_status(self) -> None:
@@ -609,7 +607,7 @@ def assert_async_operation_completes_within(async_func, timeout_seconds=5.0):
         try:
             await asyncio.wait_for(async_func(), timeout=timeout_seconds)
             return True
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return False
 
     result = asyncio.run(run_with_timeout())

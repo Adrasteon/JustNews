@@ -1,13 +1,14 @@
 # Database Refactor Tests - Configuration and Fixtures
 
-import pytest
 import os
 from unittest.mock import Mock, patch
-from database.core.connection_pool import DatabaseConnectionPool
-from database.core.schema_manager import SchemaManager
+
+import pytest
+
+from database.core.backup_manager import BackupManager
 from database.core.migration_engine import MigrationEngine
 from database.core.query_optimizer import QueryOptimizer
-from database.core.backup_manager import BackupManager
+from database.core.schema_manager import SchemaManager
 from database.models.base_model import BaseModel
 from database.utils.database_utils import get_db_config
 
@@ -17,7 +18,7 @@ def mock_db_config():
     """Mock database configuration for testing"""
     return {
         'host': 'localhost',
-        'port': 5432,
+        'port': 3306,
         'database': 'test_db',
         'user': 'test_user',
         'password': 'test_password',
@@ -52,19 +53,19 @@ def mock_pool(mock_db_config):
         pool.pool.closeall = Mock()
         pool.pool._pool = []
         pool.pool._used = []
-        
+
         # Mock the execute_query method
         pool.execute_query = Mock()
-        
+
         # Mock the get_metrics method
         pool.get_metrics = Mock(return_value={'connections_created': 5})
-        
+
         # Mock the get_connection method to return a context manager
         mock_context = Mock()
         mock_context.__enter__ = Mock(return_value=Mock())
         mock_context.__exit__ = Mock(return_value=None)
         pool.get_connection = Mock(return_value=mock_context)
-        
+
         yield pool
 
 
@@ -109,11 +110,11 @@ def mock_base_model(mock_pool):
 def mock_env_vars():
     """Mock environment variables for testing"""
     env_vars = {
-        'POSTGRES_HOST': 'localhost',
-        'POSTGRES_PORT': '5432',
-        'POSTGRES_DB': 'test_db',
-        'POSTGRES_USER': 'test_user',
-        'POSTGRES_PASSWORD': 'test_password',
+        'MARIADB_HOST': 'localhost',
+        'MARIADB_PORT': '3306',
+        'MARIADB_DB': 'test_db',
+        'MARIADB_USER': 'test_user',
+        'MARIADB_PASSWORD': 'test_password',
         'DB_MIN_CONNECTIONS': '1',
         'DB_MAX_CONNECTIONS': '5',
         'DB_HEALTH_CHECK_INTERVAL': '30',

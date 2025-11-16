@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+
 sys.path.insert(0, '/home/adra/JustNewsAgent-Clean')
 
 # Set correct MariaDB environment variables

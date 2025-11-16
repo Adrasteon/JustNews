@@ -15,7 +15,6 @@ Author: JustNewsAgent Development Team
 Date: October 22, 2025
 """
 
-import asyncio
 import json
 import logging
 import os
@@ -23,27 +22,27 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Union, Iterator, Tuple
 from pathlib import Path
+from typing import Any
 
-from .trace_collector import TraceData, TraceSpan, TraceAnalysis
+from .trace_collector import TraceData, TraceSpan
 
 logger = logging.getLogger(__name__)
 
 @dataclass
 class TraceQuery:
     """Represents a trace query with filters"""
-    trace_id: Optional[str] = None
-    service_name: Optional[str] = None
-    agent_name: Optional[str] = None
-    operation: Optional[str] = None
-    status: Optional[str] = None
-    min_duration_ms: Optional[float] = None
-    max_duration_ms: Optional[float] = None
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    has_errors: Optional[bool] = None
-    tags: Optional[Dict[str, Any]] = None
+    trace_id: str | None = None
+    service_name: str | None = None
+    agent_name: str | None = None
+    operation: str | None = None
+    status: str | None = None
+    min_duration_ms: float | None = None
+    max_duration_ms: float | None = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    has_errors: bool | None = None
+    tags: dict[str, Any] | None = None
     limit: int = 100
     offset: int = 0
     sort_by: str = "start_time"
@@ -52,7 +51,7 @@ class TraceQuery:
 @dataclass
 class TraceQueryResult:
     """Result of a trace query"""
-    traces: List[TraceData] = field(default_factory=list)
+    traces: list[TraceData] = field(default_factory=list)
     total_count: int = 0
     query_time_ms: float = 0.0
     has_more: bool = False
@@ -63,8 +62,8 @@ class StorageStats:
     total_traces: int = 0
     total_spans: int = 0
     storage_size_bytes: int = 0
-    oldest_trace: Optional[datetime] = None
-    newest_trace: Optional[datetime] = None
+    oldest_trace: datetime | None = None
+    newest_trace: datetime | None = None
     retention_days: int = 30
 
 class TraceStorageBackend(ABC):
@@ -76,7 +75,7 @@ class TraceStorageBackend(ABC):
         pass
 
     @abstractmethod
-    async def get_trace(self, trace_id: str) -> Optional[TraceData]:
+    async def get_trace(self, trace_id: str) -> TraceData | None:
         """Retrieve a trace by ID"""
         pass
 
@@ -109,7 +108,7 @@ class FileTraceStorage(TraceStorageBackend):
         self.storage_path.mkdir(parents=True, exist_ok=True)
 
         # In-memory index for faster queries
-        self.trace_index: Dict[str, Dict[str, Any]] = {}
+        self.trace_index: dict[str, dict[str, Any]] = {}
         self._load_index()
 
     def _get_trace_path(self, trace_id: str) -> Path:
@@ -125,7 +124,7 @@ class FileTraceStorage(TraceStorageBackend):
         index_file = self.storage_path / "index.json"
         if index_file.exists():
             try:
-                with open(index_file, 'r') as f:
+                with open(index_file) as f:
                     self.trace_index = json.load(f)
                 logger.info(f"Loaded trace index with {len(self.trace_index)} entries")
             except Exception as e:
@@ -173,7 +172,7 @@ class FileTraceStorage(TraceStorageBackend):
             logger.error(f"Failed to store trace {trace_data.trace_id}: {e}")
             return False
 
-    async def get_trace(self, trace_id: str) -> Optional[TraceData]:
+    async def get_trace(self, trace_id: str) -> TraceData | None:
         """Retrieve a trace by ID"""
         try:
             if trace_id not in self.trace_index:
@@ -184,7 +183,7 @@ class FileTraceStorage(TraceStorageBackend):
                 logger.warning(f"Trace file not found: {trace_path}")
                 return None
 
-            with open(trace_path, 'r') as f:
+            with open(trace_path) as f:
                 trace_dict = json.load(f)
 
             # Reconstruct TraceData from dict
@@ -266,7 +265,7 @@ class FileTraceStorage(TraceStorageBackend):
             logger.error(f"Failed to query traces: {e}")
             return TraceQueryResult(query_time_ms=(time.time() - start_time) * 1000)
 
-    def _matches_query(self, trace_info: Dict[str, Any], query: TraceQuery) -> bool:
+    def _matches_query(self, trace_info: dict[str, Any], query: TraceQuery) -> bool:
         """Check if a trace matches the query filters"""
         # Trace ID filter
         if query.trace_id and trace_info['trace_id'] != query.trace_id:
@@ -302,7 +301,7 @@ class FileTraceStorage(TraceStorageBackend):
         # This is a simplified implementation
         return True
 
-    def _sort_traces(self, trace_ids: List[str], query: TraceQuery) -> List[str]:
+    def _sort_traces(self, trace_ids: list[str], query: TraceQuery) -> list[str]:
         """Sort traces based on query parameters"""
         if query.sort_by == "start_time":
             trace_ids.sort(
@@ -406,12 +405,12 @@ class TraceStorage:
     - Retention management
     """
 
-    def __init__(self, backends: Optional[List[TraceStorageBackend]] = None):
+    def __init__(self, backends: list[TraceStorageBackend] | None = None):
         self.backends = backends or [FileTraceStorage()]
         self.primary_backend = self.backends[0]
 
         # Query cache for performance
-        self.query_cache: Dict[str, Tuple[TraceQueryResult, datetime]] = {}
+        self.query_cache: dict[str, tuple[TraceQueryResult, datetime]] = {}
         self.cache_ttl_seconds = 300  # 5 minutes
 
         logger.info(f"TraceStorage initialized with {len(self.backends)} backends")
@@ -430,7 +429,7 @@ class TraceStorage:
         logger.error(f"Failed to store trace {trace_data.trace_id} with any backend")
         return False
 
-    async def get_trace(self, trace_id: str) -> Optional[TraceData]:
+    async def get_trace(self, trace_id: str) -> TraceData | None:
         """Retrieve a trace from primary backend"""
         return await self.primary_backend.get_trace(trace_id)
 
@@ -486,7 +485,7 @@ class TraceStorage:
         """Get statistics from primary backend"""
         return await self.primary_backend.get_stats()
 
-    async def cleanup(self, retention_days: Optional[int] = None) -> int:
+    async def cleanup(self, retention_days: int | None = None) -> int:
         """Clean up old traces from all backends"""
         total_deleted = 0
         for backend in self.backends:

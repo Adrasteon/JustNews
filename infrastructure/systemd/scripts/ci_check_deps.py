@@ -8,7 +8,7 @@ Usage: run inside CI where requirements.txt has been installed (or in a venv
 that represents the production environment).
 """
 from __future__ import annotations
-import sys
+
 from importlib import util
 
 AGENT_MODULE_MAP = {

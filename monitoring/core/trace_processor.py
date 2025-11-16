@@ -15,17 +15,15 @@ Author: JustNewsAgent Development Team
 Date: October 22, 2025
 """
 
-import asyncio
-import json
 import logging
 import statistics
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Tuple, Set
 from datetime import datetime, timedelta
+from typing import Any
 
-from .trace_collector import TraceData, TraceSpan, TraceContext
+from .trace_collector import TraceData, TraceSpan
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +48,8 @@ class PerformanceBottleneck:
     bottleneck_type: str  # "latency", "error_rate", "throughput"
     severity: str  # "low", "medium", "high", "critical"
     description: str
-    evidence: Dict[str, Any]
-    recommendations: List[str]
+    evidence: dict[str, Any]
+    recommendations: list[str]
     detected_at: datetime = field(default_factory=datetime.now)
 
 @dataclass
@@ -62,10 +60,10 @@ class TraceAnalysis:
     span_count: int
     service_count: int
     error_count: int
-    critical_path: List[str]  # List of span IDs in critical path
-    bottlenecks: List[PerformanceBottleneck]
-    service_dependencies: List[ServiceDependency]
-    recommendations: List[str]
+    critical_path: list[str]  # List of span IDs in critical path
+    bottlenecks: list[PerformanceBottleneck]
+    service_dependencies: list[ServiceDependency]
+    recommendations: list[str]
     analyzed_at: datetime = field(default_factory=datetime.now)
 
 class TraceProcessor:
@@ -86,19 +84,19 @@ class TraceProcessor:
 
         # Trace storage
         self.processed_traces: deque = deque(maxlen=max_trace_buffer)
-        self.trace_index: Dict[str, TraceData] = {}
+        self.trace_index: dict[str, TraceData] = {}
 
         # Analysis data
-        self.service_dependencies: Dict[Tuple[str, str], ServiceDependency] = {}
-        self.performance_baselines: Dict[str, Dict[str, float]] = {}
-        self.anomaly_thresholds: Dict[str, float] = {
+        self.service_dependencies: dict[tuple[str, str], ServiceDependency] = {}
+        self.performance_baselines: dict[str, dict[str, float]] = {}
+        self.anomaly_thresholds: dict[str, float] = {
             'latency_p95': 2.0,  # 2x baseline
             'error_rate': 0.05,  # 5% error rate threshold
             'span_count': 3.0    # 3x baseline span count
         }
 
         # Performance tracking
-        self.analysis_times: List[float] = []
+        self.analysis_times: list[float] = []
         self.bottleneck_count = 0
         self.anomaly_count = 0
 
@@ -168,7 +166,7 @@ class TraceProcessor:
             recommendations=recommendations
         )
 
-    def _find_critical_path(self, trace_data: TraceData) -> List[str]:
+    def _find_critical_path(self, trace_data: TraceData) -> list[str]:
         """Find the critical path through the trace (longest duration path)"""
         if not trace_data.spans:
             return []
@@ -191,7 +189,7 @@ class TraceProcessor:
                     span_graph[span.parent_span_id]['children'].append(span.span_id)
 
         # Find critical path using dynamic programming
-        def get_critical_path(span_id: str) -> Tuple[List[str], float]:
+        def get_critical_path(span_id: str) -> tuple[list[str], float]:
             if span_id not in span_graph:
                 return [span_id], 0
 
@@ -230,7 +228,7 @@ class TraceProcessor:
 
         return []
 
-    def _detect_bottlenecks(self, trace_data: TraceData) -> List[PerformanceBottleneck]:
+    def _detect_bottlenecks(self, trace_data: TraceData) -> list[PerformanceBottleneck]:
         """Detect performance bottlenecks in the trace"""
         bottlenecks = []
 
@@ -254,7 +252,7 @@ class TraceProcessor:
 
         return bottlenecks
 
-    def _analyze_span_bottleneck(self, span: TraceSpan) -> Optional[PerformanceBottleneck]:
+    def _analyze_span_bottleneck(self, span: TraceSpan) -> PerformanceBottleneck | None:
         """Analyze a single span for bottlenecks"""
         duration = span.duration_ms or 0
 
@@ -304,7 +302,7 @@ class TraceProcessor:
 
         return None
 
-    def _analyze_service_bottleneck(self, service_name: str, spans: List[TraceSpan]) -> Optional[PerformanceBottleneck]:
+    def _analyze_service_bottleneck(self, service_name: str, spans: list[TraceSpan]) -> PerformanceBottleneck | None:
         """Analyze service-level bottlenecks"""
         if not spans:
             return None
@@ -338,7 +336,7 @@ class TraceProcessor:
 
         return None
 
-    def _analyze_dependencies(self, trace_data: TraceData) -> List[ServiceDependency]:
+    def _analyze_dependencies(self, trace_data: TraceData) -> list[ServiceDependency]:
         """Analyze service dependencies from trace"""
         dependencies = []
 
@@ -433,7 +431,7 @@ class TraceProcessor:
                 }
 
     def _generate_recommendations(self, trace_data: TraceData,
-                                bottlenecks: List[PerformanceBottleneck]) -> List[str]:
+                                bottlenecks: list[PerformanceBottleneck]) -> list[str]:
         """Generate recommendations based on trace analysis"""
         recommendations = []
 
@@ -456,7 +454,7 @@ class TraceProcessor:
 
         return list(set(recommendations))  # Remove duplicates
 
-    def get_service_map(self) -> Dict[str, List[ServiceDependency]]:
+    def get_service_map(self) -> dict[str, list[ServiceDependency]]:
         """Get current service dependency map"""
         service_map = defaultdict(list)
 
@@ -465,17 +463,17 @@ class TraceProcessor:
 
         return dict(service_map)
 
-    def get_performance_baselines(self) -> Dict[str, Dict[str, float]]:
+    def get_performance_baselines(self) -> dict[str, dict[str, float]]:
         """Get current performance baselines"""
         return self.performance_baselines.copy()
 
-    def get_recent_bottlenecks(self, limit: int = 50) -> List[PerformanceBottleneck]:
+    def get_recent_bottlenecks(self, limit: int = 50) -> list[PerformanceBottleneck]:
         """Get recently detected bottlenecks"""
         # This would need to be implemented with a bottleneck storage mechanism
         # For now, return empty list
         return []
 
-    def get_trace_stats(self) -> Dict[str, Any]:
+    def get_trace_stats(self) -> dict[str, Any]:
         """Get trace processing statistics"""
         if not self.analysis_times:
             avg_analysis_time = 0
@@ -493,7 +491,7 @@ class TraceProcessor:
             'max_trace_buffer': self.max_trace_buffer
         }
 
-    def find_similar_traces(self, trace_id: str, limit: int = 5) -> List[Tuple[str, float]]:
+    def find_similar_traces(self, trace_id: str, limit: int = 5) -> list[tuple[str, float]]:
         """
         Find traces similar to the given trace based on structure and performance.
 

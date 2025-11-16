@@ -13,10 +13,9 @@ Date: October 22, 2025
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Union
+from datetime import datetime
 from pathlib import Path
-import asyncio
-from datetime import datetime, timedelta
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -26,8 +25,8 @@ logger = logging.getLogger(__name__)
 class DashboardConfig(BaseModel):
     """Configuration for dashboard generation"""
     title: str = Field(..., description="Dashboard title")
-    description: Optional[str] = Field(None, description="Dashboard description")
-    tags: List[str] = Field(default_factory=list, description="Dashboard tags")
+    description: str | None = Field(None, description="Dashboard description")
+    tags: list[str] = Field(default_factory=list, description="Dashboard tags")
     refresh: str = Field("30s", description="Dashboard refresh interval")
     time_range: str = Field("1h", description="Default time range")
     timezone: str = Field("UTC", description="Dashboard timezone")
@@ -45,18 +44,18 @@ class PanelConfig(BaseModel):
     """Configuration for individual dashboard panels"""
     title: str = Field(..., description="Panel title")
     type: str = Field(..., description="Panel type (graph, table, heatmap, etc.)")
-    targets: List[Dict[str, Any]] = Field(default_factory=list, description="Prometheus targets")
-    grid_pos: Dict[str, int] = Field(..., description="Grid position (h, w, x, y)")
-    description: Optional[str] = Field(None, description="Panel description")
-    options: Dict[str, Any] = Field(default_factory=dict, description="Panel-specific options")
+    targets: list[dict[str, Any]] = Field(default_factory=list, description="Prometheus targets")
+    grid_pos: dict[str, int] = Field(..., description="Grid position (h, w, x, y)")
+    description: str | None = Field(None, description="Panel description")
+    options: dict[str, Any] = Field(default_factory=dict, description="Panel-specific options")
 
 class DashboardTemplate(BaseModel):
     """Template for dashboard generation"""
     name: str = Field(..., description="Template name")
     config: DashboardConfig = Field(..., description="Dashboard configuration")
-    panels: List[PanelConfig] = Field(default_factory=list, description="Dashboard panels")
-    variables: List[Dict[str, Any]] = Field(default_factory=list, description="Template variables")
-    annotations: List[Dict[str, Any]] = Field(default_factory=list, description="Dashboard annotations")
+    panels: list[PanelConfig] = Field(default_factory=list, description="Dashboard panels")
+    variables: list[dict[str, Any]] = Field(default_factory=list, description="Template variables")
+    annotations: list[dict[str, Any]] = Field(default_factory=list, description="Dashboard annotations")
 
 @dataclass
 class DashboardGenerator:
@@ -69,14 +68,14 @@ class DashboardGenerator:
     """
 
     # Dashboard templates
-    templates: Dict[str, DashboardTemplate] = field(default_factory=dict)
+    templates: dict[str, DashboardTemplate] = field(default_factory=dict)
 
     # Output directory for generated dashboards
     output_dir: Path = field(default_factory=lambda: Path("monitoring/dashboards/generated"))
 
     # Grafana API configuration
     grafana_url: str = field(default="http://localhost:3000")
-    grafana_api_key: Optional[str] = field(default=None)
+    grafana_api_key: str | None = field(default=None)
 
     def __post_init__(self):
         """Initialize dashboard generator"""
@@ -447,7 +446,7 @@ class DashboardGenerator:
             ]
         )
 
-    async def generate_dashboard(self, template_name: str, custom_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def generate_dashboard(self, template_name: str, custom_config: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Generate a dashboard from template
 
@@ -504,7 +503,7 @@ class DashboardGenerator:
         logger.info(f"Generated dashboard '{template.config.title}' from template '{template_name}'")
         return dashboard_json
 
-    def _apply_custom_config(self, template: DashboardTemplate, custom_config: Dict[str, Any]) -> DashboardTemplate:
+    def _apply_custom_config(self, template: DashboardTemplate, custom_config: dict[str, Any]) -> DashboardTemplate:
         """Apply custom configuration to template"""
         # Create a copy of the template
         updated_template = template.copy()
@@ -527,7 +526,7 @@ class DashboardGenerator:
 
         return updated_template
 
-    def _template_to_grafana_json(self, template: DashboardTemplate) -> Dict[str, Any]:
+    def _template_to_grafana_json(self, template: DashboardTemplate) -> dict[str, Any]:
         """Convert template to Grafana dashboard JSON format"""
         return {
             "dashboard": {
@@ -551,7 +550,7 @@ class DashboardGenerator:
             "overwrite": False
         }
 
-    def _panel_config_to_grafana(self, panel: PanelConfig) -> Dict[str, Any]:
+    def _panel_config_to_grafana(self, panel: PanelConfig) -> dict[str, Any]:
         """Convert panel config to Grafana panel format"""
         return {
             "id": None,  # Will be assigned by Grafana
@@ -568,7 +567,7 @@ class DashboardGenerator:
             "pluginVersion": "8.0.0"
         }
 
-    async def save_dashboard(self, dashboard_json: Dict[str, Any], filename: Optional[str] = None) -> Path:
+    async def save_dashboard(self, dashboard_json: dict[str, Any], filename: str | None = None) -> Path:
         """
         Save dashboard to file
 
@@ -591,7 +590,7 @@ class DashboardGenerator:
         logger.info(f"Saved dashboard to {filepath}")
         return filepath
 
-    async def deploy_dashboard(self, dashboard_json: Dict[str, Any], folder_id: Optional[int] = None) -> Optional[int]:
+    async def deploy_dashboard(self, dashboard_json: dict[str, Any], folder_id: int | None = None) -> int | None:
         """
         Deploy dashboard to Grafana
 
@@ -638,7 +637,7 @@ class DashboardGenerator:
             logger.error(f"Error deploying dashboard to Grafana: {e}")
             return None
 
-    async def generate_all_dashboards(self) -> List[Path]:
+    async def generate_all_dashboards(self) -> list[Path]:
         """
         Generate all available dashboard templates
 
@@ -668,7 +667,7 @@ class DashboardGenerator:
         self.templates[template.name] = template
         logger.info(f"Added custom dashboard template '{template.name}'")
 
-    def list_templates(self) -> List[str]:
+    def list_templates(self) -> list[str]:
         """
         List available dashboard templates
 
@@ -679,9 +678,9 @@ class DashboardGenerator:
 
     async def create_custom_dashboard(self,
                                     title: str,
-                                    panels: List[PanelConfig],
-                                    tags: Optional[List[str]] = None,
-                                    description: Optional[str] = None) -> Dict[str, Any]:
+                                    panels: list[PanelConfig],
+                                    tags: list[str] | None = None,
+                                    description: str | None = None) -> dict[str, Any]:
         """
         Create a custom dashboard from scratch
 

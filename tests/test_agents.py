@@ -14,21 +14,20 @@ All tests follow clean repository patterns and are designed for
 production-ready agent testing.
 """
 
-import asyncio
+from collections.abc import Callable
+from typing import Any
+
 import pytest
 import pytest_asyncio
-from typing import Dict, List, Any, Optional, Callable
-from unittest.mock import Mock, AsyncMock
 
 from tests.test_utils import (
-    MockFactory,
-    TestDataGenerator,
-    PerformanceTester,
-    CustomAssertions,
     AsyncTestHelper,
-    TestConfig
+    CustomAssertions,
+    MockFactory,
+    PerformanceTester,
+    TestConfig,
+    TestDataGenerator,
 )
-
 
 # ============================================================================
 # BASE TEST CLASSES
@@ -44,7 +43,7 @@ class BaseAgentTest:
         self.sample_articles = TestDataGenerator.generate_articles(3)
         self.mock_response = mock_mcp_bus_response
 
-    def assert_agent_response_valid(self, response: Dict, expected_keys: Optional[List[str]] = None):
+    def assert_agent_response_valid(self, response: dict, expected_keys: list[str] | None = None):
         """Assert that agent response follows expected structure"""
         CustomAssertions.assert_mcp_response_valid(response)
 
@@ -353,7 +352,7 @@ def parametrize_agent_tests(*agent_tools):
     )
 
 
-def create_agent_test_data(agent_type: str) -> Dict[str, Any]:
+def create_agent_test_data(agent_type: str) -> dict[str, Any]:
     """Create test data specific to agent type"""
     test_data = {
         "analyst": {

@@ -3,8 +3,8 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
-from training_system.core.training_coordinator import initialize_online_training
 from training_system.core.system_manager import get_system_training_manager
+from training_system.core.training_coordinator import initialize_online_training
 from training_system.mcp_integration import app
 
 

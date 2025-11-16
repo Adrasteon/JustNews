@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from agents.sites.generic_site_crawler import GenericSiteCrawler, SiteConfig
 import agents.crawler.extraction as extraction
+from agents.sites.generic_site_crawler import GenericSiteCrawler, SiteConfig
 from common.url_normalization import hash_article_url, normalize_article_url
 
 

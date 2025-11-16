@@ -9,9 +9,9 @@ in a separate process.
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
-from typing import Any, Dict, Optional
 import os
+from dataclasses import dataclass
+from typing import Any
 
 from agents.c4ai.bridge import crawl_via_local_server
 
@@ -39,7 +39,7 @@ class JournalistEngine:
         self.config = config or JournalistConfig()
         self._shutdown = False
 
-    async def crawl_and_analyze(self, url: str, mode: Optional[str] = None) -> Dict[str, Any]:
+    async def crawl_and_analyze(self, url: str, mode: str | None = None) -> dict[str, Any]:
         mode = mode or self.config.default_mode
         # Use the bridge helper to call the local Crawl4AI server
         results = await crawl_via_local_server(url, mode=mode, use_llm=self.config.use_llm_extraction)

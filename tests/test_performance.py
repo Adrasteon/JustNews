@@ -12,14 +12,20 @@ This module contains comprehensive performance tests that validate:
 
 import asyncio
 import gc
-import psutil
-import pytest
 import time
 import tracemalloc
-from typing import Dict, List, Any, Optional, Callable
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from tests.test_utils import AsyncTestHelper, MockFactory, PerformanceTester, CustomAssertions
+import psutil
+import pytest
+
+from tests.test_utils import (
+    AsyncTestHelper,
+    CustomAssertions,
+    MockFactory,
+    PerformanceTester,
+)
 
 
 class TestSystemPerformance:
@@ -224,7 +230,7 @@ class TestSystemPerformance:
 
         await asyncio.gather(*tasks)
 
-    async def _process_single_article(self, article_id: int) -> Dict[str, Any]:
+    async def _process_single_article(self, article_id: int) -> dict[str, Any]:
         """Process a single article"""
         # Simulate article processing
         await asyncio.sleep(0.01)  # 10ms processing time
@@ -244,7 +250,7 @@ class TestSystemPerformance:
         process = psutil.Process()
         return process.memory_info().rss
 
-    async def _make_mcp_request(self, request_id: int) -> Dict[str, Any]:
+    async def _make_mcp_request(self, request_id: int) -> dict[str, Any]:
         """Make a mock MCP request"""
         await asyncio.sleep(0.001)  # 1ms network delay
         return {"request_id": request_id, "status": "success"}
@@ -298,7 +304,7 @@ class TestSystemPerformance:
         # Simulate network calls
         await asyncio.sleep(0.1)
 
-    def _validate_performance_metrics(self, metrics: Dict[str, Any]):
+    def _validate_performance_metrics(self, metrics: dict[str, Any]):
         """Validate performance metrics"""
         # Validate key performance indicators
         assert "avg_response_time" in metrics

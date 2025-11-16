@@ -9,13 +9,13 @@ always take precedence so that explicit exports override file contents.
 from __future__ import annotations
 
 import os
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Iterable, List, Sequence
 
 _LOADED_ENV_PATHS: set[Path] = set()
 
 
-def _iter_candidate_paths(extra_paths: Sequence[Path] | None = None) -> List[Path]:
+def _iter_candidate_paths(extra_paths: Sequence[Path] | None = None) -> list[Path]:
     """Return candidate locations for the global environment file."""
     candidates: list[Path] = []
 
@@ -67,7 +67,7 @@ def load_global_env(*, logger=None, extra_paths: Iterable[Path] | None = None) -
             continue
 
         try:
-            with open(path, "r", encoding="utf-8") as handle:
+            with open(path, encoding="utf-8") as handle:
                 for raw_line in handle:
                     line = raw_line.strip()
                     if not line or line.startswith("#"):

@@ -9,14 +9,13 @@ reprocessing.
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import re
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, date
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 from urllib.parse import urljoin
 
 from common.observability import get_logger
@@ -26,14 +25,18 @@ logger = get_logger(__name__)
 
 try:  # Optional dependency; graceful degradation when unavailable
     import trafilatura  # type: ignore[import-not-found]
-    from trafilatura.metadata import extract_metadata as _trafilatura_extract_metadata  # type: ignore[attr-defined, import-not-found]
+    from trafilatura.metadata import (
+        extract_metadata as _trafilatura_extract_metadata,  # type: ignore[attr-defined, import-not-found]
+    )
 except ImportError:  # pragma: no cover - missing dependency handled at runtime
     trafilatura = None
     _trafilatura_extract_metadata = None
 
 try:  # readability-lxml (HTML → Article fallback)
-    from readability import Document as ReadabilityDocument  # type: ignore[import-not-found]
     from lxml import html as lxml_html  # type: ignore[import-not-found]
+    from readability import (
+        Document as ReadabilityDocument,  # type: ignore[import-not-found]
+    )
 except ImportError:  # pragma: no cover
     ReadabilityDocument = None
     lxml_html = None
@@ -51,7 +54,11 @@ except ImportError:  # pragma: no cover
     get_base_url = None
 
 try:
-    from langdetect import DetectorFactory, LangDetectException, detect as detect_language  # type: ignore[import-not-found]
+    from langdetect import (  # type: ignore[import-not-found]
+        DetectorFactory,
+        LangDetectException,
+    )
+    from langdetect import detect as detect_language
 
     DetectorFactory.seed = 42
 except ImportError:  # pragma: no cover
@@ -81,29 +88,29 @@ class ExtractionOutcome:
 
     text: str = ""
     title: str = ""
-    canonical_url: Optional[str] = None
-    publication_date: Optional[str] = None
-    authors: List[str] = field(default_factory=list)
-    section: Optional[str] = None
-    tags: List[str] = field(default_factory=list)
-    language: Optional[str] = None
-    extractor_used: Optional[str] = None
-    fallbacks_attempted: List[str] = field(default_factory=list)
+    canonical_url: str | None = None
+    publication_date: str | None = None
+    authors: list[str] = field(default_factory=list)
+    section: str | None = None
+    tags: list[str] = field(default_factory=list)
+    language: str | None = None
+    extractor_used: str | None = None
+    fallbacks_attempted: list[str] = field(default_factory=list)
     word_count: int = 0
     boilerplate_ratio: float = 0.0
     needs_review: bool = False
-    review_reasons: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    structured_metadata: Dict[str, Any] = field(default_factory=dict)
-    raw_html_path: Optional[str] = None
+    review_reasons: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    structured_metadata: dict[str, Any] = field(default_factory=dict)
+    raw_html_path: str | None = None
 
 
-def _store_raw_html(html: str, url: str, *, target_dir: Path = _DEFAULT_RAW_DIR) -> Optional[str]:
+def _store_raw_html(html: str, url: str, *, target_dir: Path = _DEFAULT_RAW_DIR) -> str | None:
     """Persist the raw HTML to disk for forensic reprocessing."""
 
     try:
         target_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
         digest = hashlib.sha256(url.encode("utf-8", errors="ignore")).hexdigest()[:16]
         filename = f"{timestamp}_{digest}_{uuid.uuid4().hex[:12]}.html"
         file_path = target_dir / filename
@@ -119,7 +126,7 @@ def _store_raw_html(html: str, url: str, *, target_dir: Path = _DEFAULT_RAW_DIR)
         return str(file_path)
 
 
-def _extract_with_trafilatura(html: str, url: str) -> Optional[Dict[str, Any]]:
+def _extract_with_trafilatura(html: str, url: str) -> dict[str, Any] | None:
     if trafilatura is None or _trafilatura_extract_metadata is None:
         return None
     try:
@@ -140,7 +147,7 @@ def _extract_with_trafilatura(html: str, url: str) -> Optional[Dict[str, Any]]:
             # Older versions expect the keyword 'url'; keep backward compatibility.
             meta_obj = _trafilatura_extract_metadata(html, url=url)
         if meta_obj is None:
-            meta_dict: Dict[str, Any] = {}
+            meta_dict: dict[str, Any] = {}
         else:
             try:
                 meta_dict = meta_obj.to_dict()  # type: ignore[attr-defined]
@@ -172,7 +179,7 @@ def _extract_with_trafilatura(html: str, url: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def _extract_with_readability(html: str) -> Optional[Dict[str, Any]]:
+def _extract_with_readability(html: str) -> dict[str, Any] | None:
     if ReadabilityDocument is None or lxml_html is None:
         return None
     try:
@@ -187,7 +194,7 @@ def _extract_with_readability(html: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def _extract_with_justext(html: str, language_hint: Optional[str]) -> Optional[str]:
+def _extract_with_justext(html: str, language_hint: str | None) -> str | None:
     if justext is None:
         return None
     try:
@@ -204,7 +211,7 @@ def _extract_with_justext(html: str, language_hint: Optional[str]) -> Optional[s
         return None
 
 
-def _plain_text_fallback(html: str) -> Optional[str]:
+def _plain_text_fallback(html: str) -> str | None:
     """Very lightweight HTML-to-text fallback used when specialized libraries are unavailable."""
 
     cleaned = re.sub(r"<script[^>]*>.*?</script>", " ", html, flags=re.DOTALL | re.IGNORECASE)
@@ -215,7 +222,7 @@ def _plain_text_fallback(html: str) -> Optional[str]:
     return cleaned.strip() or None
 
 
-def _parse_structured_metadata(html: str, url: str) -> Dict[str, Any]:
+def _parse_structured_metadata(html: str, url: str) -> dict[str, Any]:
     if extruct is None or get_base_url is None:
         return {}
     try:
@@ -232,7 +239,7 @@ def _parse_structured_metadata(html: str, url: str) -> Dict[str, Any]:
         return {}
 
 
-def _derive_meta_from_dom(html: str, url: str) -> Dict[str, Any]:
+def _derive_meta_from_dom(html: str, url: str) -> dict[str, Any]:
     if lxml_html is None:
         return {}
     try:
@@ -251,7 +258,7 @@ def _derive_meta_from_dom(html: str, url: str) -> Dict[str, Any]:
     )
     og_url = tree.xpath("//meta[@property='og:url']/@content")
 
-    tags: List[str] = []
+    tags: list[str] = []
     if meta_tags:
         for entry in meta_tags:
             if entry:
@@ -270,7 +277,7 @@ def _derive_meta_from_dom(html: str, url: str) -> Dict[str, Any]:
     }
 
 
-def _normalise_value_sequence(value: Any) -> List[str]:
+def _normalise_value_sequence(value: Any) -> list[str]:
     if value is None:
         return []
     if isinstance(value, list):

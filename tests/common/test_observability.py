@@ -2,14 +2,11 @@
 Tests for JustNewsAgent Observability Utilities
 """
 
-import os
 import logging
-import tempfile
-import pytest
-from unittest.mock import patch, Mock
-from pathlib import Path
+import os
+from unittest.mock import patch
 
-from common.observability import get_logger, setup_logging, LOG_DIR
+from common.observability import LOG_DIR, get_logger, setup_logging
 
 
 class TestObservability:
@@ -156,7 +153,7 @@ class TestObservability:
         assert os.path.exists(log_file)
 
         # Check that message was written
-        with open(log_file, 'r', encoding='utf-8') as f:
+        with open(log_file, encoding='utf-8') as f:
             content = f.read()
             assert test_message in content
 

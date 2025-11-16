@@ -13,8 +13,8 @@ import os
 import random
 import socket
 import time
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
-from typing import Iterable, Iterator, Mapping
 
 from common.observability import get_logger
 

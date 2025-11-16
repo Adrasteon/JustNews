@@ -13,23 +13,30 @@ import os
 import threading
 import time
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
-from common.metrics import JustNewsMetrics
 from .gpu_orchestrator_engine import engine
 from .tools import (
-    get_gpu_info, get_policy, set_policy, get_allocations,
-    lease_gpu, release_gpu_lease, models_preload, models_status,
-    get_mps_allocation, get_metrics
+    get_allocations,
+    get_gpu_info,
+    get_metrics,
+    get_mps_allocation,
+    get_policy,
+    lease_gpu,
+    models_preload,
+    models_status,
+    release_gpu_lease,
+    set_policy,
 )
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
-    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+    from database.utils.migrated_database_utils import (
+        create_database_service,  # type: ignore
+    )
 except Exception:
     create_database_service = None
 
@@ -48,7 +55,7 @@ class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
         self.base_url = base_url
 
-    def register_agent(self, agent_name: str, agent_address: str, tools: List[str]):
+    def register_agent(self, agent_name: str, agent_address: str, tools: list[str]):
         """Register agent with MCP Bus."""
         try:
             import requests
@@ -81,9 +88,9 @@ class MCPBusClient:
 
 class PolicyUpdate(BaseModel):
     """GPU policy update model."""
-    max_memory_per_agent_mb: Optional[int] = Field(None, ge=256, description="Per-agent memory cap in MB")
-    allow_fractional_shares: Optional[bool] = None
-    kill_on_oom: Optional[bool] = None
+    max_memory_per_agent_mb: int | None = Field(None, ge=256, description="Per-agent memory cap in MB")
+    allow_fractional_shares: bool | None = None
+    kill_on_oom: bool | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -91,7 +98,7 @@ class PolicyUpdate(BaseModel):
 class LeaseRequest(BaseModel):
     """GPU lease request model."""
     agent: str
-    min_memory_mb: Optional[int] = Field(0, ge=0)
+    min_memory_mb: int | None = Field(0, ge=0)
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -105,9 +112,9 @@ class ReleaseRequest(BaseModel):
 
 class PreloadRequest(BaseModel):
     """Model preload request model."""
-    agents: Optional[List[str]] = Field(default=None, description="Subset of agents to preload; default all from AGENT_MODEL_MAP.json")
+    agents: list[str] | None = Field(default=None, description="Subset of agents to preload; default all from AGENT_MODEL_MAP.json")
     refresh: bool = Field(default=False, description="Restart preloading even if a job already completed")
-    strict: Optional[bool] = Field(default=None, description="Override STRICT_MODEL_STORE env for this preload run")
+    strict: bool | None = Field(default=None, description="Override STRICT_MODEL_STORE env for this preload run")
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -121,7 +128,7 @@ async def lifespan(app: FastAPI):
     # Registration status tracker
     registration_complete = threading.Event()
 
-    def register_agent_background(agent_name: str, agent_address: str, tools: List[str]):
+    def register_agent_background(agent_name: str, agent_address: str, tools: list[str]):
         """Register the agent with the MCP Bus in a background thread."""
         def background_task():
             client = MCPBusClient()

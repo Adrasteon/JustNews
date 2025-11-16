@@ -1,7 +1,7 @@
 # Database Refactor Tests - Connection Pool Tests
 
-import pytest
-from unittest.mock import Mock, patch, call
+from unittest.mock import Mock, patch
+
 from database.core.connection_pool import DatabaseConnectionPool
 
 
@@ -31,12 +31,12 @@ class TestDatabaseConnectionPool:
         """Test successful connection retrieval"""
         with patch('psycopg2.connect') as mock_connect:
             pool = DatabaseConnectionPool(mock_db_config)
-            
+
             # Mock the pool methods
             pool.pool = Mock()
             pool.pool.getconn.return_value = Mock()
             pool.pool.putconn = Mock()
-            
+
             with pool.get_connection() as conn:
                 assert conn is not None
 
@@ -47,7 +47,7 @@ class TestDatabaseConnectionPool:
         """Test behavior when pool is exhausted"""
         with patch('psycopg2.connect') as mock_connect:
             pool = DatabaseConnectionPool(mock_db_config)
-            
+
             # Mock the pool to be exhausted
             pool.pool = Mock()
             pool.pool.getconn.side_effect = Exception("Pool exhausted")
@@ -62,7 +62,7 @@ class TestDatabaseConnectionPool:
         """Test successful health check"""
         with patch('psycopg2.connect') as mock_connect:
             pool = DatabaseConnectionPool({'host': 'localhost', 'port': 5432, 'database': 'test', 'user': 'test', 'password': 'test', 'min_connections': 1, 'max_connections': 5, 'health_check_interval': 30, 'max_retries': 3, 'retry_delay': 1.0})
-            
+
             mock_connection.cursor.return_value.__enter__.return_value.fetchone.return_value = (1,)
 
             result = pool._health_check(mock_connection)
@@ -72,7 +72,7 @@ class TestDatabaseConnectionPool:
         """Test failed health check"""
         with patch('psycopg2.connect') as mock_connect:
             pool = DatabaseConnectionPool({'host': 'localhost', 'port': 5432, 'database': 'test', 'user': 'test', 'password': 'test', 'min_connections': 1, 'max_connections': 5, 'health_check_interval': 30, 'max_retries': 3, 'retry_delay': 1.0})
-            
+
             mock_connection.cursor.side_effect = Exception("Connection failed")
 
             result = pool._health_check(mock_connection)
@@ -82,11 +82,11 @@ class TestDatabaseConnectionPool:
         """Test failover to backup pool"""
         with patch('psycopg2.connect') as mock_connect:
             pool = DatabaseConnectionPool(mock_db_config)
-            
+
             # Mock pools
             pool.pool = Mock()
             pool.pool.getconn.side_effect = Exception("Primary failed")
-            
+
             # Mock backup pool
             backup_pool_mock = Mock()
             backup_pool_mock.getconn.return_value = Mock()
@@ -101,7 +101,7 @@ class TestDatabaseConnectionPool:
         """Test metrics collection"""
         with patch('psycopg2.connect') as mock_connect:
             pool = DatabaseConnectionPool(mock_db_config)
-            
+
             # Set some metrics
             pool.metrics['connections_created'] = 5
             pool.metrics['connections_acquired'] = 10
@@ -119,7 +119,7 @@ class TestDatabaseConnectionPool:
         """Test closing all connections"""
         with patch('psycopg2.connect') as mock_connect:
             pool = DatabaseConnectionPool(mock_db_config)
-            
+
             # Mock the pool
             pool.pool = Mock()
             pool.pool.closeall = Mock()
@@ -133,7 +133,7 @@ class TestDatabaseConnectionPool:
         """Test context manager behavior"""
         with patch('psycopg2.connect') as mock_connect:
             pool = DatabaseConnectionPool(mock_db_config)
-            
+
             # Mock the pool
             pool.pool = Mock()
             pool.pool.closeall = Mock()
@@ -148,7 +148,7 @@ class TestDatabaseConnectionPool:
         """Test connection health check functionality"""
         with patch('psycopg2.connect') as mock_connect:
             pool = DatabaseConnectionPool(mock_db_config)
-            
+
             # Mock successful health check
             with patch.object(pool, '_perform_health_check', return_value=True):
                 pool._perform_health_check()

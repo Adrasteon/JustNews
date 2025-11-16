@@ -2,8 +2,10 @@
 set -euo pipefail
 
 # scripts/setup_postgres.sh
-# Idempotent operator script to install Postgres (optional), create role/databases,
-# enable extensions and apply SQL migrations for JustNewsAgent.
+# DEPRECATED: Postgres is no longer the primary deployment database for
+# JustNewsAgent (migrated to MariaDB + Chroma). This script is retained for
+# historical/reference purposes only and is not recommended for new deployments.
+# Use your environment's MariaDB provisioning procedures instead.
 # Usage:
 #   sudo ./scripts/setup_postgres.sh [--db-user USER] [--db-password PASS] [--db-name DB] [--memory-db NAME] [--pg-version 16] [--no-install]
 # Example:
@@ -153,13 +155,15 @@ if [[ -f deploy/sql/canonical_selection.sql ]]; then
 fi
 
 # Create global env file for services (idempotent, will overwrite)
-log "Writing ${GLOBAL_ENV_PATH} (overwrite)"
+log "Writing ${GLOBAL_ENV_PATH} (overwrite) - note: writing MARIADB_* keys for migrated deployments"
 mkdir -p "$(dirname ${GLOBAL_ENV_PATH})"
 cat > "${GLOBAL_ENV_PATH}" <<EOF
-postgres_host=localhost
-postgres_db=${DB_NAME}
-postgres_user=${DB_USER}
-postgres_password=${DB_PASSWORD}
+# NOTE: This file was written by the deprecated Postgres setup script.
+# The current recommended vars use MARIADB_* names for MariaDB deployments.
+MARIADB_HOST=localhost
+MARIADB_DB=${DB_NAME}
+MARIADB_USER=${DB_USER}
+MARIADB_PASSWORD=${DB_PASSWORD}
 db_pool_min_connections=2
 db_pool_max_connections=10
 EOF

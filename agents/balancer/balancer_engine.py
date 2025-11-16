@@ -3,9 +3,9 @@ Balancer Engine for JustNewsAgent.
 
 Core load balancing and workload distribution logic.
 """
-from typing import Dict, List, Any
-import time
 import random
+import time
+from typing import Any
 
 from common.observability import get_logger
 
@@ -22,7 +22,7 @@ class BalancerEngine:
         self.last_status_update = 0
         self.cache_ttl = 30  # 30 seconds cache
 
-    def distribute_load(self, workload_items: List[Dict[str, Any]], agent_count: int = 8) -> Dict[str, Any]:
+    def distribute_load(self, workload_items: list[dict[str, Any]], agent_count: int = 8) -> dict[str, Any]:
         """Distribute workload items across available agents for load balancing."""
         if not workload_items:
             return {"distribution": {}, "total_items": 0, "agents_used": 0}
@@ -45,7 +45,7 @@ class BalancerEngine:
             "distribution_method": "round_robin"
         }
 
-    def get_agent_status(self) -> Dict[str, Any]:
+    def get_agent_status(self) -> dict[str, Any]:
         """Get status of all agents for load balancing decisions."""
         # Check cache first
         current_time = time.time()
@@ -82,7 +82,7 @@ class BalancerEngine:
 
         return result
 
-    def balance_workload(self, current_loads: Dict[str, float] = None) -> Dict[str, Any]:
+    def balance_workload(self, current_loads: dict[str, float] = None) -> dict[str, Any]:
         """Balance workload based on current agent loads."""
         if current_loads is None:
             # Get current loads from agent status
@@ -126,7 +126,7 @@ class BalancerEngine:
             "balancing_needed": len(overloaded) > 0 or len(underloaded) > 0
         }
 
-    def monitor_performance(self, monitoring_window_seconds: int = 300) -> Dict[str, Any]:
+    def monitor_performance(self, monitoring_window_seconds: int = 300) -> dict[str, Any]:
         """Monitor agent performance metrics for load balancing."""
         # Get current agent status
         status = self.get_agent_status()

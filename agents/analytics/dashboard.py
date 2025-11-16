@@ -10,7 +10,6 @@ Provides comprehensive web-based analytics interface with:
 - Interactive charts and visualizations
 """
 
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -179,7 +178,6 @@ async def get_service_info():
 async def get_engine_health():
     """Get detailed engine health information"""
     try:
-        import asyncio
         health_info = await analytics_engine.health_check()
         return JSONResponse(content=health_info)
     except Exception as e:

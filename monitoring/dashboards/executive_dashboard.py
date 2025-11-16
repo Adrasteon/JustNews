@@ -9,13 +9,12 @@ Author: JustNewsAgent Development Team
 Date: October 22, 2025
 """
 
-import asyncio
 import logging
+import statistics
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Tuple, Union
 from datetime import datetime, timedelta
 from enum import Enum
-import statistics
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -40,12 +39,12 @@ class KPIStatus(Enum):
 class ExecutiveMetric(BaseModel):
     """Executive-level metric"""
     name: str = Field(..., description="Metric name")
-    value: Union[int, float, str] = Field(..., description="Current value")
+    value: int | float | str = Field(..., description="Current value")
     unit: str = Field("", description="Unit of measurement")
-    change_percent: Optional[float] = Field(None, description="Percentage change from previous period")
+    change_percent: float | None = Field(None, description="Percentage change from previous period")
     trend: str = Field("stable", description="Trend direction: up, down, stable")
     status: KPIStatus = Field(KPIStatus.GOOD, description="Current status")
-    target: Optional[Union[int, float]] = Field(None, description="Target value")
+    target: int | float | None = Field(None, description="Target value")
     category: KPICategory = Field(..., description="KPI category")
     description: str = Field(..., description="Metric description")
     last_updated: datetime = Field(default_factory=datetime.now, description="Last update timestamp")
@@ -53,8 +52,8 @@ class ExecutiveMetric(BaseModel):
 class BusinessKPI(BaseModel):
     """Business Key Performance Indicator"""
     name: str = Field(..., description="KPI name")
-    value: Union[int, float] = Field(..., description="Current value")
-    target: Union[int, float] = Field(..., description="Target value")
+    value: int | float = Field(..., description="Current value")
+    target: int | float = Field(..., description="Target value")
     period: str = Field("monthly", description="Reporting period")
     status: KPIStatus = Field(..., description="KPI status")
     trend: str = Field("stable", description="Performance trend")
@@ -66,11 +65,11 @@ class ExecutiveSummary(BaseModel):
     """Executive summary data"""
     period: str = Field(..., description="Reporting period")
     overall_status: KPIStatus = Field(..., description="Overall system status")
-    key_highlights: List[str] = Field(default_factory=list, description="Key achievements/highlights")
-    critical_issues: List[str] = Field(default_factory=list, description="Critical issues requiring attention")
-    recommendations: List[str] = Field(default_factory=list, description="Strategic recommendations")
+    key_highlights: list[str] = Field(default_factory=list, description="Key achievements/highlights")
+    critical_issues: list[str] = Field(default_factory=list, description="Critical issues requiring attention")
+    recommendations: list[str] = Field(default_factory=list, description="Strategic recommendations")
     risk_assessment: str = Field("", description="Overall risk assessment")
-    next_steps: List[str] = Field(default_factory=list, description="Recommended next steps")
+    next_steps: list[str] = Field(default_factory=list, description="Recommended next steps")
 
 @dataclass
 class ExecutiveDashboard:
@@ -82,20 +81,20 @@ class ExecutiveDashboard:
     """
 
     # Core KPIs
-    business_kpis: Dict[str, BusinessKPI] = field(default_factory=dict)
+    business_kpis: dict[str, BusinessKPI] = field(default_factory=dict)
 
     # Executive metrics
-    executive_metrics: Dict[str, ExecutiveMetric] = field(default_factory=dict)
+    executive_metrics: dict[str, ExecutiveMetric] = field(default_factory=dict)
 
     # Historical data for trend analysis
-    historical_data: Dict[str, List[Tuple[datetime, Union[int, float]]]] = field(default_factory=dict)
+    historical_data: dict[str, list[tuple[datetime, int | float]]] = field(default_factory=dict)
 
     # Dashboard configuration
     update_interval: int = field(default=300)  # 5 minutes
     retention_days: int = field(default=90)
 
     # Status thresholds
-    status_thresholds: Dict[str, Dict[str, float]] = field(default_factory=lambda: {
+    status_thresholds: dict[str, dict[str, float]] = field(default_factory=lambda: {
         "cpu_usage": {"warning": 70.0, "critical": 90.0},
         "memory_usage": {"warning": 80.0, "critical": 95.0},
         "error_rate": {"warning": 2.0, "critical": 5.0},
@@ -240,7 +239,7 @@ class ExecutiveDashboard:
         for metric in default_metrics:
             self.executive_metrics[metric.name] = metric
 
-    async def update_metrics(self, metrics_data: Dict[str, Any]):
+    async def update_metrics(self, metrics_data: dict[str, Any]):
         """
         Update executive metrics with new data
 
@@ -258,7 +257,7 @@ class ExecutiveDashboard:
 
         logger.info("Updated executive dashboard metrics")
 
-    async def _update_metric(self, metric_name: str, value: Union[int, float]):
+    async def _update_metric(self, metric_name: str, value: int | float):
         """Update a specific executive metric"""
         if metric_name not in self.executive_metrics:
             # Create the metric if it doesn't exist (for derived metrics)
@@ -271,7 +270,7 @@ class ExecutiveDashboard:
             else:
                 category = KPICategory.OPERATIONAL
                 description = f"Metric: {metric_name}"
-            
+
             self.executive_metrics[metric_name] = ExecutiveMetric(
                 name=metric_name,
                 value=value,
@@ -316,7 +315,7 @@ class ExecutiveDashboard:
             if ts >= cutoff
         ]
 
-    async def _update_kpi(self, kpi_name: str, value: Union[int, float]):
+    async def _update_kpi(self, kpi_name: str, value: int | float):
         """Update a specific business KPI"""
         kpi = self.business_kpis[kpi_name]
         kpi.value = value
@@ -351,7 +350,7 @@ class ExecutiveDashboard:
 
         # CPU health (inverse of usage)
         cpu_usage = self.executive_metrics.get("CPU Usage", ExecutiveMetric(
-            name="CPU Usage", 
+            name="CPU Usage",
             value=50,
             category=KPICategory.TECHNICAL,
             description="CPU usage percentage"
@@ -361,7 +360,7 @@ class ExecutiveDashboard:
 
         # Memory health
         memory_usage = self.executive_metrics.get("Memory Usage", ExecutiveMetric(
-            name="Memory Usage", 
+            name="Memory Usage",
             value=60,
             category=KPICategory.TECHNICAL,
             description="Memory usage percentage"
@@ -371,7 +370,7 @@ class ExecutiveDashboard:
 
         # Uptime score
         uptime = self.executive_metrics.get("System Uptime", ExecutiveMetric(
-            name="System Uptime", 
+            name="System Uptime",
             value=99.5,
             category=KPICategory.TECHNICAL,
             description="System uptime percentage"
@@ -381,7 +380,7 @@ class ExecutiveDashboard:
 
         # Error rate score (inverse)
         error_rate = self.executive_metrics.get("Error Rate", ExecutiveMetric(
-            name="Error Rate", 
+            name="Error Rate",
             value=1.0,
             category=KPICategory.OPERATIONAL,
             description="Error rate percentage"
@@ -398,7 +397,7 @@ class ExecutiveDashboard:
         # Security alerts increase risk
         security_alerts = self.executive_metrics.get("Active Security Alerts",
                                                    ExecutiveMetric(
-                                                       name="Active Security Alerts", 
+                                                       name="Active Security Alerts",
                                                        value=0,
                                                        category=KPICategory.SECURITY,
                                                        description="Number of active security alerts"
@@ -407,7 +406,7 @@ class ExecutiveDashboard:
 
         # High error rates increase risk
         error_rate = self.executive_metrics.get("Error Rate", ExecutiveMetric(
-            name="Error Rate", 
+            name="Error Rate",
             value=1.0,
             category=KPICategory.OPERATIONAL,
             description="Error rate percentage"
@@ -416,7 +415,7 @@ class ExecutiveDashboard:
 
         # Low uptime increases risk
         uptime = self.executive_metrics.get("System Uptime", ExecutiveMetric(
-            name="System Uptime", 
+            name="System Uptime",
             value=99.5,
             category=KPICategory.TECHNICAL,
             description="System uptime percentage"
@@ -457,7 +456,7 @@ class ExecutiveDashboard:
                         return KPIStatus.CRITICAL
                 else:
                     return KPIStatus.GOOD
-        
+
         achievement_rate = (metric.value / metric.target) * 100 if isinstance(metric.value, (int, float)) else 50
 
         if metric.category == KPICategory.SECURITY:
@@ -555,7 +554,7 @@ class ExecutiveDashboard:
         else:
             return KPIStatus.EXCELLENT
 
-    def _generate_key_highlights(self) -> List[str]:
+    def _generate_key_highlights(self) -> list[str]:
         """Generate key highlights for the executive summary"""
         highlights = []
 
@@ -584,7 +583,7 @@ class ExecutiveDashboard:
 
         return highlights
 
-    def _identify_critical_issues(self) -> List[str]:
+    def _identify_critical_issues(self) -> list[str]:
         """Identify critical issues requiring attention"""
         issues = []
 
@@ -605,7 +604,7 @@ class ExecutiveDashboard:
 
         return issues
 
-    def _generate_recommendations(self) -> List[str]:
+    def _generate_recommendations(self) -> list[str]:
         """Generate strategic recommendations"""
         recommendations = []
 
@@ -634,7 +633,7 @@ class ExecutiveDashboard:
     def _assess_risk(self) -> str:
         """Assess overall system risk"""
         risk_score = self.executive_metrics.get("Risk Score", ExecutiveMetric(
-            name="Risk Score", 
+            name="Risk Score",
             value=20,
             category=KPICategory.OPERATIONAL,
             description="Overall system risk score"
@@ -649,7 +648,7 @@ class ExecutiveDashboard:
         else:
             return "Critical - Immediate risk mitigation required"
 
-    def _define_next_steps(self) -> List[str]:
+    def _define_next_steps(self) -> list[str]:
         """Define recommended next steps"""
         next_steps = []
 
@@ -677,7 +676,7 @@ class ExecutiveDashboard:
 
         return next_steps
 
-    def get_metric_trend(self, metric_name: str, days: int = 7) -> Dict[str, Any]:
+    def get_metric_trend(self, metric_name: str, days: int = 7) -> dict[str, Any]:
         """
         Get trend analysis for a specific metric
 
@@ -724,7 +723,7 @@ class ExecutiveDashboard:
             "period_days": days
         }
 
-    def export_dashboard_data(self) -> Dict[str, Any]:
+    def export_dashboard_data(self) -> dict[str, Any]:
         """Export all dashboard data for reporting"""
         return {
             "business_kpis": [kpi.model_dump() for kpi in self.business_kpis.values()],

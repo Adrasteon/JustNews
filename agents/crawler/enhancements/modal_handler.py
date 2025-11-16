@@ -1,9 +1,8 @@
 """Cookie/consent modal heuristics for the crawler."""
 from __future__ import annotations
 
-import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List
 
 try:  # Optional dependency, aligns with GenericSiteCrawler behaviour
     from lxml import html as lxml_html  # type: ignore[import-not-found]
@@ -21,8 +20,8 @@ class ModalHandlingResult:
 
     cleaned_html: str
     modals_detected: bool
-    applied_cookies: Dict[str, str] = field(default_factory=dict)
-    notes: List[str] = field(default_factory=list)
+    applied_cookies: dict[str, str] = field(default_factory=dict)
+    notes: list[str] = field(default_factory=list)
 
 
 class ModalHandler:
@@ -60,7 +59,7 @@ class ModalHandler:
             optional cookies.
         """
 
-        notes: List[str] = []
+        notes: list[str] = []
         detected = False
         cleaned_html = html
 
@@ -79,7 +78,7 @@ class ModalHandler:
                 logger.debug("ModalHandler failed to parse HTML: %s", exc)
                 notes.append("Overlay removal failed; original HTML preserved")
 
-        cookies: Dict[str, str] = {}
+        cookies: dict[str, str] = {}
         if detected and self.enable_cookie_injection:
             cookies[self.consent_cookie_name] = self.consent_cookie_value
             notes.append("Generated synthetic consent cookie")
@@ -107,7 +106,7 @@ class ModalHandler:
             "//div[contains(@id, 'consent')]",
             "//section[contains(@class, 'cookie')]",
             "//section[contains(@id, 'cookie')]",
-            
+
             # Modern cookie banner patterns
             "//div[contains(@class, 'gdpr')]",
             "//div[contains(@class, 'privacy')]",
@@ -123,14 +122,14 @@ class ModalHandler:
             "//div[contains(@id, 'popup')]",
             "//div[contains(@id, 'dialog')]",
             "//div[contains(@id, 'notification')]",
-            
+
             # Data attributes
             "//div[contains(@data-testid, 'cookie')]",
             "//div[contains(@data-testid, 'gdpr')]",
             "//div[contains(@data-testid, 'consent')]",
             "//div[contains(@data-testid, 'privacy')]",
             "//div[contains(@data-testid, 'banner')]",
-            
+
             # ARIA attributes
             "//div[contains(@role, 'dialog')]",
             "//div[contains(@role, 'alertdialog')]",
@@ -138,20 +137,20 @@ class ModalHandler:
             "//div[contains(@aria-label, 'consent')]",
             "//div[contains(@aria-label, 'privacy')]",
             "//div[contains(@aria-label, 'gdpr')]",
-            
+
             # Generic overlay patterns
             "//div[contains(@class, 'fixed') and contains(@class, 'bottom')]",
             "//div[contains(@class, 'fixed') and contains(@class, 'top')]",
             "//div[contains(@style, 'position: fixed')]",
             "//div[contains(@style, 'position:fixed')]",
-            
+
             # Common framework classes
             "//div[contains(@class, 'fc-consent')]",  # Foundry CMP
             "//div[contains(@class, 'onetrust')]",    # OneTrust
             "//div[contains(@class, 'cookiebot')]",   # Cookiebot
             "//div[contains(@class, 'cmp')]",         # Generic CMP
             "//div[contains(@class, 'cc-banner')]",   # Cookie Consent
-            
+
             # Other element types
             "//section[contains(@class, 'cookie')]",
             "//section[contains(@class, 'consent')]",
@@ -163,7 +162,7 @@ class ModalHandler:
             "//aside[contains(@class, 'gdpr')]",
             "//aside[contains(@class, 'privacy')]",
             "//aside[contains(@class, 'banner')]",
-            
+
             # Iframes that might be cookie-related
             "//iframe[contains(@src, 'cookie')]",
             "//iframe[contains(@src, 'consent')]",

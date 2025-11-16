@@ -1,12 +1,20 @@
 # Database Refactor Tests - Database Utilities Tests
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
-import asyncio
+
 from database.utils.database_utils import (
-    get_db_config, create_connection_pool, execute_query_async,
-    execute_transaction, get_database_stats, vacuum_analyze_table,
-    reindex_table, get_slow_queries, kill_query, check_connection
+    check_connection,
+    create_connection_pool,
+    execute_query_async,
+    execute_transaction,
+    get_database_stats,
+    get_db_config,
+    get_slow_queries,
+    kill_query,
+    reindex_table,
+    vacuum_analyze_table,
 )
 
 
@@ -63,7 +71,7 @@ class TestDatabaseUtils:
         mock_conn = Mock()
         mock_cursor = Mock()
         mock_conn.cursor.return_value = mock_cursor
-        
+
         # Set up the mock context manager
         mock_context = mock_pool.get_connection.return_value
         mock_context.__enter__.return_value = mock_conn
@@ -84,7 +92,7 @@ class TestDatabaseUtils:
         mock_cursor = Mock()
         mock_cursor.execute.side_effect = Exception("Query failed")
         mock_conn.cursor.return_value = mock_cursor
-        
+
         # Set up the mock context manager
         mock_context = mock_pool.get_connection.return_value
         mock_context.__enter__.return_value = mock_conn
@@ -155,7 +163,7 @@ class TestDatabaseUtils:
         mock_cursor = Mock()
         mock_cursor.fetchone.return_value = [1]
         mock_conn.cursor.return_value = mock_cursor
-        
+
         # Set up the mock context manager
         mock_context = mock_pool.get_connection.return_value
         mock_context.__enter__.return_value = mock_conn

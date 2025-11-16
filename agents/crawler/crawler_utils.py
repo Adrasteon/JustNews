@@ -17,17 +17,18 @@ import os
 import threading
 import time
 from collections import deque
+from collections.abc import Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Deque, Dict, Iterable, List, Optional, Tuple
+from typing import Any
 
 import mysql.connector
 from mysql.connector import pooling
 
-from common.observability import get_logger
 from common.env_loader import load_global_env
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 
@@ -35,23 +36,23 @@ logger = get_logger(__name__)
 load_global_env(logger=logger)
 
 _POOL_LOCK = threading.Lock()
-_CONNECTION_POOL: Optional[pooling.MySQLConnectionPool] = None
+_CONNECTION_POOL: pooling.MySQLConnectionPool | None = None
 
 
-def _env(name: str, default: Optional[str] = None) -> Optional[str]:
+def _env(name: str, default: str | None = None) -> str | None:
     """Fetch an environment variable using uppercase or lowercase keys."""
 
     return os.environ.get(name) or os.environ.get(name.lower(), default)
 
 
-def _db_config() -> Dict[str, Any]:
+def _db_config() -> dict[str, Any]:
     """Return database connection details with MariaDB defaults."""
 
-    host = _env("MARIADB_HOST") or _env("POSTGRES_HOST", "localhost")
-    port = int(_env("MARIADB_PORT") or _env("POSTGRES_PORT") or 3306)
-    database = _env("MARIADB_DB") or _env("POSTGRES_DB", "justnews")
-    user = _env("MARIADB_USER") or _env("POSTGRES_USER", "justnews_user")
-    password = _env("MARIADB_PASSWORD") or _env("POSTGRES_PASSWORD", "")
+    host = _env("MARIADB_HOST", "localhost")
+    port = int(_env("MARIADB_PORT", "3306"))
+    database = _env("MARIADB_DB", "justnews")
+    user = _env("MARIADB_USER", "justnews_user")
+    password = _env("MARIADB_PASSWORD", "")
     charset = _env("MARIADB_CHARSET", "utf8mb4")
 
     return {
@@ -140,8 +141,8 @@ class CanonicalMetadata:
     """Reusable structure for canonical article hints."""
 
     url: str
-    title: Optional[str] = None
-    published_at: Optional[datetime] = None
+    title: str | None = None
+    published_at: datetime | None = None
 
 
 class RateLimiter:
@@ -150,7 +151,7 @@ class RateLimiter:
     def __init__(self, max_requests: int = 10, window_seconds: int = 60) -> None:
         self.max_requests = max_requests
         self.window_seconds = window_seconds
-        self._records: Dict[str, Deque[float]] = {}
+        self._records: dict[str, deque[float]] = {}
         self._lock = threading.Lock()
 
     def acquire(self, domain: str) -> None:
@@ -167,10 +168,67 @@ class RateLimiter:
 
 
 class RobotsChecker:
-    """Very light robots.txt checker; currently permissive."""
+    """Robots.txt checker with per-host TTL-cached parser.
+
+    Uses the stdlib ``urllib.robotparser.RobotFileParser`` implementation and
+    caches per-domain robots.txt parser instances for a configurable TTL to
+    avoid fetching robots.txt on every request. If the fetch fails, the
+    behaviour depends on the ``CRAWLER_ROBOTS_FALLBACK`` env value (allow or
+    deny); default is to ``allow`` to avoid mistakenly blocking sites in
+    environments with transient network issues.
+    """
+
+    def __init__(self, ttl_seconds: int | None = None, user_agent: str | None = None):
+        import urllib.robotparser
+        self._robot_parser_class = urllib.robotparser.RobotFileParser
+        self._cache: dict[str, tuple[urllib.robotparser.RobotFileParser, float]] = {}
+        self._ttl = int(ttl_seconds if ttl_seconds is not None else int(os.environ.get("CRAWLER_ROBOTS_TTL", "86400")))
+        self._user_agent = user_agent or os.environ.get("CRAWLER_ROBOTS_USER_AGENT", "JustNewsCrawler")
+        self._fetch_fallback = os.environ.get("CRAWLER_ROBOTS_FALLBACK", "allow").lower()
+
+    def _get_parser_for_domain(self, domain: str):
+        entry = self._cache.get(domain)
+        now_ts = time.time()
+        if entry and entry[1] > now_ts:
+            return entry[0]
+        parser = self._robot_parser_class()
+        urls_to_try = [f"https://{domain}/robots.txt", f"http://{domain}/robots.txt"]
+        for url in urls_to_try:
+            try:
+                parser.set_url(url)
+                parser.read()
+                # Successful read, cache and return
+                self._cache[domain] = (parser, now_ts + self._ttl)
+                return parser
+            except Exception as e:
+                logger.debug("Failed to fetch robots.txt from %s: %s", url, e)
+                continue
+        # On failure, create a parser that is permissive or restrictive based on config
+        if self._fetch_fallback == "deny":
+            # Create fake parser that denies everything
+            fake = self._robot_parser_class()
+            fake.parse(["User-agent: *", "Disallow: /"])
+        else:
+            # default allow all
+            fake = self._robot_parser_class()
+            fake.parse(["User-agent: *", "Disallow: "])
+        self._cache[domain] = (fake, now_ts + self._ttl)
+        return fake
 
     def is_allowed(self, url: str) -> bool:
-        return True
+        try:
+            from urllib.parse import urlparse
+
+            parsed = urlparse(url)
+            domain = parsed.netloc
+            if not domain:
+                return True
+            parser = self._get_parser_for_domain(domain)
+            return parser.can_fetch(self._user_agent, url)
+        except Exception as e:
+            logger.debug("RobotsChecker.is_allowed failed: %s", e)
+            # Default to allow to avoid accidental global blocking
+            return True
 
 
 class ModalDismisser:
@@ -196,10 +254,10 @@ def _maybe_json(value: Any, default: Any = None) -> Any:
     return value if value is not None else default
 
 
-def _normalize_row(row: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_row(row: dict[str, Any]) -> dict[str, Any]:
     """Normalise database rows to plain Python types."""
 
-    normalised: Dict[str, Any] = {}
+    normalised: dict[str, Any] = {}
     for key, value in row.items():
         if isinstance(value, Decimal):
             normalised[key] = float(value)
@@ -213,11 +271,11 @@ def _normalize_row(row: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def get_active_sources(
-    limit: Optional[int] = None,
+    limit: int | None = None,
     *,
     include_paywalled: bool = False,
-) -> List[Dict[str, Any]]:
-    conditions: List[str] = []
+) -> list[dict[str, Any]]:
+    conditions: list[str] = []
     if not include_paywalled:
         conditions.append("COALESCE(paywall, 0) = 0")
 
@@ -226,7 +284,7 @@ def get_active_sources(
         sql += " WHERE " + " AND ".join(conditions)
     sql += " ORDER BY last_verified IS NULL, last_verified DESC"
 
-    params: Tuple[Any, ...] = ()
+    params: tuple[Any, ...] = ()
     if limit is not None:
         sql += " LIMIT %s"
         params = (limit,)
@@ -244,7 +302,7 @@ def get_active_sources(
         return []
 
 
-def get_sources_by_domain(domains: Iterable[str]) -> List[Dict[str, Any]]:
+def get_sources_by_domain(domains: Iterable[str]) -> list[dict[str, Any]]:
     domain_list = [d.lower() for d in domains if d]
     if not domain_list:
         return []
@@ -283,8 +341,8 @@ def update_source_crawling_strategy(source_id: int, strategy: str) -> None:
 
 def record_crawling_performance(
     *,
-    source_id: Optional[int],
-    domain: Optional[str],
+    source_id: int | None,
+    domain: str | None,
     strategy_used: str,
     articles_processed: int,
     duration_seconds: float,
@@ -320,8 +378,8 @@ def record_crawling_performance(
 
 def record_paywall_detection(
     *,
-    source_id: Optional[int] = None,
-    domain: Optional[str] = None,
+    source_id: int | None = None,
+    domain: str | None = None,
     skip_count: int,
     threshold: int,
     paywall_type: str | None = "hard",
@@ -333,7 +391,7 @@ def record_paywall_detection(
 
     if skip_count <= 0:
         return False
-    identifier: Tuple[str, Tuple[Any, ...]] | None = None
+    identifier: tuple[str, tuple[Any, ...]] | None = None
     if source_id is not None:
         identifier = ("id = %s", (source_id,))
     elif domain:
@@ -407,12 +465,12 @@ def record_paywall_detection(
         return False
 
 
-def get_source_performance_history(identifier: Any, limit: int = 5) -> List[Dict[str, Any]]:
+def get_source_performance_history(identifier: Any, limit: int = 5) -> list[dict[str, Any]]:
     if identifier is None:
         return []
     if isinstance(identifier, int):
         where_clause = "source_id = %s"
-        params: Tuple[Any, ...] = (identifier,)
+        params: tuple[Any, ...] = (identifier,)
     else:
         where_clause = "LOWER(domain) = %s"
         params = (str(identifier).lower(),)
@@ -434,7 +492,7 @@ def get_source_performance_history(identifier: Any, limit: int = 5) -> List[Dict
         return []
 
 
-def get_optimal_sources_for_strategy(strategy: str, limit: int = 10) -> List[Dict[str, Any]]:
+def get_optimal_sources_for_strategy(strategy: str, limit: int = 10) -> list[dict[str, Any]]:
     sql = (
         "SELECT source_id, domain, AVG(articles_per_second) AS avg_speed "
         "FROM crawler_performance WHERE strategy_used = %s "

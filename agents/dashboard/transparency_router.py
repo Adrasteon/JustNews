@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 
-from .transparency_repository import TransparencyRepository, default_repository
+from .transparency_repository import default_repository
 
 repository = default_repository()
 router = APIRouter(prefix="/transparency", tags=["transparency"])

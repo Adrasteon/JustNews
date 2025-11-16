@@ -12,21 +12,23 @@ Provides centralized configuration management with:
 - Comprehensive error handling and logging
 """
 
+import copy
+import hashlib
 import json
 import os
-from pathlib import Path
-from typing import Dict, List, Optional, Union, Any, Callable
+from collections.abc import Callable
 from datetime import datetime
-import hashlib
-import copy
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
-from common.observability import get_logger
 from common.env_loader import load_global_env
+from common.observability import get_logger
+
 from ..schemas import (
-    JustNewsConfig,
     Environment,
-    load_config_from_file,
+    JustNewsConfig,
     create_default_config,
+    load_config_from_file,
     save_config_to_file,
 )
 
@@ -62,8 +64,8 @@ class ConfigurationManager:
 
     def __init__(
         self,
-        config_file: Optional[Union[str, Path]] = None,
-        environment: Optional[Environment] = None,
+        config_file: str | Path | None = None,
+        environment: Environment | None = None,
         auto_reload: bool = False
     ):
         """
@@ -79,13 +81,13 @@ class ConfigurationManager:
         self.auto_reload = auto_reload
 
         # Configuration state
-        self._config: Optional[JustNewsConfig] = None
-        self._config_hash: Optional[str] = None
-        self._last_load_time: Optional[datetime] = None
+        self._config: JustNewsConfig | None = None
+        self._config_hash: str | None = None
+        self._last_load_time: datetime | None = None
 
         # Audit trail
-        self._audit_log: List[Dict[str, Any]] = []
-        self._change_callbacks: List[Callable[[str, Any, Any], None]] = []
+        self._audit_log: list[dict[str, Any]] = []
+        self._change_callbacks: list[Callable[[str, Any, Any], None]] = []
 
         # Load initial configuration
         self.reload()
@@ -197,7 +199,7 @@ class ConfigurationManager:
         except Exception as e:
             raise ConfigurationValidationError(f"Environment overrides validation failed: {e}")
 
-    def _get_environment_overrides(self) -> Dict[str, Any]:
+    def _get_environment_overrides(self) -> dict[str, Any]:
         """Get environment-specific configuration overrides"""
         overrides = {}
 
@@ -213,7 +215,7 @@ class ConfigurationManager:
 
         return overrides
 
-    def _get_environment_variable_overrides(self) -> Dict[str, Any]:
+    def _get_environment_variable_overrides(self) -> dict[str, Any]:
         """Get configuration overrides from environment variables"""
         overrides = {}
 
@@ -223,17 +225,21 @@ class ConfigurationManager:
         if os.environ.get('JUSTNEWS_DEBUG_MODE'):
             overrides.setdefault('system', {})['debug_mode'] = os.environ['JUSTNEWS_DEBUG_MODE'].lower() == 'true'
 
-        # Database overrides
-        if os.environ.get('POSTGRES_HOST'):
-            overrides.setdefault('database', {})['host'] = os.environ['POSTGRES_HOST']
-        if os.environ.get('POSTGRES_PORT'):
-            overrides.setdefault('database', {})['port'] = int(os.environ['POSTGRES_PORT'])
-        if os.environ.get('POSTGRES_DB'):
-            overrides.setdefault('database', {})['database'] = os.environ['POSTGRES_DB']
-        if os.environ.get('POSTGRES_USER'):
-            overrides.setdefault('database', {})['user'] = os.environ['POSTGRES_USER']
-        if os.environ.get('POSTGRES_PASSWORD'):
-            overrides.setdefault('database', {})['password'] = os.environ['POSTGRES_PASSWORD']
+        # Database overrides - use MariaDB environment variable names
+        if os.environ.get('MARIADB_HOST'):
+            overrides.setdefault('database', {})['host'] = os.environ['MARIADB_HOST']
+
+        if os.environ.get('MARIADB_PORT'):
+            overrides.setdefault('database', {})['port'] = int(os.environ['MARIADB_PORT'])
+
+        if os.environ.get('MARIADB_DB'):
+            overrides.setdefault('database', {})['database'] = os.environ['MARIADB_DB']
+
+        if os.environ.get('MARIADB_USER'):
+            overrides.setdefault('database', {})['user'] = os.environ['MARIADB_USER']
+
+        if os.environ.get('MARIADB_PASSWORD'):
+            overrides.setdefault('database', {})['password'] = os.environ['MARIADB_PASSWORD']
 
         # GPU overrides
         if os.environ.get('JUSTNEWS_GPU_ENABLED'):
@@ -246,7 +252,7 @@ class ConfigurationManager:
 
         return overrides
 
-    def _get_environment_file_overrides(self) -> Dict[str, Any]:
+    def _get_environment_file_overrides(self) -> dict[str, Any]:
         """Get configuration overrides from environment-specific files"""
         if not self.environment:
             return {}
@@ -261,7 +267,7 @@ class ConfigurationManager:
         for override_file in override_files:
             if override_file.exists():
                 try:
-                    with open(override_file, 'r') as f:
+                    with open(override_file) as f:
                         overrides = json.load(f)
                     logger.info(f"Loaded environment overrides from: {override_file}")
                     return overrides
@@ -301,7 +307,7 @@ class ConfigurationManager:
         config_str = json.dumps(config.model_dump(), sort_keys=True, default=str)
         return hashlib.sha256(config_str.encode()).hexdigest()
 
-    def _deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]):
+    def _deep_merge(self, base: dict[str, Any], override: dict[str, Any]):
         """Deep merge override dictionary into base dictionary"""
         for key, value in override.items():
             if key in base and isinstance(base[key], dict) and isinstance(value, dict):
@@ -372,7 +378,7 @@ class ConfigurationManager:
 
         logger.info(f"✅ Configuration updated: {key_path} = {value}")
 
-    def save(self, file_path: Optional[Union[str, Path]] = None):
+    def save(self, file_path: str | Path | None = None):
         """Save current configuration to file"""
         save_path = Path(file_path) if file_path else self.config_file
 
@@ -397,11 +403,11 @@ class ConfigurationManager:
         """Add callback for configuration changes"""
         self._change_callbacks.append(callback)
 
-    def get_audit_log(self) -> List[Dict[str, Any]]:
+    def get_audit_log(self) -> list[dict[str, Any]]:
         """Get configuration change audit log"""
         return self._audit_log.copy()
 
-    def get_config_info(self) -> Dict[str, Any]:
+    def get_config_info(self) -> dict[str, Any]:
         """Get configuration metadata"""
         return {
             "config_file": str(self.config_file),
@@ -424,7 +430,7 @@ class ConfigurationManager:
 # GLOBAL CONFIGURATION INSTANCE
 # ============================================================================
 
-_config_manager: Optional[ConfigurationManager] = None
+_config_manager: ConfigurationManager | None = None
 
 def get_config_manager() -> ConfigurationManager:
     """Get global configuration manager instance"""

@@ -6,7 +6,10 @@ import pytest
 from prometheus_client import CollectorRegistry
 
 import agents.crawler.extraction as extraction
-from common.stage_b_metrics import configure_stage_b_metrics, use_default_stage_b_metrics
+from common.stage_b_metrics import (
+    configure_stage_b_metrics,
+    use_default_stage_b_metrics,
+)
 
 
 def configure_thresholds(monkeypatch, *, min_words: int, min_ratio: float, raw_dir: Path) -> None:

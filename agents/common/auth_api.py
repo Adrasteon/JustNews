@@ -22,7 +22,7 @@ Endpoints:
 
 
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -261,7 +261,7 @@ async def login_user(login_data: UserLogin):
             )
 
         # Check if account is locked
-        if user.get('locked_until') and user['locked_until'] > datetime.now(timezone.utc):
+        if user.get('locked_until') and user['locked_until'] > datetime.now(UTC):
             raise HTTPException(
                 status_code=status.HTTP_423_LOCKED,
                 detail="Account is temporarily locked due to too many failed login attempts"

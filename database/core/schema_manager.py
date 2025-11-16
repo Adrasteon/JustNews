@@ -11,10 +11,8 @@ Features:
 """
 
 import hashlib
-import json
 import os
-from datetime import UTC, datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from common.observability import get_logger
 
@@ -71,7 +69,7 @@ class SchemaManager:
             logger.error(f"Failed to initialize schema tracking table: {e}")
             raise
 
-    def get_current_version(self) -> Optional[str]:
+    def get_current_version(self) -> str | None:
         """
         Get the current schema version
 
@@ -92,7 +90,7 @@ class SchemaManager:
             logger.error(f"Failed to get current schema version: {e}")
             return None
 
-    def get_migration_history(self) -> List[Dict[str, Any]]:
+    def get_migration_history(self) -> list[dict[str, Any]]:
         """
         Get complete migration history
 
@@ -112,7 +110,7 @@ class SchemaManager:
             logger.error(f"Failed to get migration history: {e}")
             return []
 
-    def validate_schema(self) -> Dict[str, Any]:
+    def validate_schema(self) -> dict[str, Any]:
         """
         Validate current schema against migration history
 
@@ -171,7 +169,7 @@ class SchemaManager:
 
         return validation_results
 
-    def _get_migration_files(self) -> List[Dict[str, Any]]:
+    def _get_migration_files(self) -> list[dict[str, Any]]:
         """
         Get list of migration files with metadata
 
@@ -188,7 +186,7 @@ class SchemaManager:
                 filepath = os.path.join(self.schema_dir, filename)
 
                 try:
-                    with open(filepath, 'r', encoding='utf-8') as f:
+                    with open(filepath, encoding='utf-8') as f:
                         content = f.read()
 
                     # Extract version from filename (e.g., "001_create_table.sql" -> "001")
@@ -210,7 +208,7 @@ class SchemaManager:
 
         return migrations
 
-    def get_schema_info(self) -> Dict[str, Any]:
+    def get_schema_info(self) -> dict[str, Any]:
         """
         Get comprehensive schema information
 

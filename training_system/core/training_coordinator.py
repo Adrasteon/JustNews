@@ -17,12 +17,12 @@ import time
 from collections import deque
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, List
+from typing import Any
 
 import torch
 
-from database.utils.migrated_database_utils import create_database_service
 from common.observability import get_logger
+from database.utils.migrated_database_utils import create_database_service
 
 # Lazy import placeholders for heavy training utilities
 _TRANSFORMERS_AVAILABLE = importlib.util.find_spec("transformers") is not None
@@ -548,7 +548,7 @@ class OnTheFlyTrainingCoordinator:
         except Exception as e:
             logger.error(f"Critic model update error: {e}")
             return False
-    def _update_synthesizer_models(self, examples: List[TrainingExample]) -> bool:
+    def _update_synthesizer_models(self, examples: list[TrainingExample]) -> bool:
         """Update Synthesizer V3 models via MCP Bus"""
         try:
             # Use MCP Bus to call Synthesizer agent for model updates
@@ -584,8 +584,8 @@ class OnTheFlyTrainingCoordinator:
         except Exception as e:
             logger.error(f"Synthesizer model update error: {e}")
             return False
-    
-    def _update_chief_editor_models(self, examples: List[TrainingExample]) -> bool:
+
+    def _update_chief_editor_models(self, examples: list[TrainingExample]) -> bool:
         """Update Chief Editor models via MCP Bus"""
         try:
             # Use MCP Bus to call Chief Editor agent for model updates
@@ -621,8 +621,8 @@ class OnTheFlyTrainingCoordinator:
         except Exception as e:
             logger.error(f"Chief Editor model update error: {e}")
             return False
-    
-    def _update_memory_models(self, examples: List[TrainingExample]) -> bool:
+
+    def _update_memory_models(self, examples: list[TrainingExample]) -> bool:
         """Update Memory models via MCP Bus"""
         try:
             # Use MCP Bus to call Memory agent for model updates
@@ -658,8 +658,8 @@ class OnTheFlyTrainingCoordinator:
         except Exception as e:
             logger.error(f"Memory model update error: {e}")
             return False
-    
-    def _incremental_update_classifier(self, model, examples: List[TrainingExample]) -> bool:
+
+    def _incremental_update_classifier(self, model, examples: list[TrainingExample]) -> bool:
         """
         Perform incremental update on a transformer classifier model
         Uses Elastic Weight Consolidation (EWC) to prevent catastrophic forgetting

@@ -12,9 +12,9 @@ This is intentionally minimal and designed to satisfy unit tests.
 import base64
 import json
 import os
+import traceback
 from pathlib import Path
 from typing import Any
-import traceback
 
 import cryptography.fernet as crypto_fernet
 from cryptography.hazmat.primitives import hashes
@@ -132,7 +132,7 @@ class SecretManager:
         """
         if os.path.exists(self.vault_path) and not self._key:
             try:
-                with open(self.vault_path, 'r') as f:
+                with open(self.vault_path) as f:
                     self._vault = json.load(f)
                 logger.info("Loaded unencrypted vault (development mode)")
             except Exception:

@@ -10,17 +10,18 @@ import logging
 import os
 import subprocess
 import time
+from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, Optional
-from contextlib import asynccontextmanager
+from typing import Any
 
 import requests
-from fastapi import FastAPI, HTTPException
+from fastapi import HTTPException
 from pydantic import BaseModel
 
-from .storage import get_storage
 from agents.common.gpu_manager_production import get_gpu_manager
 from agents.crawler.adaptive_metrics import summarise_adaptive_articles
+
+from .storage import get_storage
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ def _load_config() -> dict:
     if config_path.exists():
         try:
             import json
-            with open(config_path, 'r') as f:
+            with open(config_path) as f:
                 return json.load(f)
         except Exception as e:
             logger.warning(f"Failed to load config: {e}")
@@ -52,7 +53,7 @@ class EnhancedGPUMonitor:
 
     def __init__(self, max_history_size: int = 1000):
         self.max_history_size = max_history_size
-        self.gpu_history: List[dict] = []
+        self.gpu_history: list[dict] = []
         self.gpu_manager = None
 
         # Try to initialize GPU manager
@@ -373,7 +374,7 @@ class DashboardEngine:
         if config_path.exists():
             try:
                 import json
-                with open(config_path, 'r') as f:
+                with open(config_path) as f:
                     return json.load(f)
             except Exception as e:
                 logger.warning(f"Failed to load config: {e}")
@@ -526,7 +527,7 @@ class DashboardEngine:
         snapshot["adaptive_metrics"] = self._build_adaptive_metrics(adaptive_summary)
         return snapshot
 
-    def get_crawl_scheduler_history(self, limit: int = 20) -> List[dict[str, Any]]:
+    def get_crawl_scheduler_history(self, limit: int = 20) -> list[dict[str, Any]]:
         """Return recent crawl scheduler success history entries."""
 
         limit = max(int(limit or 0), 0)
@@ -918,7 +919,7 @@ class DashboardEngine:
             ingested_points = 0
             max_lines = max_lines or 10000
 
-            with open(in_path, "r", encoding="utf-8", errors="ignore") as fh:
+            with open(in_path, encoding="utf-8", errors="ignore") as fh:
                 import json
                 # First attempt: line-by-line JSONL
                 any_line_parsed = False

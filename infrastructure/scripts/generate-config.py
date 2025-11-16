@@ -4,15 +4,14 @@ Configuration Generator for JustNewsAgent
 Generates environment-specific configuration files from Jinja2 templates
 """
 
-import os
-import sys
 import argparse
 import json
-from pathlib import Path
-from typing import Dict, Any
-from jinja2 import Environment, FileSystemLoader
 import secrets
 import string
+from pathlib import Path
+from typing import Any
+
+from jinja2 import Environment, FileSystemLoader
 
 
 class ConfigGenerator:
@@ -32,7 +31,7 @@ class ConfigGenerator:
         alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
         return ''.join(secrets.choice(alphabet) for _ in range(length))
 
-    def load_config_values(self, config_file: str = None) -> Dict[str, Any]:
+    def load_config_values(self, config_file: str = None) -> dict[str, Any]:
         """Load configuration values from file or use defaults"""
         defaults = {
             'deploy_env': 'development',
@@ -59,14 +58,14 @@ class ConfigGenerator:
         }
 
         if config_file and Path(config_file).exists():
-            with open(config_file, 'r') as f:
+            with open(config_file) as f:
                 user_config = json.load(f)
             defaults.update(user_config)
 
         return defaults
 
     def generate_config(self, template_name: str, output_name: str,
-                       config_values: Dict[str, Any]) -> None:
+                       config_values: dict[str, Any]) -> None:
         """Generate a configuration file from template"""
         template = self.jinja_env.get_template(template_name)
         output_content = template.render(**config_values)

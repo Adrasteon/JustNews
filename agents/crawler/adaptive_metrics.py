@@ -8,8 +8,9 @@ scheduler metrics and dashboards.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from collections.abc import Iterable, Mapping
 from statistics import median
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 Number = float | int
 

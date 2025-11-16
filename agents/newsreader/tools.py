@@ -10,15 +10,15 @@ Key Functions:
 - Content validation and formatting
 """
 
-import asyncio
 import json
 import os
 import threading
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from common.observability import get_logger
-from .newsreader_engine import NewsReaderEngine, ProcessingResult, ProcessingMode
+
+from .newsreader_engine import NewsReaderEngine, ProcessingMode
 
 logger = get_logger(__name__)
 
@@ -28,8 +28,8 @@ class MemoryMonitor:
     def __init__(self, check_interval: float = 5.0):
         self.check_interval = check_interval
         self.monitoring = False
-        self.thread: Optional[threading.Thread] = None
-        self.memory_stats: List[Dict[str, Any]] = []
+        self.thread: threading.Thread | None = None
+        self.memory_stats: list[dict[str, Any]] = []
 
     def start_monitoring(self):
         """Start memory monitoring thread."""
@@ -88,7 +88,7 @@ class MemoryMonitor:
         except Exception as e:
             logger.warning(f"Failed to record memory stats: {e}")
 
-    def get_memory_stats(self) -> List[Dict[str, Any]]:
+    def get_memory_stats(self) -> list[dict[str, Any]]:
         """Get current memory statistics."""
         return self.memory_stats.copy()
 
@@ -99,9 +99,9 @@ async def process_article_content(
     url: str,
     engine: NewsReaderEngine,
     mode: ProcessingMode = ProcessingMode.COMPREHENSIVE,
-    screenshot_path: Optional[str] = None,
-    custom_prompt: Optional[str] = None
-) -> Dict[str, Any]:
+    screenshot_path: str | None = None,
+    custom_prompt: str | None = None
+) -> dict[str, Any]:
     """
     Process article content from URL using NewsReader engine.
 
@@ -166,7 +166,7 @@ async def process_article_content(
             "processing_mode": mode.value
         }
 
-def validate_processing_result(result: Dict[str, Any]) -> Tuple[bool, str]:
+def validate_processing_result(result: dict[str, Any]) -> tuple[bool, str]:
     """
     Validate processing result structure and content.
 
@@ -200,7 +200,7 @@ def validate_processing_result(result: Dict[str, Any]) -> Tuple[bool, str]:
     except Exception as e:
         return False, f"Validation error: {e}"
 
-def format_processing_output(result: Dict[str, Any], format_type: str = "json") -> str:
+def format_processing_output(result: dict[str, Any], format_type: str = "json") -> str:
     """
     Format processing result for output.
 
@@ -257,7 +257,7 @@ def format_processing_output(result: Dict[str, Any], format_type: str = "json") 
     except Exception as e:
         return f"Formatting error: {e}"
 
-async def health_check(engine: NewsReaderEngine) -> Dict[str, Any]:
+async def health_check(engine: NewsReaderEngine) -> dict[str, Any]:
     """
     Perform health check on NewsReader components.
 

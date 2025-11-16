@@ -6,8 +6,8 @@ imports these lazily so deployments can enable the enhancements
 incrementally via configuration overrides.
 """
 
+from .modal_handler import ModalHandler, ModalHandlingResult  # noqa: F401
 from .paywall_detector import PaywallDetectionResult, PaywallDetector  # noqa: F401
-from .proxy_manager import ProxyManager, PIASocks5Manager  # noqa: F401
-from .stealth_browser import StealthProfile, StealthBrowserFactory  # noqa: F401
+from .proxy_manager import PIASocks5Manager, ProxyManager  # noqa: F401
+from .stealth_browser import StealthBrowserFactory, StealthProfile  # noqa: F401
 from .ua_rotation import UserAgentProvider  # noqa: F401
-from .modal_handler import ModalHandlingResult, ModalHandler  # noqa: F401

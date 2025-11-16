@@ -27,15 +27,14 @@ Options:
 """
 
 import argparse
-import asyncio
 import json
 import os
+import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Any, Optional
-import subprocess
-import shutil
+from typing import Any
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
@@ -52,7 +51,7 @@ class TestRunner:
         self.results = {}
         self.start_time = None
 
-    def run_command(self, cmd: List[str], cwd: Optional[Path] = None) -> subprocess.CompletedProcess:
+    def run_command(self, cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
         """Run a command and return the result"""
         try:
             result = subprocess.run(
@@ -87,7 +86,7 @@ class TestRunner:
 
         print("✅ Test environment ready")
 
-    def run_unit_tests(self) -> Dict[str, Any]:
+    def run_unit_tests(self) -> dict[str, Any]:
         """Run unit tests"""
         print("🧪 Running unit tests...")
 
@@ -111,7 +110,7 @@ class TestRunner:
             'return_code': result.returncode
         }
 
-    def run_integration_tests(self) -> Dict[str, Any]:
+    def run_integration_tests(self) -> dict[str, Any]:
         """Run integration tests"""
         print("🔗 Running integration tests...")
 
@@ -135,7 +134,7 @@ class TestRunner:
             'return_code': result.returncode
         }
 
-    def run_performance_tests(self) -> Dict[str, Any]:
+    def run_performance_tests(self) -> dict[str, Any]:
         """Run performance tests"""
         print("⚡ Running performance tests...")
 
@@ -159,7 +158,7 @@ class TestRunner:
             'return_code': result.returncode
         }
 
-    def run_gpu_tests(self) -> Dict[str, Any]:
+    def run_gpu_tests(self) -> dict[str, Any]:
         """Run GPU-specific tests"""
         print("🎮 Running GPU tests...")
 
@@ -186,7 +185,7 @@ class TestRunner:
             'return_code': result.returncode
         }
 
-    def run_coverage_analysis(self) -> Dict[str, Any]:
+    def run_coverage_analysis(self) -> dict[str, Any]:
         """Run coverage analysis"""
         print("📊 Running coverage analysis...")
 
@@ -216,7 +215,7 @@ class TestRunner:
             'coverage_dir': str(coverage_dir)
         }
 
-    def run_benchmarks(self) -> Dict[str, Any]:
+    def run_benchmarks(self) -> dict[str, Any]:
         """Run performance benchmarks"""
         print("🏃 Running performance benchmarks...")
 
@@ -243,7 +242,7 @@ class TestRunner:
             # Fallback to regular performance tests
             return self.run_performance_tests()
 
-    def generate_report(self) -> Dict[str, Any]:
+    def generate_report(self) -> dict[str, Any]:
         """Generate comprehensive test report"""
         print("📋 Generating test report...")
 
@@ -266,7 +265,7 @@ class TestRunner:
             'summary': report['summary']
         }
 
-    def _generate_summary(self) -> Dict[str, Any]:
+    def _generate_summary(self) -> dict[str, Any]:
         """Generate test summary"""
         total_tests = 0
         passed_tests = 0
@@ -294,7 +293,7 @@ class TestRunner:
         # For now, return a placeholder
         return 85.0
 
-    def _generate_recommendations(self) -> List[str]:
+    def _generate_recommendations(self) -> list[str]:
         """Generate test improvement recommendations"""
         recommendations = []
 

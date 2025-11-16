@@ -2,19 +2,19 @@
 Tests for JustNewsAgent Analyst Agent
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-import asyncio
-from unittest.mock import Mock, patch, AsyncMock
 from fastapi.testclient import TestClient
 
 from agents.analyst.tools import (
-    get_analyst_engine,
-    process_analysis_request,
-    identify_entities,
+    analyze_content_trends,
     analyze_text_statistics,
     extract_key_metrics,
-    analyze_content_trends,
-    log_feedback
+    get_analyst_engine,
+    identify_entities,
+    log_feedback,
+    process_analysis_request,
 )
 
 

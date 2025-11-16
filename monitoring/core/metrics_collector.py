@@ -6,22 +6,22 @@ performance monitoring, anomaly detection, and real-time alerting.
 """
 
 import asyncio
-import time
-import statistics
-from typing import Dict, List, Optional, Any, Callable, Tuple, Union
-from datetime import datetime, timedelta
-from dataclasses import dataclass, field
-from enum import Enum
 import logging
+import statistics
 import threading
-import json
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any
 
-from prometheus_client import (
-    Counter, Gauge, Histogram, Summary,
-    CollectorRegistry, generate_latest
-)
 import psutil
-import GPUtil
+from prometheus_client import (
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+)
 
 from common.metrics import JustNewsMetrics
 
@@ -65,7 +65,7 @@ class AlertRule:
     description: str
     severity: AlertSeverity
     enabled: bool = True
-    labels: Dict[str, str] = field(default_factory=dict)
+    labels: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -77,9 +77,9 @@ class Alert:
     value: float
     threshold: float
     timestamp: datetime
-    labels: Dict[str, str] = field(default_factory=dict)
+    labels: dict[str, str] = field(default_factory=dict)
     resolved: bool = False
-    resolved_at: Optional[datetime] = None
+    resolved_at: datetime | None = None
 
 
 class EnhancedMetricsCollector:
@@ -90,28 +90,28 @@ class EnhancedMetricsCollector:
     and performance monitoring capabilities.
     """
 
-    def __init__(self, agent_name: str, registry: Optional[CollectorRegistry] = None):
+    def __init__(self, agent_name: str, registry: CollectorRegistry | None = None):
         self.agent_name = agent_name
         self.base_metrics = JustNewsMetrics(agent_name, registry)
         self.registry = self.base_metrics.registry
 
         # Enhanced metrics storage
-        self._custom_metrics: Dict[str, Any] = {}
-        self._metric_history: Dict[str, List[Tuple[datetime, float]]] = {}
-        self._alert_rules: Dict[str, AlertRule] = {}
-        self._active_alerts: Dict[str, Alert] = {}
-        self._alert_handlers: List[Callable] = []
+        self._custom_metrics: dict[str, Any] = {}
+        self._metric_history: dict[str, list[tuple[datetime, float]]] = {}
+        self._alert_rules: dict[str, AlertRule] = {}
+        self._active_alerts: dict[str, Alert] = {}
+        self._alert_handlers: list[Callable] = []
 
         # Anomaly detection
-        self._baseline_metrics: Dict[str, Dict[str, Any]] = {}
-        self._anomaly_thresholds: Dict[str, float] = {}
+        self._baseline_metrics: dict[str, dict[str, Any]] = {}
+        self._anomaly_thresholds: dict[str, float] = {}
 
         # Performance monitoring
-        self._performance_baselines: Dict[str, float] = {}
-        self._slow_operation_thresholds: Dict[str, float] = {}
+        self._performance_baselines: dict[str, float] = {}
+        self._slow_operation_thresholds: dict[str, float] = {}
 
         # Business metrics
-        self._business_metrics: Dict[str, Any] = {}
+        self._business_metrics: dict[str, Any] = {}
 
         # Initialize enhanced metrics
         self._init_enhanced_metrics()
@@ -120,9 +120,9 @@ class EnhancedMetricsCollector:
         self._init_security_metrics()
 
         # Start background tasks
-        self._monitoring_task: Optional[asyncio.Task] = None
-        self._alerting_task: Optional[asyncio.Task] = None
-        self._cleanup_task: Optional[asyncio.Task] = None
+        self._monitoring_task: asyncio.Task | None = None
+        self._alerting_task: asyncio.Task | None = None
+        self._cleanup_task: asyncio.Task | None = None
 
         logger.info(f"Initialized enhanced metrics collector for agent: {agent_name}")
 
@@ -576,7 +576,7 @@ class EnhancedMetricsCollector:
             except Exception as e:
                 logger.error(f"Error in alert handler: {e}")
 
-    async def _get_metric_value(self, metric_name: str) -> Optional[float]:
+    async def _get_metric_value(self, metric_name: str) -> float | None:
         """Get current value of a metric"""
         # This would need to be implemented to retrieve metric values
         # from the Prometheus registry or internal storage
@@ -611,7 +611,7 @@ class EnhancedMetricsCollector:
     # Public API methods
 
     def record_business_metric(self, metric_type: str, value: float,
-                             labels: Dict[str, str] = None):
+                             labels: dict[str, str] = None):
         """Record a business metric"""
         labels = labels or {}
 
@@ -688,7 +688,7 @@ class EnhancedMetricsCollector:
         if handler in self._alert_handlers:
             self._alert_handlers.remove(handler)
 
-    def get_active_alerts(self) -> List[Alert]:
+    def get_active_alerts(self) -> list[Alert]:
         """Get list of active alerts"""
         return list(self._active_alerts.values())
 
@@ -707,7 +707,7 @@ class EnhancedMetricsCollector:
         health_score = 100.0 - (error_rate * 50.0) - ((100.0 - performance_score) * 0.5)
         return max(0.0, min(100.0, health_score))
 
-    def get_metrics_summary(self) -> Dict[str, Any]:
+    def get_metrics_summary(self) -> dict[str, Any]:
         """Get comprehensive metrics summary"""
         return {
             "agent": self.agent_name,
@@ -721,7 +721,7 @@ class EnhancedMetricsCollector:
 
 
 # Global enhanced metrics instance
-_enhanced_metrics_instances: Dict[str, EnhancedMetricsCollector] = {}
+_enhanced_metrics_instances: dict[str, EnhancedMetricsCollector] = {}
 
 def get_enhanced_metrics_collector(agent_name: str) -> EnhancedMetricsCollector:
     """Get or create enhanced metrics collector for an agent"""

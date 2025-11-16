@@ -189,7 +189,7 @@ def show_usage_examples():
     print("")
     print("# Environment Variables (override config):")
     print("export CRAWLER_REQUESTS_PER_MINUTE=15")
-    print("export POSTGRES_HOST=your-db-host")
+    print("export MARIADB_HOST=your-db-host")
     print("export LOG_LEVEL=DEBUG")
 
 def main():

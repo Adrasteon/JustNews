@@ -5,22 +5,21 @@ Log analysis and anomaly detection system for the JustNewsAgent
 observability platform.
 """
 
-import asyncio
+import logging
+import os
 import re
 import statistics
-from typing import Dict, List, Optional, Any, Tuple, Set
-from datetime import datetime, timedelta
+import sys
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from enum import Enum
-import logging
-import math
+from typing import Any
 
 from .log_collector import LogEntry, LogLevel
-import sys
-import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from monitoring.core.log_storage import LogStorage, LogQuery, QueryOperator
+from monitoring.core.log_storage import LogQuery, LogStorage
 
 
 class AnalysisType(Enum):
@@ -46,10 +45,10 @@ class AnalysisResult:
     """Result of log analysis"""
     analysis_type: AnalysisType
     timestamp: datetime
-    time_range: Tuple[datetime, datetime]
-    findings: List[Dict[str, Any]]
-    anomalies: List[Dict[str, Any]]
-    recommendations: List[str]
+    time_range: tuple[datetime, datetime]
+    findings: list[dict[str, Any]]
+    anomalies: list[dict[str, Any]]
+    recommendations: list[str]
     confidence_score: float
 
 
@@ -60,10 +59,10 @@ class AnomalyAlert:
     severity: str  # "low", "medium", "high", "critical"
     title: str
     description: str
-    details: Dict[str, Any]
+    details: dict[str, Any]
     timestamp: datetime
     confidence_score: float
-    affected_components: List[str]
+    affected_components: list[str]
 
 
 class LogAnalyzer:
@@ -74,21 +73,21 @@ class LogAnalyzer:
     insights for system optimization and troubleshooting.
     """
 
-    def __init__(self, storage: LogStorage, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, storage: LogStorage, config: dict[str, Any] | None = None):
         self.storage = storage
         self.config = config or self._get_default_config()
 
         # Analysis state
-        self._baseline_metrics: Dict[str, Any] = {}
-        self._known_error_patterns: Set[str] = set()
-        self._performance_baselines: Dict[str, float] = {}
+        self._baseline_metrics: dict[str, Any] = {}
+        self._known_error_patterns: set[str] = set()
+        self._performance_baselines: dict[str, float] = {}
 
         # Anomaly detection thresholds
         self._error_rate_threshold = self.config['error_rate_threshold']
         self._performance_degradation_threshold = self.config['performance_degradation_threshold']
         self._anomaly_confidence_threshold = self.config['anomaly_confidence_threshold']
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default analyzer configuration"""
         return {
             'analysis_window_hours': 24,
@@ -101,7 +100,7 @@ class LogAnalyzer:
         }
 
     async def analyze_logs(self, analysis_type: AnalysisType,
-                          time_range: Optional[Tuple[datetime, datetime]] = None) -> AnalysisResult:
+                          time_range: tuple[datetime, datetime] | None = None) -> AnalysisResult:
         """
         Perform comprehensive log analysis
 
@@ -425,7 +424,7 @@ class LogAnalyzer:
             confidence_score=0.7
         )
 
-    def _extract_error_patterns(self, entries: List[LogEntry]) -> Dict[str, int]:
+    def _extract_error_patterns(self, entries: list[LogEntry]) -> dict[str, int]:
         """Extract error patterns from log entries"""
         patterns = {}
 
@@ -441,7 +440,7 @@ class LogAnalyzer:
 
         return patterns
 
-    def _find_similar_errors(self, entries: List[LogEntry]) -> Dict[str, int]:
+    def _find_similar_errors(self, entries: list[LogEntry]) -> dict[str, int]:
         """Find groups of similar errors"""
         error_groups = {}
 
@@ -453,7 +452,7 @@ class LogAnalyzer:
 
         return error_groups
 
-    def _analyze_traffic_patterns(self, entries: List[LogEntry]) -> Dict[str, float]:
+    def _analyze_traffic_patterns(self, entries: list[LogEntry]) -> dict[str, float]:
         """Analyze traffic patterns for anomalies"""
         # Simple traffic analysis - count requests per hour
         hourly_counts = {}
@@ -479,7 +478,7 @@ class LogAnalyzer:
 
         return deviations
 
-    def _extract_log_patterns(self, entries: List[LogEntry]) -> Dict[str, Dict[str, Any]]:
+    def _extract_log_patterns(self, entries: list[LogEntry]) -> dict[str, dict[str, Any]]:
         """Extract recurring patterns from logs"""
         patterns = {}
 
@@ -515,7 +514,7 @@ class LogAnalyzer:
 
         return patterns
 
-    async def generate_anomaly_alerts(self, analysis_result: AnalysisResult) -> List[AnomalyAlert]:
+    async def generate_anomaly_alerts(self, analysis_result: AnalysisResult) -> list[AnomalyAlert]:
         """Generate anomaly alerts from analysis results"""
         alerts = []
 
@@ -534,7 +533,7 @@ class LogAnalyzer:
 
         return alerts
 
-    def _generate_anomaly_description(self, anomaly: Dict[str, Any]) -> str:
+    def _generate_anomaly_description(self, anomaly: dict[str, Any]) -> str:
         """Generate human-readable anomaly description"""
         anomaly_type = anomaly.get('type')
 
@@ -588,7 +587,7 @@ class LogAnalyzer:
         if len(response_times) >= self.config['min_samples_for_baseline']:
             self._performance_baselines['avg_response_time'] = statistics.mean(response_times)
 
-    async def get_analysis_status(self) -> Dict[str, Any]:
+    async def get_analysis_status(self) -> dict[str, Any]:
         """Get analyzer status and metrics"""
         return {
             'baseline_metrics_count': len(self._baseline_metrics),
@@ -599,9 +598,9 @@ class LogAnalyzer:
 
 
 # Global analyzer instance
-_global_analyzer: Optional[LogAnalyzer] = None
+_global_analyzer: LogAnalyzer | None = None
 
-def get_log_analyzer(storage: Optional[LogStorage] = None, config: Optional[Dict[str, Any]] = None) -> LogAnalyzer:
+def get_log_analyzer(storage: LogStorage | None = None, config: dict[str, Any] | None = None) -> LogAnalyzer:
     """Get or create global log analyzer"""
     global _global_analyzer
 
@@ -613,7 +612,7 @@ def get_log_analyzer(storage: Optional[LogStorage] = None, config: Optional[Dict
 
     return _global_analyzer
 
-def init_log_analysis(storage: Optional[LogStorage] = None, config: Optional[Dict[str, Any]] = None) -> LogAnalyzer:
+def init_log_analysis(storage: LogStorage | None = None, config: dict[str, Any] | None = None) -> LogAnalyzer:
     """Initialize log analysis system"""
     analyzer = LogAnalyzer(storage, config)
     global _global_analyzer

@@ -16,27 +16,33 @@ Endpoints:
 - GET /stats: Processing statistics
 """
 
-import asyncio
 import os
 import time
 from contextlib import asynccontextmanager
-from typing import Any, Dict, Optional
+from typing import Any
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse, Response
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field, HttpUrl
 
-from common.observability import get_logger
 from common.metrics import JustNewsMetrics
+from common.observability import get_logger
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
-    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+    from database.utils.migrated_database_utils import (
+        create_database_service,  # type: ignore
+    )
 except Exception:
     create_database_service = None
-from .newsreader_engine import NewsReaderEngine, NewsReaderConfig, ProcessingMode
-from .tools import process_article_content, health_check, memory_monitor, cleanup_temp_files
+from .newsreader_engine import NewsReaderConfig, NewsReaderEngine, ProcessingMode
+from .tools import (
+    cleanup_temp_files,
+    health_check,
+    memory_monitor,
+    process_article_content,
+)
 
 # MCP Bus integration
 try:
@@ -49,14 +55,14 @@ except ImportError:
 logger = get_logger(__name__)
 
 # Global engine instance
-engine: Optional[NewsReaderEngine] = None
+engine: NewsReaderEngine | None = None
 
 # Request/Response Models
 class ProcessURLRequest(BaseModel):
     """Request model for URL processing."""
     url: HttpUrl = Field(..., description="News article URL to process")
     mode: ProcessingMode = Field(default=ProcessingMode.COMPREHENSIVE, description="Processing mode")
-    custom_prompt: Optional[str] = Field(None, description="Custom analysis prompt")
+    custom_prompt: str | None = Field(None, description="Custom analysis prompt")
     save_screenshot: bool = Field(default=False, description="Whether to save screenshot")
 
 class ProcessURLResponse(BaseModel):
@@ -75,7 +81,7 @@ class HealthResponse(BaseModel):
     """Response model for health checks."""
     timestamp: float = Field(..., description="Health check timestamp")
     overall_status: str = Field(..., description="Overall health status")
-    components: Dict[str, Any] = Field(..., description="Component health status")
+    components: dict[str, Any] = Field(..., description="Component health status")
     issues: list[str] = Field(..., description="List of issues found")
 
 class StatsResponse(BaseModel):
@@ -83,7 +89,7 @@ class StatsResponse(BaseModel):
     total_processed: int = Field(..., description="Total URLs processed")
     success_rate: float = Field(..., description="Success rate (0.0-1.0)")
     average_processing_time: float = Field(..., description="Average processing time")
-    memory_stats: Optional[Dict[str, Any]] = Field(None, description="Current memory statistics")
+    memory_stats: dict[str, Any] | None = Field(None, description="Current memory statistics")
     uptime: float = Field(..., description="Service uptime in seconds")
 
 # Lifespan management
@@ -176,7 +182,7 @@ app.add_middleware(
 )
 
 # Initialize metrics
-metrics: Optional[JustNewsMetrics]
+metrics: JustNewsMetrics | None
 try:
     metrics = JustNewsMetrics("newsreader")
     app.middleware("http")(metrics.request_middleware)

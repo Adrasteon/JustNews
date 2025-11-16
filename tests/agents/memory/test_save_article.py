@@ -8,7 +8,10 @@ import pytest
 from prometheus_client import CollectorRegistry
 
 from agents.memory import tools
-from common.stage_b_metrics import configure_stage_b_metrics, use_default_stage_b_metrics
+from common.stage_b_metrics import (
+    configure_stage_b_metrics,
+    use_default_stage_b_metrics,
+)
 
 
 class StubEmbeddingModel:
@@ -123,7 +126,7 @@ def _install_db_stubs(monkeypatch):
             )
             # Track embeddings added to collection
             self._added_embeddings = []
-            
+
             def mock_collection_add(**kwargs):
                 # Store the embedding for verification
                 if 'embeddings' in kwargs and kwargs['embeddings']:
@@ -134,7 +137,7 @@ def _install_db_stubs(monkeypatch):
                         if row['id'] == article_id:
                             row['embedding'] = embedding
                             break
-            
+
             self.collection = SimpleNamespace(
                 add=mock_collection_add
             )

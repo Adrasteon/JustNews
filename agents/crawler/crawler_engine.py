@@ -11,7 +11,7 @@ import json
 import os
 import time
 from collections.abc import Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
 
@@ -23,7 +23,16 @@ except ImportError:  # pragma: no cover
     lxml_etree = None
 
 # Database imports
+from agents.crawler.enhancements import (
+    ModalHandler,
+    PaywallDetector,
+    ProxyManager,
+    StealthBrowserFactory,
+    UserAgentProvider,
+)
+from common.json_utils import make_json_safe
 from common.observability import get_logger
+from config import get_crawling_config
 
 from ..performance_monitoring import (
     PerformanceOptimizer,
@@ -36,7 +45,6 @@ from ..sites.generic_site_crawler import (
     SiteConfig,
 )
 from .adaptive_metrics import summarise_adaptive_articles
-from common.json_utils import make_json_safe
 from .crawler_utils import (
     RateLimiter,
     RobotsChecker,
@@ -45,14 +53,6 @@ from .crawler_utils import (
     get_sources_by_domain,
     initialize_connection_pool,
     record_paywall_detection,
-)
-from config import get_crawling_config
-from agents.crawler.enhancements import (
-    ModalHandler,
-    PaywallDetector,
-    ProxyManager,
-    StealthBrowserFactory,
-    UserAgentProvider,
 )
 
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
@@ -254,69 +254,58 @@ class CrawlerEngine:
         """Aggressively cleanup orphaned browser processes - only kill very old processes"""
         try:
             import os
-            import signal
-            import subprocess
 
             # Kill Chrome processes older than 10 minutes (very conservative)
             try:
-                result = subprocess.run(
-                    ['pgrep', '-f', 'chrome'],
-                    capture_output=True, text=True, timeout=3
-                )
-                if result.returncode == 0:
-                    pids = result.stdout.strip().split('\n')
-                    cleaned_count = 0
-                    for pid in pids:
-                        if not pid.strip():
+                import psutil
+                now_ts = time.time()
+                current_pid = os.getpid()
+                cleaned_count = 0
+                for proc in psutil.process_iter(attrs=['pid', 'name', 'cmdline', 'create_time']):
+                    try:
+                        info = proc.info
+                        name = (info.get('name') or '').lower()
+                        cmdline = ' '.join(info.get('cmdline') or [])
+                        if 'chrome' not in name and 'chromium' not in name and 'chrome' not in cmdline:
                             continue
-                        try:
-                            # Check process age
-                            stat_result = subprocess.run(
-                                ['ps', '-o', 'etimes=', '-p', pid],
-                                capture_output=True, text=True, timeout=2
-                            )
-                            if stat_result.returncode == 0:
-                                etime = int(stat_result.stdout.strip())
-                                if etime > 600:  # 10 minutes - very conservative
-                                    os.kill(int(pid), signal.SIGTERM)
-                                    cleaned_count += 1
-                                    logger.debug(f"Cleaned up very old Chrome process {pid} (age: {etime}s)")
-                        except (ValueError, ProcessLookupError):
-                            # Process already gone
-                            pass
-                    if cleaned_count > 0:
-                        logger.info(f"Cleaned up {cleaned_count} very old Chrome processes")
-            except subprocess.TimeoutExpired:
-                logger.debug("Chrome cleanup timed out")
+
+                        # Only consider processes that are descendants of this process
+                        parents = [p.pid for p in proc.parents()]
+                        if current_pid not in parents:
+                            continue
+
+                        # Age check
+                        etime = int(now_ts - (info.get('create_time') or now_ts))
+                        if etime > 600:  # 10 minutes conservative limit
+                            proc.terminate()
+                            cleaned_count += 1
+                            logger.debug(f"Cleaned up very old Chrome process {proc.pid} (age: {etime}s)")
+                    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                        continue
+                if cleaned_count > 0:
+                    logger.info(f"Cleaned up {cleaned_count} very old Chrome processes")
             except Exception as e:
                 logger.debug(f"Chrome cleanup failed: {e}")
 
             # Kill Playwright driver processes older than 15 minutes
             try:
-                result = subprocess.run(
-                    ['pgrep', '-f', 'playwright.*run-driver'],
-                    capture_output=True, text=True, timeout=3
-                )
-                if result.returncode == 0:
-                    pids = result.stdout.strip().split('\n')
-                    for pid in pids:
-                        if not pid.strip():
+                import psutil
+                now_ts = time.time()
+                current_pid = os.getpid()
+                for proc in psutil.process_iter(attrs=['pid', 'name', 'cmdline', 'create_time']):
+                    try:
+                        cmdline = ' '.join(proc.info.get('cmdline') or [])
+                        if 'run-driver' not in cmdline and 'playwright' not in cmdline:
                             continue
-                        try:
-                            # Check if Playwright driver is very old
-                            stat_result = subprocess.run(
-                                ['ps', '-o', 'etimes=', '-p', pid],
-                                capture_output=True, text=True, timeout=2
-                            )
-                            if stat_result.returncode == 0:
-                                etime = int(stat_result.stdout.strip())
-                                if etime > 900:  # 15 minutes for Playwright drivers
-                                    os.kill(int(pid), signal.SIGTERM)
-                                    logger.debug(f"Cleaned up very old Playwright driver {pid}")
-                        except (ValueError, ProcessLookupError):
-                            pass
-            except subprocess.TimeoutExpired:
-                logger.debug("Playwright cleanup timed out")
+                        parents = [p.pid for p in proc.parents()]
+                        if current_pid not in parents:
+                            continue
+                        etime = int(now_ts - (proc.info.get('create_time') or now_ts))
+                        if etime > 900:  # 15 minutes
+                            proc.terminate()
+                            logger.debug(f"Cleaned up very old Playwright driver {proc.pid}")
+                    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                        continue
             except Exception as e:
                 logger.debug(f"Playwright cleanup failed: {e}")
 
@@ -1004,7 +993,7 @@ class CrawlerEngine:
             "extracted_text": extracted_text,
             "raw_html_ref": article.get('raw_html_ref'),
             "features": features or None,
-            "crawler_ts": article.get('timestamp') or datetime.now(timezone.utc).isoformat(),
+            "crawler_ts": article.get('timestamp') or datetime.now(UTC).isoformat(),
             "crawler_job_id": article.get('crawler_job_id'),
         }
         return candidate

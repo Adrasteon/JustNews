@@ -9,16 +9,19 @@ import asyncio
 import os
 import sys
 from contextlib import asynccontextmanager
-from typing import Any, Dict
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from common.observability import get_logger
-from common.metrics import JustNewsMetrics
-from agents.analytics.analytics_engine import get_analytics_engine, initialize_analytics_engine, shutdown_analytics_engine
+from agents.analytics.analytics_engine import (
+    get_analytics_engine,
+    initialize_analytics_engine,
+    shutdown_analytics_engine,
+)
 from agents.analytics.dashboard import create_analytics_app
+from common.metrics import JustNewsMetrics
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 
@@ -200,6 +203,7 @@ def get_metrics():
 
 # Pydantic models
 from pydantic import BaseModel
+
 
 class ToolCall(BaseModel):
     args: list

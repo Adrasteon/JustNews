@@ -16,7 +16,7 @@ declare -A agents=(
     ["dashboard"]="8013:false"
     ["analytics"]="8011:false"
     ["archive"]="8012:false"
-    ["balancer"]="8010:false"
+    # balancer removed - no longer generate manifest for it
     ["gpu-orchestrator"]="8015:false"
 )
 

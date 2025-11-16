@@ -4,15 +4,14 @@ Security Framework Integration Tests
 Comprehensive tests for the JustNewsAgent Security Framework
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch
 from datetime import datetime, timedelta
 
+import pytest
+
 from security.refactor import (
-    SecurityManager, SecurityConfig, SecurityContext,
-    AuthenticationService, AuthorizationService,
-    EncryptionService, ComplianceService, SecurityMonitor
+    SecurityConfig,
+    SecurityManager,
 )
 
 

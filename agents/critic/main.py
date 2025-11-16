@@ -15,19 +15,17 @@ Key Features:
 All endpoints include comprehensive error handling, validation, and logging.
 """
 
-import asyncio
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from common.observability import get_logger
-
 # Import metrics library
 from common.metrics import JustNewsMetrics
+from common.observability import get_logger
 
 # Configure logging
 logger = get_logger(__name__)
@@ -43,7 +41,7 @@ class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
         self.base_url = base_url
 
-    def register_agent(self, agent_name: str, agent_address: str, tools: List[str]):
+    def register_agent(self, agent_name: str, agent_address: str, tools: list[str]):
         """Register agent with MCP Bus"""
         registration_data = {
             "name": agent_name,
@@ -118,34 +116,34 @@ app.middleware("http")(metrics.request_middleware)
 # Pydantic models
 class ToolCall(BaseModel):
     """Standard MCP tool call format"""
-    args: List[Any]
-    kwargs: Dict[str, Any]
+    args: list[Any]
+    kwargs: dict[str, Any]
 
 class CritiqueRequest(BaseModel):
     """Critique request model"""
     content: str
-    url: Optional[str] = None
-    context: Optional[str] = None
+    url: str | None = None
+    context: str | None = None
 
 class ArgumentAnalysisRequest(BaseModel):
     """Argument structure analysis request"""
     text: str
-    url: Optional[str] = None
+    url: str | None = None
 
 class ConsistencyRequest(BaseModel):
     """Editorial consistency request"""
     text: str
-    url: Optional[str] = None
+    url: str | None = None
 
 class FallacyRequest(BaseModel):
     """Logical fallacy detection request"""
     text: str
-    url: Optional[str] = None
+    url: str | None = None
 
 class CredibilityRequest(BaseModel):
     """Source credibility assessment request"""
     text: str
-    url: Optional[str] = None
+    url: str | None = None
 
 # Health and status endpoints
 @app.get("/health")

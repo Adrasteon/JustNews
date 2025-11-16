@@ -4,8 +4,8 @@ Comprehensive version validation script for JustNewsAgent
 Tests all agents and components for version consistency
 """
 
-import sys
 import os
+import sys
 
 # Add project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -18,7 +18,8 @@ def test_version_consistency():
 
     # Test centralized version
     try:
-        from justnews import __version__ as central_version, VERSION_INFO
+        from justnews import VERSION_INFO
+        from justnews import __version__ as central_version
         print(f"✅ Centralized Version: {central_version}")
         print(f"   Status: {VERSION_INFO['status']}")
         expected_version = central_version

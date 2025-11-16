@@ -1,6 +1,5 @@
 import importlib
 import sqlite3
-import asyncio
 
 from fastapi.testclient import TestClient
 

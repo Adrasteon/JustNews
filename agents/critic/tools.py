@@ -15,13 +15,11 @@ Key Functions:
 All functions include robust error handling, validation, and fallbacks.
 """
 
-import asyncio
 import json
-import os
 import re
 import statistics
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from common.observability import get_logger
 
@@ -29,13 +27,13 @@ from common.observability import get_logger
 logger = get_logger(__name__)
 
 # Global engine instance
-_engine: Optional[Any] = None
+_engine: Any | None = None
 
 def get_critic_engine():
     """Get or create the global critic engine instance."""
     global _engine
     if _engine is None:
-        from .critic_engine import CriticEngine, CriticConfig
+        from .critic_engine import CriticConfig, CriticEngine
         config = CriticConfig()
         _engine = CriticEngine(config)
     return _engine
@@ -44,7 +42,7 @@ async def process_critique_request(
     content: str,
     operation_type: str,
     **kwargs
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Process a critique request using the critic engine.
 
@@ -83,7 +81,7 @@ async def process_critique_request(
         logger.error(f"❌ {operation_type} critique operation failed: {e}")
         return {"error": str(e)}
 
-def critique_synthesis(content: str, url: Optional[str] = None) -> Dict[str, Any]:
+def critique_synthesis(content: str, url: str | None = None) -> dict[str, Any]:
     """
     Synthesize comprehensive content critique using all available analysis tools.
 
@@ -153,7 +151,7 @@ def critique_synthesis(content: str, url: Optional[str] = None) -> Dict[str, Any
         logger.error(f"Error in critique synthesis: {e}")
         return {"error": str(e)}
 
-def critique_neutrality(content: str, url: Optional[str] = None) -> Dict[str, Any]:
+def critique_neutrality(content: str, url: str | None = None) -> dict[str, Any]:
     """
     Analyze content neutrality and bias indicators.
 
@@ -212,7 +210,7 @@ def critique_neutrality(content: str, url: Optional[str] = None) -> Dict[str, An
         logger.error(f"Error in neutrality analysis: {e}")
         return {"error": str(e)}
 
-def analyze_argument_structure(text: str, url: Optional[str] = None) -> Dict[str, Any]:
+def analyze_argument_structure(text: str, url: str | None = None) -> dict[str, Any]:
     """
     Analyze the logical structure of arguments in text content.
 
@@ -270,7 +268,7 @@ def analyze_argument_structure(text: str, url: Optional[str] = None) -> Dict[str
         logger.error(f"Error in argument structure analysis: {e}")
         return {"error": str(e)}
 
-def assess_editorial_consistency(text: str, url: Optional[str] = None) -> Dict[str, Any]:
+def assess_editorial_consistency(text: str, url: str | None = None) -> dict[str, Any]:
     """
     Assess editorial consistency and internal coherence.
 
@@ -317,7 +315,7 @@ def assess_editorial_consistency(text: str, url: Optional[str] = None) -> Dict[s
         logger.error(f"Error in editorial consistency assessment: {e}")
         return {"error": str(e)}
 
-def detect_logical_fallacies(text: str, url: Optional[str] = None) -> Dict[str, Any]:
+def detect_logical_fallacies(text: str, url: str | None = None) -> dict[str, Any]:
     """
     Detect logical fallacies and reasoning errors.
 
@@ -363,7 +361,7 @@ def detect_logical_fallacies(text: str, url: Optional[str] = None) -> Dict[str, 
         logger.error(f"Error in logical fallacy detection: {e}")
         return {"error": str(e)}
 
-def assess_source_credibility(text: str, url: Optional[str] = None) -> Dict[str, Any]:
+def assess_source_credibility(text: str, url: str | None = None) -> dict[str, Any]:
     """
     Assess source credibility and evidence quality.
 
@@ -409,7 +407,7 @@ def assess_source_credibility(text: str, url: Optional[str] = None) -> Dict[str,
         logger.error(f"Error in source credibility assessment: {e}")
         return {"error": str(e)}
 
-async def health_check() -> Dict[str, Any]:
+async def health_check() -> dict[str, Any]:
     """
     Perform health check on critic components.
 
@@ -456,7 +454,7 @@ async def health_check() -> Dict[str, Any]:
             "error": str(e)
         }
 
-def validate_critique_result(result: Dict[str, Any], expected_fields: Optional[List[str]] = None) -> bool:
+def validate_critique_result(result: dict[str, Any], expected_fields: list[str] | None = None) -> bool:
     """
     Validate critique result structure.
 
@@ -480,7 +478,7 @@ def validate_critique_result(result: Dict[str, Any], expected_fields: Optional[L
     common_fields = ["analysis_metadata", "analysis_timestamp"]
     return any(field in result for field in common_fields)
 
-def format_critique_output(result: Dict[str, Any], format_type: str = "json") -> str:
+def format_critique_output(result: dict[str, Any], format_type: str = "json") -> str:
     """
     Format critique result for output.
 
@@ -580,7 +578,7 @@ def format_critique_output(result: Dict[str, Any], format_type: str = "json") ->
         return f"Formatting error: {e}"
 
 # Helper functions (extracted from original tools.py)
-def _extract_premises(text: str) -> List[Dict[str, Any]]:
+def _extract_premises(text: str) -> list[dict[str, Any]]:
     """Extract premises from argument text."""
     premise_indicators = ['because', 'since', 'given that', 'as', 'due to']
     premises = []
@@ -601,7 +599,7 @@ def _extract_premises(text: str) -> List[Dict[str, Any]]:
                 break
     return premises
 
-def _extract_conclusions(text: str) -> List[Dict[str, Any]]:
+def _extract_conclusions(text: str) -> list[dict[str, Any]]:
     """Extract conclusions from argument text."""
     conclusion_indicators = ['therefore', 'thus', 'hence', 'so', 'consequently']
     conclusions = []
@@ -622,7 +620,7 @@ def _extract_conclusions(text: str) -> List[Dict[str, Any]]:
                 break
     return conclusions
 
-def _analyze_logical_flow(text: str) -> Dict[str, Any]:
+def _analyze_logical_flow(text: str) -> dict[str, Any]:
     """Analyze logical flow and connectors."""
     connectors = ['however', 'but', 'furthermore', 'moreover', 'additionally']
     found_connectors = []
@@ -636,7 +634,7 @@ def _analyze_logical_flow(text: str) -> Dict[str, Any]:
         "flow_coherence": min(1.0, len(found_connectors) / 3.0)
     }
 
-def _assess_argument_strength(text: str, premises: List[Dict], conclusions: List[Dict]) -> Dict[str, Any]:
+def _assess_argument_strength(text: str, premises: list[dict], conclusions: list[dict]) -> dict[str, Any]:
     """Assess overall argument strength."""
     if not premises and not conclusions:
         return {"strength_score": 0.0, "assessment": "No clear argumentative structure"}
@@ -653,7 +651,7 @@ def _assess_argument_strength(text: str, premises: List[Dict], conclusions: List
         "assessment": "Moderate argumentative structure"
     }
 
-def _calculate_argument_complexity(premises: List[Dict], conclusions: List[Dict]) -> float:
+def _calculate_argument_complexity(premises: list[dict], conclusions: list[dict]) -> float:
     """Calculate argument complexity score."""
     return min((len(premises) + len(conclusions)) / 2.0, 10.0)
 
@@ -676,7 +674,7 @@ def _calculate_coherence_score(text: str) -> float:
 
     return coherence
 
-def _detect_contradictions(text: str) -> List[Dict[str, Any]]:
+def _detect_contradictions(text: str) -> list[dict[str, Any]]:
     """Detect internal contradictions."""
     contradictions = []
     sentences = re.split(r'[.!?]+', text)
@@ -693,7 +691,7 @@ def _detect_contradictions(text: str) -> List[Dict[str, Any]]:
 
     return contradictions[:3]  # Limit to top 3
 
-def _detect_common_fallacies(text: str) -> List[Dict[str, Any]]:
+def _detect_common_fallacies(text: str) -> list[dict[str, Any]]:
     """Detect common logical fallacies."""
     fallacies = []
 
@@ -715,7 +713,7 @@ def _detect_common_fallacies(text: str) -> List[Dict[str, Any]]:
 
     return fallacies
 
-def _extract_citations(text: str) -> List[Dict[str, Any]]:
+def _extract_citations(text: str) -> list[dict[str, Any]]:
     """Extract citations and references."""
     citations = []
 
@@ -799,7 +797,7 @@ def _generate_critique_summary(critique_score: float, argument_analysis, consist
         return f"Critique analysis completed with score {critique_score:.1f}/10"
 
 def _generate_critique_recommendations(critique_score: float, argument_analysis, consistency_analysis,
-                                      fallacy_analysis, credibility_analysis) -> List[str]:
+                                      fallacy_analysis, credibility_analysis) -> list[str]:
     """Generate improvement recommendations based on analysis"""
     recommendations = []
 
@@ -836,7 +834,7 @@ def _generate_critique_recommendations(critique_score: float, argument_analysis,
     except Exception:
         return ["Manual review recommended due to analysis error"]
 
-def _detect_bias_indicators(content: str) -> List[Dict[str, Any]]:
+def _detect_bias_indicators(content: str) -> list[dict[str, Any]]:
     """Detect potential bias indicators in content"""
     bias_indicators = []
     content_lower = content.lower()
@@ -883,7 +881,7 @@ def _detect_bias_indicators(content: str) -> List[Dict[str, Any]]:
 
     return bias_indicators
 
-def _calculate_neutrality_score(content: str, bias_indicators: List[Dict]) -> float:
+def _calculate_neutrality_score(content: str, bias_indicators: list[dict]) -> float:
     """Calculate overall neutrality score"""
     try:
         base_score = 8.0  # Start with high neutrality assumption
@@ -905,7 +903,7 @@ def _calculate_neutrality_score(content: str, bias_indicators: List[Dict]) -> fl
     except Exception:
         return 5.0
 
-def _analyze_language_objectivity(content: str) -> Dict[str, Any]:
+def _analyze_language_objectivity(content: str) -> dict[str, Any]:
     """Analyze language objectivity indicators"""
     try:
         # Count objective vs subjective language
@@ -927,7 +925,7 @@ def _analyze_language_objectivity(content: str) -> Dict[str, Any]:
     except Exception:
         return {"objectivity_score": 5.0}
 
-def _analyze_perspective_balance(content: str) -> Dict[str, Any]:
+def _analyze_perspective_balance(content: str) -> dict[str, Any]:
     """Analyze balance of different perspectives"""
     try:
         # Simple heuristic: look for counter-arguments or alternative views
@@ -959,7 +957,7 @@ def _assess_source_attribution(content: str) -> float:
     except Exception:
         return 0.5
 
-def _generate_neutrality_assessment(neutrality_score: float, bias_indicators: List[Dict]) -> str:
+def _generate_neutrality_assessment(neutrality_score: float, bias_indicators: list[dict]) -> str:
     """Generate neutrality assessment summary"""
     try:
         if neutrality_score >= 8.0:
@@ -979,7 +977,7 @@ def _generate_neutrality_assessment(neutrality_score: float, bias_indicators: Li
     except Exception:
         return "Neutrality assessment completed"
 
-def _generate_neutrality_recommendations(neutrality_score: float, bias_indicators: List[Dict]) -> List[str]:
+def _generate_neutrality_recommendations(neutrality_score: float, bias_indicators: list[dict]) -> list[str]:
     """Generate neutrality improvement recommendations"""
     recommendations = []
 

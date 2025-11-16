@@ -2,17 +2,16 @@
 Tests for JustNewsAgent Version Utilities
 """
 
-import pytest
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 
 from common.version_utils import (
+    DESCRIPTION,
+    RELEASE_DATE,
+    STATUS,
+    VERSION,
+    get_agent_version_info,
     get_version,
     get_version_info,
-    get_agent_version_info,
-    VERSION,
-    STATUS,
-    RELEASE_DATE,
-    DESCRIPTION
 )
 
 

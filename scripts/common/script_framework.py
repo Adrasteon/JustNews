@@ -6,13 +6,13 @@ Common utilities and error handling for all JustNewsAgent scripts.
 Provides standardized logging, error handling, and configuration management.
 """
 
+import argparse
+import logging
 import os
 import sys
-import logging
-import argparse
-from pathlib import Path
-from typing import Optional, Dict, Any
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -22,7 +22,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 class ScriptConfig:
     """Configuration for script execution"""
     log_level: str = "INFO"
-    log_file: Optional[str] = None
+    log_file: str | None = None
     dry_run: bool = False
     verbose: bool = False
     quiet: bool = False
@@ -165,17 +165,18 @@ class ScriptFramework:
                 print(f"ERROR: {e}", file=sys.stderr)
             sys.exit(1)
 
-def get_database_config() -> Dict[str, Any]:
+def get_database_config() -> dict[str, Any]:
     """Get database configuration from environment"""
+    # Use MariaDB environment variables for database configuration
     return {
-        'host': os.environ.get('POSTGRES_HOST', 'localhost'),
-        'port': int(os.environ.get('POSTGRES_PORT', '5432')),
-        'database': os.environ.get('POSTGRES_DB', 'justnews'),
-        'user': os.environ.get('POSTGRES_USER', 'justnews_user'),
-        'password': os.environ.get('POSTGRES_PASSWORD', 'password123')
+        'host': os.environ.get('MARIADB_HOST', 'localhost'),
+        'port': int(os.environ.get('MARIADB_PORT', '3306')),
+        'database': os.environ.get('MARIADB_DB', 'justnews'),
+        'user': os.environ.get('MARIADB_USER', 'justnews_user'),
+        'password': os.environ.get('MARIADB_PASSWORD', 'password123')
     }
 
-def get_model_store_config() -> Dict[str, str]:
+def get_model_store_config() -> dict[str, str]:
     """Get model store configuration"""
     base_dir = os.environ.get('MODEL_STORE_ROOT', str(PROJECT_ROOT / 'model_store'))
     return {

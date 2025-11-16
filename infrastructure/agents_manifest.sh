@@ -19,7 +19,7 @@ AGENTS_MANIFEST=(
   "db_worker|agents.db_worker.worker:app|8010"
   "dashboard|agents.dashboard.main:app|8011"
   "analytics|agents.analytics.dashboard:analytics_app|8012"
-  "balancer|agents.balancer.main:app|8013"
+  # balancer removed - keep this entry deleted to avoid starting the agent
   "gpu_orchestrator|agents.gpu_orchestrator.main:app|8014"
   "archive_graphql|agents.archive.archive_graphql:app|8020"
   "archive_api|agents.archive.archive_api:app|8021"

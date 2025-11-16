@@ -4,8 +4,9 @@ Provides MCP Bus integration and FastAPI endpoints for online training coordinat
 """
 
 import os
+
 import uvicorn
-from training_system.mcp_integration import app
+
 from common.observability import get_logger
 
 # Configure centralized logging

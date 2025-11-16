@@ -4,17 +4,16 @@ JustNewsAgent Authorization Service
 Handles role-based access control (RBAC), permission validation, and user role management.
 """
 
-import asyncio
+import json
 import logging
-from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
-from pydantic import BaseModel, Field
 import aiofiles
-import json
+from pydantic import BaseModel, Field
 
-from ..models import SecurityConfig, Role, AuthorizationError
+from ..models import AuthorizationError, Role, SecurityConfig
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +30,8 @@ class Role(BaseModel):
     """Role definition"""
     name: str
     description: str
-    permissions: List[str] = Field(default_factory=list)
-    inherits_from: List[str] = Field(default_factory=list)  # Parent roles
+    permissions: list[str] = Field(default_factory=list)
+    inherits_from: list[str] = Field(default_factory=list)  # Parent roles
 
 
 class Permission(BaseModel):
@@ -40,16 +39,16 @@ class Permission(BaseModel):
     name: str
     description: str
     resource: str  # Resource pattern (e.g., "articles:*", "users:123")
-    actions: List[str] = Field(default_factory=list)  # read, write, delete, admin
+    actions: list[str] = Field(default_factory=list)  # read, write, delete, admin
 
 
 @dataclass
 class RoleHierarchy:
     """Role hierarchy for inheritance"""
-    roles: Dict[str, Role]
-    permissions: Dict[str, Permission]
+    roles: dict[str, Role]
+    permissions: dict[str, Permission]
 
-    def get_all_permissions(self, role_name: str) -> Set[str]:
+    def get_all_permissions(self, role_name: str) -> set[str]:
         """Get all permissions for a role including inherited ones"""
         permissions = set()
         visited = set()
@@ -89,10 +88,10 @@ class AuthorizationService:
             roles=self._get_default_roles(),
             permissions=self._get_default_permissions()
         )
-        self._user_roles: Dict[int, List[str]] = {}  # user_id -> roles
-        self._resource_permissions: Dict[str, Dict[str, List[str]]] = {}  # resource -> action -> roles
+        self._user_roles: dict[int, list[str]] = {}  # user_id -> roles
+        self._resource_permissions: dict[str, dict[str, list[str]]] = {}  # resource -> action -> roles
 
-    def _get_default_roles(self) -> Dict[str, Role]:
+    def _get_default_roles(self) -> dict[str, Role]:
         """Get default role definitions"""
         return {
             "user": Role(
@@ -141,7 +140,7 @@ class AuthorizationService:
             )
         }
 
-    def _get_default_permissions(self) -> Dict[str, Permission]:
+    def _get_default_permissions(self) -> dict[str, Permission]:
         """Get default permission definitions"""
         return {
             "articles:read": Permission(
@@ -223,7 +222,7 @@ class AuthorizationService:
         logger.info("AuthorizationService shutdown")
 
     async def check_permission(self, user_id: int, permission: str,
-                             resource: Optional[str] = None) -> bool:
+                             resource: str | None = None) -> bool:
         """
         Check if user has specific permission
 
@@ -253,7 +252,7 @@ class AuthorizationService:
             logger.error(f"Permission check failed for user {user_id}: {e}")
             return False
 
-    async def get_user_permissions(self, user_id: int) -> List[str]:
+    async def get_user_permissions(self, user_id: int) -> list[str]:
         """
         Get all permissions for a user
 
@@ -271,7 +270,7 @@ class AuthorizationService:
 
         return list(all_permissions)
 
-    async def get_user_roles(self, user_id: int) -> List[str]:
+    async def get_user_roles(self, user_id: int) -> list[str]:
         """
         Get roles assigned to user
 
@@ -335,7 +334,7 @@ class AuthorizationService:
         await self._save_role_data()
         logger.info(f"Created role '{role.name}'")
 
-    async def update_role(self, role_name: str, updates: Dict[str, Any]) -> None:
+    async def update_role(self, role_name: str, updates: dict[str, Any]) -> None:
         """
         Update existing role
 
@@ -435,7 +434,7 @@ class AuthorizationService:
                 await self._save_role_data()
                 logger.info(f"Removed permission '{permission}' from role '{role_name}'")
 
-    async def get_all_roles(self) -> Dict[str, Dict[str, Any]]:
+    async def get_all_roles(self) -> dict[str, dict[str, Any]]:
         """
         Get all roles with their details
 
@@ -452,7 +451,7 @@ class AuthorizationService:
             for name, role in self._role_hierarchy.roles.items()
         }
 
-    async def get_all_permissions(self) -> Dict[str, Dict[str, Any]]:
+    async def get_all_permissions(self) -> dict[str, dict[str, Any]]:
         """
         Get all permissions with their details
 
@@ -469,7 +468,7 @@ class AuthorizationService:
             for name, perm in self._role_hierarchy.permissions.items()
         }
 
-    async def get_role_users(self, role_name: str) -> List[int]:
+    async def get_role_users(self, role_name: str) -> list[int]:
         """
         Get all users with a specific role
 
@@ -509,7 +508,7 @@ class AuthorizationService:
 
         return role in allowed_roles
 
-    async def set_resource_permission(self, resource: str, action: str, roles: List[str]) -> None:
+    async def set_resource_permission(self, resource: str, action: str, roles: list[str]) -> None:
         """
         Set resource-level permission
 
@@ -524,7 +523,7 @@ class AuthorizationService:
         self._resource_permissions[resource][action] = roles
         await self._save_role_data()
 
-    async def get_status(self) -> Dict[str, Any]:
+    async def get_status(self) -> dict[str, Any]:
         """
         Get authorization service status
 
@@ -542,7 +541,7 @@ class AuthorizationService:
     async def _load_role_data(self) -> None:
         """Load role and permission data from storage"""
         try:
-            async with aiofiles.open("data/authorization.json", "r") as f:
+            async with aiofiles.open("data/authorization.json") as f:
                 data = json.loads(await f.read())
 
                 # Load roles

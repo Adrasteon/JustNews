@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Dict
 
 
 def parse_args() -> argparse.Namespace:
@@ -30,8 +29,8 @@ def load_lines(path: Path) -> list[str]:
     return path.read_text(encoding="utf-8").splitlines()
 
 
-def find_key_indexes(lines: list[str]) -> Dict[str, int]:
-    indexes: Dict[str, int] = {}
+def find_key_indexes(lines: list[str]) -> dict[str, int]:
+    indexes: dict[str, int] = {}
     for idx, line in enumerate(lines):
         stripped = line.strip()
         if not stripped or stripped.startswith("#") or "=" not in stripped:
@@ -54,7 +53,7 @@ def main() -> None:
     target_values = {
         "MODEL_STORE_ROOT": str((repo_root / "model_store").resolve()),
         "BASE_MODEL_DIR": str(repo_root.resolve()),
-        "POSTGRES_PASSWORD": "password123",
+        "MARIADB_PASSWORD": "password123",
     }
 
     lines = load_lines(global_env_path)

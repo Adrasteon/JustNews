@@ -18,14 +18,15 @@ Limitations:
 """
 
 from __future__ import annotations
-import os
+
 import json
-import time
+import os
 import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from fastapi.testclient import TestClient
 
@@ -37,11 +38,11 @@ def _load_app():
     from agents.gpu_orchestrator.main import app  # type: ignore
     return app
 
-def run_cycle_inprocess(safe_mode: bool) -> Dict[str, Any]:
+def run_cycle_inprocess(safe_mode: bool) -> dict[str, Any]:
     """Original in-process cycle (kept for reference / debugging)."""
     os.environ["SAFE_MODE"] = "true" if safe_mode else "false"
     app = _load_app()
-    record: Dict[str, Any] = {"safe_mode": safe_mode, "timestamp": datetime.utcnow().isoformat(), "mode": "inprocess"}
+    record: dict[str, Any] = {"safe_mode": safe_mode, "timestamp": datetime.utcnow().isoformat(), "mode": "inprocess"}
     with TestClient(app) as client:
         for ep in ("health", "ready", "policy"):
             r = client.get(f"/{ep}")
@@ -68,17 +69,17 @@ def _subprocess_entry():  # pragma: no cover - simple runtime helper
     print("__SAFE_MODE_DEMO_RESULT_END__")
 
 
-def run_cycle_subprocess(safe_mode: bool) -> Dict[str, Any]:
+def run_cycle_subprocess(safe_mode: bool) -> dict[str, Any]:
     """Spawn a fresh interpreter so module import resets SAFE_MODE constant."""
     env = os.environ.copy()
     env["SAFE_MODE_DEMO_SUBPROC"] = "1"
     env["SUB_SAFE_MODE"] = "true" if safe_mode else "false"
     # Clear potential module import caching influences (not strictly required across process boundary)
-    cmd: List[str] = [sys.executable, __file__]
+    cmd: list[str] = [sys.executable, __file__]
     proc = subprocess.run(cmd, env=env, capture_output=True, text=True, check=True)
     stdout = proc.stdout.splitlines()
     collecting = False
-    payload_lines: List[str] = []
+    payload_lines: list[str] = []
     for line in stdout:
         if line.strip() == "__SAFE_MODE_DEMO_RESULT_START__":
             collecting = True

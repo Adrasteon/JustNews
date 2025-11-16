@@ -5,8 +5,8 @@ Tests the full crawling pipeline with our enhancements
 """
 
 import asyncio
-import time
 import sys
+import time
 from collections import defaultdict
 from pathlib import Path
 
@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from agents.crawler.crawler_engine import CrawlerEngine
-from agents.common.database import get_db_connection
+
 
 async def run_crawl_test():
     """Run comprehensive crawl test with 100 sites × 40 articles each"""

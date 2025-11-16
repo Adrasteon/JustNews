@@ -10,8 +10,6 @@ Features:
 - Real-time performance adaptation
 """
 
-from common.observability import get_logger
-
 import json
 import threading
 import time
@@ -21,6 +19,8 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 import numpy as np
+
+from common.observability import get_logger
 
 # GPU and ML imports with graceful fallbacks
 try:

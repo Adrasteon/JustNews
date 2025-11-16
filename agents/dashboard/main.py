@@ -5,11 +5,10 @@ This module provides the FastAPI application for the dashboard agent,
 including web interface, GPU monitoring, and agent management endpoints.
 """
 
-import logging
 import os
 import time
-from pathlib import Path
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -20,12 +19,14 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from common.observability import get_logger
 from common.metrics import JustNewsMetrics
+from common.observability import get_logger
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
-    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+    from database.utils.migrated_database_utils import (
+        create_database_service,  # type: ignore
+    )
 except Exception:
     create_database_service = None
 
@@ -39,14 +40,14 @@ except Exception:  # pragma: no cover - GPU manager optional in some environment
         raise RuntimeError("GPU manager not available in this environment")
 
 try:
-    from config import get_config as _get_global_config, get_config_manager as _get_config_manager
+    from config import get_config as _get_global_config
+    from config import get_config_manager as _get_config_manager
 except Exception:  # pragma: no cover - unified config not available in this runtime
     _get_global_config = None  # type: ignore[assignment]
     _get_config_manager = None  # type: ignore[assignment]
 
-from .transparency_router import router as transparency_router
-
 from .dashboard_engine import dashboard_engine
+from .transparency_router import router as transparency_router
 
 logger = get_logger(__name__)
 
@@ -60,7 +61,9 @@ def include_public_api(app: FastAPI) -> None:
         return
 
     try:
-        from agents.dashboard import public_api  # Local import to keep dependency optional
+        from agents.dashboard import (
+            public_api,  # Local import to keep dependency optional
+        )
 
         if hasattr(public_api, "include_public_api"):
             public_api.include_public_api(app)
@@ -198,6 +201,7 @@ app.include_router(transparency_router)
 
 # Include search API endpoints
 from .search_api import router as search_router
+
 app.include_router(search_router)
 
 # Include public API routes
@@ -286,7 +290,7 @@ def serve_article_page(article_id: str):
         # Try to serve the public website HTML file with article context
         public_website_path = Path(__file__).parent / "public_website.html"
         if public_website_path.exists():
-            with open(public_website_path, 'r', encoding='utf-8') as f:
+            with open(public_website_path, encoding='utf-8') as f:
                 content = f.read()
             # Add article ID to the page for JavaScript to handle
             content = content.replace(
@@ -308,7 +312,7 @@ def serve_search_page(request: Request):
         query = request.query_params.get('q', '')
         public_website_path = Path(__file__).parent / "public_website.html"
         if public_website_path.exists():
-            with open(public_website_path, 'r', encoding='utf-8') as f:
+            with open(public_website_path, encoding='utf-8') as f:
                 content = f.read()
             # Add search query to the page for JavaScript to handle
             content = content.replace(
@@ -329,7 +333,7 @@ def serve_about_page():
     try:
         public_website_path = Path(__file__).parent / "public_website.html"
         if public_website_path.exists():
-            with open(public_website_path, 'r', encoding='utf-8') as f:
+            with open(public_website_path, encoding='utf-8') as f:
                 content = f.read()
             # Add about flag to the page for JavaScript to handle
             content = content.replace(
@@ -350,7 +354,7 @@ def serve_api_docs():
     try:
         public_website_path = Path(__file__).parent / "public_website.html"
         if public_website_path.exists():
-            with open(public_website_path, 'r', encoding='utf-8') as f:
+            with open(public_website_path, encoding='utf-8') as f:
                 content = f.read()
             # Add API docs flag to the page for JavaScript to handle
             content = content.replace(

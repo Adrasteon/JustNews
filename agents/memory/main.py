@@ -20,18 +20,20 @@ Architecture:
 
 import os
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 
-from common.observability import get_logger
 from common.metrics import JustNewsMetrics
+from common.observability import get_logger
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
-    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+    from database.utils.migrated_database_utils import (
+        create_database_service,  # type: ignore
+    )
 except Exception:
     create_database_service = None
 
@@ -39,12 +41,6 @@ except Exception:
 from agents.memory.memory_engine import MemoryEngine
 from agents.memory.vector_engine import VectorEngine
 from agents.memory.worker_engine import WorkerEngine
-from agents.memory.tools import (
-    get_embedding_model,
-    log_feedback,
-    save_article,
-    vector_search_articles_local,
-)
 
 # Configure centralized logging
 logger = get_logger(__name__)
@@ -53,15 +49,11 @@ logger = get_logger(__name__)
 ready = False
 
 # Global engine instances
-memory_engine: Optional[MemoryEngine] = None
-vector_engine: Optional[VectorEngine] = None
-worker_engine: Optional[WorkerEngine] = None
+memory_engine: MemoryEngine | None = None
+vector_engine: VectorEngine | None = None
+worker_engine: WorkerEngine | None = None
 
 # Environment variables
-POSTGRES_HOST = os.environ.get("POSTGRES_HOST")
-POSTGRES_DB = os.environ.get("POSTGRES_DB")
-POSTGRES_USER = os.environ.get("POSTGRES_USER")
-POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
 MEMORY_AGENT_PORT = int(os.environ.get("MEMORY_AGENT_PORT", 8007))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 

@@ -3,12 +3,11 @@
 import asyncio
 import sys
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 import pytest_asyncio
 import torch
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 from agents.synthesizer.synthesizer_engine import SynthesizerEngine
 

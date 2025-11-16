@@ -4,7 +4,6 @@ from __future__ import annotations
 import asyncio
 import json
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 import requests
 
@@ -19,8 +18,8 @@ class PaywallDetectionResult:
 
     is_paywall: bool
     confidence: float
-    reasons: List[str] = field(default_factory=list)
-    metadata: Dict[str, str] = field(default_factory=dict)
+    reasons: list[str] = field(default_factory=list)
+    metadata: dict[str, str] = field(default_factory=dict)
 
     @property
     def should_skip(self) -> bool:
@@ -66,7 +65,7 @@ class PaywallDetector:
         text: str | None = None,
     ) -> PaywallDetectionResult:
         """Analyse an article candidate for paywall characteristics."""
-        reasons: List[str] = []
+        reasons: list[str] = []
         confidence = 0.0
 
         lowered = html.lower()
@@ -80,7 +79,7 @@ class PaywallDetector:
             reasons.append("extracted text too short")
             confidence = max(confidence, 0.4)
 
-        remote_reason: Optional[str] = None
+        remote_reason: str | None = None
         if self.enable_remote_analysis:
             try:
                 remote = await self._remote_check(url=url, text=text or html)
@@ -128,7 +127,7 @@ class PaywallDetector:
         result_payload = data.get("data") or {}
         signals = result_payload.get("bias_indicators", [])
 
-        reasons: List[str] = []
+        reasons: list[str] = []
         confidence = 0.0
         for indicator in signals:
             label = indicator.get("label", "")

@@ -8,9 +8,9 @@ so the generic crawler path can take over.
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 
 class UltraFastBBCCrawler:
-    async def run_ultra_fast_crawl(self, max_articles: int, *, skip_ingestion: bool = False) -> Dict[str, Any]:
+    async def run_ultra_fast_crawl(self, max_articles: int, *, skip_ingestion: bool = False) -> dict[str, Any]:
         raise NotImplementedError("UltraFastBBCCrawler is currently not implemented")

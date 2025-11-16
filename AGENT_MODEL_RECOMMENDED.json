@@ -1,0 +1,42 @@
+{
+  "scout": {
+    "default": "sentence-transformers/all-MiniLM-L6-v2",
+    "fallbacks": ["sentence-transformers/all-mpnet-base-v2"],
+    "notes": "Prefer MiniLM for real-time; use mpnet in batch/recall paths"
+  },
+  "fact_checker": {
+    "default": "sentence-transformers/all-mpnet-base-v2",
+    "fallbacks": ["sentence-transformers/all-MiniLM-L6-v2", "google/flan-t5-small"],
+    "notes": "Use mpnet for retrieval; use flan-t5-small (quantized) for evidence summarization and claim checking"
+  },
+  "memory": {
+    "default": "sentence-transformers/all-MiniLM-L6-v2",
+    "fallbacks": [],
+    "notes": "Keep small for storage and embedding compute" 
+  },
+  "synthesizer": {
+    "default": "google/flan-t5-small",
+    "fallbacks": ["distilgpt2", "google/flan-t5-base"],
+    "notes": "Default small T5 for live; base/large only with quantization and orchestrator lease"
+  },
+  "critic": {
+    "default": "sentence-transformers/all-distilroberta-v1",
+    "fallbacks": ["msmarco-distilroberta-base-v2"],
+    "notes": "DistilRoBERTa for fast quality checks"
+  },
+  "analyst": {
+    "default": "cardiffnlp/twitter-roberta-base-sentiment-latest",
+    "fallbacks": ["distilroberta-base", "unitary/toxic-bert"],
+    "notes": "Prefer distil or quantized sentiment model for GPU memory constraints"
+  },
+  "newsreader": {
+    "default": "sentence-transformers/all-MiniLM-L6-v2",
+    "fallbacks": [],
+    "notes": "Lightweight embedding model for recall and quick analysis"
+  },
+  "chief_editor": {
+    "default": "sentence-transformers/all-distilroberta-v1",
+    "fallbacks": ["distilbert-base-uncased"],
+    "notes": "Smallish model for editorial judgement tasks"
+  }
+}

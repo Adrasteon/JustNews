@@ -1,7 +1,5 @@
-import asyncio
 import importlib
 import sys
-import uuid
 
 import pytest
 

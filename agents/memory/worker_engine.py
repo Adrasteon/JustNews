@@ -15,8 +15,9 @@ Architecture:
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Callable, Optional
+from typing import Any
 
 from common.observability import get_logger
 
@@ -27,7 +28,7 @@ class WorkerEngine:
     """Coordinates lightweight background tasks for the memory agent."""
 
     def __init__(self) -> None:
-        self._executor: Optional[ThreadPoolExecutor] = None
+        self._executor: ThreadPoolExecutor | None = None
         self._memory_engine = None
         self._vector_engine = None
         self._running = False

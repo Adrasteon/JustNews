@@ -20,14 +20,15 @@ also use the helper functions `http_get` and `http_post` that use
 """
 from __future__ import annotations
 
-import json
-import threading
-import socketserver
 import http.server
-import urllib.request
-import urllib.error
+import json
+import socketserver
+import threading
 import time
-from typing import Callable, Dict, List, Tuple, Any, Optional
+import urllib.error
+import urllib.request
+from collections.abc import Callable
+from typing import Any
 
 
 class MCPStubServer:
@@ -45,15 +46,15 @@ class MCPStubServer:
     """
 
     def __init__(self, forward_calls: bool = False):
-        self._agents: Dict[str, str] = {}
-        self._handlers: Dict[Tuple[str, str], Callable[[List[Any], Dict[str, Any]], Any]] = {}
-        self._calls: List[Dict[str, Any]] = []
+        self._agents: dict[str, str] = {}
+        self._handlers: dict[tuple[str, str], Callable[[list[Any], dict[str, Any]], Any]] = {}
+        self._calls: list[dict[str, Any]] = []
         self.forward_calls = forward_calls
 
-        self._server: Optional[http.server.HTTPServer] = None
-        self._thread: Optional[threading.Thread] = None
-        self.port: Optional[int] = None
-        self.base_url: Optional[str] = None
+        self._server: http.server.HTTPServer | None = None
+        self._thread: threading.Thread | None = None
+        self.port: int | None = None
+        self.base_url: str | None = None
 
     # --- Public helpers ---
     def start(self) -> None:
@@ -89,7 +90,7 @@ class MCPStubServer:
         self.port = None
         self.base_url = None
 
-    def add_handler(self, agent: str, tool: str, fn: Callable[[List[Any], Dict[str, Any]], Any]) -> None:
+    def add_handler(self, agent: str, tool: str, fn: Callable[[list[Any], dict[str, Any]], Any]) -> None:
         """Register a custom handler for (agent, tool). Handler receives
         (args, kwargs) and can return either a JSON-serializable object or a
         (status_code, object) tuple to control response code.
@@ -107,7 +108,7 @@ class MCPStubServer:
         assert self.base_url is not None, "server not started"
         return self.base_url
 
-    def calls(self) -> List[Dict[str, Any]]:
+    def calls(self) -> list[dict[str, Any]]:
         return list(self._calls)
 
     # --- Internal ---
@@ -121,7 +122,7 @@ class MCPStubServer:
             def log_message(self, format: str, *args: object) -> None:  # silence std err noise in CI
                 return
 
-            def _read_json(self) -> Dict[str, Any]:
+            def _read_json(self) -> dict[str, Any]:
                 length = int(self.headers.get('Content-Length', 0) or 0)
                 if length:
                     raw = self.rfile.read(length).decode('utf-8')
@@ -228,13 +229,13 @@ class AgentServer:
     """
 
     def __init__(self):
-        self._handlers: Dict[str, Callable[[List[Any], Dict[str, Any]], Any]] = {}
-        self._server: Optional[http.server.HTTPServer] = None
-        self._thread: Optional[threading.Thread] = None
-        self.port: Optional[int] = None
-        self.base_url: Optional[str] = None
+        self._handlers: dict[str, Callable[[list[Any], dict[str, Any]], Any]] = {}
+        self._server: http.server.HTTPServer | None = None
+        self._thread: threading.Thread | None = None
+        self.port: int | None = None
+        self.base_url: str | None = None
 
-    def add_tool(self, name: str, fn: Callable[[List[Any], Dict[str, Any]], Any]) -> None:
+    def add_tool(self, name: str, fn: Callable[[list[Any], dict[str, Any]], Any]) -> None:
         self._handlers[name.strip('/')] = fn
 
     def start(self) -> None:
@@ -312,7 +313,7 @@ class AgentServer:
         return Handler
 
 
-def http_post(url: str, payload: Dict[str, Any], timeout: float = 5.0) -> Tuple[int, Any]:
+def http_post(url: str, payload: dict[str, Any], timeout: float = 5.0) -> tuple[int, Any]:
     """Helper that posts JSON using urllib and returns (status_code, parsed_json)."""
     data = json.dumps(payload).encode('utf-8')
     req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})

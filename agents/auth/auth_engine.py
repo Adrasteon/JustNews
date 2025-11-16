@@ -6,15 +6,14 @@ Provides JWT-based authentication with role-based access control and GDPR compli
 """
 
 import asyncio
-import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from common.observability import get_logger
 from agents.common.auth_models import (
-    initialize_auth_connection_pool,
+    create_user_tables,
     get_auth_connection_pool,
-    create_user_tables
+    initialize_auth_connection_pool,
 )
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 
@@ -90,7 +89,7 @@ class AuthEngine:
         """Check if the authentication engine is properly initialized"""
         return self._initialized
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """
         Perform comprehensive health check of authentication services.
 
@@ -149,7 +148,7 @@ class AuthEngine:
 
         return health_info
 
-    def get_service_info(self) -> Dict[str, Any]:
+    def get_service_info(self) -> dict[str, Any]:
         """
         Get service information and capabilities.
 
@@ -190,7 +189,7 @@ class AuthEngine:
 
 
 # Global auth engine instance
-_auth_engine: Optional[AuthEngine] = None
+_auth_engine: AuthEngine | None = None
 
 
 def get_auth_engine() -> AuthEngine:

@@ -7,19 +7,15 @@ import re
 import time
 from contextlib import contextmanager
 from functools import wraps
-from typing import Any, Dict, Optional
 
+import psutil
 from prometheus_client import (
-    CONTENT_TYPE_LATEST,
     CollectorRegistry,
     Counter,
     Gauge,
     Histogram,
-    Summary,
     generate_latest,
 )
-from prometheus_client.multiprocess import MultiProcessCollector
-import psutil
 
 try:  # Optional dependency - GPU metrics degrade gracefully when absent.
     import GPUtil  # type: ignore
@@ -95,7 +91,7 @@ class JustNewsMetrics:
         '503': 'service-unavailable'
     }
 
-    def __init__(self, agent_name: str, registry: Optional[CollectorRegistry] = None):
+    def __init__(self, agent_name: str, registry: CollectorRegistry | None = None):
         """
         Initialize metrics for an agent.
 
@@ -112,9 +108,9 @@ class JustNewsMetrics:
         self._init_system_metrics()
 
         # Lazy metric registries for backwards-compatibility helper methods.
-        self._custom_counters: Dict[str, Counter] = {}
-        self._custom_histograms: Dict[str, Histogram] = {}
-        self._custom_gauges: Dict[str, Gauge] = {}
+        self._custom_counters: dict[str, Counter] = {}
+        self._custom_histograms: dict[str, Histogram] = {}
+        self._custom_gauges: dict[str, Gauge] = {}
 
         logger.info(
             "Initialized metrics for agent: %s (display: %s)",

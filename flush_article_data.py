@@ -14,10 +14,10 @@ Usage:
 
 import argparse
 import sys
-from typing import List, Tuple
+
+import chromadb
 
 from database.utils.migrated_database_utils import create_database_service
-import chromadb
 
 
 def get_confirmation() -> bool:
@@ -39,7 +39,7 @@ def get_confirmation() -> bool:
     return response == "YES"
 
 
-def clear_mariadb_data(db_service) -> List[str]:
+def clear_mariadb_data(db_service) -> list[str]:
     """Clear article-related tables from MariaDB, preserving sources"""
     cursor = db_service.mb_conn.cursor()
     operations = []
@@ -72,7 +72,7 @@ def clear_mariadb_data(db_service) -> List[str]:
         raise Exception(f"MariaDB clear failed: {e}")
 
 
-def clear_chromadb_data() -> List[str]:
+def clear_chromadb_data() -> list[str]:
     """Clear the articles collection from ChromaDB"""
     operations = []
 
@@ -101,7 +101,7 @@ def clear_chromadb_data() -> List[str]:
         raise Exception(f"ChromaDB clear failed: {e}")
 
 
-def verify_cleanup(db_service) -> List[str]:
+def verify_cleanup(db_service) -> list[str]:
     """Verify that the cleanup was successful"""
     cursor = db_service.mb_conn.cursor()
     verifications = []

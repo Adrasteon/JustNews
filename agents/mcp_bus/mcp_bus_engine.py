@@ -5,9 +5,9 @@ This engine handles agent registration, tool calling, circuit breaker logic,
 and communication coordination between all JustNews agents.
 """
 
-import time
 import os
-from typing import Any, Dict, Optional
+import time
+from typing import Any
 
 from common.observability import get_logger
 
@@ -40,13 +40,13 @@ class MCPBusEngine:
     and communication coordination between agents.
     """
 
-    def __init__(self, config: Optional[MCPBusConfig] = None):
+    def __init__(self, config: MCPBusConfig | None = None):
         self.config = config or MCPBusConfig()
-        self.agents: Dict[str, str] = {}
-        self.circuit_breaker_state: Dict[str, Dict[str, Any]] = {}
+        self.agents: dict[str, str] = {}
+        self.circuit_breaker_state: dict[str, dict[str, Any]] = {}
         self.logger = logger
 
-    def register_agent(self, agent_name: str, agent_address: str) -> Dict[str, str]:
+    def register_agent(self, agent_name: str, agent_address: str) -> dict[str, str]:
         """
         Register an agent with the MCP Bus.
 
@@ -68,7 +68,7 @@ class MCPBusEngine:
 
         return {"status": "ok"}
 
-    def unregister_agent(self, agent_name: str) -> Dict[str, str]:
+    def unregister_agent(self, agent_name: str) -> dict[str, str]:
         """
         Unregister an agent from the MCP Bus.
 
@@ -87,7 +87,7 @@ class MCPBusEngine:
         else:
             return {"status": "not_found", "message": f"Agent {agent_name} not registered"}
 
-    def get_registered_agents(self) -> Dict[str, str]:
+    def get_registered_agents(self) -> dict[str, str]:
         """
         Get all currently registered agents.
 
@@ -108,7 +108,7 @@ class MCPBusEngine:
         """
         return agent_name in self.agents
 
-    def call_agent_tool(self, agent_name: str, tool_name: str, args: list, kwargs: dict) -> Dict[str, Any]:
+    def call_agent_tool(self, agent_name: str, tool_name: str, args: list, kwargs: dict) -> dict[str, Any]:
         """
         Call a tool on a registered agent.
 
@@ -158,7 +158,7 @@ class MCPBusEngine:
         state = self.circuit_breaker_state.get(agent_name, {"open_until": 0})
         return state.get("open_until", 0) > time.time()
 
-    def _execute_tool_call(self, agent_name: str, url: str, payload: dict, timeout: tuple) -> Dict[str, Any]:
+    def _execute_tool_call(self, agent_name: str, url: str, payload: dict, timeout: tuple) -> dict[str, Any]:
         """
         Execute a tool call with retry logic and circuit breaker management.
 
@@ -223,7 +223,7 @@ class MCPBusEngine:
         else:
             self.circuit_breaker_state[agent_name] = {"fails": fails, "open_until": 0}
 
-    def get_circuit_breaker_status(self) -> Dict[str, Dict[str, Any]]:
+    def get_circuit_breaker_status(self) -> dict[str, dict[str, Any]]:
         """
         Get the current circuit breaker status for all agents.
 
@@ -254,7 +254,7 @@ class MCPBusEngine:
             self.logger.error(f"Failed to notify GPU Orchestrator: {e}")
             return False
 
-    def get_health_status(self) -> Dict[str, Any]:
+    def get_health_status(self) -> dict[str, Any]:
         """
         Get comprehensive health status of the MCP Bus.
 
@@ -271,7 +271,7 @@ class MCPBusEngine:
             "timestamp": time.time()
         }
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get statistics about MCP Bus operations.
 

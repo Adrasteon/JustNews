@@ -25,8 +25,8 @@ import statistics
 import time
 import warnings
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from common.observability import get_logger
 
@@ -234,10 +234,10 @@ class AnalystEngine:
             return False
         return True
 
-    def _log_feedback(self, event: str, details: Dict[str, Any]) -> None:
+    def _log_feedback(self, event: str, details: dict[str, Any]) -> None:
         """Log analysis feedback for monitoring and improvement."""
         try:
-            timestamp = datetime.now(timezone.utc).isoformat()
+            timestamp = datetime.now(UTC).isoformat()
             log_entry = {
                 "timestamp": timestamp,
                 "event": event,
@@ -250,7 +250,7 @@ class AnalystEngine:
         except Exception as e:
             logger.warning(f"Failed to log feedback: {e}")
 
-    def extract_entities(self, text: str) -> Dict[str, Any]:
+    def extract_entities(self, text: str) -> dict[str, Any]:
         """
         Extract named entities from text using spaCy with transformer fallback.
 
@@ -347,7 +347,7 @@ class AnalystEngine:
                 "error": str(e)
             }
 
-    def _extract_entities_patterns(self, text: str) -> List[Dict[str, Any]]:
+    def _extract_entities_patterns(self, text: str) -> list[dict[str, Any]]:
         """Pattern-based entity extraction as last resort fallback."""
         entities = []
 
@@ -368,7 +368,7 @@ class AnalystEngine:
 
         return entities[:20]
 
-    def _clean_entities(self, entities: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _clean_entities(self, entities: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Clean and deduplicate entity list."""
         if not entities:
             return []
@@ -385,7 +385,7 @@ class AnalystEngine:
         cleaned.sort(key=lambda x: x.get("confidence", 0), reverse=True)
         return cleaned[:15]
 
-    def analyze_text_statistics(self, text: str) -> Dict[str, Any]:
+    def analyze_text_statistics(self, text: str) -> dict[str, Any]:
         """
         Comprehensive text statistical analysis.
 
@@ -452,7 +452,7 @@ class AnalystEngine:
             logger.error(f"❌ Text statistics analysis failed: {e}")
             return {"error": str(e)}
 
-    def _extract_numbers(self, text: str) -> List[Dict[str, Any]]:
+    def _extract_numbers(self, text: str) -> list[dict[str, Any]]:
         """Extract numerical data from text."""
         numbers = []
         patterns = [
@@ -472,7 +472,7 @@ class AnalystEngine:
 
         return numbers
 
-    def _calculate_readability(self, text: str, word_count: int, sentence_count: int, word_lengths: List[int]) -> float:
+    def _calculate_readability(self, text: str, word_count: int, sentence_count: int, word_lengths: list[int]) -> float:
         """Calculate simplified readability score."""
         if sentence_count == 0 or not word_lengths:
             return 0.0
@@ -483,7 +483,7 @@ class AnalystEngine:
         readability = 100 - (1.015 * avg_sentence_length) - (84.6 * avg_word_length / 100)
         return max(0, min(100, round(readability, 1)))
 
-    def _calculate_vocabulary_diversity(self, words: List[str]) -> float:
+    def _calculate_vocabulary_diversity(self, words: list[str]) -> float:
         """Calculate type-token ratio for vocabulary diversity."""
         if not words:
             return 0.0
@@ -491,7 +491,7 @@ class AnalystEngine:
         unique_words = set(word.lower().strip('.,!?;:"()[]') for word in words)
         return round(len(unique_words) / len(words), 3)
 
-    def extract_key_metrics(self, text: str, url: str | None = None) -> Dict[str, Any]:
+    def extract_key_metrics(self, text: str, url: str | None = None) -> dict[str, Any]:
         """
         Extract key numerical and statistical metrics from news text.
 
@@ -539,7 +539,7 @@ class AnalystEngine:
                 "error": str(e)
             }
 
-    def _extract_financial_metrics(self, text: str) -> List[Dict[str, Any]]:
+    def _extract_financial_metrics(self, text: str) -> list[dict[str, Any]]:
         """Extract financial metrics from text."""
         financial_patterns = [
             (r'\$\d+(?:,\d+)*(?:\.\d+)?(?:\s*(?:million|billion|trillion))?', 'currency'),
@@ -559,7 +559,7 @@ class AnalystEngine:
 
         return metrics
 
-    def _extract_temporal_references(self, text: str) -> List[Dict[str, Any]]:
+    def _extract_temporal_references(self, text: str) -> list[dict[str, Any]]:
         """Extract temporal references from text."""
         temporal_patterns = [
             (r'\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}', 'full_date'),
@@ -579,7 +579,7 @@ class AnalystEngine:
 
         return references
 
-    def _extract_statistical_references(self, text: str) -> List[Dict[str, Any]]:
+    def _extract_statistical_references(self, text: str) -> list[dict[str, Any]]:
         """Extract statistical references from text."""
         stat_patterns = [
             (r'(?:poll|survey|study|research)\s+(?:shows?|indicates?|finds?|suggests?)', 'study_reference'),
@@ -599,7 +599,7 @@ class AnalystEngine:
 
         return statistics_refs
 
-    def _extract_geographic_metrics(self, text: str) -> List[Dict[str, Any]]:
+    def _extract_geographic_metrics(self, text: str) -> list[dict[str, Any]]:
         """Extract geographic and demographic metrics."""
         geo_patterns = [
             (r'\b(?:in|from|across)\s+(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)', 'location_reference'),
@@ -618,7 +618,7 @@ class AnalystEngine:
 
         return geo_metrics[:10]
 
-    def analyze_content_trends(self, texts: List[str], urls: List[str] | None = None) -> Dict[str, Any]:
+    def analyze_content_trends(self, texts: list[str], urls: list[str] | None = None) -> dict[str, Any]:
         """
         Analyze trends across multiple content pieces.
 
@@ -695,7 +695,7 @@ class AnalystEngine:
                 "error": str(e)
             }
 
-    def _analyze_entity_trends(self, texts: List[str]) -> Dict[str, Any]:
+    def _analyze_entity_trends(self, texts: list[str]) -> dict[str, Any]:
         """Analyze entity trends across multiple texts."""
         if not self.spacy_nlp:
             return {"error": "spaCy not available for entity trend analysis"}
@@ -718,7 +718,7 @@ class AnalystEngine:
             "total_unique_entities": len(entity_counts)
         }
 
-    def _analyze_topic_trends(self, texts: List[str]) -> Dict[str, Any]:
+    def _analyze_topic_trends(self, texts: list[str]) -> dict[str, Any]:
         """Analyze topic trends using keyword frequency."""
         all_text = " ".join(texts).lower()
         words = re.findall(r'\b[a-z]{4,}\b', all_text)
@@ -734,7 +734,7 @@ class AnalystEngine:
             "vocabulary_size": len(set(filtered_words))
         }
 
-    def analyze_sentiment(self, text: str) -> Dict[str, Any]:
+    def analyze_sentiment(self, text: str) -> dict[str, Any]:
         """
         Analyze sentiment of text content using GPU acceleration.
 
@@ -774,7 +774,7 @@ class AnalystEngine:
                         "sentiment_scores": {
                             "positive": float(sentiment_score),
                             "negative": float(1.0 - sentiment_score),
-                            "neutral": float(0.5)
+                            "neutral": 0.5
                         },
                         "method": "gpu_accelerated",
                         "model_name": self.config.sentiment_model,
@@ -803,7 +803,7 @@ class AnalystEngine:
             self._log_feedback("analyze_sentiment_error", {"error": str(e)})
             return {"error": str(e)}
 
-    def _heuristic_sentiment_analysis(self, text: str) -> Dict[str, Any]:
+    def _heuristic_sentiment_analysis(self, text: str) -> dict[str, Any]:
         """Heuristic sentiment analysis fallback."""
         positive_words = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'positive', 'success', 'win', 'happy', 'pleased', 'best', 'love', 'like', 'improve', 'increase', 'grow', 'benefit', 'advantage', 'progress']
         negative_words = ['bad', 'terrible', 'awful', 'horrible', 'negative', 'fail', 'loss', 'sad', 'angry', 'disappointed', 'worst', 'hate', 'worse', 'decline', 'decrease', 'problem', 'issue', 'crisis']
@@ -843,7 +843,7 @@ class AnalystEngine:
             "reasoning": f"Heuristic analysis (positive: {positive_count}, negative: {negative_count})"
         }
 
-    def detect_bias(self, text: str) -> Dict[str, Any]:
+    def detect_bias(self, text: str) -> dict[str, Any]:
         """
         Detect bias in text content using GPU acceleration.
 
@@ -914,7 +914,7 @@ class AnalystEngine:
             self._log_feedback("detect_bias_error", {"error": str(e)})
             return {"error": str(e)}
 
-    def _heuristic_bias_detection(self, text: str) -> Dict[str, Any]:
+    def _heuristic_bias_detection(self, text: str) -> dict[str, Any]:
         """Heuristic bias detection fallback."""
         bias_indicators = ['always', 'never', 'all', 'everyone', 'nobody', 'everybody', 'terrible', 'amazing', 'best', 'worst', 'perfect', 'disaster', 'obviously', 'clearly', 'undoubtedly', 'absolutely', 'definitely']
         political_bias_words = ['liberal', 'conservative', 'left', 'right', 'progressive', 'traditional', 'democrat', 'republican', 'socialist', 'capitalist', 'woke', 'patriotic']
@@ -949,7 +949,7 @@ class AnalystEngine:
             "timestamp": datetime.now().isoformat()
         }
 
-    def analyze_sentiment_and_bias(self, text: str) -> Dict[str, Any]:
+    def analyze_sentiment_and_bias(self, text: str) -> dict[str, Any]:
         """
         Comprehensive analysis combining sentiment and bias detection.
 
@@ -998,7 +998,7 @@ class AnalystEngine:
             self._log_feedback("analyze_sentiment_and_bias_error", {"error": str(e)})
             return {"error": str(e)}
 
-    def _calculate_combined_reliability(self, sentiment_result: Dict[str, Any], bias_result: Dict[str, Any]) -> float:
+    def _calculate_combined_reliability(self, sentiment_result: dict[str, Any], bias_result: dict[str, Any]) -> float:
         """Calculate combined reliability score."""
         try:
             sentiment_reliability = 1.0
@@ -1013,7 +1013,7 @@ class AnalystEngine:
         except Exception:
             return 0.5
 
-    def _calculate_content_quality(self, sentiment_result: Dict[str, Any], bias_result: Dict[str, Any]) -> float:
+    def _calculate_content_quality(self, sentiment_result: dict[str, Any], bias_result: dict[str, Any]) -> float:
         """Calculate content quality score."""
         try:
             sentiment_quality = 0.8 if sentiment_result.get("dominant_sentiment") == "neutral" else 0.6
@@ -1025,7 +1025,7 @@ class AnalystEngine:
         except Exception:
             return 0.5
 
-    def _generate_analysis_recommendations(self, sentiment_result: Dict[str, Any], bias_result: Dict[str, Any]) -> List[str]:
+    def _generate_analysis_recommendations(self, sentiment_result: dict[str, Any], bias_result: dict[str, Any]) -> list[str]:
         """Generate recommendations based on analysis."""
         recommendations = []
 

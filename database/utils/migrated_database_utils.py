@@ -9,17 +9,12 @@ Features:
 - Backward compatibility with existing code
 """
 
-import os
 import asyncio
-from typing import Any, Dict, Optional, List, Union
+import os
 from importlib import import_module
-
-import mysql.connector
-import chromadb
-from sentence_transformers import SentenceTransformer
+from typing import Any
 
 from common.observability import get_logger
-
 from database.models.migrated_models import MigratedDatabaseService
 
 logger = get_logger(__name__)
@@ -44,18 +39,9 @@ Features:
 - Backward compatibility with existing code
 """
 
-import os
-import asyncio
-from typing import Any, Dict, Optional, List, Union
-from importlib import import_module
 
-import mysql.connector
-import chromadb
-from sentence_transformers import SentenceTransformer
 
 from common.observability import get_logger
-
-from database.models.migrated_models import MigratedDatabaseService
 
 logger = get_logger(__name__)
 
@@ -70,7 +56,7 @@ def _get_compat_attr(name: str, default):
     return getattr(compat_module, name, default)
 
 
-def get_db_config() -> Dict[str, Any]:
+def get_db_config() -> dict[str, Any]:
     """
     Get database configuration from environment and config files
 
@@ -86,7 +72,7 @@ def get_db_config() -> Dict[str, Any]:
     system_config = {}
     if os.path.exists(config_path):
         try:
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with open(config_path, encoding='utf-8') as f:
                 system_config = json.load(f)
         except Exception as e:
             logger.warning(f"Could not open system_config.json at {config_path}: {e}")
@@ -96,7 +82,7 @@ def get_db_config() -> Dict[str, Any]:
         if os.path.exists(env_file_path):
             logger.info(f"Loading environment variables from {env_file_path}")
             try:
-                with open(env_file_path, 'r', encoding='utf-8') as f:
+                with open(env_file_path, encoding='utf-8') as f:
                     for line in f:
                         line = line.strip()
                         if line and not line.startswith('#') and '=' in line:
@@ -218,7 +204,7 @@ def get_db_config() -> Dict[str, Any]:
     return config
 
 
-def create_database_service(config: Optional[Dict[str, Any]] = None) -> MigratedDatabaseService:
+def create_database_service(config: dict[str, Any] | None = None) -> MigratedDatabaseService:
     """
     Create and initialize the migrated database service
 
@@ -352,7 +338,7 @@ def execute_mariadb_query(
 def execute_transaction(
     service: MigratedDatabaseService,
     queries: list,
-    params_list: Optional[list] = None
+    params_list: list | None = None
 ) -> bool:
     """
     Execute multiple MariaDB queries in a transaction
@@ -389,7 +375,7 @@ def execute_transaction(
         return False
 
 
-def get_database_stats(service: MigratedDatabaseService) -> Dict[str, Any]:
+def get_database_stats(service: MigratedDatabaseService) -> dict[str, Any]:
     """
     Get comprehensive database statistics for migrated system
 
@@ -445,7 +431,7 @@ def semantic_search(
     service: MigratedDatabaseService,
     query: str,
     n_results: int = 5
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Perform semantic search using the migrated database service
 
@@ -464,7 +450,7 @@ def search_articles_by_text(
     service: MigratedDatabaseService,
     query: str,
     limit: int = 10
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Search articles by text content
 
@@ -482,7 +468,7 @@ def search_articles_by_text(
 def get_recent_articles(
     service: MigratedDatabaseService,
     limit: int = 10
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Get recent articles
 
@@ -498,9 +484,9 @@ def get_recent_articles(
 
 def get_articles_by_source(
     service: MigratedDatabaseService,
-    source_id: Union[int, str],
+    source_id: int | str,
     limit: int = 10
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Get articles by source
 

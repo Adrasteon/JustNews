@@ -9,17 +9,16 @@ Comprehensive tests for the migrated database models covering:
 - Vector search and semantic operations
 """
 
-import pytest
-import json
 from datetime import datetime
-from unittest.mock import patch, MagicMock, Mock
-from typing import Dict, Any
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from database.models.migrated_models import (
-    Source,
     Article,
     ArticleSourceMap,
-    MigratedDatabaseService
+    MigratedDatabaseService,
+    Source,
 )
 
 

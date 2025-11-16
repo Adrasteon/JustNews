@@ -11,14 +11,12 @@ Features:
 """
 
 import gzip
-import json
 import os
 import shutil
 import subprocess
-import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from common.observability import get_logger
 
@@ -32,7 +30,7 @@ class BackupManager:
     Advanced backup manager with multiple storage backends and disaster recovery
     """
 
-    def __init__(self, connection_pool: DatabaseConnectionPool, config: Dict[str, Any]):
+    def __init__(self, connection_pool: DatabaseConnectionPool, config: dict[str, Any]):
         """
         Initialize the backup manager
 
@@ -60,7 +58,7 @@ class BackupManager:
         backup_type: str = 'full',
         compress: bool = True,
         encrypt: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a database backup
 
@@ -129,7 +127,7 @@ class BackupManager:
 
         return results
 
-    def restore_backup(self, backup_path: str, restore_type: str = 'full') -> Dict[str, Any]:
+    def restore_backup(self, backup_path: str, restore_type: str = 'full') -> dict[str, Any]:
         """
         Restore database from backup
 
@@ -178,7 +176,7 @@ class BackupManager:
 
         return results
 
-    def list_backups(self) -> List[Dict[str, Any]]:
+    def list_backups(self) -> list[dict[str, Any]]:
         """
         List available backups
 
@@ -214,7 +212,7 @@ class BackupManager:
 
         return backups
 
-    def validate_backup(self, backup_path: str) -> Dict[str, Any]:
+    def validate_backup(self, backup_path: str) -> dict[str, Any]:
         """
         Validate backup integrity
 
@@ -277,7 +275,7 @@ class BackupManager:
 
         return results
 
-    def cleanup_old_backups(self, retention_days: int = 30) -> Dict[str, Any]:
+    def cleanup_old_backups(self, retention_days: int = 30) -> dict[str, Any]:
         """
         Clean up old backups beyond retention period
 
@@ -316,7 +314,7 @@ class BackupManager:
 
         return results
 
-    def get_backup_metrics(self) -> Dict[str, Any]:
+    def get_backup_metrics(self) -> dict[str, Any]:
         """
         Get backup operation metrics
 
@@ -383,7 +381,7 @@ class BackupManager:
         env = os.environ.copy()
         env['PGPASSWORD'] = db_config['password']
 
-        with open(backup_path, 'r', encoding='utf-8') as f:
+        with open(backup_path, encoding='utf-8') as f:
             result = subprocess.run(cmd, env=env, stdin=f, stderr=subprocess.PIPE, text=True)
 
         if result.returncode != 0:
@@ -447,7 +445,7 @@ class BackupManager:
             except Exception as e:
                 logger.warning(f"Failed to upload to backend {backend_config.get('type')}: {e}")
 
-    def _upload_to_backend(self, backup_path: Path, backend_config: Dict[str, Any]):
+    def _upload_to_backend(self, backup_path: Path, backend_config: dict[str, Any]):
         """Upload to specific storage backend"""
         backend_type = backend_config.get('type')
 
@@ -460,7 +458,7 @@ class BackupManager:
         else:
             logger.warning(f"Unsupported backend type: {backend_type}")
 
-    def _upload_to_s3(self, backup_path: Path, config: Dict[str, Any]):
+    def _upload_to_s3(self, backup_path: Path, config: dict[str, Any]):
         """Upload to AWS S3"""
         try:
             import boto3
@@ -483,22 +481,22 @@ class BackupManager:
         except Exception as e:
             raise Exception(f"S3 upload failed: {e}")
 
-    def _upload_to_azure(self, backup_path: Path, config: Dict[str, Any]):
+    def _upload_to_azure(self, backup_path: Path, config: dict[str, Any]):
         """Upload to Azure Blob Storage"""
         # Implementation for Azure would go here
         logger.info("Azure upload not yet implemented")
 
-    def _upload_to_gcp(self, backup_path: Path, config: Dict[str, Any]):
+    def _upload_to_gcp(self, backup_path: Path, config: dict[str, Any]):
         """Upload to Google Cloud Storage"""
         # Implementation for GCP would go here
         logger.info("GCP upload not yet implemented")
 
-    def _list_backend_backups(self, backend_config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _list_backend_backups(self, backend_config: dict[str, Any]) -> list[dict[str, Any]]:
         """List backups from storage backend"""
         # Implementation would depend on backend type
         return []
 
-    def _cleanup_backend_backups(self, backend_config: Dict[str, Any], retention_days: int):
+    def _cleanup_backend_backups(self, backend_config: dict[str, Any], retention_days: int):
         """Clean up old backups from storage backend"""
         # Implementation would depend on backend type
         pass

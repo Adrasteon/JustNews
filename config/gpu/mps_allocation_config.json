@@ -106,4 +106,16 @@
       "health_checks": true
     }
   }
+  ,
+  "model_vram_mb": {
+    "sentence-transformers/all-MiniLM-L6-v2": 512,
+    "sentence-transformers/all-mpnet-base-v2": 1200,
+    "cardiffnlp/twitter-roberta-base-sentiment-latest": 1500,
+    "unitary/toxic-bert": 1500,
+    "google/flan-t5-small": 1800,
+    "google/flan-t5-base": 4000,
+    "google/flan-t5-large": 11000,
+    "facebook/bart-large-cnn": 3000,
+    "distilgpt2": 512
+  }
 }

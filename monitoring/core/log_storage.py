@@ -7,17 +7,15 @@ observability platform.
 
 import asyncio
 import json
-import aiofiles
-import aiohttp
-from typing import Dict, List, Optional, Any, Tuple, Iterator
-from datetime import datetime, timedelta
-from dataclasses import dataclass
-from enum import Enum
 import logging
-import os
-from pathlib import Path
 import re
-import heapq
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from pathlib import Path
+from typing import Any
+
+import aiofiles
 
 from .log_collector import LogEntry, LogLevel
 
@@ -40,9 +38,9 @@ class QueryOperator(Enum):
 @dataclass
 class LogQuery:
     """Log search query"""
-    filters: Dict[str, Any] = None
-    operators: Dict[str, QueryOperator] = None
-    time_range: Optional[Tuple[datetime, datetime]] = None
+    filters: dict[str, Any] = None
+    operators: dict[str, QueryOperator] = None
+    time_range: tuple[datetime, datetime] | None = None
     limit: int = 100
     offset: int = 0
     sort_by: str = "timestamp"
@@ -52,7 +50,7 @@ class LogQuery:
 @dataclass
 class QueryResult:
     """Query result with pagination"""
-    entries: List[LogEntry]
+    entries: list[LogEntry]
     total_count: int
     has_more: bool
     query_time_ms: float
@@ -66,7 +64,7 @@ class LogStorage:
     with support for multiple storage backends and query optimization.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or self._get_default_config()
 
         # Storage configuration
@@ -75,11 +73,11 @@ class LogStorage:
         self.compression_enabled = self.config['compression_enabled']
 
         # Indexing
-        self._index: Dict[str, Dict[str, List[str]]] = {}  # field -> value -> file_paths
-        self._reverse_index: Dict[str, Dict[str, Any]] = {}  # file_path -> metadata
+        self._index: dict[str, dict[str, list[str]]] = {}  # field -> value -> file_paths
+        self._reverse_index: dict[str, dict[str, Any]] = {}  # file_path -> metadata
 
         # Cache
-        self._query_cache: Dict[str, QueryResult] = {}
+        self._query_cache: dict[str, QueryResult] = {}
         self._cache_ttl_seconds = self.config['cache_ttl_seconds']
 
         # Ensure storage directory exists
@@ -89,7 +87,7 @@ class LogStorage:
         if self.index_enabled:
             asyncio.create_task(self._load_index())
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default storage configuration"""
         return {
             'storage_path': 'logs/storage',
@@ -101,7 +99,7 @@ class LogStorage:
             'retention_days': 90
         }
 
-    async def store_logs(self, log_entries: List[LogEntry]) -> None:
+    async def store_logs(self, log_entries: list[LogEntry]) -> None:
         """Store log entries"""
         try:
             if not log_entries:
@@ -190,7 +188,7 @@ class LogStorage:
                 query_time_ms=(datetime.utcnow() - start_time).total_seconds() * 1000
             )
 
-    async def _find_relevant_files(self, query: LogQuery) -> List[Path]:
+    async def _find_relevant_files(self, query: LogQuery) -> list[Path]:
         """Find files that may contain relevant logs"""
         if not self.index_enabled:
             # Return all log files if no index
@@ -230,7 +228,7 @@ class LogStorage:
 
         return list(relevant_files) if relevant_files else list(self.storage_path.glob("logs_*.json"))
 
-    async def _query_file(self, filepath: Path, query: LogQuery) -> List[LogEntry]:
+    async def _query_file(self, filepath: Path, query: LogQuery) -> list[LogEntry]:
         """Query a specific log file"""
         try:
             entries = await self._load_log_file(filepath)
@@ -267,12 +265,12 @@ class LogStorage:
             logging.error(f"Error querying file {filepath}: {e}")
             return []
 
-    async def _apply_filters(self, entries: List[LogEntry], query: LogQuery) -> List[LogEntry]:
+    async def _apply_filters(self, entries: list[LogEntry], query: LogQuery) -> list[LogEntry]:
         """Apply additional filters to entries"""
         # This is a fallback for complex queries not handled in _query_file
         return entries
 
-    def _sort_entries(self, entries: List[LogEntry], query: LogQuery) -> List[LogEntry]:
+    def _sort_entries(self, entries: list[LogEntry], query: LogQuery) -> list[LogEntry]:
         """Sort entries by specified field"""
         reverse = query.sort_order == "desc"
 
@@ -315,10 +313,10 @@ class LogStorage:
         except Exception:
             return False
 
-    async def _load_log_file(self, filepath: Path) -> List[LogEntry]:
+    async def _load_log_file(self, filepath: Path) -> list[LogEntry]:
         """Load log entries from file"""
         try:
-            async with aiofiles.open(filepath, 'r') as f:
+            async with aiofiles.open(filepath) as f:
                 data = await f.read()
                 entries_data = json.loads(data)
                 return [LogEntry.from_dict(entry) for entry in entries_data]
@@ -326,7 +324,7 @@ class LogStorage:
             logging.error(f"Error loading log file {filepath}: {e}")
             return []
 
-    async def _save_log_file(self, filepath: Path, entries: List[LogEntry]) -> None:
+    async def _save_log_file(self, filepath: Path, entries: list[LogEntry]) -> None:
         """Save log entries to file"""
         try:
             entries_data = [entry.to_dict() for entry in entries]
@@ -343,7 +341,7 @@ class LogStorage:
             logging.error(f"Error saving log file {filepath}: {e}")
             raise
 
-    async def _update_index(self, filename: str, entries: List[LogEntry]) -> None:
+    async def _update_index(self, filename: str, entries: list[LogEntry]) -> None:
         """Update search index with new entries"""
         try:
             filepath = str(self.storage_path / filename)
@@ -385,7 +383,7 @@ class LogStorage:
         try:
             index_file = self.storage_path / "index.json"
             if index_file.exists():
-                async with aiofiles.open(index_file, 'r') as f:
+                async with aiofiles.open(index_file) as f:
                     index_data = json.loads(await f.read())
                     self._index = index_data.get('index', {})
                     self._reverse_index = index_data.get('reverse_index', {})
@@ -422,7 +420,7 @@ class LogStorage:
         ]
         return "|".join(key_parts)
 
-    async def cleanup_old_logs(self, retention_days: Optional[int] = None) -> int:
+    async def cleanup_old_logs(self, retention_days: int | None = None) -> int:
         """Clean up old log files based on retention policy"""
         retention = retention_days or self.config['retention_days']
         cutoff_date = datetime.utcnow() - timedelta(days=retention)
@@ -460,7 +458,7 @@ class LogStorage:
 
         return cleaned_count
 
-    async def get_storage_stats(self) -> Dict[str, Any]:
+    async def get_storage_stats(self) -> dict[str, Any]:
         """Get storage statistics"""
         try:
             total_files = 0
@@ -490,9 +488,9 @@ class LogStorage:
 
 
 # Global storage instance
-_global_storage: Optional[LogStorage] = None
+_global_storage: LogStorage | None = None
 
-def get_log_storage(config: Optional[Dict[str, Any]] = None) -> LogStorage:
+def get_log_storage(config: dict[str, Any] | None = None) -> LogStorage:
     """Get or create global log storage"""
     global _global_storage
 
@@ -501,7 +499,7 @@ def get_log_storage(config: Optional[Dict[str, Any]] = None) -> LogStorage:
 
     return _global_storage
 
-def init_log_storage(config: Optional[Dict[str, Any]] = None) -> LogStorage:
+def init_log_storage(config: dict[str, Any] | None = None) -> LogStorage:
     """Initialize log storage system"""
     storage = LogStorage(config)
     global _global_storage

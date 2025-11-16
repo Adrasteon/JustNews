@@ -5,18 +5,18 @@ Handles GDPR, CCPA compliance, audit trails, data protection, and regulatory req
 """
 
 import asyncio
-import logging
-from typing import Dict, List, Optional, Any, Union
-from datetime import datetime, timedelta
-from dataclasses import dataclass
-from enum import Enum
-
-from pydantic import BaseModel, Field
-import aiofiles
 import json
+import logging
 import secrets
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any
 
-from ..models import SecurityConfig, ComplianceError
+import aiofiles
+from pydantic import BaseModel, Field
+
+from ..models import ComplianceError, SecurityConfig
 
 logger = logging.getLogger(__name__)
 
@@ -51,13 +51,13 @@ class AuditEvent(BaseModel):
     """Audit event for compliance logging"""
     id: str
     timestamp: datetime
-    user_id: Optional[int] = None
+    user_id: int | None = None
     action: str
     resource: str
-    details: Dict[str, Any] = Field(default_factory=dict)
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    compliance_standard: Optional[str] = None
+    details: dict[str, Any] = Field(default_factory=dict)
+    ip_address: str | None = None
+    user_agent: str | None = None
+    compliance_standard: str | None = None
 
 
 class DataSubjectRequest(BaseModel):
@@ -67,8 +67,8 @@ class DataSubjectRequest(BaseModel):
     request_type: str  # access, rectify, erase, restrict, portability, object
     status: str  # pending, in_progress, completed, rejected
     requested_at: datetime
-    completed_at: Optional[datetime] = None
-    details: Dict[str, Any] = Field(default_factory=dict)
+    completed_at: datetime | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
 
 
 class ConsentRecord(BaseModel):
@@ -77,11 +77,11 @@ class ConsentRecord(BaseModel):
     user_id: int
     purpose: str
     status: ConsentStatus
-    granted_at: Optional[datetime] = None
-    withdrawn_at: Optional[datetime] = None
+    granted_at: datetime | None = None
+    withdrawn_at: datetime | None = None
     consent_text: str
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
+    ip_address: str | None = None
+    user_agent: str | None = None
 
 
 class DataRetentionPolicy(BaseModel):
@@ -97,12 +97,12 @@ class DataRetentionPolicy(BaseModel):
 @dataclass
 class ComplianceConfig:
     """Compliance service configuration"""
-    enabled_standards: List[str] = None  # ["gdpr", "ccpa"]
+    enabled_standards: list[str] = None  # ["gdpr", "ccpa"]
     audit_retention_days: int = 2555  # 7 years for GDPR
     consent_retention_days: int = 2555
     data_export_format: str = "json"
     automatic_cleanup: bool = True
-    dpo_contact_email: Optional[str] = None
+    dpo_contact_email: str | None = None
 
     def __post_init__(self):
         if self.enabled_standards is None:
@@ -120,12 +120,12 @@ class ComplianceService:
     def __init__(self, config: SecurityConfig):
         self.config = config
         self.compliance_config = ComplianceConfig()
-        self._audit_events: List[AuditEvent] = []
-        self._consent_records: Dict[int, List[ConsentRecord]] = {}  # user_id -> consents
-        self._data_requests: List[DataSubjectRequest] = []
+        self._audit_events: list[AuditEvent] = []
+        self._consent_records: dict[int, list[ConsentRecord]] = {}  # user_id -> consents
+        self._data_requests: list[DataSubjectRequest] = []
         self._retention_policies = self._get_default_retention_policies()
 
-    def _get_default_retention_policies(self) -> Dict[str, DataRetentionPolicy]:
+    def _get_default_retention_policies(self) -> dict[str, DataRetentionPolicy]:
         """Get default data retention policies"""
         return {
             "user_profile": DataRetentionPolicy(
@@ -181,8 +181,8 @@ class ComplianceService:
         await self._save_compliance_data()
         logger.info("ComplianceService shutdown")
 
-    async def log_event(self, event_type: str, user_id: Optional[int],
-                       details: Dict[str, Any]) -> None:
+    async def log_event(self, event_type: str, user_id: int | None,
+                       details: dict[str, Any]) -> None:
         """
         Log compliance audit event
 
@@ -217,8 +217,8 @@ class ComplianceService:
 
     async def record_consent(self, user_id: int, purpose: str,
                            consent_text: str, status: ConsentStatus = ConsentStatus.GRANTED,
-                           ip_address: Optional[str] = None,
-                           user_agent: Optional[str] = None) -> str:
+                           ip_address: str | None = None,
+                           user_agent: str | None = None) -> str:
         """
         Record user consent
 
@@ -306,7 +306,7 @@ class ComplianceService:
         return latest_consent.status
 
     async def submit_data_request(self, user_id: int, request_type: str,
-                                details: Dict[str, Any] = None) -> str:
+                                details: dict[str, Any] = None) -> str:
         """
         Submit data subject access request
 
@@ -351,7 +351,7 @@ class ComplianceService:
             raise ComplianceError(f"Data request submission failed: {str(e)}")
 
     async def process_data_request(self, request_id: str, action: str,
-                                 result: Dict[str, Any] = None) -> None:
+                                 result: dict[str, Any] = None) -> None:
         """
         Process data subject request
 
@@ -397,7 +397,7 @@ class ComplianceService:
             logger.error(f"Failed to process data request: {e}")
             raise ComplianceError(f"Data request processing failed: {str(e)}")
 
-    async def export_user_data(self, user_id: int) -> Dict[str, Any]:
+    async def export_user_data(self, user_id: int) -> dict[str, Any]:
         """
         Export all user data for GDPR Article 15 compliance
 
@@ -496,8 +496,8 @@ class ComplianceService:
             raise ComplianceError(f"Data deletion failed: {str(e)}")
 
     async def get_compliance_report(self, standard: str = "gdpr",
-                                  date_from: Optional[datetime] = None,
-                                  date_to: Optional[datetime] = None) -> Dict[str, Any]:
+                                  date_from: datetime | None = None,
+                                  date_to: datetime | None = None) -> dict[str, Any]:
         """
         Generate compliance report
 
@@ -556,7 +556,7 @@ class ComplianceService:
             logger.error(f"Failed to generate compliance report: {e}")
             raise ComplianceError(f"Report generation failed: {str(e)}")
 
-    async def get_status(self) -> Dict[str, Any]:
+    async def get_status(self) -> dict[str, Any]:
         """
         Get compliance service status
 
@@ -575,7 +575,7 @@ class ComplianceService:
             "retention_policies": len(self._retention_policies)
         }
 
-    def _determine_compliance_standard(self, event_type: str) -> Optional[str]:
+    def _determine_compliance_standard(self, event_type: str) -> str | None:
         """Determine which compliance standard applies to an event"""
         gdpr_events = [
             "data_access", "data_rectification", "data_erasure", "data_restriction",
@@ -658,14 +658,14 @@ class ComplianceService:
         """Load compliance data from storage"""
         try:
             # Load audit events
-            async with aiofiles.open("data/compliance_audit.json", "r") as f:
+            async with aiofiles.open("data/compliance_audit.json") as f:
                 audit_data = json.loads(await f.read())
                 self._audit_events = [
                     AuditEvent(**event) for event in audit_data.get("events", [])
                 ]
 
             # Load consent records
-            async with aiofiles.open("data/compliance_consent.json", "r") as f:
+            async with aiofiles.open("data/compliance_consent.json") as f:
                 consent_data = json.loads(await f.read())
                 self._consent_records = {}
                 for user_id_str, consents in consent_data.get("consents", {}).items():
@@ -675,7 +675,7 @@ class ComplianceService:
                     ]
 
             # Load data requests
-            async with aiofiles.open("data/compliance_requests.json", "r") as f:
+            async with aiofiles.open("data/compliance_requests.json") as f:
                 request_data = json.loads(await f.read())
                 self._data_requests = [
                     DataSubjectRequest(**request) for request in request_data.get("requests", [])

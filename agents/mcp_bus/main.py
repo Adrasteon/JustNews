@@ -25,31 +25,32 @@ Endpoints:
 import os
 import time
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from common.observability import get_logger
 from common.metrics import JustNewsMetrics
- 
+from common.observability import get_logger
+
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
-    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+    from database.utils.migrated_database_utils import (
+        create_database_service,  # type: ignore
+    )
 except Exception:
     create_database_service = None
 from .tools import (
-    register_agent as register_agent_tool,
     call_agent_tool,
-    get_registered_agents,
-    get_bus_health,
     get_bus_stats,
     get_circuit_breaker_status,
+    get_registered_agents,
+    health_check,
     notify_gpu_orchestrator,
-    health_check
 )
+from .tools import register_agent as register_agent_tool
 
 logger = get_logger(__name__)
 
@@ -67,23 +68,23 @@ class ToolCallRequest(BaseModel):
     """Request model for tool calling."""
     agent: str = Field(..., description="Name of the agent to call")
     tool: str = Field(..., description="Name of the tool to execute")
-    args: List[Any] = Field(default_factory=list, description="Positional arguments for the tool")
-    kwargs: Dict[str, Any] = Field(default_factory=dict, description="Keyword arguments for the tool")
+    args: list[Any] = Field(default_factory=list, description="Positional arguments for the tool")
+    kwargs: dict[str, Any] = Field(default_factory=dict, description="Keyword arguments for the tool")
 
 class ToolCallResponse(BaseModel):
     """Response model for tool calling."""
     status: str = Field(..., description="Call status ('success' or 'error')")
-    data: Optional[Dict[str, Any]] = Field(None, description="Call result data")
-    error: Optional[str] = Field(None, description="Error message if call failed")
+    data: dict[str, Any] | None = Field(None, description="Call result data")
+    error: str | None = Field(None, description="Error message if call failed")
     timestamp: float = Field(..., description="Response timestamp")
 
 class HealthResponse(BaseModel):
     """Response model for health checks."""
     timestamp: float = Field(..., description="Health check timestamp")
     overall_status: str = Field(..., description="Overall health status")
-    components: Dict[str, Any] = Field(..., description="Component health status")
-    issues: List[str] = Field(..., description="List of issues found")
-    stats: Optional[Dict[str, Any]] = Field(None, description="Bus statistics")
+    components: dict[str, Any] = Field(..., description="Component health status")
+    issues: list[str] = Field(..., description="List of issues found")
+    stats: dict[str, Any] | None = Field(None, description="Bus statistics")
 
 class StatsResponse(BaseModel):
     """Response model for bus statistics."""

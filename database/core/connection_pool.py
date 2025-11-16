@@ -13,12 +13,10 @@ Features:
 import asyncio
 import time
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional
-
-from typing import Tuple
-from database.utils.migrated_database_utils import create_database_service
+from typing import Any
 
 from common.observability import get_logger
+from database.utils.migrated_database_utils import create_database_service
 
 logger = get_logger(__name__)
 
@@ -28,7 +26,7 @@ class DatabaseConnectionPool:
     Advanced database connection pool with health monitoring and failover
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize the database connection pool
 
@@ -171,7 +169,7 @@ class DatabaseConnectionPool:
             if conn:
                 self.metrics['connections_released'] += 1
 
-    def execute_query(self, query: str, params: tuple = None, fetch: bool = True) -> List[tuple]:
+    def execute_query(self, query: str, params: tuple = None, fetch: bool = True) -> list[tuple]:
         """
         Execute a database query
 
@@ -207,7 +205,7 @@ class DatabaseConnectionPool:
                 except Exception:
                     pass
 
-    async def execute_query_async(self, query: str, params: tuple = None, fetch: bool = True) -> List[dict]:
+    async def execute_query_async(self, query: str, params: tuple = None, fetch: bool = True) -> list[dict]:
         """
         Execute a database query asynchronously
 
@@ -225,7 +223,7 @@ class DatabaseConnectionPool:
             None, self.execute_query, query, params, fetch
         )
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """
         Get connection pool metrics
 

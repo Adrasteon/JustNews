@@ -101,7 +101,6 @@ Tip: `enable_all.sh` defaults to `status` with no args. Use `start`, `stop`, `re
 | memory            | 8007 | /health  |
 | reasoning         | 8008 | /health  |
 | newsreader        | 8009 | /health  |
-| balancer          | 8010 | /health  |
 | analytics         | 8011 | /health  |
 | archive           | 8012 | /health  |
 | dashboard         | 8013 | /health  |

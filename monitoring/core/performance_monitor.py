@@ -5,21 +5,25 @@ Real-time performance monitoring, bottleneck detection, and alerting.
 """
 
 import asyncio
-import time
-import psutil
-import threading
-from typing import Dict, List, Optional, Any, Callable, Tuple
-from datetime import datetime, timedelta
-from dataclasses import dataclass
-from enum import Enum
 import logging
-
-from prometheus_client import Gauge, Histogram, Counter
-import sys
 import os
+import sys
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any
+
+import psutil
+from prometheus_client import Gauge
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from monitoring.core.metrics_collector import EnhancedMetricsCollector, AlertSeverity, Alert, get_enhanced_metrics_collector
+from monitoring.core.metrics_collector import (
+    Alert,
+    AlertSeverity,
+    EnhancedMetricsCollector,
+    get_enhanced_metrics_collector,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +72,8 @@ class PerformanceSnapshot:
     disk_write_bytes: int
     network_sent_bytes: int
     network_recv_bytes: int
-    gpu_memory_percent: Optional[float] = None
-    gpu_utilization_percent: Optional[float] = None
+    gpu_memory_percent: float | None = None
+    gpu_utilization_percent: float | None = None
     active_threads: int = 0
     open_files: int = 0
 
@@ -81,8 +85,8 @@ class BottleneckAnalysis:
     primary_bottleneck: BottleneckType
     severity: str
     confidence_score: float
-    recommendations: List[str]
-    affected_components: List[str]
+    recommendations: list[str]
+    affected_components: list[str]
     metrics_snapshot: PerformanceSnapshot
 
 
@@ -122,24 +126,24 @@ class PerformanceMonitor:
         )
 
         # Performance thresholds
-        self._thresholds: Dict[PerformanceMetric, PerformanceThreshold] = self._get_default_thresholds()
+        self._thresholds: dict[PerformanceMetric, PerformanceThreshold] = self._get_default_thresholds()
 
         # Monitoring state
-        self._snapshots: List[PerformanceSnapshot] = []
-        self._bottleneck_history: List[BottleneckAnalysis] = []
-        self._alert_cooldowns: Dict[str, datetime] = {}
+        self._snapshots: list[PerformanceSnapshot] = []
+        self._bottleneck_history: list[BottleneckAnalysis] = []
+        self._alert_cooldowns: dict[str, datetime] = {}
 
         # Background monitoring
-        self._monitoring_task: Optional[asyncio.Task] = None
-        self._analysis_task: Optional[asyncio.Task] = None
+        self._monitoring_task: asyncio.Task | None = None
+        self._analysis_task: asyncio.Task | None = None
 
         # Performance baselines
-        self._baselines: Dict[PerformanceMetric, float] = {}
-        self._baseline_samples: Dict[PerformanceMetric, List[float]] = {}
+        self._baselines: dict[PerformanceMetric, float] = {}
+        self._baseline_samples: dict[PerformanceMetric, list[float]] = {}
 
         logger.info(f"Initialized performance monitor for agent: {agent_name}")
 
-    def _get_default_thresholds(self) -> Dict[PerformanceMetric, PerformanceThreshold]:
+    def _get_default_thresholds(self) -> dict[PerformanceMetric, PerformanceThreshold]:
         """Get default performance thresholds"""
         return {
             PerformanceMetric.CPU_USAGE: PerformanceThreshold(
@@ -390,7 +394,7 @@ class PerformanceMonitor:
         except Exception as e:
             logger.error(f"Error analyzing performance: {e}")
 
-    async def _detect_bottleneck(self, snapshots: List[PerformanceSnapshot]) -> Optional[BottleneckAnalysis]:
+    async def _detect_bottleneck(self, snapshots: list[PerformanceSnapshot]) -> BottleneckAnalysis | None:
         """Detect performance bottlenecks from snapshots"""
         if not snapshots:
             return None
@@ -442,7 +446,7 @@ class PerformanceMonitor:
         )
 
     def _generate_recommendations(self, bottleneck: BottleneckType,
-                                snapshot: PerformanceSnapshot) -> List[str]:
+                                snapshot: PerformanceSnapshot) -> list[str]:
         """Generate recommendations for bottleneck resolution"""
         recommendations = []
 
@@ -524,7 +528,7 @@ class PerformanceMonitor:
         except Exception as e:
             logger.error(f"Error checking thresholds: {e}")
 
-    def _get_metric_value(self, metric: PerformanceMetric, snapshot: PerformanceSnapshot) -> Optional[float]:
+    def _get_metric_value(self, metric: PerformanceMetric, snapshot: PerformanceSnapshot) -> float | None:
         """Get metric value from snapshot"""
         if metric == PerformanceMetric.CPU_USAGE:
             return snapshot.cpu_percent
@@ -571,7 +575,7 @@ class PerformanceMonitor:
 
         await self.collector._handle_alert(alert)
 
-    def get_performance_report(self, hours: int = 1) -> Dict[str, Any]:
+    def get_performance_report(self, hours: int = 1) -> dict[str, Any]:
         """Get performance report for the last N hours"""
         cutoff = datetime.utcnow() - timedelta(hours=hours)
 
@@ -613,7 +617,7 @@ class PerformanceMonitor:
             "alerts_active": len(self.collector.get_active_alerts())
         }
 
-    def _calculate_stats(self, values: List[float]) -> Dict[str, float]:
+    def _calculate_stats(self, values: list[float]) -> dict[str, float]:
         """Calculate basic statistics for a list of values"""
         if not values:
             return {"min": 0, "max": 0, "avg": 0, "current": 0}
@@ -629,7 +633,7 @@ class PerformanceMonitor:
         """Set custom threshold for a metric"""
         self._thresholds[metric] = threshold
 
-    def get_recommendations(self) -> List[str]:
+    def get_recommendations(self) -> list[str]:
         """Get current performance recommendations"""
         recommendations = []
 
@@ -654,7 +658,7 @@ class PerformanceMonitor:
 
 
 # Global performance monitor instances
-_performance_monitors: Dict[str, PerformanceMonitor] = {}
+_performance_monitors: dict[str, PerformanceMonitor] = {}
 
 def get_performance_monitor(agent_name: str) -> PerformanceMonitor:
     """Get or create performance monitor for an agent"""

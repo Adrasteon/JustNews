@@ -93,7 +93,7 @@ async def cluster_articles_tool(
         logger.error(f"❌ Clustering failed: {e}")
         return {
             "success": False,
-            "clusters": [[i for i in range(len(article_texts))]],  # Fallback: all in one cluster
+            "clusters": [list(range(len(article_texts)))],  # Fallback: all in one cluster
             "n_clusters": 1,
             "articles_processed": len(article_texts),
             "method": "error_fallback",

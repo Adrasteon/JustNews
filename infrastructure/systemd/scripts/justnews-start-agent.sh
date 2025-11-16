@@ -87,7 +87,7 @@ validate_agent_name() {
     if [[ -z "$agent" ]]; then
         log_error "Agent name is required"
         log_info "Usage: $SCRIPT_NAME <agent_name>"
-        log_info "Available agents: mcp_bus, chief_editor, scout, fact_checker, analyst, synthesizer, critic, memory, reasoning, newsreader, dashboard, analytics, balancer, archive, hitl_service, crawl4ai, gpu_orchestrator, crawler, crawler_control"
+        log_info "Available agents: mcp_bus, chief_editor, scout, fact_checker, analyst, synthesizer, critic, memory, reasoning, newsreader, dashboard, analytics, archive, hitl_service, crawl4ai, gpu_orchestrator, crawler, crawler_control"
         exit 1
     fi
 

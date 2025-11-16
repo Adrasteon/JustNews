@@ -152,12 +152,6 @@ justnews:
       replicas: 1
       port: 8012
       gpuRequired: false
-    balancer:
-      name: balancer
-      enabled: true
-      replicas: 1
-      port: 8010
-      gpuRequired: false
     mcpBus:
       name: mcpBus
       enabled: true

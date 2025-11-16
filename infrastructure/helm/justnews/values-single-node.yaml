@@ -86,12 +86,7 @@ justnews:
       port: 8001
       gpuRequired: false
 
-    balancer:
-      name: balancer
-      enabled: true
-      replicas: 2  # Increased for load distribution
-      port: 8010
-      gpuRequired: false
+    # balancer removed - responsibilities moved to critic/analytics/gpu_orchestrator
 
     memory:
       name: memory

@@ -12,7 +12,6 @@ declare -A agents=(
     ["dashboard"]="8013"
     ["analytics"]="8011"
     ["archive"]="8012"
-    ["balancer"]="8010"
     ["crawler"]="8014"
     ["gpu-orchestrator"]="8015"
 )

@@ -19,7 +19,7 @@
   - Suitability: `flan-t5-small` is acceptable for shorter neutralization & generation tasks; `flan-t5-base`/`large` produce higher-quality content but need careful GPU orchestrator scheduling and quantization (use `bitsandbytes` 8-bit or 4-bit and PEFT for training).
   - Recommendation: Default to `flan-t5-small` unless high-quality mode is explicitly requested; ensure quantized models exist in `model_store` and choose `device_map='auto'` and `load_in_8bit=True` in prod.
 
-- critic, analyst, chief_editor, balancer, newsreader
+- critic, analyst, chief_editor, newsreader  # NOTE: `balancer` removed — responsibilities moved to critic/analytics/gpu_orchestrator
   - Current: `sentence-transformers/all-distilroberta-v1`, `all-MiniLM-L6-v2` and other small models.
   - Suitability: Good. If the `analyst` requires GPU-based roberta models for high throughput, prefer `distilroberta` variants or quantized models to reduce memory.
   - Recommendation: prefer `distil` variants of sentiment/bias models and ensure GPU orchestrator provides proper shares.

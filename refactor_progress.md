@@ -78,7 +78,7 @@ The JustNewsAgent V4 codebase is undergoing a comprehensive multi-phase refactor
 ### Infrastructure Agents (9/10) ✅ Complete
 | Agent | Status | Files | Last Modified | Notes |
 |-------|--------|-------|---------------|-------|
-| **balancer** | ✅ Complete | `main.py`, `balancer_engine.py`, `tools.py` | Oct 21, 2025 | Load distribution |
+| **balancer** | ✅ Complete | `main.py`, `balancer_engine.py`, `tools.py` | Oct 21, 2025 | Load distribution (DEPRECATED — removed; responsibilities moved to critic/analytics/gpu_orchestrator) |
 | **crawler** | ✅ Complete | `main.py`, `crawler_engine.py`, `tools.py` | Oct 21, 2025 | Content extraction |
 | **crawler_control** | ✅ Complete | `main.py`, `crawler_control_engine.py`, `tools.py` | Oct 21, 2025 | Crawl management |
 | **dashboard** | ✅ Complete | `main.py`, `dashboard_engine.py`, `tools.py` | Oct 21, 2025 | Web interface |

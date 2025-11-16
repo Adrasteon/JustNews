@@ -1,5 +1,5 @@
 """
-Authentication Engine for JustNewsAgent
+Authentication Engine for JustNews
 
 Core business logic for user authentication, authorization, and session management.
 Provides JWT-based authentication with role-based access control and GDPR compliance.
@@ -158,7 +158,7 @@ class AuthEngine:
         return {
             "service": "auth_engine",
             "version": "1.0.0",
-            "description": "Authentication and authorization service for JustNewsAgent",
+            "description": "Authentication and authorization service for JustNews",
             "features": [
                 "JWT-based authentication",
                 "Role-based access control",

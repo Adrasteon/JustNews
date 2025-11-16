@@ -1,8 +1,5 @@
 -- MariaDB initialization script for JustNewsAgent
--- Converted from PostgreSQL migrations to MariaDB/MySQL syntax
-
--- Create initial tables
-
+-- MariaDB initialization script for JustNews
 -- Create articles table
 CREATE TABLE IF NOT EXISTS articles (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE PRIMARY KEY,

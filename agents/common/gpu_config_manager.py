@@ -1,5 +1,5 @@
 """
-Centralized GPU Configuration Management for JustNewsAgent
+Centralized GPU Configuration Management for JustNews
 Provides unified configuration management for all GPU-related settings
 
 Features:

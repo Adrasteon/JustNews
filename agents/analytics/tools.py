@@ -1,8 +1,8 @@
 """
-Analytics Tools for JustNewsAgent
+Analytics Tools for JustNews
 
 Wrapper functions for analytics operations that can be called by other agents
-and services in the JustNewsAgent system.
+and services in the JustNews system.
 """
 
 import os

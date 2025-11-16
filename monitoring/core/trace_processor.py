@@ -1,5 +1,5 @@
 """
-JustNewsAgent Trace Processor
+JustNews Trace Processor
 
 This module processes and correlates distributed traces across the multi-agent system,
 providing trace analysis, correlation, and performance insights.
@@ -11,7 +11,7 @@ Key Features:
 - Distributed transaction monitoring
 - Trace analytics and reporting
 
-Author: JustNewsAgent Development Team
+Author: JustNews Development Team
 Date: October 22, 2025
 """
 

@@ -1,5 +1,5 @@
 """
-Dashboard Agent - JustNewsAgent Dashboard Service
+Dashboard Agent - JustNews Dashboard Service
 
 This module provides the FastAPI application for the dashboard agent,
 including web interface, GPU monitoring, and agent management endpoints.
@@ -593,7 +593,7 @@ class CrawlRequest(BaseModel):
     strategy: str = "auto"
     enable_ai: bool = True
     timeout: int = 300
-    user_agent: str = "JustNewsAgent/1.0"
+    user_agent: str = "JustNews/1.0"
 
 
 @app.post("/api/crawl/start")
@@ -772,14 +772,14 @@ def get_fallback_dashboard_html():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>JustNewsAgent GPU Dashboard</title>
+        <title>JustNews GPU Dashboard</title>
         <style>
             body { font-family: Arial, sans-serif; margin: 20px; }
             .metric { background: #f0f0f0; padding: 10px; margin: 10px; border-radius: 5px; }
         </style>
     </head>
     <body>
-        <h1>🚀 JustNewsAgent GPU Dashboard</h1>
+        <h1>🚀 JustNews GPU Dashboard</h1>
         <div id="dashboard">
             <div class="metric">
                 <h3>GPU Status</h3>

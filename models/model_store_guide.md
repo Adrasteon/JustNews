@@ -1,6 +1,6 @@
 # Model Store Guide
 
-This guide consolidates the historical documentation from the `justnewsagent/maint/cleanup` branch into a single reference for designing, operating, and extending the shared model store that backs JustNews agents.
+This guide consolidates the historical documentation from the `justnews/maint/cleanup` branch into a single reference for designing, operating, and extending the shared model store that backs JustNews agents.
 
 ## Purpose
 - Provide atomic, versioned delivery of per-agent model artifacts.

@@ -1,5 +1,5 @@
 """
-Archive Tools for JustNewsAgent
+Archive Tools for JustNews
 
 Wrapper functions for archive operations that can be called by other agents
 via the MCP protocol. Provides clean interfaces to archive functionality.

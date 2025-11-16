@@ -89,7 +89,7 @@ Global: `/etc/justnews/global.env`
 JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-v2-py312/bin/python
 
 # optional: default working directory
-SERVICE_DIR=/home/adra/JustNewsAgent-Clean
+SERVICE_DIR=/home/adra/JustNews
 
 # database URL for Memory agent (adjust as needed)
 JUSTNEWS_DB_URL=mysql://user:pass@localhost:3306/justnews

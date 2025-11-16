@@ -2,7 +2,7 @@ from common.observability import get_logger
 
 #!/usr/bin/env python3
 """
-Distributed Tracing Module for JustNewsAgent
+Distributed Tracing Module for JustNews
 Provides tracing functionality for distributed operations across agents
 """
 

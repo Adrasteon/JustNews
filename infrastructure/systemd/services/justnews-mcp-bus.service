@@ -7,7 +7,9 @@ Requires=redis-server.service
 Type=simple
 User=justnews
 Group=justnews
-WorkingDirectory=/opt/justnews
+Environment=SERVICE_DIR=/opt/justnews
+EnvironmentFile=/opt/justnews/global.env
+WorkingDirectory=$SERVICE_DIR
 Environment=DEPLOY_ENV=production
 Environment=LOG_LEVEL=INFO
 Environment=MARIADB_HOST=localhost
@@ -20,7 +22,7 @@ Environment=REDIS_PORT=6379
 Environment=REDIS_PASSWORD_FILE=/etc/justnews/secrets/redis_password
 Environment=SECRET_KEY_FILE=/etc/justnews/secrets/secret_key
 Environment=JWT_SECRET_KEY_FILE=/etc/justnews/secrets/jwt_secret_key
-ExecStart=/opt/justnews/venv/bin/python -m agents.mcp_bus.main
+ExecStart=$SERVICE_DIR/venv/bin/python -m agents.mcp_bus.main
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=5

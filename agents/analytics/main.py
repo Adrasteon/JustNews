@@ -1,5 +1,5 @@
 """
-Analytics Service for JustNewsAgent
+Analytics Service for JustNews
 
 FastAPI application providing advanced analytics, performance monitoring, and optimization
 recommendations. Includes comprehensive system health monitoring and interactive dashboard.
@@ -96,7 +96,7 @@ async def lifespan(app: FastAPI):
 
 # Initialize FastAPI with the lifespan context manager
 app = FastAPI(
-    title="JustNewsAgent Analytics Service",
+    title="JustNews Analytics Service",
     description="Advanced analytics and performance monitoring service",
     version="1.0.0",
     lifespan=lifespan
@@ -138,7 +138,7 @@ app.mount("/dashboard", analytics_dashboard, name="analytics-dashboard")
 async def root():
     """Root endpoint with service information"""
     return {
-        "service": "JustNewsAgent Analytics Service",
+        "service": "JustNews Analytics Service",
         "version": "1.0.0",
         "description": "Advanced analytics and performance monitoring",
         "status": "running",

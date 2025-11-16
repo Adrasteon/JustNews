@@ -1,5 +1,5 @@
 """
-Search API Module - JustNewsAgent Search Endpoints
+Search API Module - JustNews Search Endpoints
 
 This module provides REST API endpoints for semantic search functionality
 using the migrated MariaDB + ChromaDB database system.

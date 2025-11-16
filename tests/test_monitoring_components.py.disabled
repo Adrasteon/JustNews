@@ -1,5 +1,5 @@
 """
-Tests for JustNewsAgent Monitoring Components
+Tests for JustNews Monitoring Components
 
 This module contains tests for monitoring components including:
 - Centralized logging system

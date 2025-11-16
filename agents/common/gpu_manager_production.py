@@ -1,5 +1,5 @@
 """
-Production Multi-Agent GPU Manager for JustNewsAgent
+Production Multi-Agent GPU Manager for JustNews
 Replaces the shim implementation with production-ready GPU resource management
 
 Features:

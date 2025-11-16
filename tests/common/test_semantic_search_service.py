@@ -1,5 +1,5 @@
 """
-Tests for JustNewsAgent Semantic Search Service
+Tests for JustNews Semantic Search Service
 """
 
 from unittest.mock import Mock, patch

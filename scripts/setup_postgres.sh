@@ -3,7 +3,7 @@ set -euo pipefail
 
 # scripts/setup_postgres.sh
 # DEPRECATED: Postgres is no longer the primary deployment database for
-# JustNewsAgent (migrated to MariaDB + Chroma). This script is retained for
+# JustNews (migrated to MariaDB + Chroma). This script is retained for
 # historical/reference purposes only and is not recommended for new deployments.
 # Use your environment's MariaDB provisioning procedures instead.
 # Usage:

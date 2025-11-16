@@ -1,7 +1,7 @@
 """
-JustNewsAgent Log Storage
+JustNews Log Storage
 
-Searchable log storage and querying system for the JustNewsAgent
+Searchable log storage and querying system for JustNews
 observability platform.
 """
 
@@ -58,7 +58,7 @@ class QueryResult:
 
 class LogStorage:
     """
-    Searchable log storage for JustNewsAgent.
+    Searchable log storage for JustNews.
 
     Provides efficient storage, indexing, and querying capabilities for log data
     with support for multiple storage backends and query optimization.

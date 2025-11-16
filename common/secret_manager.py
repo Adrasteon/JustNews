@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Secret Management System for JustNewsAgent
+Secret Management System for JustNews
 
 Provides a small, test-friendly secret manager with support for:
 - environment variables
@@ -286,7 +286,7 @@ if __name__ == "__main__":
     # Test the secret management system
     secrets = get_secret_manager()
 
-    print("=== JustNewsAgent Secret Management System ===")
+    print("=== JustNews Secret Management System ===")
     print(f"Vault Path: {secrets.vault_path}")
     print(f"Vault Encrypted: {secrets._key is not None}")
     print(f"Vault Exists: {os.path.exists(secrets.vault_path)}")

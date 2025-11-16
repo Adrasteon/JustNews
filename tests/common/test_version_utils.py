@@ -1,5 +1,5 @@
 """
-Tests for JustNewsAgent Version Utilities
+Tests for JustNews Version Utilities
 """
 
 from unittest.mock import patch

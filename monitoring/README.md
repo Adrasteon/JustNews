@@ -1,4 +1,4 @@
-# JustNewsAgent Unified Observability Platform Design
+# JustNews Unified Observability Platform Design
 
 ## Executive Summary
 
@@ -383,6 +383,6 @@ Traces → Trace Collector → Jaeger → Trace Analysis Tools
 
 ## Conclusion
 
-The unified observability platform will transform JustNewsAgent monitoring from basic service health checks to comprehensive, real-time observability with advanced analytics, automated alerting, and compliance monitoring. This platform will enable proactive issue detection, faster debugging, and data-driven performance optimization while ensuring regulatory compliance.
+The unified observability platform will transform JustNews monitoring from basic service health checks to comprehensive, real-time observability with advanced analytics, automated alerting, and compliance monitoring. This platform will enable proactive issue detection, faster debugging, and data-driven performance optimization while ensuring regulatory compliance.
 
 The phased implementation approach ensures minimal disruption while building a robust, scalable observability foundation for production operations.

@@ -1,5 +1,5 @@
 """
-Custom Business Metrics for JustNewsAgent
+Custom Business Metrics for JustNews
 
 Domain-specific metrics for content processing, quality assessment,
 fact-checking, and business intelligence.
@@ -83,7 +83,7 @@ class ContentMetrics:
 
 class CustomMetrics:
     """
-    Custom business metrics for JustNewsAgent operations.
+    Custom business metrics for JustNews operations.
 
     Provides domain-specific metrics for content processing, quality assessment,
     and business intelligence.

@@ -1,5 +1,5 @@
 """
-GPU Tests for JustNewsAgent System
+GPU Tests for JustNews System
 
 This module contains comprehensive GPU tests that validate:
 - GPU availability and initialization

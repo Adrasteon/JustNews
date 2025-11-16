@@ -1,5 +1,5 @@
 """
-Crawler Control Engine for JustNewsAgent.
+Crawler Control Engine for JustNews.
 
 Management and monitoring engine for crawler operations.
 """

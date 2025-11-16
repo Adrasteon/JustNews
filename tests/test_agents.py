@@ -2,7 +2,7 @@
 Agent Testing Framework
 
 This module provides comprehensive testing patterns and utilities for testing
-JustNewsAgent components. It includes:
+JustNews components. It includes:
 
 - Base test classes for different agent types
 - Common testing patterns and fixtures

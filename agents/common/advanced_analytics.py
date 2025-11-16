@@ -1,5 +1,5 @@
 """
-Advanced Performance Analytics Engine for JustNewsAgent
+Advanced Performance Analytics Engine for JustNews
 
 Provides comprehensive performance monitoring, trend analysis, bottleneck detection,
 and optimization recommendations for the multi-agent GPU system.

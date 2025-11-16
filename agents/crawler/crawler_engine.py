@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Crawler Engine for JustNewsAgent
+Crawler Engine for JustNews
 
 Unified production crawler that combines all crawling strategies
 into a single intelligent system.

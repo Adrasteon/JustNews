@@ -1,11 +1,11 @@
 """
-Alert Dashboard for JustNewsAgent Monitoring System
+Alert Dashboard for JustNews Monitoring System
 
 This module provides centralized alert visualization and management for the
-JustNewsAgent monitoring system. It handles alert aggregation, prioritization,
+JustNews monitoring system. It handles alert aggregation, prioritization,
 notification routing, and alert lifecycle management.
 
-Author: JustNewsAgent Development Team
+Author: JustNews Development Team
 Date: October 22, 2025
 """
 
@@ -97,7 +97,7 @@ class NotificationConfig(BaseModel):
 @dataclass
 class AlertDashboard:
     """
-    Centralized alert dashboard for JustNewsAgent monitoring system.
+    Centralized alert dashboard for JustNews monitoring system.
 
     This class manages alert rules, alert instances, notification routing,
     and provides a centralized interface for alert visualization and management.
@@ -221,7 +221,7 @@ class AlertDashboard:
             NotificationConfig(
                 channel=NotificationChannel.EMAIL,
                 enabled=True,
-                recipients=["alerts@justnewsagent.com"],
+                recipients=["alerts@justnews.com"],
                 filters={"severity": ["high", "critical"]}
             ),
             NotificationConfig(

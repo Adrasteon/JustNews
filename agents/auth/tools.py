@@ -1,8 +1,8 @@
 """
-Authentication Tools for JustNewsAgent
+Authentication Tools for JustNews
 
 Wrapper functions for authentication operations that can be called by other agents
-and services in the JustNewsAgent system.
+and services in the JustNews system.
 """
 
 import os

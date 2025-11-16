@@ -1,6 +1,6 @@
-# JustNewsAgent Script Ecosystem
+# JustNews Script Ecosystem
 
-This directory contains the organized script ecosystem for JustNewsAgent operations, maintenance, and development.
+This directory contains the organized script ecosystem for JustNews operations, maintenance, and development.
 
 ## Directory Structure
 
@@ -41,8 +41,8 @@ Scripts for system maintenance, monitoring, and health checks.
 ### ops/
 Scripts for operational tasks and service management.
 
-- `start_services_daemon.sh` - Start all JustNewsAgent services
-- `stop_services.sh` - Stop all JustNewsAgent services
+- `start_services_daemon.sh` - Start all JustNews services
+- `stop_services.sh` - Stop all JustNews services
 - `download_agent_models.py` - Download and setup AI models
 
 ### common/

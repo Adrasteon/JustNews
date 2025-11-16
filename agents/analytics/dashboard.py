@@ -1,5 +1,5 @@
 """
-Advanced Analytics Dashboard for JustNewsAgent
+Advanced Analytics Dashboard for JustNews
 
 Provides comprehensive web-based analytics interface with:
 - Real-time performance monitoring
@@ -24,7 +24,7 @@ from agents.analytics.analytics_engine import get_analytics_engine
 analytics_engine = get_analytics_engine()
 
 # FastAPI app for analytics dashboard
-analytics_app = FastAPI(title="JustNewsAgent Advanced Analytics Dashboard")
+analytics_app = FastAPI(title="JustNews Advanced Analytics Dashboard")
 
 # Templates and static files
 templates_dir = Path(__file__).parent / "analytics" / "templates"

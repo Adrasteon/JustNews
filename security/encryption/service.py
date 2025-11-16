@@ -1,5 +1,5 @@
 """
-JustNewsAgent Encryption Service
+JustNews Encryption Service
 
 Provides data encryption, key management, and secure communication capabilities.
 """

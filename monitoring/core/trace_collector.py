@@ -1,5 +1,5 @@
 """
-JustNewsAgent Distributed Tracing System
+JustNews Distributed Tracing System
 
 This module implements comprehensive distributed tracing using OpenTelemetry
 for end-to-end request tracing across the multi-agent system.
@@ -12,7 +12,7 @@ Key Features:
 - Performance bottleneck identification
 - Distributed transaction monitoring
 
-Author: JustNewsAgent Development Team
+Author: JustNews Development Team
 Date: October 22, 2025
 """
 

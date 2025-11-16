@@ -1,5 +1,5 @@
 """
-JustNewsAgent Compliance Service
+JustNews Compliance Service
 
 Handles GDPR, CCPA compliance, audit trails, data protection, and regulatory requirements.
 """

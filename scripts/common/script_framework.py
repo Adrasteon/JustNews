@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-JustNewsAgent Script Framework Utilities
+JustNews Script Framework Utilities
 
-Common utilities and error handling for all JustNewsAgent scripts.
+Common utilities and error handling for all JustNews scripts.
 Provides standardized logging, error handling, and configuration management.
 """
 
@@ -28,11 +28,11 @@ class ScriptConfig:
     quiet: bool = False
 
 class ScriptFramework:
-    """Base framework for JustNewsAgent scripts"""
+    """Base framework for JustNews scripts"""
 
     def __init__(self, script_name: str, description: str = ""):
         self.script_name = script_name
-        self.description = description or f"JustNewsAgent {script_name} script"
+        self.description = description or f"JustNews {script_name} script"
         self.config = ScriptConfig()
         self.logger = None
 
@@ -111,7 +111,7 @@ class ScriptFramework:
         try:
             # Check if we're in the project root
             if not (PROJECT_ROOT / 'requirements.txt').exists():
-                self.logger.error(f"Not in JustNewsAgent project root. Expected requirements.txt at {PROJECT_ROOT}")
+                self.logger.error(f"Not in JustNews project root. Expected requirements.txt at {PROJECT_ROOT}")
                 return False
 
             # Check for conda environment if needed

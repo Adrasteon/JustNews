@@ -1,4 +1,4 @@
-# JustNewsAgent Unified Configuration Facade
+# JustNews Unified Configuration Facade
 # Phase 2B: Configuration Management Refactoring
 
 """

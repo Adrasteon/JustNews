@@ -3,7 +3,7 @@
 Configuration Quick Reference and Management Script
 
 This script provides easy access to view, modify, and manage the centralized
-JustNewsAgent configuration. Use this to quickly check current settings and
+JustNews configuration. Use this to quickly check current settings and
 make adjustments without editing the JSON file directly.
 """
 
@@ -194,7 +194,7 @@ def show_usage_examples():
 
 def main():
     """Main function"""
-    print("🎯 JustNewsAgent Configuration Quick Reference")
+    print("🎯 JustNews Configuration Quick Reference")
     print(f"📁 Config File: {config.config_file}")
 
     # Display all sections

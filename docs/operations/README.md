@@ -1,8 +1,8 @@
-# JustNewsAgent Operations Guide
+# JustNews Operations Guide
 
 ## Deployment Procedures
 
-This guide covers production deployment, scaling, and operational procedures for JustNewsAgent.
+This guide covers production deployment, scaling, and operational procedures for JustNews.
 
 ## Stage B Validation Workflow
 - Follow the playbook in `docs/operations/stage_b_validation.md` when preparing Stage B rollout work.
@@ -104,11 +104,11 @@ helm install redis bitnami/redis \
   --set auth.password=your_password
 ```
 
-#### Deploy JustNewsAgent
+#### Deploy JustNews
 ```bash
 # Clone repository
 git clone <repository>
-cd JustNewsAgent
+cd JustNews
 
 # Deploy to Kubernetes
 kubectl apply -f deploy/kubernetes/production/
@@ -138,7 +138,7 @@ kubectl apply -f config/kubernetes/
 ```bash
 # Clone repository
 git clone <repository>
-cd JustNewsAgent
+cd JustNews
 
 # Start all services
 docker-compose -f docker-compose.yml up -d

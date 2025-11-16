@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deployment Validation Script for JustNewsAgent
+# Deployment Validation Script for JustNews
 # Comprehensive validation of deployment configuration and health
 
 set -e
@@ -291,7 +291,7 @@ EOF
 
 # Main validation function
 main() {
-    log_info "JustNewsAgent Deployment Validation"
+    log_info "JustNews Deployment Validation"
     log_info "Starting comprehensive validation checks..."
 
     validate_directory_structure

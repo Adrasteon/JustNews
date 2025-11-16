@@ -1,7 +1,7 @@
 # Database Refactor Tests Package
 
 """
-Test suite for the JustNewsAgent database refactor module.
+Test suite for the JustNews database refactor module.
 
 This package contains comprehensive tests for all database layer components:
 - Connection pooling with health monitoring

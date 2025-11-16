@@ -1,5 +1,5 @@
 """
-Database connection utilities for JustNewsAgent
+Database connection utilities for JustNews
 Provides connection pooling and async database operations
 """
 

@@ -1,5 +1,5 @@
 """
-Authentication Service for JustNewsAgent
+Authentication Service for JustNews
 
 FastAPI application providing user authentication, authorization, and session management.
 Implements JWT-based authentication with role-based access control and GDPR compliance.
@@ -67,7 +67,7 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI application
 app = FastAPI(
-    title="JustNewsAgent Authentication Service",
+    title="JustNews Authentication Service",
     description="User authentication, authorization, and session management service",
     version="1.0.0",
     lifespan=lifespan
@@ -87,7 +87,7 @@ app.add_middleware(
 async def root():
     """Root endpoint with service information"""
     return {
-        "service": "JustNewsAgent Authentication Service",
+        "service": "JustNews Authentication Service",
         "version": "1.0.0",
         "description": "JWT-based authentication with role-based access control",
         "status": "running"

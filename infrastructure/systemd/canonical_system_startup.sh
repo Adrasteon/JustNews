@@ -106,7 +106,7 @@ resolve_repo_root() {
     return 0
   fi
   log_warn "Falling back to repository default path."
-  echo "/home/adra/JustNewsAgent-Clean"
+  echo "${SERVICE_DIR:-/home/adra/JustNews}"
 }
 
 load_environment() {

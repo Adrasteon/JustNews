@@ -1,5 +1,5 @@
 """
-Tests for JustNewsAgent Observability Utilities
+Tests for JustNews Observability Utilities
 """
 
 import logging

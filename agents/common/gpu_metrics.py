@@ -1,5 +1,5 @@
 """
-Minimal structured GPU event logger for JustNewsAgent.
+Minimal structured GPU event logger for JustNews.
 
 Provides a tiny API to record per-request GPU events in structured JSONL format.
 

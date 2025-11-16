@@ -1,5 +1,5 @@
 """
-Tests for JustNewsAgent Operational Scripts
+Tests for JustNews Operational Scripts
 
 This module contains tests for operational scripts that manage:
 - Database initialization and migration

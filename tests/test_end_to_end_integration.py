@@ -1,5 +1,5 @@
 """
-End-to-End Integration Tests for JustNewsAgent
+End-to-End Integration Tests for JustNews
 
 This module contains comprehensive integration tests that validate:
 - Complete news processing pipeline (crawler -> analyst -> fact_checker -> synthesizer)

@@ -1,5 +1,5 @@
 """
-User authentication and authorization models for JustNewsAgent
+User authentication and authorization models for JustNews
 Provides JWT-based authentication with role-based access control
 """
 
@@ -40,6 +40,59 @@ def initialize_auth_db_service():
     _auth_service = create_database_service()
     logger.info("Authentication database service initialized via migrated DB service")
     return _auth_service
+
+
+# Backwards-compatibility: legacy callers expect a connection pool API for
+# authentication DBs (initialize_auth_connection_pool, get_auth_connection_pool)
+# Historically these returned a pool with getconn()/closeall(). The migrated
+# database service exposes mb_conn. Provide a tiny compatibility wrapper here.
+_auth_connection_pool = None
+
+
+class _AuthPoolCompat:
+    def __init__(self, mb_conn):
+        self._conn = mb_conn
+
+    def getconn(self):
+        """Return the underlying connection object for compatibility.
+
+        Callers typically use `with pool.getconn() as conn:` or `conn = pool.getconn()`
+        and then `with conn.cursor() as cursor:`. The returned connection implements
+        cursor() so this is compatible with existing code.
+        """
+        return self._conn
+
+    def closeall(self):
+        """No-op: the migration uses a single connection managed by the service."""
+        try:
+            # Attempt a gentle close if underlying connection exposes close
+            if hasattr(self._conn, 'close'):
+                self._conn.close()
+        except Exception:
+            pass
+
+
+def initialize_auth_connection_pool() -> _AuthPoolCompat:
+    """Initialize (or return) a compatibility connection pool for auth DB.
+
+    This will initialise the migrated database service if required and return a
+    pool-like object so older code paths continue to work.
+    """
+    global _auth_connection_pool
+    if _auth_connection_pool is not None:
+        return _auth_connection_pool
+
+    service = initialize_auth_db_service()
+    conn = getattr(service, 'mb_conn', None)
+    if conn is None:
+        raise RuntimeError('Auth DB connection not available')
+    _auth_connection_pool = _AuthPoolCompat(conn)
+    return _auth_connection_pool
+
+
+def get_auth_connection_pool() -> _AuthPoolCompat | None:
+    """Return the compatibility connection pool instance (or None)."""
+    return _auth_connection_pool
 
 
 @contextmanager

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Rollback Script for JustNewsAgent
+# Rollback Script for JustNews
 # Handles deployment rollback across all platforms
 
 set -e
@@ -36,7 +36,7 @@ log_error() {
 # Help function
 show_help() {
     cat << EOF
-JustNewsAgent Rollback Script
+JustNews Rollback Script
 
 USAGE:
     $0 [OPTIONS]
@@ -344,7 +344,7 @@ EOF
 main() {
     parse_args "$@"
 
-    log_info "JustNewsAgent Rollback Script"
+    log_info "JustNews Rollback Script"
     log_info "Target: $TARGET"
     log_info "Environment: $ENV"
     if [[ -n "$SERVICE" ]]; then

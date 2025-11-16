@@ -1,12 +1,12 @@
 """
-Grafana Integration for JustNewsAgent Monitoring System
+Grafana Integration for JustNews Monitoring System
 
 This module provides comprehensive Grafana integration for advanced visualization,
 custom dashboard deployment, and monitoring panel management. It enables
 seamless integration between the monitoring system and Grafana for
 enterprise-grade dashboards and alerting.
 
-Author: JustNewsAgent Development Team
+Author: JustNews Development Team
 Date: October 22, 2025
 """
 
@@ -26,7 +26,7 @@ class GrafanaConfig(BaseModel):
     url: str = Field(..., description="Grafana server URL")
     api_key: str = Field(..., description="Grafana API key")
     datasource_name: str = Field("prometheus", description="Default datasource name")
-    folder_name: str = Field("JustNewsAgent", description="Dashboard folder name")
+    folder_name: str = Field("JustNews", description="Dashboard folder name")
     organization_id: int = Field(1, description="Grafana organization ID")
     timeout: int = Field(30, description="Request timeout in seconds")
 

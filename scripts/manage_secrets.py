@@ -11,7 +11,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 """
-Interactive Secret Management Tool for JustNewsAgent
+Interactive Secret Management Tool for JustNews
 
 This script provides an interactive interface for managing secrets, environment
 variables, and validating security configuration.
@@ -35,7 +35,7 @@ class SecretManagerCLI:
 
     def print_menu(self):
         """Print the main menu"""
-        self.print_header("JustNewsAgent Secret Manager")
+        self.print_header("JustNews Secret Manager")
 
         print("\nAvailable Commands:")
         print("1. List all secrets (masked)")
@@ -197,7 +197,7 @@ class SecretManagerCLI:
                 print("❌ Operation cancelled")
                 return
 
-        template_content = """# JustNewsAgent Environment Configuration
+        template_content = """# JustNews Environment Configuration
     # Copy this file to .env and fill in your actual values
     # NEVER commit .env to git!
 

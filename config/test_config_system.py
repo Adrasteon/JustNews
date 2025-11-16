@@ -1,4 +1,4 @@
-# JustNewsAgent Configuration System Tests
+# JustNews Configuration System Tests
 # Phase 2B: Configuration Management Refactoring
 
 """

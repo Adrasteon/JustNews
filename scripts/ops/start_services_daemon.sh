@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # start_services_daemon.sh
-# Starts the justnewsagent set of FastAPI/uvicorn agent services using the
+# Starts the justnews set of FastAPI/uvicorn agent services using the
 # `justnews-v2-py312` conda environment. Performs simple health checks and
 # writes per-agent logs to ./logs/
 

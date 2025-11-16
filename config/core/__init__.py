@@ -1,4 +1,4 @@
-# JustNewsAgent Configuration Management - Core Manager
+# JustNews Configuration Management - Core Manager
 # Phase 2B: Configuration Management Refactoring
 
 """
@@ -52,7 +52,7 @@ class ConfigurationNotFoundError(ConfigurationError):
 
 class ConfigurationManager:
     """
-    Centralized configuration manager for JustNewsAgent
+    Centralized configuration manager for JustNews
 
     Features:
     - Type-safe configuration with Pydantic validation

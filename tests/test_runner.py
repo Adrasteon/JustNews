@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-JustNewsAgent Test Runner
+JustNews Test Runner
 
-This script provides a comprehensive test runner for the JustNewsAgent
+This script provides a comprehensive test runner for the JustNews
 testing framework. It includes:
 
 - Test discovery and execution
@@ -42,7 +42,7 @@ sys.path.insert(0, str(project_root))
 
 
 class TestRunner:
-    """Comprehensive test runner for JustNewsAgent"""
+    """Comprehensive test runner for JustNews"""
 
     def __init__(self, args):
         self.args = args
@@ -350,7 +350,7 @@ class TestRunner:
     def print_summary(self):
         """Print test execution summary"""
         print("\n" + "="*60)
-        print("🧪 JustNewsAgent Test Summary")
+        print("🧪 JustNews Test Summary")
         print("="*60)
 
         for test_type, result in self.results.items():
@@ -371,7 +371,7 @@ class TestRunner:
 
 def main():
     """Main entry point"""
-    parser = argparse.ArgumentParser(description="JustNewsAgent Test Runner")
+    parser = argparse.ArgumentParser(description="JustNews Test Runner")
 
     # Test type options
     parser.add_argument('--unit', action='store_true', help='Run unit tests only')

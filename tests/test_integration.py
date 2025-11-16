@@ -1,5 +1,5 @@
 """
-Integration Tests for JustNewsAgent System
+Integration Tests for JustNews System
 
 This module contains comprehensive integration tests that validate:
 - MCP Bus communication patterns

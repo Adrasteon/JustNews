@@ -14,7 +14,8 @@ Features Tested:
 
 import sys
 
-sys.path.insert(0, '/home/adra/JustNewsAgentic')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 # Initialize GPU cleanup manager
 from training_system.utils.gpu_cleanup import GPUModelManager

@@ -18,6 +18,11 @@ ExecStartPre=/usr/bin/env bash -c 'if [ "%i" = "mcp_bus" ]; then /usr/local/bin/
 ExecStart=/usr/local/bin/justnews-start-agent.sh %i
 Restart=on-failure
 RestartSec=3
+# Allow sufficient time for preflight checks and model preload operations.
+# Default systemd TimeoutStartSec is 90s which can abort preflight scripts that
+# wait for other agents (e.g., mcp_bus waiting for gpu_orchestrator) to become
+# healthy. Increase to 5 minutes to avoid false start-timeouts.
+TimeoutStartSec=300
 # Uncomment to restrict core dumps and add basic security hardening
 # NoNewPrivileges=true
 # PrivateTmp=true

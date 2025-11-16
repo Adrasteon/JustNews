@@ -1,8 +1,8 @@
 """
-JustNewsAgent Log Aggregator
+JustNews Log Aggregator
 
 Centralized log collection, processing, and distribution system for the
-JustNewsAgent observability platform.
+JustNews observability platform.
 """
 
 import asyncio
@@ -65,7 +65,7 @@ class StorageConfig:
 
 class LogAggregator:
     """
-    Centralized log aggregator for JustNewsAgent.
+    Centralized log aggregator for JustNews.
 
     Collects logs from multiple agents, aggregates them according to configured
     strategies, and stores them in various backends for analysis and retention.

@@ -1,5 +1,5 @@
 """
-JustNewsAgent Security Framework - Shared Models and Types
+JustNews Security Framework - Shared Models and Types
 
 Contains shared Pydantic models, configuration classes, and type definitions
 used across all security framework components.
@@ -249,7 +249,7 @@ class SecurityConfig(BaseModel):
 
     # MFA
     mfa_enabled: bool = True
-    mfa_issuer: str = "JustNewsAgent"
+    mfa_issuer: str = "JustNews"
 
     # Compliance
     audit_retention_days: int = 2555  # 7 years for GDPR

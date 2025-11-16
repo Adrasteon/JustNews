@@ -1,5 +1,5 @@
 """
-Enhanced Metrics Collection Framework for JustNewsAgent
+Enhanced Metrics Collection Framework for JustNews
 
 Extends the basic Prometheus integration with advanced business metrics,
 performance monitoring, anomaly detection, and real-time alerting.

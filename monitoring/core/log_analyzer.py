@@ -1,7 +1,7 @@
 """
-JustNewsAgent Log Analyzer
+JustNews Log Analyzer
 
-Log analysis and anomaly detection system for the JustNewsAgent
+Log analysis and anomaly detection system for JustNews
 observability platform.
 """
 

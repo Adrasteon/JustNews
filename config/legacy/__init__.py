@@ -1,4 +1,4 @@
-# JustNewsAgent Configuration Management - Legacy Migration
+# JustNews Configuration Management - Legacy Migration
 # Phase 2B: Configuration Management Refactoring
 
 """

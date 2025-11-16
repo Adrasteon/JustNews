@@ -1,8 +1,8 @@
 """
-JustNewsAgent Centralized Logging System
+JustNews Centralized Logging System
 
 Provides structured logging, aggregation, and search capabilities for all agents
-and services in the JustNewsAgent system.
+and services in the JustNews system.
 """
 
 import asyncio
@@ -81,7 +81,7 @@ class LogEntry:
 
 class LogCollector:
     """
-    Centralized log collector for JustNewsAgent.
+    Centralized log collector for JustNews.
 
     Provides structured logging interface, log aggregation, and multiple output
     destinations including console, files, and external systems.

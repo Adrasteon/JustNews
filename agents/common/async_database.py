@@ -1,5 +1,5 @@
 """
-Async database operations for JustNewsAgent
+Async database operations for JustNews
 Provides async database operations using asyncpg for non-blocking operations
 """
 

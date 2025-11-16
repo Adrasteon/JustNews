@@ -1,5 +1,5 @@
 """
-Tests for JustNewsAgent Fact Checker Agent
+Tests for JustNews Fact Checker Agent
 """
 
 from unittest.mock import Mock, patch

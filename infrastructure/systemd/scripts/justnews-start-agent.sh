@@ -35,11 +35,8 @@ resolve_project_root() {
         if _is_valid_root "$SERVICE_DIR"; then
             echo "$SERVICE_DIR"; return 0
         fi
-        if _is_valid_root "$SERVICE_DIR/JustNewsAgent"; then
-            echo "$SERVICE_DIR/JustNewsAgent"; return 0
-        fi
-        if _is_valid_root "$SERVICE_DIR/JustNewsAgent-Clean"; then
-            echo "$SERVICE_DIR/JustNewsAgent-Clean"; return 0
+        if _is_valid_root "$SERVICE_DIR/JustNews"; then
+            echo "$SERVICE_DIR/JustNews"; return 0
         fi
     fi
 
@@ -51,7 +48,7 @@ resolve_project_root() {
     fi
 
     # Final fallback: known path on this machine
-    echo "/home/adra/JustNewsAgent-Clean"; return 0
+    echo "${SERVICE_DIR:-/home/adra/JustNews}"; return 0
 }
 
 PROJECT_ROOT="$(resolve_project_root)"

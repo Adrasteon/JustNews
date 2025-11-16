@@ -1,5 +1,5 @@
 #!/bin/bash
-# Unified Deployment Script for JustNewsAgent
+# Unified Deployment Script for JustNews
 # Supports Docker Compose, Kubernetes, and systemd deployments
 
 set -e
@@ -36,7 +36,7 @@ log_error() {
 # Help function
 show_help() {
     cat << EOF
-JustNewsAgent Unified Deployment Script
+JustNews Unified Deployment Script
 
 USAGE:
     $0 [OPTIONS] [COMMAND]
@@ -143,7 +143,7 @@ validate_environment() {
 
     # Check if we're in the right directory
     if [[ ! -f "$PROJECT_ROOT/requirements.txt" ]]; then
-        log_error "Not in JustNewsAgent project root directory"
+        log_error "Not in JustNews project root directory"
         exit 1
     fi
 
@@ -193,7 +193,7 @@ create_default_env() {
     mkdir -p "$DEPLOY_ROOT/config/environments"
 
     cat > "$DEPLOY_ROOT/config/environments/${ENV}.env" << EOF
-# JustNewsAgent Environment Configuration
+# JustNews Environment Configuration
 # Generated for environment: $ENV
 
 # Database Configuration
@@ -430,7 +430,7 @@ main() {
         set -x
     fi
 
-    log_info "JustNewsAgent Deployment Script"
+    log_info "JustNews Deployment Script"
     log_info "Target: $TARGET"
     log_info "Environment: $ENV"
     log_info "Command: $COMMAND"

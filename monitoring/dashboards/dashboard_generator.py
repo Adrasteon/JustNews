@@ -1,12 +1,12 @@
 """
-Dashboard Generator for JustNewsAgent Monitoring System
+Dashboard Generator for JustNews Monitoring System
 
 This module provides automated dashboard creation and configuration for the
-JustNewsAgent observability platform. It generates Grafana dashboards,
+JustNews observability platform. It generates Grafana dashboards,
 Prometheus alerting rules, and custom visualizations for comprehensive
 monitoring and alerting.
 
-Author: JustNewsAgent Development Team
+Author: JustNews Development Team
 Date: October 22, 2025
 """
 
@@ -60,7 +60,7 @@ class DashboardTemplate(BaseModel):
 @dataclass
 class DashboardGenerator:
     """
-    Automated dashboard generator for JustNewsAgent monitoring system.
+    Automated dashboard generator for JustNews monitoring system.
 
     This class provides methods to generate Grafana dashboards, Prometheus
     alerting rules, and custom visualizations based on system metrics and
@@ -97,7 +97,7 @@ class DashboardGenerator:
         return DashboardTemplate(
             name="system_overview",
             config=DashboardConfig(
-                title="JustNewsAgent System Overview",
+                title="JustNews System Overview",
                 description="Comprehensive system health and performance monitoring",
                 tags=["system", "overview", "health"],
                 refresh="30s",
@@ -132,7 +132,7 @@ class DashboardGenerator:
                         "legendFormat": "{{job}}"
                     }],
                     grid_pos={"h": 4, "w": 8, "x": 0, "y": 8},
-                    description="Number of active JustNewsAgent services"
+                    description="Number of active JustNews services"
                 ),
                 PanelConfig(
                     title="MCP Bus Requests",
@@ -212,7 +212,7 @@ class DashboardGenerator:
             name="agent_performance",
             config=DashboardConfig(
                 title="Agent Performance Dashboard",
-                description="Detailed performance metrics for all JustNewsAgent services",
+                description="Detailed performance metrics for all JustNews services",
                 tags=["agents", "performance", "monitoring"],
                 refresh="15m",
                 time_range="30m"

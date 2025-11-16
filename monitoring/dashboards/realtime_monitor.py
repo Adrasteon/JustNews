@@ -1,11 +1,11 @@
 """
-Real-Time Monitor for JustNewsAgent Dashboard System
+Real-Time Monitor for JustNews Dashboard System
 
 This module provides real-time data streaming and live visualization updates
-for the JustNewsAgent monitoring dashboard. It handles WebSocket connections,
+for the JustNews monitoring dashboard. It handles WebSocket connections,
 live data aggregation, and real-time metric streaming.
 
-Author: JustNewsAgent Development Team
+Author: JustNews Development Team
 Date: October 22, 2025
 """
 

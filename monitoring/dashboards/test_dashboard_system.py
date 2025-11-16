@@ -1,5 +1,5 @@
 """
-Comprehensive Test Suite for JustNewsAgent Dashboard Components
+Comprehensive Test Suite for JustNews Dashboard Components
 
 This module provides comprehensive testing for all dashboard components including:
 - Unit tests for individual components
@@ -7,7 +7,7 @@ This module provides comprehensive testing for all dashboard components includin
 - Performance tests for scalability validation
 - End-to-end tests for complete workflows
 
-Author: JustNewsAgent Development Team
+Author: JustNews Development Team
 Date: October 22, 2025
 """
 

@@ -1,5 +1,5 @@
 """
-Performance Tests for JustNewsAgent System
+Performance Tests for JustNews System
 
 This module contains comprehensive performance tests that validate:
 - Response times and throughput

@@ -1,5 +1,5 @@
 """
-JustNewsAgent Version Utilities
+JustNews Version Utilities
 Centralized version management for all agents and components
 """
 
@@ -25,7 +25,7 @@ except ImportError:
     }
 
 def get_version() -> str:
-    """Get the current JustNewsAgent version"""
+    """Get the current JustNews version"""
     return __version__
 
 def get_version_info() -> dict[str, Any]:

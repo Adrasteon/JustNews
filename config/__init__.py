@@ -1,8 +1,8 @@
-# JustNewsAgent Unified Configuration System
+# JustNews Unified Configuration System
 # Phase 2B: Configuration Management Refactoring
 
 """
-Unified Configuration System for JustNewsAgent
+Unified Configuration System for JustNews
 
 Provides a complete configuration management solution with:
 - Type-safe configuration models with Pydantic validation
@@ -148,8 +148,8 @@ def migrate_from_legacy(dry_run: bool = True) -> tuple[MigrationPlan, Validation
 # ============================================================================
 
 __version__ = "1.0.0"
-__description__ = "Unified Configuration System for JustNewsAgent"
-__author__ = "JustNewsAgent Team"
+__description__ = "Unified Configuration System for JustNews"
+__author__ = "JustNews Team"
 
 def get_system_info() -> dict[str, Any]:
     """Get system configuration information"""

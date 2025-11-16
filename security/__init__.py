@@ -1,5 +1,5 @@
 """
-JustNewsAgent Security Framework
+JustNews Security Framework
 
 A comprehensive security framework providing authentication, authorization,
 encryption, compliance monitoring, and security event tracking.

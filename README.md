@@ -1,4 +1,4 @@
-# JustNewsAgent V4.0.0
+# JustNews V4.0.0
 
 A production-ready multi-agent news analysis system featuring GPU-accelerated processing, continuous learning, and distributed architecture.
 
@@ -16,7 +16,7 @@ A production-ready multi-agent news analysis system featuring GPU-accelerated pr
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd JustNewsAgent
+cd JustNews
 ```
 
 2. Set up conda environment:
@@ -117,7 +117,7 @@ This suite covers the Stage B2 extraction pipeline, including the Trafilatura/re
 
 ### Project Structure
 ```
-JustNewsAgent/
+JustNews/
 ├── agents/           # 18 specialized AI agents
 ├── config/           # Unified configuration system
 ├── database/         # Advanced ORM with migrations

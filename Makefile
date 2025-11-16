@@ -1,11 +1,11 @@
-# JustNewsAgent Build System - Unified Makefile
+# JustNews Build System - Unified Makefile
 # Phase 2C: Build & CI/CD System Refactoring
 
 .PHONY: help install test lint format clean build deploy docs ci-check release
 
 # Default target
 help:
-	@echo "JustNewsAgent Build System"
+	@echo "JustNews Build System"
 	@echo "=========================="
 	@echo ""
 	@echo "Available targets:"
@@ -260,7 +260,7 @@ dev-update:
 
 # Information targets
 info:
-	@echo "JustNewsAgent Build Information"
+	@echo "JustNews Build Information"
 	@echo "================================"
 	@echo "Version: $(VERSION)"
 	@echo "Environment: $(ENV)"

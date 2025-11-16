@@ -1,5 +1,5 @@
 """
-Performance Monitor for JustNewsAgent
+Performance Monitor for JustNews
 
 Real-time performance monitoring, bottleneck detection, and alerting.
 """

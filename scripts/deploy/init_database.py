@@ -12,7 +12,7 @@ from agents.common.database import execute_query, initialize_connection_pool
 from common.observability import get_logger
 
 """
-Database initialization script for JustNewsAgent Authentication System
+Database initialization script for JustNews Authentication System
 
 Creates all necessary tables for user authentication, sessions, and password resets.
 Run this script once to set up the authentication database schema.
@@ -27,7 +27,7 @@ def create_initial_admin_user():
 
     try:
         admin_user = UserCreate(
-            email="admin@justnewsagent.com",
+            email="admin@justnews.com",
             username="admin",
             full_name="System Administrator",
             password="Admin123!@#",
@@ -38,7 +38,7 @@ def create_initial_admin_user():
         if user_id:
             logger.info(f"✅ Created initial admin user with ID: {user_id}")
             logger.info("   Username: admin")
-            logger.info("   Email: admin@justnewsagent.com")
+            logger.info("   Email: admin@justnews.com")
             logger.info("   Password: Admin123!@#")
             logger.info("   ⚠️  Please change this password after first login!")
         else:
@@ -132,7 +132,7 @@ def create_knowledge_graph_tables():
 
 def main():
     """Main initialization function"""
-    logger.info("🚀 Starting JustNewsAgent Database Initialization")
+    logger.info("🚀 Starting JustNews Database Initialization")
     logger.info("=" * 60)
 
     # Check environment variables (migrated to MariaDB)

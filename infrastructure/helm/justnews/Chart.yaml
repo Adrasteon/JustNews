@@ -1,6 +1,6 @@
 apiVersion: v2
 name: justnews
-description: A Helm chart for JustNewsAgent distributed AI news processing system
+description: A Helm chart for JustNews distributed AI news processing system
 type: application
 version: 0.1.0
 appVersion: "2.0.0"

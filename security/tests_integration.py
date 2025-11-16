@@ -1,7 +1,7 @@
 """
 Security Framework Integration Tests
 
-Comprehensive tests for the JustNewsAgent Security Framework
+Comprehensive tests for the JustNews Security Framework
 """
 
 import asyncio

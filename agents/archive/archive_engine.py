@@ -1,5 +1,5 @@
 """
-Archive Engine for JustNewsAgent
+Archive Engine for JustNews
 
 Core business logic for comprehensive article archiving with knowledge graph integration.
 Provides research-scale archiving capabilities with complete provenance tracking,

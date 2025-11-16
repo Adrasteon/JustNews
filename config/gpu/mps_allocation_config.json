@@ -1,7 +1,7 @@
 {
   "mps_resource_allocation": {
     "version": "1.0",
-    "description": "MPS resource allocation configuration for JustNewsAgent - machine-readable format for GPU orchestrator",
+    "description": "MPS resource allocation configuration for JustNews - machine-readable format for GPU orchestrator",
     "generated": "2025-09-17",
     "total_gpu_memory_gb": 24.0,
     "mps_overhead_gb": 0.5,

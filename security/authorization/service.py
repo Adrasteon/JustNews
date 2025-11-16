@@ -1,5 +1,5 @@
 """
-JustNewsAgent Authorization Service
+JustNews Authorization Service
 
 Handles role-based access control (RBAC), permission validation, and user role management.
 """

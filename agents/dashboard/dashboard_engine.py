@@ -1,5 +1,5 @@
 """
-Dashboard Engine - Core logic for JustNewsAgent Dashboard
+Dashboard Engine - Core logic for JustNews Dashboard
 
 This module contains the core business logic for the dashboard agent,
 including GPU monitoring, storage operations, and system health checks.

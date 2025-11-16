@@ -1,5 +1,5 @@
 #!/bin/bash
-# Health Check Script for JustNewsAgent
+# Health Check Script for JustNews
 # Validates deployment health across all platforms
 
 # Configuration
@@ -205,7 +205,7 @@ main() {
     local TARGET="${DEPLOY_TARGET:-systemd}"
     local ENV="${DEPLOY_ENV:-development}"
 
-    log_info "JustNewsAgent Health Check"
+    log_info "JustNews Health Check"
     log_info "Platform: $TARGET"
     log_info "Environment: $ENV"
 

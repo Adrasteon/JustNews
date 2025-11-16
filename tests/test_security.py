@@ -1,5 +1,5 @@
 """
-Security Tests for JustNewsAgent System
+Security Tests for JustNews System
 
 This module contains comprehensive security tests that validate:
 - Input validation and sanitization

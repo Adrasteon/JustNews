@@ -1,5 +1,5 @@
 """
-Tests for JustNewsAgent Analyst Agent
+Tests for JustNews Analyst Agent
 """
 
 from unittest.mock import Mock, patch

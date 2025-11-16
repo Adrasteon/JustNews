@@ -1,6 +1,6 @@
 # Crawler Enhancements Package
 
-This package provides modular, configurable enhancements for the JustNewsAgent crawler to improve resilience against anti-scraping measures and access restricted content.
+This package provides modular, configurable enhancements for the JustNews crawler to improve resilience against anti-scraping measures and access restricted content.
 
 ## Overview
 

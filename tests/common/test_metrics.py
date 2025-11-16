@@ -1,5 +1,5 @@
 """
-Tests for JustNewsAgent Metrics Library
+Tests for JustNews Metrics Library
 """
 
 import time

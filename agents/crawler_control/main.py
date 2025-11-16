@@ -122,7 +122,7 @@ class CrawlRequest(BaseModel):
     strategy: str = "auto"
     enable_ai: bool = True
     timeout: int = 300
-    user_agent: str = "JustNewsAgent/1.0"
+    user_agent: str = "JustNews/1.0"
 
 @app.get("/", response_class=HTMLResponse)
 async def root():

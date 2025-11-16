@@ -1,4 +1,4 @@
-# JustNewsAgent Configuration Management - Environment Profiles
+# JustNews Configuration Management - Environment Profiles
 # Phase 2B: Configuration Management Refactoring
 
 """

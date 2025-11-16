@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive version validation script for JustNewsAgent
+Comprehensive version validation script for JustNews
 Tests all agents and components for version consistency
 """
 
@@ -13,7 +13,7 @@ sys.path.insert(0, project_root)
 
 def test_version_consistency():
     """Test that all components use the same version"""
-    print("🔍 JustNewsAgent Version Consistency Check")
+    print("🔍 JustNews Version Consistency Check")
     print("=" * 50)
 
     # Test centralized version

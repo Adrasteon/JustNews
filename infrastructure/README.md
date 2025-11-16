@@ -1,10 +1,10 @@
 # JustNews Deployment System - Unified Infrastructure as Code
 
-Enterprise-grade deployment framework supporting Docker, Kubernetes, and systemd orchestration for the JustNewsAgent distributed system.
+Enterprise-grade deployment framework supporting Docker, Kubernetes, and systemd orchestration for the JustNews distributed system.
 
 ## Overview
 
-The deployment system provides a unified approach to deploying JustNewsAgent across different environments and platforms. It supports:
+The deployment system provides a unified approach to deploying JustNews across different environments and platforms. It supports:
 
 - **Docker Compose**: Development and testing environments
 - **Kubernetes**: Production container orchestration

@@ -1,8 +1,8 @@
-# JustNewsAgent API Documentation
+# JustNews API Documentation
 
 ## Overview
 
-JustNewsAgent provides multiple REST APIs for different system components and user interactions. All APIs follow RESTful principles with JSON request/response formats.
+JustNews provides multiple REST APIs for different system components and user interactions. All APIs follow RESTful principles with JSON request/response formats.
 
 ## API Architecture
 

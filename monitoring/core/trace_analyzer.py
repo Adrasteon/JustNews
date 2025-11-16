@@ -1,5 +1,5 @@
 """
-JustNewsAgent Trace Analyzer
+JustNews Trace Analyzer
 
 This module provides advanced trace analysis capabilities including
 performance bottleneck detection, anomaly detection, and trend analysis.
@@ -11,7 +11,7 @@ Key Features:
 - Service dependency analysis
 - Automated alerting and recommendations
 
-Author: JustNewsAgent Development Team
+Author: JustNews Development Team
 Date: October 22, 2025
 """
 

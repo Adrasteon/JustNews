@@ -1,8 +1,8 @@
 """
-Testing Utilities for JustNewsAgent
+Testing Utilities for JustNews
 
 This module provides comprehensive testing utilities, helpers, and patterns
-for the JustNewsAgent testing framework. It includes utilities for:
+for the JustNews testing framework. It includes utilities for:
 
 - Async testing patterns
 - Mock creation and management

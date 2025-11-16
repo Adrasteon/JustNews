@@ -1,5 +1,5 @@
 """
-JustNewsAgent Security Framework - Core Security Manager
+JustNews Security Framework - Core Security Manager
 
 Provides centralized security orchestration for authentication, authorization,
 encryption, compliance monitoring, and security event tracking.
@@ -25,7 +25,7 @@ from .monitoring.service import SecurityMonitor
 logger = logging.getLogger(__name__)
 class SecurityManager:
     """
-    Central security orchestrator for JustNewsAgent
+    Central security orchestrator for JustNews
 
     Coordinates all security operations including authentication, authorization,
     encryption, compliance monitoring, and security event tracking.
@@ -48,7 +48,7 @@ class SecurityManager:
 
         logger.info("SecurityManager initialized")
     """
-    Central security orchestrator for JustNewsAgent
+    Central security orchestrator for JustNews
 
     Coordinates all security operations including authentication, authorization,
     encryption, compliance monitoring, and security event tracking.

@@ -1,5 +1,5 @@
 """
-Analytics Engine for JustNewsAgent
+Analytics Engine for JustNews
 
 Core business logic for advanced analytics, performance monitoring, and optimization
 recommendations. Provides comprehensive system health monitoring and real-time analytics.
@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 class AnalyticsEngine:
     """
     Analytics engine providing comprehensive performance monitoring, system health tracking,
-    and optimization recommendations for the JustNewsAgent system.
+    and optimization recommendations for the JustNews system.
 
     This engine wraps the AdvancedAnalyticsEngine and provides agent-specific functionality
     including MCP integration, health monitoring, and dashboard data preparation.
@@ -336,7 +336,7 @@ class AnalyticsEngine:
         return {
             "service": "analytics_engine",
             "version": "1.0.0",
-            "description": "Advanced analytics and performance monitoring service for JustNewsAgent",
+            "description": "Advanced analytics and performance monitoring service for JustNews",
             "features": [
                 "Real-time performance monitoring",
                 "System health scoring",

@@ -1,5 +1,5 @@
 """
-JustNewsAgent Security Monitoring Service
+JustNews Security Monitoring Service
 
 Provides real-time security monitoring, threat detection, alerting, and security event analysis.
 """

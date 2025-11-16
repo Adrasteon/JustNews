@@ -1,11 +1,11 @@
 """
-Executive Dashboard for JustNewsAgent Monitoring System
+Executive Dashboard for JustNews Monitoring System
 
 This module provides executive-level dashboards with business KPIs,
 high-level metrics, and strategic insights for management and stakeholders.
 It aggregates data from all monitoring systems into executive summaries.
 
-Author: JustNewsAgent Development Team
+Author: JustNews Development Team
 Date: October 22, 2025
 """
 

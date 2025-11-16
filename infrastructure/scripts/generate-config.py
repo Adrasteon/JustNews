@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Configuration Generator for JustNewsAgent
+Configuration Generator for JustNews
 Generates environment-specific configuration files from Jinja2 templates
 """
 
@@ -110,7 +110,7 @@ class ConfigGenerator:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate JustNewsAgent configuration files'
+        description='Generate JustNews configuration files'
     )
     parser.add_argument(
         '--template-dir',

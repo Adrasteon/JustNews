@@ -2,7 +2,7 @@
   "dashboard": {
     "id": null,
     "title": "Agent Performance Dashboard",
-    "description": "Detailed performance metrics for all JustNewsAgent services",
+    "description": "Detailed performance metrics for all JustNews services",
     "tags": [
       "agents",
       "performance",

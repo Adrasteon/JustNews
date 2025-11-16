@@ -1,8 +1,8 @@
 """
-Comprehensive Testing Framework for JustNewsAgent
+Comprehensive Testing Framework for JustNews
 
 This module provides a unified testing infrastructure that consolidates
-all testing patterns, fixtures, and utilities used across the JustNewsAgent
+ all testing patterns, fixtures, and utilities used across the JustNews
 system. It follows clean repository patterns and provides production-ready
 testing capabilities.
 
@@ -30,6 +30,8 @@ from pathlib import Path
 
 import pytest
 import pytest_asyncio
+import tempfile
+import textwrap
 
 # Add the repository root to sys.path so project packages import cleanly regardless
 # of how pytest is launched (e.g. via `conda run`). The previous logic walked one
@@ -354,6 +356,50 @@ def setup_test_environment():
 
     # Cleanup if needed
     pass
+
+
+@pytest.fixture(scope="session", autouse=True)
+def create_test_global_env(tmp_path_factory):
+    """Create a temporary global.env for tests and set JUSTNEWS_GLOBAL_ENV.
+
+    This avoids relying on /etc/justnews/global.env for tests and ensures a
+    deterministic environment for test discovery and configuration.
+    """
+    # Preserve any existing override and restore afterwards
+    prev = os.environ.get("JUSTNEWS_GLOBAL_ENV")
+    # Build a minimal, safe test global.env in a temp directory
+    tmp_dir = tmp_path_factory.mktemp("global_env")
+    path = tmp_dir / "global.env"
+    contents = textwrap.dedent(f"""
+    # Auto-generated test global.env
+    SERVICE_DIR={project_root}
+    PYTHON_BIN={os.environ.get('PYTHON_BIN', '')}
+    JUSTNEWS_PYTHON={os.environ.get('JUSTNEWS_PYTHON', '')}
+    MODEL_STORE_ROOT={project_root}/model_store
+    POSTGRES_HOST=localhost
+    POSTGRES_PORT=5432
+    POSTGRES_DB=justnews_test
+    POSTGRES_USER=justnews
+    POSTGRES_PASSWORD=test
+    MARIADB_HOST=127.0.0.1
+    MARIADB_PORT=3306
+    MARIADB_DB=justnews_test
+    MARIADB_USER=justnews
+    MARIADB_PASSWORD=test
+    """)
+    path.write_text(contents, encoding="utf-8")
+    os.environ["JUSTNEWS_GLOBAL_ENV"] = str(path)
+
+    # Also ensure SERVICE_DIR visible to modules that inspect it directly
+    os.environ.setdefault("SERVICE_DIR", str(project_root))
+
+    yield path
+
+    # Cleanup - restore previous env var if any
+    if prev is not None:
+        os.environ["JUSTNEWS_GLOBAL_ENV"] = prev
+    else:
+        os.environ.pop("JUSTNEWS_GLOBAL_ENV", None)
 
 
 @pytest.fixture(scope="session")

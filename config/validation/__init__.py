@@ -1,4 +1,4 @@
-# JustNewsAgent Configuration Management - Validation Utilities
+# JustNews Configuration Management - Validation Utilities
 # Phase 2B: Configuration Management Refactoring
 
 """

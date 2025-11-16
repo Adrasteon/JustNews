@@ -25,7 +25,7 @@ from urllib.parse import urlparse
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
-app = FastAPI(title="JustNewsAgent Crawl4AI Bridge")
+app = FastAPI(title="JustNews Crawl4AI Bridge")
 
 
 class CrawlRequest(BaseModel):

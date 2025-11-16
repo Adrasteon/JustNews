@@ -1,5 +1,5 @@
 """
-JustNewsAgent Authentication Service
+JustNews Authentication Service
 
 Handles user authentication, session management, JWT tokens, and identity verification.
 """
@@ -468,7 +468,7 @@ class AuthenticationService:
 
         provisioning_uri = totp.provisioning_uri(
             name=user_data["email"],
-            issuer_name="JustNewsAgent"
+            issuer_name="JustNews"
         )
 
         # Generate QR code image

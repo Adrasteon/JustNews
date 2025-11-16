@@ -1,8 +1,8 @@
-# JustNewsAgent Configuration Management - Unified Schema
+# JustNews Configuration Management - Unified Schema
 # Phase 2B: Configuration Management Refactoring
 
 """
-Unified Configuration Schema for JustNewsAgent
+Unified Configuration Schema for JustNews
 
 This module defines the complete type-safe configuration schema using Pydantic,
 providing validation, environment abstraction, and centralized configuration management.
@@ -74,7 +74,7 @@ class DatabaseSSLMode(str, Enum):
 
 class SystemConfig(BaseModel):
     """Core system configuration"""
-    name: str = Field(default="JustNewsAgent", description="System name")
+    name: str = Field(default="JustNews", description="System name")
     version: str = Field(default="4.0", description="System version")
     environment: Environment = Field(default=Environment.DEVELOPMENT, description="Deployment environment")
     log_level: LogLevel = Field(default=LogLevel.INFO, description="Default logging level")
@@ -209,7 +209,7 @@ class CrawlingConfig(BaseModel):
     obey_robots_txt: bool = Field(default=True, description="Respect robots.txt")
     enhancements: CrawlingEnhancementsConfig = Field(default_factory=CrawlingEnhancementsConfig)
     respect_rate_limits: bool = Field(default=True, description="Respect rate limits")
-    user_agent: str = Field(default="JustNewsAgent/4.0", description="HTTP user agent")
+    user_agent: str = Field(default="JustNews/4.0", description="HTTP user agent")
     robots_cache_hours: PositiveInt = Field(default=1, description="Robots.txt cache duration")
 
     rate_limiting: CrawlingRateLimits = Field(default_factory=CrawlingRateLimits)
@@ -464,7 +464,7 @@ class ExternalServicesConfig(BaseModel):
 # ============================================================================
 
 class JustNewsConfig(BaseModel):
-    """Complete JustNewsAgent configuration schema"""
+    """Complete JustNews configuration schema"""
     system: SystemConfig = Field(default_factory=SystemConfig)
     mcp_bus: MCPBusConfig = Field(default_factory=MCPBusConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)

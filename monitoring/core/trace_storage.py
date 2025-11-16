@@ -1,5 +1,5 @@
 """
-JustNewsAgent Trace Storage
+JustNews Trace Storage
 
 This module provides distributed trace storage and querying capabilities
 for the observability platform.
@@ -11,7 +11,7 @@ Key Features:
 - Distributed storage support
 - Query optimization and indexing
 
-Author: JustNewsAgent Development Team
+Author: JustNews Development Team
 Date: October 22, 2025
 """
 

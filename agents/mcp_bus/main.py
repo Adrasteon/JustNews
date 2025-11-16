@@ -29,7 +29,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import Response, JSONResponse
 from pydantic import BaseModel, Field
 
 from common.metrics import JustNewsMetrics
@@ -343,27 +343,36 @@ async def capabilities_endpoint():
 async def internal_error_handler(request, exc):
     """Handle internal server errors."""
     logger.error(f"500 Internal Server Error: {exc}")
-    return {
-        "error": "Internal server error",
-        "detail": str(exc) if os.getenv("DEBUG", "").lower() == "true" else "An unexpected error occurred"
-    }
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal server error",
+            "detail": str(exc) if os.getenv("DEBUG", "").lower() == "true" else "An unexpected error occurred",
+        },
+    )
 
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
     """Handle 404 not found errors."""
-    return {
-        "error": "Not found",
-        "detail": f"Endpoint {request.url.path} not found"
-    }
+    return JSONResponse(
+        status_code=404,
+        content={
+            "error": "Not found",
+            "detail": f"Endpoint {request.url.path} not found",
+        },
+    )
 
 @app.exception_handler(503)
 async def service_unavailable_handler(request, exc):
     """Handle 503 service unavailable errors (circuit breaker)."""
     logger.warning(f"503 Service Unavailable: {exc}")
-    return {
-        "error": "Service temporarily unavailable",
-        "detail": str(exc)
-    }
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": "Service temporarily unavailable",
+            "detail": str(exc),
+        },
+    )
 
 if __name__ == "__main__":
     import uvicorn

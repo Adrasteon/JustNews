@@ -1,5 +1,5 @@
 """
-Tests for JustNewsAgent Secret Manager
+Tests for JustNews Secret Manager
 """
 
 from pathlib import Path

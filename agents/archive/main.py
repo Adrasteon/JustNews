@@ -89,7 +89,7 @@ async def lifespan(app: FastAPI):
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="JustNewsAgent Archive Service",
+    title="JustNews Archive Service",
     description="Comprehensive article archiving with knowledge graph integration",
     lifespan=lifespan
 )

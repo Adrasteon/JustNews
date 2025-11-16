@@ -1,5 +1,5 @@
 """
-Common observability utilities for JustNewsAgent
+Common observability utilities for JustNews
 """
 
 import logging

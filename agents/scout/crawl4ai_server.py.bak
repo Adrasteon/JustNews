@@ -78,7 +78,7 @@ from urllib.parse import urlparse
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-app = FastAPI(title="JustNewsAgent Crawl4AI Bridge")
+app = FastAPI(title="JustNews Crawl4AI Bridge")
 
 
 class CrawlRequest(BaseModel):
@@ -376,7 +376,7 @@ async def crawl(req: CrawlRequest) -> Dict[str, Any]:
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-app = FastAPI(title="JustNewsAgent Crawl4AI Bridge")
+app = FastAPI(title="JustNews Crawl4AI Bridge")
 
 
 class CrawlRequest(BaseModel):

@@ -41,7 +41,7 @@ sudo mv linux-amd64/helm /usr/local/bin/helm
 
 ### 2. Deploy Everything
 ```bash
-cd /home/adra/JustNewsAgent-Clean
+cd /home/adra/JustNews
 ./infrastructure/helm/justnews/deploy-single-node.sh all
 ```
 
@@ -64,7 +64,7 @@ MCP Bus:    http://localhost:8000
 If you prefer step-by-step deployment:
 
 ```bash
-cd /home/adra/JustNewsAgent-Clean
+cd /home/adra/JustNews
 
 # 1. Check system
 ./infrastructure/helm/justnews/deploy-single-node.sh check

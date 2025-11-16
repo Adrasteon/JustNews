@@ -1,5 +1,5 @@
 """
-Enhanced GPU Monitoring Dashboard for JustNewsAgent
+Enhanced GPU Monitoring Dashboard for JustNews
 Provides comprehensive real-time GPU health monitoring and performance analytics
 
 Features:
@@ -9,7 +9,7 @@ Features:
 - Historical metrics tracking
 - Web-based monitoring interface
 - Alert system for GPU issues
-"""
+    """
 
 
 import os

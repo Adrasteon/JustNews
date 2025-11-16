@@ -391,31 +391,7 @@ services:
       mcp-bus:
         condition: service_started
 
-  balancer:
-    build:
-      context: ../../
-      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.balancer
-    container_name: justnews-balancer
-    environment:
-      DEPLOY_ENV: development
-      LOG_LEVEL: INFO
-      MYSQL_HOST: mariadb
-      MYSQL_DB: justnews
-      MYSQL_USER: justnews
-      MYSQL_PASSWORD: change_me
-      CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
-      REDIS_HOST: redis
-      MCP_BUS_HOST: mcp-bus
-      MCP_BUS_PORT: 8000
-    ports:
-      - "8010:8010"
-    networks:
-      - justnews-network
-    restart: unless-stopped
-    depends_on:
-      mcp-bus:
-        condition: service_started
+  # balancer service removed - responsibilities moved to critic/analytics/gpu_orchestrator
 
   crawler:
     build:

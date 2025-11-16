@@ -40,7 +40,6 @@ class JustNewsMetrics:
         'memory': 'data-storage-agent',
         'reasoning': 'logical-reasoning-agent',
         'newsreader': 'news-processing-agent',
-        'balancer': 'load-balancing-agent',
         'archive': 'content-archiving-agent',
         'dashboard': 'web-dashboard-agent',
         'analytics': 'system-analytics-agent',

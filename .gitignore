@@ -51,3 +51,15 @@ robust_migration_implementation.md
 # Archive of experimental spikes
 archive/experimental/
 
+# CI and test artifacts
+coverage.xml
+
+# Archive artifacts and deprecated docs
+infrastructure/archives/
+infrastructure/docker/agent-dockerfiles/DEPRECATED.md
+infrastructure/helm/justnews/DEPRECATED.md
+infrastructure/helm/justnews/templates/DEPRECATED.md
+infrastructure/kubernetes/DEPRECATED.md
+infrastructure/kubernetes/base/DEPRECATED.md
+infrastructure/kubernetes/overlays/DEPRECATED.md
+

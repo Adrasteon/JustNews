@@ -21,6 +21,11 @@ from common.observability import get_logger
 
 from .tools import get_sources_with_limit
 
+try:
+    from database.utils.migrated_database_utils import create_database_service
+except Exception:
+    create_database_service = None
+
 # Apply database environment fallback for development
 apply_test_db_env_fallback()
 
@@ -83,6 +88,18 @@ async def lifespan(app: FastAPI):
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
         logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+    # Warm up DB connection pool to avoid first-request latency
+    if create_database_service is not None:
+        try:
+            db = create_database_service()
+            # Close immediately after warmup to avoid keeping connections open
+            try:
+                db.close()
+            except Exception:
+                pass
+            logger.info("Database connection warmed up for crawler_control agent.")
+        except Exception as exc:
+            logger.debug(f"Database warmup failed (non-fatal): {exc}")
     global ready
     ready = True
     yield

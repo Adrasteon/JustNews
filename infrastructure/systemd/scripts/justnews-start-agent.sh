@@ -281,6 +281,21 @@ check_python_deps_and_exit_if_missing() {
         if [[ "$agent" == "hitl_service" ]]; then
             modules=(uvicorn fastapi requests)
         fi
+    if [[ "$agent" == "dashboard" ]]; then
+        # Dashboard imports fastapi and uvicorn at module import time; ensure they exist
+        modules=(uvicorn fastapi requests)
+    fi
+
+    # Auto-detect common modules in the agent's main script and add them to checks
+    local agent_main_path="$PROJECT_ROOT/agents/${agent}/main.py"
+    if [[ -f "$agent_main_path" ]]; then
+        if grep -E "^\s*import[[:space:]]+uvicorn" "$agent_main_path" >/dev/null 2>&1 || grep -E "^\s*from[[:space:]]+uvicorn" "$agent_main_path" >/dev/null 2>&1; then
+            modules+=(uvicorn)
+        fi
+        if grep -E "^\s*from[[:space:]]+fastapi[[:space:]]+import|^\s*import[[:space:]]+fastapi" "$agent_main_path" >/dev/null 2>&1; then
+            modules+=(fastapi)
+        fi
+    fi
 
     local modules_var="${modules[*]}"
     local missing=""

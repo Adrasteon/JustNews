@@ -8,9 +8,9 @@
     "conda_environment": null
   },
   "mcp_bus": {
-  "host": "localhost",
-  "port": 8000,
-  "url": "http://localhost:8000",
+    "host": "localhost",
+    "port": 8017,
+    "url": "http://localhost:8017",
     "timeout_seconds": 30.0,
     "max_retries": 3,
     "retry_delay_seconds": 1.0

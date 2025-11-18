@@ -199,23 +199,49 @@ while true; do
     sleep 3
 done
 
-# Full preflight check (for other agents)
-log_info "Full preflight mode: ensuring MCP Bus is ready"
-log_info "Waiting for MCP Bus at $MCP_BUS_URL..."
-start_time=$(date +%s)
-while true; do
-    if curl -fsS "${MCP_BUS_URL}/health" > /dev/null; then
-        log_success "MCP Bus is healthy."
-        break
-    fi
-    current_time=$(date +%s)
-    elapsed=$((current_time - start_time))
-    if [ $elapsed -ge 60 ]; then
-        log_error "Timeout waiting for MCP Bus."
+# Validate MariaDB connectivity (via helper if present)
+if [[ -x "$SCRIPT_DIR/../helpers/db-check.sh" ]]; then
+    log_info "Checking MariaDB via helper..."
+    if ! "$SCRIPT_DIR/../helpers/db-check.sh"; then
+        log_error "MariaDB connectivity check failed; aborting preflight."
         exit 1
     fi
-    sleep 3
-done
+else
+    log_warning "MariaDB check helper not found; skipping DB validation."
+fi
+
+# Validate ChromaDB is reachable (if configured)
+CHROMA_HOST="${CHROMADB_HOST:-localhost}"
+CHROMA_PORT="${CHROMADB_PORT:-3307}"
+log_info "Checking ChromaDB reachability at ${CHROMA_HOST}:${CHROMA_PORT}..."
+if ! python3 - <<PY >/dev/null 2>&1
+import socket, sys
+try:
+    sock = socket.socket()
+    sock.settimeout(1)
+    sock.connect(("${CHROMA_HOST}", int(${CHROMA_PORT})))
+    sock.close()
+except Exception:
+    sys.exit(1)
+sys.exit(0)
+PY
+then
+    log_warning "Unable to reach ChromaDB at ${CHROMA_HOST}:${CHROMA_PORT}; some features may be degraded"
+else
+    log_success "ChromaDB appears reachable."
+fi
+
+# Validate local SQLite for HITL if enabled
+HITL_DB_PATH="${HITL_DB_PATH:-agents/hitl_service/hitl_staging.db}"
+if [[ "${ENABLE_HITL_PIPELINE:-false}" == "true" ]]; then
+    log_info "Checking HITL SQLite DB path: ${HITL_DB_PATH}"
+    mkdir -p "$(dirname "${HITL_DB_PATH}")" 2>/dev/null || true
+    if ! touch "${HITL_DB_PATH}" 2>/dev/null; then
+        log_error "Cannot create or write HITL DB path: ${HITL_DB_PATH}; aborting preflight."
+        exit 1
+    fi
+    log_success "HITL SQLite DB path is writable: ${HITL_DB_PATH}"
+fi
 
 log_success "All preflight checks passed."
 exit 0

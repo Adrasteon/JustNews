@@ -25,8 +25,7 @@ from pydantic import (
     Field,
     field_validator,
     model_validator,
-    root_validator,
-    validator,
+    ConfigDict,
 )
 from pydantic.types import NonNegativeInt, PositiveFloat, PositiveInt
 
@@ -84,8 +83,7 @@ class SystemConfig(BaseModel):
     debug_mode: bool = Field(default=False, description="Enable debug mode")
     conda_environment: str | None = Field(default=None, description="Conda environment name")
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 # ============================================================================
@@ -131,8 +129,7 @@ class DatabaseConfig(BaseModel):
     connection_pool: DatabaseConnectionPoolConfig = Field(default_factory=DatabaseConnectionPoolConfig)
     ssl_mode: DatabaseSSLMode = Field(default=DatabaseSSLMode.PREFER, description="SSL mode")
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 # ============================================================================
@@ -481,9 +478,7 @@ class JustNewsConfig(BaseModel):
     performance: PerformanceConfig = Field(default_factory=PerformanceConfig)
     external_services: ExternalServicesConfig = Field(default_factory=ExternalServicesConfig)
 
-    class Config:
-        validate_assignment = True
-        use_enum_values = True
+    model_config = ConfigDict(validate_assignment=True, use_enum_values=True)
 
     @field_validator('system')
     def validate_environment_consistency(cls, v, values):

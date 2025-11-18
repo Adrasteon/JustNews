@@ -289,15 +289,43 @@
             setInterval(loadDashboardData, 10000); // refresh every 10s
 
             // Build Pages dropdown from backend
-            fetchJSON('/api/dashboard/pages').then(data => {
+            (async () => {
                 const menu = document.getElementById('pagesDropdownMenu');
                 if (!menu) return;
-                const pages = (data && data.pages) || [];
-                menu.innerHTML = pages.map(p => {
-                    const isExternal = /^https?:\/\//i.test(p.path) ? ' target="_blank" rel="noopener noreferrer"' : '';
-                    return `<li><a class="dropdown-item" href="${p.path}"${isExternal}>${p.title}</a></li>`;
-                }).join('');
-            }).catch(e => console.debug('No pages API available', e));
+                const fallbackPages = [
+                    { title: 'Home', path: '/' },
+                    { title: 'Search', path: '/search' },
+                    { title: 'About', path: '/about' },
+                    { title: 'Crawler Status', path: '/api/crawl/status' },
+                    { title: 'Crawl Scheduler', path: '/api/crawl/scheduler' },
+                    { title: 'GPU Dashboard', path: '/gpu/dashboard' },
+                    { title: 'Transparency', path: '/transparency/status' },
+                    { title: 'Crawler Metrics', path: '/api/metrics/crawler' },
+                    { title: 'System Health', path: '/api/health' },
+                    { title: 'Crawler Control', path: 'http://localhost:8016/' }
+                ];
+
+                try {
+                    const data = await fetchJSON('/api/dashboard/pages');
+                    console.debug('Fetched /api/dashboard/pages:', data);
+                    let pages = (data && data.pages) || [];
+                    if (!pages || !pages.length) {
+                        console.debug('No pages returned from API, using fallback pages');
+                        pages = fallbackPages;
+                    }
+                    menu.innerHTML = pages.map(p => {
+                        const isExternal = /^https?:\/\//i.test(p.path) ? ' target="_blank" rel="noopener noreferrer"' : '';
+                        return `<li><a class="dropdown-item" href="${p.path}"${isExternal}>${p.title}</a></li>`;
+                    }).join('');
+                } catch (err) {
+                    console.debug('Failed to fetch /api/dashboard/pages:', err);
+                    // Use fallback so dropdown is always usable
+                    menu.innerHTML = fallbackPages.map(p => {
+                        const isExternal = /^https?:\/\//i.test(p.path) ? ' target="_blank" rel="noopener noreferrer"' : '';
+                        return `<li><a class="dropdown-item" href="${p.path}"${isExternal}>${p.title}</a></li>`;
+                    }).join('');
+                }
+            })();
 
             // Insert JSON modal element
             const modalHtml = `

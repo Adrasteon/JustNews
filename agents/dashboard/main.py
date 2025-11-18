@@ -859,6 +859,21 @@ def get_fallback_public_website_html():
                         <li class="nav-item"><a class="nav-link" href="#analysis">Analysis</a></li>
                         <li class="nav-item"><a class="nav-link" href="#sources">Sources</a></li>
                         <li class="nav-item"><a class="nav-link" href="#api">API</a></li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="pagesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Pages</a>
+                            <ul class="dropdown-menu" aria-labelledby="pagesDropdown">
+                                <li><a class="dropdown-item" href="/">Home</a></li>
+                                <li><a class="dropdown-item" href="/search">Search</a></li>
+                                <li><a class="dropdown-item" href="/about">About</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="/api/crawl/status">Crawler Status</a></li>
+                                <li><a class="dropdown-item" href="/api/crawl/scheduler">Crawl Scheduler</a></li>
+                                <li><a class="dropdown-item" href="/gpu/dashboard">GPU Dashboard</a></li>
+                                <li><a class="dropdown-item" href="/transparency/status">Transparency</a></li>
+                                <li><a class="dropdown-item" href="/api/metrics/crawler">Crawler Metrics</a></li>
+                                <li><a class="dropdown-item" href="/api/health">System Health</a></li>
+                            </ul>
+                        </li>
                     </ul>
                     <form class="d-flex">
                         <input class="form-control me-2" type="search" placeholder="Search news..." id="searchInput">

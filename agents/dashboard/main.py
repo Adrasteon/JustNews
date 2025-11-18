@@ -718,7 +718,20 @@ def get_dashboard_pages():
                     with open(path, encoding="utf-8") as f:
                         data = json.load(f)
                         pages = data.get("pages", [])
-            return {"status": "success", "pages": pages or []}
+            # Provide a small fallback list so UI has something even if config is empty
+            fallback_pages = [
+                {"title": "Home", "path": "/"},
+                {"title": "Search", "path": "/search"},
+                {"title": "About", "path": "/about"},
+                {"title": "Crawler Status", "path": "/api/crawl/status"},
+                {"title": "Crawl Scheduler", "path": "/api/crawl/scheduler"},
+                {"title": "GPU Dashboard", "path": "/gpu/dashboard"},
+                {"title": "Transparency", "path": "/transparency/status"},
+                {"title": "Crawler Metrics", "path": "/api/metrics/crawler"},
+                {"title": "System Health", "path": "/api/health"},
+                {"title": "Crawler Control", "path": "http://localhost:8016/"}
+            ]
+            return {"status": "success", "pages": pages or fallback_pages}
         except Exception as e:
             logger.warning(f"Failed to read dashboard pages config: {e}")
             return {"status": "error", "pages": [], "error": str(e)}

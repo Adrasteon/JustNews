@@ -199,10 +199,14 @@ app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 # Mount transparency and evidence audit endpoints
 app.include_router(transparency_router)
 
-# Include search API endpoints
-from .search_api import router as search_router
-
-app.include_router(search_router)
+# Include search API endpoints only when PUBLIC_API_AVAILABLE to avoid importing
+# heavy optional dependencies during tests or minimal deployments.
+if PUBLIC_API_AVAILABLE:
+    try:
+        from .search_api import router as search_router
+        app.include_router(search_router)
+    except Exception:
+        logger.warning("Search API not available; skipping search router registration.")
 
 # Include public API routes
 if PUBLIC_API_AVAILABLE:

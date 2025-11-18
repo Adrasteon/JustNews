@@ -1,0 +1,16 @@
+{
+  "dashboard_port": 8013,
+  "mcp_bus_url": "http://localhost:8017",
+  "log_level": "INFO",
+  "pages": [
+    { "title": "Home", "path": "/" },
+    { "title": "Search", "path": "/search" },
+    { "title": "About", "path": "/about" },
+    { "title": "Crawler Status", "path": "/api/crawl/status" },
+    { "title": "Crawl Scheduler", "path": "/api/crawl/scheduler" },
+    { "title": "GPU Dashboard", "path": "/gpu/dashboard" },
+    { "title": "Transparency", "path": "/transparency/status" },
+    { "title": "Crawler Metrics", "path": "/api/metrics/crawler" },
+    { "title": "System Health", "path": "/api/health" }
+  ]
+}

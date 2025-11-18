@@ -704,6 +704,26 @@ async def get_crawler_metrics():
         }
 
 
+@app.get("/api/dashboard/pages")
+def get_dashboard_pages():
+        """Return the configured dashboard pages for dynamic menu building on the web UI."""
+        try:
+            # Prefer dashboard config in the module-level config variable
+            pages = config.get("pages") if isinstance(config, dict) else None
+            if not pages:
+                # Fallback to reading the dashboard config directly
+                path = Path(__file__).parent / "config.json"
+                if path.exists():
+                    import json
+                    with open(path, encoding="utf-8") as f:
+                        data = json.load(f)
+                        pages = data.get("pages", [])
+            return {"status": "success", "pages": pages or []}
+        except Exception as e:
+            logger.warning(f"Failed to read dashboard pages config: {e}")
+            return {"status": "error", "pages": [], "error": str(e)}
+
+
 @app.get("/api/metrics/analyst")
 async def get_analyst_metrics():
     """Get analyst metrics"""

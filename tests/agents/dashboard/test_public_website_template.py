@@ -10,3 +10,11 @@ def test_public_website_template_exists_and_contains_pages():
     assert 'dropdown' in content
     assert '/api/crawl/status' in content
     assert '/gpu/dashboard' in content
+    # Check for DataTables and Chart.js presence for enhanced UI
+    assert 'dataTables.bootstrap5.min.css' in content
+    assert 'chart.js' in content or 'Chart' in content
+    # Ensure the dynamic dropdown placeholder and the JSON modal are present
+    assert 'id="pagesDropdownMenu"' in content
+    assert 'id="jsonModal"' in content
+    assert 'id="crawlerJobsTable"' in content
+    assert 'id="gpuChart"' in content

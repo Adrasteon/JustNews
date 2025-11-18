@@ -50,3 +50,23 @@ def test_api_start_crawl(monkeypatch):
     data = response.json()
     assert "job" in data
     assert data["job"]["status"] == "started"
+
+
+def test_app_startup_db_warmup(monkeypatch):
+    # Ensure DB warmup step on startup is not fatal and runs when available
+    import agents.crawler_control.main as crawler_main
+    called = {"closed": False}
+
+    def fake_create_database_service():
+        class DB:
+            def close(self):
+                called["closed"] = True
+        return DB()
+
+    monkeypatch.setattr(crawler_main, 'create_database_service', fake_create_database_service)
+    with TestClient(crawler_main.app) as client:
+        r = client.get('/ready')
+        assert r.status_code == 200
+        assert r.json().get('ready') in (True, False)
+    # Ensure warmup close was called
+    assert called["closed"] is True

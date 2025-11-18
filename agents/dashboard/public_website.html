@@ -82,6 +82,37 @@
     <!-- News Feed -->
     <section class="py-5" id="news">
         <div class="container">
+            <h2 class="text-center mb-4">System Status & Dashboards</h2>
+            <div class="row mb-4" id="systemStatusContainer">
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">System Health</h5>
+                            <div id="systemHealth" class="small text-muted">Loading...</div>
+                        </div>
+                    </div>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Crawler Jobs</h5>
+                            <div id="crawlerJobs">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Crawl Scheduler</h5>
+                            <div id="crawlScheduler">Loading...</div>
+                        </div>
+                    </div>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">GPU Summary</h5>
+                            <div id="gpuSummary">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <h2 class="text-center mb-4">Latest News</h2>
             <div class="row" id="newsContainer">
                 <div class="col-12 text-center">
@@ -102,6 +133,91 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        async function fetchJSON(path) {
+            const res = await fetch(path);
+            if (!res.ok) throw new Error(`Failed to fetch ${path}: ${res.status}`);
+            return res.json();
+        }
+
+        async function loadDashboardData() {
+            try {
+                const [health, crawlStatus, scheduler, gpu] = await Promise.all([
+                    fetchJSON('/api/health').catch(()=>null),
+                    fetchJSON('/api/crawl/status').catch(()=>null),
+                    fetchJSON('/api/crawl/scheduler').catch(()=>null),
+                    fetchJSON('/gpu/dashboard').catch(()=>null)
+                ]);
+
+                renderHealth(health);
+                renderCrawlJobs(crawlStatus);
+                renderScheduler(scheduler);
+                renderGpuSummary(gpu);
+            } catch (err) {
+                console.error('Error loading dashboard data:', err);
+            }
+        }
+
+        function renderHealth(health) {
+            const el = document.getElementById('systemHealth');
+            if (!health) { el.innerHTML = '<div class="text-muted">Unavailable</div>'; return; }
+            const list = Object.entries(health).map(([agent, ok]) => {
+                const cls = ok ? 'text-success' : 'text-danger';
+                return `<div><strong>${agent}</strong>: <span class="${cls}">${ok ? 'OK' : 'DOWN'}</span></div>`;
+            }).join('');
+            el.innerHTML = list;
+        }
+
+        function renderCrawlJobs(crawlStatus) {
+            const el = document.getElementById('crawlerJobs');
+            if (!crawlStatus) { el.innerHTML = '<div class="text-muted">Unavailable</div>'; return; }
+            if (Object.keys(crawlStatus).length === 0) { el.innerHTML = '<div class="text-muted">No jobs</div>'; return; }
+            const rows = Object.entries(crawlStatus).map(([id, job]) => {
+                const status = job.status || job.state || 'unknown';
+                return `<tr><td>${id}</td><td>${job.source || job.agent || ''}</td><td>${status}</td><td>${job.progress || ''}</td><td>${job.started_at || ''}</td></tr>`;
+            }).join('');
+            el.innerHTML = `
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead><tr><th>ID</th><th>Agent</th><th>Status</th><th>Progress</th><th>Started</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+        }
+
+        function renderScheduler(scheduler) {
+            const el = document.getElementById('crawlScheduler');
+            if (!scheduler || !scheduler.state_available) { el.innerHTML = '<div class="text-muted">No scheduler state</div>'; return; }
+            const executed = scheduler.executed_at || '';
+            const target = scheduler.target_articles || scheduler.adaptive_summary?.articles?.total || 'N/A';
+            const remaining = scheduler.remaining_articles || 'N/A';
+            const metrics = scheduler.adaptive_metrics || {};
+            el.innerHTML = `
+                <div><strong>Last Run:</strong> ${executed}</div>
+                <div><strong>Target Articles:</strong> ${target}</div>
+                <div><strong>Remaining:</strong> ${remaining}</div>
+                <div class="mt-2"><strong>Adaptive summary:</strong>
+                    <ul class="small mb-0">
+                        <li>Articles total: ${metrics.articles_total || 0}</li>
+                        <li>Articles sufficient: ${metrics.articles_sufficient || 0}</li>
+                        <li>Avg confidence: ${metrics.confidence_average?.toFixed?.(2) || metrics.confidence_average || 'N/A'}</li>
+                        <li>Pages crawled avg: ${metrics.pages_crawled_average || 'N/A'}</li>
+                    </ul>
+                </div>`;
+        }
+
+        function renderGpuSummary(gpu) {
+            const el = document.getElementById('gpuSummary');
+            if (!gpu || gpu.status !== 'success') { el.innerHTML = '<div class="text-muted">Unavailable</div>'; return; }
+            const s = gpu.summary || {};
+            const cards = (gpu.gpu_info?.gpus || []).map(g => `
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between"><strong>${g.name}</strong><small>${g.gpu_utilization_percent}%</small></div>
+                    <div class="progress" style="height:8px"><div class="progress-bar" role="progressbar" style="width:${g.gpu_utilization_percent}%"></div></div>
+                    <div class="small text-muted">Memory: ${g.memory_used_mb}/${g.memory_total_mb} MB | Temp: ${g.temperature_celsius} °C</div>
+                </div>`).join('');
+            el.innerHTML = `<div><strong>Total GPUs</strong>: ${s.total_gpus || 0}</div><div>${cards}</div>`;
+        }
+
         async function loadNews() {
             try {
                 const response = await fetch('/api/public/articles');

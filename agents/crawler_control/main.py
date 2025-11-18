@@ -1,3 +1,8 @@
+# NOTE: Historically we hosted a standalone server in `web_interface/server.py`.
+# This module consolidates the functionality previously provided there (UI serving,
+# `start_crawl`/`status` endpoints, DB fallbacks) to keep a single agent entrypoint
+# in `main.py` and avoid duplicated code. Keep `web_interface/server.py` removed
+# to reduce confusion.
 """
 Main file for the Crawler Control Agent.
 Web interface for crawler management and monitoring.

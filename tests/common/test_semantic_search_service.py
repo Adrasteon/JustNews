@@ -1,18 +1,17 @@
 """
-Tests for JustNewsAgent Semantic Search Service
+Tests for JustNews Semantic Search Service
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-import time
-from unittest.mock import Mock, patch, MagicMock
-from dataclasses import dataclass
 
 from common.semantic_search_service import (
-    SemanticSearchService,
-    SearchResult,
     SearchResponse,
+    SearchResult,
+    SemanticSearchService,
+    async_search,
     get_search_service,
-    async_search
 )
 
 

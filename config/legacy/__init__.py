@@ -1,4 +1,4 @@
-# JustNewsAgent Configuration Management - Legacy Migration
+# JustNews Configuration Management - Legacy Migration
 # Phase 2B: Configuration Management Refactoring
 
 """
@@ -13,15 +13,16 @@ Provides migration from scattered configuration files to unified system:
 """
 
 import json
+import re
 import shutil
-from pathlib import Path
-from typing import Dict, List, Optional, Union, Any, Set, Tuple
 from dataclasses import dataclass
 from datetime import datetime
-import re
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from common.observability import get_logger
-from ..schemas import JustNewsConfig, Environment, create_default_config
+
+from ..schemas import Environment, JustNewsConfig, create_default_config
 from ..validation import ConfigurationValidator, ValidationResult
 
 logger = get_logger(__name__)
@@ -47,11 +48,11 @@ class LegacyConfigFile:
 @dataclass
 class MigrationPlan:
     """Configuration migration plan"""
-    legacy_files: List[LegacyConfigFile]
+    legacy_files: list[LegacyConfigFile]
     target_config: JustNewsConfig
-    migration_steps: List[str]
-    conflicts: List[str]
-    warnings: List[str]
+    migration_steps: list[str]
+    conflicts: list[str]
+    warnings: list[str]
     estimated_effort: str  # 'low', 'medium', 'high'
 
 
@@ -69,9 +70,9 @@ class LegacyConfigurationMigrator:
 
     def __init__(self):
         self.validator = ConfigurationValidator()
-        self.discovered_files: List[LegacyConfigFile] = []
+        self.discovered_files: list[LegacyConfigFile] = []
 
-    def discover_legacy_configs(self, search_paths: Optional[List[Union[str, Path]]] = None) -> List[LegacyConfigFile]:
+    def discover_legacy_configs(self, search_paths: list[str | Path] | None = None) -> list[LegacyConfigFile]:
         """
         Discover legacy configuration files
 
@@ -144,7 +145,7 @@ class LegacyConfigurationMigrator:
         file_str = str(file_path)
         return any(unified_path in file_str for unified_path in unified_paths)
 
-    def _analyze_config_file(self, file_path: Path, format_type: str) -> Optional[LegacyConfigFile]:
+    def _analyze_config_file(self, file_path: Path, format_type: str) -> LegacyConfigFile | None:
         """Analyze a configuration file"""
         try:
             stat = file_path.stat()
@@ -172,7 +173,7 @@ class LegacyConfigurationMigrator:
 
         return None
 
-    def _determine_config_type(self, file_path: Path, content: str) -> Optional[str]:
+    def _determine_config_type(self, file_path: Path, content: str) -> str | None:
         """Determine configuration type from file path and content"""
         filename = file_path.name.lower()
 
@@ -232,7 +233,7 @@ class LegacyConfigurationMigrator:
         warnings = []
 
         # Process each legacy file
-        processed_types: Set[str] = set()
+        processed_types: set[str] = set()
 
         for legacy_file in self.discovered_files:
             if not legacy_file.is_active:
@@ -269,17 +270,17 @@ class LegacyConfigurationMigrator:
             estimated_effort=effort
         )
 
-    def _load_legacy_config(self, legacy_file: LegacyConfigFile) -> Dict[str, Any]:
+    def _load_legacy_config(self, legacy_file: LegacyConfigFile) -> dict[str, Any]:
         """Load configuration from legacy file"""
         try:
             if legacy_file.format == 'json':
-                with open(legacy_file.path, 'r') as f:
+                with open(legacy_file.path) as f:
                     return json.load(f)
             elif legacy_file.format == 'python':
                 return self._load_python_config(legacy_file.path)
             elif legacy_file.format == 'yaml':
                 import yaml
-                with open(legacy_file.path, 'r') as f:
+                with open(legacy_file.path) as f:
                     return yaml.safe_load(f)
             elif legacy_file.format == 'env':
                 return self._load_env_config(legacy_file.path)
@@ -288,7 +289,7 @@ class LegacyConfigurationMigrator:
         except Exception as e:
             raise ValueError(f"Failed to load {legacy_file.path}: {e}")
 
-    def _load_python_config(self, file_path: Path) -> Dict[str, Any]:
+    def _load_python_config(self, file_path: Path) -> dict[str, Any]:
         """Load Python configuration file"""
         # Execute Python file in isolated namespace
         namespace = {}
@@ -302,7 +303,7 @@ class LegacyConfigurationMigrator:
 
         return config
 
-    def _load_env_config(self, file_path: Path) -> Dict[str, Any]:
+    def _load_env_config(self, file_path: Path) -> dict[str, Any]:
         """Load environment configuration file"""
         config = {}
         content = file_path.read_text()
@@ -327,7 +328,7 @@ class LegacyConfigurationMigrator:
 
         return config
 
-    def _check_migration_conflicts(self, legacy_config: Dict[str, Any], processed_types: Set[str]) -> List[str]:
+    def _check_migration_conflicts(self, legacy_config: dict[str, Any], processed_types: set[str]) -> list[str]:
         """Check for migration conflicts"""
         conflicts = []
 
@@ -358,9 +359,9 @@ class LegacyConfigurationMigrator:
     def _merge_legacy_config(
         self,
         target_config: JustNewsConfig,
-        legacy_config: Dict[str, Any],
+        legacy_config: dict[str, Any],
         config_type: str
-    ) -> Tuple[JustNewsConfig, List[str]]:
+    ) -> tuple[JustNewsConfig, list[str]]:
         """Merge legacy configuration into target config"""
         steps = []
         config_dict = target_config.dict()
@@ -392,7 +393,7 @@ class LegacyConfigurationMigrator:
         except Exception as e:
             raise ValueError(f"Failed to merge {config_type} configuration: {e}")
 
-    def _merge_database_config(self, config_dict: Dict[str, Any], legacy: Dict[str, Any]) -> List[str]:
+    def _merge_database_config(self, config_dict: dict[str, Any], legacy: dict[str, Any]) -> list[str]:
         """Merge database configuration"""
         steps = []
         db_config = config_dict.setdefault('database', {})
@@ -417,7 +418,7 @@ class LegacyConfigurationMigrator:
 
         return steps
 
-    def _merge_gpu_config(self, config_dict: Dict[str, Any], legacy: Dict[str, Any]) -> List[str]:
+    def _merge_gpu_config(self, config_dict: dict[str, Any], legacy: dict[str, Any]) -> list[str]:
         """Merge GPU configuration"""
         steps = []
         gpu_config = config_dict.setdefault('gpu', {})
@@ -437,7 +438,7 @@ class LegacyConfigurationMigrator:
 
         return steps
 
-    def _merge_agents_config(self, config_dict: Dict[str, Any], legacy: Dict[str, Any]) -> List[str]:
+    def _merge_agents_config(self, config_dict: dict[str, Any], legacy: dict[str, Any]) -> list[str]:
         """Merge agents configuration"""
         steps = []
         agents_config = config_dict.setdefault('agents', {})
@@ -465,7 +466,7 @@ class LegacyConfigurationMigrator:
 
         return steps
 
-    def _merge_crawling_config(self, config_dict: Dict[str, Any], legacy: Dict[str, Any]) -> List[str]:
+    def _merge_crawling_config(self, config_dict: dict[str, Any], legacy: dict[str, Any]) -> list[str]:
         """Merge crawling configuration"""
         steps = []
         crawling_config = config_dict.setdefault('crawling', {})
@@ -485,7 +486,7 @@ class LegacyConfigurationMigrator:
 
         return steps
 
-    def _merge_monitoring_config(self, config_dict: Dict[str, Any], legacy: Dict[str, Any]) -> List[str]:
+    def _merge_monitoring_config(self, config_dict: dict[str, Any], legacy: dict[str, Any]) -> list[str]:
         """Merge monitoring configuration"""
         steps = []
         monitoring_config = config_dict.setdefault('monitoring', {})
@@ -501,7 +502,7 @@ class LegacyConfigurationMigrator:
 
         return steps
 
-    def _merge_security_config(self, config_dict: Dict[str, Any], legacy: Dict[str, Any]) -> List[str]:
+    def _merge_security_config(self, config_dict: dict[str, Any], legacy: dict[str, Any]) -> list[str]:
         """Merge security configuration"""
         steps = []
         security_config = config_dict.setdefault('security', {})
@@ -517,7 +518,7 @@ class LegacyConfigurationMigrator:
 
         return steps
 
-    def _merge_training_config(self, config_dict: Dict[str, Any], legacy: Dict[str, Any]) -> List[str]:
+    def _merge_training_config(self, config_dict: dict[str, Any], legacy: dict[str, Any]) -> list[str]:
         """Merge training configuration"""
         steps = []
         training_config = config_dict.setdefault('training', {})
@@ -533,9 +534,9 @@ class LegacyConfigurationMigrator:
 
         return steps
 
-    def _generic_merge(self, config_dict: Dict[str, Any], legacy: Dict[str, Any]):
+    def _generic_merge(self, config_dict: dict[str, Any], legacy: dict[str, Any]):
         """Generic configuration merging"""
-        def deep_merge(target: Dict[str, Any], source: Dict[str, Any]):
+        def deep_merge(target: dict[str, Any], source: dict[str, Any]):
             for key, value in source.items():
                 if key in target and isinstance(target[key], dict) and isinstance(value, dict):
                     deep_merge(target[key], value)
@@ -708,7 +709,7 @@ class LegacyConfigurationMigrator:
 
         return "\n".join(code_lines)
 
-    def _generate_key_mappings(self, plan: MigrationPlan) -> Dict[str, str]:
+    def _generate_key_mappings(self, plan: MigrationPlan) -> dict[str, str]:
         """Generate key mappings for compatibility layer"""
         mappings = {}
 
@@ -733,7 +734,7 @@ def discover_and_migrate_configs(
     target_environment: Environment = Environment.DEVELOPMENT,
     execute: bool = False,
     backup: bool = True
-) -> Tuple[MigrationPlan, Optional[ValidationResult]]:
+) -> tuple[MigrationPlan, ValidationResult | None]:
     """
     Discover legacy configurations and optionally execute migration
 

@@ -82,7 +82,7 @@ python scripts/check_version.py
 
 Expected output:
 ```
-✅ JustNewsAgent Version: 0.8.0
+✅ JustNews Version: 0.8.0
 📊 Status: beta
 📅 Release Date: 2025-09-25
 📝 Description: Beta release candidate with unified startup system and enterprise GPU orchestration

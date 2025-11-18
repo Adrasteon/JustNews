@@ -1,0 +1,26 @@
+C4Container
+  title Memory Agent - Container View
+
+  Container_Boundary(mem, "Memory Agent") {
+    Container(api, "Memory API", "Python, FastAPI", "Handles ingest, search, and vector queries")
+    Container(maria, "MariaDB", "MariaDB", "Canonical article & metadata storage")
+    Container(chroma, "Chroma Vector Store", "ChromaDB", "Vector embeddings & semantic search")
+    Container(embedding_cache, "Embedding Cache/Model", "Transformer Model", "Shared embedding model instance + cache")
+    Container(vector_engine, "Vector Engine", "Python", "Encodes queries and orchestrates semantic search requests")
+  }
+
+  Rel(api, maria, "Writes/reads article rows", "SQL")
+  Rel(api, chroma, "Writes/reads embeddings & metadata", "Chroma HTTP")
+  Rel(api, embedding_cache, "Encodes content into embeddings")
+  Rel(vector_engine, chroma, "Queries vector store for semantic search")
+  Rel(api, vector_engine, "Uses vector engine for local search & ranking")
+
+  UpdateElementStyle(maria, $bgColor="#FFF8E6", $borderColor="#F6A623")
+  UpdateElementStyle(chroma, $bgColor="#F0FFF4", $borderColor="#27AE60")
+  UpdateElementStyle(embedding_cache, $bgColor="#FFF7F3", $borderColor="#FF6B6B")
+
+  UpdateRelStyle(api, chroma, $textColor="#333", $lineColor="#27AE60", $offsetX="10")
+  UpdateRelStyle(api, maria, $textColor="#333", $lineColor="#F6A623", $offsetX="10")
+  UpdateRelStyle(api, embedding_cache, $textColor="#333", $lineColor="#FF6B6B", $offsetX="-10")
+
+  UpdateLayoutConfig($c4ShapeInRow="2")

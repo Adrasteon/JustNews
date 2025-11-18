@@ -1,21 +1,10 @@
-# JustNews Helm Chart
+## DEPRECATED - Helm chart archived
 
-This Helm chart deploys the complete JustNews AI agent system on Kubernetes, including all 15 specialized agents, databases, monitoring stack, and supporting infrastructure.
+This Helm chart previously deployed JustNews on Kubernetes. Kubernetes/Helm have been fully retired for this workspace; systemd is the only supported deployment target.
 
-## Prerequisites
+## DEPRECATED
 
-- Kubernetes 1.19+
-- Helm 3.0+
-- NVIDIA GPU Operator (if GPU support is enabled)
-- StorageClass for persistent volumes
-
-## Installing the Chart
-
-To install the chart with the release name `justnews`:
-
-```bash
-helm install justnews ./infrastructure/helm/justnews
-```
+This Helm chart is archived. Kubernetes and Helm support has been retired. Use systemd instead.
 
 ## Configuration
 
@@ -41,35 +30,13 @@ Each agent can be configured individually. The chart supports 15 agents:
 - analytics
 - archive
 - auth
-- balancer
 - chief_editor
-- common
-- crawler
-- crawler_control
-- critic
-- dashboard
-- fact_checker
-- gpu_orchestrator
-- memory
-- newsreader
-- reasoning
-- scout
-- synthesizer
+DEPRECATED: This directory previously contained the Helm chart for JustNews.
 
-Example agent configuration:
+The full chart content has been archived at: `infrastructure/archives/helm/justnews/`.
 
-```yaml
-justnews:
-  agents:
-  - name: analyst
-    port: 8001
-    replicas: 2
-    gpuRequired: true
-    minReplicas: 1
-    maxReplicas: 5
-```
+If you need to work with the original chart for historical reasons, consult the archive, or git history for a full copy.
 
-### Database Configuration
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -187,13 +154,11 @@ To upgrade the chart:
 helm upgrade justnews ./infrastructure/helm/justnews
 ```
 
-## Uninstalling
+This chart file remains in the repository for historical and archival purposes only. It must not be used for any active deployment.
 
-To uninstall the chart:
+To deploy JustNews now, use the systemd artifacts and scripts under `deploy/refactor/systemd`.
 
-```bash
-helm uninstall justnews
-```
+Note: See `infrastructure/README.md` for systemd deployment instructions.
 
 ## Troubleshooting
 

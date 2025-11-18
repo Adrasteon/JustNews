@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 import os
 import sys
-sys.path.insert(0, '/home/adra/JustNewsAgent-Clean')
+from pathlib import Path
+
+# Add repo root to sys.path dynamically instead of a hard-coded absolute path
+repo_root = Path(__file__).resolve().parent
+sys.path.insert(0, str(repo_root))
 
 # Set correct MariaDB environment variables
 os.environ['MARIADB_HOST'] = '127.0.0.1'

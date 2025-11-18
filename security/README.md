@@ -1,8 +1,8 @@
-# JustNewsAgent Security Framework
+# JustNews Security Framework
 
 ## Overview
 
-The JustNewsAgent Security Framework provides comprehensive security infrastructure including authentication, authorization, encryption, compliance monitoring, and security event tracking.
+The JustNews Security Framework provides comprehensive security infrastructure including authentication, authorization, encryption, compliance monitoring, and security event tracking.
 
 ## Architecture
 

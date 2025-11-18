@@ -1,8 +1,8 @@
-# JustNewsAgent Developer Documentation
+# JustNews Developer Documentation
 
 ## Architecture Overview
 
-JustNewsAgent is a distributed multi-agent system for automated news analysis, featuring GPU acceleration, continuous learning, and comprehensive monitoring.
+JustNews is a distributed multi-agent system for automated news analysis, featuring GPU acceleration, continuous learning, and comprehensive monitoring.
 
 ## System Architecture
 

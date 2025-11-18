@@ -1,17 +1,19 @@
 """
-Search API Module - JustNewsAgent Search Endpoints
+Search API Module - JustNews Search Endpoints
 
 This module provides REST API endpoints for semantic search functionality
 using the migrated MariaDB + ChromaDB database system.
 """
 
-import logging
-from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from common.observability import get_logger
-from common.semantic_search_service import get_search_service, SearchResponse, SearchResult
+from common.semantic_search_service import (
+    SearchResponse,
+    SearchResult,
+    get_search_service,
+)
 
 logger = get_logger(__name__)
 
@@ -145,7 +147,7 @@ async def hybrid_search(
         raise HTTPException(status_code=500, detail=f"Hybrid search failed: {str(e)}")
 
 
-@router.get("/similar/{article_id}", response_model=List[SearchResult])
+@router.get("/similar/{article_id}", response_model=list[SearchResult])
 async def find_similar_articles(
     article_id: int,
     n: int = Query(5, description="Number of similar articles", ge=1, le=20),
@@ -172,7 +174,7 @@ async def find_similar_articles(
         raise HTTPException(status_code=500, detail=f"Similar articles search failed: {str(e)}")
 
 
-@router.get("/by-source/{source_id}", response_model=List[SearchResult])
+@router.get("/by-source/{source_id}", response_model=list[SearchResult])
 async def search_articles_by_source(
     source_id: int,
     n: int = Query(10, description="Number of articles", ge=1, le=100)
@@ -197,7 +199,7 @@ async def search_articles_by_source(
         raise HTTPException(status_code=500, detail=f"Source search failed: {str(e)}")
 
 
-@router.get("/by-category/{category}", response_model=List[SearchResult])
+@router.get("/by-category/{category}", response_model=list[SearchResult])
 async def search_articles_by_category(
     category: str,
     n: int = Query(10, description="Number of articles", ge=1, le=100)
@@ -222,9 +224,9 @@ async def search_articles_by_category(
         raise HTTPException(status_code=500, detail=f"Category search failed: {str(e)}")
 
 
-@router.get("/recent", response_model=List[SearchResult])
+@router.get("/recent", response_model=list[SearchResult])
 async def get_recent_articles(
-    q: Optional[str] = Query(None, description="Optional search query to filter results"),
+    q: str | None = Query(None, description="Optional search query to filter results"),
     n: int = Query(10, description="Number of articles", ge=1, le=100)
 ):
     """

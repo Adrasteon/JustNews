@@ -6,7 +6,9 @@ After=network.target mcp.service
 Type=simple
 User=justnews
 Group=justnews
-WorkingDirectory=/opt/justnews
+Environment=SERVICE_DIR=/opt/justnews
+EnvironmentFile=/opt/justnews/global.env
+WorkingDirectory=$SERVICE_DIR
 ExecStart=/usr/local/bin/justnews-agent-critic
 Restart=on-failure
 RestartSec=5

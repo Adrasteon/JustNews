@@ -1,14 +1,15 @@
 """
-Analytics Tools for JustNewsAgent
+Analytics Tools for JustNews
 
 Wrapper functions for analytics operations that can be called by other agents
-and services in the JustNewsAgent system.
+and services in the JustNews system.
 """
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
+
 from common.observability import get_logger
 
 logger = get_logger(__name__)
@@ -18,7 +19,7 @@ ANALYTICS_SERVICE_URL = os.environ.get("ANALYTICS_SERVICE_URL", "http://localhos
 ANALYTICS_SERVICE_TIMEOUT = int(os.environ.get("ANALYTICS_TIMEOUT", "30"))
 
 
-def get_system_health() -> Optional[Dict[str, Any]]:
+def get_system_health() -> dict[str, Any] | None:
     """
     Get comprehensive system health metrics.
 
@@ -50,7 +51,7 @@ def get_system_health() -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_performance_metrics(hours: int = 1) -> Optional[Dict[str, Any]]:
+def get_performance_metrics(hours: int = 1) -> dict[str, Any] | None:
     """
     Get real-time performance metrics for specified time period.
 
@@ -85,7 +86,7 @@ def get_performance_metrics(hours: int = 1) -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_agent_profile(agent_name: str, hours: int = 24) -> Optional[Dict[str, Any]]:
+def get_agent_profile(agent_name: str, hours: int = 24) -> dict[str, Any] | None:
     """
     Get performance profile for specific agent.
 
@@ -121,7 +122,7 @@ def get_agent_profile(agent_name: str, hours: int = 24) -> Optional[Dict[str, An
         return None
 
 
-def get_optimization_recommendations(hours: int = 24) -> Optional[List[Dict[str, Any]]]:
+def get_optimization_recommendations(hours: int = 24) -> list[dict[str, Any]] | None:
     """
     Get advanced optimization recommendations.
 
@@ -157,7 +158,7 @@ def get_optimization_recommendations(hours: int = 24) -> Optional[List[Dict[str,
         return None
 
 
-def record_performance_metric(metric_data: Dict[str, Any]) -> bool:
+def record_performance_metric(metric_data: dict[str, Any]) -> bool:
     """
     Record a custom performance metric.
 
@@ -196,7 +197,7 @@ def record_performance_metric(metric_data: Dict[str, Any]) -> bool:
         return False
 
 
-def check_analytics_service_health() -> Dict[str, Any]:
+def check_analytics_service_health() -> dict[str, Any]:
     """
     Check the health status of the analytics service.
 
@@ -242,7 +243,7 @@ def get_analytics_dashboard_url() -> str:
     return f"{ANALYTICS_SERVICE_URL}/dashboard"
 
 
-def export_analytics_report(hours: int = 24) -> Optional[Dict[str, Any]]:
+def export_analytics_report(hours: int = 24) -> dict[str, Any] | None:
     """
     Export comprehensive analytics report.
 
@@ -284,7 +285,7 @@ def export_analytics_report(hours: int = 24) -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_analytics_service_info() -> Optional[Dict[str, Any]]:
+def get_analytics_service_info() -> dict[str, Any] | None:
     """
     Get information about the analytics service capabilities.
 

@@ -1,4 +1,5 @@
 {{- range $agent := .Values.justnews.agents }}
+## DEPRECATED: Kubernetes manifest archived
+## This file has been archived; use systemd units in `deploy/refactor/systemd`.
 {{- include "justnews.agent.deployment" (dict "Chart" $.Chart "Release" $.Release "Values" $.Values "agent" $agent) }}
----
 {{- end }}

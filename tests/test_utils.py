@@ -1,8 +1,8 @@
 """
-Testing Utilities for JustNewsAgent
+Testing Utilities for JustNews
 
 This module provides comprehensive testing utilities, helpers, and patterns
-for the JustNewsAgent testing framework. It includes utilities for:
+for the JustNews testing framework. It includes utilities for:
 
 - Async testing patterns
 - Mock creation and management
@@ -16,18 +16,16 @@ production-ready testing infrastructure.
 """
 
 import asyncio
-import time
-import json
-import tempfile
 import shutil
-from typing import Any, Dict, List, Optional, Callable, AsyncGenerator, Generator
-from pathlib import Path
+import tempfile
+import time
+from collections.abc import Callable
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
 
 import pytest
-import pytest_asyncio
-
 
 # ============================================================================
 # ASYNC TESTING UTILITIES
@@ -76,7 +74,7 @@ async def async_test_timeout(timeout_seconds: float = 30.0):
     """Async context manager for test timeouts"""
     try:
         yield await asyncio.wait_for(asyncio.sleep(0), timeout=timeout_seconds)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         pytest.fail(f"Test timed out after {timeout_seconds} seconds")
 
 
@@ -90,8 +88,8 @@ class MockFactory:
     @staticmethod
     def create_mock_agent(
         name: str,
-        tools: Optional[List[str]] = None,
-        responses: Optional[Dict[str, Any]] = None
+        tools: list[str] | None = None,
+        responses: dict[str, Any] | None = None
     ):
         """Create a mock agent for testing"""
 
@@ -112,7 +110,7 @@ class MockFactory:
         return MockAgent()
 
     @staticmethod
-    def create_mock_mcp_bus(agents: Optional[Dict[str, str]] = None):
+    def create_mock_mcp_bus(agents: dict[str, str] | None = None):
         """Create a mock MCP Bus for testing"""
 
         class MockMCPBus:
@@ -124,7 +122,7 @@ class MockFactory:
                 }
                 self.calls = []
 
-            def register_agent(self, registration: Dict[str, Any]):
+            def register_agent(self, registration: dict[str, Any]):
                 """Register an agent with minimal validation for integration tests."""
                 agent = registration.get("agent")
                 address = registration.get("address") or f"http://localhost:{registration.get('port', 0)}"
@@ -299,11 +297,11 @@ class MockFactory:
             def __init__(self):
                 self.connected = True
                 self.data = {}
-                self.executed_queries: List[Dict[str, Any]] = []
+                self.executed_queries: list[dict[str, Any]] = []
 
                 class _Collection:
                     def __init__(self):
-                        self.records: List[Dict[str, Any]] = []
+                        self.records: list[dict[str, Any]] = []
 
                     def add(self, **kwargs):
                         self.records.append(kwargs)
@@ -318,7 +316,7 @@ class MockFactory:
             async def disconnect(self):
                 self.connected = False
 
-            async def store_article(self, article_data: Dict):
+            async def store_article(self, article_data: dict):
                 article_id = article_data.get("id", f"mock_{len(self.data)}")
                 self.data[article_id] = article_data
                 return {"status": "success", "id": article_id}
@@ -339,7 +337,7 @@ class MockFactory:
             async def get_article_count(self):
                 return len(self.data)
 
-            def execute_query(self, query: str, params: Optional[Any] = None):
+            def execute_query(self, query: str, params: Any | None = None):
                 """Synchronous helper mirroring production execute_query signature."""
                 record = {"query": query, "params": params}
                 self.executed_queries.append(record)
@@ -354,7 +352,7 @@ class TestDataGenerator:
     """Generate test data for various scenarios"""
 
     @staticmethod
-    def generate_articles(count: int = 5, sentiment: str = "neutral") -> List[Dict]:
+    def generate_articles(count: int = 5, sentiment: str = "neutral") -> list[dict]:
         """Generate sample articles for testing"""
         articles = []
         sentiments = {
@@ -378,7 +376,7 @@ class TestDataGenerator:
         return articles
 
     @staticmethod
-    def generate_mcp_payloads(count: int = 3) -> List[Dict]:
+    def generate_mcp_payloads(count: int = 3) -> list[dict]:
         """Generate MCP call payloads for testing"""
         payloads = []
         agents = ["analyst", "fact_checker", "synthesizer"]
@@ -395,7 +393,7 @@ class TestDataGenerator:
         return payloads
 
     @staticmethod
-    def generate_performance_data(samples: int = 100) -> List[float]:
+    def generate_performance_data(samples: int = 100) -> list[float]:
         """Generate performance timing data"""
         import random
         return [random.uniform(0.001, 0.1) for _ in range(samples)]
@@ -409,8 +407,8 @@ class TestDataGenerator:
 class PerformanceMetrics:
     """Container for performance test results"""
     operation_name: str
-    execution_times: List[float] = field(default_factory=list)
-    memory_usage: List[float] = field(default_factory=list)
+    execution_times: list[float] = field(default_factory=list)
+    memory_usage: list[float] = field(default_factory=list)
     success_rate: float = 1.0
 
     @property
@@ -435,8 +433,8 @@ class PerformanceMetrics:
 
     def assert_performance_requirements(
         self,
-        max_average_time: Optional[float] = None,
-        max_p95_time: Optional[float] = None,
+        max_average_time: float | None = None,
+        max_p95_time: float | None = None,
         min_success_rate: float = 0.95
     ):
         """Assert that performance requirements are met"""
@@ -538,7 +536,7 @@ class CustomAssertions:
     """Custom assertion helpers for domain-specific testing"""
 
     @staticmethod
-    def assert_mcp_response_valid(response: Dict):
+    def assert_mcp_response_valid(response: dict):
         """Assert that MCP response has required fields"""
         required_fields = ["status", "data"]
         for field in required_fields:
@@ -548,7 +546,7 @@ class CustomAssertions:
             f"Invalid status: {response['status']}"
 
     @staticmethod
-    def assert_article_structure(article: Dict):
+    def assert_article_structure(article: dict):
         """Assert that article has required structure"""
         required_fields = ["id", "content", "meta"]
         for field in required_fields:
@@ -581,7 +579,7 @@ class CustomAssertions:
             f"{operation_name} took {execution_time:.3f}s, limit was {max_time}s"
 
     @staticmethod
-    def assert_valid_agent_registration(registration_data: Dict):
+    def assert_valid_agent_registration(registration_data: dict):
         """Assert that agent registration data is valid"""
         required_fields = ["agent", "port", "capabilities"]
         for field in required_fields:
@@ -592,7 +590,7 @@ class CustomAssertions:
         assert len(registration_data["capabilities"]) > 0, "Must have at least one capability"
 
     @staticmethod
-    def assert_valid_news_processing_result(result: Dict[str, Any]):
+    def assert_valid_news_processing_result(result: dict[str, Any]):
         """Validate final news processing payload used in integration tests."""
         required_fields = {
             "article_id": int,

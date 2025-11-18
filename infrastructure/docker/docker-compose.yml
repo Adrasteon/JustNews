@@ -1,4 +1,7 @@
-version: '3.8'
+# DEPRECATED: Docker Compose for JustNews has been archived.
+# See: infrastructure/archives/docker/docker-compose.yml for an archived copy.
+#
+# This file is present only as a pointer and must not be used for active deployments.
 
 services:
   mariadb:
@@ -35,9 +38,8 @@ services:
       - chromadb_data:/chroma/chroma
     environment:
       - CHROMA_SERVER_HOST=0.0.0.0
-      - CHROMA_SERVER_HTTP_PORT=8000
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+  # Docker Compose is deprecated; use systemd scaling instead:
+  # for i in 1 2 3 4 5; do sudo systemctl enable --now justnews-scout@${i}; done
       interval: 30s
       timeout: 10s
       retries: 3
@@ -391,31 +393,7 @@ services:
       mcp-bus:
         condition: service_started
 
-  balancer:
-    build:
-      context: ../../
-      dockerfile: infrastructure/docker/agent-dockerfiles/Dockerfile.balancer
-    container_name: justnews-balancer
-    environment:
-      DEPLOY_ENV: development
-      LOG_LEVEL: INFO
-      MYSQL_HOST: mariadb
-      MYSQL_DB: justnews
-      MYSQL_USER: justnews
-      MYSQL_PASSWORD: change_me
-      CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
-      REDIS_HOST: redis
-      MCP_BUS_HOST: mcp-bus
-      MCP_BUS_PORT: 8000
-    ports:
-      - "8010:8010"
-    networks:
-      - justnews-network
-    restart: unless-stopped
-    depends_on:
-      mcp-bus:
-        condition: service_started
+  # balancer service removed - responsibilities moved to critic/analytics/gpu_orchestrator
 
   crawler:
     build:

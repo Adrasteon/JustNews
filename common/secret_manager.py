@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Secret Management System for JustNewsAgent
+Secret Management System for JustNews
 
 Provides a small, test-friendly secret manager with support for:
 - environment variables
@@ -12,9 +12,9 @@ This is intentionally minimal and designed to satisfy unit tests.
 import base64
 import json
 import os
+import traceback
 from pathlib import Path
 from typing import Any
-import traceback
 
 import cryptography.fernet as crypto_fernet
 from cryptography.hazmat.primitives import hashes
@@ -132,7 +132,7 @@ class SecretManager:
         """
         if os.path.exists(self.vault_path) and not self._key:
             try:
-                with open(self.vault_path, 'r') as f:
+                with open(self.vault_path) as f:
                     self._vault = json.load(f)
                 logger.info("Loaded unencrypted vault (development mode)")
             except Exception:
@@ -286,7 +286,7 @@ if __name__ == "__main__":
     # Test the secret management system
     secrets = get_secret_manager()
 
-    print("=== JustNewsAgent Secret Management System ===")
+    print("=== JustNews Secret Management System ===")
     print(f"Vault Path: {secrets.vault_path}")
     print(f"Vault Encrypted: {secrets._key is not None}")
     print(f"Vault Exists: {os.path.exists(secrets.vault_path)}")

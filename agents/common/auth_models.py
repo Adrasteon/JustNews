@@ -1,5 +1,5 @@
 """
-User authentication and authorization models for JustNewsAgent
+User authentication and authorization models for JustNews
 Provides JWT-based authentication with role-based access control
 """
 
@@ -7,20 +7,20 @@ import hashlib
 import os
 import secrets
 from contextlib import contextmanager
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 
 import jwt
-from database.utils.migrated_database_utils import create_database_service
 from pydantic import BaseModel, EmailStr
 
 from common.observability import get_logger
+from database.utils.migrated_database_utils import create_database_service
 
 # Authentication Database Configuration (separate from main app database)
-AUTH_POSTGRES_HOST = os.environ.get("AUTH_POSTGRES_HOST", "localhost")
-AUTH_POSTGRES_DB = os.environ.get("AUTH_POSTGRES_DB", "justnews_auth")
-AUTH_POSTGRES_USER = os.environ.get("AUTH_POSTGRES_USER", "justnews_auth_user")
-AUTH_POSTGRES_PASSWORD = os.environ.get("AUTH_POSTGRES_PASSWORD", "auth_secure_password_2025")
+AUTH_MARIADB_HOST = os.environ.get("AUTH_MARIADB_HOST", os.environ.get("AUTH_POSTGRES_HOST", "localhost"))
+AUTH_MARIADB_DB = os.environ.get("AUTH_MARIADB_DB", os.environ.get("AUTH_POSTGRES_DB", "justnews_auth"))
+AUTH_MARIADB_USER = os.environ.get("AUTH_MARIADB_USER", os.environ.get("AUTH_POSTGRES_USER", "justnews_auth_user"))
+AUTH_MARIADB_PASSWORD = os.environ.get("AUTH_MARIADB_PASSWORD", os.environ.get("AUTH_POSTGRES_PASSWORD", "auth_secure_password_2025"))
 
 # Authentication connection pool configuration
 AUTH_POOL_MIN_CONNECTIONS = int(os.environ.get("AUTH_DB_POOL_MIN_CONNECTIONS", "1"))
@@ -40,6 +40,59 @@ def initialize_auth_db_service():
     _auth_service = create_database_service()
     logger.info("Authentication database service initialized via migrated DB service")
     return _auth_service
+
+
+# Backwards-compatibility: legacy callers expect a connection pool API for
+# authentication DBs (initialize_auth_connection_pool, get_auth_connection_pool)
+# Historically these returned a pool with getconn()/closeall(). The migrated
+# database service exposes mb_conn. Provide a tiny compatibility wrapper here.
+_auth_connection_pool = None
+
+
+class _AuthPoolCompat:
+    def __init__(self, mb_conn):
+        self._conn = mb_conn
+
+    def getconn(self):
+        """Return the underlying connection object for compatibility.
+
+        Callers typically use `with pool.getconn() as conn:` or `conn = pool.getconn()`
+        and then `with conn.cursor() as cursor:`. The returned connection implements
+        cursor() so this is compatible with existing code.
+        """
+        return self._conn
+
+    def closeall(self):
+        """No-op: the migration uses a single connection managed by the service."""
+        try:
+            # Attempt a gentle close if underlying connection exposes close
+            if hasattr(self._conn, 'close'):
+                self._conn.close()
+        except Exception:
+            pass
+
+
+def initialize_auth_connection_pool() -> _AuthPoolCompat:
+    """Initialize (or return) a compatibility connection pool for auth DB.
+
+    This will initialise the migrated database service if required and return a
+    pool-like object so older code paths continue to work.
+    """
+    global _auth_connection_pool
+    if _auth_connection_pool is not None:
+        return _auth_connection_pool
+
+    service = initialize_auth_db_service()
+    conn = getattr(service, 'mb_conn', None)
+    if conn is None:
+        raise RuntimeError('Auth DB connection not available')
+    _auth_connection_pool = _AuthPoolCompat(conn)
+    return _auth_connection_pool
+
+
+def get_auth_connection_pool() -> _AuthPoolCompat | None:
+    """Return the compatibility connection pool instance (or None)."""
+    return _auth_connection_pool
 
 
 @contextmanager
@@ -207,9 +260,9 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     """Create JWT access token"""
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(UTC) + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({"exp": expire, "type": "access"})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
@@ -218,7 +271,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 def create_refresh_token(data: dict) -> str:
     """Create JWT refresh token"""
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(days=JWT_REFRESH_TOKEN_EXPIRE_DAYS)
+    expire = datetime.now(UTC) + timedelta(days=JWT_REFRESH_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire, "type": "refresh"})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
     return encoded_jwt
@@ -412,7 +465,7 @@ def deactivate_user(user_id: int) -> bool:
 def store_refresh_token(user_id: int, refresh_token: str) -> bool:
     """Store refresh token in database"""
     token_hash = hashlib.sha256(refresh_token.encode()).hexdigest()
-    expires_at = datetime.now(timezone.utc) + timedelta(days=JWT_REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.now(UTC) + timedelta(days=JWT_REFRESH_TOKEN_EXPIRE_DAYS)
 
     query = """
     INSERT INTO user_sessions (user_id, refresh_token_hash, expires_at)
@@ -461,7 +514,7 @@ def create_password_reset_token(user_id: int) -> str:
     """Create a password reset token"""
     token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(token.encode()).hexdigest()
-    expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+    expires_at = datetime.now(UTC) + timedelta(hours=1)
 
     query = """
     INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)

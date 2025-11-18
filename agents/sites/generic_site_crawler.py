@@ -10,6 +10,16 @@ and fall back to no-op behaviour in offline environments.
 from __future__ import annotations
 
 import asyncio
+import json
+import os
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any
+from urllib.parse import urlparse, urlunparse
+
+import requests
+
 from agents.crawler.enhancements import (
     ModalHandler,
     ModalHandlingResult,
@@ -18,15 +28,6 @@ from agents.crawler.enhancements import (
     StealthBrowserFactory,
     UserAgentProvider,
 )
-import json
-import os
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, List, Optional
-from urllib.parse import urlparse, urlunparse
-
-import requests
 
 try:  # readability-lxml (HTML → Article fallback)
     from lxml import html as lxml_html  # type: ignore[import-not-found]
@@ -40,7 +41,7 @@ from common.url_normalization import hash_article_url, normalize_article_url
 logger = get_logger(__name__)
 
 
-def _bool_from_env(value: Optional[str], default: bool = False) -> bool:
+def _bool_from_env(value: str | None, default: bool = False) -> bool:
     """Parse boolean-ish environment flags."""
     if value is None:
         return default
@@ -51,12 +52,12 @@ def _bool_from_env(value: Optional[str], default: bool = False) -> bool:
 class SiteConfig:
     """Normalized site configuration wrapper used by crawler components."""
 
-    source_id: Optional[int] = None
+    source_id: int | None = None
     name: str = ""
     domain: str = ""
     url: str = ""
     crawling_strategy: str = "generic"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __init__(self, source: Any):
         data = self._normalise_source(source)
@@ -108,7 +109,7 @@ class SiteConfig:
         )
 
     @staticmethod
-    def _normalise_source(source: Any) -> Dict[str, Any]:
+    def _normalise_source(source: Any) -> dict[str, Any]:
         if isinstance(source, SiteConfig):
             return source.to_dict()
         if isinstance(source, Mapping):
@@ -125,7 +126,7 @@ class SiteConfig:
     def start_url(self) -> str:
         return self.url or (f"https://{self.domain}" if self.domain else "")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.source_id,
             "name": self.name,
@@ -150,14 +151,14 @@ class GenericSiteCrawler:
         concurrent_browsers: int = 2,
         batch_size: int = 8,
         *,
-        enable_http_fetch: Optional[bool] = None,
-        session: Optional[requests.Session] = None,
+        enable_http_fetch: bool | None = None,
+        session: requests.Session | None = None,
         user_agent_provider: UserAgentProvider | None = None,
         proxy_manager: ProxyManager | None = None,
         stealth_factory: StealthBrowserFactory | None = None,
         modal_handler: ModalHandler | None = None,
         paywall_detector: PaywallDetector | None = None,
-        enable_stealth_headers: Optional[bool] = None,
+        enable_stealth_headers: bool | None = None,
     ):
         self.site_config = site_config
         self.concurrent_browsers = concurrent_browsers
@@ -177,7 +178,7 @@ class GenericSiteCrawler:
         self._modal_dismissals = 0
         self._cookie_consents = 0
 
-    async def crawl_site(self, max_articles: int = 25) -> List[Dict[str, Any]]:
+    async def crawl_site(self, max_articles: int = 25) -> list[dict[str, Any]]:
         if not self.enable_http_fetch:
             logger.debug(
                 "HTTP fetching disabled via UNIFIED_CRAWLER_ENABLE_HTTP_FETCH; skipping %s",
@@ -332,7 +333,7 @@ class GenericSiteCrawler:
         return normalised.rstrip("/") or normalised
 
     def _fetch_url(self, url: str) -> str:
-        headers: Dict[str, str] = {}
+        headers: dict[str, str] = {}
         domain = self.site_config.domain or ""
         if not domain:
             parsed = urlparse(url)
@@ -376,7 +377,7 @@ class GenericSiteCrawler:
                 self._notify_proxy_failure(exc)
             raise
 
-    def _build_article(self, url: str, html: str) -> Optional[Dict[str, Any]]:
+    def _build_article(self, url: str, html: str) -> dict[str, Any] | None:
         extraction: ExtractionOutcome = extract_article_content(html, url)
         if not extraction.text:
             logger.debug("Extraction pipeline returned no content for %s", url)
@@ -387,9 +388,9 @@ class GenericSiteCrawler:
         hash_algorithm = os.environ.get("ARTICLE_URL_HASH_ALGO", "sha256")
         hash_candidate = normalized_url or canonical_url or url
         url_hash = hash_article_url(hash_candidate, algorithm=hash_algorithm)
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(UTC).isoformat()
 
-        extraction_metadata: Dict[str, Any] = {
+        extraction_metadata: dict[str, Any] = {
             "strategy": self.site_config.crawling_strategy,
             "extractor": extraction.extractor_used,
             "fallbacks_attempted": extraction.fallbacks_attempted,
@@ -445,7 +446,7 @@ class GenericSiteCrawler:
             logger.debug("Consent modal detected for %s (%s)", self.site_config.domain, notes)
         return modal_result.cleaned_html, modal_result
 
-    def _extract_article_links(self, html: str, base_url: str) -> List[str]:
+    def _extract_article_links(self, html: str, base_url: str) -> list[str]:
         """Extract article links from homepage HTML."""
         if lxml_html is None:
             logger.warning("lxml not available for link extraction")
@@ -545,13 +546,13 @@ class MultiSiteCrawler:
     def __init__(
         self,
         *,
-        enable_http_fetch: Optional[bool] = None,
+        enable_http_fetch: bool | None = None,
         user_agent_provider: UserAgentProvider | None = None,
         proxy_manager: ProxyManager | None = None,
         stealth_factory: StealthBrowserFactory | None = None,
         modal_handler: ModalHandler | None = None,
         paywall_detector: PaywallDetector | None = None,
-        enable_stealth_headers: Optional[bool] = None,
+        enable_stealth_headers: bool | None = None,
     ):
         self.enable_http_fetch = enable_http_fetch
         self.user_agent_provider = user_agent_provider
@@ -567,8 +568,8 @@ class MultiSiteCrawler:
         *,
         max_articles_per_site: int = 25,
         concurrent_sites: int = 3,
-    ) -> Dict[str, List[Dict[str, Any]]]:
-        results: Dict[str, List[Dict[str, Any]]] = {}
+    ) -> dict[str, list[dict[str, Any]]]:
+        results: dict[str, list[dict[str, Any]]] = {}
         semaphore = asyncio.Semaphore(max(1, concurrent_sites))
 
         async def _crawl_single(config: SiteConfig) -> None:

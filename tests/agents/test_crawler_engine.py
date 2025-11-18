@@ -6,11 +6,8 @@ multi-site concurrent crawling, article ingestion, AI analysis delegation,
 performance monitoring, and error handling.
 """
 
-import asyncio
 import json
-import os
-import time
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 import pytest_asyncio

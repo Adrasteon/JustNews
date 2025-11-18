@@ -6,12 +6,10 @@ Tests all scripts in the refactored ecosystem for basic functionality.
 Validates that scripts can be imported, have proper help, and basic argument parsing.
 """
 
-import os
-import sys
-import subprocess
 import importlib.util
+import subprocess
+import sys
 from pathlib import Path
-from typing import List, Dict, Tuple
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -24,7 +22,7 @@ class ScriptTester:
         self.refactor_dir = refactor_dir
         self.results = []
 
-    def find_python_scripts(self) -> List[Path]:
+    def find_python_scripts(self) -> list[Path]:
         """Find all Python scripts in the refactor directory"""
         scripts = []
         for category_dir in self.refactor_dir.iterdir():
@@ -33,7 +31,7 @@ class ScriptTester:
                     scripts.append(script_file)
         return scripts
 
-    def test_script_import(self, script_path: Path) -> Tuple[bool, str]:
+    def test_script_import(self, script_path: Path) -> tuple[bool, str]:
         """Test if script can be imported without errors"""
         try:
             spec = importlib.util.spec_from_file_location(
@@ -48,7 +46,7 @@ class ScriptTester:
         except Exception as e:
             return False, f"Import failed: {e}"
 
-    def test_script_help(self, script_path: Path) -> Tuple[bool, str]:
+    def test_script_help(self, script_path: Path) -> tuple[bool, str]:
         """Test if script can be executed without immediate crash"""
         try:
             result = subprocess.run(
@@ -68,7 +66,7 @@ class ScriptTester:
         except Exception as e:
             return False, f"Script execution failed: {e}"
 
-    def test_script_basic_args(self, script_path: Path) -> Tuple[bool, str]:
+    def test_script_basic_args(self, script_path: Path) -> tuple[bool, str]:
         """Test basic argument parsing"""
         try:
             # Test with --dry-run if it's a Python script using our framework
@@ -85,7 +83,7 @@ class ScriptTester:
         except Exception as e:
             return False, f"Basic args test failed: {e}"
 
-    def run_tests(self) -> Dict[str, List[Tuple[str, bool, str]]]:
+    def run_tests(self) -> dict[str, list[tuple[str, bool, str]]]:
         """Run all tests on scripts"""
         results = {}
 
@@ -111,7 +109,7 @@ class ScriptTester:
 
         return results
 
-    def print_results(self, results: Dict[str, List[Tuple[str, bool, str]]]):
+    def print_results(self, results: dict[str, list[tuple[str, bool, str]]]):
         """Print test results"""
         print("Script Ecosystem Test Results")
         print("=" * 50)

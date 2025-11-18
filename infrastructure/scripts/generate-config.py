@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """
-Configuration Generator for JustNewsAgent
+Configuration Generator for JustNews
 Generates environment-specific configuration files from Jinja2 templates
 """
 
-import os
-import sys
 import argparse
 import json
-from pathlib import Path
-from typing import Dict, Any
-from jinja2 import Environment, FileSystemLoader
 import secrets
 import string
+from pathlib import Path
+from typing import Any
+
+from jinja2 import Environment, FileSystemLoader
 
 
 class ConfigGenerator:
@@ -32,11 +31,17 @@ class ConfigGenerator:
         alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
         return ''.join(secrets.choice(alphabet) for _ in range(length))
 
-    def load_config_values(self, config_file: str = None) -> Dict[str, Any]:
+    def load_config_values(self, config_file: str = None) -> dict[str, Any]:
         """Load configuration values from file or use defaults"""
         defaults = {
             'deploy_env': 'development',
-            'deploy_target': 'docker-compose',
+            'deploy_target': 'systemd',
+            # Prefer MariaDB settings; provide psycopg2/postgres vars for compatibility
+            'mariadb_host': 'localhost',
+            'mariadb_port': 3306,
+            'mariadb_db': 'justnews',
+            'mariadb_user': 'justnews',
+            'mariadb_password': self.generate_secret(16),
             'postgres_host': 'localhost',
             'postgres_port': 5432,
             'postgres_db': 'justnews',
@@ -59,14 +64,14 @@ class ConfigGenerator:
         }
 
         if config_file and Path(config_file).exists():
-            with open(config_file, 'r') as f:
+            with open(config_file) as f:
                 user_config = json.load(f)
             defaults.update(user_config)
 
         return defaults
 
     def generate_config(self, template_name: str, output_name: str,
-                       config_values: Dict[str, Any]) -> None:
+                       config_values: dict[str, Any]) -> None:
         """Generate a configuration file from template"""
         template = self.jinja_env.get_template(template_name)
         output_content = template.render(**config_values)
@@ -111,7 +116,7 @@ class ConfigGenerator:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate JustNewsAgent configuration files'
+        description='Generate JustNews configuration files'
     )
     parser.add_argument(
         '--template-dir',

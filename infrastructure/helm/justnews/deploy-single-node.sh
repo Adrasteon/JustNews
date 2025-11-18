@@ -1,15 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# JustNews Single-Node Kubernetes Deployment Script
-# Optimized for AMD Ryzen 7 + 32GB RAM + RTX3090
+# DEPRECATED: Kubernetes/Helm deployment scripts have been removed from this workspace.
+# The JustNews system now runs exclusively under systemd. Please use the systemd
+# deployment scripts located at `deploy/refactor/systemd`.
+#
+# If you are reading this file, it remains here for historical/documentary purposes only.
+# Execution of this file will print a warning and exit.
 
-set -e
-
-# Configuration
-NAMESPACE="${NAMESPACE:-justnews}"
-HELM_CHART="./infrastructure/helm/justnews"
-VALUES_FILE="${VALUES_FILE:-values-single-node.yaml}"
-RELEASE_NAME="${RELEASE_NAME:-justnews}"
+echo "ERROR: This script is DEPRECATED and has been removed. Use systemd-based deployment instead."
+echo "The original Helm chart content has been archived: infrastructure/archives/helm/justnews/"
+echo "See: deploy/refactor/systemd/DEPLOYMENT.md and infrastructure/README.md for systemd deployment guidance."
+exit 1
 
 # Set kubeconfig for kubectl
 export KUBECONFIG="${KUBECONFIG:-$HOME/.kube/config}"

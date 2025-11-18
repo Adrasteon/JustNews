@@ -27,24 +27,24 @@ All endpoints support both MCP Bus format and direct API calls.
 
 import asyncio
 import inspect
-import json
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from common.observability import get_logger
-
 # Import metrics library
 from common.metrics import JustNewsMetrics
+from common.observability import get_logger
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
-    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+    from database.utils.migrated_database_utils import (
+        create_database_service,  # type: ignore
+    )
 except Exception:
     create_database_service = None
 
@@ -114,7 +114,7 @@ app = FastAPI(
 )
 
 # Initialize metrics lazily to allow tests to patch constructor
-_metrics_client: Optional[JustNewsMetrics] = None
+_metrics_client: JustNewsMetrics | None = None
 _metrics_factory: Any = JustNewsMetrics
 
 
@@ -127,7 +127,7 @@ def get_metrics_client() -> JustNewsMetrics:
     return _metrics_client
 
 # Lightweight helpers patched in tests
-def validate_content_size(content: Optional[str], max_bytes: int = 1_000_000) -> bool:
+def validate_content_size(content: str | None, max_bytes: int = 1_000_000) -> bool:
     """Return True when content is within the configured size budget."""
     if content is None:
         return True
@@ -137,20 +137,20 @@ def validate_content_size(content: Optional[str], max_bytes: int = 1_000_000) ->
         return False
 
 
-def sanitize_content(content: Optional[str]) -> str:
+def sanitize_content(content: str | None) -> str:
     """Trim whitespace and coerce non-string payloads into safe defaults."""
     if content is None:
         return ""
     return content.strip() if isinstance(content, str) else str(content)
 
 
-def verify_facts(content: str, source_url: Optional[str] = None, context: Optional[str] = None) -> Dict[str, Any]:
+def verify_facts(content: str, source_url: str | None = None, context: str | None = None) -> dict[str, Any]:
     from .tools import verify_facts as run_verify_facts
 
     return run_verify_facts(content, source_url, context)
 
 
-def extract_claims(content: str) -> List[str]:
+def extract_claims(content: str) -> list[str]:
     from .tools import extract_claims as run_extract_claims
 
     return run_extract_claims(content)
@@ -158,10 +158,10 @@ def extract_claims(content: str) -> List[str]:
 
 def run_validate_sources(
     content: str,
-    sources: Optional[List[str]] = None,
-    domain: Optional[str] = None,
-    source_url: Optional[str] = None,
-) -> Dict[str, Any]:
+    sources: list[str] | None = None,
+    domain: str | None = None,
+    source_url: str | None = None,
+) -> dict[str, Any]:
     from .tools import validate_sources as validate_tool
 
     return validate_tool(content, sources, domain, source_url)
@@ -169,26 +169,26 @@ def run_validate_sources(
 
 def run_comprehensive_fact_check(
     content: str,
-    source_url: Optional[str] = None,
-    context: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    source_url: str | None = None,
+    context: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     from .tools import comprehensive_fact_check as comprehensive_tool
 
     return comprehensive_tool(content, source_url, context, metadata)
 
 
 def run_assess_credibility(
-    content: Optional[str] = None,
-    domain: Optional[str] = None,
-    source_url: Optional[str] = None,
-) -> Dict[str, Any]:
+    content: str | None = None,
+    domain: str | None = None,
+    source_url: str | None = None,
+) -> dict[str, Any]:
     from .tools import assess_credibility as assess_tool
 
     return assess_tool(content, domain, source_url)
 
 
-def run_detect_contradictions(text_passages: List[str]) -> Dict[str, Any]:
+def run_detect_contradictions(text_passages: list[str]) -> dict[str, Any]:
     from .tools import detect_contradictions as detect_tool
 
     return detect_tool(text_passages)
@@ -223,22 +223,22 @@ async def metrics_middleware(request, call_next):
 # Pydantic models for request/response validation
 class ToolCall(BaseModel):
     """Standard MCP tool call format."""
-    args: List[Any]
-    kwargs: Dict[str, Any]
+    args: list[Any]
+    kwargs: dict[str, Any]
 
 class FactCheckRequest(BaseModel):
     """Request model for fact checking operations."""
     content: str
-    source_url: Optional[str] = None
-    context: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    source_url: str | None = None
+    context: str | None = None
+    metadata: dict[str, Any] | None = None
 
 class VerificationResult(BaseModel):
     """Response model for verification results."""
     verification_score: float
     classification: str
     confidence: float
-    details: Dict[str, Any]
+    details: dict[str, Any]
     processing_time: float
     timestamp: str
 
@@ -269,7 +269,7 @@ def get_metrics():
 
 
 @app.post("/verify")
-def verify_endpoint(request: FactCheckRequest) -> Dict[str, Any]:
+def verify_endpoint(request: FactCheckRequest) -> dict[str, Any]:
     """Lightweight verification endpoint used by synchronous callers."""
     if not validate_content_size(request.content):
         raise HTTPException(status_code=400, detail="Content too large")
@@ -280,7 +280,7 @@ def verify_endpoint(request: FactCheckRequest) -> Dict[str, Any]:
 
 
 @app.post("/extract-claims")
-def extract_claims_endpoint(request: FactCheckRequest) -> List[str]:
+def extract_claims_endpoint(request: FactCheckRequest) -> list[str]:
     """Convenience wrapper that returns extracted claims without MCP payload."""
     if not validate_content_size(request.content):
         raise HTTPException(status_code=400, detail="Content too large")
@@ -292,7 +292,7 @@ def extract_claims_endpoint(request: FactCheckRequest) -> List[str]:
     return result
 
 @app.post("/verify_facts")
-async def verify_facts_tool(call: ToolCall) -> Dict[str, Any]:
+async def verify_facts_tool(call: ToolCall) -> dict[str, Any]:
     """
     Primary fact verification endpoint.
 
@@ -321,7 +321,7 @@ async def verify_facts_tool(call: ToolCall) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/validate_sources")
-async def validate_sources(call: ToolCall) -> Dict[str, Any]:
+async def validate_sources(call: ToolCall) -> dict[str, Any]:
     """
     Source credibility assessment endpoint.
 
@@ -355,7 +355,7 @@ async def validate_sources(call: ToolCall) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/validate_is_news_gpu")
-async def validate_is_news_gpu(call: ToolCall) -> Dict[str, Any]:
+async def validate_is_news_gpu(call: ToolCall) -> dict[str, Any]:
     """
     GPU-accelerated news content validation endpoint.
 
@@ -391,7 +391,7 @@ async def validate_is_news_gpu(call: ToolCall) -> Dict[str, Any]:
             raise HTTPException(status_code=500, detail=f"GPU and CPU validation failed: {str(e)}")
 
 @app.post("/verify_claims_gpu")
-async def verify_claims_gpu(call: ToolCall) -> Dict[str, Any]:
+async def verify_claims_gpu(call: ToolCall) -> dict[str, Any]:
     """
     GPU-accelerated claim verification endpoint.
 
@@ -429,7 +429,7 @@ async def verify_claims_gpu(call: ToolCall) -> Dict[str, Any]:
             raise HTTPException(status_code=500, detail=f"GPU and CPU verification failed: {str(e)}")
 
 @app.post("/comprehensive_fact_check")
-async def comprehensive_fact_check_endpoint(request: FactCheckRequest) -> Dict[str, Any]:
+async def comprehensive_fact_check_endpoint(request: FactCheckRequest) -> dict[str, Any]:
     """
     Comprehensive fact-checking endpoint for full articles.
 
@@ -455,7 +455,7 @@ async def comprehensive_fact_check_endpoint(request: FactCheckRequest) -> Dict[s
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/extract_claims")
-async def extract_claims_tool(call: ToolCall) -> Dict[str, Any]:
+async def extract_claims_tool(call: ToolCall) -> dict[str, Any]:
     """
     Claim extraction endpoint.
 
@@ -484,7 +484,7 @@ async def extract_claims_tool(call: ToolCall) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/assess_credibility")
-async def assess_credibility(call: ToolCall) -> Dict[str, Any]:
+async def assess_credibility(call: ToolCall) -> dict[str, Any]:
     """
     Source credibility assessment endpoint.
 
@@ -516,7 +516,7 @@ async def assess_credibility(call: ToolCall) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/detect_contradictions")
-async def detect_contradictions(call: ToolCall) -> Dict[str, Any]:
+async def detect_contradictions(call: ToolCall) -> dict[str, Any]:
     """
     Contradiction detection endpoint.
 
@@ -561,7 +561,7 @@ def get_model_status():
         return {"error": str(e), "models_loaded": False}
 
 @app.post("/log_feedback")
-def log_feedback(call: ToolCall) -> Dict[str, Any]:
+def log_feedback(call: ToolCall) -> dict[str, Any]:
     """Log user feedback for model improvement."""
     try:
         from .tools import log_feedback
@@ -584,7 +584,7 @@ def log_feedback(call: ToolCall) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/correct_verification")
-def correct_verification(call: ToolCall) -> Dict[str, Any]:
+def correct_verification(call: ToolCall) -> dict[str, Any]:
     """Submit user correction for fact verification."""
     try:
         from .tools import correct_verification
@@ -607,7 +607,7 @@ def correct_verification(call: ToolCall) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/correct_credibility")
-def correct_credibility(call: ToolCall) -> Dict[str, Any]:
+def correct_credibility(call: ToolCall) -> dict[str, Any]:
     """Submit user correction for credibility assessment."""
     try:
         from .tools import correct_credibility
@@ -640,7 +640,7 @@ def get_training_status():
         return {"error": str(e), "online_training_enabled": False}
 
 @app.post("/force_update")
-def force_model_update() -> Dict[str, Any]:
+def force_model_update() -> dict[str, Any]:
     """Force immediate model update (admin function)."""
     try:
         from .tools import force_model_update
@@ -653,17 +653,17 @@ def force_model_update() -> Dict[str, Any]:
 
 # Legacy endpoint compatibility
 @app.post("/validate_is_news")
-def validate_is_news_legacy(call: ToolCall) -> Dict[str, Any]:
+def validate_is_news_legacy(call: ToolCall) -> dict[str, Any]:
     """Legacy endpoint for backward compatibility."""
     return validate_is_news_gpu(call)
 
 @app.post("/verify_claims")
-def verify_claims_legacy(call: ToolCall) -> Dict[str, Any]:
+def verify_claims_legacy(call: ToolCall) -> dict[str, Any]:
     """Legacy endpoint for backward compatibility."""
     return verify_claims_gpu(call)
 
 @app.post("/validate_claims")
-def validate_claims_legacy(request: dict) -> Dict[str, Any]:
+def validate_claims_legacy(request: dict) -> dict[str, Any]:
     """Legacy endpoint for backward compatibility."""
     try:
         # Handle MCP Bus format

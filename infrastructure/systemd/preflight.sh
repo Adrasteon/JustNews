@@ -165,7 +165,7 @@ check_systemd_enabled_status() {
     log_info "Checking systemd unit enablement (warning-only)..."
     local services=(
         "mcp_bus" "chief_editor" "scout" "fact_checker" "analyst" "synthesizer"
-        "critic" "memory" "reasoning" "newsreader" "balancer" "dashboard" "analytics" "archive"
+        "critic" "memory" "reasoning" "newsreader" "dashboard" "analytics" "archive"
     )
     for service in "${services[@]}"; do
         local unit="justnews@${service}.service"
@@ -254,7 +254,6 @@ check_systemd_services() {
         "memory"
         "reasoning"
         "newsreader"
-        "balancer"
         "dashboard"
         "analytics"
         "archive"

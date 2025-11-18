@@ -1,9 +1,10 @@
 # Database Refactor Tests - Base Model Tests
 
-import pytest
-from unittest.mock import Mock, patch
 from datetime import datetime
+from unittest.mock import Mock
+
 from pydantic import Field
+
 from database.models.base_model import BaseModel
 
 

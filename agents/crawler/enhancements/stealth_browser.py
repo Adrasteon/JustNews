@@ -9,8 +9,8 @@ configuration files when required.
 from __future__ import annotations
 
 import random
+from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
-from typing import Dict, Mapping, MutableMapping, Sequence
 
 import requests
 

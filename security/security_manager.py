@@ -1,5 +1,5 @@
 """
-JustNewsAgent Security Framework - Core Security Manager
+JustNews Security Framework - Core Security Manager
 
 Provides centralized security orchestration for authentication, authorization,
 encryption, compliance monitoring, and security event tracking.
@@ -7,36 +7,25 @@ encryption, compliance monitoring, and security event tracking.
 
 import asyncio
 import logging
-from typing import Dict, List, Optional, Any, Union
-from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any
 
-from pydantic import BaseModel, Field
-import jwt
-import bcrypt
-from cryptography.fernet import Fernet
-import aiofiles
-import json
-
-from .models import (
-    SecurityConfig, SecurityContext, User, UserCreate, UserUpdate,
-    LoginRequest, TokenPair, PasswordResetRequest, PasswordResetConfirm,
-    Role, PermissionCheck, EncryptionKey, EncryptedData, ConsentRecord,
-    AuditEvent, DataExport, SecurityEvent, MonitoringRule, SecurityAlert,
-    SecurityMetrics, SecurityError, AuthenticationError, AuthorizationError,
-    EncryptionError, ComplianceError, MonitoringError
-)
 from .authentication.service import AuthenticationService
 from .authorization.service import AuthorizationService
-from .encryption.service import EncryptionService
 from .compliance.service import ComplianceService
+from .encryption.service import EncryptionService
+from .models import (
+    AuthenticationError,
+    SecurityConfig,
+    SecurityContext,
+)
 from .monitoring.service import SecurityMonitor
 
 logger = logging.getLogger(__name__)
 class SecurityManager:
     """
-    Central security orchestrator for JustNewsAgent
+    Central security orchestrator for JustNews
 
     Coordinates all security operations including authentication, authorization,
     encryption, compliance monitoring, and security event tracking.
@@ -54,12 +43,12 @@ class SecurityManager:
         self.monitor_service = SecurityMonitor(config)
 
         # Active sessions cache
-        self._active_sessions: Dict[str, SecurityContext] = {}
-        self._session_cleanup_task: Optional[asyncio.Task] = None
+        self._active_sessions: dict[str, SecurityContext] = {}
+        self._session_cleanup_task: asyncio.Task | None = None
 
         logger.info("SecurityManager initialized")
     """
-    Central security orchestrator for JustNewsAgent
+    Central security orchestrator for JustNews
 
     Coordinates all security operations including authentication, authorization,
     encryption, compliance monitoring, and security event tracking.
@@ -77,8 +66,8 @@ class SecurityManager:
         self.monitor_service = SecurityMonitor(config)
 
         # Active sessions cache
-        self._active_sessions: Dict[str, SecurityContext] = {}
-        self._session_cleanup_task: Optional[asyncio.Task] = None
+        self._active_sessions: dict[str, SecurityContext] = {}
+        self._session_cleanup_task: asyncio.Task | None = None
 
         logger.info("SecurityManager initialized")
 
@@ -161,8 +150,8 @@ class SecurityManager:
             )
 
     async def authenticate_user(self, username: str, password: str,
-                              ip_address: Optional[str] = None,
-                              user_agent: Optional[str] = None) -> Dict[str, Any]:
+                              ip_address: str | None = None,
+                              user_agent: str | None = None) -> dict[str, Any]:
         """
         Authenticate user and return tokens
 
@@ -281,7 +270,7 @@ class SecurityManager:
             raise AuthenticationError("Invalid token")
 
     async def check_permission(self, user_id: int, permission: str,
-                             resource: Optional[str] = None) -> bool:
+                             resource: str | None = None) -> bool:
         """
         Check if user has specific permission
 
@@ -313,7 +302,7 @@ class SecurityManager:
             logger.error(f"Permission check failed: {e}")
             return False
 
-    async def encrypt_data(self, data: Union[str, bytes], key_id: Optional[str] = None) -> str:
+    async def encrypt_data(self, data: str | bytes, key_id: str | None = None) -> str:
         """
         Encrypt sensitive data
 
@@ -340,7 +329,7 @@ class SecurityManager:
             logger.error(f"Data encryption failed: {e}")
             raise
 
-    async def decrypt_data(self, encrypted_data: str, key_id: Optional[str] = None) -> Union[str, bytes]:
+    async def decrypt_data(self, encrypted_data: str, key_id: str | None = None) -> str | bytes:
         """
         Decrypt sensitive data
 
@@ -367,8 +356,8 @@ class SecurityManager:
             logger.error(f"Data decryption failed: {e}")
             raise
 
-    async def log_compliance_event(self, event_type: str, user_id: Optional[int],
-                                 data: Dict[str, Any]) -> None:
+    async def log_compliance_event(self, event_type: str, user_id: int | None,
+                                 data: dict[str, Any]) -> None:
         """
         Log compliance-related event
 
@@ -386,7 +375,7 @@ class SecurityManager:
             data
         )
 
-    async def get_security_status(self) -> Dict[str, Any]:
+    async def get_security_status(self) -> dict[str, Any]:
         """
         Get current security status
 

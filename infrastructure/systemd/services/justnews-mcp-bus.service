@@ -1,26 +1,28 @@
 [Unit]
 Description=JustNews MCP Bus Service
-After=network.target postgresql.service redis-server.service
-Requires=postgresql.service redis-server.service
+After=network.target redis-server.service
+Requires=redis-server.service
 
 [Service]
 Type=simple
 User=justnews
 Group=justnews
-WorkingDirectory=/opt/justnews
+Environment=SERVICE_DIR=/opt/justnews
+EnvironmentFile=/opt/justnews/global.env
+WorkingDirectory=$SERVICE_DIR
 Environment=DEPLOY_ENV=production
 Environment=LOG_LEVEL=INFO
-Environment=POSTGRES_HOST=localhost
-Environment=POSTGRES_PORT=5432
-Environment=POSTGRES_DB=justnews
-Environment=POSTGRES_USER=justnews
-Environment=POSTGRES_PASSWORD_FILE=/etc/justnews/secrets/postgres_password
+Environment=MARIADB_HOST=localhost
+Environment=MARIADB_PORT=3306
+Environment=MARIADB_DB=justnews
+Environment=MARIADB_USER=justnews
+Environment=MARIADB_PASSWORD_FILE=/etc/justnews/secrets/mariadb_password
 Environment=REDIS_HOST=localhost
 Environment=REDIS_PORT=6379
 Environment=REDIS_PASSWORD_FILE=/etc/justnews/secrets/redis_password
 Environment=SECRET_KEY_FILE=/etc/justnews/secrets/secret_key
 Environment=JWT_SECRET_KEY_FILE=/etc/justnews/secrets/jwt_secret_key
-ExecStart=/opt/justnews/venv/bin/python -m agents.mcp_bus.main
+ExecStart=$SERVICE_DIR/venv/bin/python -m agents.mcp_bus.main
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=5

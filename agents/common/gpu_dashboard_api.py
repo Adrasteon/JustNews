@@ -50,8 +50,8 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI app
 app = FastAPI(
-    title="JustNewsAgent GPU Monitoring Dashboard",
-    description="Real-time GPU monitoring and performance analytics for JustNewsAgent",
+    title="JustNews GPU Monitoring Dashboard",
+    description="Real-time GPU monitoring and performance analytics for JustNews",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -65,7 +65,7 @@ async def get_dashboard_page():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>JustNewsAgent GPU Dashboard</title>
+        <title>JustNews GPU Dashboard</title>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>
             body {
@@ -150,7 +150,7 @@ async def get_dashboard_page():
     <body>
         <div class="container">
             <div class="header">
-                <h1>🤖 JustNewsAgent GPU Dashboard</h1>
+                <h1>🤖 JustNews GPU Dashboard</h1>
                 <p>Real-time GPU monitoring and performance analytics</p>
                 <button class="refresh-btn" onclick="refreshDashboard()">🔄 Refresh</button>
             </div>

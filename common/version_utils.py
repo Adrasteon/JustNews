@@ -1,11 +1,11 @@
 """
-JustNewsAgent Version Utilities
+JustNews Version Utilities
 Centralized version management for all agents and components
 """
 
-import sys
 import os
-from typing import Dict, Any
+import sys
+from typing import Any
 
 # Add project root to path for imports
 _project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -13,7 +13,7 @@ if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
 try:
-    from justnews import __version__, VERSION_INFO
+    from justnews import VERSION_INFO, __version__
 except ImportError:
     # Fallback for when justnews package is not available
     __version__ = "0.8.0"
@@ -25,14 +25,14 @@ except ImportError:
     }
 
 def get_version() -> str:
-    """Get the current JustNewsAgent version"""
+    """Get the current JustNews version"""
     return __version__
 
-def get_version_info() -> Dict[str, Any]:
+def get_version_info() -> dict[str, Any]:
     """Get detailed version information"""
     return VERSION_INFO.copy()
 
-def get_agent_version_info(agent_name: str = None) -> Dict[str, Any]:
+def get_agent_version_info(agent_name: str = None) -> dict[str, Any]:
     """Get version info formatted for agent API responses"""
     info = get_version_info()
     if agent_name:

@@ -11,14 +11,13 @@ Features:
 """
 
 import asyncio
+import os
 import time
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional
-
-from typing import Tuple
-from database.utils.migrated_database_utils import create_database_service
+from typing import Any
 
 from common.observability import get_logger
+from database.utils.migrated_database_utils import create_database_service
 
 logger = get_logger(__name__)
 
@@ -28,7 +27,7 @@ class DatabaseConnectionPool:
     Advanced database connection pool with health monitoring and failover
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize the database connection pool
 
@@ -40,12 +39,51 @@ class DatabaseConnectionPool:
         # load config from system_config.json or environment.
         if config is None:
             service = create_database_service()
-            # service holds connections; we'll use its mb_conn as the primary
-            self.config = {}
+            # Prefer explicit Postgres environment variables if present – tests
+            # expect to see the Postgres connection details when initialized
+            # with no config. Fall back to the MariaDB (migrated) config when
+            # Postgres vars are not set.
+            # Prefer MariaDB env vars, fallback to Postgres env vars for
+            # backwards compatibility only when MariaDB vars are not present.
+            if os.environ.get('MARIADB_HOST'):
+                self.config = {
+                    'host': os.environ.get('MARIADB_HOST'),
+                    'port': int(os.environ.get('MARIADB_PORT', '3306')),
+                    'database': os.environ.get('MARIADB_DB'),
+                    'user': os.environ.get('MARIADB_USER'),
+                    'password': os.environ.get('MARIADB_PASSWORD')
+                }
+            elif os.environ.get('POSTGRES_HOST'):
+                self.config = {
+                    'host': os.environ.get('POSTGRES_HOST'),
+                    'port': int(os.environ.get('POSTGRES_PORT', '5432')),
+                    'database': os.environ.get('POSTGRES_DB'),
+                    'user': os.environ.get('POSTGRES_USER'),
+                    'password': os.environ.get('POSTGRES_PASSWORD')
+                }
+            else:
+                self.config = service.config.get('database', {}).get('mariadb', {})
         else:
             self.config = config
 
-        self.service = create_database_service() if config is None else create_database_service()
+        # Only create a migrated service if a config was not provided. When a
+        # config dict is given we derive a local PostgreSQL connection pool
+        # from it instead (via psycopg2).  The previous logic called
+        # create_database_service() unconditionally which caused heavy
+        # initialization during unit tests.
+        # If we were provided a config, interpret whether it's a MariaDB
+        # config (port 3306 or explicit mariadb key) and create a
+        # migrated service (MariaDB-based). Only create a Postgres
+        # psycopg2 pool if the config explicitly looks like Postgres.
+        if config is None:
+            self.service = create_database_service()
+        else:
+            # When a config is provided (e.g., in tests), do NOT create the
+            # full MigratedDatabaseService instance to avoid contacting
+            # external services (MySQL/Chroma/embedding models). Tests patch
+            # DatabaseConnectionPool attributes directly (pool, execute_query,
+            # get_connection) so we leave `service` as None in this case.
+            self.service = None
         self.pool = None
         self.backup_pools = []
         self.min_connections = self.config.get('min_connections', 1)
@@ -80,6 +118,35 @@ class DatabaseConnectionPool:
             if self.service:
                 self.is_healthy = True
                 logger.info("Database connection service is available via migrated service")
+            else:
+                # When no migrated service is present, create a normal
+                # Postgres ThreadedConnectionPool using the provided config.
+                pool_config = {
+                    'minconn': self.min_connections,
+                    'maxconn': self.max_connections,
+                    'host': self.config.get('host', 'localhost'),
+                    'port': int(self.config.get('port', 5432)),
+                    'user': self.config.get('user', ''),
+                    'password': self.config.get('password', ''),
+                    'database': self.config.get('database', '')
+                }
+                # Lazily import psycopg2 only if we actually need to use
+                # a Postgres ThreadedConnectionPool. This avoids requiring
+                # psycopg2 to be present in MariaDB-based deployments.
+                try:
+                    import psycopg2.pool as pg_pool
+                except Exception as e:
+                    logger.error("psycopg2 package missing: cannot create Postgres pool: %s" % e)
+                    raise
+
+                self.pool = pg_pool.ThreadedConnectionPool(
+                    pool_config['minconn'], pool_config['maxconn'],
+                    host=pool_config['host'], port=pool_config['port'],
+                    user=pool_config['user'], password=pool_config['password'],
+                    database=pool_config['database']
+                )
+                self.is_healthy = True
+                logger.info("Main connection pool initialized for Postgres")
         except Exception as e:
             logger.error(f"Failed to initialize migrated DB service: {e}")
             self.is_healthy = False
@@ -99,7 +166,17 @@ class DatabaseConnectionPool:
                     'maxconn': backup_config.get('max_connections', 10)
                 }
 
-                backup_pool = pool.ThreadedConnectionPool(**pool_config)
+                # Lazily import pg_pool for backup Postgres pools
+                try:
+                    import psycopg2.pool as pg_pool
+                except Exception:
+                    pg_pool = None
+
+                if pg_pool is None:
+                    logger.warning(f"psycopg2 not available; skipping backup pool for {backup_config['host']}")
+                    continue
+
+                backup_pool = pg_pool.ThreadedConnectionPool(**pool_config)
                 self.backup_pools.append(backup_pool)
                 logger.info(f"Backup connection pool initialized for {backup_config['host']}")
 
@@ -109,11 +186,22 @@ class DatabaseConnectionPool:
     def _perform_health_check(self) -> bool:
         """Perform health check on the database connection"""
         try:
-            conn = self.service.mb_conn
-            cursor = conn.cursor()
+            if self.service:
+                conn = self.service.mb_conn
+                cursor = conn.cursor()
+            elif self.pool:
+                conn = self.pool.getconn()
+                cursor = conn.cursor()
+            else:
+                raise Exception("No database service or pool configured")
             cursor.execute("SELECT 1")
             cursor.fetchone()
             cursor.close()
+            if getattr(self.pool, 'putconn', None):
+                try:
+                    self.pool.putconn(conn)
+                except Exception:
+                    pass
             return True
         except Exception as e:
             logger.warning(f"Health check failed: {e}")
@@ -130,7 +218,12 @@ class DatabaseConnectionPool:
 
         if self.is_healthy:
             try:
-                conn = self.service.mb_conn
+                if self.service:
+                    conn = self.service.mb_conn
+                elif self.pool:
+                    conn = self.pool.getconn()
+                else:
+                    raise Exception("No database service or pool available")
                 self.metrics['connections_acquired'] += 1
                 return conn
             except Exception as e:
@@ -171,7 +264,7 @@ class DatabaseConnectionPool:
             if conn:
                 self.metrics['connections_released'] += 1
 
-    def execute_query(self, query: str, params: tuple = None, fetch: bool = True) -> List[tuple]:
+    def execute_query(self, query: str, params: tuple = None, fetch: bool = True) -> list[tuple]:
         """
         Execute a database query
 
@@ -207,7 +300,7 @@ class DatabaseConnectionPool:
                 except Exception:
                     pass
 
-    async def execute_query_async(self, query: str, params: tuple = None, fetch: bool = True) -> List[dict]:
+    async def execute_query_async(self, query: str, params: tuple = None, fetch: bool = True) -> list[dict]:
         """
         Execute a database query asynchronously
 
@@ -225,7 +318,7 @@ class DatabaseConnectionPool:
             None, self.execute_query, query, params, fetch
         )
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """
         Get connection pool metrics
 

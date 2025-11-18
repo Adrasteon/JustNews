@@ -15,7 +15,6 @@ All functions include robust error handling and comprehensive logging.
 """
 
 import time
-from typing import Optional
 
 from common.observability import get_logger
 
@@ -188,7 +187,7 @@ class GPUAcceleratedAnalyst:
             self.memory_circuit_breaker = True
             return False
 
-    def score_sentiment_gpu(self, text: str) -> Optional[float]:
+    def score_sentiment_gpu(self, text: str) -> float | None:
         """
         GPU-accelerated sentiment scoring.
 
@@ -230,7 +229,7 @@ class GPUAcceleratedAnalyst:
                 torch.cuda.empty_cache()
             return None
 
-    def score_bias_gpu(self, text: str) -> Optional[float]:
+    def score_bias_gpu(self, text: str) -> float | None:
         """
         GPU-accelerated bias scoring.
 

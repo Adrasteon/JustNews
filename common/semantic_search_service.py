@@ -10,20 +10,17 @@ Features:
 """
 
 import asyncio
-from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass
 import time
+from dataclasses import dataclass
+from typing import Any
 
-import mysql.connector
-import chromadb
 from sentence_transformers import SentenceTransformer
 
 from common.observability import get_logger
 from database.utils.migrated_database_utils import (
-    get_db_config,
     create_database_service,
-    MigratedDatabaseService,
-    get_database_stats
+    get_database_stats,
+    get_db_config,
 )
 
 logger = get_logger(__name__)
@@ -38,14 +35,14 @@ class SearchResult:
     source_name: str
     published_date: str
     similarity_score: float
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 @dataclass
 class SearchResponse:
     """Represents the complete search response"""
     query: str
-    results: List[SearchResult]
+    results: list[SearchResult]
     total_results: int
     search_time: float
     search_type: str  # 'semantic', 'text', 'hybrid'
@@ -58,7 +55,7 @@ class SemanticSearchService:
     Combines vector similarity search (ChromaDB) with relational data retrieval (MariaDB)
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize the semantic search service
 
@@ -128,7 +125,7 @@ class SemanticSearchService:
         query: str,
         n_results: int,
         min_score: float
-    ) -> List[SearchResult]:
+    ) -> list[SearchResult]:
         """
         Perform semantic search using vector similarity
 
@@ -182,7 +179,7 @@ class SemanticSearchService:
                     else:
                         # Assume it's a datetime object
                         pub_date_str = pub_date.isoformat() if hasattr(pub_date, 'isoformat') else str(pub_date)
-                    
+
                     result = SearchResult(
                         article_id=int(article_id),
                         title=article_data.get('title', ''),
@@ -199,7 +196,7 @@ class SemanticSearchService:
 
         return results
 
-    def _text_search(self, query: str, n_results: int) -> List[SearchResult]:
+    def _text_search(self, query: str, n_results: int) -> list[SearchResult]:
         """
         Perform text-based search in MariaDB
 
@@ -224,7 +221,7 @@ class SemanticSearchService:
             else:
                 # Assume it's a datetime object
                 pub_date_str = pub_date.isoformat() if hasattr(pub_date, 'isoformat') else str(pub_date)
-            
+
             result = SearchResult(
                 article_id=article['id'],
                 title=article.get('title', ''),
@@ -243,7 +240,7 @@ class SemanticSearchService:
         query: str,
         n_results: int,
         min_score: float
-    ) -> List[SearchResult]:
+    ) -> list[SearchResult]:
         """
         Perform hybrid search combining semantic and text search
 
@@ -281,7 +278,7 @@ class SemanticSearchService:
 
         return sorted_results[:n_results]
 
-    def _get_article_by_id(self, article_id: int) -> Optional[Dict[str, Any]]:
+    def _get_article_by_id(self, article_id: int) -> dict[str, Any] | None:
         """
         Get article data by ID with caching
 
@@ -315,7 +312,7 @@ class SemanticSearchService:
         article_id: int,
         n_results: int = 5,
         min_score: float = 0.7
-    ) -> List[SearchResult]:
+    ) -> list[SearchResult]:
         """
         Find articles similar to a given article
 
@@ -347,7 +344,7 @@ class SemanticSearchService:
         self,
         category: str,
         n_results: int = 10
-    ) -> List[SearchResult]:
+    ) -> list[SearchResult]:
         """
         Get articles by category/topic
 
@@ -364,9 +361,9 @@ class SemanticSearchService:
 
     def get_recent_articles_with_search(
         self,
-        query: Optional[str] = None,
+        query: str | None = None,
         n_results: int = 10
-    ) -> List[SearchResult]:
+    ) -> list[SearchResult]:
         """
         Get recent articles, optionally filtered by search query
 
@@ -395,7 +392,7 @@ class SemanticSearchService:
                 else:
                     # Assume it's a datetime object
                     pub_date_str = pub_date.isoformat() if hasattr(pub_date, 'isoformat') else str(pub_date)
-                
+
                 result = SearchResult(
                     article_id=article['id'],
                     title=article.get('title', ''),
@@ -409,7 +406,7 @@ class SemanticSearchService:
 
             return results
 
-    def get_search_statistics(self) -> Dict[str, Any]:
+    def get_search_statistics(self) -> dict[str, Any]:
         """
         Get statistics about the search system
 
@@ -435,7 +432,7 @@ class SemanticSearchService:
 
 
 # Global service instance
-_search_service_instance: Optional[SemanticSearchService] = None
+_search_service_instance: SemanticSearchService | None = None
 
 
 def get_search_service() -> SemanticSearchService:

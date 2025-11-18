@@ -1,8 +1,8 @@
-# JustNewsAgent Unified Configuration System
+# JustNews Unified Configuration System
 # Phase 2B: Configuration Management Refactoring
 
 """
-Unified Configuration System for JustNewsAgent
+Unified Configuration System for JustNews
 
 Provides a complete configuration management solution with:
 - Type-safe configuration models with Pydantic validation
@@ -13,13 +13,13 @@ Provides a complete configuration management solution with:
 - Runtime configuration updates
 """
 
-from typing import Tuple, Optional, Dict, Any
+from typing import Any, Dict, Optional, Tuple
 
-from .schemas import *
 from .core import *
 from .environments import *
-from .validation import *
 from .legacy import *
+from .schemas import *
+from .validation import *
 
 # Re-export key classes and functions for convenience
 __all__ = [
@@ -126,7 +126,7 @@ def validate_current_setup() -> ValidationResult:
 # MIGRATION HELPERS
 # ============================================================================
 
-def migrate_from_legacy(dry_run: bool = True) -> Tuple[MigrationPlan, Optional[ValidationResult]]:
+def migrate_from_legacy(dry_run: bool = True) -> tuple[MigrationPlan, ValidationResult | None]:
     """
     Migrate from legacy configuration files
 
@@ -148,10 +148,10 @@ def migrate_from_legacy(dry_run: bool = True) -> Tuple[MigrationPlan, Optional[V
 # ============================================================================
 
 __version__ = "1.0.0"
-__description__ = "Unified Configuration System for JustNewsAgent"
-__author__ = "JustNewsAgent Team"
+__description__ = "Unified Configuration System for JustNews"
+__author__ = "JustNews Team"
 
-def get_system_info() -> Dict[str, Any]:
+def get_system_info() -> dict[str, Any]:
     """Get system configuration information"""
     try:
         manager = get_config_manager()

@@ -16,20 +16,16 @@ production-ready MCP Bus testing.
 """
 
 import asyncio
+
 import pytest
 import pytest_asyncio
-from typing import Dict, List, Any, Optional
-from unittest.mock import Mock, AsyncMock, patch
 
 from tests.test_utils import (
-    MockFactory,
-    TestDataGenerator,
-    PerformanceTester,
     CustomAssertions,
-    AsyncTestHelper,
-    IntegrationTestHelper
+    MockFactory,
+    PerformanceTester,
+    TestDataGenerator,
 )
-
 
 # ============================================================================
 # MCP BUS CORE TESTS
@@ -330,8 +326,9 @@ class TestMCPBusLoad:
     @pytest.mark.asyncio
     async def test_memory_usage_under_load(self):
         """Test memory usage patterns under load"""
-        import psutil
         import os
+
+        import psutil
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB

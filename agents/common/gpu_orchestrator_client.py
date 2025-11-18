@@ -25,7 +25,7 @@ from __future__ import annotations
 import os
 import threading
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import requests
 
@@ -34,11 +34,11 @@ from common.observability import get_logger
 logger = get_logger(__name__)
 
 DEFAULT_BASE_URL = os.environ.get("GPU_ORCHESTRATOR_URL", "http://localhost:8014")
-REQUEST_TIMEOUT: Tuple[float, float] = (1.5, 3.0)  # (connect, read) seconds
+REQUEST_TIMEOUT: tuple[float, float] = (1.5, 3.0)  # (connect, read) seconds
 DEFAULT_POLICY_TTL = float(os.environ.get("GPU_ORCHESTRATOR_POLICY_TTL", "30"))
 
 
-_FALLBACK_POLICY: Dict[str, Any] = {
+_FALLBACK_POLICY: dict[str, Any] = {
     "max_memory_per_agent_mb": 2048,
     "allow_fractional_shares": True,
     "kill_on_oom": False,
@@ -57,14 +57,14 @@ class GPUOrchestratorClient:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
+        base_url: str | None = None,
         policy_ttl: float = DEFAULT_POLICY_TTL,
-        request_timeout: Tuple[float, float] = REQUEST_TIMEOUT,
+        request_timeout: tuple[float, float] = REQUEST_TIMEOUT,
     ) -> None:
         self.base_url = (base_url or DEFAULT_BASE_URL).rstrip("/")
         self.policy_ttl = policy_ttl
         self.request_timeout = request_timeout
-        self._policy_cache: Dict[str, Any] | None = None
+        self._policy_cache: dict[str, Any] | None = None
         self._policy_cache_time: float = 0.0
         self._lock = threading.Lock()
         # Failure logging backoff (avoid log spam)
@@ -74,7 +74,7 @@ class GPUOrchestratorClient:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def get_gpu_info(self) -> Dict[str, Any]:
+    def get_gpu_info(self) -> dict[str, Any]:
         """Return GPU telemetry.
 
         Success: {'available': True, 'gpus': [...], ...}
@@ -100,7 +100,7 @@ class GPUOrchestratorClient:
             self._maybe_log_failure(f"GPU info fetch failed: {e}")
             return {"available": False, "gpus": [], "message": "unreachable"}
 
-    def get_policy(self, force_refresh: bool = False) -> Dict[str, Any]:
+    def get_policy(self, force_refresh: bool = False) -> dict[str, Any]:
         """Return orchestrator policy with TTL caching.
 
         Args:
@@ -133,7 +133,7 @@ class GPUOrchestratorClient:
         policy = self.get_policy()
         return bool(policy.get("safe_mode_read_only", True))
 
-    def cpu_fallback_decision(self) -> Dict[str, Any]:
+    def cpu_fallback_decision(self) -> dict[str, Any]:
         """Return a structured CPU fallback decision envelope.
 
         This can be expanded later with heuristics / policy (e.g., triggered when

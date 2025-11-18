@@ -64,7 +64,7 @@ Welcome to the JustNews V4 documentation team! These guidelines ensure our docum
 ### Required Directory Structure
 
 ```
-JustNewsAgent/
+JustNews/
 ├── docs/
 │   ├── docs_catalogue_v2.json    # 📋 Master catalogue
 │   ├── quality_monitor.py        # 🔍 Quality monitoring

@@ -1,5 +1,5 @@
 """
-Advanced Analytics Dashboard for JustNewsAgent
+Advanced Analytics Dashboard for JustNews
 
 Provides comprehensive web-based analytics interface with:
 - Real-time performance monitoring
@@ -10,7 +10,6 @@ Provides comprehensive web-based analytics interface with:
 - Interactive charts and visualizations
 """
 
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -25,7 +24,7 @@ from agents.analytics.analytics_engine import get_analytics_engine
 analytics_engine = get_analytics_engine()
 
 # FastAPI app for analytics dashboard
-analytics_app = FastAPI(title="JustNewsAgent Advanced Analytics Dashboard")
+analytics_app = FastAPI(title="JustNews Advanced Analytics Dashboard")
 
 # Templates and static files
 templates_dir = Path(__file__).parent / "analytics" / "templates"
@@ -179,7 +178,6 @@ async def get_service_info():
 async def get_engine_health():
     """Get detailed engine health information"""
     try:
-        import asyncio
         health_info = await analytics_engine.health_check()
         return JSONResponse(content=health_info)
     except Exception as e:

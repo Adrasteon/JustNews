@@ -1,0 +1,3 @@
+# Evaluation framework config
+acceptance:
+  extraction_parity_threshold: 0.95

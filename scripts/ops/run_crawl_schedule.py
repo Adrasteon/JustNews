@@ -14,9 +14,10 @@ import argparse
 import json
 import sys
 import time
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 # Ensure project root is importable when executed as a standalone script
 REPO_ROOT = Path(__file__).resolve().parents[2]

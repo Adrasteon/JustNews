@@ -1,20 +1,21 @@
 """
-Tests for JustNewsAgent Fact Checker Agent
+Tests for JustNews Fact Checker Agent
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
 from fastapi.testclient import TestClient
 
 from agents.fact_checker.tools import (
+    assess_credibility,
+    comprehensive_fact_check,
+    detect_contradictions,
+    extract_claims,
     get_fact_checker_engine,
     process_fact_check_request,
-    verify_facts,
     validate_sources,
-    comprehensive_fact_check,
-    extract_claims,
-    assess_credibility,
-    detect_contradictions
+    verify_facts,
 )
 
 

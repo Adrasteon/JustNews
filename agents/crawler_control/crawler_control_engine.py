@@ -1,12 +1,13 @@
 """
-Crawler Control Engine for JustNewsAgent.
+Crawler Control Engine for JustNews.
 
 Management and monitoring engine for crawler operations.
 """
 import os
-from typing import Dict, Any, List
+from typing import Any
 
 import requests
+
 from common.observability import get_logger
 
 logger = get_logger(__name__)
@@ -24,7 +25,7 @@ class CrawlerControlEngine:
         self.memory_agent_url = os.environ.get("MEMORY_AGENT_URL", "http://localhost:8007")
         self.mcp_bus_url = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
-    def start_crawl(self, domains: List[str], **kwargs) -> Dict[str, Any]:
+    def start_crawl(self, domains: list[str], **kwargs) -> dict[str, Any]:
         """Start a new crawl job"""
         try:
             payload = {
@@ -38,7 +39,7 @@ class CrawlerControlEngine:
             logger.error(f"Failed to start crawl: {e}")
             raise
 
-    def stop_crawl(self) -> Dict[str, Any]:
+    def stop_crawl(self) -> dict[str, Any]:
         """Stop all active crawl jobs"""
         try:
             # Get current jobs
@@ -64,7 +65,7 @@ class CrawlerControlEngine:
             logger.error(f"Failed to stop crawl: {e}")
             raise
 
-    def get_crawl_status(self) -> Dict[str, Any]:
+    def get_crawl_status(self) -> dict[str, Any]:
         """Get current crawl job statuses"""
         try:
             response = requests.get(f"{self.crawler_agent_url}/jobs")
@@ -86,7 +87,7 @@ class CrawlerControlEngine:
             logger.error(f"Failed to get crawl status: {e}")
             raise
 
-    def clear_jobs(self) -> Dict[str, Any]:
+    def clear_jobs(self) -> dict[str, Any]:
         """Clear completed and failed jobs from crawler memory"""
         try:
             response = requests.post(f"{self.crawler_agent_url}/clear_jobs")
@@ -96,7 +97,7 @@ class CrawlerControlEngine:
             logger.error(f"Failed to clear jobs: {e}")
             raise
 
-    def reset_crawler(self) -> Dict[str, Any]:
+    def reset_crawler(self) -> dict[str, Any]:
         """Completely reset the crawler state"""
         try:
             response = requests.post(f"{self.crawler_agent_url}/reset_crawler")
@@ -106,7 +107,7 @@ class CrawlerControlEngine:
             logger.error(f"Failed to reset crawler: {e}")
             raise
 
-    def get_crawler_metrics(self) -> Dict[str, Any]:
+    def get_crawler_metrics(self) -> dict[str, Any]:
         """Get crawler performance metrics"""
         try:
             response = requests.get(f"{self.crawler_agent_url}/metrics")
@@ -121,7 +122,7 @@ class CrawlerControlEngine:
                 "mode_usage": {"ultra_fast": 2, "ai_enhanced": 1, "generic": 2}
             }
 
-    def get_analyst_metrics(self) -> Dict[str, Any]:
+    def get_analyst_metrics(self) -> dict[str, Any]:
         """Get analyst metrics"""
         try:
             response = requests.get(f"{self.analyst_agent_url}/metrics")
@@ -135,7 +136,7 @@ class CrawlerControlEngine:
                 "topics_count": 95
             }
 
-    def get_memory_metrics(self) -> Dict[str, Any]:
+    def get_memory_metrics(self) -> dict[str, Any]:
         """Get memory usage metrics"""
         try:
             response = requests.get(f"{self.memory_agent_url}/metrics")
@@ -148,7 +149,7 @@ class CrawlerControlEngine:
                 "free": 40
             }
 
-    def get_system_health(self) -> Dict[str, Any]:
+    def get_system_health(self) -> dict[str, Any]:
         """Get overall system health"""
         health = {}
         agents = [

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-JustNewsAgent Security Framework Usage Example
+JustNews Security Framework Usage Example
 
 This script demonstrates how to use the comprehensive security framework
 for authentication, authorization, encryption, compliance, and monitoring.
@@ -8,7 +8,8 @@ for authentication, authorization, encryption, compliance, and monitoring.
 
 import asyncio
 import logging
-from . import SecurityManager, SecurityConfig
+
+from . import SecurityConfig, SecurityManager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 async def main():
     """Demonstrate security framework usage"""
 
-    print("🚀 JustNewsAgent Security Framework Demo")
+    print("🚀 JustNews Security Framework Demo")
     print("=" * 50)
 
     # Initialize security configuration

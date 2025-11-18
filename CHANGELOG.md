@@ -131,7 +131,7 @@ All notable changes to this project will be documented in this file.
 
 ### ✅ **Quality Assurance & Documentation**
 - **Regression Coverage**: Added `tests/agents/crawler/test_extraction.py` and `tests/agents/crawler/test_generic_site_crawler.py` to verify extraction fidelity and review heuristics.
-- **Operational Playbook Update**: `docs/operations/systemd-baseline-then-k8s-phased-plan.md` documents the Stage B2 implementation, raw HTML retention, and thresholds.
+- **Operational Playbook Update**: `docs/operations/systemd-baseline.md` documents the Stage B2 systemd-based implementation, raw HTML retention, and thresholds.
 - **README Refresh**: Quick start and feature list now highlight the Stage B2 pipeline and provide crawler test guidance.
 
 **Status**: **STAGE B2 EXTRACTION UPGRADE COMPLETE** – High-precision ingestion active with governance-ready metadata and automated regression tests.
@@ -154,7 +154,7 @@ All notable changes to this project will be documented in this file.
 ### 🔨 **Build & CI/CD System - PRODUCTION READY**
 - **✅ Unified Build System**: Makefile with 15+ targets for development, testing, building, deployment, and quality assurance
 - **✅ CI/CD Pipelines**: Multi-stage GitHub Actions workflows with quality gates, security scanning, and automated deployment
-- **✅ Containerization Framework**: Complete Docker/docker-compose setup with development/production environments and Kubernetes manifests
+- **✅ Containerization Framework**: systemd packaging and container images for development/production (Docker Compose and Kubernetes deprecated; compose manifests archived)
 - **✅ Quality Assurance Pipeline**: Automated linting, testing, security scanning, and performance validation
 - **✅ Deployment Automation**: Automated deployment validation with canary testing, production validation, and rollback capabilities
 - **✅ Artifact Management**: Automated package building, versioning, and distribution
@@ -176,8 +176,8 @@ All notable changes to this project will be documented in this file.
 
 ### 📦 **Containerization & Orchestration - PRODUCTION DEPLOYMENT READY**
 - **✅ Docker Images**: Multi-stage builds with optimized production images and security hardening
-- **✅ Docker Compose**: Development environment with hot-reload and multi-service orchestration
-- **✅ Kubernetes Manifests**: Production deployment with scaling, health checks, and resource management
+- **✅ Docker Compose (DEPRECATED / ARCHIVED)**: Development environment with hot-reload and multi-service orchestration (archival reference only)
+- **Kubernetes Manifests (DEPRECATED / ARCHIVED)**: Production manifests are retained for archival reference only. systemd is the supported runtime for this codebase.
 - **✅ Environment Configuration**: Template-based configuration for different deployment targets
 - **✅ Security Hardening**: Non-root containers with minimal attack surface and proper permissions
 
@@ -256,14 +256,14 @@ All notable changes to this project will be documented in this file.
 ## [0.8.2] - 2025-10-23 - **DEPLOYMENT SYSTEM - UNIFIED MULTI-PLATFORM COMPLETE**
 
 ### 🚀 **Unified Deployment Framework - PRODUCTION READY**
-- **✅ Multi-Platform Support**: Complete deployment system supporting Docker Compose, Kubernetes, and systemd orchestration
+- **✅ Multi-Platform Support**: Complete deployment system supporting systemd orchestration (Kubernetes and Docker Compose deprecated)
 - **✅ Infrastructure as Code**: Declarative service definitions with comprehensive validation and automated configuration generation
 - **✅ Environment Management**: Hierarchical environment profiles (development, staging, production) with secure secret management
 - **✅ Service Orchestration**: Proper dependency management, health checks, and automated rollback capabilities
 - **✅ Security Hardening**: Enterprise-grade security with encrypted secrets, proper file permissions, and access controls
 - **✅ Validation Framework**: Pre-deployment validation, runtime health checks, and comprehensive error reporting
 
-### 🔧 **Docker Compose Implementation**
+### 🔧 **Docker Compose Implementation (DEPRECATED / ARCHIVED)**
 - **✅ Clean YAML Configuration**: Validated docker-compose.yml with PostgreSQL, Redis, and MCP Bus services
 - **✅ Environment Variables**: Template-based configuration with secure defaults and environment-specific overrides
 - **✅ Health Checks**: Service health validation and dependency management with proper startup ordering
@@ -488,7 +488,7 @@ All notable changes to this project will be documented in this file.
 - **✅ Core Package Installation**: Successfully installed TensorRT, PyCUDA, BERTopic, and spaCy in production environment
 - **✅ Strategic Package Strategy**: Conda-first approach with pip fallback for TensorRT (unavailable in conda channels)
 - **✅ Environment Validation**: Comprehensive testing of all core packages with functional verification
-- **✅ Package Compatibility**: All packages working correctly with existing JustNewsAgent dependencies
+- **✅ Package Compatibility**: All packages working correctly with existing JustNews dependencies
 - **✅ Production Stability**: Zero conflicts or compatibility issues with existing system components
 
 ### 📦 **Package Installation Details**
@@ -1147,7 +1147,7 @@ quantization_config = BitsAndBytesConfig(
 - **Production-Ready Symbolic Reasoning**: Nucleoid-based agent for fact validation, contradiction detection, and explainability
 - **API Endpoints**: `/add_fact`, `/add_facts`, `/add_rule`, `/query`, `/evaluate`, `/health`
 - **MCP Bus Integration**: Full registration and tool routing via `/register` and `/call`
-- **Native & Docker Support**: Included in `start_services_daemon.sh`, `stop_services.sh`, and `docker-compose.yml`
+- **Native & Docker Support**: Included in `start_services_daemon.sh`, `stop_services.sh`, and legacy `docker-compose.yml` (Docker Compose deprecated)
 - **Port 8008**: Reasoning Agent runs on port 8008 by default
 - **Documentation Updated**: All relevant docs and service management instructions updated
 

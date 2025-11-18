@@ -244,6 +244,23 @@ sync_env_files() {
     fi
   done
   shopt -u nullglob
+
+  # After syncing environment files, ensure special directories referenced by env exist
+  # Load the (possibly new) global env to resolve values if present
+  if [[ -f "$GLOBAL_ENV" ]]; then
+    # shellcheck disable=SC1090
+    . "$GLOBAL_ENV"
+  fi
+
+  if [[ -n "${CRAWL4AI_MODEL_CACHE_DIR:-}" ]]; then
+    log_info "Ensuring CRAWL4AI model cache directory: $CRAWL4AI_MODEL_CACHE_DIR"
+    if [[ "$DRY_RUN" == true ]]; then
+      echo "DRY-RUN: mkdir -p $CRAWL4AI_MODEL_CACHE_DIR"
+    else
+      mkdir -p "$CRAWL4AI_MODEL_CACHE_DIR"
+      chown justnews:justnews "$CRAWL4AI_MODEL_CACHE_DIR" 2>/dev/null || true
+    fi
+  fi
 }
 
 toggle_safe_mode() {

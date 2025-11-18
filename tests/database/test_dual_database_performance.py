@@ -9,18 +9,17 @@ Tests performance characteristics of MariaDB + ChromaDB operations including:
 - Vector search performance
 """
 
-import pytest
-import time
 import asyncio
-import psutil
 import threading
-from unittest.mock import MagicMock, patch
-from typing import List, Dict, Any
+import time
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor
-import numpy as np
+from unittest.mock import MagicMock, patch
 
-from database.models.migrated_models import MigratedDatabaseService, Article, Source
+import numpy as np
+import psutil
+import pytest
+
+from database.models.migrated_models import Article, MigratedDatabaseService, Source
 from database.utils.migrated_database_utils import execute_transaction
 
 

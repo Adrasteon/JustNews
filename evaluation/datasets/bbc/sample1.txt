@@ -1,0 +1,5 @@
+Sample Article Title
+
+This is a sample article body. It contains several sentences for testing extraction parity.
+
+Extra paragraph with more content about the topic to provide a reasonable length.

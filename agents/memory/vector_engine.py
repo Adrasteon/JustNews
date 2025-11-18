@@ -17,11 +17,9 @@ from __future__ import annotations
 
 import asyncio
 from threading import Lock
-from typing import List
-
-from common.observability import get_logger
 
 from agents.memory import tools as memory_tools
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 
@@ -52,7 +50,7 @@ class VectorEngine:
         """Reload the embedding model; used by the hot-reload endpoint."""
         await self._load_model(reason="reload")
 
-    def vector_search_articles_local(self, query: str, top_k: int = 5) -> List[dict]:
+    def vector_search_articles_local(self, query: str, top_k: int = 5) -> list[dict]:
         """Delegate to legacy helper with the cached embedding model."""
         try:
             embedding_model = self.embedding_model

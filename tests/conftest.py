@@ -1,8 +1,8 @@
 """
-Comprehensive Testing Framework for JustNewsAgent
+Comprehensive Testing Framework for JustNews
 
 This module provides a unified testing infrastructure that consolidates
-all testing patterns, fixtures, and utilities used across the JustNewsAgent
+ all testing patterns, fixtures, and utilities used across the JustNews
 system. It follows clean repository patterns and provides production-ready
 testing capabilities.
 
@@ -26,12 +26,12 @@ import asyncio
 import os
 import sys
 import types
-import warnings
-from typing import Any, Dict, List, Optional, Generator, AsyncGenerator
 from pathlib import Path
 
 import pytest
 import pytest_asyncio
+import tempfile
+import textwrap
 
 # Add the repository root to sys.path so project packages import cleanly regardless
 # of how pytest is launched (e.g. via `conda run`). The previous logic walked one
@@ -39,6 +39,38 @@ import pytest_asyncio
 # `common.observability` would fail when PYTHONPATH was not manually set.
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
+
+# Guarantee that a minimal testing global.env is present at import-time to
+# avoid modules parsing /etc/justnews/global.env during collection. This is
+# intentionally performed during import so early imports honor the test env.
+if not os.environ.get('JUSTNEWS_GLOBAL_ENV'):
+    early_tmp = Path(tempfile.gettempdir()) / f"justnews_test_global_env_{os.getpid()}"
+    early_tmp.mkdir(parents=True, exist_ok=True)
+    early_env = early_tmp / "global.env"
+    if not early_env.exists():
+        early_env.write_text(textwrap.dedent(f"""
+        # Auto-generated early global.env for pytest import time
+        SERVICE_DIR={project_root}
+        PYTHON_BIN={os.environ.get('PYTHON_BIN', '')}
+        JUSTNEWS_PYTHON={os.environ.get('JUSTNEWS_PYTHON', '')}
+        MODEL_STORE_ROOT={project_root}/model_store
+        MARIADB_HOST=127.0.0.1
+        MARIADB_PORT=3306
+        MARIADB_DB=justnews_test
+        MARIADB_USER=justnews
+        MARIADB_PASSWORD=test
+        MARIADB_HOST=127.0.0.1
+        MARIADB_PORT=3306
+        MARIADB_DB=justnews_test
+        MARIADB_USER=justnews
+        MARIADB_PASSWORD=test
+        """))
+    os.environ['JUSTNEWS_GLOBAL_ENV'] = str(early_env)
+
+# Indicate we are running pytest; this affects how `common.env_loader` chooses
+# whether to consult /etc/justnews/global.env. This helps keep test runs
+# hermetic and not rely on the host's installed system files.
+os.environ['PYTEST_RUNNING'] = '1'
 
 # Import common utilities
 from common.observability import get_logger
@@ -52,14 +84,14 @@ logger = get_logger(__name__)
 class MockResponse:
     """Unified mock response for HTTP calls"""
 
-    def __init__(self, status_code: int = 200, json_data: Optional[Dict] = None,
-                 text: str = "", headers: Optional[Dict] = None):
+    def __init__(self, status_code: int = 200, json_data: dict | None = None,
+                 text: str = "", headers: dict | None = None):
         self.status_code = status_code
         self._json = json_data or {}
         self.text = text
         self.headers = headers or {}
 
-    def json(self) -> Dict:
+    def json(self) -> dict:
         return self._json
 
     def raise_for_status(self) -> None:
@@ -358,6 +390,45 @@ def setup_test_environment():
     pass
 
 
+@pytest.fixture(scope="session", autouse=True)
+def create_test_global_env(tmp_path_factory):
+    """Create a temporary global.env for tests and set JUSTNEWS_GLOBAL_ENV.
+
+    This avoids relying on /etc/justnews/global.env for tests and ensures a
+    deterministic environment for test discovery and configuration.
+    """
+    # Preserve any existing override and restore afterwards
+    prev = os.environ.get("JUSTNEWS_GLOBAL_ENV")
+    # Build a minimal, safe test global.env in a temp directory
+    tmp_dir = tmp_path_factory.mktemp("global_env")
+    path = tmp_dir / "global.env"
+    contents = textwrap.dedent(f"""
+    # Auto-generated test global.env
+    SERVICE_DIR={project_root}
+    PYTHON_BIN={os.environ.get('PYTHON_BIN', '')}
+    JUSTNEWS_PYTHON={os.environ.get('JUSTNEWS_PYTHON', '')}
+    MODEL_STORE_ROOT={project_root}/model_store
+    MARIADB_HOST=127.0.0.1
+    MARIADB_PORT=3306
+    MARIADB_DB=justnews_test
+    MARIADB_USER=justnews
+    MARIADB_PASSWORD=test
+    """)
+    path.write_text(contents, encoding="utf-8")
+    os.environ["JUSTNEWS_GLOBAL_ENV"] = str(path)
+
+    # Also ensure SERVICE_DIR visible to modules that inspect it directly
+    os.environ.setdefault("SERVICE_DIR", str(project_root))
+
+    yield path
+
+    # Cleanup - restore previous env var if any
+    if prev is not None:
+        os.environ["JUSTNEWS_GLOBAL_ENV"] = prev
+    else:
+        os.environ.pop("JUSTNEWS_GLOBAL_ENV", None)
+
+
 @pytest.fixture(scope="session")
 def event_loop_policy():
     """Configure event loop policy for async tests"""
@@ -538,8 +609,8 @@ def mock_security_context():
 def test_config():
     """Test configuration fixture"""
     return {
-        "database": {
-            "url": "postgresql://test:test@localhost:5432/test_db",
+            "database": {
+                "url": "mysql://test:test@localhost:3306/test_db",
             "pool_size": 5,
             "timeout": 30
         },
@@ -609,7 +680,7 @@ def assert_async_operation_completes_within(async_func, timeout_seconds=5.0):
         try:
             await asyncio.wait_for(async_func(), timeout=timeout_seconds)
             return True
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return False
 
     result = asyncio.run(run_with_timeout())

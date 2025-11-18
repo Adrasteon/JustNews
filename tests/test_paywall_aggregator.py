@@ -1,5 +1,4 @@
 import os
-import tempfile
 
 from agents.crawler.paywall_aggregator import increment_and_check, reset_counts
 

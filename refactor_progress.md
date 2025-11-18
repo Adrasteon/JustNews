@@ -1,8 +1,8 @@
-# JustNewsAgent Refactoring Progress
+# JustNews Refactoring Progress
 
 ## Overview
 
-The JustNewsAgent V4 codebase is undergoing a comprehensive multi-phase refactoring initiative. The **Agent Refactoring Stage** has been completed, representing the first major phase of this larger effort.
+The JustNews V4 codebase is undergoing a comprehensive multi-phase refactoring initiative. The **Agent Refactoring Stage** has been completed, representing the first major phase of this larger effort.
 
 ### Current Status: COMPREHENSIVE REFACTORING COMPLETE ✅
 **Agent Refactoring**: 17/18 agents successfully refactored (94.4% completion)
@@ -41,7 +41,7 @@ The JustNewsAgent V4 codebase is undergoing a comprehensive multi-phase refactor
 **Status**: **PRODUCTION READY** - Enterprise-grade system with comprehensive monitoring, automated operations, and zero critical issues
 
 **Major Refactoring Areas Completed**:
-1. ✅ **Deployment System** - Multi-platform deployment (Docker/Kubernetes/systemd) fully operational
+1. ✅ **Deployment System** - systemd deployment fully operational (Docker and Kubernetes deprecated)
 2. ✅ **Documentation System** - Unified documentation platform with FastAPI patterns complete
 3. ✅ **Configuration Management** - Pydantic V2 type-safe configuration system implemented
 4. ✅ **Testing Infrastructure** - Comprehensive pytest framework with async support and mocking
@@ -78,7 +78,7 @@ The JustNewsAgent V4 codebase is undergoing a comprehensive multi-phase refactor
 ### Infrastructure Agents (9/10) ✅ Complete
 | Agent | Status | Files | Last Modified | Notes |
 |-------|--------|-------|---------------|-------|
-| **balancer** | ✅ Complete | `main.py`, `balancer_engine.py`, `tools.py` | Oct 21, 2025 | Load distribution |
+| **balancer** | ✅ Complete | `main.py`, `balancer_engine.py`, `tools.py` | Oct 21, 2025 | Load distribution (DEPRECATED — removed; responsibilities moved to critic/analytics/gpu_orchestrator) |
 | **crawler** | ✅ Complete | `main.py`, `crawler_engine.py`, `tools.py` | Oct 21, 2025 | Content extraction |
 | **crawler_control** | ✅ Complete | `main.py`, `crawler_control_engine.py`, `tools.py` | Oct 21, 2025 | Crawl management |
 | **dashboard** | ✅ Complete | `main.py`, `dashboard_engine.py`, `tools.py` | Oct 21, 2025 | Web interface |
@@ -127,7 +127,7 @@ The JustNewsAgent V4 codebase is undergoing a comprehensive multi-phase refactor
 - [x] **Phase 11 - Consumer-Facing System**: Complete news platform with website and APIs
 
 ### 🎯 Next Steps (All Refactoring Complete)
-✅ **ALL REFACTORING COMPLETE** - JustNewsAgent is production-ready with enterprise-grade capabilities
+✅ **ALL REFACTORING COMPLETE** - JustNews is production-ready with enterprise-grade capabilities
 ✅ **Production Deployment Ready** - Multi-platform deployment, monitoring, and security operational
 ✅ **Zero Critical Issues** - All systems validated and fully operational
 ✅ **Enterprise-Grade System** - Comprehensive monitoring, automated operations, and security
@@ -203,7 +203,7 @@ The JustNewsAgent V4 codebase is undergoing a comprehensive multi-phase refactor
 
 ### ✅ Phase 10 - Deployment System (COMPLETED)
 - **Status**: ✅ Complete - October 23, 2025
-- **Deliverables**: Multi-platform deployment (Docker/Kubernetes/systemd) fully operational
+- **Deliverables**: systemd deployment fully operational (Docker and Kubernetes deprecated)
 
 ### ✅ Phase 11 - Consumer-Facing System (COMPLETED)
 - **Status**: ✅ Complete - October 23, 2025
@@ -221,7 +221,7 @@ The JustNewsAgent V4 codebase is undergoing a comprehensive multi-phase refactor
 - **Production deployment ready** - Multi-platform deployment, monitoring, and security operational
 - **Zero critical issues** - All systems validated and production-ready
 
-📝 **Final Status**: JustNewsAgent is **FULLY PRODUCTION-READY** with enterprise-grade capabilities and complete consumer platform.
+📝 **Final Status**: JustNews is **FULLY PRODUCTION-READY** with enterprise-grade capabilities and complete consumer platform.
 
 ---
 

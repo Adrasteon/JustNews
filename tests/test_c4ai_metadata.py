@@ -1,6 +1,5 @@
 import sys
 import types
-import asyncio
 
 from fastapi.testclient import TestClient
 

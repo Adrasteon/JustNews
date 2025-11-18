@@ -1,25 +1,21 @@
 """
-Grafana Integration for JustNewsAgent Monitoring System
+Grafana Integration for JustNews Monitoring System
 
 This module provides comprehensive Grafana integration for advanced visualization,
 custom dashboard deployment, and monitoring panel management. It enables
 seamless integration between the monitoring system and Grafana for
 enterprise-grade dashboards and alerting.
 
-Author: JustNewsAgent Development Team
+Author: JustNews Development Team
 Date: October 22, 2025
 """
 
-import asyncio
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Tuple, Union
-from datetime import datetime
-import aiohttp
-import requests
-from pathlib import Path
+from typing import Any
 
+import aiohttp
 from pydantic import BaseModel, Field, field_validator
 
 # Configure logging
@@ -30,7 +26,7 @@ class GrafanaConfig(BaseModel):
     url: str = Field(..., description="Grafana server URL")
     api_key: str = Field(..., description="Grafana API key")
     datasource_name: str = Field("prometheus", description="Default datasource name")
-    folder_name: str = Field("JustNewsAgent", description="Dashboard folder name")
+    folder_name: str = Field("JustNews", description="Dashboard folder name")
     organization_id: int = Field(1, description="Grafana organization ID")
     timeout: int = Field(30, description="Request timeout in seconds")
 
@@ -43,23 +39,23 @@ class GrafanaConfig(BaseModel):
 
 class DashboardPanel(BaseModel):
     """Grafana dashboard panel configuration"""
-    id: Optional[int] = Field(None, description="Panel ID")
+    id: int | None = Field(None, description="Panel ID")
     title: str = Field(..., description="Panel title")
     type: str = Field(..., description="Panel type (graph, table, heatmap, etc.)")
-    targets: List[Dict[str, Any]] = Field(default_factory=list, description="Query targets")
-    grid_pos: Dict[str, Any] = Field(..., description="Grid position")
-    options: Dict[str, Any] = Field(default_factory=dict, description="Panel options")
-    field_config: Dict[str, Any] = Field(default_factory=dict, description="Field configuration")
-    transformations: List[Dict[str, Any]] = Field(default_factory=list, description="Data transformations")
+    targets: list[dict[str, Any]] = Field(default_factory=list, description="Query targets")
+    grid_pos: dict[str, Any] = Field(..., description="Grid position")
+    options: dict[str, Any] = Field(default_factory=dict, description="Panel options")
+    field_config: dict[str, Any] = Field(default_factory=dict, description="Field configuration")
+    transformations: list[dict[str, Any]] = Field(default_factory=list, description="Data transformations")
 
 class DashboardTemplate(BaseModel):
     """Grafana dashboard template"""
     name: str = Field(..., description="Template name")
     description: str = Field("", description="Template description")
-    tags: List[str] = Field(default_factory=list, description="Dashboard tags")
-    panels: List[DashboardPanel] = Field(default_factory=list, description="Dashboard panels")
-    templating: Dict[str, Any] = Field(default_factory=dict, description="Template variables")
-    time: Dict[str, Any] = Field(default_factory=lambda: {"from": "now-1h", "to": "now"}, description="Time range")
+    tags: list[str] = Field(default_factory=list, description="Dashboard tags")
+    panels: list[DashboardPanel] = Field(default_factory=list, description="Dashboard panels")
+    templating: dict[str, Any] = Field(default_factory=dict, description="Template variables")
+    time: dict[str, Any] = Field(default_factory=lambda: {"from": "now-1h", "to": "now"}, description="Time range")
     refresh: str = Field("30s", description="Refresh interval")
 
 class GrafanaAlertRule(BaseModel):
@@ -69,8 +65,8 @@ class GrafanaAlertRule(BaseModel):
     condition: str = Field(..., description="Alert condition")
     duration: str = Field("5m", description="For duration")
     severity: str = Field("warning", description="Alert severity")
-    labels: Dict[str, str] = Field(default_factory=dict, description="Alert labels")
-    annotations: Dict[str, str] = Field(default_factory=dict, description="Alert annotations")
+    labels: dict[str, str] = Field(default_factory=dict, description="Alert labels")
+    annotations: dict[str, str] = Field(default_factory=dict, description="Alert annotations")
 
 @dataclass
 class GrafanaIntegration:
@@ -86,16 +82,16 @@ class GrafanaIntegration:
     """
 
     config: GrafanaConfig
-    session: Optional[aiohttp.ClientSession] = None
+    session: aiohttp.ClientSession | None = None
 
     # Dashboard templates
-    templates: Dict[str, DashboardTemplate] = field(default_factory=dict)
+    templates: dict[str, DashboardTemplate] = field(default_factory=dict)
 
     # Deployed dashboards
-    deployed_dashboards: Dict[str, str] = field(default_factory=dict)  # name -> uid
+    deployed_dashboards: dict[str, str] = field(default_factory=dict)  # name -> uid
 
     # Alert rules
-    alert_rules: Dict[str, GrafanaAlertRule] = field(default_factory=dict)
+    alert_rules: dict[str, GrafanaAlertRule] = field(default_factory=dict)
 
     def __post_init__(self):
         """Initialize Grafana integration"""
@@ -352,7 +348,7 @@ class GrafanaIntegration:
         except Exception as e:
             logger.error(f"Error ensuring folder exists: {e}")
 
-    async def deploy_dashboard(self, template_name: str, dashboard_name: Optional[str] = None) -> str:
+    async def deploy_dashboard(self, template_name: str, dashboard_name: str | None = None) -> str:
         """
         Deploy a dashboard from template
 
@@ -390,7 +386,7 @@ class GrafanaIntegration:
             logger.error(f"Error deploying dashboard '{name}': {e}")
             raise
 
-    def _create_dashboard_json(self, template: DashboardTemplate, name: str) -> Dict[str, Any]:
+    def _create_dashboard_json(self, template: DashboardTemplate, name: str) -> dict[str, Any]:
         """Create Grafana dashboard JSON from template"""
         dashboard = {
             "dashboard": {
@@ -414,7 +410,7 @@ class GrafanaIntegration:
 
         return dashboard
 
-    async def update_dashboard(self, dashboard_name: str, updates: Dict[str, Any]):
+    async def update_dashboard(self, dashboard_name: str, updates: dict[str, Any]):
         """
         Update an existing dashboard
 
@@ -462,7 +458,7 @@ class GrafanaIntegration:
             logger.error(f"Error updating dashboard '{dashboard_name}': {e}")
             raise
 
-    def _apply_dashboard_updates(self, dashboard: Dict[str, Any], updates: Dict[str, Any]):
+    def _apply_dashboard_updates(self, dashboard: dict[str, Any], updates: dict[str, Any]):
         """Apply updates to dashboard JSON"""
         for key, value in updates.items():
             if key == "panels":
@@ -540,7 +536,7 @@ class GrafanaIntegration:
             logger.error(f"Error creating alert rule '{rule.name}': {e}")
             raise
 
-    async def update_alert_rule(self, rule_name: str, updates: Dict[str, Any]):
+    async def update_alert_rule(self, rule_name: str, updates: dict[str, Any]):
         """
         Update an existing alert rule
 
@@ -582,7 +578,7 @@ class GrafanaIntegration:
             logger.error(f"Error deleting alert rule '{rule_name}': {e}")
             raise
 
-    async def get_dashboard_metrics(self, dashboard_name: str) -> Dict[str, Any]:
+    async def get_dashboard_metrics(self, dashboard_name: str) -> dict[str, Any]:
         """
         Get metrics about a dashboard
 
@@ -653,7 +649,7 @@ class GrafanaIntegration:
             logger.error(f"Error exporting dashboard '{dashboard_name}': {e}")
             raise
 
-    async def import_dashboard(self, file_path: str, dashboard_name: Optional[str] = None) -> str:
+    async def import_dashboard(self, file_path: str, dashboard_name: str | None = None) -> str:
         """
         Import a dashboard from a JSON file
 
@@ -665,7 +661,7 @@ class GrafanaIntegration:
             Dashboard UID
         """
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 dashboard_data = json.load(f)
 
             if dashboard_name:
@@ -689,7 +685,7 @@ class GrafanaIntegration:
             logger.error(f"Error importing dashboard from {file_path}: {e}")
             raise
 
-    async def list_dashboards(self) -> List[Dict[str, Any]]:
+    async def list_dashboards(self) -> list[dict[str, Any]]:
         """
         List all dashboards in the organization
 
@@ -709,7 +705,7 @@ class GrafanaIntegration:
             logger.error(f"Error listing dashboards: {e}")
             raise
 
-    async def get_system_status(self) -> Dict[str, Any]:
+    async def get_system_status(self) -> dict[str, Any]:
         """
         Get Grafana system status
 

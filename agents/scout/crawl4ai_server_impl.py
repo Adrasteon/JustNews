@@ -12,7 +12,7 @@ warn(
 )
 
 try:
-    from agents.c4ai.server import app, CrawlRequest, crawl, health  # type: ignore
+    from agents.c4ai.server import CrawlRequest, app, crawl, health  # type: ignore
     __all__ = ["app", "CrawlRequest", "crawl", "health"]
 except Exception:  # pragma: no cover - fallback
     from fastapi import FastAPI

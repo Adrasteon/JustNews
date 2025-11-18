@@ -5,23 +5,21 @@ Web interface for crawler management and monitoring.
 # main.py for Crawler Control Agent
 
 import os
+import re
 from contextlib import asynccontextmanager
-from typing import Dict, Any
 
 import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
-import re
-
-from common.observability import get_logger
-from common.metrics import JustNewsMetrics
-from .crawler_control_engine import CrawlerControlEngine
-from .tools import get_sources_with_limit
 
 # Import database functions - REMOVED: migrated to database.utils.migrated_database_utils
 # from agents.common.database import execute_query, initialize_connection_pool
 from common.dev_db_fallback import apply_test_db_env_fallback
+from common.metrics import JustNewsMetrics
+from common.observability import get_logger
+
+from .tools import get_sources_with_limit
 
 # Apply database environment fallback for development
 apply_test_db_env_fallback()
@@ -124,14 +122,14 @@ class CrawlRequest(BaseModel):
     strategy: str = "auto"
     enable_ai: bool = True
     timeout: int = 300
-    user_agent: str = "JustNewsAgent/1.0"
+    user_agent: str = "JustNews/1.0"
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
     """Serve the main dashboard HTML"""
     try:
         html_path = os.path.join(os.path.dirname(__file__), "web_interface", "index.html")
-        with open(html_path, "r") as f:
+        with open(html_path) as f:
             return f.read()
     except Exception as e:
         logger.error(f"Error reading HTML file: {e}")

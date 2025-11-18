@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """Simple exporter exposing ChromaDB and MariaDB up/latency gauges."""
 import os
-import time
 import socket
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+import time
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from prometheus_client import CollectorRegistry, Gauge, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    CollectorRegistry,
+    Gauge,
+    generate_latest,
+)
 
 try:
     import requests

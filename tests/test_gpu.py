@@ -1,5 +1,5 @@
 """
-GPU Tests for JustNewsAgent System
+GPU Tests for JustNews System
 
 This module contains comprehensive GPU tests that validate:
 - GPU availability and initialization
@@ -11,11 +11,17 @@ This module contains comprehensive GPU tests that validate:
 """
 
 import asyncio
-import pytest
-from typing import Dict, List, Any, Optional, Tuple
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Any
+from unittest.mock import MagicMock, patch
 
-from tests.test_utils import AsyncTestHelper, MockFactory, PerformanceTester, CustomAssertions
+import pytest
+
+from tests.test_utils import (
+    AsyncTestHelper,
+    CustomAssertions,
+    MockFactory,
+    PerformanceTester,
+)
 
 
 class TestGPUAvailability:
@@ -82,7 +88,7 @@ class TestGPUAvailability:
             assert memory_info["used"] == 4 * 1024 * 1024 * 1024
             assert memory_info["utilization"] == (4 / 12) * 100
 
-    async def _detect_gpu(self) -> Dict[str, Any]:
+    async def _detect_gpu(self) -> dict[str, Any]:
         """Detect GPU availability"""
         try:
             import torch
@@ -106,7 +112,7 @@ class TestGPUAvailability:
         except ImportError:
             return {"available": False, "count": 0, "devices": []}
 
-    async def _initialize_gpu(self, device_id: int) -> Dict[str, Any]:
+    async def _initialize_gpu(self, device_id: int) -> dict[str, Any]:
         """Initialize GPU device"""
         try:
             import torch
@@ -116,7 +122,7 @@ class TestGPUAvailability:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    async def _get_gpu_memory_info(self, device_id: int) -> Dict[str, Any]:
+    async def _get_gpu_memory_info(self, device_id: int) -> dict[str, Any]:
         """Get GPU memory information"""
         try:
             import torch
@@ -217,7 +223,7 @@ class TestGPUMemoryManagement:
                 mock_device.assert_called_once()
                 mock_empty_cache.assert_called_once()
 
-    async def _get_memory_stats(self) -> Dict[str, Any]:
+    async def _get_memory_stats(self) -> dict[str, Any]:
         """Get GPU memory statistics"""
         try:
             import torch
@@ -228,7 +234,7 @@ class TestGPUMemoryManagement:
         except Exception as e:
             return {"error": str(e)}
 
-    async def _cleanup_gpu_memory(self) -> Dict[str, Any]:
+    async def _cleanup_gpu_memory(self) -> dict[str, Any]:
         """Cleanup GPU memory"""
         try:
             import torch
@@ -349,10 +355,10 @@ class TestGPUModelOperations:
                 # Verify device switching
                 assert mock_set_device.call_count >= 2
 
-    async def _load_model_on_gpu(self, model_name: str) -> Dict[str, Any]:
+    async def _load_model_on_gpu(self, model_name: str) -> dict[str, Any]:
         """Load model on GPU"""
         try:
-            from transformers import AutoModelForSequenceClassification, AutoTokenizer
+            from transformers import AutoModelForSequenceClassification
 
             model = AutoModelForSequenceClassification.from_pretrained(model_name)
             model.to("cuda")
@@ -366,14 +372,14 @@ class TestGPUModelOperations:
         # Simulate inference time
         await asyncio.sleep(0.1)
 
-    def _validate_inference_metrics(self, metrics: Dict[str, Any]):
+    def _validate_inference_metrics(self, metrics: dict[str, Any]):
         """Validate inference performance metrics"""
         assert "avg_inference_time" in metrics
         assert "throughput" in metrics
         assert metrics["avg_inference_time"] < 1.0
         assert metrics["throughput"] > 1.0
 
-    async def _process_batch(self, batch_size: int) -> Dict[str, Any]:
+    async def _process_batch(self, batch_size: int) -> dict[str, Any]:
         """Process batch of data"""
         # Simulate batch processing
         memory_usage = batch_size * 10 * 1024 * 1024  # 10MB per item
@@ -385,7 +391,7 @@ class TestGPUModelOperations:
             "memory_usage": memory_usage
         }
 
-    async def _run_multi_gpu_operations(self) -> List[Dict[str, Any]]:
+    async def _run_multi_gpu_operations(self) -> list[dict[str, Any]]:
         """Run operations across multiple GPUs"""
         results = []
         try:
@@ -455,7 +461,7 @@ class TestGPUErrorHandling:
             assert result.get("device") == "cpu"
             assert "fallback" in result
 
-    async def _attempt_gpu_operation_with_oom(self) -> Dict[str, Any]:
+    async def _attempt_gpu_operation_with_oom(self) -> dict[str, Any]:
         """Attempt GPU operation that causes OOM"""
         try:
             # This would normally allocate GPU memory and fail
@@ -467,7 +473,7 @@ class TestGPUErrorHandling:
                 "fallback_available": True
             }
 
-    async def _attempt_device_access(self) -> Dict[str, Any]:
+    async def _attempt_device_access(self) -> dict[str, Any]:
         """Attempt to access unavailable GPU device"""
         try:
             # This would normally try to set device and fail
@@ -478,7 +484,7 @@ class TestGPUErrorHandling:
                 "error": str(e)
             }
 
-    async def _run_with_graceful_degradation(self) -> Dict[str, Any]:
+    async def _run_with_graceful_degradation(self) -> dict[str, Any]:
         """Run operation with graceful degradation"""
         # Simulate CPU fallback
         return {

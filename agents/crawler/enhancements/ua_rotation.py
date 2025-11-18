@@ -8,8 +8,8 @@ user-agent string (per domain) with deterministic fallback behaviour.
 from __future__ import annotations
 
 import random
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Iterable, Mapping, Sequence
 
 from common.observability import get_logger
 

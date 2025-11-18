@@ -8,6 +8,14 @@ Type=simple
 # Global and per-instance environment files (optional but recommended)
 EnvironmentFile=-/etc/justnews/global.env
 EnvironmentFile=-/etc/justnews/%i.env
+# Prefer to set the interpreter explicitly to the known conda env so services
+# start consistently even when 'conda' isn't available in system PATH.
+# Operators can override this per-instance using /etc/justnews/<agent>.env.
+# If you prefer not to hardcode the interpreter here, rely on global.env instead.
+Environment=PYTHON_BIN=/home/adra/miniconda3/envs/justnews-v2-py312/bin/python
+# Add conda bin to PATH so 'conda' itself can be resolved if needed by the
+# startup scripts (used for 'conda run -n <env> python').
+Environment=PATH=/home/adra/miniconda3/bin:/usr/local/bin:/usr/bin:/bin
 # Run as the deploy user by default (override in /etc/justnews/<instance>.env if needed)
 User=adra
 Group=adra
@@ -18,6 +26,11 @@ ExecStartPre=/usr/bin/env bash -c 'if [ "%i" = "mcp_bus" ]; then /usr/local/bin/
 ExecStart=/usr/local/bin/justnews-start-agent.sh %i
 Restart=on-failure
 RestartSec=3
+# Allow sufficient time for preflight checks and model preload operations.
+# Default systemd TimeoutStartSec is 90s which can abort preflight scripts that
+# wait for other agents (e.g., mcp_bus waiting for gpu_orchestrator) to become
+# healthy. Increase to 5 minutes to avoid false start-timeouts.
+TimeoutStartSec=300
 # Uncomment to restrict core dumps and add basic security hardening
 # NoNewPrivileges=true
 # PrivateTmp=true

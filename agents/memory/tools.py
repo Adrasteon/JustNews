@@ -18,12 +18,11 @@ Architecture:
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 from time import perf_counter
+from typing import Any
 
-import numpy as np
 import requests
 
 from common.json_utils import make_json_safe
@@ -45,10 +44,9 @@ logger = get_logger(__name__)
 FEEDBACK_LOG = os.environ.get("MEMORY_FEEDBACK_LOG", "./feedback_memory.log")
 EMBEDDING_MODEL_NAME = os.environ.get("SENTENCE_TRANSFORMER_MODEL", "all-MiniLM-L6-v2")
 MEMORY_AGENT_PORT = int(os.environ.get("MEMORY_AGENT_PORT", 8007))
-POSTGRES_HOST = os.environ.get("POSTGRES_HOST")
-POSTGRES_DB = os.environ.get("POSTGRES_DB")
-POSTGRES_USER = os.environ.get("POSTGRES_USER")
-POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
+# NOTE: PostgreSQL environment variables were removed after migration to
+# MariaDB + Chroma; the storage layer is accessed via the migrated database
+# service from `database.utils.migrated_database_utils`.
 
 # Canonical cache folder for shared embedding model
 DEFAULT_MODEL_CACHE = os.environ.get("MEMORY_MODEL_CACHE") or str(Path('./agents/memory/models').resolve())
@@ -58,7 +56,7 @@ def log_feedback(event: str, details: dict):
     """Logs feedback to a file."""
     try:
         with open(FEEDBACK_LOG, "a", encoding="utf-8") as f:
-            f.write(f"{datetime.now(timezone.utc).isoformat()}\t{event}\t{details}\n")
+            f.write(f"{datetime.now(UTC).isoformat()}\t{event}\t{details}\n")
     except Exception as e:
         logger.error(f"Error logging feedback: {e}")
 
@@ -87,7 +85,7 @@ def get_embedding_model():
             return None
 
 
-def _parse_publication_date(value: Any) -> Optional[datetime]:
+def _parse_publication_date(value: Any) -> datetime | None:
     if not value:
         return None
     if isinstance(value, datetime):
@@ -137,6 +135,7 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
             If not provided, a new model will be created via get_embedding_model().
     """
     metrics = get_stage_b_metrics()
+    start_time = perf_counter()
     try:
         metadata = metadata or {}
         if not isinstance(metadata, dict):
@@ -178,7 +177,7 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
 
                 if duplicate:
                     duplicate_lookup_id = duplicate[0]
-            elif normalized_url:
+            if normalized_url and duplicate_lookup_id is None:
                 # Check for duplicates by normalized URL
                 cursor = db_service.mb_conn.cursor()
                 cursor.execute("SELECT id FROM articles WHERE normalized_url = %s", (normalized_url,))
@@ -189,18 +188,19 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
                     duplicate_lookup_id = duplicate[0]
 
             if duplicate_lookup_id is not None:
-                logger.info(
-                    "Article with hash %s already exists (ID: %s), skipping duplicate",
-                    hash_value,
-                    duplicate_lookup_id,
-                )
-                metrics.record_ingestion("duplicate")
-                db_service.close()
-                return {
-                    "status": "duplicate",
-                    "article_id": duplicate_lookup_id,
-                    "message": "Article already exists",
-                }
+                    logger.info(
+                        "Article with hash %s already exists (ID: %s), skipping duplicate",
+                        hash_value,
+                        duplicate_lookup_id,
+                    )
+                    metrics.record_ingestion("duplicate")
+                    db_service.close()
+                    return {
+                        "status": "duplicate",
+                        "article_id": duplicate_lookup_id,
+                        "message": "Article already exists",
+                        "processing_time": perf_counter() - start_time,
+                    }
 
         # Use provided model if available to avoid re-loading model per-call
         cache_label = "provided" if embedding_model is not None else "shared"
@@ -211,7 +211,7 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
                 logger.error("No embedding model available for article storage")
                 metrics.record_ingestion("embedding_model_unavailable")
                 db_service.close()
-                return {"error": "embedding_model_unavailable"}
+                return {"error": "embedding_model_unavailable", "processing_time": perf_counter() - start_time}
             cache_label = "shared"
 
         # encode may return numpy array; convert later to list of floats
@@ -228,24 +228,24 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
             logger.error("Embedding generation failed: %s", encoding_error)
             metrics.record_ingestion("error")
             db_service.close()
-            return {"error": "embedding_generation_failed"}
+            return {"error": "embedding_generation_failed", "processing_time": perf_counter() - start_time}
 
         try:
             metadata_payload = json.dumps(metadata)
         except Exception:
             metadata_payload = json.dumps({"raw": str(metadata)})
 
-        authors: List[str] = metadata.get("authors") or []
+        authors: list[str] = metadata.get("authors") or []
         if isinstance(authors, str):
             authors = [authors]
-        tags: List[str] = metadata.get("tags") or []
+        tags: list[str] = metadata.get("tags") or []
         if isinstance(tags, str):
             tags = [t.strip() for t in tags.split(",") if t.strip()]
 
         publication_dt = _parse_publication_date(metadata.get("publication_date"))
         collection_dt = _parse_publication_date(metadata.get("collection_timestamp"))
         if collection_dt is None:
-            collection_dt = datetime.now(timezone.utc)
+            collection_dt = datetime.now(UTC)
 
         review_reasons_json = json.dumps(metadata.get("review_reasons") or [])
 
@@ -355,6 +355,7 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
         # Return both 'article_id' and legacy 'id' key for backward compatibility
         metrics.record_ingestion("success")
         db_service.close()
+        result["processing_time"] = perf_counter() - start_time
         return result
     except Exception as e:
         logger.error(f"Error saving article: {e}")
@@ -363,7 +364,7 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
             db_service.close()
         except:
             pass
-        return {"error": str(e)}
+        return {"error": str(e), "processing_time": perf_counter() - start_time}
 
 
 def vector_search_articles(query: str, top_k: int = 5) -> list:
@@ -436,6 +437,6 @@ def vector_search_articles_local(query: str, top_k: int = 5, embedding_model=Non
             logger.warning(f"Failed to collect training data: {e}")
 
         return results
-    except Exception as e:
+    except Exception:
         logger.exception("vector_search_articles_local: error in semantic search")
         return []

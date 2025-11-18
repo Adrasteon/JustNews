@@ -1,23 +1,27 @@
 """
-Custom Business Metrics for JustNewsAgent
+Custom Business Metrics for JustNews
 
 Domain-specific metrics for content processing, quality assessment,
 fact-checking, and business intelligence.
 """
 
-import time
-from typing import Dict, List, Optional, Any, Tuple
-from datetime import datetime, timedelta
-from dataclasses import dataclass
-from enum import Enum
 import logging
-
-from prometheus_client import Counter, Gauge, Histogram, Summary
-import sys
 import os
+import sys
+import time
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any
+
+from prometheus_client import Counter, Gauge, Histogram
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from monitoring.core.metrics_collector import EnhancedMetricsCollector, get_enhanced_metrics_collector
+from monitoring.core.metrics_collector import (
+    EnhancedMetricsCollector,
+    get_enhanced_metrics_collector,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +72,7 @@ class ContentMetrics:
     content_type: ContentType
     source: str
     processing_time: float
-    quality_scores: Dict[QualityMetric, float]
+    quality_scores: dict[QualityMetric, float]
     word_count: int
     entities_extracted: int
     sentiment: SentimentType
@@ -79,7 +83,7 @@ class ContentMetrics:
 
 class CustomMetrics:
     """
-    Custom business metrics for JustNewsAgent operations.
+    Custom business metrics for JustNews operations.
 
     Provides domain-specific metrics for content processing, quality assessment,
     and business intelligence.
@@ -199,9 +203,9 @@ class CustomMetrics:
         )
 
         # Initialize tracking variables
-        self._processing_start_times: Dict[str, float] = {}
-        self._content_metrics_history: List[ContentMetrics] = []
-        self._throughput_counters: Dict[str, List[Tuple[datetime, int]]] = {}
+        self._processing_start_times: dict[str, float] = {}
+        self._content_metrics_history: list[ContentMetrics] = []
+        self._throughput_counters: dict[str, list[tuple[datetime, int]]] = {}
 
     def record_content_ingestion(self, content_type: ContentType, source_type: str,
                                source_name: str, content_id: str = None):
@@ -249,7 +253,7 @@ class CustomMetrics:
             )
 
     def record_quality_assessment(self, content_type: ContentType,
-                                quality_scores: Dict[QualityMetric, float]):
+                                quality_scores: dict[QualityMetric, float]):
         """Record quality assessment results"""
         for metric, score in quality_scores.items():
             self.quality_assessment_score.labels(
@@ -446,7 +450,7 @@ class CustomMetrics:
             "content_processing"
         )
 
-    def get_processing_stats(self, hours: int = 24) -> Dict[str, Any]:
+    def get_processing_stats(self, hours: int = 24) -> dict[str, Any]:
         """Get processing statistics for the last N hours"""
         cutoff = datetime.utcnow() - timedelta(hours=hours)
 
@@ -483,7 +487,7 @@ class CustomMetrics:
         }
 
     def get_throughput_trends(self, content_type: str = None, stage: str = None,
-                            hours: int = 24) -> Dict[str, Any]:
+                            hours: int = 24) -> dict[str, Any]:
         """Get throughput trends for the last N hours"""
         cutoff = datetime.utcnow() - timedelta(hours=hours)
         trends = {}
@@ -520,7 +524,7 @@ class CustomMetrics:
         else:
             return "low"
 
-    def _calculate_trend_slope(self, x_values: List[float], y_values: List[float]) -> float:
+    def _calculate_trend_slope(self, x_values: list[float], y_values: list[float]) -> float:
         """Calculate linear regression slope"""
         if len(x_values) != len(y_values) or len(x_values) < 2:
             return 0.0
@@ -539,7 +543,7 @@ class CustomMetrics:
 
 
 # Global custom metrics instances
-_custom_metrics_instances: Dict[str, CustomMetrics] = {}
+_custom_metrics_instances: dict[str, CustomMetrics] = {}
 
 def get_custom_metrics(agent_name: str) -> CustomMetrics:
     """Get or create custom metrics for an agent"""

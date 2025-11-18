@@ -1,6 +1,6 @@
 """
 from common.observability import get_logger
-Multi-GPU Cluster Support for JustNewsAgent
+Multi-GPU Cluster Support for JustNews
 
 Provides comprehensive multi-GPU cluster management with:
 - Distributed GPU resource allocation

@@ -9,7 +9,7 @@ keeping the logic deliberately simple.
 from __future__ import annotations
 
 import os
-from typing import Iterable
+from collections.abc import Iterable
 
 
 def _load_allowed_keys() -> Iterable[str]:

@@ -21,7 +21,6 @@ resources:
   - grafana.yaml
   - security.yaml
   - autoscaling.yaml
-  - agents/balancer-deployment.yaml
   - agents/newsreader-deployment.yaml
   - agents/synthesizer-deployment.yaml
   - agents/critic-deployment.yaml

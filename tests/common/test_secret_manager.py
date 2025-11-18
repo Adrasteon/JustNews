@@ -1,21 +1,19 @@
 """
-Tests for JustNewsAgent Secret Manager
+Tests for JustNews Secret Manager
 """
 
-import os
-import json
-import tempfile
-import pytest
-from unittest.mock import Mock, patch, mock_open
 from pathlib import Path
+from unittest.mock import Mock, mock_open, patch
+
+import pytest
 
 from common.secret_manager import (
     SecretManager,
-    get_secret_manager,
     get_secret,
-    set_secret,
+    get_secret_manager,
     list_secrets,
-    validate_secrets
+    set_secret,
+    validate_secrets,
 )
 
 

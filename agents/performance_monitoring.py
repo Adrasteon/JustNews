@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 
 from common.observability import get_logger
 
@@ -17,10 +17,10 @@ class PerformanceMetrics:
     articles_processed: int = 0
     sites_crawled: int = 0
     errors: int = 0
-    mode_usage: Dict[str, int] = field(default_factory=lambda: {"ultra_fast": 0, "ai_enhanced": 0, "generic": 0})
+    mode_usage: dict[str, int] = field(default_factory=lambda: {"ultra_fast": 0, "ai_enhanced": 0, "generic": 0})
     start_time: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         uptime = time.time() - self.start_time
         return {
             "articles_processed": self.articles_processed,
@@ -49,7 +49,7 @@ class PerformanceMonitor:
         with self._lock:
             self.metrics = PerformanceMetrics()
 
-    def get_current_metrics(self) -> Dict[str, Any]:
+    def get_current_metrics(self) -> dict[str, Any]:
         with self._lock:
             return self.metrics.to_dict()
 
@@ -58,7 +58,7 @@ class PerformanceOptimizer:
     def __init__(self, monitor: PerformanceMonitor) -> None:
         self.monitor = monitor
 
-    def recommend_strategy(self) -> Optional[str]:
+    def recommend_strategy(self) -> str | None:
         metrics = self.monitor.get_current_metrics()
         usage = metrics["mode_usage"]
         if not usage:
@@ -67,7 +67,7 @@ class PerformanceOptimizer:
 
 
 _MONITOR = PerformanceMonitor()
-_MONITOR_THREAD: Optional[threading.Thread] = None
+_MONITOR_THREAD: threading.Thread | None = None
 _MONITOR_EVENT = threading.Event()
 
 
@@ -101,7 +101,7 @@ def stop_performance_monitoring() -> None:
         _MONITOR_EVENT.set()
 
 
-def export_performance_metrics() -> Dict[str, Any]:
+def export_performance_metrics() -> dict[str, Any]:
     return _MONITOR.get_current_metrics()
 
 

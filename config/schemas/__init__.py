@@ -1,8 +1,8 @@
-# JustNewsAgent Configuration Management - Unified Schema
+# JustNews Configuration Management - Unified Schema
 # Phase 2B: Configuration Management Refactoring
 
 """
-Unified Configuration Schema for JustNewsAgent
+Unified Configuration Schema for JustNews
 
 This module defines the complete type-safe configuration schema using Pydantic,
 providing validation, environment abstraction, and centralized configuration management.
@@ -15,14 +15,20 @@ Key Features:
 - IDE support with auto-completion
 """
 
-from enum import Enum
-from typing import Dict, List, Optional, Union, Any
-from pathlib import Path
 import os
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field, validator, root_validator, field_validator, model_validator
-from pydantic.types import PositiveInt, PositiveFloat, NonNegativeInt
-
+from pydantic import (
+    BaseModel,
+    Field,
+    field_validator,
+    model_validator,
+    root_validator,
+    validator,
+)
+from pydantic.types import NonNegativeInt, PositiveFloat, PositiveInt
 
 # ============================================================================
 # ENUMERATIONS
@@ -53,7 +59,10 @@ class CompressionAlgorithm(str, Enum):
 
 
 class DatabaseSSLMode(str, Enum):
-    """PostgreSQL SSL modes"""
+    """Database SSL modes (generic). Previously this enum was documented
+    as Postgres-specific; the modes remain an abstract representation of
+    TLS/SSL connection behavior applicable to MySQL/MariaDB and Postgres.
+    """
     DISABLE = "disable"
     ALLOW = "allow"
     PREFER = "prefer"
@@ -68,12 +77,12 @@ class DatabaseSSLMode(str, Enum):
 
 class SystemConfig(BaseModel):
     """Core system configuration"""
-    name: str = Field(default="JustNewsAgent", description="System name")
+    name: str = Field(default="JustNews", description="System name")
     version: str = Field(default="4.0", description="System version")
     environment: Environment = Field(default=Environment.DEVELOPMENT, description="Deployment environment")
     log_level: LogLevel = Field(default=LogLevel.INFO, description="Default logging level")
     debug_mode: bool = Field(default=False, description="Enable debug mode")
-    conda_environment: Optional[str] = Field(default=None, description="Conda environment name")
+    conda_environment: str | None = Field(default=None, description="Conda environment name")
 
     class Config:
         use_enum_values = True
@@ -87,7 +96,7 @@ class MCPBusConfig(BaseModel):
     """MCP Bus communication configuration"""
     host: str = Field(default="localhost", description="MCP Bus host")
     port: PositiveInt = Field(default=8000, description="MCP Bus port")
-    url: Optional[str] = Field(default=None, description="Full MCP Bus URL")
+    url: str | None = Field(default=None, description="Full MCP Bus URL")
     timeout_seconds: PositiveFloat = Field(default=30.0, description="Request timeout")
     max_retries: NonNegativeInt = Field(default=3, description="Maximum retry attempts")
     retry_delay_seconds: PositiveFloat = Field(default=1.0, description="Delay between retries")
@@ -115,7 +124,7 @@ class DatabaseConnectionPoolConfig(BaseModel):
 class DatabaseConfig(BaseModel):
     """Database configuration"""
     host: str = Field(default="localhost", description="Database host")
-    port: PositiveInt = Field(default=5432, description="Database port")
+    port: PositiveInt = Field(default=3306, description="Database port (default: MariaDB 3306)")
     database: str = Field(default="justnews", description="Database name")
     user: str = Field(default="justnews_user", description="Database user")
     password: str = Field(default="", description="Database password")
@@ -168,7 +177,7 @@ class StealthProfileConfig(BaseModel):
     user_agent: str = Field(..., description="User agent string")
     accept_language: str = Field(default="en-US,en;q=0.9", description="Accept-Language header")
     accept_encoding: str = Field(default="gzip, deflate, br", description="Accept-Encoding header")
-    headers: Dict[str, str] = Field(default_factory=dict, description="Additional HTTP headers")
+    headers: dict[str, str] = Field(default_factory=dict, description="Additional HTTP headers")
 
 
 class CrawlingEnhancementsConfig(BaseModel):
@@ -180,12 +189,12 @@ class CrawlingEnhancementsConfig(BaseModel):
     enable_paywall_detector: bool = Field(default=False, description="Detect paywalls")
     enable_stealth_headers: bool = Field(default=False, description="Apply stealth HTTP headers")
     enable_pia_socks5: bool = Field(default=False, description="Use PIA SOCKS5 proxy")
-    user_agent_pool: List[str] = Field(default_factory=list, description="User agent pool")
-    per_domain_user_agents: Dict[str, List[str]] = Field(default_factory=dict, description="Domain specific user agents")
-    proxy_pool: List[str] = Field(default_factory=list, description="Proxy URLs")
-    pia_socks5_username: Optional[str] = Field(default=None, description="PIA SOCKS5 username")
-    pia_socks5_password: Optional[str] = Field(default=None, description="PIA SOCKS5 password")
-    stealth_profiles: List[StealthProfileConfig] = Field(default_factory=list, description="Stealth header profiles")
+    user_agent_pool: list[str] = Field(default_factory=list, description="User agent pool")
+    per_domain_user_agents: dict[str, list[str]] = Field(default_factory=dict, description="Domain specific user agents")
+    proxy_pool: list[str] = Field(default_factory=list, description="Proxy URLs")
+    pia_socks5_username: str | None = Field(default=None, description="PIA SOCKS5 username")
+    pia_socks5_password: str | None = Field(default=None, description="PIA SOCKS5 password")
+    stealth_profiles: list[StealthProfileConfig] = Field(default_factory=list, description="Stealth header profiles")
     consent_cookie: ConsentCookieConfig = Field(default_factory=ConsentCookieConfig)
     paywall_detector: PaywallDetectorConfig = Field(default_factory=PaywallDetectorConfig)
 
@@ -203,7 +212,7 @@ class CrawlingConfig(BaseModel):
     obey_robots_txt: bool = Field(default=True, description="Respect robots.txt")
     enhancements: CrawlingEnhancementsConfig = Field(default_factory=CrawlingEnhancementsConfig)
     respect_rate_limits: bool = Field(default=True, description="Respect rate limits")
-    user_agent: str = Field(default="JustNewsAgent/4.0", description="HTTP user agent")
+    user_agent: str = Field(default="JustNews/4.0", description="HTTP user agent")
     robots_cache_hours: PositiveInt = Field(default=1, description="Robots.txt cache duration")
 
     rate_limiting: CrawlingRateLimits = Field(default_factory=CrawlingRateLimits)
@@ -217,8 +226,8 @@ class CrawlingConfig(BaseModel):
 
 class GPUDeviceLimits(BaseModel):
     """GPU device-specific limits"""
-    memory_gb: Optional[PositiveFloat] = Field(default=None, description="Memory limit in GB")
-    temperature_limits: Dict[str, PositiveInt] = Field(
+    memory_gb: PositiveFloat | None = Field(default=None, description="Memory limit in GB")
+    temperature_limits: dict[str, PositiveInt] = Field(
         default_factory=lambda: {"warning": 75, "critical": 85, "shutdown": 95},
         description="Temperature limits in Celsius"
     )
@@ -226,9 +235,9 @@ class GPUDeviceLimits(BaseModel):
 
 class GPUDevicesConfig(BaseModel):
     """GPU devices configuration"""
-    preferred: List[NonNegativeInt] = Field(default_factory=lambda: [0], description="Preferred GPU devices")
-    excluded: List[NonNegativeInt] = Field(default_factory=list, description="Excluded GPU devices")
-    device_limits: Dict[str, GPUDeviceLimits] = Field(default_factory=dict, description="Per-device limits")
+    preferred: list[NonNegativeInt] = Field(default_factory=lambda: [0], description="Preferred GPU devices")
+    excluded: list[NonNegativeInt] = Field(default_factory=list, description="Excluded GPU devices")
+    device_limits: dict[str, GPUDeviceLimits] = Field(default_factory=dict, description="Per-device limits")
 
 
 class GPUMemoryConfig(BaseModel):
@@ -251,7 +260,7 @@ class GPUHealthConfig(BaseModel):
     """GPU health monitoring configuration"""
     enabled: bool = Field(default=True, description="Enable health monitoring")
     check_interval_seconds: PositiveFloat = Field(default=30.0, description="Health check interval")
-    temperature_limits: Dict[str, PositiveInt] = Field(
+    temperature_limits: dict[str, PositiveInt] = Field(
         default_factory=lambda: {"warning_celsius": 75, "critical_celsius": 85, "shutdown_celsius": 95},
         description="Temperature limits"
     )
@@ -330,9 +339,9 @@ class SecurityConfig(BaseModel):
     max_requests_per_minute: PositiveInt = Field(default=60, description="Rate limit per minute")
     rate_limit_window_seconds: PositiveInt = Field(default=60, description="Rate limit window")
     enable_ip_filtering: bool = Field(default=False, description="Enable IP filtering")
-    allowed_ips: List[str] = Field(default_factory=list, description="Allowed IP addresses")
+    allowed_ips: list[str] = Field(default_factory=list, description="Allowed IP addresses")
     api_key_required: bool = Field(default=False, description="Require API key")
-    cors_origins: List[str] = Field(default_factory=lambda: ["*"], description="CORS allowed origins")
+    cors_origins: list[str] = Field(default_factory=lambda: ["*"], description="CORS allowed origins")
     session_timeout_minutes: PositiveInt = Field(default=30, description="Session timeout")
 
 
@@ -352,9 +361,9 @@ class MonitoringAlertThresholds(BaseModel):
 class MonitoringEmailConfig(BaseModel):
     """Email alert configuration"""
     enabled: bool = Field(default=False, description="Enable email alerts")
-    smtp_server: Optional[str] = Field(default=None, description="SMTP server")
+    smtp_server: str | None = Field(default=None, description="SMTP server")
     smtp_port: PositiveInt = Field(default=587, description="SMTP port")
-    recipients: List[str] = Field(default_factory=list, description="Email recipients")
+    recipients: list[str] = Field(default_factory=list, description="Email recipients")
 
 
 class MonitoringLogConfig(BaseModel):
@@ -395,7 +404,7 @@ class DataCompressionConfig(BaseModel):
 class DataAnonymizationConfig(BaseModel):
     """Data anonymization settings"""
     enabled: bool = Field(default=True, description="Enable anonymization")
-    fields: List[str] = Field(
+    fields: list[str] = Field(
         default_factory=lambda: ["ip_address", "user_agent", "session_id"],
         description="Fields to anonymize"
     )
@@ -458,7 +467,7 @@ class ExternalServicesConfig(BaseModel):
 # ============================================================================
 
 class JustNewsConfig(BaseModel):
-    """Complete JustNewsAgent configuration schema"""
+    """Complete JustNews configuration schema"""
     system: SystemConfig = Field(default_factory=SystemConfig)
     mcp_bus: MCPBusConfig = Field(default_factory=MCPBusConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
@@ -519,7 +528,7 @@ class JustNewsConfig(BaseModel):
 # UTILITY FUNCTIONS
 # ============================================================================
 
-def load_config_from_file(file_path: Union[str, Path]) -> JustNewsConfig:
+def load_config_from_file(file_path: str | Path) -> JustNewsConfig:
     """Load configuration from JSON file"""
     import json
 
@@ -527,13 +536,13 @@ def load_config_from_file(file_path: Union[str, Path]) -> JustNewsConfig:
     if not file_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
-    with open(file_path, 'r') as f:
+    with open(file_path) as f:
         data = json.load(f)
 
     return JustNewsConfig(**data)
 
 
-def save_config_to_file(config: JustNewsConfig, file_path: Union[str, Path]):
+def save_config_to_file(config: JustNewsConfig, file_path: str | Path):
     """Save configuration to JSON file"""
     import json
 

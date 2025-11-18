@@ -3,6 +3,12 @@
 -- Created: 2024-01-01
 -- Author: Database Team
 
+-- NOTE: This migration uses Postgres-specific constructs such as SERIAL,
+-- references, and certain extensions. It is preserved for historical
+-- purposes and is not directly compatible with MariaDB without
+-- conversion. Use MariaDB-specific migrations or the `init_database.py`
+-- script which adapts SQL for MariaDB where appropriate.
+
 -- UP: Create initial tables
 
 -- Create articles table

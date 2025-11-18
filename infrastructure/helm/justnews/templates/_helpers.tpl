@@ -1,9 +1,6 @@
-{{/*
-Expand the name of the chart.
-*/}}
-{{- define "justnews.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-{{- end }}
+{{/* DEPRECATED: Templates archived as part of systemd-only migration */}}
+{{/* See: infrastructure/archives/helm/justnews/templates/ for full template content */}}
+{{/* This file remains as a placeholder only. */}}
 
 {{/*
 Create a default fully qualified app name.

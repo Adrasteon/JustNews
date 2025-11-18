@@ -20,27 +20,27 @@ import json
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from common.observability import get_logger
 from common.metrics import JustNewsMetrics
+from common.observability import get_logger
 
 # Configure logging
 logger = get_logger(__name__)
 
 # Global engine instances
-_reasoning_engine: Optional[Any] = None
-_enhanced_engine: Optional[Any] = None
+_reasoning_engine: Any | None = None
+_enhanced_engine: Any | None = None
 
 def get_reasoning_engine():
     """Get or create the global reasoning engine instance."""
     global _reasoning_engine
     if _reasoning_engine is None:
-        from .reasoning_engine import ReasoningEngine, ReasoningConfig
+        from .reasoning_engine import ReasoningConfig, ReasoningEngine
         config = ReasoningConfig()
         _reasoning_engine = ReasoningEngine(config)
     return _reasoning_engine
@@ -61,16 +61,16 @@ MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 # Pydantic models
 class ToolCall(BaseModel):
     """Standard MCP tool call format"""
-    args: List[Any] = []
-    kwargs: Dict[str, Any] = {}
+    args: list[Any] = []
+    kwargs: dict[str, Any] = {}
 
 class Fact(BaseModel):
     """Fact data model"""
-    data: Dict[str, Any]
+    data: dict[str, Any]
 
 class Facts(BaseModel):
     """Multiple facts data model"""
-    facts: List[Dict[str, Any]]
+    facts: list[dict[str, Any]]
 
 class Rule(BaseModel):
     """Rule data model"""
@@ -86,12 +86,12 @@ class Evaluate(BaseModel):
 
 class ContradictionCheck(BaseModel):
     """Contradiction check data model"""
-    statements: List[str]
+    statements: list[str]
 
 class FactValidation(BaseModel):
     """Fact validation data model"""
     claim: str
-    context: Optional[Dict[str, Any]] = None
+    context: dict[str, Any] | None = None
 
 # MCP Bus Client
 class MCPBusClient:
@@ -100,7 +100,7 @@ class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
         self.base_url = base_url
 
-    def register_agent(self, agent_name: str, agent_address: str, tools: List[str]):
+    def register_agent(self, agent_name: str, agent_address: str, tools: list[str]):
         """Register agent with MCP Bus."""
         import requests
         registration_data = {
@@ -196,7 +196,7 @@ async def lifespan(app: FastAPI):
 app.router.lifespan_context = lifespan
 
 # Utility functions
-def log_feedback(event: str, details: Dict[str, Any]):
+def log_feedback(event: str, details: dict[str, Any]):
     """Log feedback for debugging and improvement."""
     feedback_log = os.path.join(os.path.dirname(__file__), "feedback_reasoning.log")
     try:
@@ -525,7 +525,7 @@ async def explain_reasoning_endpoint(call: ToolCall):
         raise HTTPException(status_code=500, detail=error_msg)
 
 @app.post("/pipeline/validate")
-async def pipeline_validate_endpoint(payload: Dict[str, Any]):
+async def pipeline_validate_endpoint(payload: dict[str, Any]):
     """Run the three-stage pipeline: neural assessment -> reasoning -> integrated decision."""
     engine = get_reasoning_engine()
     if not engine:
@@ -662,7 +662,7 @@ async def get_metrics():
 
 # MCP Bus integration
 @app.post("/call")
-async def call_tool(request: Dict[str, Any]):
+async def call_tool(request: dict[str, Any]):
     """MCP bus integration - handles tool calls from other agents."""
     try:
         tool = request.get("tool", "")

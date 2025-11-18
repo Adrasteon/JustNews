@@ -17,10 +17,9 @@ All functions include robust error handling, validation, and fallbacks.
 
 import asyncio
 import json
-import os
-import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from time import perf_counter
+from typing import Any
 
 from common.observability import get_logger
 
@@ -30,7 +29,7 @@ from .fact_checker_engine import FactCheckerConfig, FactCheckerEngine
 logger = get_logger(__name__)
 
 # Global engine instance
-_engine: Optional[Any] = None
+_engine: Any | None = None
 
 # Operation aliases expected by tests/legacy code
 _OPERATION_ALIASES = {
@@ -64,7 +63,7 @@ async def process_fact_check_request(
     content: str,
     operation_type: str,
     **kwargs
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Process a fact-checking request using the engine."""
     engine = get_fact_checker_engine()
     normalized = _OPERATION_ALIASES.get(operation_type, operation_type)
@@ -145,8 +144,8 @@ def _await_if_needed(result: Any) -> Any:
     return result
 
 
-def verify_facts(content: str, source_url: Optional[str] = None, context: Optional[str] = None) -> Dict[str, Any]:
-    call_kwargs: Dict[str, Any] = {"operation_type": "verify_facts", "content": content}
+def verify_facts(content: str, source_url: str | None = None, context: str | None = None) -> dict[str, Any]:
+    call_kwargs: dict[str, Any] = {"operation_type": "verify_facts", "content": content}
     if source_url is not None:
         call_kwargs["source_url"] = source_url
     if context is not None:
@@ -157,8 +156,8 @@ def verify_facts(content: str, source_url: Optional[str] = None, context: Option
     return response or {}
 
 
-def validate_sources(content: str, sources: Optional[List[str]] = None, domain: Optional[str] = None, source_url: Optional[str] = None) -> Dict[str, Any]:
-    call_kwargs: Dict[str, Any] = {"operation_type": "validate_sources", "content": content}
+def validate_sources(content: str, sources: list[str] | None = None, domain: str | None = None, source_url: str | None = None) -> dict[str, Any]:
+    call_kwargs: dict[str, Any] = {"operation_type": "validate_sources", "content": content}
     if sources is not None:
         call_kwargs["sources"] = sources
     if domain is not None:
@@ -173,11 +172,11 @@ def validate_sources(content: str, sources: Optional[List[str]] = None, domain: 
 
 def comprehensive_fact_check(
     content: str,
-    source_url: Optional[str] = None,
-    context: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
-    call_kwargs: Dict[str, Any] = {
+    source_url: str | None = None,
+    context: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    call_kwargs: dict[str, Any] = {
         "operation_type": "comprehensive_fact_check",
         "content": content,
     }
@@ -191,7 +190,7 @@ def comprehensive_fact_check(
     return response or {}
 
 
-def extract_claims(content: str) -> List[str]:
+def extract_claims(content: str) -> list[str]:
     response = _await_if_needed(
         process_fact_check_request(
             content=content,
@@ -207,11 +206,11 @@ def extract_claims(content: str) -> List[str]:
 
 
 def assess_credibility(
-    content: Optional[str] = None,
-    domain: Optional[str] = None,
-    source_url: Optional[str] = None,
-) -> Dict[str, Any]:
-    call_kwargs: Dict[str, Any] = {
+    content: str | None = None,
+    domain: str | None = None,
+    source_url: str | None = None,
+) -> dict[str, Any]:
+    call_kwargs: dict[str, Any] = {
         "operation_type": "assess_credibility",
         "content": content or "",
     }
@@ -225,7 +224,7 @@ def assess_credibility(
     return response or {}
 
 
-def detect_contradictions(text_passages: List[str]) -> Dict[str, Any]:
+def detect_contradictions(text_passages: list[str]) -> dict[str, Any]:
     response = _await_if_needed(
         process_fact_check_request(
             content="\n".join(text_passages or []),
@@ -236,7 +235,7 @@ def detect_contradictions(text_passages: List[str]) -> Dict[str, Any]:
     return response or {}
 
 # GPU-accelerated functions with CPU fallbacks
-async def validate_is_news_gpu(content: str) -> Dict[str, Any]:
+async def validate_is_news_gpu(content: str) -> dict[str, Any]:
     """
     GPU-accelerated news content validation.
 
@@ -249,13 +248,14 @@ async def validate_is_news_gpu(content: str) -> Dict[str, Any]:
         logger.warning(f"GPU news validation failed, falling back to CPU: {e}")
         return await validate_is_news_cpu(content)
 
-async def validate_is_news_cpu(content: str) -> Dict[str, Any]:
+async def validate_is_news_cpu(content: str) -> dict[str, Any]:
     """
     CPU-based news content validation fallback.
 
     Basic heuristic-based news validation when GPU is unavailable.
     """
     try:
+        start_time = perf_counter()
         # Simple heuristic-based validation
         content_lower = content.lower()
 
@@ -272,6 +272,7 @@ async def validate_is_news_cpu(content: str) -> Dict[str, Any]:
         # Combined score
         is_news_score = (news_score * 0.5 + has_structure * 0.3 + length_score * 0.2)
 
+        processing_time = perf_counter() - start_time
         return {
             "is_news": is_news_score > 0.4,
             "confidence": is_news_score,
@@ -279,14 +280,15 @@ async def validate_is_news_cpu(content: str) -> Dict[str, Any]:
             "structure_score": has_structure,
             "length_score": length_score,
             "method": "cpu_fallback",
-            "analysis_timestamp": datetime.now().isoformat()
+            "analysis_timestamp": datetime.now().isoformat(),
+            "processing_time": processing_time
         }
 
     except Exception as e:
         logger.error(f"CPU news validation failed: {e}")
         return {"error": str(e), "is_news": False, "method": "cpu_fallback"}
 
-async def verify_claims_gpu(claims: List[str], sources: List[str]) -> Dict[str, Any]:
+async def verify_claims_gpu(claims: list[str], sources: list[str]) -> dict[str, Any]:
     """
     GPU-accelerated claim verification for multiple claims.
     """
@@ -297,11 +299,12 @@ async def verify_claims_gpu(claims: List[str], sources: List[str]) -> Dict[str, 
         logger.warning(f"GPU claims verification failed, falling back to CPU: {e}")
         return await verify_claims_cpu(claims, sources)
 
-async def verify_claims_cpu(claims: List[str], sources: List[str]) -> Dict[str, Any]:
+async def verify_claims_cpu(claims: list[str], sources: list[str]) -> dict[str, Any]:
     """
     CPU-based claim verification fallback.
     """
     try:
+        start_time = perf_counter()
         results = {}
         source_text = "\n".join(sources) if sources else ""
 
@@ -329,6 +332,7 @@ async def verify_claims_cpu(claims: List[str], sources: List[str]) -> Dict[str, 
             "verified_claims": sum(1 for r in results.values() if r["classification"] == "verified"),
             "method": "cpu_fallback",
             "analysis_timestamp": datetime.now().isoformat()
+            , "processing_time": perf_counter() - start_time
         }
 
     except Exception as e:
@@ -336,7 +340,7 @@ async def verify_claims_cpu(claims: List[str], sources: List[str]) -> Dict[str, 
         return {"error": str(e), "method": "cpu_fallback"}
 
 # Utility functions
-def get_performance_stats() -> Dict[str, Any]:
+def get_performance_stats() -> dict[str, Any]:
     """Get GPU acceleration performance statistics."""
     try:
         engine = get_fact_checker_engine()
@@ -345,7 +349,7 @@ def get_performance_stats() -> Dict[str, Any]:
         logger.error(f"Error getting performance stats: {e}")
         return {"error": str(e), "gpu_available": False}
 
-def get_model_status() -> Dict[str, Any]:
+def get_model_status() -> dict[str, Any]:
     """Get status of all fact-checking models."""
     try:
         engine = get_fact_checker_engine()
@@ -354,7 +358,7 @@ def get_model_status() -> Dict[str, Any]:
         logger.error(f"Error getting model status: {e}")
         return {"error": str(e), "models_loaded": False}
 
-def log_feedback(feedback_data: Dict[str, Any]) -> Dict[str, Any]:
+def log_feedback(feedback_data: dict[str, Any]) -> dict[str, Any]:
     """Log user feedback for model improvement."""
     try:
         engine = get_fact_checker_engine()
@@ -365,11 +369,11 @@ def log_feedback(feedback_data: Dict[str, Any]) -> Dict[str, Any]:
 
 def correct_verification(
     claim: str,
-    context: Optional[str] = None,
+    context: str | None = None,
     incorrect_classification: str = "",
     correct_classification: str = "",
     priority: int = 2
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Submit user correction for fact verification."""
     try:
         engine = get_fact_checker_engine()
@@ -379,12 +383,12 @@ def correct_verification(
         return {"error": str(e), "correction_submitted": False}
 
 def correct_credibility(
-    source_text: Optional[str] = None,
+    source_text: str | None = None,
     domain: str = "",
     incorrect_reliability: str = "",
     correct_reliability: str = "",
     priority: int = 2
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Submit user correction for credibility assessment."""
     try:
         engine = get_fact_checker_engine()
@@ -393,7 +397,7 @@ def correct_credibility(
         logger.error(f"Error submitting credibility correction: {e}")
         return {"error": str(e), "correction_submitted": False}
 
-def get_training_status() -> Dict[str, Any]:
+def get_training_status() -> dict[str, Any]:
     """Get online training status for fact checker models."""
     try:
         engine = get_fact_checker_engine()
@@ -402,7 +406,7 @@ def get_training_status() -> Dict[str, Any]:
         logger.error(f"Error getting training status: {e}")
         return {"error": str(e), "online_training_enabled": False}
 
-def force_model_update() -> Dict[str, Any]:
+def force_model_update() -> dict[str, Any]:
     """Force immediate model update (admin function)."""
     try:
         engine = get_fact_checker_engine()
@@ -411,7 +415,7 @@ def force_model_update() -> Dict[str, Any]:
         logger.error(f"Error forcing model update: {e}")
         return {"error": str(e), "update_triggered": False}
 
-async def health_check() -> Dict[str, Any]:
+async def health_check() -> dict[str, Any]:
     """
     Perform health check on fact checker components.
 
@@ -459,7 +463,7 @@ async def health_check() -> Dict[str, Any]:
             "error": str(e)
         }
 
-def validate_fact_check_result(result: Dict[str, Any], expected_fields: Optional[List[str]] = None) -> bool:
+def validate_fact_check_result(result: dict[str, Any], expected_fields: list[str] | None = None) -> bool:
     """
     Validate fact-check result structure.
 
@@ -483,7 +487,7 @@ def validate_fact_check_result(result: Dict[str, Any], expected_fields: Optional
     common_fields = ["analysis_metadata", "analysis_timestamp"]
     return any(field in result for field in common_fields)
 
-def format_fact_check_output(result: Dict[str, Any], format_type: str = "json") -> str:
+def format_fact_check_output(result: dict[str, Any], format_type: str = "json") -> str:
     """
     Format fact-check result for output.
 

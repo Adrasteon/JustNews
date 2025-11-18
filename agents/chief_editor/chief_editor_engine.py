@@ -15,9 +15,9 @@ Key Features:
 
 import os
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from common.observability import get_logger
 
@@ -61,9 +61,9 @@ class EditorialDecision:
     stage: WorkflowStage
     confidence: float
     reasoning: str
-    next_actions: List[str]
-    agent_assignments: Dict[str, str]
-    metadata: Dict[str, Any]
+    next_actions: list[str]
+    agent_assignments: dict[str, str]
+    metadata: dict[str, Any]
 
 @dataclass
 class ChiefEditorConfig:
@@ -97,7 +97,7 @@ class ChiefEditorEngine:
     - Workflow embeddings with SentenceTransformer
     """
 
-    def __init__(self, config: Optional[ChiefEditorConfig] = None):
+    def __init__(self, config: ChiefEditorConfig | None = None):
         self.config = config or ChiefEditorConfig()
         self.device = self.config.device
 
@@ -236,17 +236,17 @@ class ChiefEditorEngine:
             logger.error(f"Error loading embeddings: {e}")
             self.pipelines['embeddings'] = None
 
-    def log_feedback(self, event: str, details: Dict[str, Any]):
+    def log_feedback(self, event: str, details: dict[str, Any]):
         """Log feedback for editorial decision tracking"""
         try:
             feedback_log = os.environ.get("CHIEF_EDITOR_FEEDBACK_LOG", "./feedback_chief_editor.log")
             with open(feedback_log, "a", encoding="utf-8") as f:
-                timestamp = datetime.now(timezone.utc).isoformat()
+                timestamp = datetime.now(UTC).isoformat()
                 f.write(f"{timestamp}\t{event}\t{details}\n")
         except Exception as e:
             logger.error(f"Error logging feedback: {e}")
 
-    def assess_content_quality_bert(self, text: str) -> Dict[str, Any]:
+    def assess_content_quality_bert(self, text: str) -> dict[str, Any]:
         """Assess content quality using BERT"""
         try:
             if self.pipelines.get('bert_quality') is None:
@@ -280,7 +280,7 @@ class ChiefEditorEngine:
             logger.error(f"BERT quality assessment error: {e}")
             return self._fallback_quality_assessment(text)
 
-    def categorize_content_distilbert(self, text: str) -> Dict[str, Any]:
+    def categorize_content_distilbert(self, text: str) -> dict[str, Any]:
         """Categorize content using DistilBERT"""
         try:
             if self.pipelines.get('distilbert_category') is None:
@@ -317,7 +317,7 @@ class ChiefEditorEngine:
             logger.error(f"DistilBERT categorization error: {e}")
             return self._fallback_categorization(text)
 
-    def analyze_editorial_sentiment_roberta(self, text: str) -> Dict[str, Any]:
+    def analyze_editorial_sentiment_roberta(self, text: str) -> dict[str, Any]:
         """Analyze editorial sentiment using RoBERTa"""
         try:
             if self.pipelines.get('roberta_sentiment') is None:
@@ -383,7 +383,7 @@ class ChiefEditorEngine:
             logger.error(f"T5 commentary generation error: {e}")
             return self._fallback_commentary_generation(text, context)
 
-    def make_editorial_decision(self, content: str, metadata: Optional[Dict[str, Any]] = None) -> EditorialDecision:
+    def make_editorial_decision(self, content: str, metadata: dict[str, Any] | None = None) -> EditorialDecision:
         """Make comprehensive editorial decision using all models"""
         try:
             metadata = metadata or {}
@@ -472,7 +472,7 @@ class ChiefEditorEngine:
         else:
             return WorkflowStage.ANALYSIS
 
-    def _determine_next_actions(self, priority, stage, quality) -> List[str]:
+    def _determine_next_actions(self, priority, stage, quality) -> list[str]:
         """Determine next actions"""
         actions = []
 
@@ -491,7 +491,7 @@ class ChiefEditorEngine:
 
         return actions
 
-    def _determine_agent_assignments(self, category: str, stage: WorkflowStage) -> Dict[str, str]:
+    def _determine_agent_assignments(self, category: str, stage: WorkflowStage) -> dict[str, str]:
         """Determine agent assignments based on category and stage"""
         assignments = {}
 
@@ -520,19 +520,19 @@ class ChiefEditorEngine:
             return "balanced"
 
     # Fallback methods
-    def _fallback_quality_assessment(self, text: str) -> Dict[str, Any]:
+    def _fallback_quality_assessment(self, text: str) -> dict[str, Any]:
         return {"overall_quality": 0.5, "assessment": "medium", "model": "fallback"}
 
-    def _fallback_categorization(self, text: str) -> Dict[str, Any]:
+    def _fallback_categorization(self, text: str) -> dict[str, Any]:
         return {"category": "general", "confidence": 0.5, "model": "fallback"}
 
-    def _fallback_sentiment_analysis(self, text: str) -> Dict[str, Any]:
+    def _fallback_sentiment_analysis(self, text: str) -> dict[str, Any]:
         return {"sentiment": "neutral", "confidence": 0.5, "editorial_tone": "balanced", "model": "fallback"}
 
     def _fallback_commentary_generation(self, text: str, context: str) -> str:
         return f"Editorial review required for {context}."
 
-    def _fallback_editorial_decision(self, content: str, metadata: Optional[Dict[str, Any]]) -> EditorialDecision:
+    def _fallback_editorial_decision(self, content: str, metadata: dict[str, Any] | None) -> EditorialDecision:
         return EditorialDecision(
             priority=EditorialPriority.MEDIUM,
             stage=WorkflowStage.REVIEW,
@@ -543,7 +543,7 @@ class ChiefEditorEngine:
             metadata=metadata or {}
         )
 
-    def get_model_status(self) -> Dict[str, bool]:
+    def get_model_status(self) -> dict[str, bool]:
         """Get status of all models"""
         return {
             "bert": self.pipelines.get('bert_quality') is not None,

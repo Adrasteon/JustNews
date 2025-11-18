@@ -10,17 +10,16 @@ import asyncio
 import json
 import os
 from pathlib import Path
-from typing import Dict, Any
 
 from agents.crawler.enhancements import (
     ModalHandler,
     PaywallDetector,
+    PIASocks5Manager,
     ProxyManager,
-    StealthBrowserFactory
+    StealthBrowserFactory,
 )
-from agents.crawler.enhancements.ua_rotation import UserAgentProvider, UserAgentConfig
 from agents.crawler.enhancements.proxy_manager import ProxyDefinition
-from agents.crawler.enhancements import PIASocks5Manager
+from agents.crawler.enhancements.ua_rotation import UserAgentConfig, UserAgentProvider
 
 
 def load_global_env():
@@ -141,7 +140,7 @@ def demo_pia_socks5():
         manager = PIASocks5Manager()
         proxy = manager.get_proxy()
 
-        print(f"✅ PIA SOCKS5 proxy initialized")
+        print("✅ PIA SOCKS5 proxy initialized")
         print(f"   URL: {proxy.url}")
         print(f"   Provider: {proxy.metadata.get('provider', 'unknown')}")
         print(f"   Host: {proxy.metadata.get('host', 'unknown')}")

@@ -6,9 +6,10 @@ import random
 import sqlite3
 import time
 import uuid
-from datetime import datetime, timedelta, timezone
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime, timedelta, timezone
 from io import StringIO
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any
 
 import requests
 from fastapi import FastAPI, HTTPException
@@ -145,35 +146,35 @@ def ensure_db():
 
 
 class CandidateEvent(BaseModel):
-    id: Optional[str] = None
+    id: str | None = None
     url: str
-    site_id: Optional[str] = None
-    extracted_title: Optional[str] = None
-    extracted_text: Optional[str] = None
-    raw_html_ref: Optional[str] = None
-    features: Optional[Dict[str, Any]] = None
-    crawler_ts: Optional[str] = None
-    crawler_job_id: Optional[str] = None
+    site_id: str | None = None
+    extracted_title: str | None = None
+    extracted_text: str | None = None
+    raw_html_ref: str | None = None
+    features: dict[str, Any] | None = None
+    crawler_ts: str | None = None
+    crawler_job_id: str | None = None
 
 
 class LabelRequest(BaseModel):
     candidate_id: str
     label: str
-    cleaned_text: Optional[str] = None
-    annotator_id: Optional[str] = None
+    cleaned_text: str | None = None
+    annotator_id: str | None = None
 
 
 class ToolCallRequest(BaseModel):
     tool: str = Field(..., description="Name of the tool to invoke")
-    args: List[Any] = Field(default_factory=list, description="Positional arguments")
-    kwargs: Dict[str, Any] = Field(default_factory=dict, description="Keyword arguments")
+    args: list[Any] = Field(default_factory=list, description="Positional arguments")
+    kwargs: dict[str, Any] = Field(default_factory=dict, description="Keyword arguments")
 
 
 class QAReviewRequest(BaseModel):
     qa_id: str
     reviewer_id: str
     status: str
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class MCPBusClient:
@@ -181,7 +182,7 @@ class MCPBusClient:
         self.base_url = base_url
         self.timeout = timeout
 
-    def register_agent(self, agent_name: str, agent_address: str) -> Dict[str, Any]:
+    def register_agent(self, agent_name: str, agent_address: str) -> dict[str, Any]:
         payload = {"name": agent_name, "address": agent_address}
         response = requests.post(
             f"{self.base_url}/register",
@@ -195,9 +196,9 @@ class MCPBusClient:
         self,
         agent_name: str,
         tool_name: str,
-        args: Optional[List[Any]] = None,
-        kwargs: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        args: list[Any] | None = None,
+        kwargs: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         payload = {
             "agent": agent_name,
             "tool": tool_name,
@@ -212,7 +213,7 @@ class MCPBusClient:
         response.raise_for_status()
         return response.json()
 
-    def list_agents(self) -> Dict[str, str]:
+    def list_agents(self) -> dict[str, str]:
         response = requests.get(f"{self.base_url}/agents", timeout=self.timeout)
         response.raise_for_status()
         data = response.json()
@@ -262,7 +263,7 @@ def _check_agent_health(agent_address: str) -> bool:
         return False
 
 
-def _extract_payload(call: ToolCallRequest, default_key: Optional[str] = None) -> Dict[str, Any]:
+def _extract_payload(call: ToolCallRequest, default_key: str | None = None) -> dict[str, Any]:
     if call.args:
         candidate_payload = call.args[0]
     elif default_key and default_key in call.kwargs:
@@ -275,7 +276,7 @@ def _extract_payload(call: ToolCallRequest, default_key: Optional[str] = None) -
     return candidate_payload
 
 
-async def tool_receive_candidate(call: ToolCallRequest) -> Dict[str, Any]:
+async def tool_receive_candidate(call: ToolCallRequest) -> dict[str, Any]:
     payload = _extract_payload(call, default_key="candidate")
     try:
         event = CandidateEvent(**payload)
@@ -289,7 +290,7 @@ async def tool_receive_candidate(call: ToolCallRequest) -> Dict[str, Any]:
     return {"status": "accepted", "candidate_id": candidate_id}
 
 
-async def tool_submit_label(call: ToolCallRequest) -> Dict[str, Any]:
+async def tool_submit_label(call: ToolCallRequest) -> dict[str, Any]:
     payload = _extract_payload(call, default_key="label")
     try:
         label_req = LabelRequest(**payload)
@@ -305,11 +306,11 @@ async def tool_submit_label(call: ToolCallRequest) -> Dict[str, Any]:
     return result
 
 
-async def tool_fetch_stats(_call: ToolCallRequest) -> Dict[str, Any]:
+async def tool_fetch_stats(_call: ToolCallRequest) -> dict[str, Any]:
     return await api_stats()
 
 
-TOOL_HANDLERS: Dict[str, Callable[[ToolCallRequest], Awaitable[Dict[str, Any]]]] = {
+TOOL_HANDLERS: dict[str, Callable[[ToolCallRequest], Awaitable[dict[str, Any]]]] = {
     "receive_candidate": tool_receive_candidate,
     "submit_label": tool_submit_label,
     "fetch_stats": tool_fetch_stats,
@@ -387,7 +388,7 @@ async def validate_forward_targets(initial: bool = False) -> None:
 
     metrics.gauge("hitl_forward_registry_available", 1 if registry_ok else 0)
 
-    def _check_target(agent: Optional[str], gauge_name: str) -> bool:
+    def _check_target(agent: str | None, gauge_name: str) -> bool:
         if not agent:
             metrics.gauge(gauge_name, 0)
             return False
@@ -491,7 +492,7 @@ def insert_candidate(evt: CandidateEvent) -> str:
             evt.extracted_text,
             evt.raw_html_ref,
             json.dumps(evt.features or {}),
-            evt.crawler_ts or datetime.now(timezone.utc).isoformat(),
+            evt.crawler_ts or datetime.now(UTC).isoformat(),
             evt.crawler_job_id,
             "pending",
             priority,
@@ -503,7 +504,7 @@ def insert_candidate(evt: CandidateEvent) -> str:
     return cid
 
 
-def fetch_candidate(candidate_id: str) -> Optional[Dict[str, Any]]:
+def fetch_candidate(candidate_id: str) -> dict[str, Any] | None:
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute(
@@ -527,7 +528,7 @@ def fetch_candidate(candidate_id: str) -> Optional[Dict[str, Any]]:
     }
 
 
-def get_next_batch(batch: int = 10) -> List[Dict[str, Any]]:
+def get_next_batch(batch: int = 10) -> list[dict[str, Any]]:
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute(
@@ -563,7 +564,7 @@ def get_next_batch(batch: int = 10) -> List[Dict[str, Any]]:
     return results
 
 
-def update_ingest_status(label_id: str, status: str, timestamp: Optional[str]) -> None:
+def update_ingest_status(label_id: str, status: str, timestamp: str | None) -> None:
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute(
@@ -581,11 +582,11 @@ def build_training_payload(
     treat_as_valid: bool,
     needs_cleanup: bool,
     qa_sampled: bool,
-    ingest_job_id: Optional[str],
-    candidate: Optional[Dict[str, Any]],
-) -> Dict[str, Any]:
+    ingest_job_id: str | None,
+    candidate: dict[str, Any] | None,
+) -> dict[str, Any]:
     """Construct the training-forward payload produced for every label."""
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "label_id": label_id,
         "candidate_id": req.candidate_id,
         "label": req.label.lower(),
@@ -606,9 +607,9 @@ def build_training_payload(
     return payload
 
 
-def store_label(req: LabelRequest) -> Dict[str, Any]:
+def store_label(req: LabelRequest) -> dict[str, Any]:
     lid = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     label_low = req.label.lower()
     treat_as_valid_bool = label_low in ("valid_news", "messy_news")
     needs_cleanup_bool = label_low == "messy_news"
@@ -635,7 +636,7 @@ def store_label(req: LabelRequest) -> Dict[str, Any]:
     )
     # update candidate status
     cur.execute("UPDATE hitl_candidates SET status='labeled' WHERE id=?", (req.candidate_id,))
-    qa_entry_id: Optional[str] = None
+    qa_entry_id: str | None = None
     if qa_sampled_bool:
         qa_entry_id = str(uuid.uuid4())
         cur.execute(
@@ -692,7 +693,7 @@ def store_label(req: LabelRequest) -> Dict[str, Any]:
     }
 
 
-async def dispatch_ingest(job_payload: Dict[str, Any], label_id: str) -> str:
+async def dispatch_ingest(job_payload: dict[str, Any], label_id: str) -> str:
     if not HITL_FORWARD_ENABLED:
         update_ingest_status(label_id, "skipped", None)
         metrics.increment("hitl_ingest_dispatch_skipped_total")
@@ -713,7 +714,7 @@ async def dispatch_ingest(job_payload: Dict[str, Any], label_id: str) -> str:
                 [],
                 job_payload,
             )
-            ts = datetime.now(timezone.utc).isoformat()
+            ts = datetime.now(UTC).isoformat()
             update_ingest_status(label_id, "enqueued", ts)
             metrics.increment("hitl_ingest_dispatch_success_total")
             metrics.timing("hitl_ingest_dispatch_duration_seconds", time.time() - start_time)
@@ -737,7 +738,7 @@ async def dispatch_ingest(job_payload: Dict[str, Any], label_id: str) -> str:
     return "error"
 
 
-async def forward_training_label(payload: Dict[str, Any], label_id: str) -> str:
+async def forward_training_label(payload: dict[str, Any], label_id: str) -> str:
     if not payload:
         metrics.increment("hitl_training_forward_skipped_total")
         return "skipped"
@@ -834,8 +835,8 @@ def get_qa_pending() -> int:
     return count
 
 
-def get_qa_failure_metrics(window_hours: int = 24) -> Dict[str, int | float]:
-    since = (datetime.now(timezone.utc) - timedelta(hours=window_hours)).isoformat()
+def get_qa_failure_metrics(window_hours: int = 24) -> dict[str, int | float]:
+    since = (datetime.now(UTC) - timedelta(hours=window_hours)).isoformat()
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute(
@@ -853,11 +854,11 @@ def get_qa_failure_metrics(window_hours: int = 24) -> Dict[str, int | float]:
     return {"total": total, "failures": failures, "rate": rate}
 
 
-def fetch_qa_entries(status: Optional[str] = "pending", limit: int = 50) -> List[Dict[str, Any]]:
+def fetch_qa_entries(status: str | None = "pending", limit: int = 50) -> list[dict[str, Any]]:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-    params: List[Any] = []
+    params: list[Any] = []
     status_clause = ""
     if status and status.lower() != "all":
         status_clause = "WHERE q.review_status = ?"
@@ -905,7 +906,7 @@ async def api_post_candidate(evt: CandidateEvent):
 
 
 @app.get("/api/next")
-async def api_get_next(annotator_id: Optional[str] = None, batch: int = 10):
+async def api_get_next(annotator_id: str | None = None, batch: int = 10):
     batch = max(1, min(100, batch))
     results = get_next_batch(batch)
     return {"candidates": results, "count": len(results)}
@@ -942,7 +943,7 @@ async def api_post_qa_review(req: QAReviewRequest):
     status = req.status.lower()
     if status not in ("pass", "fail"):
         raise HTTPException(status_code=400, detail="invalid QA status")
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute(
@@ -1036,7 +1037,7 @@ async def api_get_qa_export(limit: int = 1000):
             buffer.seek(0)
             buffer.truncate(0)
 
-    filename = datetime.now(timezone.utc).strftime("hitl_qa_export_%Y%m%dT%H%M%SZ.csv")
+    filename = datetime.now(UTC).strftime("hitl_qa_export_%Y%m%dT%H%M%SZ.csv")
     headers = {"Content-Disposition": f"attachment; filename={filename}"}
     return StreamingResponse(_iter_csv(), media_type="text/csv", headers=headers)
 
@@ -1049,7 +1050,7 @@ async def api_stats():
     pending = cur.fetchone()[0]
     cur.execute("SELECT COUNT(*) FROM hitl_candidates WHERE status='in_review'")
     in_review = cur.fetchone()[0]
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     last_hour = (now - timedelta(hours=1)).isoformat()
     cur.execute("SELECT COUNT(*) FROM hitl_labels WHERE created_at >= ?", (start_of_day,))
@@ -1082,7 +1083,7 @@ async def api_stats():
     )
     rows = cur.fetchall()
     conn.close()
-    latencies: List[float] = []
+    latencies: list[float] = []
     for created_at, enqueued in rows:
         if not created_at or not enqueued:
             continue

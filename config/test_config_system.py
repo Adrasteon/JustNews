@@ -1,4 +1,4 @@
-# JustNewsAgent Configuration System Tests
+# JustNews Configuration System Tests
 # Phase 2B: Configuration Management Refactoring
 
 """
@@ -13,30 +13,29 @@ Tests cover:
 - Performance and benchmarking
 """
 
-import json
 import tempfile
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-from datetime import datetime, timedelta
-from typing import List
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from config.refactor import (
-    # Schemas
-    JustNewsConfig, Environment, create_default_config,
-    load_config_from_file, save_config_to_file,
-
+    ConfigurationError,
     # Core
-    ConfigurationManager, ConfigurationError,
-
-    # Environments
-    EnvironmentProfile, EnvironmentProfileManager,
-
+    ConfigurationManager,
+    ConfigurationTester,
     # Validation
-    ConfigurationValidator, ConfigurationTester, ValidationResult,
-
-    # Legacy
-    LegacyConfigurationMigrator, MigrationPlan
+    ConfigurationValidator,
+    Environment,
+    # Environments
+    EnvironmentProfile,
+    EnvironmentProfileManager,
+    # Schemas
+    JustNewsConfig,
+    LegacyConfigurationMigrator,
+    MigrationPlan,
+    create_default_config,
+    save_config_to_file,
 )
 
 
@@ -515,7 +514,7 @@ def create_test_config_file(config: JustNewsConfig = None, temp_dir: str = None)
 
     return config_file
 
-def create_test_legacy_files(temp_dir: str = None) -> List[Path]:
+def create_test_legacy_files(temp_dir: str = None) -> list[Path]:
     """Create test legacy configuration files"""
     if temp_dir is None:
         temp_dir = tempfile.mkdtemp()

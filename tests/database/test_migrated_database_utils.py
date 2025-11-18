@@ -11,26 +11,24 @@ Comprehensive tests for the migrated database utilities covering:
 - Semantic search operations
 """
 
-import pytest
 import json
 import os
-import tempfile
-from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
-from typing import Dict, Any
+from unittest.mock import MagicMock, mock_open, patch
+
+import pytest
 
 from database.utils.migrated_database_utils import (
-    get_db_config,
-    create_database_service,
     check_database_connections,
+    create_database_service,
     execute_mariadb_query,
     execute_query_async,
     execute_transaction,
+    get_articles_by_source,
     get_database_stats,
-    semantic_search,
-    search_articles_by_text,
+    get_db_config,
     get_recent_articles,
-    get_articles_by_source
+    search_articles_by_text,
+    semantic_search,
 )
 
 
@@ -164,9 +162,9 @@ class TestCreateDatabaseService:
                         mock_chroma_instance.get_collection.return_value = MagicMock()
                         mock_chroma.return_value = mock_chroma_instance
                         mock_st.return_value = MagicMock()
-                        
+
                         result = create_database_service(mock_config)
-                        
+
                         assert result is not None
                         assert hasattr(result, 'mb_conn')
 
@@ -182,9 +180,9 @@ class TestCreateDatabaseService:
                             mock_chroma_instance.get_collection.return_value = MagicMock()
                             mock_chroma.return_value = mock_chroma_instance
                             mock_st.return_value = MagicMock()
-                            
+
                             result = create_database_service()
-                            
+
                             assert result is not None
                             assert hasattr(result, 'mb_conn')
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Rollback Script for JustNewsAgent
+# Rollback Script for JustNews
 # Handles deployment rollback across all platforms
 
 set -e
@@ -36,13 +36,13 @@ log_error() {
 # Help function
 show_help() {
     cat << EOF
-JustNewsAgent Rollback Script
+JustNews Rollback Script
 
 USAGE:
     $0 [OPTIONS]
 
 OPTIONS:
-    -t, --target TARGET    Deployment target (docker-compose, kubernetes, systemd)
+    -t, --target TARGET    Deployment target (systemd)
     -e, --env ENV          Environment (development, staging, production)
     -s, --service SERVICE  Specific service to rollback
     -v, --version VERSION  Specific version to rollback to
@@ -51,13 +51,13 @@ OPTIONS:
 
 EXAMPLES:
     # Rollback all services
-    $0 --target kubernetes
+    $0 --target systemd
 
     # Rollback specific service
-    $0 --target kubernetes --service mcp-bus
+    $0 --target systemd --service mcp-bus
 
-    # Rollback to specific version
-    $0 --target docker-compose --version v1.2.3
+    # Rollback to specific version (systemd rollback is manual)
+    $0 --target systemd --version v1.2.3
 
 ENVIRONMENT VARIABLES:
     DEPLOY_TARGET          Default deployment target
@@ -68,7 +68,7 @@ EOF
 
 # Parse command line arguments
 parse_args() {
-    TARGET="${DEPLOY_TARGET:-docker-compose}"
+    TARGET="${DEPLOY_TARGET:-systemd}"
     ENV="${DEPLOY_ENV:-development}"
     SERVICE=""
     VERSION=""
@@ -136,93 +136,22 @@ create_backup() {
     local backup_dir="$DEPLOY_ROOT/backups/$(date +%Y%m%d-%H%M%S)-rollback"
     mkdir -p "$backup_dir"
 
-    case $TARGET in
-        docker-compose)
-            cd "$DEPLOY_ROOT/docker"
-            docker-compose config > "$backup_dir/docker-compose.yml"
-            ;;
-        kubernetes)
-            kubectl get all -l app=justnews -o yaml > "$backup_dir/kubernetes-state.yml"
-            ;;
-        systemd)
-            systemctl list-units --type=service --state=active | grep justnews > "$backup_dir/systemd-services.txt"
-            ;;
+    # Only systemd is supported
+    systemctl list-units --type=service --state=active | grep justnews > "$backup_dir/systemd-services.txt"
     esac
 
     log_success "Backup created: $backup_dir"
 }
 
-# Rollback Docker Compose
+# Rollback Docker Compose (DEPRECATED)
 rollback_docker_compose() {
-    log_info "Rolling back Docker Compose deployment..."
-
-    cd "$DEPLOY_ROOT/docker"
-
-    if [[ -n "$VERSION" ]]; then
-        log_info "Rolling back to version: $VERSION"
-        # Pull specific version
-        if [[ -n "$SERVICE" ]]; then
-            docker-compose pull "$SERVICE"
-        else
-            docker-compose pull
-        fi
-    else
-        log_info "Rolling back to previous deployment..."
-        # Use previous docker-compose.override.yml or git rollback
-        if [[ -f "docker-compose.previous.yml" ]]; then
-            mv docker-compose.yml docker-compose.failed.yml
-            mv docker-compose.previous.yml docker-compose.yml
-        else
-            log_warning "No previous configuration found, restarting services..."
-        fi
-    fi
-
-    # Restart services
-    if [[ -n "$SERVICE" ]]; then
-        docker-compose up -d "$SERVICE"
-    else
-        docker-compose up -d
-    fi
-
-    # Clean up failed images
-    docker image prune -f
-
-    log_success "Docker Compose rollback completed"
+    log_info "Rolling back Docker Compose is deprecated and no longer supported."
+    log_warning "Docker Compose artifacts are archived - use systemd restore/rollback procedures or restore from backups."
 }
 
-# Rollback Kubernetes
 rollback_kubernetes() {
-    log_info "Rolling back Kubernetes deployment..."
-
-    if [[ -n "$VERSION" ]]; then
-        log_info "Rolling back to version: $VERSION"
-        # Use specific image version
-        if [[ -n "$SERVICE" ]]; then
-            kubectl set image deployment/"$SERVICE" "$SERVICE=$SERVICE:$VERSION"
-            kubectl rollout status deployment/"$SERVICE"
-        else
-            # Rollback all deployments to specific version
-            for deployment in $(kubectl get deployments -l app=justnews -o jsonpath='{.items[*].metadata.name}'); do
-                kubectl set image deployment/"$deployment" "$deployment=$deployment:$VERSION"
-            done
-            kubectl rollout status deployment --all
-        fi
-    else
-        # Use kubectl rollout undo
-        if [[ -n "$SERVICE" ]]; then
-            kubectl rollout undo deployment/"$SERVICE"
-            kubectl rollout status deployment/"$SERVICE"
-        else
-            # Rollback all deployments
-            for deployment in $(kubectl get deployments -l app=justnews -o jsonpath='{.items[*].metadata.name}'); do
-                kubectl rollout undo deployment/"$deployment"
-            done
-            # Wait for all rollbacks to complete
-            kubectl wait --for=condition=available --timeout=300s deployment --all
-        fi
-    fi
-
-    log_success "Kubernetes rollback completed"
+    log_info "Kubernetes rollback is deprecated and removed from workspace."
+    log_warning "Do not use Kubernetes manifests for new deployments. Use systemd to restore services."
 }
 
 # Rollback systemd
@@ -301,23 +230,8 @@ verify_rollback() {
 cleanup_rollback() {
     log_info "Cleaning up after rollback..."
 
-    case $TARGET in
-        docker-compose)
-            cd "$DEPLOY_ROOT/docker"
-            # Remove failed containers
-            docker-compose down
-            # Clean up unused images
-            docker image prune -f
-            ;;
-        kubernetes)
-            # Remove failed pods
-            kubectl delete pods -l app=justnews --field-selector=status.phase=Failed
-            ;;
-        systemd)
-            # Remove failed service files if any
-            # This is handled manually
-            ;;
-    esac
+    # For systemd, cleanup is manual; we don't auto-remove files to avoid accidental deletes
+    log_info "Review failed units using systemctl and perform manual cleanup if needed"
 
     log_success "Cleanup completed"
 }
@@ -344,7 +258,7 @@ EOF
 main() {
     parse_args "$@"
 
-    log_info "JustNewsAgent Rollback Script"
+    log_info "JustNews Rollback Script"
     log_info "Target: $TARGET"
     log_info "Environment: $ENV"
     if [[ -n "$SERVICE" ]]; then
@@ -357,21 +271,12 @@ main() {
     confirm_rollback
     create_backup
 
-    case $TARGET in
-        docker-compose)
-            rollback_docker_compose
-            ;;
-        kubernetes)
-            rollback_kubernetes
-            ;;
-        systemd)
-            rollback_systemd
-            ;;
-        *)
-            log_error "Unsupported target: $TARGET"
-            exit 1
-            ;;
-    esac
+    if [[ "$TARGET" == "systemd" ]]; then
+        rollback_systemd
+    else
+        log_error "Unsupported target: $TARGET. Only 'systemd' is supported."
+        exit 1
+    fi
 
     verify_rollback
     cleanup_rollback

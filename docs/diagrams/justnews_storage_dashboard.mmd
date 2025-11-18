@@ -1,0 +1,24 @@
+C4Context
+  title JustNews - Storage, Archive & Dashboard
+  Enterprise_Boundary(b0, "Storage & Analytics") {
+    System(memory, "Memory", "Article ingestion, embeddings, vector store")
+    System(archive, "Archive", "Long-term storage / Knowledge Graph")
+    System(dashboard, "Dashboard", "Operations UI for editors & operators")
+    System(analytics, "Analytics", "KPI aggregation & performance metrics")
+  }
+
+  Rel(memory, archive, "Sends archived content / indexes to archive")
+  Rel(dashboard, analytics, "Reads aggregated KPIs & system metrics")
+  Rel(analytics, memory, "Reads ingestion & processing metrics from memory")
+  Rel(archive, memory, "Reads references for search & retrieval")
+
+  UpdateElementStyle(memory, $bgColor="#F0FFF4", $borderColor="#27AE60")
+  UpdateElementStyle(archive, $bgColor="#FFF9E6", $borderColor="#FFB703")
+  UpdateElementStyle(dashboard, $bgColor="#F7F7FF", $borderColor="#A44CFF")
+  UpdateElementStyle(analytics, $bgColor="#F7FBFF", $borderColor="#2D9CDB")
+
+  UpdateRelStyle(memory, archive, $textColor="#333", $lineColor="#FFB703", $offsetX="10")
+  UpdateRelStyle(analytics, memory, $textColor="#333", $lineColor="#2D9CDB", $offsetX="10")
+  UpdateRelStyle(dashboard, analytics, $textColor="#333", $lineColor="#A44CFF", $offsetX="5")
+
+  UpdateLayoutConfig($c4ShapeInRow="4", $c4BoundaryInRow="1")

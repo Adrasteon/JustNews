@@ -1,4 +1,6 @@
 # Prometheus Configuration
+## DEPRECATED: Kubernetes manifests are archived and removed from active use.
+## This file is preserved for historical reference only. Use the systemd monitoring setup under `infrastructure/systemd`.
 apiVersion: v1
 kind: ConfigMap
 metadata:

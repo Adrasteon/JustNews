@@ -11,7 +11,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 """
-Interactive Secret Management Tool for JustNewsAgent
+Interactive Secret Management Tool for JustNews
 
 This script provides an interactive interface for managing secrets, environment
 variables, and validating security configuration.
@@ -35,7 +35,7 @@ class SecretManagerCLI:
 
     def print_menu(self):
         """Print the main menu"""
-        self.print_header("JustNewsAgent Secret Manager")
+        self.print_header("JustNews Secret Manager")
 
         print("\nAvailable Commands:")
         print("1. List all secrets (masked)")
@@ -197,41 +197,42 @@ class SecretManagerCLI:
                 print("❌ Operation cancelled")
                 return
 
-        template_content = """# JustNewsAgent Environment Configuration
-# Copy this file to .env and fill in your actual values
-# NEVER commit .env to git!
+        template_content = """# JustNews Environment Configuration
+    # Copy this file to .env and fill in your actual values
+    # NEVER commit .env to git!
 
-# Database Configuration
-POSTGRES_HOST=localhost
-POSTGRES_DB=justnews
-POSTGRES_USER=justnews_user
-POSTGRES_PASSWORD=your_secure_password_here
+    # Database Configuration (migrated)
+    MARIADB_HOST=localhost
+    MARIADB_PORT=3306
+    MARIADB_DB=justnews
+    MARIADB_USER=justnews_user
+    MARIADB_PASSWORD=your_secure_password_here
 
-# External API Keys (if needed)
-# OPENAI_API_KEY=sk-your-openai-key-here
-# ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here
+    # External API Keys (if needed)
+    # OPENAI_API_KEY=sk-your-openai-key-here
+    # ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here
 
-# Crawling Configuration
-CRAWLER_REQUESTS_PER_MINUTE=20
-CRAWLER_DELAY_BETWEEN_REQUESTS=2.0
-CRAWLER_CONCURRENT_SITES=3
+    # Crawling Configuration
+    CRAWLER_REQUESTS_PER_MINUTE=20
+    CRAWLER_DELAY_BETWEEN_REQUESTS=2.0
+    CRAWLER_CONCURRENT_SITES=3
 
-# System Configuration
-LOG_LEVEL=INFO
-DEBUG_MODE=false
-GPU_ENABLED=true
+    # System Configuration
+    LOG_LEVEL=INFO
+    DEBUG_MODE=false
+    GPU_ENABLED=true
 
-# Optional: GPU Configuration
-# CUDA_VISIBLE_DEVICES=0
-# GPU_MEMORY_FRACTION=0.8
+    # Optional: GPU Configuration
+    # CUDA_VISIBLE_DEVICES=0
+    # GPU_MEMORY_FRACTION=0.8
 
-# Optional: Model Cache Directories
-# MODEL_STORE_ROOT=/path/to/model/store
-# SYNTHESIZER_MODEL_CACHE=/path/to/synthesizer/cache
+    # Optional: Model Cache Directories
+    # MODEL_STORE_ROOT=/path/to/model/store
+    # SYNTHESIZER_MODEL_CACHE=/path/to/synthesizer/cache
 
-# Optional: Logging
-# LOG_FILE=/var/log/justnews.log
-"""
+    # Optional: Logging
+    # LOG_FILE=/var/log/justnews.log
+    """
 
         try:
             with open(template_path, 'w') as f:

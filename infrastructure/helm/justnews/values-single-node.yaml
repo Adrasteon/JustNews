@@ -1,5 +1,5 @@
-# Single-Node Optimized Values for JustNews K8s Deployment
-# Optimized for AMD Ryzen 7 (16 cores) + 32GB RAM + RTX3090
+# DEPRECATED: This values-single-node.yaml file has been archived.
+# The original file content is available at: infrastructure/archives/helm/justnews/values-single-node.yaml
 
 # Global configuration
 global:
@@ -86,12 +86,7 @@ justnews:
       port: 8001
       gpuRequired: false
 
-    balancer:
-      name: balancer
-      enabled: true
-      replicas: 2  # Increased for load distribution
-      port: 8010
-      gpuRequired: false
+    # balancer removed - responsibilities moved to critic/analytics/gpu_orchestrator
 
     memory:
       name: memory

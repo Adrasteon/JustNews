@@ -1,4 +1,4 @@
-# JustNewsAgent Configuration Management - Validation Utilities
+# JustNews Configuration Management - Validation Utilities
 # Phase 2B: Configuration Management Refactoring
 
 """
@@ -14,17 +14,19 @@ Provides comprehensive validation with:
 """
 
 import json
+import subprocess
+import tempfile
 import time
-from pathlib import Path
-from typing import Dict, List, Optional, Union, Any, Callable, Tuple
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-import tempfile
-import subprocess
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from common.observability import get_logger
-from ..schemas import JustNewsConfig, Environment, create_default_config
+
 from ..core import ConfigurationManager
+from ..schemas import Environment, JustNewsConfig, create_default_config
 
 logger = get_logger(__name__)
 
@@ -33,9 +35,9 @@ logger = get_logger(__name__)
 class ValidationResult:
     """Result of configuration validation"""
     is_valid: bool
-    errors: List[str]
-    warnings: List[str]
-    info: List[str]
+    errors: list[str]
+    warnings: list[str]
+    info: list[str]
     duration_ms: float
 
     def __str__(self) -> str:
@@ -71,7 +73,7 @@ class ConfigurationValidator:
     """
 
     def __init__(self):
-        self.validators: List[Callable[[JustNewsConfig], Tuple[List[str], List[str], List[str]]]] = [
+        self.validators: list[Callable[[JustNewsConfig], tuple[list[str], list[str], list[str]]]] = [
             self._validate_schema,
             self._validate_cross_component_consistency,
             self._validate_environment_requirements,
@@ -116,7 +118,7 @@ class ConfigurationValidator:
             duration_ms=duration_ms
         )
 
-    def _validate_schema(self, config: JustNewsConfig) -> Tuple[List[str], List[str], List[str]]:
+    def _validate_schema(self, config: JustNewsConfig) -> tuple[list[str], list[str], list[str]]:
         """Validate schema compliance and type safety"""
         errors = []
         warnings = []
@@ -137,7 +139,7 @@ class ConfigurationValidator:
 
         return errors, warnings, info
 
-    def _validate_cross_component_consistency(self, config: JustNewsConfig) -> Tuple[List[str], List[str], List[str]]:
+    def _validate_cross_component_consistency(self, config: JustNewsConfig) -> tuple[list[str], list[str], list[str]]:
         """Validate consistency across components"""
         errors = []
         warnings = []
@@ -169,7 +171,7 @@ class ConfigurationValidator:
 
         return errors, warnings, info
 
-    def _validate_environment_requirements(self, config: JustNewsConfig) -> Tuple[List[str], List[str], List[str]]:
+    def _validate_environment_requirements(self, config: JustNewsConfig) -> tuple[list[str], list[str], list[str]]:
         """Validate environment-specific requirements"""
         errors = []
         warnings = []
@@ -212,7 +214,7 @@ class ConfigurationValidator:
 
         return errors, warnings, info
 
-    def _validate_performance_constraints(self, config: JustNewsConfig) -> Tuple[List[str], List[str], List[str]]:
+    def _validate_performance_constraints(self, config: JustNewsConfig) -> tuple[list[str], list[str], list[str]]:
         """Validate performance-related constraints"""
         errors = []
         warnings = []
@@ -228,7 +230,7 @@ class ConfigurationValidator:
 
         return errors, warnings, info
 
-    def _validate_security_requirements(self, config: JustNewsConfig) -> Tuple[List[str], List[str], List[str]]:
+    def _validate_security_requirements(self, config: JustNewsConfig) -> tuple[list[str], list[str], list[str]]:
         """Validate security-related requirements"""
         errors = []
         warnings = []
@@ -250,7 +252,7 @@ class ConfigurationValidator:
 
         return errors, warnings, info
 
-    def _validate_integration_compatibility(self, config: JustNewsConfig) -> Tuple[List[str], List[str], List[str]]:
+    def _validate_integration_compatibility(self, config: JustNewsConfig) -> tuple[list[str], list[str], list[str]]:
         """Validate integration compatibility"""
         errors = []
         warnings = []
@@ -275,7 +277,7 @@ class ConfigurationTester:
     - Performance benchmarking
     """
 
-    def __init__(self, validator: Optional[ConfigurationValidator] = None):
+    def __init__(self, validator: ConfigurationValidator | None = None):
         """
         Initialize configuration tester
 
@@ -284,7 +286,7 @@ class ConfigurationTester:
         """
         self.validator = validator or ConfigurationValidator()
 
-    def test_configuration_loading(self, config_path: Union[str, Path]) -> ValidationResult:
+    def test_configuration_loading(self, config_path: str | Path) -> ValidationResult:
         """
         Test configuration loading from file
 
@@ -396,7 +398,7 @@ class ConfigurationTester:
             duration_ms=duration_ms
         )
 
-    def benchmark_configuration_performance(self, config: JustNewsConfig, iterations: int = 10) -> Dict[str, Any]:
+    def benchmark_configuration_performance(self, config: JustNewsConfig, iterations: int = 10) -> dict[str, Any]:
         """
         Benchmark configuration performance
 
@@ -454,7 +456,7 @@ class ConfigurationMigrationValidator:
     - Rollback safety validation
     """
 
-    def __init__(self, validator: Optional[ConfigurationValidator] = None):
+    def __init__(self, validator: ConfigurationValidator | None = None):
         """
         Initialize migration validator
 
@@ -467,7 +469,7 @@ class ConfigurationMigrationValidator:
         self,
         old_config: JustNewsConfig,
         new_config: JustNewsConfig,
-        migration_steps: List[str]
+        migration_steps: list[str]
     ) -> ValidationResult:
         """
         Validate configuration migration path
@@ -522,7 +524,7 @@ class ConfigurationMigrationValidator:
             duration_ms=duration_ms
         )
 
-    def _identify_breaking_changes(self, old_config: JustNewsConfig, new_config: JustNewsConfig) -> List[str]:
+    def _identify_breaking_changes(self, old_config: JustNewsConfig, new_config: JustNewsConfig) -> list[str]:
         """Identify breaking changes between configurations"""
         changes = []
 
@@ -535,7 +537,7 @@ class ConfigurationMigrationValidator:
 
         return changes
 
-    def _check_data_integrity(self, old_config: JustNewsConfig, new_config: JustNewsConfig) -> List[str]:
+    def _check_data_integrity(self, old_config: JustNewsConfig, new_config: JustNewsConfig) -> list[str]:
         """Check data integrity between configurations"""
         issues = []
 
@@ -545,7 +547,7 @@ class ConfigurationMigrationValidator:
 
         return issues
 
-    def validate_rollback_safety(self, config: JustNewsConfig, backup_path: Union[str, Path]) -> ValidationResult:
+    def validate_rollback_safety(self, config: JustNewsConfig, backup_path: str | Path) -> ValidationResult:
         """
         Validate rollback safety
 
@@ -593,7 +595,7 @@ class ConfigurationMigrationValidator:
             duration_ms=duration_ms
         )
 
-    def _check_rollback_compatibility(self, current_config: JustNewsConfig, backup_config: JustNewsConfig) -> List[str]:
+    def _check_rollback_compatibility(self, current_config: JustNewsConfig, backup_config: JustNewsConfig) -> list[str]:
         """Check rollback compatibility issues"""
         issues = []
 
@@ -608,7 +610,7 @@ class ConfigurationMigrationValidator:
 # UTILITY FUNCTIONS
 # ============================================================================
 
-def validate_configuration_file(config_path: Union[str, Path]) -> ValidationResult:
+def validate_configuration_file(config_path: str | Path) -> ValidationResult:
     """
     Validate configuration file
 
@@ -634,7 +636,7 @@ def simulate_system_startup(config: JustNewsConfig) -> ValidationResult:
     tester = ConfigurationTester()
     return tester.simulate_agent_startup(config)
 
-def benchmark_configuration(config: JustNewsConfig) -> Dict[str, Any]:
+def benchmark_configuration(config: JustNewsConfig) -> dict[str, Any]:
     """
     Benchmark configuration performance
 

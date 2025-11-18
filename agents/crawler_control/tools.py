@@ -1,12 +1,11 @@
 """
 Tools and utilities for the Crawler Control Agent.
 """
-from typing import List
 
 from database.utils.migrated_database_utils import create_database_service
 
 
-def get_sources_with_limit(limit: int = None) -> List[str]:
+def get_sources_with_limit(limit: int = None) -> list[str]:
     """Get active sources from database, optionally limited"""
     try:
         db_service = create_database_service()

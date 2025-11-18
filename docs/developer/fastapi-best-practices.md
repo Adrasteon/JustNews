@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide provides best practices for developing FastAPI applications in the JustNewsAgent system, incorporating the latest FastAPI patterns and conventions.
+This guide provides best practices for developing FastAPI applications in the JustNews system, incorporating the latest FastAPI patterns and conventions.
 
 ## Application Structure
 
@@ -14,7 +14,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 # Create FastAPI application with metadata
 app = FastAPI(
-    title="JustNewsAgent API",
+    title="JustNews API",
     description="Multi-agent news analysis system",
     version="1.0.0",
     docs_url="/docs",
@@ -47,7 +47,7 @@ from fastapi import Query, Path
 @app.get("/")
 async def read_root():
     """Root endpoint returning API information"""
-    return {"message": "JustNewsAgent API", "version": "1.0.0"}
+    return {"message": "JustNews API", "version": "1.0.0"}
 
 @app.get("/items/{item_id}")
 async def read_item(
@@ -465,7 +465,7 @@ def test_read_root(client):
     """Test root endpoint"""
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"message": "JustNewsAgent API", "version": "1.0.0"}
+    assert response.json() == {"message": "JustNews API", "version": "1.0.0"}
 
 def test_create_item(client):
     """Test item creation"""

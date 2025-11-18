@@ -24,8 +24,8 @@ from __future__ import annotations
 import hashlib
 import os
 import re
-from typing import Iterable, Optional
-from urllib.parse import ParseResult, parse_qsl, urlparse, urlunparse, urlencode
+from collections.abc import Iterable
+from urllib.parse import ParseResult, parse_qsl, urlencode, urlparse, urlunparse
 
 # Tracking parameters routinely appended by publishers or email campaigns.
 _TRACKING_PARAM_PREFIXES = ("utm_", "spm", "icid")
@@ -53,7 +53,7 @@ def _strip_tracking_params(pairs: Iterable[tuple[str, str]]) -> list[tuple[str, 
 
 def _normalise_netloc(parsed: ParseResult) -> str:
     host = (parsed.hostname or "").lower()
-    port: Optional[int] = parsed.port
+    port: int | None = parsed.port
 
     if not host:
         return ""

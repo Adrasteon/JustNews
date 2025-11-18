@@ -5,15 +5,14 @@ Provides fixtures, markers, and configuration for comprehensive
 dual database testing (MariaDB + ChromaDB).
 """
 
-import pytest
 import asyncio
-from unittest.mock import MagicMock, AsyncMock, patch
-from typing import Dict, Any, Generator, List
 from datetime import datetime
+from typing import Any
+from unittest.mock import MagicMock, patch
 
-from database.models.migrated_models import MigratedDatabaseService, Source, Article
-from database.utils.migrated_database_utils import create_database_service
+import pytest
 
+from database.models.migrated_models import Article, MigratedDatabaseService, Source
 
 # Test Markers
 pytestmark = [
@@ -32,7 +31,7 @@ def event_loop():
 
 
 @pytest.fixture(scope="session")
-def test_config() -> Dict[str, Any]:
+def test_config() -> dict[str, Any]:
     """Base test configuration for dual database setup"""
     return {
         'database': {
@@ -272,7 +271,7 @@ def assert_database_service_initialized(service: MigratedDatabaseService):
     assert service.config is not None
 
 
-def assert_article_data_integrity(article: Article, expected_data: Dict[str, Any]):
+def assert_article_data_integrity(article: Article, expected_data: dict[str, Any]):
     """Assert article data integrity"""
     article_dict = article.to_dict()
     for key, expected_value in expected_data.items():
@@ -283,7 +282,7 @@ def assert_article_data_integrity(article: Article, expected_data: Dict[str, Any
                 assert article_dict[key] == expected_value
 
 
-def assert_source_data_integrity(source: Source, expected_data: Dict[str, Any]):
+def assert_source_data_integrity(source: Source, expected_data: dict[str, Any]):
     """Assert source data integrity"""
     source_dict = source.to_dict()
     for key, expected_value in expected_data.items():
@@ -383,7 +382,7 @@ async def time_async_operation(operation_func, *args, **kwargs):
 
 
 # Test data generators
-def generate_test_articles(count: int, source_id: int = 1) -> List[Article]:
+def generate_test_articles(count: int, source_id: int = 1) -> list[Article]:
     """Generate test articles for bulk operations"""
     articles = []
     for i in range(count):
@@ -399,7 +398,7 @@ def generate_test_articles(count: int, source_id: int = 1) -> List[Article]:
     return articles
 
 
-def generate_test_sources(count: int) -> List[Source]:
+def generate_test_sources(count: int) -> list[Source]:
     """Generate test sources for bulk operations"""
     sources = []
     for i in range(count):

@@ -14,14 +14,15 @@ import json
 import os
 import threading
 import time
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any
 
 from common.observability import get_logger
 
 logger = get_logger(__name__)
 
-_STORAGE_INSTANCE: "DashboardStorage" | None = None
+_STORAGE_INSTANCE: DashboardStorage | None = None
 
 
 class DashboardStorage:
@@ -46,19 +47,19 @@ class DashboardStorage:
         self._lock = threading.Lock()
 
     # Public API -----------------------------------------------------
-    def store_gpu_metrics(self, payload: Dict[str, Any]) -> None:
+    def store_gpu_metrics(self, payload: dict[str, Any]) -> None:
         record = self._normalise_metric_payload(payload)
         self._append_jsonl(self.metrics_path, record)
 
     def get_gpu_metrics_history(
         self,
         hours: int,
-        gpu_index: Optional[int] = None,
+        gpu_index: int | None = None,
         metric_type: str | None = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         cutoff = time.time() - max(hours, 0) * 3600
         records = self._read_jsonl(self.metrics_path)
-        history: List[Dict[str, Any]] = []
+        history: list[dict[str, Any]] = []
 
         for entry in records:
             ts = float(entry.get("timestamp", 0))
@@ -78,11 +79,11 @@ class DashboardStorage:
     def get_agent_allocation_history(
         self,
         hours: int,
-        agent_name: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        agent_name: str | None = None,
+    ) -> list[dict[str, Any]]:
         cutoff = time.time() - max(hours, 0) * 3600
         records = self._read_jsonl(self.allocations_path)
-        history: List[Dict[str, Any]] = []
+        history: list[dict[str, Any]] = []
 
         for entry in records:
             ts = float(entry.get("timestamp", 0))
@@ -94,11 +95,11 @@ class DashboardStorage:
 
         return history
 
-    def get_performance_trends(self, hours: int) -> List[Dict[str, Any]]:
+    def get_performance_trends(self, hours: int) -> list[dict[str, Any]]:
         # Aggregate basic utilisation statistics from stored GPU metrics.
         cutoff = time.time() - max(hours, 0) * 3600
         records = self._read_jsonl(self.metrics_path)
-        buckets: Dict[int, Dict[str, Any]] = {}
+        buckets: dict[int, dict[str, Any]] = {}
 
         for entry in records:
             ts = float(entry.get("timestamp", 0))
@@ -117,7 +118,7 @@ class DashboardStorage:
                 if mem is not None:
                     bucket_data["memory_used_mb"].append(mem)
 
-        trends: List[Dict[str, Any]] = []
+        trends: list[dict[str, Any]] = []
         for bucket in sorted(buckets):
             data = buckets[bucket]
             trends.append(
@@ -129,13 +130,13 @@ class DashboardStorage:
             )
         return trends
 
-    def get_recent_alerts(self, limit: int) -> List[Dict[str, Any]]:
+    def get_recent_alerts(self, limit: int) -> list[dict[str, Any]]:
         records = self._read_jsonl(self.alerts_path)
         if not records:
             return []
         return records[-max(limit, 0) :]
 
-    def get_storage_stats(self) -> Dict[str, Any]:
+    def get_storage_stats(self) -> dict[str, Any]:
         return {
             "base_path": str(self.base_path),
             "files": {
@@ -147,7 +148,7 @@ class DashboardStorage:
         }
 
     # Helper methods -------------------------------------------------
-    def _append_jsonl(self, path: Path, record: Dict[str, Any]) -> None:
+    def _append_jsonl(self, path: Path, record: dict[str, Any]) -> None:
         if not record:
             return
         serialised = json.dumps(record, ensure_ascii=True, default=str)
@@ -156,10 +157,10 @@ class DashboardStorage:
             with path.open("a", encoding="utf-8") as handle:
                 handle.write(serialised + "\n")
 
-    def _read_jsonl(self, path: Path) -> List[Dict[str, Any]]:
+    def _read_jsonl(self, path: Path) -> list[dict[str, Any]]:
         if not path.exists():
             return []
-        records: List[Dict[str, Any]] = []
+        records: list[dict[str, Any]] = []
         try:
             with path.open("r", encoding="utf-8") as handle:
                 for line in handle:
@@ -176,7 +177,7 @@ class DashboardStorage:
             logger.warning("Failed to read storage file %s: %s", path, exc)
         return records
 
-    def _file_stats(self, path: Path) -> Dict[str, Any]:
+    def _file_stats(self, path: Path) -> dict[str, Any]:
         if not path.exists():
             return {"exists": False, "size_bytes": 0, "records": 0}
         record_count = sum(1 for _ in self._iter_file_lines(path))
@@ -194,11 +195,11 @@ class DashboardStorage:
         except OSError as exc:
             logger.warning("Failed to iterate storage file %s: %s", path, exc)
 
-    def _normalise_metric_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _normalise_metric_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
         record = dict(payload)
         record.setdefault("timestamp", time.time())
         # Ensure GPU list contains serialisable primitives only.
-        clean_gpus: List[Dict[str, Any]] = []
+        clean_gpus: list[dict[str, Any]] = []
         for gpu in record.get("gpus", []):
             clean_gpu = {key: self._serialisable(value) for key, value in gpu.items()}
             clean_gpus.append(clean_gpu)
@@ -214,7 +215,7 @@ class DashboardStorage:
             return {str(key): self._serialisable(val) for key, val in value.items()}
         return str(value)
 
-    def _select_metric_value(self, gpu: Dict[str, Any], metric_type: str) -> Optional[float]:
+    def _select_metric_value(self, gpu: dict[str, Any], metric_type: str) -> float | None:
         key_map = {
             "utilization": "gpu_utilization_percent",
             "memory": "memory_used_mb",
@@ -223,13 +224,13 @@ class DashboardStorage:
         key = key_map.get(metric_type, metric_type)
         return self._to_float(gpu.get(key))
 
-    def _to_float(self, value: Any) -> Optional[float]:
+    def _to_float(self, value: Any) -> float | None:
         try:
             return float(value)
         except (TypeError, ValueError):
             return None
 
-    def _mean(self, values: List[float]) -> float:
+    def _mean(self, values: list[float]) -> float:
         if not values:
             return 0.0
         return sum(values) / len(values)

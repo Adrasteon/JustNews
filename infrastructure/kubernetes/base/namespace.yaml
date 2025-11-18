@@ -7,4 +7,4 @@ metadata:
     app: justnews-agent-system
     environment: development
   annotations:
-    description: "Namespace for JustNewsAgent distributed AI news processing system"
+    description: "Namespace for JustNews distributed AI news processing system"

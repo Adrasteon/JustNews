@@ -1,22 +1,21 @@
 """
-JustNewsAgent Centralized Logging System
+JustNews Centralized Logging System
 
 Provides structured logging, aggregation, and search capabilities for all agents
-and services in the JustNewsAgent system.
+and services in the JustNews system.
 """
 
-import logging
-import json
 import asyncio
-import uuid
-from typing import Dict, List, Optional, Any, Union, Callable
-from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
-from enum import Enum
-import sys
+import json
+import logging
 import os
-
-from pathlib import Path
+import sys
+import uuid
+from collections.abc import Callable
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from enum import Enum
+from typing import Any
 
 
 class LogLevel(Enum):
@@ -42,26 +41,26 @@ class LogEntry:
     level: LogLevel
     logger_name: str
     message: str
-    agent_name: Optional[str] = None
-    agent_id: Optional[str] = None
-    request_id: Optional[str] = None
-    session_id: Optional[str] = None
-    user_id: Optional[int] = None
-    endpoint: Optional[str] = None
-    method: Optional[str] = None
-    status_code: Optional[int] = None
-    duration_ms: Optional[float] = None
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    error_type: Optional[str] = None
-    error_message: Optional[str] = None
-    stack_trace: Optional[str] = None
-    extra_data: Optional[Dict[str, Any]] = None
-    correlation_id: Optional[str] = None
-    trace_id: Optional[str] = None
-    span_id: Optional[str] = None
+    agent_name: str | None = None
+    agent_id: str | None = None
+    request_id: str | None = None
+    session_id: str | None = None
+    user_id: int | None = None
+    endpoint: str | None = None
+    method: str | None = None
+    status_code: int | None = None
+    duration_ms: float | None = None
+    ip_address: str | None = None
+    user_agent: str | None = None
+    error_type: str | None = None
+    error_message: str | None = None
+    stack_trace: str | None = None
+    extra_data: dict[str, Any] | None = None
+    correlation_id: str | None = None
+    trace_id: str | None = None
+    span_id: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         data = asdict(self)
         # Convert enum to string
@@ -71,7 +70,7 @@ class LogEntry:
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'LogEntry':
+    def from_dict(cls, data: dict[str, Any]) -> 'LogEntry':
         """Create from dictionary"""
         # Convert string back to enum
         data['level'] = LogLevel(data['level'])
@@ -82,27 +81,27 @@ class LogEntry:
 
 class LogCollector:
     """
-    Centralized log collector for JustNewsAgent.
+    Centralized log collector for JustNews.
 
     Provides structured logging interface, log aggregation, and multiple output
     destinations including console, files, and external systems.
     """
 
-    def __init__(self, agent_name: str, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, agent_name: str, config: dict[str, Any] | None = None):
         self.agent_name = agent_name
         self.agent_id = str(uuid.uuid4())
         self.config = config or self._get_default_config()
 
         # Initialize logging components
         self._log_queue: asyncio.Queue = asyncio.Queue(maxsize=10000)
-        self._log_handlers: List[Callable] = []
+        self._log_handlers: list[Callable] = []
         self._structured_logger = self._setup_structured_logger()
 
         # Start background processing
-        self._processing_task: Optional[asyncio.Task] = None
+        self._processing_task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default logging configuration"""
         return {
             'log_level': 'INFO',
@@ -226,7 +225,7 @@ class LogCollector:
                         timeout=self.config['flush_interval']
                     )
                     buffer.append(entry)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Flush buffer on timeout
                     if buffer:
                         await self._flush_buffer(buffer)
@@ -246,7 +245,7 @@ class LogCollector:
         if buffer:
             await self._flush_buffer(buffer)
 
-    async def _flush_buffer(self, buffer: List[LogEntry]) -> None:
+    async def _flush_buffer(self, buffer: list[LogEntry]) -> None:
         """Flush log buffer to all handlers"""
         try:
             # Process each entry
@@ -389,7 +388,7 @@ class StructuredTextFormatter(logging.Formatter):
 
 
 # Global log collector instance
-_default_collector: Optional[LogCollector] = None
+_default_collector: LogCollector | None = None
 
 def get_log_collector(agent_name: str) -> LogCollector:
     """Get or create log collector for an agent"""
@@ -400,7 +399,7 @@ def get_log_collector(agent_name: str) -> LogCollector:
 
     return _default_collector
 
-def init_logging_for_agent(agent_name: str, config: Optional[Dict[str, Any]] = None) -> LogCollector:
+def init_logging_for_agent(agent_name: str, config: dict[str, Any] | None = None) -> LogCollector:
     """Initialize logging for a specific agent"""
     collector = LogCollector(agent_name, config)
     global _default_collector

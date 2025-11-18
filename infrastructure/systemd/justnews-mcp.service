@@ -6,7 +6,9 @@ After=network.target
 Type=simple
 User=justnews
 Group=justnews
-WorkingDirectory=/opt/justnews
+Environment=SERVICE_DIR=/opt/justnews
+EnvironmentFile=/opt/justnews/global.env
+WorkingDirectory=$SERVICE_DIR
 ExecStart=/usr/local/bin/justnews-mcp
 Restart=on-failure
 RestartSec=5

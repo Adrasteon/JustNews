@@ -1,5 +1,5 @@
 """
-JustNewsAgent Distributed Tracing System
+JustNews Distributed Tracing System
 
 This module implements comprehensive distributed tracing using OpenTelemetry
 for end-to-end request tracing across the multi-agent system.
@@ -12,29 +12,24 @@ Key Features:
 - Performance bottleneck identification
 - Distributed transaction monitoring
 
-Author: JustNewsAgent Development Team
+Author: JustNews Development Team
 Date: October 22, 2025
 """
 
-import asyncio
-import json
 import logging
-import time
-import uuid
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Union
 from datetime import datetime, timedelta
+from typing import Any
 
 from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.jaeger.thrift import JaegerExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.trace import Status, StatusCode, SpanKind
+from opentelemetry.trace import SpanKind, Status, StatusCode
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
-from opentelemetry.baggage.propagation import W3CBaggagePropagator
 
 from ..common.config import get_config
 from ..common.metrics import JustNewsMetrics
@@ -50,8 +45,8 @@ class TraceContext:
     """Represents a distributed trace context"""
     trace_id: str
     span_id: str
-    parent_span_id: Optional[str] = None
-    baggage: Dict[str, str] = field(default_factory=dict)
+    parent_span_id: str | None = None
+    baggage: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def from_opentelemetry(cls, span_context: trace.SpanContext) -> 'TraceContext':
@@ -61,7 +56,7 @@ class TraceContext:
             span_id=hex(span_context.span_id)[2:],    # Remove 0x prefix
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
             'trace_id': self.trace_id,
@@ -75,20 +70,20 @@ class TraceSpan:
     """Represents a single span in a distributed trace"""
     span_id: str
     trace_id: str
-    parent_span_id: Optional[str]
+    parent_span_id: str | None
     name: str
     kind: str
     start_time: datetime
-    end_time: Optional[datetime] = None
-    duration_ms: Optional[float] = None
+    end_time: datetime | None = None
+    duration_ms: float | None = None
     status: str = "ok"
-    attributes: Dict[str, Any] = field(default_factory=dict)
-    events: List[Dict[str, Any]] = field(default_factory=list)
+    attributes: dict[str, Any] = field(default_factory=dict)
+    events: list[dict[str, Any]] = field(default_factory=list)
     service_name: str = ""
     agent_name: str = ""
     operation: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert span to dictionary for storage/analysis"""
         return {
             'span_id': self.span_id,
@@ -112,16 +107,16 @@ class TraceData:
     """Complete trace data including all spans"""
     trace_id: str
     root_span_id: str
-    spans: List[TraceSpan] = field(default_factory=list)
+    spans: list[TraceSpan] = field(default_factory=list)
     start_time: datetime = field(default_factory=datetime.now)
-    end_time: Optional[datetime] = None
-    duration_ms: Optional[float] = None
+    end_time: datetime | None = None
+    duration_ms: float | None = None
     service_count: int = 0
     total_spans: int = 0
     error_count: int = 0
     status: str = "active"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert trace to dictionary for storage"""
         return {
             'trace_id': self.trace_id,
@@ -158,8 +153,8 @@ class TraceCollector:
         self._setup_tracing()
 
         # Trace storage
-        self.active_traces: Dict[str, TraceData] = {}
-        self.completed_traces: Dict[str, TraceData] = {}
+        self.active_traces: dict[str, TraceData] = {}
+        self.completed_traces: dict[str, TraceData] = {}
         self.max_active_traces = 1000
         self.trace_retention_hours = 24
 
@@ -213,7 +208,7 @@ class TraceCollector:
         trace.set_global_textmap(TraceContextTextMapPropagator())
         # Note: W3CBaggagePropagator setup would go here if needed
 
-    def _create_exporters(self) -> List[Any]:
+    def _create_exporters(self) -> list[Any]:
         """Create configured trace exporters"""
         exporters = []
         tracing_config = self.config.get('tracing', {})
@@ -245,7 +240,7 @@ class TraceCollector:
 
         return exporters
 
-    def start_trace(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> TraceContext:
+    def start_trace(self, name: str, attributes: dict[str, Any] | None = None) -> TraceContext:
         """
         Start a new trace with root span.
 
@@ -286,8 +281,8 @@ class TraceCollector:
 
             return trace_context
 
-    def start_span(self, name: str, parent_context: Optional[TraceContext] = None,
-                   attributes: Optional[Dict[str, Any]] = None) -> TraceContext:
+    def start_span(self, name: str, parent_context: TraceContext | None = None,
+                   attributes: dict[str, Any] | None = None) -> TraceContext:
         """
         Start a new span within an existing trace.
 
@@ -327,7 +322,7 @@ class TraceCollector:
             return trace_context
 
     def end_span(self, context: TraceContext, status: str = "ok",
-                 attributes: Optional[Dict[str, Any]] = None):
+                 attributes: dict[str, Any] | None = None):
         """
         End a span and record completion.
 
@@ -363,7 +358,7 @@ class TraceCollector:
                 logger.debug(f"Ended span: {context.span_id}, status: {status}")
 
     def record_event(self, context: TraceContext, name: str,
-                    attributes: Optional[Dict[str, Any]] = None):
+                    attributes: dict[str, Any] | None = None):
         """
         Record an event within a span.
 
@@ -376,7 +371,7 @@ class TraceCollector:
         if current_span:
             current_span.add_event(name, attributes or {})
 
-    def inject_context(self, context: TraceContext) -> Dict[str, str]:
+    def inject_context(self, context: TraceContext) -> dict[str, str]:
         """
         Inject trace context into headers for distributed propagation.
 
@@ -390,7 +385,7 @@ class TraceCollector:
         TraceContextTextMapPropagator().inject(headers, context)
         return headers
 
-    def extract_context(self, headers: Dict[str, str]) -> Optional[TraceContext]:
+    def extract_context(self, headers: dict[str, str]) -> TraceContext | None:
         """
         Extract trace context from headers.
 
@@ -409,16 +404,16 @@ class TraceCollector:
             logger.warning(f"Failed to extract trace context: {e}")
         return None
 
-    def get_active_traces(self) -> List[TraceData]:
+    def get_active_traces(self) -> list[TraceData]:
         """Get list of currently active traces"""
         return list(self.active_traces.values())
 
-    def get_completed_traces(self, limit: int = 100) -> List[TraceData]:
+    def get_completed_traces(self, limit: int = 100) -> list[TraceData]:
         """Get list of recently completed traces"""
         traces = list(self.completed_traces.values())
         return traces[-limit:] if len(traces) > limit else traces
 
-    def get_trace(self, trace_id: str) -> Optional[TraceData]:
+    def get_trace(self, trace_id: str) -> TraceData | None:
         """Get trace data by ID"""
         return self.active_traces.get(trace_id) or self.completed_traces.get(trace_id)
 
@@ -437,7 +432,7 @@ class TraceCollector:
         if to_remove:
             logger.info(f"Cleaned up {len(to_remove)} old traces")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get tracing statistics"""
         return {
             'active_traces': len(self.active_traces),
@@ -458,25 +453,25 @@ def get_trace_collector(service_name: str = "justnews-agent", agent_name: str = 
     return _collector
 
 # Convenience functions for easy tracing
-def start_trace(name: str, attributes: Optional[Dict[str, Any]] = None) -> TraceContext:
+def start_trace(name: str, attributes: dict[str, Any] | None = None) -> TraceContext:
     """Convenience function to start a new trace"""
     collector = get_trace_collector()
     return collector.start_trace(name, attributes)
 
-def start_span(name: str, parent_context: Optional[TraceContext] = None,
-               attributes: Optional[Dict[str, Any]] = None) -> TraceContext:
+def start_span(name: str, parent_context: TraceContext | None = None,
+               attributes: dict[str, Any] | None = None) -> TraceContext:
     """Convenience function to start a new span"""
     collector = get_trace_collector()
     return collector.start_span(name, parent_context, attributes)
 
 def end_span(context: TraceContext, status: str = "ok",
-             attributes: Optional[Dict[str, Any]] = None):
+             attributes: dict[str, Any] | None = None):
     """Convenience function to end a span"""
     collector = get_trace_collector()
     collector.end_span(context, status, attributes)
 
 def record_event(context: TraceContext, name: str,
-                attributes: Optional[Dict[str, Any]] = None):
+                attributes: dict[str, Any] | None = None):
     """Convenience function to record an event"""
     collector = get_trace_collector()
     collector.record_event(context, name, attributes)
@@ -485,8 +480,8 @@ def record_event(context: TraceContext, name: str,
 class traced_span:
     """Context manager for automatic span lifecycle management"""
 
-    def __init__(self, name: str, parent_context: Optional[TraceContext] = None,
-                 attributes: Optional[Dict[str, Any]] = None):
+    def __init__(self, name: str, parent_context: TraceContext | None = None,
+                 attributes: dict[str, Any] | None = None):
         self.name = name
         self.parent_context = parent_context
         self.attributes = attributes or {}

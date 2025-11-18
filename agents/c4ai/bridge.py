@@ -6,7 +6,7 @@ so multiple agents can import `agents.c4ai.bridge`.
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 try:
     import aiohttp
@@ -14,7 +14,7 @@ except Exception:  # pragma: no cover - aiohttp optional
     aiohttp = None
 
 try:
-    from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
+    from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig
 except Exception:
     AsyncWebCrawler = None
     BrowserConfig = None
@@ -22,7 +22,7 @@ except Exception:
     CacheMode = None
 
 
-async def crawl_via_local_server(url: str, *, mode: str = "standard", use_llm: bool = True, base_url: Optional[str] = None) -> Dict[str, Any]:
+async def crawl_via_local_server(url: str, *, mode: str = "standard", use_llm: bool = True, base_url: str | None = None) -> dict[str, Any]:
     """Call a local Crawl4AI HTTP server (systemd-managed) and return a normalized result.
 
     Falls back to in-process AsyncWebCrawler if the HTTP endpoint is not reachable

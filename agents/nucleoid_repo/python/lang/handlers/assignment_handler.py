@@ -1,6 +1,8 @@
-from ...nucleoid.state import variable_state
-from ...nucleoid.graph import maingraph
 import ast
+
+from ...nucleoid.graph import maingraph
+from ...nucleoid.state import variable_state
+
 
 def assignment_handler(node):
     # Extract the variable name from the target

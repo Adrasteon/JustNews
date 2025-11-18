@@ -1,4 +1,4 @@
-# JustNewsAgent Unified Configuration Facade
+# JustNews Unified Configuration Facade
 # Phase 2B: Configuration Management Refactoring
 
 """
@@ -20,63 +20,59 @@ individual modules, but preserves backwards compatibility with code and
 tests that still reference ``config.refactor``.
 """
 
-from ..schemas import (
-    JustNewsConfig,
-    Environment,
-    SystemConfig,
-    MCPBusConfig,
-    DatabaseConfig,
-    CrawlingConfig,
-    GPUConfig,
-    AgentsConfig,
-    TrainingConfig,
-    SecurityConfig,
-    MonitoringConfig,
-    DataMinimizationConfig,
-    PerformanceConfig,
-    ExternalServicesConfig,
-    load_config_from_file,
-    save_config_to_file,
-    create_default_config,
-)
-
 from ..core import (
-    ConfigurationManager,
     ConfigurationError,
-    ConfigurationValidationError,
+    ConfigurationManager,
     ConfigurationNotFoundError,
-    get_config_manager,
+    ConfigurationValidationError,
     get_config,
-    get_system_config,
+    get_config_manager,
+    get_crawling_config,
     get_database_config,
     get_gpu_config,
-    get_crawling_config,
-    is_production,
+    get_system_config,
     is_debug_mode,
+    is_production,
 )
-
 from ..environments import (
     EnvironmentProfile,
     EnvironmentProfileManager,
     get_profile_manager,
 )
-
-from ..validation import (
-    ValidationResult,
-    ConfigurationValidator,
-    ConfigurationTester,
-    ConfigurationMigrationValidator,
-    validate_configuration_file,
-    simulate_system_startup,
-    benchmark_configuration,
-)
-
 from ..legacy import (
     LegacyConfigFile,
-    MigrationPlan,
     LegacyConfigurationMigrator,
-    discover_and_migrate_configs,
+    MigrationPlan,
     create_legacy_compatibility_layer,
+    discover_and_migrate_configs,
+)
+from ..schemas import (
+    AgentsConfig,
+    CrawlingConfig,
+    DatabaseConfig,
+    DataMinimizationConfig,
+    Environment,
+    ExternalServicesConfig,
+    GPUConfig,
+    JustNewsConfig,
+    MCPBusConfig,
+    MonitoringConfig,
+    PerformanceConfig,
+    SecurityConfig,
+    SystemConfig,
+    TrainingConfig,
+    create_default_config,
+    load_config_from_file,
+    save_config_to_file,
+)
+from ..validation import (
+    ConfigurationMigrationValidator,
+    ConfigurationTester,
+    ConfigurationValidator,
+    ValidationResult,
+    benchmark_configuration,
+    simulate_system_startup,
+    validate_configuration_file,
 )
 
 __all__ = [

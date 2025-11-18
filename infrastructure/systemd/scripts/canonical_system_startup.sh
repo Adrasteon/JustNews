@@ -15,7 +15,7 @@ resolve_root() {
       echo "$SERVICE_DIR"; return 0
     fi
   fi
-  echo "/home/adra/JustNewsAgent-Clean"
+  echo "${SERVICE_DIR:-/home/adra/JustNews}"
 }
 
 ROOT="$(resolve_root)"

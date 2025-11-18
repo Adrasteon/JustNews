@@ -7,7 +7,7 @@ Handles article archiving, retrieval, search, and knowledge graph operations.
 
 import os
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
 from fastapi import FastAPI, HTTPException
@@ -34,7 +34,7 @@ class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
         self.base_url = base_url
 
-    def register_agent(self, agent_name: str, agent_address: str, tools: List[str]):
+    def register_agent(self, agent_name: str, agent_address: str, tools: list[str]):
         """Register agent with MCP Bus."""
         registration_data = {
             "name": agent_name,
@@ -89,7 +89,7 @@ async def lifespan(app: FastAPI):
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="JustNewsAgent Archive Service",
+    title="JustNews Archive Service",
     description="Comprehensive article archiving with knowledge graph integration",
     lifespan=lifespan
 )
@@ -117,8 +117,8 @@ app.middleware("http")(metrics.request_middleware)
 # Pydantic models
 class ToolCall(BaseModel):
     """Standard MCP tool call format."""
-    args: List[Any] = []
-    kwargs: Dict[str, Any] = {}
+    args: list[Any] = []
+    kwargs: dict[str, Any] = {}
 
 
 class ArticleData(BaseModel):
@@ -134,7 +134,7 @@ class ArticleData(BaseModel):
     canonical: str = ""
     paywall_flag: bool = False
     confidence: float = 0.8
-    publisher_meta: Dict[str, Any] = {}
+    publisher_meta: dict[str, Any] = {}
     news_score: float = 0.7
     timestamp: str = ""
 
@@ -146,7 +146,7 @@ class CrawlerResults(BaseModel):
     total_articles: int = 0
     processing_time_seconds: float = 0.0
     articles_per_second: float = 0.0
-    articles: List[ArticleData] = []
+    articles: list[ArticleData] = []
 
 
 # Health and readiness endpoints

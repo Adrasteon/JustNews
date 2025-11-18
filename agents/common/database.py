@@ -1,16 +1,16 @@
 """
-Database connection utilities for JustNewsAgent
+Database connection utilities for JustNews
 Provides connection pooling and async database operations
 """
 
 import os
 from contextlib import contextmanager
 
-# psycopg2 removed: use migrated MariaDB utilities instead
-
-from common.observability import get_logger
 from common.dev_db_fallback import apply_test_db_env_fallback
 from common.env_loader import load_global_env
+
+# psycopg2 removed: use migrated MariaDB utilities instead
+from common.observability import get_logger
 
 # Configure centralized logging
 logger = get_logger(__name__)
@@ -26,14 +26,14 @@ def get_db_config():
     if applied:
         logger.warning("Development DB fallback variables applied: %s", ",".join(applied))
 
-    # Then try individual POSTGRES_* variables
+    # Use MariaDB-style environment variables for the migrated storage backend.
     config = {
-        'host': os.environ.get("POSTGRES_HOST"),
-        'database': os.environ.get("POSTGRES_DB"),
-        'user': os.environ.get("POSTGRES_USER"),
-        'password': os.environ.get("POSTGRES_PASSWORD")
+        'host': os.environ.get("MARIADB_HOST"),
+        'database': os.environ.get("MARIADB_DB"),
+        'user': os.environ.get("MARIADB_USER"),
+        'password': os.environ.get("MARIADB_PASSWORD")
     }
-    
+
     # If any are missing, try to parse DATABASE_URL
     if not all(config.values()):
         database_url = os.environ.get("DATABASE_URL")
@@ -50,11 +50,14 @@ def get_db_config():
                     config['port'] = parsed.port
             except Exception as e:
                 logger.warning(f"Failed to parse DATABASE_URL: {e}")
-    
+
     return config
 
 # Use the migrated MariaDB/Chroma database utilities
-from database.utils.migrated_database_utils import create_database_service, execute_mariadb_query
+from database.utils.migrated_database_utils import (
+    create_database_service,
+    execute_mariadb_query,
+)
 
 # Global migrated DB service instance
 _db_service = None
@@ -120,7 +123,7 @@ def get_db_cursor(commit: bool = False, dictionary: bool = True):
         yield service.mb_conn, cursor
         if commit:
             service.mb_conn.commit()
-    except Exception as e:
+    except Exception:
         try:
             service.mb_conn.rollback()
         except Exception:

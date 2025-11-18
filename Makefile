@@ -1,11 +1,11 @@
-# JustNewsAgent Build System - Unified Makefile
+# JustNews Build System - Unified Makefile
 # Phase 2C: Build & CI/CD System Refactoring
 
 .PHONY: help install test lint format clean build deploy docs ci-check release
 
 # Default target
 help:
-	@echo "JustNewsAgent Build System"
+	@echo "JustNews Build System"
 	@echo "=========================="
 	@echo ""
 	@echo "Available targets:"
@@ -104,8 +104,16 @@ test-performance:
 	$(call log_success,"Performance tests completed")
 
 # Code quality targets
-lint: lint-code lint-docs
+
+# Linting includes a check for reintroduced container/orchestration artifacts
+lint: check-processing-time lint-code lint-docs lint-no-containers
 	$(call log_success,"Code quality checks passed")
+
+# Repo-specific checks
+check-processing-time:
+	$(call log_info,"Checking processing_time usage patterns...")
+	python3 scripts/check_processing_time.py
+	$(call log_success,"Processing time checks completed")
 
 lint-code:
 	$(call log_info,"Running code linting...")
@@ -117,6 +125,12 @@ lint-docs:
 	$(call log_info,"Running documentation checks...")
 	python scripts/ci/enforce_docs_policy.py
 	$(call log_success,"Documentation checks passed")
+
+# Repo checks for disallowed container references (fail CI if found)
+lint-no-containers:
+	$(call log_info,"Checking for disallowed container/orchestration references in code...")
+	python scripts/checks/no_container_refs.py || (printf '\033[0;31m[ERROR]\033[0m %s\n' "Disallowed container/orchestration references found, see output above."; exit 1)
+	$(call log_success,"No disallowed container/orchestration references outside allowed folders.")
 
 format:
 	$(call log_info,"Formatting code...")
@@ -138,10 +152,8 @@ build-artifacts: $(ARTIFACTS_DIR)
 	$(call log_success,"Artifacts built in $(ARTIFACTS_DIR)")
 
 build-containers:
-	$(call log_info,"Building Docker containers...")
-	docker build -t justnews:$(DOCKER_TAG) -f build/refactor/containers/Dockerfile .
-	docker build -t justnews-dev:$(DOCKER_TAG) -f build/refactor/containers/Dockerfile.dev .
-	$(call log_success,"Containers built")
+	$(call log_error,"Docker containers and Kubernetes manifests are deprecated and disabled. Use systemd packaging or CI-driven builds/artifacts.")
+	@exit 1
 
 $(ARTIFACTS_DIR):
 	mkdir -p $(ARTIFACTS_DIR)
@@ -158,19 +170,21 @@ deploy-check:
 	$(call log_success,"Pre-deployment checks passed")
 
 deploy-development: deploy-check
-	$(call log_info,"Deploying to development environment...")
-	ENV=development docker-compose -f build/refactor/containers/docker-compose.yml up -d
-	$(call log_success,"Development deployment completed")
+	$(call log_warning,"docker-compose and Kubernetes deployments are deprecated; using systemd instead")
+	# Prefer deploy-systemd or deploy-staging (k8s) for dev environment
+	$(call log_info,"Deploying to development environment using systemd (preferred alternative)...")
+	$(MAKE) deploy-systemd
+	$(call log_success,"Development deployment completed (via systemd)")
 
 deploy-staging: deploy-check
-	$(call log_info,"Deploying to staging environment...")
-	kubectl apply -f build/refactor/containers/k8s-staging.yml
-	$(call log_success,"Staging deployment completed")
+	$(call log_info,"Deploying to staging environment using systemd...")
+	$(MAKE) deploy-systemd
+	$(call log_success,"Staging deployment completed (via systemd)")
 
 deploy-production: deploy-check
-	$(call log_info,"Deploying to production environment...")
-	kubectl apply -f build/refactor/containers/k8s-production.yml
-	$(call log_success,"Production deployment completed")
+	$(call log_info,"Deploying to production environment using systemd...")
+	$(MAKE) deploy-systemd
+	$(call log_success,"Production deployment completed (via systemd)")
 
 # Documentation targets
 docs: docs-generate docs-validate
@@ -187,7 +201,7 @@ docs-validate:
 	$(call log_success,"Documentation validation completed")
 
 # CI validation targets
-ci-check: lint test security-check
+ci-check: check-processing-time lint test security-check
 	$(call log_success,"CI checks passed")
 
 security-check:
@@ -253,7 +267,7 @@ dev-update:
 
 # Information targets
 info:
-	@echo "JustNewsAgent Build Information"
+	@echo "JustNews Build Information"
 	@echo "================================"
 	@echo "Version: $(VERSION)"
 	@echo "Environment: $(ENV)"

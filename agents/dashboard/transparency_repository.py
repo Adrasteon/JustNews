@@ -20,7 +20,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from common.observability import get_logger
 
@@ -58,7 +58,7 @@ class TransparencyRepository:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Summarise repository health and artefact counts."""
         index_payload = self._load_index()
         facts = self._list_entities(self.facts_dir)
@@ -94,7 +94,7 @@ class TransparencyRepository:
         logger.debug("Transparency repository status computed: %s", status_payload)
         return status_payload
 
-    def list_facts(self, limit: int = 20) -> List[Dict[str, Any]]:
+    def list_facts(self, limit: int = 20) -> list[dict[str, Any]]:
         """Return most recent fact summaries."""
         index_payload = self._load_index()
         facts = index_payload.get("facts", [])
@@ -105,7 +105,7 @@ class TransparencyRepository:
         )
         return facts_sorted[:limit]
 
-    def get_fact(self, fact_id: str) -> Dict[str, Any]:
+    def get_fact(self, fact_id: str) -> dict[str, Any]:
         """Return full fact payload with linked article, cluster, and evidence."""
         fact_payload = self._load_entity(self.facts_dir, fact_id, entity_label="fact")
 
@@ -120,7 +120,7 @@ class TransparencyRepository:
             for evidence_id in evidence_ids
         ]
 
-        missing: List[str] = [
+        missing: list[str] = [
             label for label, payload in (
                 ("article", article_payload),
                 ("cluster", cluster_payload)
@@ -146,7 +146,7 @@ class TransparencyRepository:
 
         return response
 
-    def get_cluster(self, cluster_id: str) -> Dict[str, Any]:
+    def get_cluster(self, cluster_id: str) -> dict[str, Any]:
         """Return cluster payload plus linked facts."""
         cluster_payload = self._load_entity(self.clusters_dir, cluster_id, entity_label="cluster")
         fact_ids = cluster_payload.get("fact_ids", [])
@@ -157,7 +157,7 @@ class TransparencyRepository:
             "missing_facts": [fact_id for fact_id, fact in zip(fact_ids, facts) if fact is None]
         }
 
-    def get_article(self, article_id: str) -> Dict[str, Any]:
+    def get_article(self, article_id: str) -> dict[str, Any]:
         """Return article payload plus associated fact and cluster references."""
         article_payload = self._load_entity(self.articles_dir, article_id, entity_label="article")
         index_payload = self._load_index()
@@ -176,19 +176,19 @@ class TransparencyRepository:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-    def _load_index(self) -> Dict[str, Any]:
+    def _load_index(self) -> dict[str, Any]:
         if not self.index_file.exists():
             logger.warning("Transparency index missing: %s", self.index_file)
             return {}
         return self._load_json(self.index_file)
 
-    def _load_entity(self, directory: Path, entity_id: str, *, entity_label: str) -> Dict[str, Any]:
+    def _load_entity(self, directory: Path, entity_id: str, *, entity_label: str) -> dict[str, Any]:
         payload = self._load_optional_entity(directory, entity_id, entity_label)
         if payload is None:
             raise FileNotFoundError(f"{entity_label.capitalize()} {entity_id} not found in {directory}")
         return payload
 
-    def _load_optional_entity(self, directory: Path, entity_id: Optional[str], entity_label: str) -> Optional[Dict[str, Any]]:
+    def _load_optional_entity(self, directory: Path, entity_id: str | None, entity_label: str) -> dict[str, Any] | None:
         if not entity_id:
             return None
         path = directory / f"{entity_id}.json"
@@ -197,12 +197,12 @@ class TransparencyRepository:
             return None
         return self._load_json(path)
 
-    def _load_json(self, path: Path) -> Dict[str, Any]:
+    def _load_json(self, path: Path) -> dict[str, Any]:
         with path.open("r", encoding="utf-8") as handle:
             return json.load(handle)
 
-    def _list_entities(self, directory: Path) -> List[Dict[str, Any]]:
-        payloads: List[Dict[str, Any]] = []
+    def _list_entities(self, directory: Path) -> list[dict[str, Any]]:
+        payloads: list[dict[str, Any]] = []
         for path in sorted(directory.glob("*.json")):
             try:
                 payloads.append(self._load_json(path))
@@ -213,7 +213,7 @@ class TransparencyRepository:
         return payloads
 
     @staticmethod
-    def _compute_last_updated(timestamps: List[Optional[str]]) -> Optional[str]:
+    def _compute_last_updated(timestamps: list[str | None]) -> str | None:
         filtered = [ts for ts in timestamps if ts]
         if not filtered:
             return None
@@ -223,8 +223,8 @@ class TransparencyRepository:
             logger.debug("Unable to parse timestamps for last_updated: %s", filtered)
             return max(filtered)
 
-    def _find_missing_assets(self, fact_summaries: List[Dict[str, Any]]) -> List[str]:
-        missing: List[str] = []
+    def _find_missing_assets(self, fact_summaries: list[dict[str, Any]]) -> list[str]:
+        missing: list[str] = []
         for summary in fact_summaries:
             fact_id = summary.get("fact_id")
             article_id = summary.get("article_id")

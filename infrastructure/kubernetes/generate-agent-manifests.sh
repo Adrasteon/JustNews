@@ -1,5 +1,12 @@
-#!/bin/bash
-# Script to generate Kubernetes deployments and services for all JustNews agents
+#!/usr/bin/env bash
+
+# DEPRECATED: Kubernetes manifests generation has been removed from this workspace.
+# The JustNews system now runs only under systemd. This script has been replaced with
+# systemd service unit templates and systemd packaging scripts.
+
+echo "ERROR: Kubernetes support (manifests generation) has been DEPRECATED and removed."
+echo "Use systemd-based deployment and refer to deploy/refactor/systemd for guidance."
+exit 1
 
 # Agent configurations: name:port:gpu_required
 declare -A agents=(
@@ -16,7 +23,7 @@ declare -A agents=(
     ["dashboard"]="8013:false"
     ["analytics"]="8011:false"
     ["archive"]="8012:false"
-    ["balancer"]="8010:false"
+    # balancer removed - no longer generate manifest for it
     ["gpu-orchestrator"]="8015:false"
 )
 

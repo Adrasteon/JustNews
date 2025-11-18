@@ -1,4 +1,4 @@
-# JustNewsAgent V4.0.0
+# JustNews V4.0.0
 
 A production-ready multi-agent news analysis system featuring GPU-accelerated processing, continuous learning, and distributed architecture.
 
@@ -7,7 +7,7 @@ A production-ready multi-agent news analysis system featuring GPU-accelerated pr
 ### Prerequisites
 - Python 3.10+ (via conda environment)
 - MariaDB 10.11+ and ChromaDB (for vector operations)
-- Docker & Docker Compose (optional)
+- systemd (Docker Compose and Kubernetes deprecated)
 - GPU with CUDA support (recommended)
 - Miniconda or Anaconda installed
 
@@ -16,7 +16,7 @@ A production-ready multi-agent news analysis system featuring GPU-accelerated pr
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd JustNewsAgent
+cd JustNews
 ```
 
 2. Set up conda environment:
@@ -58,7 +58,7 @@ make start
 - **GPU Acceleration**: TensorRT-optimized models for performance
 - **High-Precision Extraction**: Trafilatura-first crawler cascade with readability/jusText fallbacks, structured metadata, raw HTML archival, and quality heuristics
 - **Enterprise Security**: JWT authentication, RBAC, GDPR compliance
-- **Multi-Platform Deployment**: Docker, Kubernetes, systemd support
+- **Multi-Platform Deployment**: systemd (Kubernetes and Docker Compose deprecated)
 - **Comprehensive Testing**: 41% test coverage with pytest-cov, comprehensive unit tests for utilities, agents, integration, operations, monitoring, and configuration
 - **Production Monitoring**: Real-time dashboards and alerting
 - **Advanced Crawler Resilience**: Modal handling, paywall detection, user-agent rotation, proxy pools, and stealth headers for robust web scraping
@@ -87,7 +87,7 @@ make release       # Create and publish release
 Environment variables:
   ENV         Target environment (development/staging/production)
   VERSION     Release version (for release target)
-  DOCKER_TAG  Docker image tag (for deploy target)
+  # DOCKER_TAG is deprecated and ignored. Use systemd package versioning instead.
 ```
 
 ### Conda Environment Management
@@ -117,7 +117,7 @@ This suite covers the Stage B2 extraction pipeline, including the Trafilatura/re
 
 ### Project Structure
 ```
-JustNewsAgent/
+JustNews/
 ├── agents/           # 18 specialized AI agents
 ├── config/           # Unified configuration system
 ├── database/         # Advanced ORM with migrations
@@ -137,6 +137,7 @@ JustNewsAgent/
 - [API Documentation](./docs/api/)
 - [User Guides](./docs/user-guides/)
 - [Operations Guide](./docs/operations/)
+ - [Systemd (Native) Operations](/infrastructure/systemd/README.md)
 - [Developer Documentation](./docs/developer/)
 
 ## 🤝 Contributing
@@ -158,7 +159,7 @@ See [LICENCE](./LICENCE) for licensing information.
 - Security: Enterprise-grade auth and compliance
 - Testing: Comprehensive framework with 80%+ coverage
 - Build/CI: Unified automation with containerization
-- Deployment: Multi-platform support (Docker/K8s/systemd)
+- Deployment: systemd (Kubernetes and Docker Compose deprecated)
 - Documentation: Unified platform with latest patterns
 - Training: MCP-integrated continuous learning
 

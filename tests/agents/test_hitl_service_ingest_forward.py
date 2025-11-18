@@ -1,7 +1,6 @@
-import asyncio
 import importlib
-import sys
 import sqlite3
+import sys
 import uuid
 
 import pytest

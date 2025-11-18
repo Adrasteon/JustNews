@@ -14,16 +14,14 @@ import subprocess
 import threading
 import time
 import uuid
-from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import pynvml  # type: ignore
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field, ConfigDict
+from fastapi import HTTPException
+from prometheus_client import Counter, Gauge
 
 from common.metrics import JustNewsMetrics
-from prometheus_client import Counter, Gauge
 
 # Constants
 GPU_ORCHESTRATOR_PORT = int(os.environ.get("GPU_ORCHESTRATOR_PORT", "8008"))
@@ -39,7 +37,7 @@ POLICY = {
     "allow_fractional_shares": False,
     "kill_on_oom": False,
 }
-ALLOCATIONS: Dict[str, Dict[str, Any]] = {}
+ALLOCATIONS: dict[str, dict[str, Any]] = {}
 _MODEL_PRELOAD_STATE = {
     "started_at": None,
     "completed_at": None,
@@ -50,8 +48,8 @@ _MODEL_PRELOAD_STATE = {
 
 # NVML state
 _NVML_SUPPORTED = False
-_NVML_INIT_ERROR: Optional[str] = None
-_NVML_HANDLE_CACHE: Dict[int, Any] = {}
+_NVML_INIT_ERROR: str | None = None
+_NVML_HANDLE_CACHE: dict[int, Any] = {}
 
 
 class GPUOrchestratorEngine:
@@ -139,11 +137,11 @@ class GPUOrchestratorEngine:
             _NVML_INIT_ERROR = str(e)
             self.logger.error(f"NVML initialization failed: {e}")
 
-    def get_nvml_handle(self, index: int) -> Optional[Any]:
+    def get_nvml_handle(self, index: int) -> Any | None:
         """Get NVML handle for a GPU index."""
         return _NVML_HANDLE_CACHE.get(index)
 
-    def _run_nvidia_smi(self) -> Optional[str]:
+    def _run_nvidia_smi(self) -> str | None:
         """Run nvidia-smi and return CSV output."""
         cmd = [
             "nvidia-smi",
@@ -157,9 +155,9 @@ class GPUOrchestratorEngine:
             self.logger.debug(f"nvidia-smi unavailable or failed: {e}")
             return None
 
-    def _parse_nvidia_smi_csv(self, csv_text: str) -> List[Dict[str, Any]]:
+    def _parse_nvidia_smi_csv(self, csv_text: str) -> list[dict[str, Any]]:
         """Parse nvidia-smi CSV output into GPU info dicts."""
-        gpus: List[Dict[str, Any]] = []
+        gpus: list[dict[str, Any]] = []
         for line in csv_text.strip().splitlines():
             parts = [p.strip() for p in line.split(",")]
             if len(parts) < 7:
@@ -181,7 +179,7 @@ class GPUOrchestratorEngine:
                 continue
         return gpus
 
-    def _get_nvml_enrichment(self, gpus: List[Dict[str, Any]]) -> None:
+    def _get_nvml_enrichment(self, gpus: list[dict[str, Any]]) -> None:
         """Enrich GPU info with NVML data."""
         if not ENABLE_NVML or SAFE_MODE or not _NVML_SUPPORTED:
             return
@@ -204,7 +202,7 @@ class GPUOrchestratorEngine:
         except Exception as e:
             self.logger.warning(f"NVML enrichment error: {e}")
 
-    def get_gpu_snapshot(self) -> Dict[str, Any]:
+    def get_gpu_snapshot(self) -> dict[str, Any]:
         """Return a conservative, read-only snapshot of GPU state."""
         smi = self._run_nvidia_smi()
         if smi is None:
@@ -220,7 +218,7 @@ class GPUOrchestratorEngine:
             "nvml_supported": _NVML_SUPPORTED
         }
 
-    def _detect_mps(self) -> Dict[str, Any]:
+    def _detect_mps(self) -> dict[str, Any]:
         """Detect NVIDIA MPS status."""
         pipe_dir = os.environ.get("CUDA_MPS_PIPE_DIRECTORY", "/tmp/nvidia-mps")
         control_process = False
@@ -247,7 +245,7 @@ class GPUOrchestratorEngine:
             "control_process": bool(control_process)
         }
 
-    def get_comprehensive_gpu_info(self) -> Dict[str, Any]:
+    def get_comprehensive_gpu_info(self) -> dict[str, Any]:
         """Get comprehensive GPU information including MPS status."""
         data = self.get_gpu_snapshot()
         mps = self._detect_mps()
@@ -279,13 +277,13 @@ class GPUOrchestratorEngine:
                 agent_display_name=self.metrics.display_name
             ).inc(len(expired))
 
-    def _validate_lease_request(self, req: Dict[str, Any]) -> Optional[str]:
+    def _validate_lease_request(self, req: dict[str, Any]) -> str | None:
         """Validate lease request parameters."""
         if req.get("min_memory_mb") is not None and req["min_memory_mb"] < 0:
             return "min_memory_mb must be >= 0"
         return None
 
-    def _allocate_gpu(self, req: Dict[str, Any]) -> Tuple[bool, Optional[int]]:
+    def _allocate_gpu(self, req: dict[str, Any]) -> tuple[bool, int | None]:
         """Allocate GPU based on request."""
         snapshot = self.get_gpu_snapshot()
         if not snapshot.get("available") or not snapshot.get("gpus"):
@@ -301,7 +299,7 @@ class GPUOrchestratorEngine:
             return True, sorted(candidates, key=lambda x: x["memory_used_mb"])[0]["index"]
         return False, None
 
-    def lease_gpu(self, agent: str, min_memory_mb: Optional[int] = 0) -> Dict[str, Any]:
+    def lease_gpu(self, agent: str, min_memory_mb: int | None = 0) -> dict[str, Any]:
         """Obtain a GPU lease."""
         self._purge_expired_leases()
 
@@ -324,7 +322,7 @@ class GPUOrchestratorEngine:
         ALLOCATIONS[token] = allocation
         return {"granted": True, **allocation}
 
-    def release_gpu_lease(self, token: str) -> Dict[str, Any]:
+    def release_gpu_lease(self, token: str) -> dict[str, Any]:
         """Release a GPU lease."""
         self._purge_expired_leases()
         alloc = ALLOCATIONS.pop(token, None)
@@ -332,12 +330,12 @@ class GPUOrchestratorEngine:
             raise HTTPException(status_code=404, detail="unknown_token")
         return {"released": True, "token": token}
 
-    def get_allocations(self) -> Dict[str, Any]:
+    def get_allocations(self) -> dict[str, Any]:
         """Get current allocations."""
         self._purge_expired_leases()
         return {"allocations": ALLOCATIONS}
 
-    def update_policy(self, update: Dict[str, Any]) -> Dict[str, Any]:
+    def update_policy(self, update: dict[str, Any]) -> dict[str, Any]:
         """Update GPU policy."""
         if SAFE_MODE:
             return {**POLICY, "note": "SAFE_MODE enabled: policy updates accepted but not enacted"}
@@ -357,7 +355,7 @@ class GPUOrchestratorEngine:
             self.logger.info(f"Updated GPU policy: {POLICY}")
         return POLICY
 
-    def get_policy(self) -> Dict[str, Any]:
+    def get_policy(self) -> dict[str, Any]:
         """Get current policy."""
         return POLICY
 
@@ -369,7 +367,7 @@ class GPUOrchestratorEngine:
         except Exception:
             return os.getcwd()
 
-    def _read_agent_model_map(self) -> Dict[str, Any]:
+    def _read_agent_model_map(self) -> dict[str, Any]:
         """Read agent model map from JSON file."""
         try:
             project_root = Path(self._project_root())
@@ -380,13 +378,13 @@ class GPUOrchestratorEngine:
                 return {}
 
             import json
-            with open(model_map_path, "r") as f:
+            with open(model_map_path) as f:
                 return json.load(f)
         except Exception as e:
             self.logger.error(f"Failed to read agent model map: {e}")
             return {}
 
-    def _validate_and_load_model(self, agent: str, model_id: str, strict: bool) -> Tuple[bool, Optional[str]]:
+    def _validate_and_load_model(self, agent: str, model_id: str, strict: bool) -> tuple[bool, str | None]:
         """Validate and load a model."""
         try:
             from agents.common.model_loader import load_sentence_transformer
@@ -397,7 +395,7 @@ class GPUOrchestratorEngine:
             self.logger.error(f"Error validating/loading model {model_id} for agent {agent}: {e}")
             return False, str(e)
 
-    def _preload_worker(self, selected_agents: Optional[List[str]], strict_override: Optional[bool]) -> None:
+    def _preload_worker(self, selected_agents: list[str] | None, strict_override: bool | None) -> None:
         """Background worker for model preloading."""
         try:
             model_map = self._read_agent_model_map()
@@ -443,8 +441,8 @@ class GPUOrchestratorEngine:
             _MODEL_PRELOAD_STATE["in_progress"] = False
             _MODEL_PRELOAD_STATE["completed_at"] = time.time()
 
-    def start_model_preload(self, agents: Optional[List[str]] = None,
-                          refresh: bool = False, strict: Optional[bool] = None) -> Dict[str, Any]:
+    def start_model_preload(self, agents: list[str] | None = None,
+                          refresh: bool = False, strict: bool | None = None) -> dict[str, Any]:
         """Start model preload job."""
         # Check if job already completed and not refreshing
         if (_MODEL_PRELOAD_STATE.get("started_at") and
@@ -486,7 +484,7 @@ class GPUOrchestratorEngine:
 
         return {**_MODEL_PRELOAD_STATE, "all_ready": False}
 
-    def get_model_preload_status(self) -> Dict[str, Any]:
+    def get_model_preload_status(self) -> dict[str, Any]:
         """Get model preload status."""
         failed = _MODEL_PRELOAD_STATE.get("summary", {}).get("failed", 0)
         done = _MODEL_PRELOAD_STATE.get("summary", {}).get("done", 0)
@@ -515,7 +513,7 @@ class GPUOrchestratorEngine:
             "completed_at": _MODEL_PRELOAD_STATE.get("completed_at"),
         }
 
-    def get_mps_allocation_config(self) -> Dict[str, Any]:
+    def get_mps_allocation_config(self) -> dict[str, Any]:
         """Get MPS allocation configuration."""
         try:
             import json
@@ -525,7 +523,7 @@ class GPUOrchestratorEngine:
             if not config_path.exists():
                 return {"error": "MPS allocation configuration not found", "path": str(config_path)}
 
-            with open(config_path, "r") as f:
+            with open(config_path) as f:
                 return json.load(f)
         except Exception as e:
             self.logger.error(f"Failed to load MPS allocation config: {e}")

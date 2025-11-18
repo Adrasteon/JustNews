@@ -176,7 +176,7 @@ def ingest_article_db(article_payload: dict[str, Any], dsn: str) -> dict[str, An
                 cursor.close()
             except Exception:
                 pass
-    except Exception as e:
+    except Exception:
         try:
             service.mb_conn.rollback()
         except Exception:

@@ -17,7 +17,6 @@ import os
 import sqlite3
 import threading
 import time
-from typing import Tuple
 
 _LOCK = threading.Lock()
 
@@ -41,7 +40,7 @@ def _ensure_db(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def increment_and_check(domain: str, threshold: int = 3) -> Tuple[int, bool]:
+def increment_and_check(domain: str, threshold: int = 3) -> tuple[int, bool]:
     """Increment detection count for domain and return (count, reached).
 
     Thread-safe. Creates DB file if missing. Returns True for reached when

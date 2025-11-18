@@ -6,17 +6,19 @@ Connects the isolated training system with the MCP Bus architecture for inter-ag
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
 from prometheus_client import (
-    Counter, Gauge, Histogram, CollectorRegistry, generate_latest, CONTENT_TYPE_LATEST
+    Counter,
+    Gauge,
+    Histogram,
 )
+from pydantic import BaseModel, Field
 
-from common.observability import get_logger
 from common.metrics import JustNewsMetrics
+from common.observability import get_logger
 from training_system.core.system_manager import get_system_training_manager
 from training_system.core.training_coordinator import get_training_coordinator
 
@@ -172,7 +174,7 @@ class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL) -> None:
         self.base_url = base_url
 
-    def register_agent(self, agent_name: str, agent_address: str, tools: List[str]) -> None:
+    def register_agent(self, agent_name: str, agent_address: str, tools: list[str]) -> None:
         """Register training system with MCP Bus"""
         registration_data = {
             "name": agent_name,
@@ -188,7 +190,7 @@ class MCPBusClient:
             logger.exception("Failed to register %s with MCP Bus.", agent_name)
             raise
 
-    def call_agent_tool(self, agent: str, tool: str, args: list = None, kwargs: dict = None) -> Dict[str, Any]:
+    def call_agent_tool(self, agent: str, tool: str, args: list = None, kwargs: dict = None) -> dict[str, Any]:
         """Call a tool on another agent via MCP Bus"""
         payload = {
             "agent": agent,
@@ -213,8 +215,8 @@ class TrainingRequest(BaseModel):
     expected_output: Any = Field(..., description="Expected output for training")
     uncertainty_score: float = Field(..., ge=0.0, le=1.0, description="Uncertainty score (0.0-1.0)")
     importance_score: float = Field(0.5, ge=0.0, le=1.0, description="Importance score (0.0-1.0)")
-    source_url: Optional[str] = Field(None, description="Source URL for the training example")
-    user_feedback: Optional[str] = Field(None, description="User feedback or correction notes")
+    source_url: str | None = Field(None, description="Source URL for the training example")
+    user_feedback: str | None = Field(None, description="User feedback or correction notes")
     correction_priority: int = Field(0, ge=0, le=3, description="Correction priority (0-3)")
 
 
@@ -226,7 +228,7 @@ class CorrectionRequest(BaseModel):
     incorrect_output: Any = Field(..., description="Incorrect output that was given")
     correct_output: Any = Field(..., description="Correct output that should be given")
     priority: int = Field(2, ge=0, le=3, description="Correction priority (0-3)")
-    explanation: Optional[str] = Field(None, description="Explanation of the correction")
+    explanation: str | None = Field(None, description="Explanation of the correction")
 
 
 class PredictionFeedback(BaseModel):
@@ -242,15 +244,15 @@ class PredictionFeedback(BaseModel):
 class HitlCandidate(BaseModel):
     """Nested candidate payload passed from the HITL service."""
 
-    id: Optional[str] = None
-    url: Optional[str] = None
-    site_id: Optional[str] = None
-    extracted_title: Optional[str] = None
-    extracted_text: Optional[str] = None
-    raw_html_ref: Optional[str] = None
-    features: Dict[str, Any] = Field(default_factory=dict)
-    candidate_ts: Optional[str] = None
-    crawler_job_id: Optional[str] = None
+    id: str | None = None
+    url: str | None = None
+    site_id: str | None = None
+    extracted_title: str | None = None
+    extracted_text: str | None = None
+    raw_html_ref: str | None = None
+    features: dict[str, Any] = Field(default_factory=dict)
+    candidate_ts: str | None = None
+    crawler_job_id: str | None = None
 
 
 class HitlLabelPayload(BaseModel):
@@ -259,16 +261,16 @@ class HitlLabelPayload(BaseModel):
     label_id: str
     candidate_id: str
     label: str
-    annotator_id: Optional[str] = None
-    source: Optional[str] = None
-    cleaned_text: Optional[str] = None
+    annotator_id: str | None = None
+    source: str | None = None
+    cleaned_text: str | None = None
     treat_as_valid: bool = False
     needs_cleanup: bool = False
     qa_sampled: bool = False
-    ingest_job_id: Optional[str] = None
-    created_at: Optional[str] = None
-    ingestion_status: Optional[str] = None
-    candidate: Optional[HitlCandidate] = None
+    ingest_job_id: str | None = None
+    created_at: str | None = None
+    ingestion_status: str | None = None
+    candidate: HitlCandidate | None = None
 
 
 @asynccontextmanager
@@ -524,14 +526,14 @@ async def get_training_metrics():
 mcp_client = MCPBusClient()
 
 
-def call_training_tool(tool_name: str, **kwargs) -> Dict[str, Any]:
+def call_training_tool(tool_name: str, **kwargs) -> dict[str, Any]:
     """Convenience function to call training system tools via MCP Bus"""
     return mcp_client.call_agent_tool("training_system", tool_name, kwargs=kwargs)
 
 
 def add_training_example_via_mcp(agent_name: str, task_type: str, input_text: str,
                                 expected_output: Any, uncertainty_score: float,
-                                importance_score: float = 0.5, **kwargs) -> Dict[str, Any]:
+                                importance_score: float = 0.5, **kwargs) -> dict[str, Any]:
     """Add training example via MCP Bus"""
     return call_training_tool("add_training_example",
                              agent_name=agent_name,
@@ -545,7 +547,7 @@ def add_training_example_via_mcp(agent_name: str, task_type: str, input_text: st
 
 def submit_correction_via_mcp(agent_name: str, task_type: str, input_text: str,
                              incorrect_output: Any, correct_output: Any,
-                             priority: int = 2, **kwargs) -> Dict[str, Any]:
+                             priority: int = 2, **kwargs) -> dict[str, Any]:
     """Submit user correction via MCP Bus"""
     return call_training_tool("submit_user_correction",
                              agent_name=agent_name,
@@ -557,11 +559,11 @@ def submit_correction_via_mcp(agent_name: str, task_type: str, input_text: str,
                              **kwargs)
 
 
-def get_training_status_via_mcp() -> Dict[str, Any]:
+def get_training_status_via_mcp() -> dict[str, Any]:
     """Get training status via MCP Bus"""
     return call_training_tool("get_training_status")
 
 
-def get_training_dashboard_via_mcp() -> Dict[str, Any]:
+def get_training_dashboard_via_mcp() -> dict[str, Any]:
     """Get training dashboard via MCP Bus"""
     return call_training_tool("get_system_training_dashboard")

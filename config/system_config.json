@@ -1,6 +1,6 @@
 {
   "system": {
-    "name": "JustNewsAgent",
+    "name": "JustNews",
     "version": "4.0",
     "environment": "development",
     "log_level": "INFO",
@@ -16,11 +16,11 @@
     "retry_delay_seconds": 1.0
   },
   "database": {
-    "host": "localhost",
-    "port": 5432,
+    "host": "127.0.0.1",
+    "port": 3306,
     "database": "justnews",
-    "user": "justnews_user",
-    "password": "password123",
+    "user": "justnews",
+    "password": "migration_password_2024",
     "connection_pool": {
       "min_connections": 2,
       "max_connections": 10,
@@ -97,7 +97,7 @@
       }
     },
     "respect_rate_limits": true,
-    "user_agent": "JustNewsAgent/4.0",
+    "user_agent": "JustNews/4.0",
     "robots_cache_hours": 1,
     "rate_limiting": {
       "requests_per_minute": 80,

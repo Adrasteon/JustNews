@@ -1,5 +1,5 @@
 """
-Tests for JustNewsAgent Operational Scripts
+Tests for JustNews Operational Scripts
 
 This module contains tests for operational scripts that manage:
 - Database initialization and migration
@@ -8,14 +8,14 @@ This module contains tests for operational scripts that manage:
 - System maintenance operations
 """
 
-import os
-import pytest
-import tempfile
-import subprocess
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
-from scripts.init_database import create_initial_admin_user, create_knowledge_graph_tables
+import pytest
+
+from scripts.init_database import (
+    create_initial_admin_user,
+    create_knowledge_graph_tables,
+)
 from scripts.manage_secrets import SecretManagerCLI
 
 

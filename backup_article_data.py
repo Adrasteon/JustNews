@@ -8,13 +8,13 @@ Usage:
     python3 backup_article_data.py
 """
 
-import os
 import json
 from datetime import datetime
 from pathlib import Path
 
-from database.utils.migrated_database_utils import create_database_service
 import chromadb
+
+from database.utils.migrated_database_utils import create_database_service
 
 
 def backup_mariadb_data(db_service, backup_dir: Path):

@@ -7,10 +7,11 @@ parsing logic across different entry-points.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 import yaml
@@ -25,7 +26,7 @@ class CrawlCadence:
 
     def scheduled_window_start(self, reference: datetime) -> datetime:
         """Return the start of the scheduling window anchored to the given reference."""
-        base = reference.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0)
+        base = reference.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
         return base
 
     def scheduled_start(self, reference: datetime) -> datetime:
@@ -52,7 +53,7 @@ class GlobalScheduleConfig:
     default_timeout_seconds: int = 480
     strategy: str = "auto"
     enable_ai_enrichment: bool = True
-    governance: Dict[str, Any] = field(default_factory=dict)
+    governance: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -60,13 +61,13 @@ class CrawlRun:
     """Configuration for a single crawl batch."""
 
     name: str
-    domains: List[str]
+    domains: list[str]
     cadence: CrawlCadence
     enabled: bool = True
     priority: int = 100
-    max_articles_per_site: Optional[int] = None
-    concurrent_sites: Optional[int] = None
-    notes: Optional[str] = None
+    max_articles_per_site: int | None = None
+    concurrent_sites: int | None = None
+    notes: str | None = None
 
     def scheduled_start(self, reference: datetime) -> datetime:
         return self.cadence.scheduled_start(reference)
@@ -77,13 +78,13 @@ class CrawlSchedule:
     """Root schedule definition loaded from YAML."""
 
     version: int
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
     global_config: GlobalScheduleConfig
-    runs: List[CrawlRun]
+    runs: list[CrawlRun]
 
-    def due_runs(self, reference: datetime) -> List[CrawlRun]:
+    def due_runs(self, reference: datetime) -> list[CrawlRun]:
         """Return runs that are enabled and due for the provided reference time."""
-        eligible: List[CrawlRun] = []
+        eligible: list[CrawlRun] = []
         for run in self.runs:
             if not run.enabled:
                 continue
@@ -94,7 +95,7 @@ class CrawlSchedule:
         return eligible
 
     @property
-    def governance(self) -> Dict[str, Any]:
+    def governance(self) -> dict[str, Any]:
         return self.global_config.governance
 
 
@@ -102,7 +103,7 @@ class CrawlScheduleError(RuntimeError):
     """Raised when the crawl schedule cannot be parsed or validated."""
 
 
-def _load_yaml(path: Path) -> Dict[str, Any]:
+def _load_yaml(path: Path) -> dict[str, Any]:
     try:
         with path.open("r", encoding="utf-8") as handle:
             raw = yaml.safe_load(handle) or {}
@@ -116,7 +117,7 @@ def _load_yaml(path: Path) -> Dict[str, Any]:
     return raw
 
 
-def _parse_cadence(data: Dict[str, Any]) -> CrawlCadence:
+def _parse_cadence(data: dict[str, Any]) -> CrawlCadence:
     every_hours = int(data.get("every_hours", 1) or 1)
     minute_offset = int(data.get("minute_offset", 0) or 0)
     if every_hours < 0:
@@ -126,7 +127,7 @@ def _parse_cadence(data: Dict[str, Any]) -> CrawlCadence:
     return CrawlCadence(every_hours=every_hours, minute_offset=minute_offset)
 
 
-def _parse_run(item: Dict[str, Any], defaults: GlobalScheduleConfig) -> CrawlRun:
+def _parse_run(item: dict[str, Any], defaults: GlobalScheduleConfig) -> CrawlRun:
     name = item.get("name")
     if not name:
         raise CrawlScheduleError("Each run requires a name")
@@ -189,7 +190,7 @@ def load_crawl_schedule(path: Path) -> CrawlSchedule:
     )
 
 
-def _normalize_domain_from_source(source: Dict[str, Any]) -> Optional[str]:
+def _normalize_domain_from_source(source: dict[str, Any]) -> str | None:
     """Best-effort extraction of a domain from a database source row."""
     raw_domain = str(source.get("domain") or "").strip()
     if raw_domain:
@@ -207,11 +208,11 @@ def _normalize_domain_from_source(source: Dict[str, Any]) -> Optional[str]:
 
 
 def load_crawl_schedule_from_sources(
-    sources: Iterable[Dict[str, Any]],
+    sources: Iterable[dict[str, Any]],
     *,
     chunk_size: int = 10,
-    metadata: Optional[Dict[str, Any]] = None,
-    global_overrides: Optional[Dict[str, Any]] = None,
+    metadata: dict[str, Any] | None = None,
+    global_overrides: dict[str, Any] | None = None,
 ) -> CrawlSchedule:
     """Build a crawl schedule dynamically from database sources."""
 
@@ -219,7 +220,7 @@ def load_crawl_schedule_from_sources(
         raise CrawlScheduleError("chunk_size must be greater than zero")
 
     seen: set[str] = set()
-    domains: List[str] = []
+    domains: list[str] = []
     for source in sources:
         domain = _normalize_domain_from_source(source or {})
         if not domain or domain in seen:
@@ -243,7 +244,7 @@ def load_crawl_schedule_from_sources(
         governance=overrides.get("governance", {}) or {},
     )
 
-    runs: List[CrawlRun] = []
+    runs: list[CrawlRun] = []
     num_runs = max(1, (len(domains) + chunk_size - 1) // chunk_size)
     minute_step = max(1, 60 // num_runs)
     for index in range(0, len(domains), chunk_size):
@@ -264,7 +265,7 @@ def load_crawl_schedule_from_sources(
     schedule_metadata = metadata or {}
     combined_metadata = {
         "description": "Generated from database sources",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
     combined_metadata.update(schedule_metadata)
 

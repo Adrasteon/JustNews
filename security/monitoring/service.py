@@ -1,23 +1,24 @@
 """
-JustNewsAgent Security Monitoring Service
+JustNews Security Monitoring Service
 
 Provides real-time security monitoring, threat detection, alerting, and security event analysis.
 """
 
 import asyncio
-import logging
-from typing import Dict, List, Optional, Any, Union, Callable
-from datetime import datetime, timedelta
-from dataclasses import dataclass
-from enum import Enum
-from collections import defaultdict, deque
-import secrets
-
-from pydantic import BaseModel, Field
-import aiofiles
 import json
+import logging
+import secrets
+from collections import defaultdict, deque
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any
 
-from ..models import SecurityConfig, MonitoringError
+import aiofiles
+from pydantic import BaseModel, Field
+
+from ..models import SecurityConfig
 
 logger = logging.getLogger(__name__)
 
@@ -54,24 +55,24 @@ class SecurityAlert(BaseModel):
     severity: AlertSeverity
     title: str
     description: str
-    details: Dict[str, Any] = Field(default_factory=dict)
-    user_id: Optional[int] = None
-    ip_address: Optional[str] = None
+    details: dict[str, Any] = Field(default_factory=dict)
+    user_id: int | None = None
+    ip_address: str | None = None
     resolved: bool = False
-    resolved_at: Optional[datetime] = None
-    resolution_notes: Optional[str] = None
+    resolved_at: datetime | None = None
+    resolution_notes: str | None = None
 
 
 class SecurityMetrics(BaseModel):
     """Security metrics snapshot"""
     timestamp: datetime
     total_events: int
-    events_by_type: Dict[str, int]
+    events_by_type: dict[str, int]
     active_alerts: int
-    alerts_by_severity: Dict[str, int]
+    alerts_by_severity: dict[str, int]
     failed_auth_attempts: int
-    suspicious_ips: List[str]
-    top_attack_vectors: List[Dict[str, Any]]
+    suspicious_ips: list[str]
+    top_attack_vectors: list[dict[str, Any]]
 
 
 class MonitoringRule(BaseModel):
@@ -79,18 +80,18 @@ class MonitoringRule(BaseModel):
     id: str
     name: str
     description: str
-    event_pattern: Dict[str, Any]  # Pattern to match events
+    event_pattern: dict[str, Any]  # Pattern to match events
     condition: str  # Python expression to evaluate
     severity: AlertSeverity
     enabled: bool = True
     cooldown_minutes: int = 5  # Minimum time between alerts
-    last_triggered: Optional[datetime] = None
+    last_triggered: datetime | None = None
 
 
 @dataclass
 class MonitoringConfig:
     """Monitoring service configuration"""
-    alert_thresholds: Dict[str, Any] = None
+    alert_thresholds: dict[str, Any] = None
     monitoring_window_minutes: int = 60
     max_events_in_memory: int = 10000
     alert_retention_days: int = 30
@@ -119,13 +120,13 @@ class SecurityMonitor:
         self.config = config
         self.monitoring_config = MonitoringConfig()
         self._security_events: deque = deque(maxlen=self.monitoring_config.max_events_in_memory)
-        self._active_alerts: Dict[str, SecurityAlert] = {}
+        self._active_alerts: dict[str, SecurityAlert] = {}
         self._monitoring_rules = self._get_default_rules()
-        self._event_counts: Dict[str, int] = defaultdict(int)
-        self._ip_activity: Dict[str, List[datetime]] = defaultdict(list)
-        self._alert_handlers: List[Callable] = []
+        self._event_counts: dict[str, int] = defaultdict(int)
+        self._ip_activity: dict[str, list[datetime]] = defaultdict(list)
+        self._alert_handlers: list[Callable] = []
 
-    def _get_default_rules(self) -> Dict[str, MonitoringRule]:
+    def _get_default_rules(self) -> dict[str, MonitoringRule]:
         """Get default monitoring rules"""
         return {
             "brute_force_login": MonitoringRule(
@@ -181,8 +182,8 @@ class SecurityMonitor:
         await self._save_monitoring_data()
         logger.info("SecurityMonitor shutdown")
 
-    async def log_security_event(self, event_type: str, user_id: Optional[int],
-                               details: Dict[str, Any], severity: AlertSeverity = AlertSeverity.LOW) -> None:
+    async def log_security_event(self, event_type: str, user_id: int | None,
+                               details: dict[str, Any], severity: AlertSeverity = AlertSeverity.LOW) -> None:
         """
         Log security event and check for threats
 
@@ -224,7 +225,7 @@ class SecurityMonitor:
         except Exception as e:
             logger.error(f"Failed to log security event: {e}")
 
-    async def get_active_alerts(self) -> List[Dict[str, Any]]:
+    async def get_active_alerts(self) -> list[dict[str, Any]]:
         """
         Get all active security alerts
 
@@ -367,7 +368,7 @@ class SecurityMonitor:
         """
         self._alert_handlers.append(handler)
 
-    def get_monitoring_rules(self) -> Dict[str, Dict[str, Any]]:
+    def get_monitoring_rules(self) -> dict[str, dict[str, Any]]:
         """
         Get all monitoring rules
 
@@ -389,7 +390,7 @@ class SecurityMonitor:
             for rule_id, rule in self._monitoring_rules.items()
         }
 
-    async def get_status(self) -> Dict[str, Any]:
+    async def get_status(self) -> dict[str, Any]:
         """
         Get monitoring service status
 
@@ -407,7 +408,7 @@ class SecurityMonitor:
             "alert_handlers": len(self._alert_handlers)
         }
 
-    async def _check_monitoring_rules(self, event: Dict[str, Any]) -> None:
+    async def _check_monitoring_rules(self, event: dict[str, Any]) -> None:
         """Check monitoring rules against event"""
         try:
             for rule in self._monitoring_rules.values():
@@ -433,14 +434,14 @@ class SecurityMonitor:
         except Exception as e:
             logger.error(f"Error checking monitoring rules: {e}")
 
-    def _matches_pattern(self, event: Dict[str, Any], pattern: Dict[str, Any]) -> bool:
+    def _matches_pattern(self, event: dict[str, Any], pattern: dict[str, Any]) -> bool:
         """Check if event matches pattern"""
         for key, value in pattern.items():
             if key not in event or event[key] != value:
                 return False
         return True
 
-    async def _evaluate_condition(self, event: Dict[str, Any], rule: MonitoringRule) -> bool:
+    async def _evaluate_condition(self, event: dict[str, Any], rule: MonitoringRule) -> bool:
         """Evaluate monitoring rule condition"""
         try:
             # Get recent events for context
@@ -480,7 +481,7 @@ class SecurityMonitor:
             logger.error(f"Error evaluating condition for rule {rule.id}: {e}")
             return False
 
-    async def _generate_alert(self, event: Dict[str, Any], rule: MonitoringRule) -> None:
+    async def _generate_alert(self, event: dict[str, Any], rule: MonitoringRule) -> None:
         """Generate security alert"""
         try:
             alert_id = f"alert_{datetime.utcnow().timestamp()}_{secrets.token_hex(4)}"
@@ -584,7 +585,7 @@ class SecurityMonitor:
         """Load monitoring data from storage"""
         try:
             # Load active alerts
-            async with aiofiles.open("data/security_alerts.json", "r") as f:
+            async with aiofiles.open("data/security_alerts.json") as f:
                 alerts_data = json.loads(await f.read())
                 self._active_alerts = {}
                 for alert_dict in alerts_data.get("alerts", []):
@@ -595,7 +596,7 @@ class SecurityMonitor:
                     self._active_alerts[alert_dict["id"]] = SecurityAlert(**alert_dict)
 
             # Load monitoring rules
-            async with aiofiles.open("data/monitoring_rules.json", "r") as f:
+            async with aiofiles.open("data/monitoring_rules.json") as f:
                 rules_data = json.loads(await f.read())
                 for rule_dict in rules_data.get("rules", []):
                     if rule_dict.get("last_triggered"):

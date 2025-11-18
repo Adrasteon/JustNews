@@ -1,5 +1,5 @@
-# Default values for JustNews Helm chart
-# This is a YAML-formatted file.
+# DEPRECATED: values.yaml for the Helm chart has been archived.
+# The original content is available under: infrastructure/archives/helm/justnews/values.yaml
 
 # Global configuration
 global:
@@ -151,12 +151,6 @@ justnews:
       enabled: true
       replicas: 1
       port: 8012
-      gpuRequired: false
-    balancer:
-      name: balancer
-      enabled: true
-      replicas: 1
-      port: 8010
       gpuRequired: false
     mcpBus:
       name: mcpBus

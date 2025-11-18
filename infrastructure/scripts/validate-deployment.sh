@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deployment Validation Script for JustNewsAgent
+# Deployment Validation Script for JustNews
 # Comprehensive validation of deployment configuration and health
 
 set -e
@@ -51,8 +51,8 @@ validate_directory_structure() {
 
     required_dirs=(
         "docker"
-        "kubernetes/base"
-        "kubernetes/overlays"
+        # Kubernetes manifests are deprecated and not part of the active deployment
+        # kube overlays removed; systemd is the deployment target
         "systemd/services"
         "systemd/timers"
         "config/environments"
@@ -83,7 +83,8 @@ validate_configuration() {
         else
             log_success "Found environment file: $env_file"
             # Basic validation of required variables
-            required_vars=("POSTGRES_HOST" "POSTGRES_DB" "MCP_BUS_HOST")
+            # Prefer MariaDB variables; allow Postgres vars for backward compatibility
+            required_vars=("MARIADB_HOST" "MARIADB_DB" "MCP_BUS_HOST")
             for var in "${required_vars[@]}"; do
                 if ! grep -q "^$var=" "$env_path"; then
                     log_error "Missing required variable '$var' in $env_file"
@@ -95,62 +96,19 @@ validate_configuration() {
 
 # Validate Docker configuration
 validate_docker() {
-    log_info "Validating Docker configuration..."
-
-    if ! command_exists docker; then
-        log_error "Docker is not installed"
-        return 1
-    fi
-
-    compose_file="$DEPLOY_ROOT/docker/docker-compose.yml"
-    if [[ ! -f "$compose_file" ]]; then
-        log_error "Docker Compose file not found: $compose_file"
-        return 1
-    fi
-
-    # Validate Docker Compose syntax
-    if command_exists docker-compose; then
-        if docker-compose -f "$compose_file" config >/dev/null 2>&1; then
-            log_success "Docker Compose configuration is valid"
-        else
-            log_error "Docker Compose configuration has syntax errors"
-        fi
-    else
-        log_warning "docker-compose command not found, skipping syntax validation"
-    fi
-
-    # Check for required services
-    required_services=("postgres" "redis" "mcp-bus")
+    log_warning "Docker Compose is deprecated; skipping Docker validation"
+    return 0
+}
     for service in "${required_services[@]}"; do
-        if ! grep -q "^  $service:" "$compose_file"; then
-            log_error "Missing required service '$service' in docker-compose.yml"
+        if ! grep -q -E "^  (${service}):" "$compose_file"; then
+            log_warning "Missing recommended service ('$service') in docker-compose.yml (docker-compose deprecated)"
         fi
     done
 }
 
-# Validate Kubernetes configuration
 validate_kubernetes() {
-    log_info "Validating Kubernetes configuration..."
-
-    if ! command_exists kubectl; then
-        log_warning "kubectl is not installed, skipping Kubernetes validation"
-        return 0
-    fi
-
-    base_dir="$DEPLOY_ROOT/kubernetes/base"
-    if [[ ! -d "$base_dir" ]]; then
-        log_error "Kubernetes base directory not found: $base_dir"
-        return 1
-    fi
-
-    # Validate YAML syntax for all manifests
-    find "$base_dir" -name "*.yml" -o -name "*.yaml" | while read -r manifest; do
-        if kubectl apply --dry-run=client -f "$manifest" >/dev/null 2>&1; then
-            log_success "Valid Kubernetes manifest: $(basename "$manifest")"
-        else
-            log_error "Invalid Kubernetes manifest: $(basename "$manifest")"
-        fi
-    done
+    log_warning "Kubernetes manifests are deprecated and have been removed from this workspace. Skipping Kubernetes validation."
+    return 0
 }
 
 # Validate systemd configuration
@@ -216,7 +174,6 @@ validate_templates() {
 
     # Check for required templates
     required_templates=(
-        "Dockerfile.template"
         "environment.env.j2"
     )
 
@@ -291,13 +248,12 @@ EOF
 
 # Main validation function
 main() {
-    log_info "JustNewsAgent Deployment Validation"
+    log_info "JustNews Deployment Validation"
     log_info "Starting comprehensive validation checks..."
 
     validate_directory_structure
     validate_configuration
-    validate_docker
-    validate_kubernetes
+    # Validate systemd only; docker and kubernetes are deprecated
     validate_systemd
     validate_scripts
     validate_templates

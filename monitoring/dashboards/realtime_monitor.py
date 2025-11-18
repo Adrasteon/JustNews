@@ -1,24 +1,25 @@
 """
-Real-Time Monitor for JustNewsAgent Dashboard System
+Real-Time Monitor for JustNews Dashboard System
 
 This module provides real-time data streaming and live visualization updates
-for the JustNewsAgent monitoring dashboard. It handles WebSocket connections,
+for the JustNews monitoring dashboard. It handles WebSocket connections,
 live data aggregation, and real-time metric streaming.
 
-Author: JustNewsAgent Development Team
+Author: JustNews Development Team
 Date: October 22, 2025
 """
 
 import asyncio
 import json
 import logging
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Set, Callable, AsyncGenerator
-from datetime import datetime, timedelta
 import uuid
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel, Field
 import websockets
+from pydantic import BaseModel, Field
 from websockets.exceptions import ConnectionClosedError, WebSocketException
 
 # Configure logging
@@ -27,8 +28,8 @@ logger = logging.getLogger(__name__)
 class StreamConfig(BaseModel):
     """Configuration for real-time data streams"""
     name: str = Field(..., description="Stream name")
-    topics: List[str] = Field(default_factory=list, description="Kafka/PubSub topics to monitor")
-    metrics: List[str] = Field(default_factory=list, description="Prometheus metrics to stream")
+    topics: list[str] = Field(default_factory=list, description="Kafka/PubSub topics to monitor")
+    metrics: list[str] = Field(default_factory=list, description="Prometheus metrics to stream")
     update_interval: float = Field(1.0, description="Update interval in seconds")
     buffer_size: int = Field(1000, description="Maximum buffer size for historical data")
     retention_period: int = Field(3600, description="Data retention period in seconds")
@@ -37,7 +38,7 @@ class ClientConnection(BaseModel):
     """WebSocket client connection information"""
     client_id: str = Field(..., description="Unique client identifier")
     websocket: Any = Field(..., description="WebSocket connection object")
-    subscribed_streams: Set[str] = Field(default_factory=set, description="Subscribed stream names")
+    subscribed_streams: set[str] = Field(default_factory=set, description="Subscribed stream names")
     connected_at: datetime = Field(default_factory=datetime.now, description="Connection timestamp")
     last_activity: datetime = Field(default_factory=datetime.now, description="Last activity timestamp")
 
@@ -45,8 +46,8 @@ class StreamData(BaseModel):
     """Real-time stream data structure"""
     stream_name: str = Field(..., description="Name of the data stream")
     timestamp: datetime = Field(default_factory=datetime.now, description="Data timestamp")
-    data: Dict[str, Any] = Field(default_factory=dict, description="Stream data payload")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    data: dict[str, Any] = Field(default_factory=dict, description="Stream data payload")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 @dataclass
 class RealTimeMonitor:
@@ -64,25 +65,25 @@ class RealTimeMonitor:
     max_connections: int = field(default=1000)
 
     # Stream configurations
-    streams: Dict[str, StreamConfig] = field(default_factory=dict)
+    streams: dict[str, StreamConfig] = field(default_factory=dict)
 
     # Active client connections
-    clients: Dict[str, ClientConnection] = field(default_factory=dict)
+    clients: dict[str, ClientConnection] = field(default_factory=dict)
 
     # Data buffers for each stream
-    data_buffers: Dict[str, List[StreamData]] = field(default_factory=dict)
+    data_buffers: dict[str, list[StreamData]] = field(default_factory=dict)
 
     # Stream update tasks
-    update_tasks: Dict[str, asyncio.Task] = field(default_factory=dict)
+    update_tasks: dict[str, asyncio.Task] = field(default_factory=dict)
 
     # Event handlers
-    event_handlers: Dict[str, List[Callable]] = field(default_factory=dict)
+    event_handlers: dict[str, list[Callable]] = field(default_factory=dict)
 
     # Server instance
-    server: Optional[Any] = field(default=None, init=False)
+    server: Any | None = field(default=None, init=False)
 
     # Monitoring stats
-    stats: Dict[str, Any] = field(default_factory=lambda: {
+    stats: dict[str, Any] = field(default_factory=lambda: {
         "total_connections": 0,
         "active_connections": 0,
         "messages_sent": 0,
@@ -264,7 +265,7 @@ class RealTimeMonitor:
         except Exception as e:
             logger.error(f"Error processing message from client {client_id}: {e}")
 
-    async def _handle_subscribe(self, client_id: str, data: Dict[str, Any]):
+    async def _handle_subscribe(self, client_id: str, data: dict[str, Any]):
         """Handle stream subscription request"""
         stream_names = data.get("streams", [])
         if not isinstance(stream_names, list):
@@ -289,7 +290,7 @@ class RealTimeMonitor:
             "timestamp": datetime.now().isoformat()
         })
 
-    async def _handle_unsubscribe(self, client_id: str, data: Dict[str, Any]):
+    async def _handle_unsubscribe(self, client_id: str, data: dict[str, Any]):
         """Handle stream unsubscription request"""
         stream_names = data.get("streams", [])
         if not isinstance(stream_names, list):
@@ -319,7 +320,7 @@ class RealTimeMonitor:
             "timestamp": datetime.now().isoformat()
         })
 
-    async def _handle_get_history(self, client_id: str, data: Dict[str, Any]):
+    async def _handle_get_history(self, client_id: str, data: dict[str, Any]):
         """Handle historical data request"""
         stream_name = data.get("stream")
         limit = min(data.get("limit", 100), 1000)  # Max 1000 records
@@ -342,7 +343,7 @@ class RealTimeMonitor:
             "timestamp": datetime.now().isoformat()
         })
 
-    async def _send_to_client(self, client_id: str, data: Dict[str, Any]):
+    async def _send_to_client(self, client_id: str, data: dict[str, Any]):
         """Send message to specific client"""
         client = self.clients.get(client_id)
         if not client:
@@ -357,7 +358,7 @@ class RealTimeMonitor:
             logger.error(f"Failed to send message to client {client_id}: {e}")
             # Client might be disconnected, will be cleaned up later
 
-    async def broadcast_to_stream(self, stream_name: str, data: Dict[str, Any]):
+    async def broadcast_to_stream(self, stream_name: str, data: dict[str, Any]):
         """Broadcast data to all clients subscribed to a stream"""
         if stream_name not in self.streams:
             logger.warning(f"Attempted to broadcast to unknown stream '{stream_name}'")
@@ -429,7 +430,7 @@ class RealTimeMonitor:
                 logger.error(f"Error in stream update loop for '{stream_name}': {e}")
                 await asyncio.sleep(5)  # Brief pause before retry
 
-    async def _collect_stream_data(self, stream_name: str, config: StreamConfig) -> Optional[Dict[str, Any]]:
+    async def _collect_stream_data(self, stream_name: str, config: StreamConfig) -> dict[str, Any] | None:
         """Collect data for a specific stream"""
         try:
             if stream_name == "system_metrics":
@@ -450,7 +451,7 @@ class RealTimeMonitor:
             logger.error(f"Error collecting data for stream '{stream_name}': {e}")
             return None
 
-    async def _collect_system_metrics(self) -> Dict[str, Any]:
+    async def _collect_system_metrics(self) -> dict[str, Any]:
         """Collect system-level metrics"""
         # This would integrate with Prometheus or direct system monitoring
         # For now, return mock data
@@ -462,7 +463,7 @@ class RealTimeMonitor:
             "timestamp": datetime.now().isoformat()
         }
 
-    async def _collect_agent_performance(self) -> Dict[str, Any]:
+    async def _collect_agent_performance(self) -> dict[str, Any]:
         """Collect agent performance metrics"""
         # This would query agent metrics from Prometheus/monitoring system
         return {
@@ -473,7 +474,7 @@ class RealTimeMonitor:
             "timestamp": datetime.now().isoformat()
         }
 
-    async def _collect_content_processing(self) -> Dict[str, Any]:
+    async def _collect_content_processing(self) -> dict[str, Any]:
         """Collect content processing metrics"""
         return {
             "articles_processed": 1250,
@@ -483,7 +484,7 @@ class RealTimeMonitor:
             "timestamp": datetime.now().isoformat()
         }
 
-    async def _collect_security_events(self) -> Dict[str, Any]:
+    async def _collect_security_events(self) -> dict[str, Any]:
         """Collect security event data"""
         return {
             "alerts": 2,
@@ -492,7 +493,7 @@ class RealTimeMonitor:
             "timestamp": datetime.now().isoformat()
         }
 
-    async def _collect_business_metrics(self) -> Dict[str, Any]:
+    async def _collect_business_metrics(self) -> dict[str, Any]:
         """Collect business metrics"""
         return {
             "active_users": 15420,
@@ -502,7 +503,7 @@ class RealTimeMonitor:
             "timestamp": datetime.now().isoformat()
         }
 
-    async def _collect_custom_stream_data(self, stream_name: str) -> Optional[Dict[str, Any]]:
+    async def _collect_custom_stream_data(self, stream_name: str) -> dict[str, Any] | None:
         """Collect data for custom streams"""
         # This would be implemented by custom stream handlers
         return None
@@ -570,7 +571,7 @@ class RealTimeMonitor:
 
         logger.info(f"Added custom stream '{config.name}'")
 
-    def get_stream_data(self, stream_name: str, limit: Optional[int] = None) -> List[StreamData]:
+    def get_stream_data(self, stream_name: str, limit: int | None = None) -> list[StreamData]:
         """Get historical data for a stream"""
         if stream_name not in self.data_buffers:
             return []
@@ -580,7 +581,7 @@ class RealTimeMonitor:
             return buffer.copy()
         return buffer[-limit:] if len(buffer) > limit else buffer.copy()
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get real-time monitor statistics"""
         current_time = datetime.now()
         self.stats["uptime"] = (current_time - self.start_time).total_seconds()
@@ -592,7 +593,7 @@ class RealTimeMonitor:
             "stream_buffers": {name: len(buffer) for name, buffer in self.data_buffers.items()}
         }
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform health check"""
         return {
             "status": "healthy" if self.server and not self.server.is_serving() else "unhealthy",

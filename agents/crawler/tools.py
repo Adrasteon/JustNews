@@ -2,14 +2,13 @@
 Tools and utilities for the Crawler Agent.
 """
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any
 
-from ..performance_monitoring import get_performance_monitor
 from .crawler_engine import CrawlerEngine
 from .extraction import extract_article_content
 
 
-def get_crawler_info(*args, **kwargs) -> Dict[str, Any]:
+def get_crawler_info(*args, **kwargs) -> dict[str, Any]:
     """
     Get information about the crawler configuration and capabilities.
     This is a standalone function for external access to crawler info.
@@ -42,3 +41,10 @@ def reset_performance_metrics():
     except ImportError:
         # Performance monitoring might not be available
         pass
+
+
+__all__ = [
+    'get_crawler_info',
+    'reset_performance_metrics',
+    'extract_article_content',
+]

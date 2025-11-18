@@ -1,5 +1,5 @@
 """
-Enhanced GPU Monitoring Dashboard for JustNewsAgent
+Enhanced GPU Monitoring Dashboard for JustNews
 Provides comprehensive real-time GPU health monitoring and performance analytics
 
 Features:
@@ -9,11 +9,11 @@ Features:
 - Historical metrics tracking
 - Web-based monitoring interface
 - Alert system for GPU issues
-"""
+    """
 
 
-import subprocess
 import os
+import subprocess
 import threading
 import time
 from collections import deque
@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import psutil
+
 from common.observability import get_logger
 
 # GPU and ML imports with graceful fallbacks

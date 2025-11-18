@@ -1,5 +1,5 @@
 """
-Comprehensive Test Suite for JustNewsAgent Dashboard Components
+Comprehensive Test Suite for JustNews Dashboard Components
 
 This module provides comprehensive testing for all dashboard components including:
 - Unit tests for individual components
@@ -7,42 +7,64 @@ This module provides comprehensive testing for all dashboard components includin
 - Performance tests for scalability validation
 - End-to-end tests for complete workflows
 
-Author: JustNewsAgent Development Team
+Author: JustNews Development Team
 Date: October 22, 2025
 """
 
 import asyncio
-import json
 import logging
 import time
 import unittest
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Tuple, AsyncGenerator
 from datetime import datetime, timedelta
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-import pytest
-import aiohttp
-from pathlib import Path
-import tempfile
-import statistics
+from unittest.mock import AsyncMock, Mock, patch
 
 # Import dashboard components
 try:
-    from dashboard_generator import DashboardGenerator, DashboardTemplate, DashboardConfig, PanelConfig
-    from realtime_monitor import RealTimeMonitor, StreamConfig, ClientConnection
     from alert_dashboard import AlertDashboard, AlertRule, AlertSeverity
-    from executive_dashboard import ExecutiveDashboard, BusinessKPI, ExecutiveMetric, KPICategory, KPIStatus, ExecutiveSummary
-    from grafana_integration import GrafanaIntegration, GrafanaConfig, DashboardPanel, GrafanaAlertRule
+    from dashboard_generator import (
+        DashboardConfig,
+        DashboardGenerator,
+        DashboardTemplate,
+        PanelConfig,
+    )
+    from executive_dashboard import (
+        BusinessKPI,
+        ExecutiveDashboard,
+        ExecutiveMetric,
+        ExecutiveSummary,
+        KPICategory,
+        KPIStatus,
+    )
+    from grafana_integration import (
+        DashboardPanel,
+        GrafanaAlertRule,
+        GrafanaConfig,
+        GrafanaIntegration,
+    )
+    from realtime_monitor import ClientConnection, RealTimeMonitor, StreamConfig
 except ImportError:
     # Fallback for when running as script
-    import sys
     import os
+    import sys
     sys.path.insert(0, os.path.dirname(__file__))
-    from dashboard_generator import DashboardGenerator, DashboardTemplate, DashboardConfig
-    from realtime_monitor import RealTimeMonitor, StreamConfig, ClientConnection
     from alert_dashboard import AlertDashboard, AlertRule, AlertSeverity
-    from executive_dashboard import ExecutiveDashboard, BusinessKPI, ExecutiveMetric, KPICategory, KPIStatus, ExecutiveSummary
-    from grafana_integration import GrafanaIntegration, GrafanaConfig, DashboardPanel, GrafanaAlertRule
+    from dashboard_generator import (
+        DashboardConfig,
+        DashboardGenerator,
+        DashboardTemplate,
+        PanelConfig,
+    )
+    from executive_dashboard import (
+        BusinessKPI,
+        ExecutiveDashboard,
+        ExecutiveSummary,
+        KPIStatus,
+    )
+    from grafana_integration import (
+        GrafanaConfig,
+        GrafanaIntegration,
+    )
+    from realtime_monitor import ClientConnection, RealTimeMonitor, StreamConfig
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -102,12 +124,12 @@ class TestDashboardGenerator(unittest.TestCase):
             ]
         )
         self.generator.add_template(template)
-        
+
         async def test_generate():
             json_data = await self.generator.generate_dashboard("Test Template")
             self.assertIn("dashboard", json_data)
             self.assertEqual(json_data["dashboard"]["title"], "Test Dashboard")
-        
+
         asyncio.run(test_generate())
 
     def test_deploy_dashboard_mock(self):
@@ -174,12 +196,12 @@ class TestRealTimeMonitor(unittest.TestCase):
             update_interval=1.0,
             buffer_size=100
         )
-        
+
         # Mock asyncio.create_task to avoid event loop issues
         with patch('asyncio.create_task') as mock_create_task:
             mock_task = AsyncMock()
             mock_create_task.return_value = mock_task
-            
+
             self.monitor.add_custom_stream(config)
             self.assertIn("test_stream", self.monitor.streams)
             mock_create_task.assert_called_once()
@@ -192,7 +214,7 @@ class TestRealTimeMonitor(unittest.TestCase):
             update_interval=1.0,
             buffer_size=10
         )
-        
+
         # Mock asyncio.create_task to avoid event loop issues
         with patch('asyncio.create_task'):
             self.monitor.add_custom_stream(config)
@@ -308,7 +330,7 @@ class TestAlertDashboard(unittest.TestCase):
         # Trigger alert by evaluating rules
         async def trigger_alert():
             await self.alert_dashboard.evaluate_rules({"error_rate": 7.5})
-        
+
         asyncio.run(trigger_alert())
 
         # Check alert was created
@@ -319,7 +341,7 @@ class TestAlertDashboard(unittest.TestCase):
         # Resolve alert
         async def resolve_alert():
             await self.alert_dashboard.resolve_alert(alert_id, "Test User")
-        
+
         asyncio.run(resolve_alert())
 
         # Check alert was resolved
@@ -344,7 +366,7 @@ class TestAlertDashboard(unittest.TestCase):
             # Trigger alert by evaluating rules
             async def trigger_alert():
                 await self.alert_dashboard.evaluate_rules({"system_down": 1})
-            
+
             asyncio.run(trigger_alert())
 
             # Check that notifications were sent
@@ -638,8 +660,9 @@ class PerformanceTests(unittest.TestCase):
 
     def test_memory_usage_monitoring(self):
         """Test memory usage during high load"""
-        import psutil
         import os
+
+        import psutil
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB

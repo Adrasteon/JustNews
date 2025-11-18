@@ -1,14 +1,15 @@
 """
-JustNewsAgent Security Framework - Shared Models and Types
+JustNews Security Framework - Shared Models and Types
 
 Contains shared Pydantic models, configuration classes, and type definitions
 used across all security framework components.
 """
 
-from typing import Dict, List, Optional, Any, Union
-from datetime import datetime, timedelta
-from pydantic import BaseModel, Field, EmailStr
+from datetime import datetime
 from enum import Enum
+from typing import Any
+
+from pydantic import BaseModel, EmailStr, Field
 
 
 class SecurityLevel(Enum):
@@ -48,15 +49,15 @@ class User(BaseModel):
     id: int
     username: str
     email: EmailStr
-    roles: List[str] = Field(default_factory=list)
+    roles: list[str] = Field(default_factory=list)
     is_active: bool = True
     is_verified: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    last_login: Optional[datetime] = None
+    last_login: datetime | None = None
     failed_login_attempts: int = 0
-    locked_until: Optional[datetime] = None
+    locked_until: datetime | None = None
     mfa_enabled: bool = False
-    mfa_secret: Optional[str] = None
+    mfa_secret: str | None = None
 
 
 class UserCreate(BaseModel):
@@ -64,22 +65,22 @@ class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
     password: str = Field(..., min_length=12)
-    roles: List[str] = Field(default_factory=list)
+    roles: list[str] = Field(default_factory=list)
 
 
 class UserUpdate(BaseModel):
     """User update request model"""
-    email: Optional[EmailStr] = None
-    roles: Optional[List[str]] = None
-    is_active: Optional[bool] = None
-    is_verified: Optional[bool] = None
+    email: EmailStr | None = None
+    roles: list[str] | None = None
+    is_active: bool | None = None
+    is_verified: bool | None = None
 
 
 class LoginRequest(BaseModel):
     """Login request model"""
     username: str
     password: str
-    mfa_code: Optional[str] = None
+    mfa_code: str | None = None
 
 
 class TokenPair(BaseModel):
@@ -106,15 +107,15 @@ class Role(BaseModel):
     """Role definition with permissions"""
     name: str
     description: str
-    permissions: List[str] = Field(default_factory=list)
-    parent_roles: List[str] = Field(default_factory=list)
+    permissions: list[str] = Field(default_factory=list)
+    parent_roles: list[str] = Field(default_factory=list)
 
 
 class PermissionCheck(BaseModel):
     """Permission check request"""
     user_id: int
     permission: str
-    resource_id: Optional[str] = None
+    resource_id: str | None = None
 
 
 # Encryption Models
@@ -123,7 +124,7 @@ class EncryptionKey(BaseModel):
     id: str
     algorithm: str
     created_at: datetime
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
     is_active: bool = True
 
 
@@ -132,7 +133,7 @@ class EncryptedData(BaseModel):
     data: str  # Base64 encoded encrypted data
     key_id: str
     algorithm: str
-    nonce: Optional[str] = None
+    nonce: str | None = None
 
 
 # Compliance Models
@@ -143,29 +144,29 @@ class ConsentRecord(BaseModel):
     purpose: str
     granted: bool
     granted_at: datetime
-    expires_at: Optional[datetime] = None
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
+    expires_at: datetime | None = None
+    ip_address: str | None = None
+    user_agent: str | None = None
 
 
 class AuditEvent(BaseModel):
     """Audit trail event"""
     id: str
     timestamp: datetime
-    user_id: Optional[int] = None
+    user_id: int | None = None
     action: str
     resource_type: str
-    resource_id: Optional[str] = None
-    details: Dict[str, Any] = Field(default_factory=dict)
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
+    resource_id: str | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
+    ip_address: str | None = None
+    user_agent: str | None = None
 
 
 class DataExport(BaseModel):
     """GDPR data export response"""
     user_id: int
     exported_at: datetime
-    data: Dict[str, Any]
+    data: dict[str, Any]
 
 
 # Monitoring Models
@@ -175,10 +176,10 @@ class SecurityEvent(BaseModel):
     timestamp: datetime
     event_type: str
     severity: SecurityLevel
-    user_id: Optional[int] = None
-    details: Dict[str, Any] = Field(default_factory=dict)
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
+    user_id: int | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
+    ip_address: str | None = None
+    user_agent: str | None = None
 
 
 class MonitoringRule(BaseModel):
@@ -186,7 +187,7 @@ class MonitoringRule(BaseModel):
     id: str
     name: str
     description: str
-    event_pattern: Dict[str, Any]
+    event_pattern: dict[str, Any]
     condition: str  # Python expression to evaluate
     severity: AlertSeverity
     enabled: bool = True
@@ -199,10 +200,10 @@ class SecurityAlert(BaseModel):
     rule_id: str
     severity: AlertSeverity
     message: str
-    details: Dict[str, Any] = Field(default_factory=dict)
+    details: dict[str, Any] = Field(default_factory=dict)
     resolved: bool = False
-    resolved_at: Optional[datetime] = None
-    resolved_by: Optional[int] = None
+    resolved_at: datetime | None = None
+    resolved_by: int | None = None
 
 
 class SecurityMetrics(BaseModel):
@@ -210,13 +211,13 @@ class SecurityMetrics(BaseModel):
     period_start: datetime
     period_end: datetime
     total_events: int
-    events_by_severity: Dict[str, int]
+    events_by_severity: dict[str, int]
     alerts_generated: int
     alerts_resolved: int
     failed_auth_attempts: int
     successful_auth_attempts: int
     unique_users: int
-    top_event_types: List[Dict[str, Any]]
+    top_event_types: list[dict[str, Any]]
 
 
 # Configuration Models
@@ -242,13 +243,13 @@ class SecurityConfig(BaseModel):
     lockout_duration_minutes: int = 30
 
     # Encryption
-    encryption_key: Optional[str] = None  # Auto-generated if not provided
+    encryption_key: str | None = None  # Auto-generated if not provided
     encryption_algorithm: str = "AES-256-GCM"
     key_rotation_days: int = 90
 
     # MFA
     mfa_enabled: bool = True
-    mfa_issuer: str = "JustNewsAgent"
+    mfa_issuer: str = "JustNews"
 
     # Compliance
     audit_retention_days: int = 2555  # 7 years for GDPR
@@ -258,7 +259,7 @@ class SecurityConfig(BaseModel):
 
     # Monitoring
     enable_monitoring: bool = True
-    alert_email_recipients: List[str] = Field(default_factory=list)
+    alert_email_recipients: list[str] = Field(default_factory=list)
     max_events_per_hour: int = 1000
     enable_structured_logging: bool = True
 
@@ -269,12 +270,12 @@ class SecurityConfig(BaseModel):
 
 class SecurityContext(BaseModel):
     """Security context for request processing"""
-    user: Optional[User] = None
-    permissions: List[str] = Field(default_factory=list)
-    session_id: Optional[str] = None
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    request_id: Optional[str] = None
+    user: User | None = None
+    permissions: list[str] = Field(default_factory=list)
+    session_id: str | None = None
+    ip_address: str | None = None
+    user_agent: str | None = None
+    request_id: str | None = None
 
 
 # Exception Classes

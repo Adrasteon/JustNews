@@ -12,7 +12,7 @@ Features:
 
 import hashlib
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from common.observability import get_logger
 
@@ -36,8 +36,8 @@ class QueryOptimizer:
         """
         self.pool = connection_pool
         self.cache_size = cache_size
-        self.query_cache: Dict[str, Dict[str, Any]] = {}
-        self.query_stats: Dict[str, Dict[str, Any]] = {}
+        self.query_cache: dict[str, dict[str, Any]] = {}
+        self.query_stats: dict[str, dict[str, Any]] = {}
 
         # Performance metrics
         self.metrics = {
@@ -54,7 +54,7 @@ class QueryOptimizer:
         params: tuple = None,
         use_cache: bool = True,
         cache_ttl: int = 300
-    ) -> List[dict]:
+    ) -> list[dict]:
         """
         Execute a query with optimization and caching
 
@@ -103,7 +103,7 @@ class QueryOptimizer:
             logger.error(f"Query execution failed: {query} - {e}")
             raise
 
-    def analyze_query_performance(self, query: str, params: tuple = None) -> Dict[str, Any]:
+    def analyze_query_performance(self, query: str, params: tuple = None) -> dict[str, Any]:
         """
         Analyze query performance with execution plan
 
@@ -152,7 +152,7 @@ class QueryOptimizer:
 
         return analysis
 
-    def get_index_recommendations(self) -> List[Dict[str, Any]]:
+    def get_index_recommendations(self) -> list[dict[str, Any]]:
         """
         Get index creation recommendations based on query patterns
 
@@ -191,7 +191,7 @@ class QueryOptimizer:
 
         return recommendations
 
-    def optimize_table(self, table_name: str) -> Dict[str, Any]:
+    def optimize_table(self, table_name: str) -> dict[str, Any]:
         """
         Optimize table performance with ANALYZE and potential reindexing
 
@@ -215,7 +215,7 @@ class QueryOptimizer:
             results['actions_taken'].append('ANALYZE executed')
 
             # Check if table needs reindexing (simple heuristic)
-            reindex_check = f"""
+            reindex_check = """
             SELECT schemaname, tablename, n_dead_tup, n_live_tup
             FROM pg_stat_user_tables
             WHERE tablename = %s
@@ -239,7 +239,7 @@ class QueryOptimizer:
 
         return results
 
-    def get_performance_metrics(self) -> Dict[str, Any]:
+    def get_performance_metrics(self) -> dict[str, Any]:
         """
         Get comprehensive performance metrics
 
@@ -263,7 +263,7 @@ class QueryOptimizer:
             'tracked_queries_count': len(self.query_stats)
         }
 
-    def clear_cache(self, pattern: Optional[str] = None):
+    def clear_cache(self, pattern: str | None = None):
         """
         Clear query cache, optionally matching a pattern
 
@@ -296,7 +296,7 @@ class QueryOptimizer:
         cached_time = self.query_cache[query_hash]['timestamp']
         return (time.time() - cached_time) < ttl
 
-    def _cache_result(self, query_hash: str, result: List[dict], query: str, params: tuple):
+    def _cache_result(self, query_hash: str, result: list[dict], query: str, params: tuple):
         """Cache query result"""
         self.query_cache[query_hash] = {
             'result': result,
@@ -335,7 +335,7 @@ class QueryOptimizer:
         stats['max_execution_time'] = max(stats['max_execution_time'], execution_time)
         stats['last_executed'] = time.time()
 
-    def _generate_recommendations(self, execution_plan: Any) -> List[str]:
+    def _generate_recommendations(self, execution_plan: Any) -> list[str]:
         """Generate optimization recommendations from execution plan"""
         recommendations = []
 
@@ -363,7 +363,7 @@ class QueryOptimizer:
 
         return recommendations
 
-    def _extract_table_column_from_where(self, query: str) -> Optional[Tuple[str, str]]:
+    def _extract_table_column_from_where(self, query: str) -> tuple[str, str] | None:
         """Extract table and column from WHERE clause (simple heuristic)"""
         try:
             # Very basic parsing - look for patterns like "table.column = value"

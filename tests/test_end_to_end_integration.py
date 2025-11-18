@@ -1,5 +1,5 @@
 """
-End-to-End Integration Tests for JustNewsAgent
+End-to-End Integration Tests for JustNews
 
 This module contains comprehensive integration tests that validate:
 - Complete news processing pipeline (crawler -> analyst -> fact_checker -> synthesizer)
@@ -10,12 +10,18 @@ This module contains comprehensive integration tests that validate:
 """
 
 import asyncio
-import pytest
 import time
-from typing import Dict, List, Any, Optional
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from tests.test_utils import AsyncTestHelper, MockFactory, PerformanceTester, CustomAssertions
+import pytest
+
+from tests.test_utils import (
+    AsyncTestHelper,
+    CustomAssertions,
+    MockFactory,
+    PerformanceTester,
+)
 
 
 class TestEndToEndNewsProcessingPipeline:
@@ -340,7 +346,6 @@ class TestEndToEndNewsProcessingPipeline:
             mock_create.side_effect = [Exception("Connection failed"), MagicMock()]
 
             # First call fails, second succeeds (simulated retry logic)
-            from database.utils.migrated_database_utils import create_database_service
 
             # This would normally implement retry logic
             retry_count = 0
@@ -393,7 +398,7 @@ class TestEndToEndNewsProcessingPipeline:
         perf_tester.record_metric("concurrent_processing_time", total_time)
         perf_tester.record_metric("articles_per_second", len(article_ids) / total_time)
 
-    def _get_agent_capabilities(self, agent_name: str) -> List[str]:
+    def _get_agent_capabilities(self, agent_name: str) -> list[str]:
         """Get capabilities for a given agent"""
         capabilities_map = {
             "crawler": ["content_extraction", "article_parsing"],
@@ -404,7 +409,7 @@ class TestEndToEndNewsProcessingPipeline:
         }
         return capabilities_map.get(agent_name, [])
 
-    def _simulate_full_pipeline(self, article_url: str) -> Dict[str, Any]:
+    def _simulate_full_pipeline(self, article_url: str) -> dict[str, Any]:
         """Simulate the full processing pipeline for testing"""
         # This is a simplified simulation - in real tests, would use actual agent calls
         return {

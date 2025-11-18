@@ -1,5 +1,5 @@
 """
-Tests for JustNewsAgent Configuration Validation
+Tests for JustNews Configuration Validation
 
 This module contains tests for configuration validation including:
 - System configuration validation
@@ -34,7 +34,7 @@ class TestSystemConfigValidation:
         # Return minimal valid config for testing
         return {
             "system": {
-                "name": "JustNewsAgent",
+                "name": "JustNews",
                 "version": "4.0",
                 "environment": "development"
             },
@@ -232,7 +232,7 @@ class TestConfigQuickRef:
     def test_config_summary_generation(self, config_ref):
         """Test configuration summary generation"""
         config = {
-            "system": {"name": "JustNewsAgent", "version": "4.0"},
+            "system": {"name": "JustNews", "version": "4.0"},
             "database": {"host": "localhost", "port": 5432},
             "agents": {"ports": {"analyst": 8004, "fact_checker": 8003}}
         }
@@ -242,7 +242,7 @@ class TestConfigQuickRef:
         assert "system" in summary
         assert "database" in summary
         assert "agents" in summary
-        assert summary["system"]["name"] == "JustNewsAgent"
+        assert summary["system"]["name"] == "JustNews"
 
 
 class TestConfigSecurityValidation:
@@ -437,7 +437,7 @@ class TestConfigIntegration:
     def test_system_config_loading(self, mock_open, mock_json_load):
         """Test system configuration loading"""
         mock_config = {
-            "system": {"name": "JustNewsAgent", "version": "4.0"},
+            "system": {"name": "JustNews", "version": "4.0"},
             "database": {"host": "localhost", "port": 5432}
         }
         mock_json_load.return_value = mock_config

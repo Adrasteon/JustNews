@@ -7,8 +7,11 @@ Protected version that handles GPU memory cleanup properly to prevent core dumps
 import atexit
 import gc
 import sys
+from pathlib import Path
 
-sys.path.insert(0, '/home/adra/JustNewsAgentic')
+# Resolve repo root dynamically to avoid hard-coded paths
+repo_root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(repo_root))
 
 def safe_gpu_cleanup():
     """Safely clean up GPU resources to prevent core dumps"""

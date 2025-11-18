@@ -19,31 +19,55 @@ from __future__ import annotations
 import importlib
 import os
 import sys
-from typing import Any, Dict, List
+from typing import Any
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
-app = FastAPI(title="JustNewsAgent Crawl4AI Bridge")
+app = FastAPI(title="JustNews Crawl4AI Bridge")
 
 
 class CrawlRequest(BaseModel):
-    urls: List[str]
+    urls: list[str]
     mode: str = "standard"
     use_llm: bool = True
 
 
 @app.get("/health")
-async def health() -> Dict[str, Any]:
+async def health() -> dict[str, Any]:
     return {"status": "ok", "service": "crawl4ai-bridge"}
 
 
+def _require_api_token(authorization: str | None = Header(None), x_api_token: str | None = Header(None)):
+    expected = os.environ.get("CRAWLER_API_TOKEN")
+    if not expected:
+        return None
+    token = None
+    if authorization:
+        if authorization.lower().startswith("bearer "):
+            token = authorization.split(None, 1)[1].strip()
+        else:
+            token = authorization.strip()
+    if not token and x_api_token:
+        token = x_api_token.strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing API token")
+    if token != expected:
+        raise HTTPException(status_code=403, detail="Invalid API token")
+    return None
+
+
 @app.post("/crawl")
-async def crawl(req: CrawlRequest) -> Dict[str, Any]:
+async def crawl(req: CrawlRequest, token_ok: None = Depends(_require_api_token)) -> dict[str, Any]:
     # core dependency
     try:
-        from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode  # type: ignore
+        from crawl4ai import (  # type: ignore
+            AsyncWebCrawler,
+            BrowserConfig,
+            CacheMode,
+            CrawlerRunConfig,
+        )
     except Exception as exc:  # pragma: no cover - dependency may be missing in test envs
         raise HTTPException(status_code=503, detail=f"crawl4ai not available: {exc}")
 
@@ -64,33 +88,46 @@ async def crawl(req: CrawlRequest) -> Dict[str, Any]:
     RateLimiter = getattr(crawler_utils_module, "RateLimiter", None) if crawler_utils_module else None  # type: ignore[assignment]
 
     try:
-        from agents.crawler.paywall_aggregator import increment_and_check  # type: ignore
+        from agents.crawler.paywall_aggregator import (
+            increment_and_check,  # type: ignore
+        )
     except Exception:
         increment_and_check = None  # type: ignore
 
     try:
-        from agents.crawler.enhancements.ua_rotation import UserAgentProvider, UserAgentConfig  # type: ignore
+        from agents.crawler.enhancements.ua_rotation import (  # type: ignore
+            UserAgentConfig,
+            UserAgentProvider,
+        )
     except Exception:
         UserAgentProvider = None  # type: ignore
         UserAgentConfig = None  # type: ignore
 
     try:
-        from agents.crawler.enhancements.stealth_browser import StealthBrowserFactory  # type: ignore
+        from agents.crawler.enhancements.stealth_browser import (
+            StealthBrowserFactory,  # type: ignore
+        )
     except Exception:
         StealthBrowserFactory = None  # type: ignore
 
     try:
-        from agents.crawler.enhancements.proxy_manager import ProxyManager  # type: ignore
+        from agents.crawler.enhancements.proxy_manager import (
+            ProxyManager,  # type: ignore
+        )
     except Exception:
         ProxyManager = None  # type: ignore
 
     try:
-        from agents.crawler.enhancements.paywall_detector import PaywallDetector  # type: ignore
+        from agents.crawler.enhancements.paywall_detector import (
+            PaywallDetector,  # type: ignore
+        )
     except Exception:
         PaywallDetector = None  # type: ignore
 
     try:
-        from agents.crawler.enhancements.modal_handler import ModalHandler  # type: ignore
+        from agents.crawler.enhancements.modal_handler import (
+            ModalHandler,  # type: ignore
+        )
     except Exception:
         ModalHandler = None  # type: ignore
 
@@ -125,7 +162,7 @@ async def crawl(req: CrawlRequest) -> Dict[str, Any]:
         except Exception:
             proxy_manager = None
 
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
 
     # Per-URL crawling
     for url in req.urls:

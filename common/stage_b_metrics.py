@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Optional
 
 from prometheus_client import CollectorRegistry, Counter, Histogram
 
 
 @dataclass
 class StageBMetrics:
-    registry: Optional[CollectorRegistry]
+    registry: CollectorRegistry | None
     extraction_total: Counter
     extraction_fallback_total: Counter
     ingestion_total: Counter
@@ -46,7 +45,7 @@ class StageBMetrics:
         return self.embedding_latency_seconds.labels(cache=cache)._sum.get()
 
 
-_metric_registry_map: Dict[int, StageBMetrics] = {}
+_metric_registry_map: dict[int, StageBMetrics] = {}
 _default_metrics = StageBMetrics(
     registry=None,
     extraction_total=Counter(
@@ -79,7 +78,7 @@ _default_metrics = StageBMetrics(
 _active_metrics: StageBMetrics = _default_metrics
 
 
-def _build_metrics(registry: Optional[CollectorRegistry]) -> StageBMetrics:
+def _build_metrics(registry: CollectorRegistry | None) -> StageBMetrics:
     return StageBMetrics(
         registry=registry,
         extraction_total=Counter(

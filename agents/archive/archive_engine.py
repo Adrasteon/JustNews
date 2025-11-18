@@ -1,18 +1,14 @@
 """
-Archive Engine for JustNewsAgent
+Archive Engine for JustNews
 
 Core business logic for comprehensive article archiving with knowledge graph integration.
 Provides research-scale archiving capabilities with complete provenance tracking,
 entity linking, and temporal knowledge graphs.
 """
 
-import asyncio
-import hashlib
-import json
-import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from agents.archive.archive_manager import ArchiveManager
 from agents.archive.entity_linker import EntityLinkerManager
@@ -34,7 +30,7 @@ class ArchiveEngine:
     - Research-scale provenance tracking
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize the archive engine.
 
@@ -51,7 +47,7 @@ class ArchiveEngine:
 
         self.logger.info("🚀 Archive Engine initialized successfully")
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default configuration for archive engine."""
         return {
             "storage": {
@@ -98,7 +94,7 @@ class ArchiveEngine:
         else:
             self.entity_linker = None
 
-    async def archive_articles(self, crawler_results: Dict[str, Any]) -> Dict[str, Any]:
+    async def archive_articles(self, crawler_results: dict[str, Any]) -> dict[str, Any]:
         """
         Archive articles from crawler results with full KG integration.
 
@@ -129,7 +125,7 @@ class ArchiveEngine:
             self.logger.error(f"Error archiving articles: {e}")
             raise
 
-    async def _enhance_with_knowledge_graph(self, articles: List[Dict[str, Any]]):
+    async def _enhance_with_knowledge_graph(self, articles: list[dict[str, Any]]):
         """Enhance articles with knowledge graph relationships."""
         try:
             for article in articles:
@@ -145,7 +141,7 @@ class ArchiveEngine:
         except Exception as e:
             self.logger.warning(f"Knowledge graph enhancement failed: {e}")
 
-    async def _link_entities(self, articles: List[Dict[str, Any]]):
+    async def _link_entities(self, articles: list[dict[str, Any]]):
         """Link entities to external knowledge bases."""
         try:
             for article in articles:
@@ -158,7 +154,7 @@ class ArchiveEngine:
         except Exception as e:
             self.logger.warning(f"Entity linking failed: {e}")
 
-    async def retrieve_article(self, storage_key: str) -> Optional[Dict[str, Any]]:
+    async def retrieve_article(self, storage_key: str) -> dict[str, Any] | None:
         """
         Retrieve archived article by storage key.
 
@@ -183,7 +179,7 @@ class ArchiveEngine:
             self.logger.error(f"Error retrieving article {storage_key}: {e}")
             raise
 
-    async def search_archive(self, query: str, filters: Optional[Dict[str, Any]] = None) -> List[str]:
+    async def search_archive(self, query: str, filters: dict[str, Any] | None = None) -> list[str]:
         """
         Search archived articles by metadata and content.
 
@@ -212,7 +208,7 @@ class ArchiveEngine:
             self.logger.error(f"Error searching archive: {e}")
             raise
 
-    async def store_single_article(self, article_data: Dict[str, Any]) -> str:
+    async def store_single_article(self, article_data: dict[str, Any]) -> str:
         """
         Store a single article with complete metadata.
 
@@ -256,7 +252,7 @@ class ArchiveEngine:
             self.logger.error(f"Error storing single article: {e}")
             raise
 
-    def get_archive_stats(self) -> Dict[str, Any]:
+    def get_archive_stats(self) -> dict[str, Any]:
         """
         Get comprehensive archive statistics.
 
@@ -306,7 +302,7 @@ class ArchiveEngine:
             self.logger.error(f"Error getting archive stats: {e}")
             raise
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """
         Perform comprehensive health check of archive engine.
 

@@ -1,16 +1,16 @@
 ---
-title: JustNewsAgent Documentation Catalogue System
-description: Auto-generated description for JustNewsAgent Documentation Catalogue System
+title: JustNews Documentation Catalogue System
+description: Auto-generated description for JustNews Documentation Catalogue System
 tags: [documentation]
 status: current
 last_updated: 2025-10-23
 ---
 
-# JustNewsAgent Documentation Catalogue System
+# JustNews Documentation Catalogue System
 
 ## 🎯 Overview
 
-The JustNewsAgent Documentation Catalogue System is a comprehensive, industry-standard solution for managing and accessing the project's extensive documentation. This system provides automated discovery, advanced search capabilities, cross-referencing, and maintenance tools for all 140+ markdown documents across the codebase.
+The JustNews Documentation Catalogue System is a comprehensive, industry-standard solution for managing and accessing the project's extensive documentation. This system provides automated discovery, advanced search capabilities, cross-referencing, and maintenance tools for all 140+ markdown documents across the codebase.
 
 ## 📊 System Status
 
@@ -57,7 +57,7 @@ The JustNewsAgent Documentation Catalogue System is a comprehensive, industry-st
 
 ### 1. Health Check
 ```bash
-cd /home/adra/JustNewsAgent-Clean
+cd /home/adra/JustNews
 python docs/catalogue_maintenance.py --health-check
 ```
 
@@ -505,7 +505,7 @@ python docs/catalogue_maintenance.py --performance-report --profile
 
 ---
 
-**🎯 This centralized documentation system ensures that all JustNewsAgent documentation is discoverable, current, and properly interconnected. For the latest updates, check the [Project Status](docs/PROJECT_STATUS.md) or run `python docs/docs_navigator.py status`.**
+**🎯 This centralized documentation system ensures that all JustNews documentation is discoverable, current, and properly interconnected. For the latest updates, check the [Project Status](docs/PROJECT_STATUS.md) or run `python docs/docs_navigator.py status`.**
 
 *Documentation Catalogue Version: 2.0 | Last Updated: September 7, 2025 | Documents Indexed: 140*
 

@@ -1,20 +1,17 @@
 """
-Tests for JustNewsAgent Auth Agent
+Tests for JustNews Auth Agent
 """
 
-import pytest
 from unittest.mock import Mock, patch
+
 from fastapi.testclient import TestClient
 
 from agents.auth.tools import (
     authenticate_user,
-    validate_access_token,
-    get_user_profile,
     check_user_permission,
     create_user_account,
-    initiate_password_reset,
-    logout_user_session,
-    check_auth_service_health
+    get_user_profile,
+    validate_access_token,
 )
 
 

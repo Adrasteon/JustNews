@@ -1,6 +1,7 @@
 from .parse import parse
 from .process import process
 
+
 class   Nucleoid:
     def __init__(self):
         print("Nucleoid object created")

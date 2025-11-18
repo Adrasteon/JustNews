@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import json
 from argparse import Namespace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from scripts.ops import run_crawl_schedule
-
 
 SCHEDULE_YAML = """\
 version: 1
@@ -107,7 +106,7 @@ def run_scheduler(tmp_path: Path, dry_run: bool = False) -> tuple[int, Path, Pat
         db_chunk_size=10,
     )
 
-    reference_time = datetime(2025, 1, 1, 12, 0, tzinfo=timezone.utc)
+    reference_time = datetime(2025, 1, 1, 12, 0, tzinfo=UTC)
 
     # Patch argument parsing and clock helpers so the scheduler runs deterministically.
     def _patched_parse_args() -> Namespace:

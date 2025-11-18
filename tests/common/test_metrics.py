@@ -1,13 +1,20 @@
 """
-Tests for JustNewsAgent Metrics Library
+Tests for JustNews Metrics Library
 """
 
-import pytest
 import time
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
+
 from prometheus_client import CollectorRegistry
 
-from common.metrics import JustNewsMetrics, get_metrics, init_metrics_for_agent, measure_processing_time, record_quality_metric, update_system_metrics
+from common.metrics import (
+    JustNewsMetrics,
+    get_metrics,
+    init_metrics_for_agent,
+    measure_processing_time,
+    record_quality_metric,
+    update_system_metrics,
+)
 
 
 class TestJustNewsMetrics:

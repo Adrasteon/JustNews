@@ -10,24 +10,21 @@ Comprehensive integration tests for MariaDB + ChromaDB setup covering:
 - Error handling and recovery
 """
 
-import pytest
-import json
 import asyncio
 from datetime import datetime
-from unittest.mock import patch, MagicMock, AsyncMock
-from typing import Dict, Any, List
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from database.models.migrated_models import (
+    Article,
     MigratedDatabaseService,
     Source,
-    Article,
-    ArticleSourceMap
 )
 from database.utils.migrated_database_utils import (
-    create_database_service,
     check_database_connections,
     execute_transaction,
-    get_database_stats
+    get_database_stats,
 )
 
 

@@ -1,0 +1,13 @@
+repos:
+- repo: local
+  hooks:
+    - id: check-processing-time
+      name: Check processing_time patterns
+      entry: python3 scripts/check_processing_time.py
+      language: system
+      types: [python]
+    - id: no-container-refs
+      name: Check no container/orchestration refs
+      entry: python3 scripts/checks/no_container_refs.py
+      language: system
+      types: [python]

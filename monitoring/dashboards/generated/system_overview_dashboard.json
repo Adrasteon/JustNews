@@ -1,7 +1,7 @@
 {
   "dashboard": {
     "id": null,
-    "title": "JustNewsAgent System Overview",
+    "title": "JustNews System Overview",
     "description": "Comprehensive system health and performance monitoring",
     "tags": [
       "system",
@@ -82,7 +82,7 @@
         "id": null,
         "title": "Active Agents",
         "type": "stat",
-        "description": "Number of active JustNewsAgent services",
+        "description": "Number of active JustNews services",
         "gridPos": {
           "h": 4,
           "w": 8,

@@ -11,15 +11,14 @@ The engine provides comprehensive fact-checking capabilities with GPU accelerati
 and CPU fallbacks, online training integration, and robust error handling.
 """
 
-import asyncio
-import json
 import os
 import re
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
+
 from common.observability import get_logger
 
 # Configure logging
@@ -138,8 +137,12 @@ class FactCheckerEngine:
 
             # Initialize transformers models
             try:
-                from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
                 import torch
+                from transformers import (
+                    AutoModelForSequenceClassification,
+                    AutoTokenizer,
+                    pipeline,
+                )
 
                 # Check GPU availability
                 self.gpu_available = torch.cuda.is_available() and self.config.gpu_config["enable_gpu"]
@@ -221,7 +224,7 @@ class FactCheckerEngine:
             self.logger.warning(f"⚠️ TensorRT engine initialization failed: {e}")
             self.tensorrt_engine = None
 
-    def get_model_status(self) -> Dict[str, Any]:
+    def get_model_status(self) -> dict[str, Any]:
         """Get status of all models and components."""
         return {
             "distilbert_loaded": self.distilbert_model is not None,
@@ -234,7 +237,7 @@ class FactCheckerEngine:
             "cache_enabled": self.config.performance_config["cache_enabled"]
         }
 
-    def get_performance_stats(self) -> Dict[str, Any]:
+    def get_performance_stats(self) -> dict[str, Any]:
         """Get performance statistics."""
         return {
             **self.processing_stats,
@@ -244,7 +247,7 @@ class FactCheckerEngine:
             "last_model_update": datetime.fromtimestamp(self.last_model_update).isoformat()
         }
 
-    def verify_facts(self, content: str, source_url: Optional[str] = None, context: Optional[str] = None) -> Dict[str, Any]:
+    def verify_facts(self, content: str, source_url: str | None = None, context: str | None = None) -> dict[str, Any]:
         """
         Verify factual claims in content using AI models.
 
@@ -317,7 +320,7 @@ class FactCheckerEngine:
             self.logger.error(f"Error in fact verification: {e}")
             return {"error": str(e)}
 
-    def _verify_single_claim(self, claim: str, context: Optional[str] = None) -> Dict[str, Any]:
+    def _verify_single_claim(self, claim: str, context: str | None = None) -> dict[str, Any]:
         """Verify a single claim using available models."""
         try:
             # Use DistilBERT if available
@@ -371,11 +374,11 @@ class FactCheckerEngine:
         score = 0.5 + (positive_score * 0.1) - (negative_score * 0.1)
         return max(0.0, min(1.0, score))
 
-    def validate_sources(self, content: str, source_url: Optional[str] = None, domain: Optional[str] = None) -> Dict[str, Any]:
+    def validate_sources(self, content: str, source_url: str | None = None, domain: str | None = None) -> dict[str, Any]:
         """Validate source credibility (alias for assess_credibility)."""
         return self.assess_credibility(content, domain, source_url)
 
-    def assess_credibility(self, content: Optional[str] = None, domain: Optional[str] = None, source_url: Optional[str] = None) -> Dict[str, Any]:
+    def assess_credibility(self, content: str | None = None, domain: str | None = None, source_url: str | None = None) -> dict[str, Any]:
         """
         Assess source credibility using domain analysis and content evaluation.
 
@@ -468,7 +471,7 @@ class FactCheckerEngine:
         # Default medium credibility
         return 0.6
 
-    def comprehensive_fact_check(self, content: str, source_url: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def comprehensive_fact_check(self, content: str, source_url: str | None = None, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Perform comprehensive fact-checking on full articles.
 
@@ -528,7 +531,7 @@ class FactCheckerEngine:
             self.logger.error(f"Comprehensive fact-check failed: {e}")
             return {"error": str(e)}
 
-    def extract_claims(self, content: str) -> Dict[str, Any]:
+    def extract_claims(self, content: str) -> dict[str, Any]:
         """
         Extract verifiable claims from text content.
 
@@ -594,7 +597,7 @@ class FactCheckerEngine:
 
         return has_claim_indicator and not has_question and len(text.split()) > 3
 
-    def detect_contradictions(self, text_passages: List[str]) -> Dict[str, Any]:
+    def detect_contradictions(self, text_passages: list[str]) -> dict[str, Any]:
         """
         Detect logical contradictions between text passages.
 
@@ -644,7 +647,7 @@ class FactCheckerEngine:
             self.logger.error(f"Contradiction detection failed: {e}")
             return {"error": str(e), "contradictions_found": 0, "analysis": []}
 
-    def _keyword_contradiction_detection(self, text_passages: List[str]) -> List[Dict[str, Any]]:
+    def _keyword_contradiction_detection(self, text_passages: list[str]) -> list[dict[str, Any]]:
         """Keyword-based contradiction detection fallback."""
         contradictions = []
 
@@ -677,7 +680,7 @@ class FactCheckerEngine:
 
         return contradictions
 
-    async def validate_is_news_gpu(self, content: str) -> Dict[str, Any]:
+    async def validate_is_news_gpu(self, content: str) -> dict[str, Any]:
         """GPU-accelerated news content validation."""
         try:
             if self.tensorrt_engine:
@@ -689,7 +692,7 @@ class FactCheckerEngine:
             self.logger.warning(f"GPU news validation failed: {e}")
             return await self._validate_is_news_cpu(content)
 
-    async def _validate_is_news_cpu(self, content: str) -> Dict[str, Any]:
+    async def _validate_is_news_cpu(self, content: str) -> dict[str, Any]:
         """CPU-based news validation."""
         try:
             content_lower = content.lower()
@@ -725,7 +728,7 @@ class FactCheckerEngine:
             self.logger.error(f"CPU news validation failed: {e}")
             return {"error": str(e), "is_news": False, "method": "cpu_fallback"}
 
-    async def verify_claims_gpu(self, claims: List[str], sources: List[str]) -> Dict[str, Any]:
+    async def verify_claims_gpu(self, claims: list[str], sources: list[str]) -> dict[str, Any]:
         """GPU-accelerated batch claim verification."""
         try:
             if self.tensorrt_engine:
@@ -736,7 +739,7 @@ class FactCheckerEngine:
             self.logger.warning(f"GPU claims verification failed: {e}")
             return await self._verify_claims_cpu(claims, sources)
 
-    async def _verify_claims_cpu(self, claims: List[str], sources: List[str]) -> Dict[str, Any]:
+    async def _verify_claims_cpu(self, claims: list[str], sources: list[str]) -> dict[str, Any]:
         """CPU-based batch claim verification."""
         try:
             source_text = "\n".join(sources) if sources else ""
@@ -771,7 +774,7 @@ class FactCheckerEngine:
             self.logger.error(f"CPU claims verification failed: {e}")
             return {"error": str(e), "method": "cpu_batch"}
 
-    def log_feedback(self, feedback_type: str, feedback_data: Dict[str, Any]):
+    def log_feedback(self, feedback_type: str, feedback_data: dict[str, Any]):
         """Log user feedback for model improvement."""
         try:
             if not self.config.training_config["feedback_collection"]:
@@ -818,9 +821,9 @@ class FactCheckerEngine:
         except Exception as e:
             self.logger.error(f"Feedback processing failed: {e}")
 
-    def correct_verification(self, claim: str, context: Optional[str] = None,
+    def correct_verification(self, claim: str, context: str | None = None,
                            incorrect_classification: str = "", correct_classification: str = "",
-                           priority: int = 2) -> Dict[str, Any]:
+                           priority: int = 2) -> dict[str, Any]:
         """Submit user correction for fact verification."""
         try:
             correction_data = {
@@ -840,9 +843,9 @@ class FactCheckerEngine:
             self.logger.error(f"Verification correction failed: {e}")
             return {"error": str(e)}
 
-    def correct_credibility(self, source_text: Optional[str] = None, domain: str = "",
+    def correct_credibility(self, source_text: str | None = None, domain: str = "",
                           incorrect_reliability: str = "", correct_reliability: str = "",
-                          priority: int = 2) -> Dict[str, Any]:
+                          priority: int = 2) -> dict[str, Any]:
         """Submit user correction for credibility assessment."""
         try:
             correction_data = {
@@ -862,7 +865,7 @@ class FactCheckerEngine:
             self.logger.error(f"Credibility correction failed: {e}")
             return {"error": str(e)}
 
-    def get_training_status(self) -> Dict[str, Any]:
+    def get_training_status(self) -> dict[str, Any]:
         """Get online training status."""
         try:
             return {
@@ -880,7 +883,7 @@ class FactCheckerEngine:
             self.logger.error(f"Training status retrieval failed: {e}")
             return {"error": str(e)}
 
-    def force_model_update(self) -> Dict[str, Any]:
+    def force_model_update(self) -> dict[str, Any]:
         """Force immediate model update (admin function)."""
         try:
             if not self.config.training_config["online_training"]:
@@ -915,7 +918,7 @@ class FactCheckerEngine:
         cache_age = time.time() - self.cache_timestamps[cache_key]
         return cache_age < self.config.performance_config["cache_ttl"]
 
-    def _cache_result(self, cache_key: str, result: Dict[str, Any]):
+    def _cache_result(self, cache_key: str, result: dict[str, Any]):
         """Cache a result with timestamp."""
         if self.config.performance_config["cache_enabled"]:
             self.cache[cache_key] = result

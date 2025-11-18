@@ -1,13 +1,13 @@
-# JustNewsAgent User Guides
+# JustNews User Guides
 
 ## Getting Started
 
-Welcome to JustNewsAgent! This guide will help you get started based on your role and needs.
+Welcome to JustNews! This guide will help you get started based on your role and needs.
 
 ## Quick Start by Role
 
 ### 👨‍💼 **System Administrator**
-If you're setting up or maintaining the JustNewsAgent system:
+If you're setting up or maintaining the JustNews system:
 
 1. **Prerequisites Check**
    ```bash
@@ -21,7 +21,7 @@ If you're setting up or maintaining the JustNewsAgent system:
    ```bash
    # Clone and setup
    git clone <repository>
-   cd JustNewsAgent
+    cd JustNews
    ./activate_environment.sh
    ```
 
@@ -46,7 +46,7 @@ If you're setting up or maintaining the JustNewsAgent system:
    ```
 
 ### 👩‍🔬 **Data Scientist/Researcher**
-If you're using JustNewsAgent for research or analysis:
+If you're using JustNews for research or analysis:
 
 1. **API Access Setup**
    ```python
@@ -89,7 +89,7 @@ If you're using JustNewsAgent for research or analysis:
    ```
 
 ### 👨‍💻 **Developer**
-If you're developing or extending JustNewsAgent:
+If you're developing or extending JustNews:
 
 1. **Development Environment**
    ```bash
@@ -402,11 +402,11 @@ uvicorn agents.my_agent.main:app --reload --port 8009
 
 #### Production Deployment
 ```bash
-# Build container
-docker build -t my-agent .
-
-# Deploy to Kubernetes
-kubectl apply -f k8s/my-agent-deployment.yaml
+# Build and deploy as systemd unit (package your code and create a systemd service)
+# Example: copy service file and start
+sudo cp infrastructure/systemd/units/my-agent.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now my-agent
 ```
 
 ## Best Practices

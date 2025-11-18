@@ -13,15 +13,12 @@ The engine provides comprehensive symbolic reasoning capabilities with
 robust error handling and fallbacks.
 """
 
-import asyncio
 import importlib.util
-import json
-import os
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import networkx as nx
 
@@ -67,7 +64,7 @@ class NucleoidState:
     """Global state management for variables and their values."""
 
     def __init__(self):
-        self.variable_state: Dict[str, Any] = {}
+        self.variable_state: dict[str, Any] = {}
 
     def get(self, name: str, default=None):
         return self.variable_state.get(name, default)
@@ -154,14 +151,14 @@ class SimpleNucleoidImplementation:
     """Simple fallback implementation of Nucleoid for basic reasoning."""
 
     def __init__(self):
-        self.facts: Dict[str, Any] = {}
-        self.rules: List[str] = []
+        self.facts: dict[str, Any] = {}
+        self.rules: list[str] = []
         self.state = NucleoidState()
         self.graph = NucleoidGraph()
         self.expression_handler = ExpressionHandler(self.state)
         self.assignment_handler = AssignmentHandler(self.state, self.graph)
 
-    def execute(self, statement: str) -> Dict[str, Any]:
+    def execute(self, statement: str) -> dict[str, Any]:
         """Execute a Nucleoid statement."""
         statement = statement.strip()
 
@@ -225,11 +222,11 @@ class SimpleNucleoidImplementation:
 
         return {"success": False, "message": "Unknown statement type"}
 
-    def run(self, statement: str) -> Dict[str, Any]:
+    def run(self, statement: str) -> dict[str, Any]:
         """Alias for execute method to match expected interface."""
         return self.execute(statement)
 
-    def clear(self) -> Dict[str, Any]:
+    def clear(self) -> dict[str, Any]:
         """Clear all facts and rules."""
         self.facts.clear()
         self.rules.clear()
@@ -250,9 +247,9 @@ class ReasoningEngine:
         self.logger = logger
 
         # Core components
-        self.nucleoid: Optional[Any] = None
-        self.facts_store: Dict[str, Any] = {}
-        self.rules_store: List[str] = []
+        self.nucleoid: Any | None = None
+        self.facts_store: dict[str, Any] = {}
+        self.rules_store: list[str] = []
 
         # Performance tracking
         self.processing_stats = {
@@ -265,11 +262,11 @@ class ReasoningEngine:
         }
 
         # Feedback and training
-        self.feedback_buffer: List[Dict[str, Any]] = []
+        self.feedback_buffer: list[dict[str, Any]] = []
 
         # Cache
-        self.cache: Dict[str, Any] = {}
-        self.cache_timestamps: Dict[str, float] = {}
+        self.cache: dict[str, Any] = {}
+        self.cache_timestamps: dict[str, float] = {}
 
         # Initialize Nucleoid
         self._initialize_nucleoid()
@@ -350,7 +347,7 @@ class ReasoningEngine:
             self.nucleoid = SimpleNucleoidImplementation()
             self.logger.info("✅ Using simple fallback implementation")
 
-    def get_performance_stats(self) -> Dict[str, Any]:
+    def get_performance_stats(self) -> dict[str, Any]:
         """Get performance statistics."""
         return {
             **self.processing_stats,
@@ -360,7 +357,7 @@ class ReasoningEngine:
             "rules_store_size": len(self.rules_store)
         }
 
-    async def add_fact(self, fact_data: Dict[str, Any]) -> Any:
+    async def add_fact(self, fact_data: dict[str, Any]) -> Any:
         """Add a fact to the reasoning system."""
         import time
         start_time = time.time()
@@ -470,13 +467,13 @@ class ReasoningEngine:
             self.logger.error(f"Error executing query: {e}")
             raise
 
-    async def evaluate_contradiction(self, statements: List[str]) -> Dict[str, Any]:
+    async def evaluate_contradiction(self, statements: list[str]) -> dict[str, Any]:
         """Check for logical contradictions between statements."""
         try:
             contradictions = []
 
             # Extract variable assignments and check for direct contradictions
-            variable_assignments: Dict[str, Any] = {}
+            variable_assignments: dict[str, Any] = {}
 
             for stmt in statements:
                 # Check for direct variable assignments (x = 5, x = 10)
@@ -558,15 +555,15 @@ class ReasoningEngine:
 
         return False
 
-    def get_facts(self) -> Dict[str, Any]:
+    def get_facts(self) -> dict[str, Any]:
         """Retrieve all stored facts."""
         return self.facts_store.copy()
 
-    def get_rules(self) -> List[str]:
+    def get_rules(self) -> list[str]:
         """Retrieve all stored rules."""
         return self.rules_store.copy()
 
-    def clear(self) -> Dict[str, Any]:
+    def clear(self) -> dict[str, Any]:
         """Clear all facts and rules."""
         self.facts_store.clear()
         self.rules_store.clear()
@@ -574,7 +571,7 @@ class ReasoningEngine:
             self.nucleoid.clear()
         return {"success": True, "message": "Knowledge base cleared"}
 
-    def log_feedback(self, operation: str, feedback_data: Dict[str, Any]):
+    def log_feedback(self, operation: str, feedback_data: dict[str, Any]):
         """Log feedback for model improvement."""
         try:
             if not self.config.training_config["feedback_collection"]:
@@ -600,7 +597,7 @@ class ReasoningEngine:
             self.logger.error(f"Feedback logging failed: {e}")
             return {"error": str(e)}
 
-    def get_training_status(self) -> Dict[str, Any]:
+    def get_training_status(self) -> dict[str, Any]:
         """Get training status."""
         return {
             "feedback_collection_enabled": self.config.training_config["feedback_collection"],
@@ -610,9 +607,9 @@ class ReasoningEngine:
             "rules_count": len(self.rules_store)
         }
 
-    async def _ingest_neural_assessment(self, assessment: Dict[str, Any]) -> List[str]:
+    async def _ingest_neural_assessment(self, assessment: dict[str, Any]) -> list[str]:
         """Convert a NeuralAssessment into a list of statements/facts for Nucleoid."""
-        stmts: List[str] = []
+        stmts: list[str] = []
 
         # Map extracted claims directly as statements
         extracted_claims = assessment.get("extracted_claims", [])
@@ -748,7 +745,7 @@ class EnhancedReasoningEngine:
                 # Silently continue; engine may not be ready during import-time
                 pass
 
-    async def validate_news_claim_with_context(self, claim: str, article_metadata: Dict[str, Any]) -> Dict[str, Any]:
+    async def validate_news_claim_with_context(self, claim: str, article_metadata: dict[str, Any]) -> dict[str, Any]:
         """Advanced news validation using domain-specific logic."""
         # Add article context as facts
         for key, value in article_metadata.items():
@@ -778,7 +775,7 @@ class EnhancedReasoningEngine:
 
         return results
 
-    async def orchestrate_multi_agent_decision(self, agent_outputs: Dict[str, Any]) -> Dict[str, Any]:
+    async def orchestrate_multi_agent_decision(self, agent_outputs: dict[str, Any]) -> dict[str, Any]:
         """Use Nucleoid to coordinate between multiple agents."""
         # Add agent outputs as facts
         for agent, output in agent_outputs.items():
@@ -810,7 +807,7 @@ class EnhancedReasoningEngine:
             return self.nucleoid.run(rule)
         raise AttributeError('Underlying engine has no add_rule or run')
 
-    async def _add_fact(self, fact: Dict[str, Any]):
+    async def _add_fact(self, fact: dict[str, Any]):
         # Accept either dict with 'statement' or raw statement
         if hasattr(self.nucleoid, 'add_fact'):
             return await self.nucleoid.add_fact(fact)

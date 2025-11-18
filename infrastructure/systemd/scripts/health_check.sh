@@ -12,7 +12,7 @@ resolve_root() {
     if [[ -n "${JUSTNEWS_ROOT:-}" ]]; then echo "$JUSTNEWS_ROOT"; return 0; fi
     if [[ -n "${SERVICE_DIR:-}" ]]; then echo "$SERVICE_DIR"; return 0; fi
   fi
-  echo "/home/adra/JustNewsAgent-Clean"
+  echo "${SERVICE_DIR:-/home/adra/JustNews}"
 }
 
 ROOT="$(resolve_root)"

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import argparse
-import sys
-from pathlib import Path
-import textwrap
 import importlib.util
+import sys
+import textwrap
+from pathlib import Path
 
 PATCH_SNIPPET = textwrap.dedent(
     """

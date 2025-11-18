@@ -1,5 +1,5 @@
 """
-Tests for JustNewsAgent JSON Utilities
+Tests for JustNews JSON Utilities
 """
 
 import json

@@ -1,20 +1,19 @@
 """
-Authentication Engine for JustNewsAgent
+Authentication Engine for JustNews
 
 Core business logic for user authentication, authorization, and session management.
 Provides JWT-based authentication with role-based access control and GDPR compliance.
 """
 
 import asyncio
-import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from common.observability import get_logger
 from agents.common.auth_models import (
-    initialize_auth_connection_pool,
+    create_user_tables,
     get_auth_connection_pool,
-    create_user_tables
+    initialize_auth_connection_pool,
 )
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 
@@ -90,7 +89,7 @@ class AuthEngine:
         """Check if the authentication engine is properly initialized"""
         return self._initialized
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """
         Perform comprehensive health check of authentication services.
 
@@ -149,7 +148,7 @@ class AuthEngine:
 
         return health_info
 
-    def get_service_info(self) -> Dict[str, Any]:
+    def get_service_info(self) -> dict[str, Any]:
         """
         Get service information and capabilities.
 
@@ -159,7 +158,7 @@ class AuthEngine:
         return {
             "service": "auth_engine",
             "version": "1.0.0",
-            "description": "Authentication and authorization service for JustNewsAgent",
+            "description": "Authentication and authorization service for JustNews",
             "features": [
                 "JWT-based authentication",
                 "Role-based access control",
@@ -183,14 +182,14 @@ class AuthEngine:
                 "GET /health"
             ],
             "database": {
-                "type": "PostgreSQL",
+                "type": "MariaDB",
                 "tables": ["users", "refresh_tokens", "password_reset_tokens", "consent_records"]
             }
         }
 
 
 # Global auth engine instance
-_auth_engine: Optional[AuthEngine] = None
+_auth_engine: AuthEngine | None = None
 
 
 def get_auth_engine() -> AuthEngine:

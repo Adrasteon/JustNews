@@ -1,6 +1,6 @@
-# JustNewsAgent Security Framework
+# JustNews Security Framework
 
-A comprehensive, production-ready security framework for JustNewsAgent providing authentication, authorization, encryption, compliance monitoring, and security event tracking.
+A comprehensive, production-ready security framework for JustNews providing authentication, authorization, encryption, compliance monitoring, and security event tracking.
 
 ## Features
 
@@ -389,10 +389,10 @@ logging.basicConfig(level=logging.DEBUG)
 
 ## License
 
-This security framework is part of JustNewsAgent and follows the same licensing terms.
+This security framework is part of JustNews and follows the same licensing terms.
 
 ---
 
 **Version**: 1.0.0
 **Last Updated**: October 22, 2025
-**Contact**: security@justnewsagent.com
+**Contact**: security@justnews.com

@@ -20,28 +20,28 @@ Endpoints:
 - GET /stats: Processing statistics
 """
 
-import asyncio
 import os
 import time
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse, Response
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from common.observability import get_logger
 from common.metrics import JustNewsMetrics
-from .scout_engine import ScoutEngine, ScoutConfig, CrawlMode
+from common.observability import get_logger
+
+from .scout_engine import CrawlMode, ScoutConfig, ScoutEngine
 from .tools import (
-    discover_sources_tool,
+    analyze_sentiment_tool,
     crawl_url_tool,
     deep_crawl_tool,
-    analyze_sentiment_tool,
     detect_bias_tool,
+    discover_sources_tool,
+    get_stats,
     health_check,
-    get_stats
 )
 
 # MCP Bus integration
@@ -55,19 +55,19 @@ except ImportError:
 logger = get_logger(__name__)
 
 # Global engine instance
-engine: Optional[ScoutEngine] = None
+engine: ScoutEngine | None = None
 
 # Request/Response Models
 class DiscoverSourcesRequest(BaseModel):
     """Request model for source discovery."""
-    domains: Optional[List[str]] = Field(None, description="Specific domains to search")
+    domains: list[str] | None = Field(None, description="Specific domains to search")
     max_sources: int = Field(10, description="Maximum sources to discover")
     include_social: bool = Field(True, description="Include social media sources")
 
 class DiscoverSourcesResponse(BaseModel):
     """Response model for source discovery."""
     success: bool = Field(..., description="Discovery success status")
-    sources: List[Dict[str, Any]] = Field(..., description="Discovered sources")
+    sources: list[dict[str, Any]] = Field(..., description="Discovered sources")
     total_found: int = Field(..., description="Total sources found")
     processing_time: float = Field(..., description="Processing time in seconds")
 
@@ -82,8 +82,8 @@ class CrawlURLResponse(BaseModel):
     """Response model for URL crawling."""
     success: bool = Field(..., description="Crawling success status")
     url: str = Field(..., description="Crawled URL")
-    content: Dict[str, Any] = Field(..., description="Extracted content")
-    links_found: List[str] = Field(..., description="Links discovered")
+    content: dict[str, Any] = Field(..., description="Extracted content")
+    links_found: list[str] = Field(..., description="Links discovered")
     processing_time: float = Field(..., description="Processing time in seconds")
 
 class DeepCrawlRequest(BaseModel):
@@ -97,7 +97,7 @@ class DeepCrawlResponse(BaseModel):
     success: bool = Field(..., description="Deep crawl success status")
     site_url: str = Field(..., description="Site URL crawled")
     pages_crawled: int = Field(..., description="Number of pages crawled")
-    articles_found: List[Dict[str, Any]] = Field(..., description="Articles discovered")
+    articles_found: list[dict[str, Any]] = Field(..., description="Articles discovered")
     processing_time: float = Field(..., description="Processing time in seconds")
 
 class SentimentAnalysisRequest(BaseModel):
@@ -110,7 +110,7 @@ class SentimentAnalysisResponse(BaseModel):
     success: bool = Field(..., description="Analysis success status")
     sentiment: str = Field(..., description="Sentiment classification")
     confidence: float = Field(..., description="Confidence score")
-    scores: Dict[str, float] = Field(..., description="Detailed sentiment scores")
+    scores: dict[str, float] = Field(..., description="Detailed sentiment scores")
 
 class BiasDetectionRequest(BaseModel):
     """Request model for bias detection."""
@@ -128,8 +128,8 @@ class HealthResponse(BaseModel):
     """Response model for health checks."""
     timestamp: float = Field(..., description="Health check timestamp")
     overall_status: str = Field(..., description="Overall health status")
-    components: Dict[str, Any] = Field(..., description="Component health status")
-    issues: List[str] = Field(..., description="List of issues found")
+    components: dict[str, Any] = Field(..., description="Component health status")
+    issues: list[str] = Field(..., description="List of issues found")
 
 class StatsResponse(BaseModel):
     """Response model for statistics."""

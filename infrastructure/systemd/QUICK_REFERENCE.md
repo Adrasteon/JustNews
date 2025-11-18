@@ -101,7 +101,6 @@ Tip: `enable_all.sh` defaults to `status` with no args. Use `start`, `stop`, `re
 | memory            | 8007 | /health  |
 | reasoning         | 8008 | /health  |
 | newsreader        | 8009 | /health  |
-| balancer          | 8010 | /health  |
 | analytics         | 8011 | /health  |
 | archive           | 8012 | /health  |
 | dashboard         | 8013 | /health  |
@@ -121,7 +120,7 @@ Global (`/etc/justnews/global.env`):
 
 ```
 JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-v2-py312/bin/python
-SERVICE_DIR=/home/adra/JustNewsAgent-Clean
+SERVICE_DIR=/home/adra/JustNews
 JUSTNEWS_DB_URL=mysql://user:pass@localhost:3306/justnews
 ENABLE_MPS=true
 UNIFIED_CRAWLER_ENABLE_HTTP_FETCH=true

@@ -9,7 +9,7 @@ Behavior:
   * Sets a consistent set of database environment variables ONLY if they are
     currently unset in the process environment.
   * Provides multiple naming conventions used by different legacy components
-    (DB_*, POSTGRES_*, JUSTNEWS_DB_*) to avoid KeyErrors while refactoring.
+    (DB_*, JUSTNEWS_DB_*) to avoid KeyErrors while refactoring.
   * Constructs a DATABASE_URL if one is not already defined.
   * Emits explicit WARNING level log entries enumerating which variables were
     injected. No action is taken if everything is already configured.
@@ -36,28 +36,27 @@ Security Notes:
 """
 from __future__ import annotations
 
-from typing import List, Dict, Optional
-import os
 import logging
+import os
 
 # Constants
 _DISABLE_FLAG = "JUSTNEWS_DISABLE_TEST_DB_FALLBACK"
 
 # Canonical development defaults (ONLY applied if missing)
 _DEV_DEFAULTS = {
-    "DB_HOST": "localhost",
-    "DB_PORT": "5432",
-    "DB_NAME": "justnews",
-    "DB_USER": "justnews_user",
-    "DB_PASSWORD": "password123",
+  "DB_HOST": "localhost",
+  "DB_PORT": "3306",
+  "DB_NAME": "justnews",
+  "DB_USER": "justnews_user",
+  "DB_PASSWORD": "password123",
 }
 
 # Legacy / alternate variable name mapping – values resolved from _DEV_DEFAULTS
 _LEGACY_MIRRORS = {
-    "POSTGRES_HOST": "DB_HOST",
-    "POSTGRES_DB": "DB_NAME",
-    "POSTGRES_USER": "DB_USER",
-    "POSTGRES_PASSWORD": "DB_PASSWORD",
+    "MARIADB_HOST": "DB_HOST",
+    "MARIADB_DB": "DB_NAME",
+    "MARIADB_USER": "DB_USER",
+    "MARIADB_PASSWORD": "DB_PASSWORD",
     "JUSTNEWS_DB_HOST": "DB_HOST",
     "JUSTNEWS_DB_PORT": "DB_PORT",
     "JUSTNEWS_DB_NAME": "DB_NAME",
@@ -80,10 +79,12 @@ def _build_database_url(env: dict) -> str:
     host = env.get("DB_HOST", _DEV_DEFAULTS["DB_HOST"])  # pragma: no cover
     port = env.get("DB_PORT", _DEV_DEFAULTS["DB_PORT"])  # pragma: no cover
     name = env.get("DB_NAME", _DEV_DEFAULTS["DB_NAME"])  # pragma: no cover
-    return f"postgresql://{user}:{password}@{host}:{port}/{name}"
+    # Construct a MariaDB-compatible URL for local testing convenience.
+    # Note: consumers of DATABASE_URL should support mysql:// or mysql+pymysql://
+    return f"mysql://{user}:{password}@{host}:{port}/{name}"
 
 
-def apply_test_db_env_fallback(logger: Optional[logging.Logger] = None) -> List[str]:
+def apply_test_db_env_fallback(logger: logging.Logger | None = None) -> list[str]:
     """Apply development DB environment defaults if not already configured.
 
     This function performs no destructive overwrites—only missing variables are
@@ -100,7 +101,7 @@ def apply_test_db_env_fallback(logger: Optional[logging.Logger] = None) -> List[
     if os.environ.get(_DISABLE_FLAG):  # Explicit opt-out
         return []
 
-    applied: List[str] = []
+    applied: list[str] = []
 
     # Step 1: Primary DB_* defaults
     for k, v in _DEV_DEFAULTS.items():

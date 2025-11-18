@@ -1,0 +1,25 @@
+C4Context
+  title JustNews - Core Infrastructure
+  Enterprise_Boundary(b0, "JustNews Core") {
+    System(mcp_bus, "MCP Bus", "Agent discovery + RPC bus")
+    System(auth, "Auth", "Authentication & RBAC for endpoints")
+    System(balancer, "Balancer", "Load-based scheduler (observes load and directs scheduling)")
+    System(gpu_orch, "GPU Orchestrator", "Model preloads, VRAM policy and GPU leases")
+  }
+
+  Rel(mcp_bus, auth, "Uses for endpoint auth & discovery", "HTTPS")
+  Rel(balancer, mcp_bus, "Observes agent load & informs balancing decisions")
+  Rel(balancer, gpu_orch, "Requests GPU allocation & policies")
+  Rel(gpu_orch, mcp_bus, "Reports GPU leasing & occupancy")
+
+  UpdateElementStyle(mcp_bus, $bgColor="#FFFAE6", $borderColor="#F6A623", $fontColor="#222")
+  UpdateElementStyle(auth, $bgColor="#F0F7FF", $borderColor="#2D9CDB", $fontColor="#222")
+  UpdateElementStyle(balancer, $bgColor="#FFF0F6", $borderColor="#FF2D55", $fontColor="#222")
+  UpdateElementStyle(gpu_orch, $bgColor="#F3FFF0", $borderColor="#27AE60", $fontColor="#222")
+
+  UpdateRelStyle(mcp_bus, auth, $textColor="#333", $lineColor="#2D9CDB", $offsetX="15")
+  UpdateRelStyle(balancer, mcp_bus, $textColor="#333", $lineColor="#FF2D55", $offsetX="5")
+  UpdateRelStyle(balancer, gpu_orch, $textColor="#333", $lineColor="#FF2D55", $offsetX="5")
+  UpdateRelStyle(gpu_orch, mcp_bus, $textColor="#333", $lineColor="#27AE60", $offsetX="15")
+
+  UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="1")

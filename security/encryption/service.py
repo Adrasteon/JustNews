@@ -1,28 +1,24 @@
 """
-JustNewsAgent Encryption Service
+JustNews Encryption Service
 
 Provides data encryption, key management, and secure communication capabilities.
 """
 
-import asyncio
-import logging
-import os
 import base64
-from typing import Dict, List, Optional, Any, Union
+import json
+import logging
+import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import Any
 
-from pydantic import BaseModel, Field
-from cryptography.fernet import Fernet, InvalidToken
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
-from cryptography.hazmat.primitives import serialization
-import secrets
 import aiofiles
-import json
+from cryptography.fernet import Fernet, InvalidToken
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from pydantic import BaseModel
 
-from ..models import SecurityConfig, EncryptionError
+from ..models import EncryptionError, SecurityConfig
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +28,7 @@ class EncryptionKey(BaseModel):
     id: str
     algorithm: str
     created_at: datetime
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
     is_active: bool = True
     key_type: str  # symmetric, asymmetric
     usage: str  # encrypt, sign, both
@@ -43,8 +39,8 @@ class EncryptedData(BaseModel):
     data: str  # Base64 encoded encrypted data
     key_id: str
     algorithm: str
-    iv: Optional[str] = None  # Initialization vector for AES-GCM
-    signature: Optional[str] = None  # For signed data
+    iv: str | None = None  # Initialization vector for AES-GCM
+    signature: str | None = None  # For signed data
 
 
 class KeyPair(BaseModel):
@@ -76,9 +72,9 @@ class EncryptionService:
     def __init__(self, config: SecurityConfig):
         self.config = config
         self.encryption_config = EncryptionConfig()
-        self._keys: Dict[str, Dict[str, Any]] = {}  # key_id -> key data
-        self._key_cache: Dict[str, Fernet] = {}  # key_id -> Fernet instance
-        self._master_key: Optional[bytes] = None
+        self._keys: dict[str, dict[str, Any]] = {}  # key_id -> key data
+        self._key_cache: dict[str, Fernet] = {}  # key_id -> Fernet instance
+        self._master_key: bytes | None = None
 
         # Initialize with master key
         self._master_key = self._get_master_key()
@@ -116,8 +112,8 @@ class EncryptionService:
             self._master_key = None
         logger.info("EncryptionService shutdown")
 
-    async def encrypt_data(self, data: Union[str, bytes], key_id: Optional[str] = None,
-                          algorithm: Optional[str] = None) -> str:
+    async def encrypt_data(self, data: str | bytes, key_id: str | None = None,
+                          algorithm: str | None = None) -> str:
         """
         Encrypt data using symmetric encryption
 
@@ -155,7 +151,7 @@ class EncryptionService:
             logger.error(f"Data encryption failed: {e}")
             raise EncryptionError(f"Encryption failed: {str(e)}")
 
-    async def decrypt_data(self, encrypted_data: str, key_id: Optional[str] = None) -> Union[str, bytes]:
+    async def decrypt_data(self, encrypted_data: str, key_id: str | None = None) -> str | bytes:
         """
         Decrypt data using symmetric encryption
 
@@ -355,7 +351,7 @@ class EncryptionService:
             logger.error(f"Key pair generation failed: {e}")
             raise EncryptionError(f"Key pair generation failed: {str(e)}")
 
-    async def sign_data(self, data: Union[str, bytes], key_id: str) -> str:
+    async def sign_data(self, data: str | bytes, key_id: str) -> str:
         """
         Sign data with private key
 
@@ -410,7 +406,7 @@ class EncryptionService:
             logger.error(f"Data signing failed: {e}")
             raise EncryptionError(f"Signing failed: {str(e)}")
 
-    async def verify_signature(self, data: Union[str, bytes], signature: str, key_id: str) -> bool:
+    async def verify_signature(self, data: str | bytes, signature: str, key_id: str) -> bool:
         """
         Verify data signature
 
@@ -461,7 +457,7 @@ class EncryptionService:
             logger.error(f"Signature verification failed: {e}")
             return False
 
-    async def get_active_keys(self) -> List[Dict[str, Any]]:
+    async def get_active_keys(self) -> list[dict[str, Any]]:
         """
         Get list of active encryption keys
 
@@ -490,7 +486,7 @@ class EncryptionService:
 
         return active_keys
 
-    async def get_status(self) -> Dict[str, Any]:
+    async def get_status(self) -> dict[str, Any]:
         """
         Get encryption service status
 
@@ -559,7 +555,7 @@ class EncryptionService:
 
         return fernet
 
-    async def _find_decryption_key(self, encrypted_data: bytes) -> Optional[str]:
+    async def _find_decryption_key(self, encrypted_data: bytes) -> str | None:
         """Try to find the correct decryption key by attempting decryption"""
         for key_id in self._keys:
             try:
@@ -592,7 +588,7 @@ class EncryptionService:
     async def _load_keys(self) -> None:
         """Load encryption keys from storage"""
         try:
-            async with aiofiles.open("data/encryption_keys.json", "r") as f:
+            async with aiofiles.open("data/encryption_keys.json") as f:
                 data = json.loads(await f.read())
                 self._keys = data.get("keys", {})
                 logger.info(f"Loaded {len(self._keys)} encryption keys")

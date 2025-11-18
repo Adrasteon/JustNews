@@ -1,13 +1,14 @@
 [Unit]
-Description=JustNewsAgent Crawl4AI Bridge (FastAPI wrapper around Crawl4AI)
+Description=JustNews Crawl4AI Bridge (FastAPI wrapper around Crawl4AI)
 After=network.target
 
 [Service]
 Type=simple
 User=justnews
 Group=justnews
-EnvironmentFile=/home/adra/JustNewsAgent-Clean/global.env
-WorkingDirectory=/home/adra/JustNewsAgent-Clean
+Environment=SERVICE_DIR=/home/adra/JustNews
+EnvironmentFile=/home/adra/JustNews/global.env
+WorkingDirectory=$SERVICE_DIR
 # Use the project's Python environment or system python; replace with suitable path
 ExecStart=/usr/bin/env uvicorn agents.c4ai.server:app --host 127.0.0.1 --port 3308 --loop asyncio --http auto
 Restart=on-failure

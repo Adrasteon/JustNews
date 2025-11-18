@@ -35,11 +35,8 @@ resolve_project_root() {
         if _is_valid_root "$SERVICE_DIR"; then
             echo "$SERVICE_DIR"; return 0
         fi
-        if _is_valid_root "$SERVICE_DIR/JustNewsAgent"; then
-            echo "$SERVICE_DIR/JustNewsAgent"; return 0
-        fi
-        if _is_valid_root "$SERVICE_DIR/JustNewsAgent-Clean"; then
-            echo "$SERVICE_DIR/JustNewsAgent-Clean"; return 0
+        if _is_valid_root "$SERVICE_DIR/JustNews"; then
+            echo "$SERVICE_DIR/JustNews"; return 0
         fi
     fi
 
@@ -51,7 +48,7 @@ resolve_project_root() {
     fi
 
     # Final fallback: known path on this machine
-    echo "/home/adra/JustNewsAgent-Clean"; return 0
+    echo "${SERVICE_DIR:-/home/adra/JustNews}"; return 0
 }
 
 PROJECT_ROOT="$(resolve_project_root)"
@@ -87,7 +84,7 @@ validate_agent_name() {
     if [[ -z "$agent" ]]; then
         log_error "Agent name is required"
         log_info "Usage: $SCRIPT_NAME <agent_name>"
-        log_info "Available agents: mcp_bus, chief_editor, scout, fact_checker, analyst, synthesizer, critic, memory, reasoning, newsreader, dashboard, analytics, balancer, archive, hitl_service, crawl4ai, gpu_orchestrator, crawler, crawler_control"
+        log_info "Available agents: mcp_bus, chief_editor, scout, fact_checker, analyst, synthesizer, critic, memory, reasoning, newsreader, dashboard, analytics, archive, hitl_service, crawl4ai, gpu_orchestrator, crawler, crawler_control"
         exit 1
     fi
 
@@ -105,7 +102,6 @@ validate_agent_name() {
         "newsreader"
         "dashboard"
         "analytics"
-        "balancer"
         "archive"
         "hitl_service"
         "crawl4ai"
@@ -261,6 +257,7 @@ check_python_deps_and_exit_if_missing() {
         fi
     fi
     if [[ -z "$py_cmd" ]]; then
+    # Prefer PYTHON_BIN from env or default to canonical conda interpreter.
     local py="${PYTHON_BIN:-/home/adra/miniconda3/envs/justnews-v2-py312/bin/python}"
         if [[ ! -x "$py" ]]; then
             py="$(command -v python3 || command -v python || true)"
@@ -325,7 +322,7 @@ PYCODE
     fi
     missing="$probe_output"
 
-    if [[ -n "$missing" ]]; then
+        if [[ -n "$missing" ]]; then
         log_error "Missing python modules for agent '$agent': $missing"
         if [[ "$py_cmd" == conda* ]]; then
             log_error "Install into the developer conda env (example): conda run -n ${conda_env_to_try} pip install $missing"
@@ -339,6 +336,20 @@ PYCODE
 
     # Export the resolved python command so callers can reuse the same interpreter selection
     export SELECTED_PY_CMD="$py_cmd"
+    # Provide a helpful warning if it's not the conda env python
+    check_python_interpreter_is_conda || true
+}
+
+# If we detect the selected interpreter is not the canonical conda environment,
+# warn about it to make debugging easier (does not change behavior).
+check_python_interpreter_is_conda() {
+    local cmd="${SELECTED_PY_CMD:-${PYTHON_BIN:-}}"
+    # If we have an explicit interpreter path and it isn't the conda env python,
+    # warn the operator so they can verify their environment.
+    if [[ -n "$cmd" && "$cmd" != *"justnews-v2-py312" ]]; then
+        log_warning "Selected python ($cmd) does not appear to be the developer conda env 'justnews-v2-py312'"
+        log_warning "If you intended to use the conda environment, set PYTHON_BIN in /etc/justnews/global.env or enable PATH to include conda's bin"
+    fi
 }
 
 # Start the agent
@@ -429,7 +440,7 @@ AGENTS:
     newsreader      News processing
     dashboard       Web interface
     analytics       System analytics and monitoring
-    balancer        Load balancing and resource management
+    # balancer removed: responsibilities moved to critic/analytics/gpu_orchestrator
     archive         Content archiving and retrieval
     crawl4ai        Crawl4AI bridge (local HTTP crawler bridge)
     hitl_service    Human-in-the-loop labeling service (port 8040 by default)

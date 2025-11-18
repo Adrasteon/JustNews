@@ -1,22 +1,17 @@
 """
-Authentication Tools for JustNewsAgent
+Authentication Tools for JustNews
 
 Wrapper functions for authentication operations that can be called by other agents
-and services in the JustNewsAgent system.
+and services in the JustNews system.
 """
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
-from common.observability import get_logger
 
-from agents.common.auth_models import (
-    UserRole,
-    UserStatus,
-    verify_token,
-    get_user_by_id
-)
+from agents.common.auth_models import UserStatus, get_user_by_id, verify_token
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 
@@ -25,7 +20,7 @@ AUTH_SERVICE_URL = os.environ.get("AUTH_SERVICE_URL", "http://localhost:8009")
 AUTH_SERVICE_TIMEOUT = int(os.environ.get("AUTH_SERVICE_TIMEOUT", "30"))
 
 
-def authenticate_user(username_or_email: str, password: str) -> Optional[Dict[str, Any]]:
+def authenticate_user(username_or_email: str, password: str) -> dict[str, Any] | None:
     """
     Authenticate a user with username/email and password.
 
@@ -61,7 +56,7 @@ def authenticate_user(username_or_email: str, password: str) -> Optional[Dict[st
         return None
 
 
-def validate_access_token(token: str) -> Optional[Dict[str, Any]]:
+def validate_access_token(token: str) -> dict[str, Any] | None:
     """
     Validate an access token and return user information.
 
@@ -111,7 +106,7 @@ def validate_access_token(token: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def refresh_user_token(refresh_token: str) -> Optional[Dict[str, Any]]:
+def refresh_user_token(refresh_token: str) -> dict[str, Any] | None:
     """
     Refresh an access token using a refresh token.
 
@@ -179,7 +174,7 @@ def check_user_permission(user_id: int, required_role: str) -> bool:
         return False
 
 
-def get_user_profile(user_id: int) -> Optional[Dict[str, Any]]:
+def get_user_profile(user_id: int) -> dict[str, Any] | None:
     """
     Get user profile information.
 
@@ -209,7 +204,7 @@ def get_user_profile(user_id: int) -> Optional[Dict[str, Any]]:
         return None
 
 
-def check_auth_service_health() -> Dict[str, Any]:
+def check_auth_service_health() -> dict[str, Any]:
     """
     Check the health status of the authentication service.
 
@@ -245,7 +240,7 @@ def check_auth_service_health() -> Dict[str, Any]:
         }
 
 
-def create_user_account(user_data: Dict[str, Any]) -> Optional[int]:
+def create_user_account(user_data: dict[str, Any]) -> int | None:
     """
     Create a new user account.
 

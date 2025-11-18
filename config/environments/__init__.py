@@ -1,4 +1,4 @@
-# JustNewsAgent Configuration Management - Environment Profiles
+# JustNews Configuration Management - Environment Profiles
 # Phase 2B: Configuration Management Refactoring
 
 """
@@ -12,15 +12,16 @@ Provides environment-specific configuration profiles with:
 - Profile auditing and versioning
 """
 
+import hashlib
 import json
 import os
-from pathlib import Path
-from typing import Dict, List, Optional, Union, Any, Set
 from dataclasses import dataclass, field
 from datetime import datetime
-import hashlib
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Union
 
 from common.observability import get_logger
+
 from ..schemas import Environment, JustNewsConfig, create_default_config
 
 logger = get_logger(__name__)
@@ -39,14 +40,14 @@ class EnvironmentProfile:
     environment: Environment
     description: str = ""
     base_config: JustNewsConfig = field(default_factory=create_default_config)
-    overrides: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    overrides: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     # Profile metadata
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
     version: str = "1.0.0"
-    checksum: Optional[str] = None
+    checksum: str | None = None
 
     def __post_init__(self):
         """Initialize profile with computed fields"""
@@ -86,7 +87,7 @@ class EnvironmentProfile:
         except Exception as e:
             raise ValueError(f"Failed to apply profile overrides for {self.name}: {e}")
 
-    def _deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]):
+    def _deep_merge(self, base: dict[str, Any], override: dict[str, Any]):
         """Deep merge override dictionary into base dictionary"""
         for key, value in override.items():
             if key in base and isinstance(base[key], dict) and isinstance(value, dict):
@@ -94,7 +95,7 @@ class EnvironmentProfile:
             else:
                 base[key] = value
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """
         Validate profile consistency
 
@@ -130,7 +131,7 @@ class EnvironmentProfile:
         """Check if profile has a specific override"""
         return section in self.overrides and key in self.overrides[section]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert profile to dictionary for serialization"""
         return {
             "name": self.name,
@@ -145,7 +146,7 @@ class EnvironmentProfile:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'EnvironmentProfile':
+    def from_dict(cls, data: dict[str, Any]) -> 'EnvironmentProfile':
         """Create profile from dictionary"""
         # Convert environment string back to enum
         environment = Environment(data["environment"])
@@ -178,7 +179,7 @@ class EnvironmentProfileManager:
     - Profile auditing and versioning
     """
 
-    def __init__(self, profiles_dir: Optional[Union[str, Path]] = None):
+    def __init__(self, profiles_dir: str | Path | None = None):
         """
         Initialize profile manager
 
@@ -189,8 +190,8 @@ class EnvironmentProfileManager:
         self.profiles_dir.mkdir(parents=True, exist_ok=True)
 
         # Profile cache
-        self._profiles: Dict[str, EnvironmentProfile] = {}
-        self._loaded_profiles: Set[str] = set()
+        self._profiles: dict[str, EnvironmentProfile] = {}
+        self._loaded_profiles: set[str] = set()
 
         # Load built-in profiles
         self._load_builtin_profiles()
@@ -332,7 +333,7 @@ class EnvironmentProfileManager:
             return
 
         try:
-            with open(profile_file, 'r') as f:
+            with open(profile_file) as f:
                 data = json.load(f)
 
             profile = EnvironmentProfile.from_dict(data)
@@ -387,9 +388,9 @@ class EnvironmentProfileManager:
         self,
         name: str,
         environment: Environment,
-        base_profile: Optional[str] = None,
+        base_profile: str | None = None,
         description: str = "",
-        overrides: Optional[Dict[str, Any]] = None
+        overrides: dict[str, Any] | None = None
     ) -> EnvironmentProfile:
         """
         Create new environment profile
@@ -468,7 +469,7 @@ class EnvironmentProfileManager:
         # Default to development
         return Environment.DEVELOPMENT
 
-    def list_profiles(self) -> List[str]:
+    def list_profiles(self) -> list[str]:
         """List all available profile names"""
         # Load any new profiles from files
         self._load_all_profiles_from_files()
@@ -485,7 +486,7 @@ class EnvironmentProfileManager:
             if profile_name not in self._loaded_profiles:
                 self._load_profile_from_file(profile_name)
 
-    def validate_all_profiles(self) -> Dict[str, List[str]]:
+    def validate_all_profiles(self) -> dict[str, list[str]]:
         """
         Validate all profiles
 
@@ -502,7 +503,7 @@ class EnvironmentProfileManager:
 
         return results
 
-    def get_profile_info(self, name: str) -> Dict[str, Any]:
+    def get_profile_info(self, name: str) -> dict[str, Any]:
         """Get profile metadata"""
         profile = self.get_profile(name)
 
@@ -522,7 +523,7 @@ class EnvironmentProfileManager:
 # GLOBAL PROFILE MANAGER INSTANCE
 # ============================================================================
 
-_profile_manager: Optional[EnvironmentProfileManager] = None
+_profile_manager: EnvironmentProfileManager | None = None
 
 def get_profile_manager() -> EnvironmentProfileManager:
     """Get global profile manager instance"""

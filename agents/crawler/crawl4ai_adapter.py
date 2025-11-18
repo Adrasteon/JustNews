@@ -8,18 +8,19 @@ remains unchanged.
 """
 from __future__ import annotations
 
-import importlib
 import asyncio
-from collections.abc import Mapping, Sequence
+import importlib
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from types import SimpleNamespace
 from typing import Any
 from urllib.parse import urljoin, urlparse
-from types import SimpleNamespace
 
 from agents.sites.generic_site_crawler import GenericSiteCrawler, SiteConfig
 from common.json_utils import make_json_safe
 from common.observability import get_logger
+
 try:  # Metrics are optional; crawler operates without Prometheus stack.
     from common.metrics import get_metrics
 except ImportError:  # pragma: no cover - metrics disabled in some environments
@@ -415,7 +416,7 @@ def _build_article_from_adaptive_doc(
     if coverage_stats:
         adaptive_run["coverage_stats"] = make_json_safe(dict(coverage_stats))
     if hasattr(adaptive, "is_sufficient"):
-        adaptive_run["is_sufficient"] = bool(getattr(adaptive, "is_sufficient"))
+        adaptive_run["is_sufficient"] = bool(adaptive.is_sufficient)
     pages_crawled = len(getattr(state, "crawled_urls", []) or [])
     if pages_crawled:
         adaptive_run["pages_crawled"] = pages_crawled

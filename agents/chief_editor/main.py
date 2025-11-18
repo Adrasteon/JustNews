@@ -31,35 +31,36 @@ All endpoints include security validation, error handling, and comprehensive log
 import os
 import time
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse, Response
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from common.observability import get_logger
 from common.metrics import JustNewsMetrics
-from common.version_utils import get_version
+from common.observability import get_logger
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
-    from database.utils.migrated_database_utils import create_database_service  # type: ignore
+    from database.utils.migrated_database_utils import (
+        create_database_service,  # type: ignore
+    )
 except Exception:
     create_database_service = None
 
 from .tools import (
+    analyze_editorial_sentiment,
     assess_content_quality,
     categorize_content,
-    analyze_editorial_sentiment,
+    format_editorial_output,
     generate_editorial_commentary,
-    make_editorial_decision,
-    request_story_brief,
-    publish_story,
-    review_evidence,
     health_check,
+    make_editorial_decision,
+    publish_story,
+    request_story_brief,
+    review_evidence,
     validate_editorial_result,
-    format_editorial_output
 )
 
 # MCP Bus integration
@@ -80,7 +81,7 @@ MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 class ContentAnalysisRequest(BaseModel):
     """Base request model for content analysis operations."""
     content: str = Field(..., min_length=1, max_length=100000, description="Content to analyze")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+    metadata: dict[str, Any] | None = Field(None, description="Additional metadata")
     format_output: str = Field("json", description="Output format (json, text, markdown)")
 
 class QualityAssessmentRequest(ContentAnalysisRequest):
@@ -124,7 +125,7 @@ class EvidenceReviewRequest(BaseModel):
 class EditorialResponse(BaseModel):
     """Base response model for editorial operations."""
     success: bool = Field(..., description="Operation success status")
-    result: Dict[str, Any] = Field(..., description="Operation result data")
+    result: dict[str, Any] = Field(..., description="Operation result data")
     processing_time: float = Field(..., description="Processing time in seconds")
     timestamp: float = Field(..., description="Response timestamp")
     format: str = Field(..., description="Output format used")
@@ -133,10 +134,10 @@ class HealthResponse(BaseModel):
     """Response model for health checks."""
     timestamp: float = Field(..., description="Health check timestamp")
     overall_status: str = Field(..., description="Overall health status")
-    components: Dict[str, Any] = Field(..., description="Component health status")
-    model_status: Dict[str, Any] = Field(..., description="AI model status")
-    processing_stats: Dict[str, Any] = Field(..., description="Processing statistics")
-    issues: Optional[List[str]] = Field(None, description="List of issues found")
+    components: dict[str, Any] = Field(..., description="Component health status")
+    model_status: dict[str, Any] = Field(..., description="AI model status")
+    processing_stats: dict[str, Any] = Field(..., description="Processing statistics")
+    issues: list[str] | None = Field(None, description="List of issues found")
 
 class StatsResponse(BaseModel):
     """Response model for statistics."""

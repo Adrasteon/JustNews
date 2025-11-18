@@ -1,24 +1,26 @@
 """
-JustNewsAgent Log Aggregator
+JustNews Log Aggregator
 
 Centralized log collection, processing, and distribution system for the
-JustNewsAgent observability platform.
+JustNews observability platform.
 """
 
 import asyncio
 import json
-import aiofiles
-import aiohttp
-from typing import Dict, List, Optional, Any, Set, Callable
-from datetime import datetime, timedelta
-from dataclasses import dataclass
-from enum import Enum
 import logging
 import os
-from pathlib import Path
 import secrets
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from pathlib import Path
+from typing import Any
 
-from .log_collector import LogEntry, LogLevel
+import aiofiles
+import aiohttp
+
+from .log_collector import LogEntry
 
 
 class AggregationStrategy(Enum):
@@ -54,34 +56,34 @@ class StorageConfig:
     """Storage backend configuration"""
     backend: StorageBackend = StorageBackend.FILE
     file_path: str = "logs/aggregated"
-    elasticsearch_url: Optional[str] = None
+    elasticsearch_url: str | None = None
     elasticsearch_index: str = "justnews-logs"
-    cloudwatch_log_group: Optional[str] = None
-    splunk_url: Optional[str] = None
-    splunk_token: Optional[str] = None
+    cloudwatch_log_group: str | None = None
+    splunk_url: str | None = None
+    splunk_token: str | None = None
 
 
 class LogAggregator:
     """
-    Centralized log aggregator for JustNewsAgent.
+    Centralized log aggregator for JustNews.
 
     Collects logs from multiple agents, aggregates them according to configured
     strategies, and stores them in various backends for analysis and retention.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or self._get_default_config()
         self.aggregation_config = AggregationConfig(**self.config.get('aggregation', {}))
         self.storage_config = StorageConfig(**self.config.get('storage', {}))
 
         # Aggregation state
-        self._log_buffer: List[LogEntry] = []
+        self._log_buffer: list[LogEntry] = []
         self._last_flush_time = datetime.utcnow()
-        self._flush_task: Optional[asyncio.Task] = None
+        self._flush_task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
 
         # Storage backends
-        self._storage_backends: List[Callable] = []
+        self._storage_backends: list[Callable] = []
         self._setup_storage_backends()
 
         # Metrics
@@ -92,7 +94,7 @@ class LogAggregator:
         # Setup cleanup task
         self._cleanup_task = asyncio.create_task(self._cleanup_old_logs())
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default aggregator configuration"""
         return {
             'aggregation': {
@@ -208,7 +210,7 @@ class LogAggregator:
             except Exception as e:
                 logging.error(f"Periodic flush error: {e}")
 
-    async def _store_to_file(self, batch_data: List[Dict[str, Any]]) -> None:
+    async def _store_to_file(self, batch_data: list[dict[str, Any]]) -> None:
         """Store logs to file system"""
         try:
             # Create timestamped filename
@@ -232,7 +234,7 @@ class LogAggregator:
             logging.error(f"File storage error: {e}")
             raise
 
-    async def _store_to_elasticsearch(self, batch_data: List[Dict[str, Any]]) -> None:
+    async def _store_to_elasticsearch(self, batch_data: list[dict[str, Any]]) -> None:
         """Store logs to Elasticsearch"""
         if not self.storage_config.elasticsearch_url:
             return
@@ -265,12 +267,12 @@ class LogAggregator:
             logging.error(f"Elasticsearch storage error: {e}")
             raise
 
-    async def _store_to_opensearch(self, batch_data: List[Dict[str, Any]]) -> None:
+    async def _store_to_opensearch(self, batch_data: list[dict[str, Any]]) -> None:
         """Store logs to OpenSearch (similar to Elasticsearch)"""
         # OpenSearch uses the same API as Elasticsearch
         await self._store_to_elasticsearch(batch_data)
 
-    async def _store_to_cloudwatch(self, batch_data: List[Dict[str, Any]]) -> None:
+    async def _store_to_cloudwatch(self, batch_data: list[dict[str, Any]]) -> None:
         """Store logs to AWS CloudWatch"""
         if not self.storage_config.cloudwatch_log_group:
             return
@@ -285,7 +287,7 @@ class LogAggregator:
             logging.error(f"CloudWatch storage error: {e}")
             raise
 
-    async def _store_to_splunk(self, batch_data: List[Dict[str, Any]]) -> None:
+    async def _store_to_splunk(self, batch_data: list[dict[str, Any]]) -> None:
         """Store logs to Splunk"""
         if not self.storage_config.splunk_url or not self.storage_config.splunk_token:
             return
@@ -343,7 +345,7 @@ class LogAggregator:
             except Exception as e:
                 logging.error(f"Log cleanup error: {e}")
 
-    async def get_status(self) -> Dict[str, Any]:
+    async def get_status(self) -> dict[str, Any]:
         """Get aggregator status"""
         return {
             'logs_processed': self._logs_processed,
@@ -366,9 +368,9 @@ class LogAggregator:
 
 
 # Global aggregator instance
-_global_aggregator: Optional[LogAggregator] = None
+_global_aggregator: LogAggregator | None = None
 
-def get_log_aggregator(config: Optional[Dict[str, Any]] = None) -> LogAggregator:
+def get_log_aggregator(config: dict[str, Any] | None = None) -> LogAggregator:
     """Get or create global log aggregator"""
     global _global_aggregator
 
@@ -377,7 +379,7 @@ def get_log_aggregator(config: Optional[Dict[str, Any]] = None) -> LogAggregator
 
     return _global_aggregator
 
-def init_log_aggregation(config: Optional[Dict[str, Any]] = None) -> LogAggregator:
+def init_log_aggregation(config: dict[str, Any] | None = None) -> LogAggregator:
     """Initialize log aggregation system"""
     aggregator = LogAggregator(config)
     global _global_aggregator

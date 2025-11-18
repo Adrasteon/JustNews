@@ -7,7 +7,7 @@ asynchronously using AI for quality testing in the JustNews V4 system.
 
 Prerequisites:
 1. All agents must be running (use ./start_services_daemon.sh)
-2. PostgreSQL database must be available
+2. MariaDB database must be available (PostgreSQL support is deprecated)
 3. Model cache directories must exist
 
 Usage Examples:
@@ -24,11 +24,10 @@ Usage Examples:
     python run_large_scale_crawl.py --mode ai_enhanced --quality 0.7
 """
 
-import asyncio
 import subprocess
 import sys
-import time
 from pathlib import Path
+
 
 def check_services_running():
     """Check if required services are running"""

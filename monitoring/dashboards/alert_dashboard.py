@@ -1,22 +1,23 @@
 """
-Alert Dashboard for JustNewsAgent Monitoring System
+Alert Dashboard for JustNews Monitoring System
 
 This module provides centralized alert visualization and management for the
-JustNewsAgent monitoring system. It handles alert aggregation, prioritization,
+JustNews monitoring system. It handles alert aggregation, prioritization,
 notification routing, and alert lifecycle management.
 
-Author: JustNewsAgent Development Team
+Author: JustNews Development Team
 Date: October 22, 2025
 """
 
 import asyncio
 import json
 import logging
+import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Set, Callable, Union
 from datetime import datetime, timedelta
 from enum import Enum
-import uuid
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -49,13 +50,13 @@ class AlertRule(BaseModel):
     """Alert rule configuration"""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique rule identifier")
     name: str = Field(..., description="Rule name")
-    description: Optional[str] = Field(None, description="Rule description")
+    description: str | None = Field(None, description="Rule description")
     query: str = Field(..., description="Prometheus-style query or condition")
     severity: AlertSeverity = Field(..., description="Alert severity level")
     threshold: float = Field(..., description="Alert threshold value")
     duration: int = Field(300, description="Duration in seconds before alert fires")
-    labels: Dict[str, str] = Field(default_factory=dict, description="Alert labels")
-    annotations: Dict[str, str] = Field(default_factory=dict, description="Alert annotations")
+    labels: dict[str, str] = Field(default_factory=dict, description="Alert labels")
+    annotations: dict[str, str] = Field(default_factory=dict, description="Alert annotations")
     enabled: bool = Field(True, description="Whether the rule is enabled")
 
     @field_validator('duration')
@@ -76,49 +77,49 @@ class Alert(BaseModel):
     summary: str = Field(..., description="Alert summary")
     description: str = Field(..., description="Detailed alert description")
     value: float = Field(..., description="Alert value")
-    labels: Dict[str, str] = Field(default_factory=dict, description="Alert labels")
-    annotations: Dict[str, str] = Field(default_factory=dict, description="Alert annotations")
+    labels: dict[str, str] = Field(default_factory=dict, description="Alert labels")
+    annotations: dict[str, str] = Field(default_factory=dict, description="Alert annotations")
     starts_at: datetime = Field(default_factory=datetime.now, description="Alert start time")
-    ends_at: Optional[datetime] = Field(None, description="Alert end time")
-    acknowledged_by: Optional[str] = Field(None, description="User who acknowledged")
-    acknowledged_at: Optional[datetime] = Field(None, description="Acknowledgement time")
-    resolved_by: Optional[str] = Field(None, description="User who resolved")
-    resolved_at: Optional[datetime] = Field(None, description="Resolution time")
+    ends_at: datetime | None = Field(None, description="Alert end time")
+    acknowledged_by: str | None = Field(None, description="User who acknowledged")
+    acknowledged_at: datetime | None = Field(None, description="Acknowledgement time")
+    resolved_by: str | None = Field(None, description="User who resolved")
+    resolved_at: datetime | None = Field(None, description="Resolution time")
 
 class NotificationConfig(BaseModel):
     """Notification configuration"""
     channel: NotificationChannel = Field(..., description="Notification channel")
     enabled: bool = Field(True, description="Whether notifications are enabled")
-    recipients: List[str] = Field(default_factory=list, description="Notification recipients")
-    template: Optional[str] = Field(None, description="Notification template")
-    filters: Dict[str, Any] = Field(default_factory=dict, description="Notification filters")
+    recipients: list[str] = Field(default_factory=list, description="Notification recipients")
+    template: str | None = Field(None, description="Notification template")
+    filters: dict[str, Any] = Field(default_factory=dict, description="Notification filters")
 
 @dataclass
 class AlertDashboard:
     """
-    Centralized alert dashboard for JustNewsAgent monitoring system.
+    Centralized alert dashboard for JustNews monitoring system.
 
     This class manages alert rules, alert instances, notification routing,
     and provides a centralized interface for alert visualization and management.
     """
 
     # Alert rules
-    rules: Dict[str, AlertRule] = field(default_factory=dict)
+    rules: dict[str, AlertRule] = field(default_factory=dict)
 
     # Active alerts
-    active_alerts: Dict[str, Alert] = field(default_factory=dict)
+    active_alerts: dict[str, Alert] = field(default_factory=dict)
 
     # Alert history
-    alert_history: List[Alert] = field(default_factory=list)
+    alert_history: list[Alert] = field(default_factory=list)
 
     # Notification configurations
-    notification_configs: Dict[NotificationChannel, NotificationConfig] = field(default_factory=dict)
+    notification_configs: dict[NotificationChannel, NotificationConfig] = field(default_factory=dict)
 
     # Alert handlers
-    alert_handlers: Dict[str, List[Callable]] = field(default_factory=dict)
+    alert_handlers: dict[str, list[Callable]] = field(default_factory=dict)
 
     # Dashboard statistics
-    stats: Dict[str, Any] = field(default_factory=lambda: {
+    stats: dict[str, Any] = field(default_factory=lambda: {
         "total_alerts": 0,
         "active_alerts": 0,
         "acknowledged_alerts": 0,
@@ -220,7 +221,7 @@ class AlertDashboard:
             NotificationConfig(
                 channel=NotificationChannel.EMAIL,
                 enabled=True,
-                recipients=["alerts@justnewsagent.com"],
+                recipients=["alerts@justnews.com"],
                 filters={"severity": ["high", "critical"]}
             ),
             NotificationConfig(
@@ -259,7 +260,7 @@ class AlertDashboard:
         else:
             logger.warning(f"Alert rule with ID {rule_id} not found")
 
-    def update_rule(self, rule_id: str, updates: Dict[str, Any]):
+    def update_rule(self, rule_id: str, updates: dict[str, Any]):
         """Update an alert rule"""
         if rule_id not in self.rules:
             raise ValueError(f"Alert rule with ID {rule_id} not found")
@@ -283,7 +284,7 @@ class AlertDashboard:
             self.rules[rule_id].enabled = False
             logger.info(f"Disabled alert rule '{self.rules[rule_id].name}'")
 
-    async def evaluate_rules(self, metrics_data: Dict[str, Any]):
+    async def evaluate_rules(self, metrics_data: dict[str, Any]):
         """
         Evaluate alert rules against metrics data
 
@@ -301,7 +302,7 @@ class AlertDashboard:
             except Exception as e:
                 logger.error(f"Error evaluating rule '{rule.name}': {e}")
 
-    async def _evaluate_condition(self, rule: AlertRule, metrics_data: Dict[str, Any]) -> bool:
+    async def _evaluate_condition(self, rule: AlertRule, metrics_data: dict[str, Any]) -> bool:
         """Evaluate alert rule condition"""
         # Simple threshold-based evaluation
         # In a real implementation, this would parse the query and evaluate it
@@ -321,7 +322,7 @@ class AlertDashboard:
 
         return False
 
-    async def _fire_alert(self, rule: AlertRule, metrics_data: Dict[str, Any]):
+    async def _fire_alert(self, rule: AlertRule, metrics_data: dict[str, Any]):
         """Fire an alert for a rule"""
         # Check if alert already exists
         existing_alert = None
@@ -444,7 +445,7 @@ class AlertDashboard:
             except Exception as e:
                 logger.error(f"Failed to send {channel.value} notification: {e}")
 
-    def _matches_filters(self, alert: Alert, filters: Dict[str, Any]) -> bool:
+    def _matches_filters(self, alert: Alert, filters: dict[str, Any]) -> bool:
         """Check if alert matches notification filters"""
         for filter_key, filter_values in filters.items():
             if filter_key == "severity":
@@ -503,27 +504,27 @@ class AlertDashboard:
         self.alert_handlers[event_type].append(handler)
         logger.info(f"Added alert handler for event type '{event_type}'")
 
-    def get_active_alerts(self, severity_filter: Optional[AlertSeverity] = None) -> List[Alert]:
+    def get_active_alerts(self, severity_filter: AlertSeverity | None = None) -> list[Alert]:
         """Get active alerts, optionally filtered by severity"""
         alerts = list(self.active_alerts.values())
         if severity_filter:
             alerts = [a for a in alerts if a.severity == severity_filter]
         return sorted(alerts, key=lambda x: x.starts_at, reverse=True)
 
-    def get_alert_history(self, days: int = 7) -> List[Alert]:
+    def get_alert_history(self, days: int = 7) -> list[Alert]:
         """Get alert history for specified days"""
         cutoff = datetime.now() - timedelta(days=days)
         return [a for a in self.alert_history if a.starts_at >= cutoff]
 
-    def get_alert_stats(self) -> Dict[str, Any]:
+    def get_alert_stats(self) -> dict[str, Any]:
         """Get alert statistics"""
         return self.stats.copy()
 
-    def get_rules(self) -> List[AlertRule]:
+    def get_rules(self) -> list[AlertRule]:
         """Get all alert rules"""
         return list(self.rules.values())
 
-    def get_rule(self, rule_id: str) -> Optional[AlertRule]:
+    def get_rule(self, rule_id: str) -> AlertRule | None:
         """Get specific alert rule"""
         return self.rules.get(rule_id)
 

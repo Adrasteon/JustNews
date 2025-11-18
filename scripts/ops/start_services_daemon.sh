@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # start_services_daemon.sh
-# Starts the justnewsagent set of FastAPI/uvicorn agent services using the
+# Starts the justnews set of FastAPI/uvicorn agent services using the
 # `justnews-v2-py312` conda environment. Performs simple health checks and
 # writes per-agent logs to ./logs/
 
@@ -31,7 +31,7 @@ AGENTS=(
   "db_worker|agents.db_worker.worker:app|8010"
   "dashboard|agents.dashboard.main:app|8011"
   "analytics|agents.analytics.dashboard:analytics_app|8012"
-  "balancer|agents.balancer.main:app|8013"
+  # Balancer removed - responsibilities moved to critic/analytics/gpu_orchestrator
   # Newly added GPU orchestrator service (was missing previously)
   "gpu_orchestrator|agents.gpu_orchestrator.main:app|8014"
   "archive_graphql|agents.archive.archive_graphql:app|8020"
@@ -158,19 +158,22 @@ export BASE_MODEL_DIR="${BASE_MODEL_DIR:-"$DEFAULT_BASE_MODELS_DIR/agents"}"
 # Set STRICT_MODEL_STORE=0 to allow fallbacks for development/testing.
 export STRICT_MODEL_STORE="${STRICT_MODEL_STORE:-1}"
 
-# PostgreSQL defaults used by agents/tests when not explicitly provided elsewhere.
-# These can be overridden in the environment for CI or developer machines.
-export POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
-export POSTGRES_DB="${POSTGRES_DB:-justnews}"
-export POSTGRES_USER="${POSTGRES_USER:-justnews_user}"
-export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-password123}"
+# Primary database defaults: prefer MariaDB/MYSQL configuration. Postgres
+# environment variables remain supported as a fallback for legacy systems
+# but MariaDB is the default target moving forward.
+export MARIADB_HOST="${MARIADB_HOST:-localhost}"
+export MARIADB_PORT="${MARIADB_PORT:-3306}"
+export MARIADB_DB="${MARIADB_DB:-justnews}"
+export MARIADB_USER="${MARIADB_USER:-justnews_user}"
+export MARIADB_PASSWORD="${MARIADB_PASSWORD:-password123}"
 
-# Mirror to JUSTNEWS_DB_* variables for scripts (e.g., news_outlets.py) if not explicitly set
-export JUSTNEWS_DB_HOST="${JUSTNEWS_DB_HOST:-$POSTGRES_HOST}"
-export JUSTNEWS_DB_PORT="${JUSTNEWS_DB_PORT:-5432}"
-export JUSTNEWS_DB_NAME="${JUSTNEWS_DB_NAME:-$POSTGRES_DB}"
-export JUSTNEWS_DB_USER="${JUSTNEWS_DB_USER:-$POSTGRES_USER}"
-export JUSTNEWS_DB_PASSWORD="${JUSTNEWS_DB_PASSWORD:-$POSTGRES_PASSWORD}"
+# Mirror to JUSTNEWS_DB_* variables for scripts (e.g., news_outlets.py) if not explicitly set.
+# Prefer MARIADB_* variables, else fall back to the legacy POSTGRES_* values for portability.
+export JUSTNEWS_DB_HOST="${JUSTNEWS_DB_HOST:-${MARIADB_HOST:-${POSTGRES_HOST:-localhost}}}"
+export JUSTNEWS_DB_PORT="${JUSTNEWS_DB_PORT:-${MARIADB_PORT:-${POSTGRES_PORT:-3306}}}"
+export JUSTNEWS_DB_NAME="${JUSTNEWS_DB_NAME:-${MARIADB_DB:-${POSTGRES_DB:-justnews}}}"
+export JUSTNEWS_DB_USER="${JUSTNEWS_DB_USER:-${MARIADB_USER:-${POSTGRES_USER:-justnews_user}}}"
+export JUSTNEWS_DB_PASSWORD="${JUSTNEWS_DB_PASSWORD:-${MARIADB_PASSWORD:-${POSTGRES_PASSWORD:-password123}}}"
 
 # Per-agent cache envs (only set if not already set)
 export SYNTHESIZER_MODEL_CACHE="${SYNTHESIZER_MODEL_CACHE:-"$DEFAULT_BASE_MODELS_DIR/agents/synthesizer/models"}"
@@ -179,13 +182,12 @@ export CHIEF_EDITOR_MODEL_CACHE="${CHIEF_EDITOR_MODEL_CACHE:-"$DEFAULT_BASE_MODE
 export FACT_CHECKER_MODEL_CACHE="${FACT_CHECKER_MODEL_CACHE:-"$DEFAULT_BASE_MODELS_DIR/agents/fact_checker/models"}"
 export CRITIC_MODEL_CACHE="${CRITIC_MODEL_CACHE:-"$DEFAULT_BASE_MODELS_DIR/agents/critic/models"}"
 export ANALYST_MODEL_CACHE="${ANALYST_MODEL_CACHE:-"$DEFAULT_BASE_MODELS_DIR/agents/analyst/models"}"
-export BALANCER_MODEL_CACHE="${BALANCER_MODEL_CACHE:-"$DEFAULT_BASE_MODELS_DIR/agents/balancer/models"}"
 export SCOUT_MODEL_CACHE="${SCOUT_MODEL_CACHE:-"$DEFAULT_BASE_MODELS_DIR/agents/scout/models"}"
 export REASONING_MODEL_CACHE="${REASONING_MODEL_CACHE:-"$DEFAULT_BASE_MODELS_DIR/agents/reasoning/models"}"
 
 # Ensure directories exist (no sudo) and warn about permissions if not writable by current user
 mkdir -p "$MODEL_STORE_ROOT" || true
-for d in "$BASE_MODEL_DIR" "$SYNTHESIZER_MODEL_CACHE" "$MEMORY_MODEL_CACHE" "$CHIEF_EDITOR_MODEL_CACHE" "$FACT_CHECKER_MODEL_CACHE" "$CRITIC_MODEL_CACHE" "$ANALYST_MODEL_CACHE" "$BALANCER_MODEL_CACHE" "$SCOUT_MODEL_CACHE" "$REASONING_MODEL_CACHE"; do
+for d in "$BASE_MODEL_DIR" "$SYNTHESIZER_MODEL_CACHE" "$MEMORY_MODEL_CACHE" "$CHIEF_EDITOR_MODEL_CACHE" "$FACT_CHECKER_MODEL_CACHE" "$CRITIC_MODEL_CACHE" "$ANALYST_MODEL_CACHE" "$SCOUT_MODEL_CACHE" "$REASONING_MODEL_CACHE"; do
   if [ ! -d "$d" ]; then
     mkdir -p "$d" 2>/dev/null || echo "WARNING: Could not create directory $d — check permissions"
   fi
@@ -220,15 +222,27 @@ done
 # ------------------------------------------------------------
 # Optional pre-start sources seeding
 # Enable by setting AUTO_SEED_SOURCES=1 (idempotent: only runs if table empty or missing)
-# Requires: psql in PATH and scripts/news_outlets.py present.
+# Requires: mysql (or mariadb) OR psql in PATH and scripts/news_outlets.py present.
 # ------------------------------------------------------------
 if [ "${AUTO_SEED_SOURCES:-0}" = "1" ]; then
   echo "[startup] AUTO_SEED_SOURCES=1 → attempting sources table seed"
-  if command -v psql >/dev/null 2>&1; then
+  if command -v mysql >/dev/null 2>&1; then
+    # Using mysql client to check MariaDB tables
+    set +e
+    SOURCE_COUNT=$(mysql --batch --silent -h $JUSTNEWS_DB_HOST -P $JUSTNEWS_DB_PORT -u $JUSTNEWS_DB_USER -p"$JUSTNEWS_DB_PASSWORD" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${JUSTNEWS_DB_NAME}' AND table_name='sources';" 2>/dev/null | tail -n1)
+    STATUS=$?
+    set -e
+  elif command -v psql >/dev/null 2>&1; then
     set +e
     SOURCE_COUNT=$(psql "postgresql://$JUSTNEWS_DB_USER:$JUSTNEWS_DB_PASSWORD@$JUSTNEWS_DB_HOST:${JUSTNEWS_DB_PORT}/$JUSTNEWS_DB_NAME" -tAc "SELECT count(*) FROM public.sources" 2>/dev/null)
     STATUS=$?
     set -e
+  else
+    echo "[startup] WARNING: mysql or psql not installed – cannot auto-seed sources"
+    NEED_SEED=0
+    STATUS=1
+  fi
+    # NOTE: The DB client used above has set SOURCE_COUNT and STATUS accordingly.
     if [ $STATUS -ne 0 ] || [ -z "$SOURCE_COUNT" ]; then
       echo "[startup] sources table absent or inaccessible – will attempt seed (creating table if necessary)"
       NEED_SEED=1

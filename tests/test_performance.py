@@ -1,5 +1,5 @@
 """
-Performance Tests for JustNewsAgent System
+Performance Tests for JustNews System
 
 This module contains comprehensive performance tests that validate:
 - Response times and throughput
@@ -12,14 +12,20 @@ This module contains comprehensive performance tests that validate:
 
 import asyncio
 import gc
-import psutil
-import pytest
 import time
 import tracemalloc
-from typing import Dict, List, Any, Optional, Callable
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from tests.test_utils import AsyncTestHelper, MockFactory, PerformanceTester, CustomAssertions
+import psutil
+import pytest
+
+from tests.test_utils import (
+    AsyncTestHelper,
+    CustomAssertions,
+    MockFactory,
+    PerformanceTester,
+)
 
 
 class TestSystemPerformance:
@@ -165,21 +171,9 @@ class TestSystemPerformance:
 
     @pytest.mark.asyncio
     @pytest.mark.performance
-    async def test_database_connection_pooling(self):
-        """Test database connection pooling efficiency"""
-        # Setup database mock
-        with patch('psycopg2.pool.SimpleConnectionPool') as mock_pool:
-            mock_pool_instance = MagicMock()
-            mock_pool.return_value = mock_pool_instance
-
-            # Simulate connection pool usage
-            await self._simulate_database_operations(100)
-
-            # Verify connection pool efficiency
-            assert mock_pool_instance.getconn.call_count <= 10, "Too many connections created"
-            assert mock_pool_instance.putconn.call_count == mock_pool_instance.getconn.call_count, "Connection leak detected"
-
-            print("✅ Database pooling: efficient connection reuse")
+    # Database pooling tests using Postgres were removed because Postgres has been deprecated.
+    # See migration to MariaDB + ChromaDB; use database-specific unit tests under
+    # `database/tests` for connection pooling and migration behavior.
 
     @pytest.mark.asyncio
     @pytest.mark.performance
@@ -224,7 +218,7 @@ class TestSystemPerformance:
 
         await asyncio.gather(*tasks)
 
-    async def _process_single_article(self, article_id: int) -> Dict[str, Any]:
+    async def _process_single_article(self, article_id: int) -> dict[str, Any]:
         """Process a single article"""
         # Simulate article processing
         await asyncio.sleep(0.01)  # 10ms processing time
@@ -244,7 +238,7 @@ class TestSystemPerformance:
         process = psutil.Process()
         return process.memory_info().rss
 
-    async def _make_mcp_request(self, request_id: int) -> Dict[str, Any]:
+    async def _make_mcp_request(self, request_id: int) -> dict[str, Any]:
         """Make a mock MCP request"""
         await asyncio.sleep(0.001)  # 1ms network delay
         return {"request_id": request_id, "status": "success"}
@@ -298,7 +292,7 @@ class TestSystemPerformance:
         # Simulate network calls
         await asyncio.sleep(0.1)
 
-    def _validate_performance_metrics(self, metrics: Dict[str, Any]):
+    def _validate_performance_metrics(self, metrics: dict[str, Any]):
         """Validate performance metrics"""
         # Validate key performance indicators
         assert "avg_response_time" in metrics

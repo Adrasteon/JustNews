@@ -1,5 +1,5 @@
 """
-Analytics Service for JustNewsAgent
+Analytics Service for JustNews
 
 FastAPI application providing advanced analytics, performance monitoring, and optimization
 recommendations. Includes comprehensive system health monitoring and interactive dashboard.
@@ -9,16 +9,19 @@ import asyncio
 import os
 import sys
 from contextlib import asynccontextmanager
-from typing import Any, Dict
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from common.observability import get_logger
-from common.metrics import JustNewsMetrics
-from agents.analytics.analytics_engine import get_analytics_engine, initialize_analytics_engine, shutdown_analytics_engine
+from agents.analytics.analytics_engine import (
+    get_analytics_engine,
+    initialize_analytics_engine,
+    shutdown_analytics_engine,
+)
 from agents.analytics.dashboard import create_analytics_app
+from common.metrics import JustNewsMetrics
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 
@@ -93,7 +96,7 @@ async def lifespan(app: FastAPI):
 
 # Initialize FastAPI with the lifespan context manager
 app = FastAPI(
-    title="JustNewsAgent Analytics Service",
+    title="JustNews Analytics Service",
     description="Advanced analytics and performance monitoring service",
     version="1.0.0",
     lifespan=lifespan
@@ -135,7 +138,7 @@ app.mount("/dashboard", analytics_dashboard, name="analytics-dashboard")
 async def root():
     """Root endpoint with service information"""
     return {
-        "service": "JustNewsAgent Analytics Service",
+        "service": "JustNews Analytics Service",
         "version": "1.0.0",
         "description": "Advanced analytics and performance monitoring",
         "status": "running",
@@ -173,7 +176,7 @@ async def health_check():
 
 @app.get("/ready")
 async def readiness_check():
-    """Kubernetes readiness probe endpoint"""
+    """Service readiness probe endpoint (systemd)"""
     return {"ready": ready}
 
 
@@ -200,6 +203,7 @@ def get_metrics():
 
 # Pydantic models
 from pydantic import BaseModel
+
 
 class ToolCall(BaseModel):
     args: list

@@ -1,5 +1,5 @@
 """
-Production Multi-Agent GPU Manager for JustNewsAgent
+Production Multi-Agent GPU Manager for JustNews
 Replaces the shim implementation with production-ready GPU resource management
 
 Features:
@@ -12,9 +12,6 @@ Features:
 - Atomic allocation operations
 """
 
-from common.observability import get_logger
-
-
 import subprocess
 import threading
 import time
@@ -22,6 +19,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+
+from common.observability import get_logger
 
 # GPU and ML imports with graceful fallbacks
 try:
@@ -351,7 +350,7 @@ class MultiAgentGPUManager:
             config_path = project_root / "config" / "gpu" / "mps_allocation_config.json"
 
             if config_path.exists():
-                with open(config_path, "r") as f:
+                with open(config_path) as f:
                     config = json.load(f)
                 logger.debug(f"Loaded MPS config from {config_path}")
                 return config.get("mps_resource_allocation", {})

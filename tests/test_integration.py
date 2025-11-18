@@ -1,5 +1,5 @@
 """
-Integration Tests for JustNewsAgent System
+Integration Tests for JustNews System
 
 This module contains comprehensive integration tests that validate:
 - MCP Bus communication patterns
@@ -10,14 +10,18 @@ This module contains comprehensive integration tests that validate:
 """
 
 import asyncio
-import json
 import os
-import pytest
-import time
-from typing import Dict, List, Any, Optional
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from tests.test_utils import AsyncTestHelper, MockFactory, PerformanceTester, CustomAssertions
+import pytest
+
+from tests.test_utils import (
+    AsyncTestHelper,
+    CustomAssertions,
+    MockFactory,
+    PerformanceTester,
+)
 
 
 class TestMCPBusIntegration:
@@ -261,7 +265,7 @@ class TestMCPBusIntegration:
             assert result["status"] == "completed"
             assert result["memory_efficient"] is True
 
-    async def _simulate_news_analysis_workflow(self) -> Dict[str, Any]:
+    async def _simulate_news_analysis_workflow(self) -> dict[str, Any]:
         """Simulate a basic news analysis workflow"""
         # This would normally orchestrate Scout -> Analyst communication
         return {
@@ -269,7 +273,7 @@ class TestMCPBusIntegration:
             "analysis": {"sentiment": "neutral", "confidence": 0.9}
         }
 
-    async def _simulate_pipeline_step(self, agent: str, expected_response: Dict) -> Dict[str, Any]:
+    async def _simulate_pipeline_step(self, agent: str, expected_response: dict) -> dict[str, Any]:
         """Simulate a single pipeline step"""
         # This simulates making an HTTP call to an agent
         import httpx
@@ -278,7 +282,7 @@ class TestMCPBusIntegration:
             response = await client.post(f"http://localhost/{agent}")
             return {"status": "success", "data": expected_response}
 
-    async def _execute_full_news_pipeline(self) -> Dict[str, Any]:
+    async def _execute_full_news_pipeline(self) -> dict[str, Any]:
         """Execute complete news processing pipeline"""
         # This would normally run the full Chief Editor orchestration
         return {
@@ -290,12 +294,12 @@ class TestMCPBusIntegration:
             }
         }
 
-    async def _simulate_concurrent_workflow(self, workflow_id: int) -> Dict[str, Any]:
+    async def _simulate_concurrent_workflow(self, workflow_id: int) -> dict[str, Any]:
         """Simulate a single concurrent workflow"""
         await asyncio.sleep(0.1)  # Simulate processing time
         return {"workflow_id": workflow_id, "status": "completed"}
 
-    async def _execute_workflow_with_failures(self) -> Dict[str, Any]:
+    async def _execute_workflow_with_failures(self) -> dict[str, Any]:
         """Execute workflow that encounters and recovers from failures"""
         return {
             "status": "completed",
@@ -303,7 +307,7 @@ class TestMCPBusIntegration:
             "final_success": True
         }
 
-    async def _execute_memory_intensive_workflow(self) -> Dict[str, Any]:
+    async def _execute_memory_intensive_workflow(self) -> dict[str, Any]:
         """Execute memory-intensive workflow"""
         return {
             "status": "completed",
@@ -373,14 +377,14 @@ class TestAgentIntegrationPatterns:
             for config_key in config_checks:
                 assert analyst_config.get(config_key) == memory_config.get(config_key)
 
-    async def _check_all_agent_health(self, agents: List[tuple]) -> Dict[str, Dict]:
+    async def _check_all_agent_health(self, agents: list[tuple]) -> dict[str, dict]:
         """Check health of all agents"""
         results = {}
         for agent_name, port in agents:
             results[agent_name] = {"healthy": True, "response_time": 0.1}
         return results
 
-    async def _extract_agent_config(self) -> Dict[str, Any]:
+    async def _extract_agent_config(self) -> dict[str, Any]:
         """Extract configuration from environment"""
         return {
             "MCP_BUS_URL": os.environ.get("MCP_BUS_URL"),

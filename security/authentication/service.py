@@ -1,25 +1,22 @@
 """
-JustNewsAgent Authentication Service
+JustNews Authentication Service
 
 Handles user authentication, session management, JWT tokens, and identity verification.
 """
 
-import asyncio
-import logging
-from typing import Dict, List, Optional, Any, Tuple
-from datetime import datetime, timedelta
-from dataclasses import dataclass
-
-from pydantic import BaseModel, Field, validator
-import jwt
-import bcrypt
-from cryptography.fernet import Fernet
-import aiofiles
 import json
+import logging
 import secrets
-import hashlib
+from datetime import datetime, timedelta
+from typing import Any
 
-from ..models import SecurityConfig, User, AuthenticationError
+import aiofiles
+import bcrypt
+import jwt
+from cryptography.fernet import Fernet
+from pydantic import BaseModel, Field, validator
+
+from ..models import AuthenticationError, SecurityConfig
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +37,7 @@ class LoginRequest(BaseModel):
     """Login request model"""
     username: str
     password: str
-    mfa_code: Optional[str] = None
+    mfa_code: str | None = None
 
 
 class TokenPair(BaseModel):
@@ -54,7 +51,7 @@ class MFASetup(BaseModel):
     """MFA setup information"""
     secret: str
     qr_code_url: str
-    backup_codes: List[str]
+    backup_codes: list[str]
 
 
 class AuthenticationService:
@@ -67,9 +64,9 @@ class AuthenticationService:
 
     def __init__(self, config: SecurityConfig):
         self.config = config
-        self._user_store: Dict[str, Dict[str, Any]] = {}  # username -> user data
-        self._refresh_tokens: Dict[str, Dict[str, Any]] = {}  # token -> metadata
-        self._mfa_secrets: Dict[int, str] = {}  # user_id -> MFA secret
+        self._user_store: dict[str, dict[str, Any]] = {}  # username -> user data
+        self._refresh_tokens: dict[str, dict[str, Any]] = {}  # token -> metadata
+        self._mfa_secrets: dict[int, str] = {}  # user_id -> MFA secret
         self._encryption = Fernet(self._get_encryption_key())
 
     def _get_encryption_key(self) -> bytes:
@@ -90,7 +87,7 @@ class AuthenticationService:
         await self._save_user_data()
         logger.info("AuthenticationService shutdown")
 
-    async def authenticate(self, username: str, password: str) -> Dict[str, Any]:
+    async def authenticate(self, username: str, password: str) -> dict[str, Any]:
         """
         Authenticate user with username and password
 
@@ -140,7 +137,7 @@ class AuthenticationService:
 
         return user_data
 
-    async def generate_tokens(self, user_id: int, roles: List[str]) -> Dict[str, str]:
+    async def generate_tokens(self, user_id: int, roles: list[str]) -> dict[str, str]:
         """
         Generate JWT access and refresh tokens
 
@@ -199,7 +196,7 @@ class AuthenticationService:
             "refresh_token": refresh_token
         }
 
-    async def validate_token(self, token: str) -> Dict[str, Any]:
+    async def validate_token(self, token: str) -> dict[str, Any]:
         """
         Validate JWT token
 
@@ -244,7 +241,7 @@ class AuthenticationService:
             logger.error(f"Token validation error: {e}")
             raise AuthenticationError("Token validation failed")
 
-    async def refresh_access_token(self, refresh_token: str) -> Dict[str, str]:
+    async def refresh_access_token(self, refresh_token: str) -> dict[str, str]:
         """
         Generate new access token using refresh token
 
@@ -296,7 +293,7 @@ class AuthenticationService:
             del self._refresh_tokens[token]
 
     async def create_user(self, username: str, email: str, password: str,
-                         roles: Optional[List[str]] = None) -> int:
+                         roles: list[str] | None = None) -> int:
         """
         Create new user account
 
@@ -346,7 +343,7 @@ class AuthenticationService:
         logger.info(f"Created user {username} with ID {user_id}")
         return user_id
 
-    async def update_user(self, user_id: int, updates: Dict[str, Any]) -> None:
+    async def update_user(self, user_id: int, updates: dict[str, Any]) -> None:
         """
         Update user information
 
@@ -406,7 +403,7 @@ class AuthenticationService:
             await self.revoke_all_user_tokens(user_id)
             logger.info(f"Deleted user {username} (ID: {user_id})")
 
-    async def get_user_info(self, user_id: int) -> Dict[str, Any]:
+    async def get_user_info(self, user_id: int) -> dict[str, Any]:
         """
         Get user information
 
@@ -455,10 +452,11 @@ class AuthenticationService:
         Returns:
             MFA setup information
         """
+        import base64
+        import io
+
         import pyotp
         import qrcode
-        import io
-        import base64
 
         # Generate MFA secret
         secret = pyotp.random_base32()
@@ -470,7 +468,7 @@ class AuthenticationService:
 
         provisioning_uri = totp.provisioning_uri(
             name=user_data["email"],
-            issuer_name="JustNewsAgent"
+            issuer_name="JustNews"
         )
 
         # Generate QR code image
@@ -540,7 +538,7 @@ class AuthenticationService:
                 await self._save_user_data()
                 break
 
-    async def get_status(self) -> Dict[str, Any]:
+    async def get_status(self) -> dict[str, Any]:
         """
         Get authentication service status
 
@@ -557,7 +555,7 @@ class AuthenticationService:
     async def _load_user_data(self) -> None:
         """Load user data from persistent storage"""
         try:
-            async with aiofiles.open("data/users.json", "r") as f:
+            async with aiofiles.open("data/users.json") as f:
                 data = json.loads(await f.read())
                 self._user_store = data.get("users", {})
                 self._mfa_secrets = data.get("mfa_secrets", {})

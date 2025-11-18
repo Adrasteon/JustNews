@@ -46,9 +46,7 @@ AGENT_MODEL_MAP = {
     "newsreader": [
         ("sentence-transformers", "all-MiniLM-L6-v2", True),
     ],
-    "balancer": [
-        ("transformers", "google/bert_uncased_L-2_H-128_A-2", False),
-    ],
+    # balancer removed - models migrated to critic/chief_editor/analytics
     "chief_editor": [
         ("transformers", "distilbert-base-uncased", False),
     ],

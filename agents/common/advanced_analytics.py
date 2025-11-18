@@ -1,5 +1,5 @@
 """
-Advanced Performance Analytics Engine for JustNewsAgent
+Advanced Performance Analytics Engine for JustNews
 
 Provides comprehensive performance monitoring, trend analysis, bottleneck detection,
 and optimization recommendations for the multi-agent GPU system.
@@ -14,8 +14,6 @@ Features:
 - Custom analytics queries
 """
 
-from common.observability import get_logger
-
 import json
 import threading
 import time
@@ -27,6 +25,8 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+
+from common.observability import get_logger
 
 # Configure logging
 

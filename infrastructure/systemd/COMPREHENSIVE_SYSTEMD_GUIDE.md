@@ -32,7 +32,7 @@ Minimum keys (examples):
 
 ```
 JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-v2-py312/bin/python
-SERVICE_DIR=/home/adra/JustNewsAgent-Clean
+SERVICE_DIR=/home/adra/JustNews
 JUSTNEWS_DB_URL=postgresql://user:pass@localhost:5432/justnews
 ENABLE_MPS=true
 UNIFIED_CRAWLER_ENABLE_HTTP_FETCH=true

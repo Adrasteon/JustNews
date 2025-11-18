@@ -1,6 +1,6 @@
 # JustNews Database Layer - Advanced Implementation
 
-Enterprise-grade database layer with connection pooling, migrations, and performance optimization for the JustNewsAgent system.
+Enterprise-grade database layer with connection pooling, migrations, and performance optimization for the JustNews system.
 
 ## ✅ **Latest Status - October 23, 2025**
 
@@ -361,9 +361,9 @@ else:
     print(f"Schema issues: {validation['errors']}")
 ```
 
-## Integration with JustNewsAgent
+## Integration with JustNews
 
-The database layer integrates seamlessly with the JustNewsAgent system:
+The database layer integrates seamlessly with the JustNews system:
 
 - **Training System**: Provides data persistence for ML model training
 - **Memory Agent**: Stores articles, vectors, and training examples
@@ -433,4 +433,4 @@ For issues or questions:
 3. Validate migration files and permissions
 4. Test with minimal reproduction case
 
-The advanced database layer provides enterprise-grade reliability and performance for the JustNewsAgent production environment.
+The advanced database layer provides enterprise-grade reliability and performance for the JustNews production environment.

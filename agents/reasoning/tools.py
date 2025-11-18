@@ -15,11 +15,9 @@ Key Functions:
 All functions include robust error handling, validation, and fallbacks.
 """
 
-import asyncio
 import json
-import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from common.observability import get_logger
 
@@ -27,14 +25,14 @@ from common.observability import get_logger
 logger = get_logger(__name__)
 
 # Global engine instances
-_engine: Optional[Any] = None
-_enhanced_engine: Optional[Any] = None
+_engine: Any | None = None
+_enhanced_engine: Any | None = None
 
 def get_reasoning_engine():
     """Get or create the global reasoning engine instance."""
     global _engine
     if _engine is None:
-        from .reasoning_engine import ReasoningEngine, ReasoningConfig
+        from .reasoning_engine import ReasoningConfig, ReasoningEngine
         config = ReasoningConfig()
         _engine = ReasoningEngine(config)
     return _engine
@@ -51,7 +49,7 @@ def get_enhanced_engine():
 async def process_reasoning_request(
     operation_type: str,
     **kwargs
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Process a reasoning request using the reasoning engine.
 
@@ -92,7 +90,7 @@ async def process_reasoning_request(
         logger.error(f"❌ {operation_type} reasoning operation failed: {e}")
         return {"error": str(e)}
 
-async def add_fact(fact_data: Dict[str, Any]) -> Dict[str, Any]:
+async def add_fact(fact_data: dict[str, Any]) -> dict[str, Any]:
     """
     Add a fact to the reasoning system.
 
@@ -135,7 +133,7 @@ async def add_fact(fact_data: Dict[str, Any]) -> Dict[str, Any]:
         logger.error(f"Error adding fact: {e}")
         return {"error": str(e)}
 
-async def add_rule(rule: str) -> Dict[str, Any]:
+async def add_rule(rule: str) -> dict[str, Any]:
     """
     Add a logical rule to the reasoning system.
 
@@ -178,7 +176,7 @@ async def add_rule(rule: str) -> Dict[str, Any]:
         logger.error(f"Error adding rule: {e}")
         return {"error": str(e)}
 
-async def query(query_str: str) -> Dict[str, Any]:
+async def query(query_str: str) -> dict[str, Any]:
     """
     Execute a symbolic reasoning query.
 
@@ -221,7 +219,7 @@ async def query(query_str: str) -> Dict[str, Any]:
         logger.error(f"Error executing query: {e}")
         return {"error": str(e)}
 
-async def evaluate_contradiction(statements: List[str]) -> Dict[str, Any]:
+async def evaluate_contradiction(statements: list[str]) -> dict[str, Any]:
     """
     Evaluate contradictions and logical consistency in statements.
 
@@ -264,7 +262,7 @@ async def evaluate_contradiction(statements: List[str]) -> Dict[str, Any]:
         logger.error(f"Error evaluating contradictions: {e}")
         return {"error": str(e)}
 
-async def validate_claim(claim: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+async def validate_claim(claim: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
     """
     Validate a news claim against known facts and rules.
 
@@ -333,7 +331,7 @@ async def validate_claim(claim: str, context: Optional[Dict[str, Any]] = None) -
         logger.error(f"Error validating claim: {e}")
         return {"error": str(e)}
 
-async def explain_reasoning(query: str) -> Dict[str, Any]:
+async def explain_reasoning(query: str) -> dict[str, Any]:
     """
     Provide explainable reasoning for a query.
 
@@ -392,7 +390,7 @@ async def explain_reasoning(query: str) -> Dict[str, Any]:
         logger.error(f"Error explaining reasoning: {e}")
         return {"error": str(e)}
 
-async def pipeline_validate(assessment: Dict[str, Any], article_metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+async def pipeline_validate(assessment: dict[str, Any], article_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
     """
     Run the three-stage pipeline: neural assessment -> reasoning -> integrated decision.
 
@@ -488,7 +486,7 @@ async def pipeline_validate(assessment: Dict[str, Any], article_metadata: Option
         return {"error": str(e)}
 
 # Utility functions
-def get_performance_stats() -> Dict[str, Any]:
+def get_performance_stats() -> dict[str, Any]:
     """Get reasoning engine performance statistics."""
     try:
         engine = get_reasoning_engine()
@@ -497,7 +495,7 @@ def get_performance_stats() -> Dict[str, Any]:
         logger.error(f"Error getting performance stats: {e}")
         return {"error": str(e), "engine_available": False}
 
-def get_model_status() -> Dict[str, Any]:
+def get_model_status() -> dict[str, Any]:
     """Get status of reasoning components."""
     try:
         engine = get_reasoning_engine()
@@ -512,7 +510,7 @@ def get_model_status() -> Dict[str, Any]:
         logger.error(f"Error getting model status: {e}")
         return {"error": str(e), "components_available": False}
 
-def log_feedback(feedback_data: Dict[str, Any]) -> Dict[str, Any]:
+def log_feedback(feedback_data: dict[str, Any]) -> dict[str, Any]:
     """Log user feedback for model improvement."""
     try:
         engine = get_reasoning_engine()
@@ -521,7 +519,7 @@ def log_feedback(feedback_data: Dict[str, Any]) -> Dict[str, Any]:
         logger.error(f"Error logging feedback: {e}")
         return {"error": str(e), "logged": False}
 
-def get_facts() -> Dict[str, Any]:
+def get_facts() -> dict[str, Any]:
     """Retrieve all stored facts."""
     try:
         engine = get_reasoning_engine()
@@ -530,7 +528,7 @@ def get_facts() -> Dict[str, Any]:
         logger.error(f"Error getting facts: {e}")
         return {"error": str(e), "facts": {}}
 
-def get_rules() -> List[str]:
+def get_rules() -> list[str]:
     """Retrieve all stored rules."""
     try:
         engine = get_reasoning_engine()
@@ -539,7 +537,7 @@ def get_rules() -> List[str]:
         logger.error(f"Error getting rules: {e}")
         return []
 
-def clear_knowledge_base() -> Dict[str, Any]:
+def clear_knowledge_base() -> dict[str, Any]:
     """Clear all facts and rules from the knowledge base."""
     try:
         engine = get_reasoning_engine()
@@ -548,7 +546,7 @@ def clear_knowledge_base() -> Dict[str, Any]:
         logger.error(f"Error clearing knowledge base: {e}")
         return {"error": str(e), "cleared": False}
 
-def get_training_status() -> Dict[str, Any]:
+def get_training_status() -> dict[str, Any]:
     """Get online training status for reasoning models."""
     try:
         engine = get_reasoning_engine()
@@ -557,7 +555,7 @@ def get_training_status() -> Dict[str, Any]:
         logger.error(f"Error getting training status: {e}")
         return {"error": str(e), "online_training_enabled": False}
 
-async def health_check() -> Dict[str, Any]:
+async def health_check() -> dict[str, Any]:
     """
     Perform health check on reasoning components.
 
@@ -603,7 +601,7 @@ async def health_check() -> Dict[str, Any]:
             "error": str(e)
         }
 
-def validate_reasoning_result(result: Dict[str, Any], expected_fields: Optional[List[str]] = None) -> bool:
+def validate_reasoning_result(result: dict[str, Any], expected_fields: list[str] | None = None) -> bool:
     """
     Validate reasoning result structure.
 
@@ -627,7 +625,7 @@ def validate_reasoning_result(result: Dict[str, Any], expected_fields: Optional[
     common_fields = ["analysis_metadata", "timestamp"]
     return any(field in result for field in common_fields)
 
-def format_reasoning_output(result: Dict[str, Any], format_type: str = "json") -> str:
+def format_reasoning_output(result: dict[str, Any], format_type: str = "json") -> str:
     """
     Format reasoning result for output.
 

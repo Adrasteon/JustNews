@@ -1,7 +1,7 @@
 # Database Migrations Package
 
 """
-Database migration files for the JustNewsAgent database layer.
+Database migration files for the JustNews database layer.
 
 Migration files follow the naming convention: NNN_description.sql
 where NNN is a zero-padded number indicating migration order.

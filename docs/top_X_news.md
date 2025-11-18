@@ -6,7 +6,7 @@ A. System Architecture
 
     Core Crawler: Scrapy for its robustness, extensibility, and asynchronous capability, or a custom wrapper around specialized tools like Trafilatura for high-accuracy text extraction.
 
-    Database: PostgreSQL with the pg_vector extension for storing article embeddings alongside structured metadata.
+    Database: MariaDB for structured metadata and ChromaDB for vector embeddings (replacing PostgreSQL/pg_vector).
 
 B. Collection Logic and Process Flow
 
@@ -58,9 +58,9 @@ B. Collection Logic and Process Flow
 
     Data Storage:
 
-        Store all unique articles and their metadata in the PostgreSQL relational tables.
+        Store all unique articles and their metadata in the MariaDB relational tables.
 
-        Store the article's vector embedding in the dedicated pg_vector column for fast vector search and de-duplication.
+        Store the article's vector embedding in the vector store (ChromaDB) for fast vector search and de-duplication.
 
 Part 2: Fact-Checking and Grounded Truth Analysis
 

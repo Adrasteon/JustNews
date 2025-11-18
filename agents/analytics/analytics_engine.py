@@ -1,5 +1,5 @@
 """
-Analytics Engine for JustNewsAgent
+Analytics Engine for JustNews
 
 Core business logic for advanced analytics, performance monitoring, and optimization
 recommendations. Provides comprehensive system health monitoring and real-time analytics.
@@ -7,14 +7,16 @@ recommendations. Provides comprehensive system health monitoring and real-time a
 
 import asyncio
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from common.observability import get_logger
 from agents.common.advanced_analytics import (
     get_analytics_engine as get_core_analytics_engine,
-    start_analytics_engine,
-    stop_analytics_engine
 )
+from agents.common.advanced_analytics import (
+    start_analytics_engine,
+    stop_analytics_engine,
+)
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 
@@ -22,7 +24,7 @@ logger = get_logger(__name__)
 class AnalyticsEngine:
     """
     Analytics engine providing comprehensive performance monitoring, system health tracking,
-    and optimization recommendations for the JustNewsAgent system.
+    and optimization recommendations for the JustNews system.
 
     This engine wraps the AdvancedAnalyticsEngine and provides agent-specific functionality
     including MCP integration, health monitoring, and dashboard data preparation.
@@ -82,7 +84,7 @@ class AnalyticsEngine:
         """Check if the analytics engine is properly initialized"""
         return self._initialized
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """
         Perform comprehensive health check of analytics services.
 
@@ -161,7 +163,7 @@ class AnalyticsEngine:
 
         return health_info
 
-    def get_system_health(self) -> Dict[str, Any]:
+    def get_system_health(self) -> dict[str, Any]:
         """
         Get comprehensive system health metrics.
 
@@ -177,7 +179,7 @@ class AnalyticsEngine:
             logger.error(f"Error getting system health: {e}")
             return {"error": str(e)}
 
-    def get_performance_metrics(self, hours: int = 1) -> Dict[str, Any]:
+    def get_performance_metrics(self, hours: int = 1) -> dict[str, Any]:
         """
         Get real-time performance metrics for specified time period.
 
@@ -197,7 +199,7 @@ class AnalyticsEngine:
             logger.error(f"Error getting performance metrics: {e}")
             return {"error": str(e)}
 
-    def get_agent_profile(self, agent_name: str, hours: int = 24) -> Dict[str, Any]:
+    def get_agent_profile(self, agent_name: str, hours: int = 24) -> dict[str, Any]:
         """
         Get performance profile for specific agent.
 
@@ -217,7 +219,7 @@ class AnalyticsEngine:
             logger.error(f"Error getting agent profile: {e}")
             return {"error": str(e)}
 
-    def get_optimization_recommendations(self, hours: int = 24) -> List[Dict[str, Any]]:
+    def get_optimization_recommendations(self, hours: int = 24) -> list[dict[str, Any]]:
         """
         Get advanced optimization recommendations.
 
@@ -228,7 +230,9 @@ class AnalyticsEngine:
             List of optimization recommendations
         """
         try:
-            from agents.common.advanced_optimization import generate_optimization_recommendations
+            from agents.common.advanced_optimization import (
+                generate_optimization_recommendations,
+            )
 
             recommendations = generate_optimization_recommendations(hours)
 
@@ -252,7 +256,7 @@ class AnalyticsEngine:
             logger.error(f"Error getting optimization recommendations: {e}")
             return [{"error": str(e)}]
 
-    def record_performance_metric(self, metric_data: Dict[str, Any]) -> bool:
+    def record_performance_metric(self, metric_data: dict[str, Any]) -> bool:
         """
         Record a custom performance metric.
 
@@ -267,8 +271,9 @@ class AnalyticsEngine:
             return False
 
         try:
-            from agents.common.advanced_analytics import PerformanceMetrics
             from datetime import datetime
+
+            from agents.common.advanced_analytics import PerformanceMetrics
 
             # Validate required fields
             required_fields = ["agent_name", "operation", "processing_time_s", "batch_size", "success"]
@@ -302,7 +307,7 @@ class AnalyticsEngine:
             logger.error(f"Error recording performance metric: {e}")
             return False
 
-    def export_analytics_report(self, hours: int = 24) -> Dict[str, Any]:
+    def export_analytics_report(self, hours: int = 24) -> dict[str, Any]:
         """
         Export comprehensive analytics report.
 
@@ -321,7 +326,7 @@ class AnalyticsEngine:
             logger.error(f"Error exporting analytics report: {e}")
             return {"error": str(e)}
 
-    def get_service_info(self) -> Dict[str, Any]:
+    def get_service_info(self) -> dict[str, Any]:
         """
         Get service information and capabilities.
 
@@ -331,7 +336,7 @@ class AnalyticsEngine:
         return {
             "service": "analytics_engine",
             "version": "1.0.0",
-            "description": "Advanced analytics and performance monitoring service for JustNewsAgent",
+            "description": "Advanced analytics and performance monitoring service for JustNews",
             "features": [
                 "Real-time performance monitoring",
                 "System health scoring",
@@ -363,7 +368,7 @@ class AnalyticsEngine:
 
 
 # Global analytics engine instance
-_analytics_engine: Optional[AnalyticsEngine] = None
+_analytics_engine: AnalyticsEngine | None = None
 
 
 def get_analytics_engine() -> AnalyticsEngine:

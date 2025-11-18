@@ -18,12 +18,9 @@ from __future__ import annotations
 import argparse
 import os
 import re
-import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
 
-
-REPLACEMENTS: List[Tuple[re.Pattern, str]] = [
+REPLACEMENTS: list[tuple[re.Pattern, str]] = [
     # Specific module-level rewrites
     (re.compile(r"\bfrom\s+agents\.scout\.crawl4ai_server_impl\b"), "from agents.c4ai.server"),
     (re.compile(r"\bfrom\s+agents\.scout\.crawl4ai_server\b"), "from agents.c4ai.server"),
@@ -44,8 +41,8 @@ def should_skip_path(path: Path) -> bool:
     return any(p in s for p in ignore)
 
 
-def find_python_files(root: Path) -> List[Path]:
-    results: List[Path] = []
+def find_python_files(root: Path) -> list[Path]:
+    results: list[Path] = []
     for dirpath, dirnames, filenames in os.walk(root):
         # skip some large or irrelevant directories early
         if any(part.startswith(".") for part in Path(dirpath).parts):
@@ -59,12 +56,12 @@ def find_python_files(root: Path) -> List[Path]:
     return results
 
 
-def rewrite_text(text: str) -> Tuple[str, List[str]]:
+def rewrite_text(text: str) -> tuple[str, list[str]]:
     """Apply replacements to text. Returns (new_text, list_of_changes).
 
     Each change is a short description for reporting.
     """
-    changes: List[str] = []
+    changes: list[str] = []
     new = text
     for pattern, repl in REPLACEMENTS:
         if pattern.search(new):
@@ -75,7 +72,7 @@ def rewrite_text(text: str) -> Tuple[str, List[str]]:
     return new, changes
 
 
-def process_file(path: Path, apply: bool) -> Tuple[bool, List[str]]:
+def process_file(path: Path, apply: bool) -> tuple[bool, list[str]]:
     text = path.read_text(encoding="utf-8")
     if "agents.scout" not in text:
         return False, []
@@ -89,7 +86,7 @@ def process_file(path: Path, apply: bool) -> Tuple[bool, List[str]]:
     return True, changes
 
 
-def main(argv: List[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--apply", action="store_true", help="Apply changes in-place (write files).")
     p.add_argument("--root", default=".", help="Root directory to operate on")
@@ -98,7 +95,7 @@ def main(argv: List[str] | None = None) -> int:
     root = Path(args.root).resolve()
     py_files = find_python_files(root)
 
-    changed_files: Dict[Path, List[str]] = {}
+    changed_files: dict[Path, list[str]] = {}
 
     for f in py_files:
         try:

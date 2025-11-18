@@ -1,5 +1,5 @@
 """
-Dashboard Tools - Utility functions for JustNewsAgent Dashboard
+Dashboard Tools - Utility functions for JustNews Dashboard
 
 This module provides utility functions that delegate to the dashboard engine,
 following the standardized agent structure.

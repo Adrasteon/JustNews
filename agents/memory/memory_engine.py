@@ -18,18 +18,14 @@ Architecture:
 """
 
 import json
-import os
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
 
+# Import tools
+from agents.memory.tools import get_embedding_model, log_feedback, save_article
 from common.json_utils import make_json_safe
 from common.observability import get_logger
 
 # Import database utilities
 from database.utils.migrated_database_utils import create_database_service
-
-# Import tools
-from agents.memory.tools import get_embedding_model, log_feedback, save_article
 
 # Configure centralized logging
 logger = get_logger(__name__)
@@ -83,7 +79,7 @@ class MemoryEngine:
             logger.error(f"Error saving article in memory engine: {e}")
             return {"error": str(e)}
 
-    def get_article(self, article_id: int) -> Optional[dict]:
+    def get_article(self, article_id: int) -> dict | None:
         """Retrieves an article from the database by its ID"""
         try:
             if not self.db_service:

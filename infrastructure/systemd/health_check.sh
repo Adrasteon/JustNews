@@ -19,7 +19,6 @@ declare -A SERVICES=(
     ["memory"]="8007:/health"
     ["reasoning"]="8008:/health"
     ["newsreader"]="8009:/health"
-    ["balancer"]="8010:/health"
     ["analytics"]="8011:/health"      # Updated per canonical mapping
     ["archive"]="8012:/health"        # Archive agent
     ["dashboard"]="8013:/health"      # Dashboard web UI

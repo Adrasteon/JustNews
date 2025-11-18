@@ -11,7 +11,16 @@ if [[ -z "$DB_URL" ]]; then
   echo "No DB URL found (JUSTNEWS_DB_URL or DATABASE_URL) in $GLOBAL_ENV" >&2
   exit 2
 fi
-# Prefer psql if available and URL is postgres
+# Prefer mysql if available and URL is mysql; fallback to psql for postgres
+if command -v mysql >/dev/null 2>&1 && [[ "$DB_URL" =~ ^mysql ]]; then
+  MYSQL_USER=$(echo "$DB_URL" | sed -E 's#.*//([^:]+):.*@.*#\1#')
+  MYSQL_PASS=$(echo "$DB_URL" | sed -E 's#.*//[^:]+:([^@]+)@.*#\1#')
+  MYSQL_HOST=$(echo "$DB_URL" | sed -E 's#.*@([^:/]+).*#\1#')
+  MYSQL_PORT=$(echo "$DB_URL" | sed -E 's#.*:([0-9]+)/.*#\1#')
+  MYSQL_DB=$(echo "$DB_URL" | sed -E 's#.*/([^/]+)$#\1#')
+  MYSQL_PORT=${MYSQL_PORT:-3306}
+  MYSQL_PWD="$MYSQL_PASS" mysql --user="$MYSQL_USER" --host="$MYSQL_HOST" --port="$MYSQL_PORT" "$MYSQL_DB" -e "SELECT 1;" >/dev/null 2>&1 && { echo "DB OK"; exit 0; } || { echo "DB FAIL"; exit 1; }
+fi
 if command -v psql >/dev/null 2>&1 && [[ "$DB_URL" =~ ^postgres ]]; then
   PGPASSWORD="$(echo "$DB_URL" | sed -n 's#^postgresql\?://\([^:]*\):\([^@]*\)@.*#\2#p')" \
   psql "$DB_URL" -c 'SELECT 1;' -t -A -v ON_ERROR_STOP=1 >/dev/null && { echo "DB OK"; exit 0; } || { echo "DB FAIL"; exit 1; }

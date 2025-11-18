@@ -15,3 +15,5 @@ def test_dashboard_pages_api_returns_pages():
     paths = [p.get('path') for p in data['pages']]
     assert '/' in paths
     assert '/gpu/dashboard' in paths
+    # Verify the Crawler Control page (external) is present
+    assert 'http://localhost:8016/' in paths

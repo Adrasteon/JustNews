@@ -12,5 +12,6 @@
     { "title": "Transparency", "path": "/transparency/status" },
     { "title": "Crawler Metrics", "path": "/api/metrics/crawler" },
     { "title": "System Health", "path": "/api/health" }
+    ,{ "title": "Crawler Control", "path": "http://localhost:8016/" }
   ]
 }

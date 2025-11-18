@@ -293,7 +293,10 @@
                 const menu = document.getElementById('pagesDropdownMenu');
                 if (!menu) return;
                 const pages = (data && data.pages) || [];
-                menu.innerHTML = pages.map(p => `<li><a class="dropdown-item" href="${p.path}">${p.title}</a></li>`).join('');
+                menu.innerHTML = pages.map(p => {
+                    const isExternal = /^https?:\/\//i.test(p.path) ? ' target="_blank" rel="noopener noreferrer"' : '';
+                    return `<li><a class="dropdown-item" href="${p.path}"${isExternal}>${p.title}</a></li>`;
+                }).join('');
             }).catch(e => console.debug('No pages API available', e));
 
             // Insert JSON modal element

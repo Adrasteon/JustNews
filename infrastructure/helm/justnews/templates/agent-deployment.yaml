@@ -1,13 +1,6 @@
+{{/* DEPRECATED: Archive has been moved to infrastructure/archives/helm/justnews/templates/ */}}
+{{/* This template is a placeholder only and must not be used for active deployments */}}
 {{- define "justnews.agent.deployment" -}}
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ include "justnews.fullname" . }}-{{ include "justnews.agentName" . }}
-  labels:
-    {{- include "justnews.labels" . | nindent 4 }}
-    app: {{ include "justnews.agentName" . }}
-    component: agent
-    gpu-required: {{ .agent.gpuRequired | quote }}
 spec:
   replicas: {{ .agent.replicas }}
   selector:

@@ -43,8 +43,16 @@ def mock_connection():
 @pytest.fixture
 def mock_pool(mock_db_config):
     """Mock connection pool"""
-    with patch('psycopg2.connect') as mock_connect:
+    # This module previously mocked psycopg2 (Postgres) behavior. Since
+    # Postgres is deprecated, rely on MySQL/MariaDB mocks for tests and
+    # avoid importing psycopg2-related things here. The migrated service and
+    # DatabaseConnectionPool support Postgres only when explicitly requested.
+    # Allow creating a patch for psycopg2 even when the package isn't
+    # installed; it's deprecated and only used for Postgres-specific tests.
+    with patch('mysql.connector.connect') as mock_connect, patch('psycopg2.pool.ThreadedConnectionPool', create=True) as mock_pg_pool:
         from database.core.connection_pool import DatabaseConnectionPool
+        # Ensure psycopg2 pool doesn't attempt real connections during tests
+        mock_pg_pool.return_value = Mock()
         pool = DatabaseConnectionPool(mock_db_config)
         # Mock the pool attribute to avoid actual database connections
         pool.pool = Mock()

@@ -170,11 +170,31 @@ check_data_mount() {
   if [[ -n "${MODEL_STORE_ROOT:-}" ]]; then
     mkdir -p "$MODEL_STORE_ROOT"
     log_info "Ensured MODEL_STORE_ROOT directory $MODEL_STORE_ROOT exists"
+    chown justnews:justnews "$MODEL_STORE_ROOT" 2>/dev/null || true
   fi
   if [[ -n "${BASE_MODEL_DIR:-}" ]]; then
     mkdir -p "$BASE_MODEL_DIR"
     log_info "Ensured BASE_MODEL_DIR directory $BASE_MODEL_DIR exists"
+    chown justnews:justnews "$BASE_MODEL_DIR" 2>/dev/null || true
   fi
+
+  # Ensure Crawl4AI model cache directory exists if configured
+  if [[ -n "${CRAWL4AI_MODEL_CACHE_DIR:-}" ]]; then
+    mkdir -p "$CRAWL4AI_MODEL_CACHE_DIR"
+    log_info "Ensured CRAWL4AI_MODEL_CACHE_DIR directory $CRAWL4AI_MODEL_CACHE_DIR exists"
+    # Try to set ownership to justnews user; do not fail if chown cannot run
+    chown justnews:justnews "$CRAWL4AI_MODEL_CACHE_DIR" 2>/dev/null || true
+  fi
+}
+
+## Utility: safe_grep_dir <dir> <pattern>
+## Guard grep usage to avoid noisy stderr when directory contains broken symlinks
+safe_grep_dir() {
+  local dir="$1" pattern="$2"
+  if [[ ! -d "$dir" ]]; then
+    return 0
+  fi
+  grep -R --line-number -- "$pattern" "$dir" 2>/dev/null || true
 }
 
 ## PostgreSQL checks removed
@@ -195,6 +215,72 @@ run_reset_and_start() {
   log_info "Invoking $RESET_SCRIPT_NAME to restart services"
   shift
   "$reset_script" "$@"
+}
+
+# Ensure systemd drop-ins for ordering/dependency gating are present
+ensure_systemd_dropins() {
+  local repo_root="$1"
+  local dropins_created=false
+
+  # Allow operators to opt-out if desired
+  if [[ "${DISABLE_AUTOMATIC_SYSTEMD_DEPENDS:-false}" == "true" ]]; then
+    log_warn "DISABLE_AUTOMATIC_SYSTEMD_DEPENDS set; skipping automatic unit drop-in creation"
+    return 0
+  fi
+
+  declare -A deps=()
+  # Map service -> space-separated dependencies (other instanced services)
+  deps[synthesizer]="dashboard mcp_bus"
+  deps[crawler]="crawl4ai mcp_bus"
+  deps[crawler_control]="crawl4ai mcp_bus"
+
+  for svc in "${!deps[@]}"; do
+    local requires=()
+    IFS=' ' read -r -a requires <<< "${deps[$svc]}"
+    if [[ ${#requires[@]} -eq 0 ]]; then
+      continue
+    fi
+    local dropin_dir="/etc/systemd/system/justnews@${svc}.service.d"
+    local dropin_file="$dropin_dir/10-deps.conf"
+    mkdir -p "$dropin_dir"
+    local wants_line=""
+    local after_line=""
+    for r in "${requires[@]}"; do
+      wants_line+="$(printf 'Wants=justnews@%s.service\n' "$r")"
+      after_line+="$(printf 'After=justnews@%s.service\n' "$r")"
+    done
+
+    # Write to a temporary file first to avoid half-written confs
+    local tmpfile
+    tmpfile=$(mktemp)
+    # Build the drop-in file atomically using a subshell to ensure per-line content
+    (
+      echo '[Unit]'
+      for r in "${requires[@]}"; do
+        echo "Wants=justnews@${r}.service"
+      done
+      for r in "${requires[@]}"; do
+        echo "After=justnews@${r}.service"
+      done
+    ) > "$tmpfile"
+
+    # Only overwrite if content changed to minimize daemon-reloads
+    if [[ -f "$dropin_file" ]]; then
+      if cmp -s "$tmpfile" "$dropin_file"; then
+        rm -f "$tmpfile"
+        continue
+      fi
+    fi
+    mv "$tmpfile" "$dropin_file"
+    chmod 644 "$dropin_file" || true
+    log_info "Wrote systemd drop-in for justnews@${svc} to include: ${requires[*]}"
+    dropins_created=true
+  done
+
+  if [[ "$dropins_created" == true ]]; then
+    log_info "Reloading systemd to pick up new unit drop-ins"
+    systemctl daemon-reload
+  fi
 }
 
 run_health_summary() {
@@ -379,6 +465,8 @@ main() {
   if [[ "$DRY_RUN" == true ]]; then
     log_info "Dry-run requested; skipping service restart"
   else
+    # Ensure systemd unit drop-ins for known agent dependencies
+    ensure_systemd_dropins "$repo_root"
     run_reset_and_start "$repo_root" "${FORWARDED_ARGS[@]}"
     if ! start_monitoring_stack "$repo_root"; then
       exit 1

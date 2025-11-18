@@ -49,7 +49,32 @@ log_file="$LOG_DIR/migration_003_${timestamp}.log"
 
 echo "Applying migration 003_stage_b_ingestion using $MIGRATION_FILE"
 echo "Logging output to $log_file"
-PAGER=cat psql "$DB_URL" -v ON_ERROR_STOP=1 -1 -f "$MIGRATION_FILE" | tee "$log_file"
+
+# Detect DB scheme to choose client. If DB_URL starts with 'postgres' use psql,
+# if it starts with 'mysql' or 'mariadb' use mysql. When using mysql, the
+# migration SQL may not be compatible with MariaDB; the script will warn.
+case "$DB_URL" in
+  postgres:*|postgresql:*)
+    echo "Detected PostgreSQL URL; using psql to run migration (postgreSQL-only SQL may be present)."
+    PAGER=cat psql "$DB_URL" -v ON_ERROR_STOP=1 -1 -f "$MIGRATION_FILE" | tee "$log_file"
+    ;;
+  mysql:*|mariadb:*)
+    echo "Detected MySQL/MariaDB URL; using mysql to run migration. Ensure SQL is compatible with MariaDB."
+    # Extract user/password/host/port/dbname from URL like: mysql://user:pass@host:3306/dbname
+    MYSQL_USER=$(echo "$DB_URL" | sed -E 's#.*//([^:]+):.*@.*#\1#' )
+    MYSQL_PASS=$(echo "$DB_URL" | sed -E 's#.*//[^:]+:([^@]+)@.*#\1#' )
+    MYSQL_HOST=$(echo "$DB_URL" | sed -E 's#.*@([^:/]+).*#\1#' )
+    MYSQL_PORT=$(echo "$DB_URL" | sed -E 's#.*:([0-9]+)/.*#\1#' )
+    MYSQL_DBNAME=$(echo "$DB_URL" | sed -E 's#.*/([^/]+)$#\1#' )
+    MYSQL_PORT=${MYSQL_PORT:-3306}
+    # Run via mysql client; ensure password handling is secure
+    MYSQL_PWD="$MYSQL_PASS" mysql --user="$MYSQL_USER" --host="$MYSQL_HOST" --port="$MYSQL_PORT" "$MYSQL_DBNAME" < "$MIGRATION_FILE" 2>&1 | tee "$log_file"
+    ;;
+  *)
+    echo "No recognizable DB URL scheme; defaulting to psql for backward compatibility"
+    PAGER=cat psql "$DB_URL" -v ON_ERROR_STOP=1 -1 -f "$MIGRATION_FILE" | tee "$log_file"
+    ;;
+esac
 
 echo "Migration applied successfully."
 

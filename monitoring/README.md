@@ -7,7 +7,7 @@ This document outlines the design for a comprehensive observability platform tha
 ## Current State Assessment
 
 ### Existing Capabilities
-- **Basic Prometheus/Grafana Stack**: Docker Compose setup with Prometheus, AlertManager, Grafana, Node Exporter, cAdvisor, and DCGM Exporter
+- **Basic Prometheus/Grafana Stack**: Systemd-based deployment patterns for Prometheus, AlertManager, Grafana, Node Exporter, DCGM Exporter. Kubernetes manifests and Docker Compose assets are deprecated and archived under `infrastructure/archives/`; use systemd artifacts under `infrastructure/systemd/` for active deployments.
 - **Metrics Collection**: Basic Prometheus client integration in `common/metrics.py` with HTTP request metrics, system resources, and GPU monitoring
 - **Alert Rules**: Comprehensive alerting rules for service health, performance, and business metrics
 - **Dashboards**: Three basic Grafana dashboards (system overview, content pipeline, GPU monitoring)

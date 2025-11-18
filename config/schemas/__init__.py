@@ -59,7 +59,10 @@ class CompressionAlgorithm(str, Enum):
 
 
 class DatabaseSSLMode(str, Enum):
-    """PostgreSQL SSL modes"""
+    """Database SSL modes (generic). Previously this enum was documented
+    as Postgres-specific; the modes remain an abstract representation of
+    TLS/SSL connection behavior applicable to MySQL/MariaDB and Postgres.
+    """
     DISABLE = "disable"
     ALLOW = "allow"
     PREFER = "prefer"
@@ -121,7 +124,7 @@ class DatabaseConnectionPoolConfig(BaseModel):
 class DatabaseConfig(BaseModel):
     """Database configuration"""
     host: str = Field(default="localhost", description="Database host")
-    port: PositiveInt = Field(default=5432, description="Database port")
+    port: PositiveInt = Field(default=3306, description="Database port (default: MariaDB 3306)")
     database: str = Field(default="justnews", description="Database name")
     user: str = Field(default="justnews_user", description="Database user")
     password: str = Field(default="", description="Database password")

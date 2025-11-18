@@ -1,5 +1,6 @@
-# Multi-stage Dockerfile template for JustNewsAgent services
-# This template is used by all agent services with service-specific customizations
+## DEPRECATED: Dockerfiles and related container templates are removed from active use.
+## This file is preserved for historical reference only. JustNews now runs under systemd.
+## If you need to containerize an agent for development, use a local, ad-hoc containerization strategy.
 
 # Build stage
 FROM python:3.11-slim as builder

@@ -14,19 +14,19 @@ This guide covers production deployment, scaling, and operational procedures for
 
 ### Development Environment
 - **Purpose**: Feature development and testing
-- **Components**: Docker Compose with hot reload
+- **Components**: systemd with hot reload support via development scripts
 - **Persistence**: Local volumes and SQLite
 - **Monitoring**: Basic logging and health checks
 
 ### Staging Environment
 - **Purpose**: Integration testing and validation
-- **Components**: Kubernetes with 2-3 replicas
+- **Components**: systemd services with multiple instances or dedicated staging host
 - **Persistence**: MariaDB with test data
 - **Monitoring**: Prometheus/Grafana dashboards
 
 ### Production Environment
 - **Purpose**: Live system serving real traffic
-- **Components**: Kubernetes with auto-scaling
+- **Components**: systemd-managed services with cluster-level HA managed outside this repo
 - **Persistence**: MariaDB cluster with backups
 - **Monitoring**: Full observability stack
 
@@ -42,12 +42,12 @@ This guide covers production deployment, scaling, and operational procedures for
 - Network: 1Gbps connection
 
 # Software requirements
-- Kubernetes 1.25+
-- NVIDIA GPU Operator
+- NVIDIA GPU Operator (if using GPU features)
 - MariaDB 10.11+
 - ChromaDB 0.4.18+
 - Redis 7+
-- Docker 24+
+- systemd (required for production runs)
+# NOTE: Kubernetes and Docker are deprecated and archived; see `infrastructure/archives/` for historical artifacts.
 ```
 
 ### Network Configuration
@@ -66,42 +66,21 @@ This guide covers production deployment, scaling, and operational procedures for
 
 ## Deployment Methods
 
-### Method 1: Kubernetes (Recommended)
+### Method 1: systemd (Preferred / Production)
 
 #### Prerequisites
 ```bash
-# Install kubectl and helm
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-
-# Install helm
-curl https://get.helm.sh/helm-v3.12.0-linux-amd64.tar.gz | tar -xz
-sudo mv linux-amd64/helm /usr/local/bin/
+# No Kubernetes required. systemd is the default orchestration for JustNews.
+# Ensure systemd and MariaDB are available on the host.
 ```
 
 #### Deploy Infrastructure
 ```bash
-# Create namespace
-kubectl create namespace justnews
+# Install MariaDB via your OS package manager or use the supplied scripts
+sudo apt-get update && sudo apt-get install -y mariadb-server
+sudo systemctl enable --now mariadb
 
-# Deploy MariaDB
-helm repo add bitnami https://charts.bitnami.com/bitnami
-helm install mariadb bitnami/mariadb \
-  --namespace justnews \
-  --set auth.rootPassword=your_password \
-  --set auth.database=justnews \
-  --set auth.username=justnews \
-  --set auth.password=your_password
-
-# Deploy ChromaDB
-helm repo add chromadb https://chromadb.github.io/helm
-helm install chromadb chromadb/chromadb \
-  --namespace justnews
-
-# Deploy Redis
-helm install redis bitnami/redis \
-  --namespace justnews \
-  --set auth.password=your_password
+# Optionally install ChromaDB following upstream packaging or binary install
 ```
 
 #### Deploy JustNews
@@ -110,51 +89,53 @@ helm install redis bitnami/redis \
 git clone <repository>
 cd JustNews
 
-# Deploy to Kubernetes
-kubectl apply -f deploy/kubernetes/production/
+# Install systemd units
+sudo cp infrastructure/systemd/units/*.service /etc/systemd/system/
+sudo systemctl daemon-reload
 
-# Verify deployment
-kubectl get pods -n justnews
-kubectl get services -n justnews
+# Start and enable core services (MariaDB should be configured already)
+sudo systemctl enable --now justnews-mcp-bus
+sudo systemctl enable --now justnews-redis
+
+# Enable/start agent services
+for service in justnews-scout justnews-analyst justnews-synthesizer; do
+  sudo systemctl enable --now $service || true
+done
 ```
 
 #### Configuration
 ```bash
-# Create secrets
-kubectl create secret generic justnews-secrets \
-  --namespace justnews \
-  --from-literal=database-url=mysql://... \
-  --from-literal=chromadb-url=http://... \
-  --from-literal=redis-url=redis://... \
-  --from-literal=api-keys=...
-
-# Apply configuration
-kubectl apply -f config/kubernetes/
+# Create local environment files and place them under `deploy/refactor/config/environments/`.
+cp deploy/refactor/config/environments/development.env deploy/refactor/config/environments/production.env
+# Edit production.env with proper MARIADB/CHROMADB/REDIS values
 ```
 
-### Method 2: Docker Compose (Development/Staging)
+### Method 2: Docker Compose (DEPRECATED & ARCHIVED)
+
+> ⚠️ Docker Compose has been deprecated and archived in this repository. It is not supported for active development or deployments. Historical compose files are available under `infrastructure/archives/docker/` for reference only; prefer systemd artifacts for local and production deployments.
 
 #### Quick Start
 ```bash
 # Clone repository
-git clone <repository>
+# Scale via systemd
+# Create additional unit instances or use templated units to add replicas. See the systemd scaling section above.
 cd JustNews
 
-# Start all services
-docker-compose -f docker-compose.yml up -d
+# Start all services (DEPRECATED)
+## (DEPRECATED) docker-compose -f docker-compose.yml up -d
 
 # Check status
-docker-compose ps
-docker-compose logs -f
+## (DEPRECATED) docker-compose ps
+## (DEPRECATED) docker-compose logs -f
 ```
 
 #### Production-Ready Compose
 ```bash
-# Use production compose file
-docker-compose -f docker-compose.prod.yml up -d
-
-# Scale services
-docker-compose up -d --scale scout=3 --scale analyst=2
+# Use production compose file (DEPRECATED)
+# (DEPRECATED) docker-compose -f docker-compose.prod.yml up -d
+sudo systemctl status --type=service --state=running
+sudo journalctl -u <unit-name> -f
+## (DEPRECATED) docker-compose up -d --scale scout=3 --scale analyst=2
 ```
 
 ### Method 3: systemd (Legacy)
@@ -165,16 +146,16 @@ docker-compose up -d --scale scout=3 --scale analyst=2
 sudo cp infrastructure/systemd/units/*.service /etc/systemd/system/
 sudo systemctl daemon-reload
 
-# Start services in order
+# Start services in order (MariaDB recommended; Postgres services are deprecated)
 sudo systemctl start justnews-mcp-bus
-sudo systemctl start justnews-postgres
+sudo systemctl start justnews-mariadb || sudo systemctl start justnews-postgres
 sudo systemctl start justnews-redis
 
 # Start agents
 for service in justnews-scout justnews-analyst justnews-synthesizer; do
   sudo systemctl start $service
 done
-
+sudo systemctl list-units > systemd_backup.txt
 # Enable auto-start
 sudo systemctl enable justnews-*
 ```
@@ -183,20 +164,14 @@ sudo systemctl enable justnews-*
 
 ### Horizontal Scaling
 
-#### Kubernetes Auto-scaling
+#### systemd Scaling
 ```yaml
-# HPA configuration
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: scout-agent-hpa
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: scout-agent
-  minReplicas: 2
-  maxReplicas: 10
+Use systemd templated units or clone the unit to start additional instances of an agent if you need horizontal scaling.
+Example: Run multiple instances of `justnews-scout@` template (if available) or duplicate the unit with numbered instances and start them as required.
+```
+# Start a second instance
+sudo systemctl enable --now justnews-scout@2.service
+```
   metrics:
   - type: Resource
     resource:
@@ -208,32 +183,29 @@ spec:
 
 #### Manual Scaling
 ```bash
-# Scale via kubectl
-kubectl scale deployment scout-agent --replicas=5
-
-# Scale via docker-compose
-docker-compose up -d --scale scout=5
+# For systemd: start additional instances or use templated units to add more replicas
+sudo systemctl enable --now justnews-scout@2.service
 ```
 
 ### Vertical Scaling
 
-#### GPU Scaling
+#### GPU Scaling (systemd)
 ```bash
 # Check GPU utilization
 nvidia-smi
 
-# Scale GPU resources
-kubectl patch deployment analyst-agent \
-  --type='json' \
-  -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/resources/limits/nvidia.com~1gpu", "value": "2"}]'
+# Update GPU resource allocation in the service configuration. For systemd based deployments, update the service environment or system-wide GPU limits and restart the service. See the `infrastructure/systemd/units/` templates for guidance.
 ```
 
 #### Memory/CPU Scaling
 ```bash
 # Update resource requests/limits
-kubectl set resources deployment synthesizer-agent \
-  --limits=cpu=2,memory=8Gi \
-  --requests=cpu=1,memory=4Gi
+Edit the relevant systemd service file to adjust resources and restart the service:
+```
+sudo systemctl edit --full justnews-synthesizer.service
+sudo systemctl daemon-reload
+sudo systemctl restart justnews-synthesizer
+```
 ```
 
 ## Monitoring & Alerting
@@ -247,9 +219,10 @@ curl http://localhost:8000/health
 curl http://localhost:8001/health
 # ... check all agent health endpoints
 
-# Kubernetes health
-kubectl get pods -n justnews
-kubectl describe pod <pod-name>
+# Service health (systemd)
+sudo systemctl status justnews-mcp-bus
+sudo systemctl status justnews-scout
+sudo journalctl -u <unit-name> -f
 ```
 
 #### Application Metrics
@@ -314,8 +287,8 @@ cp -r /chroma/chroma /backup/chroma_$(date +%Y%m%d)
 # Backup configs
 tar -czf config_backup_$(date +%Y%m%d).tar.gz config/
 
-# Kubernetes config backup
-kubectl get all -n justnews -o yaml > k8s_backup.yaml
+# systemd units backup
+sudo systemctl list-units --type=service --state=active > systemd_backup.txt
 ```
 
 ### Recovery Procedures
@@ -323,13 +296,13 @@ kubectl get all -n justnews -o yaml > k8s_backup.yaml
 #### Database Recovery
 ```bash
 # Stop all services
-kubectl scale deployment --all --replicas=0 -n justnews
+for svc in justnews-*; do sudo systemctl stop $svc || true; done
 
 # Restore database
 mysql -h localhost -u justnews -p justnews_db < backup_file.sql
 
 # Restart services
-kubectl scale deployment --all --replicas=1 -n justnews
+for svc in justnews-*; do sudo systemctl start $svc || true; done
 ```
 
 #### Full System Recovery
@@ -375,19 +348,19 @@ make test-integration
 #### Service Startup Failures
 ```bash
 # Check service logs
-kubectl logs -f deployment/mcp-bus -n justnews
+sudo journalctl -u justnews-mcp-bus -f
 
-# Check events
-kubectl get events -n justnews --sort-by=.metadata.creationTimestamp
+# Check system events
+sudo journalctl -u justnews-mcp-bus --since "1 hour ago"
 
 # Check resource constraints
-kubectl describe pod <pod-name>
+sudo systemctl status <unit-name>
 ```
 
 #### Performance Issues
 ```bash
 # Check resource usage
-kubectl top pods -n justnews
+top -b -n 1 | head -n 20
 
 # Check GPU usage
 nvidia-smi
@@ -399,13 +372,12 @@ nvidia-smi
 #### Network Issues
 ```bash
 # Check service connectivity
-kubectl exec -it <pod-name> -- curl http://localhost:8000/health
+curl http://localhost:8000/health
 
-# Check network policies
-kubectl get networkpolicies -n justnews
+# Network policies are not applicable to systemd-managed services
 
 # DNS resolution
-kubectl exec -it <pod-name> -- nslookup mcp-bus
+nslookup mcp-bus
 ```
 
 ## Maintenance Windows
@@ -424,14 +396,13 @@ kubectl exec -it <pod-name> -- nslookup mcp-bus
 
 ### Rolling Updates
 ```bash
-# Update with zero downtime
-kubectl set image deployment/scout-agent scout-agent=scout-agent:v2.0.0
-
-# Monitor rollout
-kubectl rollout status deployment/scout-agent
-
-# Rollback if needed
-kubectl rollout undo deployment/scout-agent
+# Rolling updates with systemd
+Update code, update the unit file or the ExecStart command, and run:
+```
+sudo systemctl daemon-reload
+sudo systemctl restart justnews-scout
+```
+Rollback: Revert the unit file or binaries and run `sudo systemctl restart justnews-scout`.
 ```
 
 ---

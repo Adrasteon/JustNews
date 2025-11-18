@@ -1,5 +1,5 @@
-# Default values for JustNews Helm chart
-# This is a YAML-formatted file.
+# DEPRECATED: values.yaml for the Helm chart has been archived.
+# The original content is available under: infrastructure/archives/helm/justnews/values.yaml
 
 # Global configuration
 global:

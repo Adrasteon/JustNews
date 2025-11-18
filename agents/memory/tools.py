@@ -177,7 +177,7 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
 
                 if duplicate:
                     duplicate_lookup_id = duplicate[0]
-            elif normalized_url:
+            if normalized_url and duplicate_lookup_id is None:
                 # Check for duplicates by normalized URL
                 cursor = db_service.mb_conn.cursor()
                 cursor.execute("SELECT id FROM articles WHERE normalized_url = %s", (normalized_url,))
@@ -187,7 +187,7 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
                 if duplicate:
                     duplicate_lookup_id = duplicate[0]
 
-                if duplicate_lookup_id is not None:
+            if duplicate_lookup_id is not None:
                     logger.info(
                         "Article with hash %s already exists (ID: %s), skipping duplicate",
                         hash_value,

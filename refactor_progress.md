@@ -41,7 +41,7 @@ The JustNews V4 codebase is undergoing a comprehensive multi-phase refactoring i
 **Status**: **PRODUCTION READY** - Enterprise-grade system with comprehensive monitoring, automated operations, and zero critical issues
 
 **Major Refactoring Areas Completed**:
-1. ✅ **Deployment System** - Multi-platform deployment (Docker/Kubernetes/systemd) fully operational
+1. ✅ **Deployment System** - systemd deployment fully operational (Docker and Kubernetes deprecated)
 2. ✅ **Documentation System** - Unified documentation platform with FastAPI patterns complete
 3. ✅ **Configuration Management** - Pydantic V2 type-safe configuration system implemented
 4. ✅ **Testing Infrastructure** - Comprehensive pytest framework with async support and mocking
@@ -203,7 +203,7 @@ The JustNews V4 codebase is undergoing a comprehensive multi-phase refactoring i
 
 ### ✅ Phase 10 - Deployment System (COMPLETED)
 - **Status**: ✅ Complete - October 23, 2025
-- **Deliverables**: Multi-platform deployment (Docker/Kubernetes/systemd) fully operational
+- **Deliverables**: systemd deployment fully operational (Docker and Kubernetes deprecated)
 
 ### ✅ Phase 11 - Consumer-Facing System (COMPLETED)
 - **Status**: ✅ Complete - October 23, 2025

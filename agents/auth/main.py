@@ -137,7 +137,7 @@ async def service_info():
 
 @app.get("/ready")
 async def readiness_check():
-    """Kubernetes readiness probe endpoint"""
+    """Service readiness probe endpoint (systemd)"""
     try:
         engine = get_auth_engine()
         if engine.is_initialized():

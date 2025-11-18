@@ -1,5 +1,5 @@
-# Single-Node Optimized Values for JustNews K8s Deployment
-# Optimized for AMD Ryzen 7 (16 cores) + 32GB RAM + RTX3090
+# DEPRECATED: This values-single-node.yaml file has been archived.
+# The original file content is available at: infrastructure/archives/helm/justnews/values-single-node.yaml
 
 # Global configuration
 global:

@@ -182,7 +182,7 @@ class AuthEngine:
                 "GET /health"
             ],
             "database": {
-                "type": "PostgreSQL",
+                "type": "MariaDB",
                 "tables": ["users", "refresh_tokens", "password_reset_tokens", "consent_records"]
             }
         }

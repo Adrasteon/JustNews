@@ -308,6 +308,53 @@ class CrawlerEngine:
                         continue
             except Exception as e:
                 logger.debug(f"Playwright cleanup failed: {e}")
+            
+            # Fallback for environments without psutil or when unit tests patch subprocess calls.
+            # This replicates earlier behaviour that used `pgrep`/`ps` shell tools.
+            try:
+                import subprocess
+                import signal
+                # Find chrome-like pids
+                pgrep_proc = subprocess.run(['pgrep', '-f', 'chrome'], capture_output=True, text=True, timeout=5)
+                if pgrep_proc.returncode == 0 and pgrep_proc.stdout:
+                    pids = [int(pid.strip()) for pid in pgrep_proc.stdout.splitlines() if pid.strip().isdigit()]
+                    for pid in pids:
+                        try:
+                            # Get elapsed time via ps (seconds)
+                            ps_proc = subprocess.run(['ps', '-p', str(pid), '-o', 'etimes='], capture_output=True, text=True, timeout=5)
+                            if ps_proc.returncode != 0:
+                                continue
+                            age_seconds = int(ps_proc.stdout.strip() or 0)
+                            if age_seconds > 600:
+                                try:
+                                    os.kill(pid, signal.SIGTERM)
+                                    logger.debug(f"Cleaned up shell-detected Chrome process {pid} (age: {age_seconds}s)")
+                                except Exception:
+                                    continue
+                        except Exception:
+                            continue
+
+                # Find playwright pids
+                pgrep_proc = subprocess.run(['pgrep', '-f', 'playwright.*run-driver'], capture_output=True, text=True, timeout=5)
+                if pgrep_proc.returncode == 0 and pgrep_proc.stdout:
+                    pids = [int(pid.strip()) for pid in pgrep_proc.stdout.splitlines() if pid.strip().isdigit()]
+                    for pid in pids:
+                        try:
+                            ps_proc = subprocess.run(['ps', '-p', str(pid), '-o', 'etimes='], capture_output=True, text=True, timeout=5)
+                            if ps_proc.returncode != 0:
+                                continue
+                            age_seconds = int(ps_proc.stdout.strip() or 0)
+                            if age_seconds > 900:
+                                try:
+                                    os.kill(pid, signal.SIGTERM)
+                                    logger.debug(f"Cleaned up shell-detected Playwright process {pid} (age: {age_seconds}s)")
+                                except Exception:
+                                    continue
+                        except Exception:
+                            continue
+
+            except Exception as e:
+                logger.debug(f"Shell-based process cleanup failed: {e}")
 
         except Exception as e:
             logger.warning(f"Orphaned process cleanup failed: {e}")

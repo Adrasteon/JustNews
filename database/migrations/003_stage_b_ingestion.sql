@@ -3,6 +3,10 @@
 -- Created: 2025-10-26
 -- Author: GitHub Copilot
 
+-- NOTE: This migration targets PostgreSQL and uses Postgres-specific
+-- types and features (JSONB, array types, partial indexes). It is NOT
+-- compatible with MariaDB. Convert to MariaDB-compatible SQL before applying.
+
 -- UP: Extend articles table with ingestion metadata and embedding storage
 
 ALTER TABLE articles

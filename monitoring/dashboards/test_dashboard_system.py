@@ -52,6 +52,7 @@ except ImportError:
         DashboardConfig,
         DashboardGenerator,
         DashboardTemplate,
+        PanelConfig,
     )
     from executive_dashboard import (
         BusinessKPI,

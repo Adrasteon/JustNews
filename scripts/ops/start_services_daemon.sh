@@ -158,19 +158,22 @@ export BASE_MODEL_DIR="${BASE_MODEL_DIR:-"$DEFAULT_BASE_MODELS_DIR/agents"}"
 # Set STRICT_MODEL_STORE=0 to allow fallbacks for development/testing.
 export STRICT_MODEL_STORE="${STRICT_MODEL_STORE:-1}"
 
-# PostgreSQL defaults used by agents/tests when not explicitly provided elsewhere.
-# These can be overridden in the environment for CI or developer machines.
-export POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
-export POSTGRES_DB="${POSTGRES_DB:-justnews}"
-export POSTGRES_USER="${POSTGRES_USER:-justnews_user}"
-export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-password123}"
+# Primary database defaults: prefer MariaDB/MYSQL configuration. Postgres
+# environment variables remain supported as a fallback for legacy systems
+# but MariaDB is the default target moving forward.
+export MARIADB_HOST="${MARIADB_HOST:-localhost}"
+export MARIADB_PORT="${MARIADB_PORT:-3306}"
+export MARIADB_DB="${MARIADB_DB:-justnews}"
+export MARIADB_USER="${MARIADB_USER:-justnews_user}"
+export MARIADB_PASSWORD="${MARIADB_PASSWORD:-password123}"
 
-# Mirror to JUSTNEWS_DB_* variables for scripts (e.g., news_outlets.py) if not explicitly set
-export JUSTNEWS_DB_HOST="${JUSTNEWS_DB_HOST:-$POSTGRES_HOST}"
-export JUSTNEWS_DB_PORT="${JUSTNEWS_DB_PORT:-5432}"
-export JUSTNEWS_DB_NAME="${JUSTNEWS_DB_NAME:-$POSTGRES_DB}"
-export JUSTNEWS_DB_USER="${JUSTNEWS_DB_USER:-$POSTGRES_USER}"
-export JUSTNEWS_DB_PASSWORD="${JUSTNEWS_DB_PASSWORD:-$POSTGRES_PASSWORD}"
+# Mirror to JUSTNEWS_DB_* variables for scripts (e.g., news_outlets.py) if not explicitly set.
+# Prefer MARIADB_* variables, else fall back to the legacy POSTGRES_* values for portability.
+export JUSTNEWS_DB_HOST="${JUSTNEWS_DB_HOST:-${MARIADB_HOST:-${POSTGRES_HOST:-localhost}}}"
+export JUSTNEWS_DB_PORT="${JUSTNEWS_DB_PORT:-${MARIADB_PORT:-${POSTGRES_PORT:-3306}}}"
+export JUSTNEWS_DB_NAME="${JUSTNEWS_DB_NAME:-${MARIADB_DB:-${POSTGRES_DB:-justnews}}}"
+export JUSTNEWS_DB_USER="${JUSTNEWS_DB_USER:-${MARIADB_USER:-${POSTGRES_USER:-justnews_user}}}"
+export JUSTNEWS_DB_PASSWORD="${JUSTNEWS_DB_PASSWORD:-${MARIADB_PASSWORD:-${POSTGRES_PASSWORD:-password123}}}"
 
 # Per-agent cache envs (only set if not already set)
 export SYNTHESIZER_MODEL_CACHE="${SYNTHESIZER_MODEL_CACHE:-"$DEFAULT_BASE_MODELS_DIR/agents/synthesizer/models"}"
@@ -219,15 +222,27 @@ done
 # ------------------------------------------------------------
 # Optional pre-start sources seeding
 # Enable by setting AUTO_SEED_SOURCES=1 (idempotent: only runs if table empty or missing)
-# Requires: psql in PATH and scripts/news_outlets.py present.
+# Requires: mysql (or mariadb) OR psql in PATH and scripts/news_outlets.py present.
 # ------------------------------------------------------------
 if [ "${AUTO_SEED_SOURCES:-0}" = "1" ]; then
   echo "[startup] AUTO_SEED_SOURCES=1 → attempting sources table seed"
-  if command -v psql >/dev/null 2>&1; then
+  if command -v mysql >/dev/null 2>&1; then
+    # Using mysql client to check MariaDB tables
+    set +e
+    SOURCE_COUNT=$(mysql --batch --silent -h $JUSTNEWS_DB_HOST -P $JUSTNEWS_DB_PORT -u $JUSTNEWS_DB_USER -p"$JUSTNEWS_DB_PASSWORD" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${JUSTNEWS_DB_NAME}' AND table_name='sources';" 2>/dev/null | tail -n1)
+    STATUS=$?
+    set -e
+  elif command -v psql >/dev/null 2>&1; then
     set +e
     SOURCE_COUNT=$(psql "postgresql://$JUSTNEWS_DB_USER:$JUSTNEWS_DB_PASSWORD@$JUSTNEWS_DB_HOST:${JUSTNEWS_DB_PORT}/$JUSTNEWS_DB_NAME" -tAc "SELECT count(*) FROM public.sources" 2>/dev/null)
     STATUS=$?
     set -e
+  else
+    echo "[startup] WARNING: mysql or psql not installed – cannot auto-seed sources"
+    NEED_SEED=0
+    STATUS=1
+  fi
+    # NOTE: The DB client used above has set SOURCE_COUNT and STATUS accordingly.
     if [ $STATUS -ne 0 ] || [ -z "$SOURCE_COUNT" ]; then
       echo "[startup] sources table absent or inaccessible – will attempt seed (creating table if necessary)"
       NEED_SEED=1

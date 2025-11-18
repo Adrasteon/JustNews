@@ -369,11 +369,12 @@ class GPUConfigManager:
             return 'production'
 
         # Check for environment-specific files
-        if os.path.exists('.env.development') or os.path.exists('docker-compose.dev.yml'):
+        # Note: Docker Compose and Kubernetes manifests are deprecated; prefer systemd units in `infrastructure/systemd`.
+        if os.path.exists('.env.development') or os.path.exists('infrastructure/systemd'):
             return 'development'
-        elif os.path.exists('.env.staging') or os.path.exists('docker-compose.staging.yml'):
+        elif os.path.exists('.env.staging'):
             return 'staging'
-        elif os.path.exists('.env.production') or os.path.exists('docker-compose.prod.yml'):
+        elif os.path.exists('.env.production'):
             return 'production'
 
         # Check current working directory for environment hints
@@ -519,7 +520,8 @@ class GPUConfigManager:
         if any(pattern in hostname for pattern in ['dev', 'development', 'local', 'staging', 'stage', 'test', 'prod', 'production', 'live']):
             return 'hostname_pattern'
 
-        if any(os.path.exists(f) for f in ['.env.development', '.env.staging', '.env.production', 'docker-compose.dev.yml', 'docker-compose.staging.yml', 'docker-compose.prod.yml']):
+        # Check for environment marker files (docker-compose and Kubernetes deprecated)
+        if any(os.path.exists(f) for f in ['.env.development', '.env.staging', '.env.production', 'infrastructure/systemd']):
             return 'environment_files'
 
         cwd = os.getcwd().lower()

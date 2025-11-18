@@ -1,3 +1,5 @@
+## DEPRECATED: Kubernetes manifests are archived and removed from active use.
+## This file is preserved for historical reference only. Use systemd units under `deploy/refactor/systemd`.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

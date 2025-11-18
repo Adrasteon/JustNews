@@ -176,7 +176,7 @@ async def health_check():
 
 @app.get("/ready")
 async def readiness_check():
-    """Kubernetes readiness probe endpoint"""
+    """Service readiness probe endpoint (systemd)"""
     return {"ready": ready}
 
 

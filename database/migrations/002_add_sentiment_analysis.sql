@@ -3,6 +3,10 @@
 -- Created: 2024-01-02
 -- Author: Database Team
 
+-- NOTE: This migration targets PostgreSQL and uses Postgres-specific
+-- types (SERIAL, JSONB, arrays). It is NOT compatible with MariaDB and
+-- should not be applied to MariaDB deployments without conversion.
+
 -- UP: Add sentiment analysis features
 
 -- Add sentiment columns to articles table

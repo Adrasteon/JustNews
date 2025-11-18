@@ -1,5 +1,11 @@
-#!/bin/bash
-# Script to generate Dockerfiles for all JustNews agents
+#!/usr/bin/env bash
+# DEPRECATED: Dockerfiles generation is not supported in this workspace anymore.
+# Use `deploy/refactor/systemd` and the systemd unit templates under
+# `deploy/refactor/systemd/services` to generate or add new services.
+
+echo "ERROR: Dockerfile generation has been deprecated and removed from this workspace."
+echo "The original Dockerfiles are archived at: infrastructure/archives/docker/agent-dockerfiles/"
+exit 1
 
 # Agent configurations: name:port
 declare -A agents=(

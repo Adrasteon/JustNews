@@ -171,21 +171,9 @@ class TestSystemPerformance:
 
     @pytest.mark.asyncio
     @pytest.mark.performance
-    async def test_database_connection_pooling(self):
-        """Test database connection pooling efficiency"""
-        # Setup database mock
-        with patch('psycopg2.pool.SimpleConnectionPool') as mock_pool:
-            mock_pool_instance = MagicMock()
-            mock_pool.return_value = mock_pool_instance
-
-            # Simulate connection pool usage
-            await self._simulate_database_operations(100)
-
-            # Verify connection pool efficiency
-            assert mock_pool_instance.getconn.call_count <= 10, "Too many connections created"
-            assert mock_pool_instance.putconn.call_count == mock_pool_instance.getconn.call_count, "Connection leak detected"
-
-            print("✅ Database pooling: efficient connection reuse")
+    # Database pooling tests using Postgres were removed because Postgres has been deprecated.
+    # See migration to MariaDB + ChromaDB; use database-specific unit tests under
+    # `database/tests` for connection pooling and migration behavior.
 
     @pytest.mark.asyncio
     @pytest.mark.performance

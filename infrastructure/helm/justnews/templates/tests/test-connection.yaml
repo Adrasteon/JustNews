@@ -12,7 +12,7 @@ spec:
   - name: wget
     image: busybox
     command: ['wget']
-    args:  ['{{ include "justnews.fullname" . }}-postgres:5432']
+    args:  ['{{ include "justnews.fullname" . }}-mariadb:3306']
     resources:
       limits:
         cpu: 100m

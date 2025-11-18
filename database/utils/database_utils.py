@@ -15,6 +15,7 @@ from importlib import import_module
 from typing import Any
 
 from common.observability import get_logger
+from common.env_loader import load_global_env
 
 from ..core.connection_pool import DatabaseConnectionPool
 
@@ -39,21 +40,18 @@ def get_db_config() -> dict[str, Any]:
     Returns:
         Database configuration dictionary
     """
-    # Load global.env file first if it exists
-    env_file_path = '/etc/justnews/global.env'
-    if os.path.exists(env_file_path):
-        logger.info(f"Loading environment variables from {env_file_path}")
-        with open(env_file_path, encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#'):
-                    if '=' in line:
-                        key, value = line.split('=', 1)
-                        os.environ[key.strip()] = value.strip()
+    # Load any global.env files while preserving process environment variables
+    # so tests can inject an early override via JUSTNEWS_GLOBAL_ENV.
+    try:
+        load_global_env(logger=logger)
+    except Exception:
+        # Defensive: continue even if env loading failed for unexpected reasons
+        logger.debug("Failed to load global env via load_global_env(); will rely on current environment")
 
     # Get database configuration
     config = {
-        # Prefer MariaDB environment variables; fall back to sensible defaults
+        # Prefer MariaDB environment variables by default; if Postgres vars are present
+        # (for backward compatibility) they can still be used as a fallback.
         'host': os.environ.get('MARIADB_HOST', os.environ.get('POSTGRES_HOST', 'localhost')),
         'port': int(os.environ.get('MARIADB_PORT', os.environ.get('POSTGRES_PORT', '3306'))),
         'database': os.environ.get('MARIADB_DB', os.environ.get('POSTGRES_DB', 'justnews')),

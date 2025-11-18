@@ -122,9 +122,19 @@ def create_knowledge_graph_tables():
         """
     ]
 
+    import re
+    def adapt_sql_for_mariadb(sql: str) -> str:
+        s = sql
+        s = s.replace('JSONB', 'JSON')
+        s = re.sub(r"\bSERIAL\b", 'INT AUTO_INCREMENT', s)
+        s = s.replace('TIMESTAMPTZ', 'TIMESTAMP')
+        s = re.sub(r"\bTEXT\[\]|\bTEXT\s*\[\s*\]", 'JSON', s)
+        return s
+
     for i, query in enumerate(queries, 1):
         try:
-            execute_query(query, fetch=False)
+            adapted_query = adapt_sql_for_mariadb(query)
+            execute_query(adapted_query, fetch=False)
             logger.info(f"✅ Created knowledge graph table {i}/{len(queries)}")
         except Exception as e:
             logger.error(f"❌ Error creating knowledge graph table {i}: {e}")

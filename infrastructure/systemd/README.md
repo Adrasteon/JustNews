@@ -136,3 +136,72 @@ sudo journalctl -u justnews-grafana.service -e -n 200
 
 Grafana defaults to `http://localhost:3000/` with `admin / change_me`. Update credentials via the UI after first login.
 
+## Optional preflight checks (DB / Vector store / SQLite)
+
+This section documents the existing helpers and how to perform simple operator checks for MariaDB/Postgres, Chroma (vector database), and local SQLite use by the HITL and crawler paywall aggregator components.
+
+### MariaDB/Postgres (Memory DB)
+- Helper: `infrastructure/systemd/helpers/db-check.sh` — reads `/etc/justnews/global.env` and tries a minimal `SELECT 1;` using `mysql` or `psql`.
+- Example usage: `sudo ./infrastructure/systemd/helpers/db-check.sh` or if installed: `sudo /usr/local/bin/db-check.sh`.
+- If this fails, confirm `JUSTNEWS_DB_URL` (or `DATABASE_URL`) in `/etc/justnews/global.env` or use the native client: `mysql --user=... --host=... -p -e 'SELECT 1;'` or `psql "$DATABASE_URL" -c 'SELECT 1;'`.
+
+### Chroma (vector store)
+- Config vars: `CHROMADB_HOST`, `CHROMADB_PORT` in `/etc/justnews/global.env` (defaults to `localhost:3307`).
+- Quick probe (Python):
+	```bash
+	CHROMA_HOST=${CHROMADB_HOST:-localhost}
+	CHROMA_PORT=${CHROMADB_PORT:-3307}
+	python3 - <<'PY'
+	from chromadb import HttpClient
+	import os
+	host = os.getenv('CHROMADB_HOST', 'localhost')
+	port = int(os.getenv('CHROMADB_PORT', '3307'))
+	client = HttpClient(host=host, port=port)
+	print('Collections:', client.list_collections())
+	PY
+	```
+
+### Local SQLite checks (HITL and Paywall aggregator)
+- Env vars: `HITL_DB_PATH`, `CRAWL4AI_PAYWALL_AGG_DB`.
+- Quick probe (Python):
+	```bash
+	python3 - <<'PY'
+	import os, sqlite3
+	path = os.getenv('HITL_DB_PATH', 'agents/hitl_service/hitl_staging.db')
+	os.makedirs(os.path.dirname(path), exist_ok=True)
+	conn = sqlite3.connect(path)
+	conn.execute('PRAGMA user_version;')
+	conn.close()
+	print('OK', path)
+	PY
+	```
+
+### How to gate startup on these checks
+
+You may prefer not to gate production startup on DB/Chroma/SQLite checks for developer convenience. If you want to add gating:
+
+1) Manual option: Run the checks before `canonical_system_startup.sh`:
+```bash
+sudo ./infrastructure/systemd/helpers/db-check.sh
+CHROMADB_HOST=... CHROMADB_PORT=... python3 ./infrastructure/systemd/helpers/chroma_probe.py
+HITL_DB_PATH=/var/lib/justnews/hitl.db python3 ./infrastructure/systemd/helpers/sqlite_check.py
+sudo ./infrastructure/systemd/canonical_system_startup.sh
+```
+
+2) Automated option (recommended for production): Add `ExecStartPre` entries to the drop-in files. For example, add to `/etc/systemd/system/justnews@<instance>.service.d/10-preflight-gating.conf`:
+
+```
+[Service]
+ExecStartPre=/usr/local/bin/db-check.sh
+ExecStartPre=/usr/local/bin/chroma-probe.sh
+ExecStartPre=/usr/local/bin/sqlite-writable-check.sh
+```
+
+3) Opt-in gating environment variable (safe for rolling upgrades): Set `ENABLE_DB_GATING=1` in `/etc/justnews/global.env` and consider adding `if [ "$ENABLE_DB_GATING" = "1" ]; then /usr/local/bin/db-check.sh; fi` into the `canonical_system_startup.sh` drop-in generation logic, or into `justnews-preflight-check.sh`.
+
+Note: Gating failures cause `systemd` to mark the unit as failed. Use gating only when your architecture requires immediate database readiness before the agent can start.
+
+---
+
+If you'd like, we can add small `chroma-probe.sh` and `sqlite-writable-check.sh` helpers to the `infrastructure/systemd/helpers/` directory for easier integration with `ExecStartPre` in a follow-up change.
+

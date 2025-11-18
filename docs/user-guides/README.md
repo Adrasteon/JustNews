@@ -402,11 +402,11 @@ uvicorn agents.my_agent.main:app --reload --port 8009
 
 #### Production Deployment
 ```bash
-# Build container
-docker build -t my-agent .
-
-# Deploy to Kubernetes
-kubectl apply -f k8s/my-agent-deployment.yaml
+# Build and deploy as systemd unit (package your code and create a systemd service)
+# Example: copy service file and start
+sudo cp infrastructure/systemd/units/my-agent.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now my-agent
 ```
 
 ## Best Practices

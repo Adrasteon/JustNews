@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from .crawler_engine import CrawlerEngine
+from .extraction import extract_article_content
 
 
 def get_crawler_info(*args, **kwargs) -> dict[str, Any]:
@@ -40,3 +41,10 @@ def reset_performance_metrics():
     except ImportError:
         # Performance monitoring might not be available
         pass
+
+
+__all__ = [
+    'get_crawler_info',
+    'reset_performance_metrics',
+    'extract_article_content',
+]

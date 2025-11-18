@@ -38,9 +38,10 @@ Required: NVIDIA MPS. MPS is an essential part of the design to protect GPU stab
 ## Stage A — Restore systemd baseline (authoritative path)
 
 A0. Host cleanup (we already ran these during teardown)
-- Ensure k3s is fully removed (no services, sockets, or directories left). If needed, rerun the uninstall script and confirm cleanup:
+- If you previously installed a lightweight Kubernetes (k3s) for legacy testing or POC, remove it to avoid service conflicts with systemd. This step is only necessary if you actually installed k3s; skip if not present:
   - `/usr/local/bin/k3s-uninstall.sh`
   - Verify: no `k3s.service`, `/run/k3s`, or `/var/lib/rancher/k3s` present.
+  - NOTE: Kubernetes manifests are deprecated and archived under `infrastructure/archives/kubernetes/`.
 
 A1. Python environment
 - Choose one:
@@ -69,7 +70,7 @@ A3. Database
 - Initialize local MariaDB (or point at an external DB):
   - See `infrastructure/systemd/setup_mariadb.sh` for supported flows.
   - Initialize/migrate schema (pick one, depending on repo conventions):
-    - `scripts/setup_postgres.sh` then `scripts/init_database.py`
+    - `scripts/setup_mariadb.sh` (recommended) or `scripts/setup_postgres.sh` (deprecated) then `scripts/init_database.py`
     - or run migrations in `database/migrations/` via your migration tool.
 - Acceptance checks:
   - DB reachable with `JUSTNEWS_DB_URL`.

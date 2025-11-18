@@ -40,6 +40,38 @@ import textwrap
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
+# Guarantee that a minimal testing global.env is present at import-time to
+# avoid modules parsing /etc/justnews/global.env during collection. This is
+# intentionally performed during import so early imports honor the test env.
+if not os.environ.get('JUSTNEWS_GLOBAL_ENV'):
+    early_tmp = Path(tempfile.gettempdir()) / f"justnews_test_global_env_{os.getpid()}"
+    early_tmp.mkdir(parents=True, exist_ok=True)
+    early_env = early_tmp / "global.env"
+    if not early_env.exists():
+        early_env.write_text(textwrap.dedent(f"""
+        # Auto-generated early global.env for pytest import time
+        SERVICE_DIR={project_root}
+        PYTHON_BIN={os.environ.get('PYTHON_BIN', '')}
+        JUSTNEWS_PYTHON={os.environ.get('JUSTNEWS_PYTHON', '')}
+        MODEL_STORE_ROOT={project_root}/model_store
+        MARIADB_HOST=127.0.0.1
+        MARIADB_PORT=3306
+        MARIADB_DB=justnews_test
+        MARIADB_USER=justnews
+        MARIADB_PASSWORD=test
+        MARIADB_HOST=127.0.0.1
+        MARIADB_PORT=3306
+        MARIADB_DB=justnews_test
+        MARIADB_USER=justnews
+        MARIADB_PASSWORD=test
+        """))
+    os.environ['JUSTNEWS_GLOBAL_ENV'] = str(early_env)
+
+# Indicate we are running pytest; this affects how `common.env_loader` chooses
+# whether to consult /etc/justnews/global.env. This helps keep test runs
+# hermetic and not rely on the host's installed system files.
+os.environ['PYTEST_RUNNING'] = '1'
+
 # Import common utilities
 from common.observability import get_logger
 
@@ -376,11 +408,6 @@ def create_test_global_env(tmp_path_factory):
     PYTHON_BIN={os.environ.get('PYTHON_BIN', '')}
     JUSTNEWS_PYTHON={os.environ.get('JUSTNEWS_PYTHON', '')}
     MODEL_STORE_ROOT={project_root}/model_store
-    POSTGRES_HOST=localhost
-    POSTGRES_PORT=5432
-    POSTGRES_DB=justnews_test
-    POSTGRES_USER=justnews
-    POSTGRES_PASSWORD=test
     MARIADB_HOST=127.0.0.1
     MARIADB_PORT=3306
     MARIADB_DB=justnews_test
@@ -582,8 +609,8 @@ def mock_security_context():
 def test_config():
     """Test configuration fixture"""
     return {
-        "database": {
-            "url": "postgresql://test:test@localhost:5432/test_db",
+            "database": {
+                "url": "mysql://test:test@localhost:3306/test_db",
             "pool_size": 5,
             "timeout": 30
         },

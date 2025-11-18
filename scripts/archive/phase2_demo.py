@@ -8,7 +8,7 @@ with concurrent processing achieving 0.55 articles/second across BBC, Reuters, a
 This demo showcases the new dynamic multi-site crawling capabilities
 using database-driven source management and generic site crawlers.
 Demonstrates:
-- Dynamic source loading from PostgreSQL database
+- Dynamic source loading from MariaDB database (PostgreSQL support is deprecated)
 - Generic site crawler supporting any news source
 - Concurrent multi-site processing with configurable browser pools
 - Canonical metadata emission with evidence capture

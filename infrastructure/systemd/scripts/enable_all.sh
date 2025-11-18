@@ -215,6 +215,26 @@ start_services() {
     for service in "${SERVICES[@]:2}"; do
         log_info "Starting justnews@${service}..."
         systemctl start "justnews@${service}"
+        # After starting certain services, wait for their HTTP readiness to avoid race conditions
+        case "$service" in
+            "dashboard")
+                # Wait for the dashboard /transparency/status endpoint
+                if wait_for_http "http://127.0.0.1:8013/transparency/status" 30; then
+                    log_success "dashboard transparency endpoint is responding"
+                else
+                    log_warning "dashboard transparency endpoint not ready after 30s; synthesizer may fail gating checks"
+                fi
+                ;;
+            "crawl4ai")
+                # Wait for crawl4ai bridge /health endpoint
+                if wait_for_http "http://127.0.0.1:3308/health" 30; then
+                    log_success "crawl4ai bridge is healthy"
+                else
+                    log_warning "crawl4ai bridge not ready after 30s; crawler or crawl-related agents may degrade"
+                fi
+                ;;
+        esac
+        # Allow a tiny buffer for the process to settle
         sleep 2
     done
 

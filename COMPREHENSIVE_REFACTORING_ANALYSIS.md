@@ -4,7 +4,7 @@
 
 Beyond the completed **Agent Refactoring Stage** (Phase 1), the JustNews codebase requires extensive refactoring across multiple major systems. This analysis identifies **10 critical areas** requiring systematic refactoring to achieve production readiness, maintainability, and scalability.
 
-**Current Status (October 23, 2025)**: **Phase 4 Training System Integration COMPLETED** - MCP Bus communication, database migration, and metrics monitoring fully operational. **Phase 2 Monitoring System Refactoring COMPLETED** - Advanced Dashboards & Visualization fully implemented with real-time monitoring, automated dashboard generation, intelligent alerting, executive reporting, and Grafana integration. **Deployment System COMPLETED** - Unified multi-platform deployment framework with Docker Compose, Kubernetes, and systemd support fully operational. **Database Refactor COMPLETED** - Pydantic V2 migration successful with all 38 tests passing and zero warnings.
+**Current Status (October 23, 2025)**: **Phase 4 Training System Integration COMPLETED** - MCP Bus communication, database migration, and metrics monitoring fully operational. **Phase 2 Monitoring System Refactoring COMPLETED** - Advanced Dashboards & Visualization fully implemented with real-time monitoring, automated dashboard generation, intelligent alerting, executive reporting, and Grafana integration. **Deployment System COMPLETED** - Unified systemd-first deployment framework implemented; Kubernetes and Docker Compose support are deprecated and archived. Active deployments and runbooks should use systemd artifacts under `infrastructure/systemd/`. **Database Refactor COMPLETED** - Pydantic V2 migration successful with all 38 tests passing and zero warnings.
 
 ## 🎯 **Clean Repository Strategy - FOUNDATIONAL PRINCIPLE**
 
@@ -53,9 +53,9 @@ component/
 **Completion Date**: October 23, 2025
 
 **Progress Summary**:
-- **Unified Deployment Framework**: Single entry point supporting Docker Compose, Kubernetes, and systemd
+ - **Unified Deployment Framework**: Single entry point supporting systemd only (Kubernetes and Docker Compose deprecated/archived)
 - **Infrastructure as Code**: Declarative service definitions with comprehensive validation
-- **Multi-Platform Support**: Docker Compose (development), Kubernetes (production), systemd (legacy)
+ - **Multi-Platform Support**: systemd (production) (Docker Compose and Kubernetes deprecated)
 - **Automated Provisioning**: Environment-specific configuration generation with Jinja2 templates
 - **Security Hardening**: Service isolation, secrets management, and secure configuration
 - **Validation Framework**: Comprehensive pre-deployment checks and automated validation
@@ -77,14 +77,16 @@ component/
 - **Rollback Capabilities**: Automated rollback for failed deployments
 - **Resource Management**: CPU, memory, and GPU resource allocation
 
-#### **Docker Compose Implementation** ✅
+#### **Docker Compose Implementation (DEPRECATED / ARCHIVED)** ✅
+> ⚠️ Docker Compose has been deprecated for new development and operations. The compose files remain in the repository for archival reference only.
 - **Clean YAML Configuration**: Validated docker-compose.yml with PostgreSQL, Redis, MCP Bus services
 - **Environment Variables**: Template-based configuration with secure defaults
 - **Health Checks**: Service health validation and dependency management
 - **Volume Management**: Persistent data storage for databases and caches
 - **Network Configuration**: Isolated network with proper service discovery
 
-#### **Kubernetes Manifests** ✅
+#### **Kubernetes Manifests (DEPRECATED / ARCHIVED)** ✅
+> ⚠️ Kubernetes manifests are deprecated and retained for archival reference only. Use systemd-based deployment and CI-driven packaging for production.
 - **Base Manifests**: Core service definitions with resource limits and health checks
 - **Environment Overlays**: Kustomize-based environment-specific configurations
 - **Service Mesh**: Network policies and service communication
@@ -182,7 +184,7 @@ component/
 - **Troubleshooting**: Common issues and resolution procedures
 
 #### **Operations Guide** ✅
-- **Deployment Procedures**: Kubernetes, Docker Compose, and systemd deployment
+- **Deployment Procedures**: Kubernetes and systemd deployment (Docker Compose deprecated)
 - **Scaling Strategies**: Horizontal and vertical scaling procedures
 - **Monitoring Setup**: Health checks, alerting, and performance monitoring
 - **Backup & Recovery**: Database backup and disaster recovery procedures
@@ -395,7 +397,7 @@ component/
 **Progress Summary**:
 - **Unified Build System**: Makefile with 15+ targets for development, testing, building, deployment, and quality assurance
 - **CI/CD Pipelines**: Multi-stage GitHub Actions workflows with quality gates, security scanning, and automated deployment
-- **Containerization**: Complete Docker/docker-compose setup with development/production environments and Kubernetes manifests
+- **Containerization**: Kubernetes manifests and container images for development/production (Docker Compose deprecated; compose files kept for archival reference)
 - **Quality Assurance**: Automated linting, testing, security scanning, and performance validation
 - **Deployment Automation**: Automated deployment validation with canary testing, production validation, and rollback capabilities
 - **Artifact Management**: Automated package building, versioning, and distribution
@@ -426,7 +428,7 @@ component/
 
 #### **Containerization Framework** ✅
 - **Docker Images**: Multi-stage builds with optimized production images
-- **Docker Compose**: Development environment with hot-reload and service orchestration
+- **Docker Compose (DEPRECATED / ARCHIVED)**: Development environment with hot-reload and service orchestration (archival reference only)
 - **Kubernetes Manifests**: Production deployment with scaling and health checks
 - **Environment Configuration**: Template-based configuration for different deployment targets
 - **Security Hardening**: Non-root containers with minimal attack surface
@@ -453,7 +455,7 @@ component/
 - **Documentation**: Comprehensive development setup and contribution guidelines
 
 **Refactoring Requirements** ✅ **ALL MET**:
-- **✅ Unified Build System**: Makefile/docker-compose based builds with comprehensive automation - COMPLETED
+- **✅ Unified Build System**: Makefile automation with CI/CD-driven Kubernetes image builds and systemd packaging (Docker Compose support deprecated/archived) - COMPLETED
 - **✅ CI/CD Pipeline**: Multi-stage pipeline with security scanning and quality gates - IMPLEMENTED
 - **✅ Artifact Management**: Package repositories and automated versioning - AUTOMATED
 - **✅ Release Automation**: Automated deployment and rollback capabilities - OPERATIONAL
@@ -462,7 +464,7 @@ component/
 **Success Metrics Achieved**:
 - **Build Targets**: 15+ Makefile targets covering all development and deployment needs
 - **CI/CD Coverage**: Multi-stage pipelines with comprehensive quality gates and security scanning
-- **Container Support**: Complete Docker/docker-compose and Kubernetes deployment support
+- **Container Support**: Complete Kubernetes manifest and container image support (Docker Compose deprecated/archived)
 - **Quality Assurance**: Automated testing, linting, security scanning, and performance validation
 - **Deployment Automation**: Automated canary testing, production validation, and rollback capabilities
 
@@ -521,7 +523,7 @@ component/
 
 #### **Essential Scripts Retained** ✅
 - **Service Management**: `start_services_daemon.sh`, `stop_services.sh` (ops/)
-- **Database Setup**: `setup_postgres.sh`, `init_database.py` (deploy/)
+- **Database Setup**: `setup_mariadb.sh` (preferred), `setup_postgres.sh` (deprecated), `init_database.py` (deploy/)
 - **Development Tools**: `setup_dev_environment.sh` (dev/)
 - **Model Management**: `download_agent_models.py` (ops/)
 - **Secrets Management**: `manage_secrets.py` (admin/)
@@ -1010,7 +1012,7 @@ component/
 ### Phase 2C: Build & CI/CD System (Weeks 9-16) ✅ **COMPLETED**
 - ✅ Unified Makefile with comprehensive build automation (15+ targets)
 - ✅ Multi-stage CI/CD pipelines with GitHub Actions workflows
-- ✅ Containerization with Docker/docker-compose and Kubernetes manifests
+- ✅ Containerization with Kubernetes manifests and production container images (Docker Compose deprecated/archived)
 - ✅ Quality gates integration with security scanning and performance testing
 - ✅ Artifact management and automated deployment validation
 - ✅ Development environment with hot-reload and multi-service orchestration
@@ -1038,7 +1040,7 @@ The JustNews codebase has undergone **complete comprehensive refactoring** with 
 
 **🎯 COMPREHENSIVE SUCCESS METRICS:**
 - **10/10 Major Refactoring Areas**: All systems completed and production-ready
-- **Enterprise-Grade Architecture**: Multi-platform deployment, advanced monitoring, security, and scalability
+- **Enterprise-Grade Architecture**: systemd-first deployment, advanced monitoring, security, and scalability (Docker Compose & Kubernetes deprecated and archived)
 - **Production Deployment Ready**: Complete CI/CD pipelines, containerization, and automated operations
 - **Quality Assurance**: Comprehensive testing, validation, and monitoring throughout all systems
 - **Future-Proof Design**: Modular architecture enabling seamless expansion and enhancement
@@ -1059,7 +1061,7 @@ The JustNews codebase has undergone **complete comprehensive refactoring** with 
 - ✅ **Build & CI/CD System COMPLETE** - Unified build automation with 15+ Makefile targets, multi-stage CI/CD pipelines, and containerization
 
 **Phase 1 Progress**:
-- ✅ **Deployment System COMPLETE** - Unified multi-platform deployment framework with Docker Compose, Kubernetes, systemd support fully operational
+- ✅ **Deployment System COMPLETE** - Unified systemd-first deployment framework; Kubernetes and Docker Compose support are deprecated and archived. Active deployments should use systemd artifacts in `infrastructure/systemd/`.
 
 **Remaining Work**: None - All major refactoring areas completed
 **Production Status**: **FULLY READY** - Enterprise-grade system with comprehensive monitoring, automated operations, and zero critical issues

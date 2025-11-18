@@ -35,7 +35,13 @@ class ConfigGenerator:
         """Load configuration values from file or use defaults"""
         defaults = {
             'deploy_env': 'development',
-            'deploy_target': 'docker-compose',
+            'deploy_target': 'systemd',
+            # Prefer MariaDB settings; provide psycopg2/postgres vars for compatibility
+            'mariadb_host': 'localhost',
+            'mariadb_port': 3306,
+            'mariadb_db': 'justnews',
+            'mariadb_user': 'justnews',
+            'mariadb_password': self.generate_secret(16),
             'postgres_host': 'localhost',
             'postgres_port': 5432,
             'postgres_db': 'justnews',

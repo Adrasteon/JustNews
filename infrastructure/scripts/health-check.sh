@@ -117,11 +117,22 @@ check_systemd() {
 check_database() {
     log_info "Checking database connectivity..."
 
+    # Prefer MariaDB (mysql client) connectivity checks by default.
+    if command -v mysql &> /dev/null; then
+        if mysql --user="${MARIADB_USER:-${POSTGRES_USER:-justnews}}" --password="${MARIADB_PASSWORD:-${POSTGRES_PASSWORD:-}}" \
+            --host="${MARIADB_HOST:-${POSTGRES_HOST:-localhost}}" --port="${MARIADB_PORT:-${POSTGRES_PORT:-3306}}" \
+            -e "SELECT 1;" >/dev/null 2>&1; then
+            log_success "MariaDB connection successful"
+            return 0
+        fi
+    fi
+
+    # Fall back to Postgres check if mysql not present
     if command -v psql &> /dev/null; then
         if PGPASSWORD="${POSTGRES_PASSWORD:-}" psql -h "${POSTGRES_HOST:-localhost}" \
             -p "${POSTGRES_PORT:-5432}" -U "${POSTGRES_USER:-justnews}" \
             -d "${POSTGRES_DB:-justnews}" -c "SELECT 1;" >/dev/null 2>&1; then
-            log_success "Database connection successful"
+            log_success "Postgres connection successful (legacy)"
             return 0
         fi
     fi

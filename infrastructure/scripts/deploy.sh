@@ -1,6 +1,6 @@
 #!/bin/bash
 # Unified Deployment Script for JustNews
-# Supports Docker Compose, Kubernetes, and systemd deployments
+# Supports systemd deployments only (Docker Compose and Kubernetes are deprecated)
 
 set -e
 
@@ -42,14 +42,14 @@ USAGE:
     $0 [OPTIONS] [COMMAND]
 
 COMMANDS:
-    deploy          Deploy services to target platform
+    deploy          Deploy services to systemd
     status          Show deployment status
     health          Run health checks
     rollback        Rollback deployment
     cleanup         Clean up deployment artifacts
 
 OPTIONS:
-    -t, --target TARGET    Deployment target (docker-compose, kubernetes, systemd)
+    -t, --target TARGET    Deployment target (systemd)
     -e, --env ENV          Environment (development, staging, production)
     -s, --service SERVICE  Specific service to deploy
     -f, --force            Force deployment (skip checks)
@@ -57,23 +57,18 @@ OPTIONS:
     -h, --help            Show this help
 
 EXAMPLES:
-    # Deploy to Docker Compose (development)
-    $0 --target docker-compose --env development deploy
 
-    # Deploy to Kubernetes (production)
-    $0 --target kubernetes --env production deploy
-
-    # Deploy specific service
-    $0 --target kubernetes --service mcp-bus deploy
+    # Deploy to systemd (production)
+    $0 --target systemd --env production deploy
 
     # Check deployment status
-    $0 --target kubernetes status
+    $0 --target systemd status
 
     # Run health checks
     $0 health
 
     # Rollback deployment
-    $0 --target kubernetes rollback
+    $0 --target systemd rollback
 
 ENVIRONMENT VARIABLES:
     DEPLOY_TARGET          Default deployment target
@@ -84,9 +79,9 @@ ENVIRONMENT VARIABLES:
 EOF
 }
 
-# Parse command line arguments
+    # Parse command line arguments
 parse_args() {
-    TARGET="${DEPLOY_TARGET:-docker-compose}"
+    TARGET="${DEPLOY_TARGET:-systemd}"
     ENV="${DEPLOY_ENV:-development}"
     SERVICE=""
     FORCE="${FORCE_DEPLOY:-0}"
@@ -149,19 +144,9 @@ validate_environment() {
 
     # Check target platform
     case $TARGET in
-        docker-compose)
-            if ! command -v docker &> /dev/null; then
-                log_error "Docker is not installed"
-                exit 1
-            fi
-            if ! command -v docker-compose &> /dev/null; then
-                log_error "Docker Compose is not installed"
-                exit 1
-            fi
-            ;;
-        kubernetes)
-            if ! command -v kubectl &> /dev/null; then
-                log_error "kubectl is not installed"
+        systemd)
+            if ! command -v systemctl &> /dev/null; then
+                log_error "systemctl is not available"
                 exit 1
             fi
             ;;
@@ -196,12 +181,17 @@ create_default_env() {
 # JustNews Environment Configuration
 # Generated for environment: $ENV
 
-# Database Configuration
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=justnews
-POSTGRES_USER=justnews
-POSTGRES_PASSWORD=change_me_in_production
+# Database Configuration (MariaDB preferred; Postgres variables kept for compatibility)
+MARIADB_HOST=localhost
+MARIADB_PORT=3306
+MARIADB_DB=justnews
+MARIADB_USER=justnews
+MARIADB_PASSWORD=change_me_in_production
+POSTGRES_HOST=localhost  # DEPRECATED: use MARIADB_* vars instead
+POSTGRES_PORT=5432       # DEPRECATED
+POSTGRES_DB=justnews     # DEPRECATED
+POSTGRES_USER=justnews   # DEPRECATED
+POSTGRES_PASSWORD=change_me_in_production # DEPRECATED
 
 # Redis Configuration
 REDIS_HOST=localhost
@@ -237,63 +227,7 @@ EOF
 }
 
 # Deploy to Docker Compose
-deploy_docker_compose() {
-    log_info "Deploying to Docker Compose..."
-
-    cd "$DEPLOY_ROOT/docker"
-
-    # Build images if needed
-    if [[ "$FORCE" == "1" ]] || [[ ! -f ".built" ]]; then
-        log_info "Building Docker images..."
-        docker-compose build
-        touch .built
-    fi
-
-    # Start services
-    COMPOSE_FILES="-f docker-compose.yml"
-    if [[ -f "docker-compose.${ENV}.yml" ]]; then
-        COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.${ENV}.yml"
-    fi
-
-    if [[ -n "$SERVICE" ]]; then
-        log_info "Starting service: $SERVICE"
-        docker-compose $COMPOSE_FILES up -d "$SERVICE"
-    else
-        log_info "Starting all services..."
-        docker-compose $COMPOSE_FILES up -d
-    fi
-
-    log_success "Docker Compose deployment completed"
-}
-
-# Deploy to Kubernetes
-deploy_kubernetes() {
-    log_info "Deploying to Kubernetes..."
-
-    cd "$DEPLOY_ROOT/kubernetes"
-
-    # Apply manifests
-    if [[ -n "$SERVICE" ]]; then
-        log_info "Deploying service: $SERVICE"
-        kubectl apply -f "base/${SERVICE}.yml"
-        if [[ -f "overlays/${ENV}/${SERVICE}.yml" ]]; then
-            kubectl apply -f "overlays/${ENV}/${SERVICE}.yml"
-        fi
-    else
-        log_info "Deploying all services..."
-        kubectl apply -k .
-    fi
-
-    # Wait for rollout
-    if [[ -n "$SERVICE" ]]; then
-        kubectl rollout status deployment/"$SERVICE"
-    else
-        # Wait for all deployments
-        kubectl wait --for=condition=available --timeout=300s deployment --all
-    fi
-
-    log_success "Kubernetes deployment completed"
-}
+    # Kubernetes and Docker Compose have been removed; systemd-only deployment is enforced.
 
 # Deploy to systemd
 deploy_systemd() {
@@ -325,20 +259,8 @@ deploy_systemd() {
 
 # Show deployment status
 show_status() {
-    log_info "Checking deployment status..."
-
-    case $TARGET in
-        docker-compose)
-            cd "$DEPLOY_ROOT/docker"
-            docker-compose ps
-            ;;
-        kubernetes)
-            kubectl get pods,services,deployments -l app=justnews
-            ;;
-        systemd)
-            systemctl list-units --type=service --state=active | grep justnews
-            ;;
-    esac
+    log_info "Checking deployment status (systemd)..."
+    systemctl list-units --type=service --state=active | grep justnews || true
 }
 
 # Run health checks
@@ -350,19 +272,8 @@ run_health_checks() {
         bash "$DEPLOY_ROOT/scripts/health-check.sh"
     else
         log_warning "Health check script not found"
-        # Basic health checks
-        case $TARGET in
-            docker-compose)
-                cd "$DEPLOY_ROOT/docker"
-                docker-compose ps | grep -E "(Up|running)"
-                ;;
-            kubernetes)
-                kubectl get pods -l app=justnews --no-headers | grep -v Running || true
-                ;;
-            systemd)
-                systemctl is-active justnews-mcp-bus || true
-                ;;
-        esac
+        # Basic systemd health checks
+        systemctl is-active justnews-mcp-bus || true
     fi
 }
 
@@ -370,27 +281,11 @@ run_health_checks() {
 rollback_deployment() {
     log_info "Rolling back deployment..."
 
-    case $TARGET in
-        docker-compose)
-            cd "$DEPLOY_ROOT/docker"
-            docker-compose down
-            docker-compose pull  # Get previous images
-            docker-compose up -d
-            ;;
-        kubernetes)
-            if [[ -n "$SERVICE" ]]; then
-                kubectl rollout undo deployment/"$SERVICE"
-            else
-                # Rollback all deployments
-                for deployment in $(kubectl get deployments -l app=justnews -o jsonpath='{.items[*].metadata.name}'); do
-                    kubectl rollout undo deployment/"$deployment"
-                done
-            fi
-            ;;
-        systemd)
-            log_warning "Systemd rollback not implemented - manual intervention required"
-            ;;
-    esac
+    if [[ $TARGET == "systemd" ]]; then
+        log_warning "Systemd rollback not implemented - manual intervention required"
+    else
+        log_error "Unsupported rollback target: $TARGET"
+    fi
 
     log_success "Rollback completed"
 }
@@ -399,25 +294,12 @@ rollback_deployment() {
 cleanup_deployment() {
     log_info "Cleaning up deployment..."
 
-    case $TARGET in
-        docker-compose)
-            cd "$DEPLOY_ROOT/docker"
-            docker-compose down -v --remove-orphans
-            docker system prune -f
-            rm -f .built
-            ;;
-        kubernetes)
-            kubectl delete -k "$DEPLOY_ROOT/kubernetes" --ignore-not-found=true
-            ;;
-        systemd)
-            for service in /etc/systemd/system/justnews-*.service; do
-                sudo systemctl stop "$(basename "$service")" || true
-                sudo systemctl disable "$(basename "$service")" || true
-                sudo rm -f "$service"
-            done
-            sudo systemctl daemon-reload
-            ;;
-    esac
+    for service in /etc/systemd/system/justnews-*.service; do
+        sudo systemctl stop "$(basename "$service")" || true
+        sudo systemctl disable "$(basename "$service")" || true
+        sudo rm -f "$service"
+    done
+    sudo systemctl daemon-reload
 
     log_success "Cleanup completed"
 }
@@ -438,17 +320,13 @@ main() {
     case $COMMAND in
         deploy)
             validate_environment
-            case $TARGET in
-                docker-compose)
-                    deploy_docker_compose
-                    ;;
-                kubernetes)
-                    deploy_kubernetes
-                    ;;
-                systemd)
-                    deploy_systemd
-                    ;;
-            esac
+            # Only systemd is supported for deployment
+            if [[ "$TARGET" == "systemd" ]]; then
+                deploy_systemd
+            else
+                log_error "Unsupported deployment target: $TARGET. Only 'systemd' is supported."
+                exit 1
+            fi
             run_health_checks
             ;;
         status)

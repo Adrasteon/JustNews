@@ -1,13 +1,12 @@
 # JustNews Deployment System - Unified Infrastructure as Code
 
-Enterprise-grade deployment framework supporting Docker, Kubernetes, and systemd orchestration for the JustNews distributed system.
+Enterprise-grade deployment framework supporting systemd orchestration for the JustNews distributed system. Docker and Kubernetes have been removed from this workspace and are deprecated.
 
 ## Overview
 
 The deployment system provides a unified approach to deploying JustNews across different environments and platforms. It supports:
 
-- **Docker Compose**: Development and testing environments
-- **Kubernetes**: Production container orchestration
+- **systemd**: Production service management (preferred)
 - **Systemd**: Traditional service management (legacy support)
 - **Infrastructure as Code**: Declarative configuration management
 - **Multi-environment**: Development, staging, production profiles
@@ -16,15 +15,9 @@ The deployment system provides a unified approach to deploying JustNews across d
 
 ```
 deploy/refactor/
-├── docker/                    # Docker Compose deployments
-│   ├── docker-compose.yml     # Main compose file
-│   ├── docker-compose.prod.yml # Production overrides
-│   ├── docker-compose.dev.yml  # Development overrides
-│   └── Dockerfile.*           # Service-specific Dockerfiles
-├── kubernetes/               # Kubernetes manifests
-│   ├── base/                 # Base manifests
-│   ├── overlays/             # Environment-specific overlays
-│   └── kustomization.yml     # Kustomize configuration
+├── systemd/                  # Systemd service files (production)
+│   ├── services/             # Service unit files
+│   └── timers/               # Timer units
 ├── systemd/                  # Systemd service files (legacy)
 │   ├── services/             # Service unit files
 │   └── timers/               # Timer units
@@ -35,10 +28,8 @@ deploy/refactor/
 ├── config/                   # Configuration templates
 │   ├── environments/         # Environment-specific configs
 │   └── secrets/              # Secret management templates
-└── templates/                # Jinja2 templates
-    ├── docker-compose.j2     # Docker Compose templates
-    ├── k8s-deployment.j2     # Kubernetes deployment templates
-    └── systemd-service.j2    # Systemd service templates
+  ├── templates/                # Jinja2 templates
+  └── systemd-service.j2    # Systemd service templates
 ```
 
 ## Quick Start
@@ -46,15 +37,7 @@ deploy/refactor/
 ### 1. Choose Deployment Target
 
 ```bash
-# For development (Docker Compose)
-export DEPLOY_TARGET=docker-compose
-export DEPLOY_ENV=development
-
-# For production (Kubernetes)
-export DEPLOY_TARGET=kubernetes
-export DEPLOY_ENV=production
-
-# For legacy (systemd)
+# This workspace uses systemd as the runtime for all services.
 export DEPLOY_TARGET=systemd
 export DEPLOY_ENV=production
 ```
@@ -125,34 +108,21 @@ nano config/environments/production.env
 
 ## Deployment Targets
 
-### Docker Compose (Development)
+### Systemd (Production)
 
 ```bash
-# Start development environment
-cd docker/
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+# Install systemd units
+sudo cp systemd/services/*.service /etc/systemd/system/
+sudo systemctl daemon-reload
 
-# View logs
-docker-compose logs -f mcp-bus
+# Start all services
+sudo systemctl enable --now justnews-*
 
-# Scale services
-docker-compose up -d --scale scout=3 --scale analyst=2
-```
+# View status
+sudo systemctl status justnews-mcp-bus
 
-### Kubernetes (Production)
-
-```bash
-# Apply base manifests
-kubectl apply -k kubernetes/
-
-# Check pod status
-kubectl get pods -l app=justnews
-
-# View logs
-kubectl logs -l app=mcp-bus
-
-# Scale deployment
-kubectl scale deployment scout --replicas=5
+# View logs for a specific service
+sudo journalctl -u justnews-mcp-bus -f
 ```
 
 ### Systemd (Legacy)
@@ -208,61 +178,27 @@ LOG_LEVEL=INFO
 LOG_FORMAT=json
 ```
 
-### Secrets Management
+## Secrets Management
 
 ```bash
-# Using Kubernetes secrets
-kubectl create secret generic justnews-secrets \
-  --from-literal=mysql-root-password=secure_root_password \
-  --from-literal=mysql-password=secure_password \
-  --from-literal=redis-password=secure_password \
-  --from-literal=grafana-admin-password=admin_password
-
-# Using Docker secrets
-echo "secure_password" | docker secret create mysql_password -
+# Systemd-based secrets: Use environment files (deploy/refactor/config/environments/<env>.env)
+# and restrict permissions to the config files for security (600). Use Vault or another secret manager for production secrets.
+chmod 600 deploy/refactor/config/environments/production.env
 ```
 
 ### Configuration Examples
 
-#### Docker Compose Configuration
-```yaml
-services:
-  mariadb:
-    image: mariadb:10.11
-    environment:
-      MYSQL_ROOT_PASSWORD: secure_root_password
-      MYSQL_DATABASE: justnews
-      MYSQL_USER: justnews
-      MYSQL_PASSWORD: secure_password
-    ports:
-      - "3306:3306"
-    volumes:
-      - mariadb_data:/var/lib/mysql
+#### Systemd Configuration
+```bash
+# Example: edit environment file and add database configuration (deploy/refactor/config/environments/production.env)
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DATABASE=justnews
+MYSQL_USER=justnews
+MYSQL_PASSWORD=secure_password
 
-  chromadb:
-    image: chromadb/chroma:0.4.18
-    ports:
-      - "8000:8000"
-    volumes:
-      - chromadb_data:/chroma/chroma
-
-volumes:
-  mariadb_data:
-  chromadb_data:
-```
-
-#### Kubernetes Configuration
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: justnews-config
-data:
-  MYSQL_HOST: "mariadb-service"
-  MYSQL_PORT: "3306"
-  MYSQL_DATABASE: "justnews"
-  CHROMA_HOST: "chromadb-service"
-  CHROMA_PORT: "8000"
+CHROMA_HOST=localhost
+CHROMA_PORT=8000
 ```
 
 ## Service Dependencies
@@ -299,9 +235,10 @@ nginx (80/443) ←───┼── all FastAPI services
 curl http://localhost:8000/health
 curl http://localhost:8002/health
 
-# Kubernetes health checks
-kubectl get pods
-kubectl describe pod <pod-name>
+# Health checks (systemd)
+sudo systemctl status justnews-mcp-bus
+sudo systemctl status justnews-scout
+sudo journalctl -u justnews-mcp-bus -f
 ```
 
 ### Monitoring Integration
@@ -322,17 +259,21 @@ curl http://localhost:8000/metrics
 ### Horizontal Scaling
 
 ```bash
-# Kubernetes HPA (Horizontal Pod Autoscaler)
-kubectl autoscale deployment scout --cpu-percent=70 --min=1 --max=10
+# systemd Horizontal Scaling
+Use templated systemd units or multiple service instances for horizontal scaling.
+```
+sudo systemctl enable --now justnews-scout@2.service
+```
 
 # Docker Compose scaling
-docker-compose up -d --scale scout=5 --scale analyst=3
+# systemd scaling: create additional unit instances or scale by starting multiple unit instances
+for i in 1 2 3 4 5; do sudo systemctl enable --now justnews-scout@${i}; done
 ```
 
 ### Resource Management
 
 ```yaml
-# Kubernetes resource limits
+# Resource configuration
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -359,7 +300,7 @@ spec:
 export CUDA_VISIBLE_DEVICES=0,1,2,3
 export GPU_MEMORY_FRACTION=0.8
 
-# Kubernetes GPU scheduling
+# GPU scheduling
 spec:
   template:
     spec:
@@ -387,13 +328,12 @@ redis-cli save
 ### Deployment Rollback
 
 ```bash
-# Rollback Kubernetes deployment
-kubectl rollout undo deployment/scout
+# Rollback systemd deployment
+# Revert binaries or unit files and run
+sudo systemctl restart justnews-scout || true
 
 # Rollback Docker Compose
-docker-compose down
-docker-compose pull  # Get previous images
-docker-compose up -d
+# If you used docker-compose previously, the repo includes legacy compose files in `infrastructure/docker/` marked as archived; production is systemd-only.
 ```
 
 ## Troubleshooting
@@ -403,8 +343,7 @@ docker-compose up -d
 1. **Service Startup Failures**
    ```bash
    # Check logs
-   kubectl logs -l app=mcp-bus
-   docker-compose logs mcp-bus
+   sudo journalctl -u justnews-mcp-bus -f
 
    # Check dependencies
    ./scripts/health-check.sh
@@ -420,8 +359,8 @@ docker-compose up -d
 
    # Check service status
    sudo systemctl status mariadb
-   kubectl get pods -l app=mariadb
-   kubectl get pods -l app=chromadb
+   sudo systemctl status justnews-mariadb
+   sudo systemctl status justnews-chromadb
    ```
 
 3. **GPU Resource Conflicts**
@@ -437,7 +376,7 @@ docker-compose up -d
    ```bash
    # Test service communication
    curl http://localhost:8000/agents
-   kubectl exec -it <pod-name> -- curl http://mcp-bus:8000/health
+   curl http://localhost:8000/health
    ```
 
 ### Debug Commands
@@ -450,14 +389,14 @@ docker-compose up -d
 ./scripts/health-check.sh --dependencies
 
 # Resource utilization
-kubectl top pods
+top -b -n 1 | head -n 20
 docker stats
 ```
 
 ## Security Considerations
 
 - **Network Security**: Service mesh with mTLS encryption
-- **Secret Management**: Kubernetes secrets or external vault
+- **Secret Management**: Systemd environment files, local vault, or external secret manager. Restrict environment files and use a secrets manager in production.
 - **Access Control**: RBAC for Kubernetes and service-level auth
 - **Image Security**: Container scanning and signed images
 - **Compliance**: GDPR, SOC2 compliance configurations
@@ -472,16 +411,17 @@ docker stats
 
 ## Migration Guide
 
-### From Systemd to Kubernetes
+### From Systemd to Kubernetes (DEPRECATED)
 
 1. **Backup current configuration**
    ```bash
    ./scripts/backup-config.sh
    ```
 
-2. **Generate Kubernetes manifests**
+2. **Generate Kubernetes manifests (DEPRECATED)**
    ```bash
-   ./scripts/generate-k8s.sh
+   # This step is historical; use the systemd service templates instead.
+   # ./scripts/generate-k8s.sh
    ```
 
 3. **Deploy to Kubernetes**
@@ -509,7 +449,7 @@ docker stats
 
 2. **Generate Kubernetes manifests**
    ```bash
-   kompose convert -f docker-compose.yml
+   # Docker/Kubernetes conversion tools were used historically; these are deprecated. Use systemd unit templates instead.
    ```
 
 3. **Apply Kubernetes manifests**

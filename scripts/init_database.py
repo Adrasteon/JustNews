@@ -122,9 +122,29 @@ def create_knowledge_graph_tables():
         """
     ]
 
+    import re
+    def adapt_sql_for_mariadb(sql: str) -> str:
+        """Make lightweight, best-effort conversions to MariaDB-syntax from
+        Postgres-specific SQL fragments used in legacy migrations.
+
+        This is intentionally conservative — complex Postgres-only constructs
+        (e.g., arrays, JSONB typed arrays, pgvector, partial indexes) should be
+        handled via proper migration scripts, not via naive replacements.
+        """
+        s = sql
+        s = s.replace('JSONB', 'JSON')
+        s = re.sub(r"\bSERIAL\b", 'INT AUTO_INCREMENT', s)
+        # Replace PostgreSQL TIMESTAMPTZ with TIMESTAMP (MySQL/MariaDB compatible)
+        s = s.replace('TIMESTAMPTZ', 'TIMESTAMP')
+        # Replace TEXT[]/ARRAY types with JSON as a simple substitute
+        s = re.sub(r"\bTEXT\[\]|\bTEXT\s*\[\s*\]", 'JSON', s)
+        return s
+
     for i, query in enumerate(queries, 1):
         try:
-            execute_query(query, fetch=False)
+            # Adapt query for MariaDB where possible before execution
+            adapted_query = adapt_sql_for_mariadb(query)
+            execute_query(adapted_query, fetch=False)
             logger.info(f"✅ Created knowledge graph table {i}/{len(queries)}")
         except Exception as e:
             logger.error(f"❌ Error creating knowledge graph table {i}: {e}")

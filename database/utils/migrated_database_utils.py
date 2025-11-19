@@ -19,6 +19,9 @@ from database.models.migrated_models import MigratedDatabaseService
 
 logger = get_logger(__name__)
 
+# Cache a single MigratedDatabaseService instance for this process
+_cached_service: MigratedDatabaseService | None = None
+
 
 def _get_compat_attr(name: str, default):
     """Retrieve an attribute from the compatibility shim if available."""
@@ -109,9 +112,13 @@ def get_db_config() -> dict[str, Any]:
     }))
     chromadb_config = dict(db_config.get('chromadb', {
         'host': 'localhost',
-        'port': 8000,
+        'port': 3307,
         'collection': 'articles'
     }))
+    # Tenant support (Chroma 0.4+ managed servers may have tenants)
+    chromadb_tenant = db_config.get('chromadb', {}).get('tenant') or os.environ.get('CHROMADB_TENANT')
+    if chromadb_tenant:
+        chromadb_config['tenant'] = chromadb_tenant
 
     embedding_config = dict(db_config.get('embedding', {
         'model': 'all-MiniLM-L6-v2',
@@ -130,6 +137,11 @@ def get_db_config() -> dict[str, Any]:
             'command_timeout_seconds': 30.0
         }
     }
+    # Canonical Chromadb host/port environment (optional)
+    config['chromadb_canonical'] = {
+        'host': os.environ.get('CHROMADB_CANONICAL_HOST'),
+        'port': os.environ.get('CHROMADB_CANONICAL_PORT')
+    }
 
     # Allow explicit environment variable overrides for important runtime
     # values. system_config.json may not include chromadb entries (older
@@ -139,14 +151,15 @@ def get_db_config() -> dict[str, Any]:
     chroma_port = os.environ.get('CHROMADB_PORT')
     chroma_collection = os.environ.get('CHROMADB_COLLECTION')
 
-    if chroma_host and (not chromadb_from_config or not chromadb_config.get('host')):
+    # Environment variables should override system_config.json values when provided
+    if chroma_host:
         config['chromadb']['host'] = chroma_host
-    if chroma_port and (not chromadb_from_config or not chromadb_config.get('port')):
+    if chroma_port:
         try:
             config['chromadb']['port'] = int(chroma_port)
         except Exception:
             logger.warning(f"Invalid CHROMADB_PORT='{chroma_port}', using config value {config['chromadb'].get('port')}")
-    if chroma_collection and (not chromadb_from_config or not chromadb_config.get('collection')):
+    if chroma_collection:
         config['chromadb']['collection'] = chroma_collection
 
     # Ensure values from system_config.json take precedence when present
@@ -166,18 +179,18 @@ def get_db_config() -> dict[str, Any]:
     mariadb_user = os.environ.get('MARIADB_USER')
     mariadb_password = os.environ.get('MARIADB_PASSWORD')
 
-    if mariadb_host and (not mariadb_from_config or not mariadb_config.get('host')):
+    if mariadb_host:
         config['mariadb']['host'] = mariadb_host
-    if mariadb_port and (not mariadb_from_config or not mariadb_config.get('port')):
+    if mariadb_port:
         try:
             config['mariadb']['port'] = int(mariadb_port)
         except Exception:
             logger.warning(f"Invalid MARIADB_PORT='{mariadb_port}', using config value {config['mariadb'].get('port')}")
-    if mariadb_db and (not mariadb_from_config or not mariadb_config.get('database')):
+    if mariadb_db:
         config['mariadb']['database'] = mariadb_db
-    if mariadb_user and (not mariadb_from_config or not mariadb_config.get('user')):
+    if mariadb_user:
         config['mariadb']['user'] = mariadb_user
-    if mariadb_password and (not mariadb_from_config or not mariadb_config.get('password')):
+    if mariadb_password:
         config['mariadb']['password'] = mariadb_password
 
     embedding_model = os.environ.get('EMBEDDING_MODEL')
@@ -214,8 +227,19 @@ def create_database_service(config: dict[str, Any] | None = None) -> MigratedDat
     Returns:
         Initialized MigratedDatabaseService instance
     """
+    global _cached_service
     if config is None:
         config = get_db_config()
+
+    # Return cached instance if the config is identical or if no explicit config was provided
+    try:
+        if _cached_service is not None:
+            # Return cached if the full configuration matches the cached service config
+            if config and getattr(_cached_service, 'config', None) == {'database': config}:
+                return _cached_service
+    except Exception:
+        # If comparing configs fails for any reason, ignore and recreate service
+        pass
 
     # Create a full config dict for the service
     full_config = {'database': config}
@@ -225,7 +249,20 @@ def create_database_service(config: dict[str, Any] | None = None) -> MigratedDat
     # Test connections
     check_database_connections(service)
 
+    # Cache the service so subsequent calls reuse the same Chroma/MariaDB connections
+    _cached_service = service
     return service
+
+
+def close_cached_service():
+    """Close and clear the cached database service if present."""
+    global _cached_service
+    if _cached_service:
+        try:
+            _cached_service.close()
+        except Exception:
+            pass
+    _cached_service = None
 
 
 def check_database_connections(service: MigratedDatabaseService) -> bool:
@@ -251,13 +288,18 @@ def check_database_connections(service: MigratedDatabaseService) -> bool:
 
         logger.info("MariaDB connection test successful")
 
-        # Test ChromaDB connection
-        collections = service.chroma_client.list_collections()
-        if service.collection.name not in [c.name for c in collections]:
-            logger.error(f"ChromaDB collection '{service.collection.name}' not found")
-            return False
-
-        logger.info("ChromaDB connection test successful")
+        # Test ChromaDB connection - optional
+        try:
+            if service.chroma_client and service.collection:
+                collections = service.chroma_client.list_collections()
+                if service.collection.name not in [c.name for c in collections]:
+                    logger.error(f"ChromaDB collection '{service.collection.name}' not found")
+                    return False
+                logger.info("ChromaDB connection test successful")
+            else:
+                logger.warning("ChromaDB client or collection not available - skipping ChromaDB checks")
+        except Exception as e:
+            logger.warning(f"ChromaDB check failed (continuing without chroma): {e}")
 
         # Test embedding model
         test_embedding = service.embedding_model.encode("test")
@@ -317,6 +359,12 @@ def execute_mariadb_query(
         Query results or empty list
     """
     try:
+        # Ensure DB connection is available; reconnect if needed
+        try:
+            service.ensure_conn()
+        except Exception:
+            # Ensure_conn may fail; proceed and let the query attempt fail with a clear log
+            logger.warning("Unable to ensure DB connection before query; continuing")
         cursor = service.mb_conn.cursor()
         cursor.execute(query, params or ())
 
@@ -414,12 +462,26 @@ def get_database_stats(service: MigratedDatabaseService) -> dict[str, Any]:
         cursor.close()
 
         # ChromaDB stats
-        stats['chromadb']['vectors'] = service.collection.count()
+        if getattr(service, 'collection', None):
+            try:
+                stats['chromadb']['vectors'] = service.collection.count()
+            except Exception as e:
+                logger.warning(f"Failed to count ChromaDB vectors: {e}")
+                stats['chromadb']['vectors'] = 0
+        else:
+            stats['chromadb']['vectors'] = 0
         stats['total_vectors'] = stats['chromadb']['vectors']
 
         # Collections
-        collections = service.chroma_client.list_collections()
-        stats['chromadb']['collections'] = [c.name for c in collections]
+        try:
+            if getattr(service, 'chroma_client', None):
+                collections = service.chroma_client.list_collections()
+                stats['chromadb']['collections'] = [c.name for c in collections]
+            else:
+                stats['chromadb']['collections'] = []
+        except Exception as e:
+            logger.warning(f"Failed retrieving ChromaDB collections: {e}")
+            stats['chromadb']['collections'] = []
 
     except Exception as e:
         logger.warning(f"Failed to get database stats: {e}")

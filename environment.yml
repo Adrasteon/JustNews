@@ -63,7 +63,7 @@ dependencies:
   - opentelemetry-api>=1.20
   - opentelemetry-sdk>=1.20
   - opentelemetry-instrumentation>=0.41b0
-  - protobuf>=4.21
+  - protobuf>=4.24.0
   - thrift>=0.22
   - wrapt>=1.14
   - psutil>=5.9

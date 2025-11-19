@@ -26,6 +26,8 @@ ExecStartPre=/usr/bin/env bash -c 'if [ "%i" = "mcp_bus" ]; then /usr/local/bin/
 ExecStart=/usr/local/bin/justnews-start-agent.sh %i
 Restart=on-failure
 RestartSec=3
+# Increase the file descriptor soft limit to avoid "Too many open files" under heavy load
+LimitNOFILE=65536
 # Allow sufficient time for preflight checks and model preload operations.
 # Default systemd TimeoutStartSec is 90s which can abort preflight scripts that
 # wait for other agents (e.g., mcp_bus waiting for gpu_orchestrator) to become

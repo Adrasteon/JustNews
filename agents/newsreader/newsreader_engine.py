@@ -55,9 +55,10 @@ except ImportError:
     LlavaOnevisionProcessor = None
     LLAVA_AVAILABLE = False
 
-# Suppress transformers warnings
-warnings.filterwarnings("ignore", message=".*use_fast.*slow processor.*")
-warnings.filterwarnings("ignore", message=".*slow image processor.*")
+# Suppress transformers warnings in production, but not during tests.
+if os.environ.get('PYTEST_RUNNING') != '1':
+    warnings.filterwarnings("ignore", message=".*use_fast.*slow processor.*")
+    warnings.filterwarnings("ignore", message=".*slow image processor.*")
 
 logger = get_logger(__name__)
 

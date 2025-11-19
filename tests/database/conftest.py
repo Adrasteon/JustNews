@@ -109,7 +109,7 @@ def mock_embedding_model():
 
 
 @pytest.fixture
-def mock_database_service(test_config, mock_mariadb_connection, mock_chromadb_client, mock_embedding_model):
+def mock_database_service(test_config, mock_mariadb_connection, mock_chromadb_client, mock_embedding_model, monkeypatch):
     """Create a fully mocked database service"""
     mock_conn, mock_cursor = mock_mariadb_connection
     mock_client, mock_collection = mock_chromadb_client
@@ -117,6 +117,8 @@ def mock_database_service(test_config, mock_mariadb_connection, mock_chromadb_cl
     with patch('mysql.connector.connect', return_value=mock_conn):
         with patch('chromadb.HttpClient', return_value=mock_client):
             with patch('sentence_transformers.SentenceTransformer', return_value=mock_embedding_model):
+                # Disable canonical Chroma enforcement for most unit tests in this suite.
+                monkeypatch.setenv('CHROMADB_REQUIRE_CANONICAL', '0')
                 service = MigratedDatabaseService(test_config)
 
                 # Store mocks for test access
@@ -206,6 +208,9 @@ def mock_query_results():
                 'source_id': 1,
                 'created_at': datetime(2024, 1, 2)
             }
+
+
+            
         ],
         'sources': [
             {
@@ -251,6 +256,16 @@ def setup_test_environment():
     # Any global test setup can go here
     yield
     # Cleanup after each test can go here
+
+
+@pytest.fixture(autouse=True)
+def _disable_chroma_canonical_in_tests(monkeypatch):
+    """Disable CHROMADB_REQUIRE_CANONICAL during database tests by default.
+
+    Tests that want canonical enforcement can override it using monkeypatch.setenv in the test body.
+    """
+    monkeypatch.setenv('CHROMADB_REQUIRE_CANONICAL', '0')
+    yield
 
 
 @pytest.fixture(scope="session", autouse=True)

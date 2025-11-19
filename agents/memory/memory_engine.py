@@ -18,6 +18,7 @@ Architecture:
 """
 
 import json
+import os
 
 # Import tools
 from agents.memory.tools import get_embedding_model, log_feedback, save_article
@@ -47,6 +48,18 @@ class MemoryEngine:
             self.db_initialized = True
             logger.info("Migrated database service initialized for memory engine")
 
+            # If Chroma is required to be canonical for this deployment, ensure we actually have a collection
+            try:
+                require_canonical = os.environ.get('CHROMADB_REQUIRE_CANONICAL', '1') == '1'
+                if require_canonical:
+                    # If require_canonical is true, we must have a chroma collection connected
+                    if getattr(self.db_service, 'collection', None) is None:
+                        logger.error("CHROMADB_REQUIRE_CANONICAL enabled but no Chroma collection connected; aborting startup")
+                        raise RuntimeError("ChromaDB required (CANONICAL) but not available")
+            except Exception:
+                # Propagate any fatal condition
+                raise
+
             # Pre-warm embedding model
             self.embedding_model = get_embedding_model()
             logger.info("Embedding model pre-warmed in memory engine")
@@ -59,7 +72,15 @@ class MemoryEngine:
         """Shutdown the memory engine"""
         try:
             if self.db_initialized and self.db_service:
-                self.db_service.close()
+                try:
+                    from database.utils.migrated_database_utils import close_cached_service
+                    close_cached_service()
+                except Exception:
+                    # Fall back: close the service instance directly
+                    try:
+                        self.db_service.close()
+                    except Exception:
+                        pass
                 logger.info("Migrated database service closed in memory engine")
 
             # Clear references
@@ -73,7 +94,7 @@ class MemoryEngine:
         """Saves an article to the database and generates an embedding"""
         try:
             # Use the shared save_article function from tools
-            result = save_article(content, metadata, embedding_model=self.embedding_model)
+            result = save_article(content, metadata, embedding_model=self.embedding_model, db_service=self.db_service)
             return result
         except Exception as e:
             logger.error(f"Error saving article in memory engine: {e}")
@@ -84,7 +105,11 @@ class MemoryEngine:
         try:
             if not self.db_service:
                 return None
-
+            try:
+                self.db_service.ensure_conn()
+            except Exception as e:
+                logger.error(f"DB connection unavailable when retrieving article: {e}")
+                return None
             cursor = self.db_service.mb_conn.cursor(dictionary=True)
             cursor.execute("SELECT id, content, metadata FROM articles WHERE id = %s", (article_id,))
             article = cursor.fetchone()
@@ -109,7 +134,11 @@ class MemoryEngine:
         try:
             if not self.db_service:
                 return {"article_ids": []}
-
+            try:
+                self.db_service.ensure_conn()
+            except Exception as e:
+                logger.error(f"DB connection unavailable when retrieving all article ids: {e}")
+                return {"article_ids": []}
             cursor = self.db_service.mb_conn.cursor(dictionary=True)
             cursor.execute("SELECT id FROM articles")
             rows = cursor.fetchall()
@@ -131,7 +160,11 @@ class MemoryEngine:
         try:
             if not self.db_service:
                 return []
-
+            try:
+                self.db_service.ensure_conn()
+            except Exception as e:
+                logger.error(f"DB connection unavailable when retrieving recent articles: {e}")
+                return []
             cursor = self.db_service.mb_conn.cursor(dictionary=True)
             cursor.execute(
                 "SELECT id, content, metadata FROM articles ORDER BY id DESC LIMIT %s",
@@ -159,7 +192,11 @@ class MemoryEngine:
         try:
             if not self.db_service:
                 return {"error": "database_not_initialized"}
-
+            try:
+                self.db_service.ensure_conn()
+            except Exception as e:
+                logger.error(f"DB connection unavailable when logging training example: {e}")
+                return {"error": "database_not_available"}
             # Insert training example
             cursor = self.db_service.mb_conn.cursor()
             cursor.execute(
@@ -220,6 +257,18 @@ class MemoryEngine:
 
             # Execute statements transactionally
             chosen_source_id = None
+            try:
+                self.db_service.ensure_conn()
+            except Exception as e:
+                logger.error(f"DB connection unavailable during ingest_article: {e}")
+                return {"status": "error", "error": "database_not_available"}
+
+            # Log open file descriptor count for diagnostics
+            try:
+                fd_count = len(os.listdir(f"/proc/{os.getpid()}/fd"))
+                logger.debug(f"FD count before ingestion: {fd_count}")
+            except Exception:
+                pass
 
             def _clear_pending_results():
                 try:
@@ -350,7 +399,7 @@ class MemoryEngine:
                 }
 
                 if content:  # Only save if there's actual content
-                    save_result = save_article(content, metadata, embedding_model=self.embedding_model)
+                    save_result = save_article(content, metadata, embedding_model=self.embedding_model, db_service=self.db_service)
                     if save_result.get("status") == "duplicate":
                         logger.info(f"Article already exists, skipping: {article_payload.get('url')}")
                         resp = {
@@ -360,8 +409,12 @@ class MemoryEngine:
                             "existing_id": save_result.get("article_id")
                         }
                     else:
-                        logger.info(f"Article saved with ID: {save_result.get('article_id')}")
-                        resp = {"status": "ok", "url": article_payload.get('url')}
+                        if save_result.get("error"):
+                            logger.warning(f"Failed to save article content: {save_result.get('error')}")
+                            resp = {"status": "ok", "url": article_payload.get('url'), "content_save_error": save_result.get('error')}
+                        else:
+                            logger.info(f"Article saved with ID: {save_result.get('article_id')}")
+                            resp = {"status": "ok", "url": article_payload.get('url')}
                 else:
                     logger.warning(f"No content to save for article: {article_payload.get('url')}")
                     resp = {"status": "ok", "url": article_payload.get('url'), "no_content": True}
@@ -386,7 +439,11 @@ class MemoryEngine:
         try:
             if not self.db_service:
                 return 0
-
+            try:
+                self.db_service.ensure_conn()
+            except Exception as e:
+                logger.error(f"DB connection unavailable when getting article count: {e}")
+                return 0
             cursor = self.db_service.mb_conn.cursor(dictionary=True)
             cursor.execute("SELECT COUNT(*) as count FROM articles")
             result = cursor.fetchone()
@@ -410,7 +467,11 @@ class MemoryEngine:
         try:
             if not self.db_service:
                 return []
-
+            try:
+                self.db_service.ensure_conn()
+            except Exception as e:
+                logger.error(f"DB connection unavailable when getting sources: {e}")
+                return []
             cursor = self.db_service.mb_conn.cursor(dictionary=True)
             cursor.execute(
                 "SELECT id, url, domain, name, description, country, language FROM sources ORDER BY id LIMIT %s",

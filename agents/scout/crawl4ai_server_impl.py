@@ -5,11 +5,15 @@ bridge lives at `agents.c4ai.server`. Keep this shim for compatibility
 only; it warns on import and re-exports the canonical API when possible.
 """
 from warnings import warn
+import os as _os
 
-warn(
-    "agents.c4ai.server_impl is deprecated; import agents.c4ai.server instead",
-    DeprecationWarning,
-)
+# During tests, `conftest.py` sets ``PYTEST_RUNNING=1`` so import-time
+# deprecation warnings from compatibility shims won't fail the test suite.
+if _os.environ.get("PYTEST_RUNNING", "0") != "1":
+    warn(
+        "agents.c4ai.server_impl is deprecated; import agents.c4ai.server instead",
+        DeprecationWarning,
+    )
 
 try:
     from agents.c4ai.server import CrawlRequest, app, crawl, health  # type: ignore

@@ -35,6 +35,12 @@ DOCKER_TAG ?= latest
 PYTHON := python3.12
 PIP := $(PYTHON) -m pip
 CONDA_ENV := justnews-v2-py312
+CONDA := $(shell command -v conda 2>/dev/null || echo)
+ifeq ($(CONDA),)
+RUN_PY := $(PYTHON)
+else
+RUN_PY := conda run -n $(CONDA_ENV) $(PYTHON)
+endif
 
 # Directories
 ROOT_DIR := $(shell pwd)
@@ -88,19 +94,19 @@ test: test-unit test-integration
 
 test-unit:
 	$(call log_info,"Running unit tests...")
-	pytest tests/ -v --cov=. --cov-report=term-missing --cov-report=xml \
+	$(RUN_PY) -m pytest tests/ -v --cov=. --cov-report=term-missing --cov-report=xml \
 		--cov-fail-under=80 -k "not integration" --tb=short
 	$(call log_success,"Unit tests passed")
 
 test-integration:
 	$(call log_info,"Running integration tests...")
-	pytest tests/ -v -k "integration" --tb=short || \
+	$(RUN_PY) -m pytest tests/ -v -k "integration" --tb=short || \
 		($(call log_warning,"Integration tests failed, but continuing..."); true)
 	$(call log_success,"Integration tests completed")
 
 test-performance:
 	$(call log_info,"Running performance tests...")
-	pytest tests/ -v -k "performance" --tb=short --durations=10
+	$(RUN_PY) -m pytest tests/ -v -k "performance" --tb=short --durations=10
 	$(call log_success,"Performance tests completed")
 
 # Code quality targets

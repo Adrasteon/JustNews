@@ -163,7 +163,17 @@ async def lifespan(app: FastAPI):
         worker_engine = WorkerEngine()
 
         # Initialize components
-        await memory_engine.initialize()
+        try:
+            await memory_engine.initialize()
+        except Exception as e:
+            # Provide extra guidance when canonical Chroma validation fails
+            from database.utils.chromadb_utils import ChromaCanonicalValidationError
+            if isinstance(e, ChromaCanonicalValidationError):
+                logger.error("Memory engine failed to initialize because CHROMADB canonical validation failed.\n" \
+                             "  - Confirm CHROMADB_HOST/CHROMADB_PORT match the canonical CHROMADB_CANONICAL_HOST/PORT in /etc/justnews/global.env\n" \
+                             "  - Use 'scripts/chroma_diagnose.py' and 'scripts/chroma_bootstrap.py' to diagnose and provision the tenant/collection\n" \
+                             "  - Example: PYTHONPATH=. conda run -n justnews-v2-py312 python scripts/chroma_diagnose.py --host <host> --port <port> --autocreate")
+            raise
         await vector_engine.initialize()
         await worker_engine.initialize(memory_engine, vector_engine)
 

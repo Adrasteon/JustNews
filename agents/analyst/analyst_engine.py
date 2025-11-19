@@ -33,9 +33,10 @@ from common.observability import get_logger
 # Configure centralized logging
 logger = get_logger(__name__)
 
-# Suppress specific warnings for production deployment
-warnings.filterwarnings("ignore", category=UserWarning, module="torch")
-warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
+# Suppress specific warnings for production deployment, but not during test runs
+if os.environ.get('PYTEST_RUNNING') != '1':
+    warnings.filterwarnings("ignore", category=UserWarning, module="torch")
+    warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
 
 # Dependency detection
 try:

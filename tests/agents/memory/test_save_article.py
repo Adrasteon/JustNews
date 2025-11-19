@@ -146,6 +146,10 @@ def _install_db_stubs(monkeypatch):
         def close(self):
             pass
 
+        def ensure_conn(self):
+            # Stub to satisfy callers that expect ensure_conn on DB service in production
+            return True
+
     def mock_create_db_service(*args, **kwargs):
         return MockDBService()
 

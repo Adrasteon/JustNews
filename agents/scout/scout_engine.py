@@ -32,9 +32,10 @@ from transformers import (
 
 from common.observability import get_logger
 
-# Suppress transformers warnings
-warnings.filterwarnings("ignore", category=FutureWarning)
-warnings.filterwarnings("ignore", category=UserWarning)
+# Suppress transformers warnings in production, but do not suppress during tests.
+if os.environ.get('PYTEST_RUNNING') != '1':
+    warnings.filterwarnings("ignore", category=FutureWarning)
+    warnings.filterwarnings("ignore", category=UserWarning)
 
 # Crawl4AI imports with fallbacks
 try:

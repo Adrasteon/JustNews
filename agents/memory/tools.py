@@ -125,7 +125,7 @@ def _make_chroma_metadata_safe(metadata: dict) -> dict:
     return safe_metadata
 
 
-def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
+def save_article(content: str, metadata: dict, embedding_model=None, db_service=None) -> dict:
     """Saves an article to the migrated MariaDB + ChromaDB system.
 
     Args:
@@ -155,8 +155,29 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
 
         # Use migrated database service
         from database.utils.migrated_database_utils import create_database_service
+        created_local_db_service = False
+        if db_service is None:
+            db_service = create_database_service()
+            created_local_db_service = True
 
-        db_service = create_database_service()
+        # Ensure DB connection is available before doing any cursor operations
+        try:
+            db_service.ensure_conn()
+        except Exception as e:
+            logger.error(f"DB connection unavailable during save_article: {e}")
+            metrics.record_ingestion("db_connection_unavailable")
+            if created_local_db_service:
+                db_service.close()
+            return {"error": "MySQL Connection not available", "processing_time": perf_counter() - start_time}
+
+        # If canonical Chroma is required and unavailable, fail fast
+        chroma_require_canonical = os.environ.get('CHROMADB_REQUIRE_CANONICAL', '1') == '1'
+        if chroma_require_canonical and getattr(db_service, 'collection', None) is None:
+            logger.error("CHROMADB_REQUIRE_CANONICAL enabled but Chroma collection not available")
+            if created_local_db_service:
+                db_service.close()
+            metrics.record_ingestion('chroma_unavailable')
+            return {"error": "chroma_unavailable", "processing_time": perf_counter() - start_time}
 
         if not disable_dedupe:
             hash_candidate = metadata.get("url_hash") or hash_article_url(
@@ -194,7 +215,8 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
                         duplicate_lookup_id,
                     )
                     metrics.record_ingestion("duplicate")
-                    db_service.close()
+                    if created_local_db_service:
+                        db_service.close()
                     return {
                         "status": "duplicate",
                         "article_id": duplicate_lookup_id,
@@ -210,7 +232,8 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
                 metrics.record_embedding("model_unavailable")
                 logger.error("No embedding model available for article storage")
                 metrics.record_ingestion("embedding_model_unavailable")
-                db_service.close()
+                if created_local_db_service:
+                    db_service.close()
                 return {"error": "embedding_model_unavailable", "processing_time": perf_counter() - start_time}
             cache_label = "shared"
 
@@ -227,7 +250,8 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
             metrics.record_embedding("error")
             logger.error("Embedding generation failed: %s", encoding_error)
             metrics.record_ingestion("error")
-            db_service.close()
+            if created_local_db_service:
+                db_service.close()
             return {"error": "embedding_generation_failed", "processing_time": perf_counter() - start_time}
 
         try:
@@ -313,20 +337,30 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
 
         # Get the inserted article ID
         cursor.execute("SELECT LAST_INSERT_ID()")
-        next_id = cursor.fetchone()[0]
+        last = cursor.fetchone()
+        next_id = last[0] if last and len(last) > 0 else None
         cursor.close()
+
+        if next_id is None:
+            logger.error('Could not determine inserted article id; aborting save operation')
+            if created_local_db_service:
+                db_service.close()
+            return {"error": "could_not_determine_inserted_id", "processing_time": perf_counter() - start_time}
 
         # Add embedding to ChromaDB
         try:
-            embedding_list = list(map(float, embedding))
-            chroma_metadata = _make_chroma_metadata_safe(metadata)
-            db_service.collection.add(
-                ids=[str(next_id)],
-                embeddings=[embedding_list],
-                metadatas=[chroma_metadata],
-                documents=[content]
-            )
-            logger.debug(f"Added embedding to ChromaDB for article {next_id}")
+            if getattr(db_service, 'collection', None):
+                embedding_list = list(map(float, embedding))
+                chroma_metadata = _make_chroma_metadata_safe(metadata)
+                db_service.collection.add(
+                    ids=[str(next_id)],
+                    embeddings=[embedding_list],
+                    metadatas=[chroma_metadata],
+                    documents=[content]
+                )
+                logger.debug(f"Added embedding to ChromaDB for article {next_id}")
+            else:
+                logger.warning("Skipping embedding add to ChromaDB as no collection is configured")
         except Exception as chroma_error:
             logger.warning(f"Failed to add embedding to ChromaDB: {chroma_error}")
             # Don't fail the whole operation if ChromaDB fails
@@ -354,15 +388,17 @@ def save_article(content: str, metadata: dict, embedding_model=None) -> dict:
 
         # Return both 'article_id' and legacy 'id' key for backward compatibility
         metrics.record_ingestion("success")
-        db_service.close()
+        if created_local_db_service:
+            db_service.close()
         result["processing_time"] = perf_counter() - start_time
         return result
     except Exception as e:
         logger.error(f"Error saving article: {e}")
         metrics.record_ingestion("error")
         try:
-            db_service.close()
-        except:
+            if created_local_db_service:
+                db_service.close()
+        except Exception:
             pass
         return {"error": str(e), "processing_time": perf_counter() - start_time}
 

@@ -149,6 +149,9 @@ class SemanticSearchService:
         # Search in ChromaDB. Wrap in try/except so backend failures return
         # an empty result set instead of raising (tests expect graceful handling).
         try:
+            if not getattr(self.db_service, 'collection', None):
+                logger.warning("ChromaDB collection not initialized - semantic search unavailable")
+                return []
             chroma_results = self.db_service.collection.query(
                 query_embeddings=[query_embedding],
                 n_results=n_results * 2,  # Get more results for filtering

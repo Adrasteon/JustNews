@@ -109,8 +109,13 @@ conda env export > environment_backup.yml
 ```
 
 ### Crawler Extraction Regression Tests
+Prefer running tests using the project's conda environment to ensure third-party compiled extensions and dependencies are available.
 ```bash
-PYTHONPATH=$(pwd) pytest tests/agents/crawler -q
+# Either set `PYTHONPATH` and run pytest using the activated conda env:
+PYTHONPATH=$(pwd) conda run -n justnews-v2-py312 pytest tests/agents/crawler -q
+
+# Or set the `PYTHON_BIN` environment variable to the conda python executable:
+PYTHONPATH=$(pwd) PYTHON_BIN=/home/adra/miniconda3/envs/justnews-v2-py312/bin/python pytest tests/agents/crawler -q
 ```
 
 This suite covers the Stage B2 extraction pipeline, including the Trafilatura/readability/jusText cascade, raw HTML persistence, and ingestion metadata enrichment.
@@ -164,3 +169,26 @@ See [LICENCE](./LICENCE) for licensing information.
 - Training: MCP-integrated continuous learning
 
 **Status**: Production-ready enterprise system
+
+## ChromaDB Canonical Configuration (Operators)
+
+This repository relies on a single canonical ChromaDB instance for vector storage and semantic operations. The system will validate that configured runtime Chroma host/port matches canonical settings when `CHROMADB_REQUIRE_CANONICAL=1` is set.
+
+Set the required environment variables in `/etc/justnews/global.env` or your deployment environment. For example:
+
+```dotenv
+CHROMADB_HOST=localhost
+CHROMADB_PORT=3307
+CHROMADB_COLLECTION=articles
+CHROMADB_REQUIRE_CANONICAL=1
+CHROMADB_CANONICAL_HOST=localhost
+CHROMADB_CANONICAL_PORT=3307
+```
+
+Operational commands to inspect and bootstrap Chroma: run the diagnostic and bootstrap helpers.
+```bash
+PYTHONPATH=. conda run -n justnews-v2-py312 python scripts/chroma_diagnose.py --host <host> --port <port> --autocreate
+PYTHONPATH=. conda run -n justnews-v2-py312 python scripts/chroma_bootstrap.py --host <host> --port <port> --tenant default_tenant --collection articles
+```
+
+See `docs/chroma_setup.md` for advanced guidance and troubleshooting.

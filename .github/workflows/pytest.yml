@@ -20,6 +20,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Preflight checks - protobuf & deprecation
+        env:
+          PYTHON_BIN: python
+          CI: true
+        run: |
+          python scripts/check_protobuf_version.py
+          python scripts/check_deprecation_warnings.py
       - name: Processing time sanity check
         run: |
           make check-processing-time

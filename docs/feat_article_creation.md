@@ -23,7 +23,8 @@ Out of scope (for this branch): full HITL UX polishing, advanced retraining inte
 
 1. (Trigger) A `SYNTHESIZE_CLUSTER` job is created (API, scheduled job, or agent event).
 2. `ClusterFetcher` queries Chroma and MariaDB to collect and deduplicate the articles for the cluster.
-3. `SynthesisService` synthesizes a draft article using a model/prompt template and returns a structured `DraftArticle` object containing: `title`, `body`, `summary`, `quotes`, `source_ids`, `trace`.
+3. `Analyst` agent analyzes the fetched articles and the cluster for language, sentiment, bias, entity extraction, and other scoring metadata used to influence synthesis and for traceability.
+4. `SynthesisService` synthesizes a draft article using a model/prompt template and returns a structured `DraftArticle` object containing: `title`, `body`, `summary`, `quotes`, `source_ids`, `trace` and an `analysis_summary`.
 4. Save draft to MariaDB (or `synthesized_articles` table); generate embedding and store in Chroma.
 5. Send draft to `Critic` agent for assertions and policy checks; capture `critic_result`.
 6. Call `FactChecker` and optional `Entity` identification services; capture `fact_check_status`.
@@ -56,6 +57,15 @@ Fields:
 - `published_at` DATETIME NULLABLE
 - `created_by` VARCHAR: `agent:synthesizer` or `user:...`
 
+Analyst-related fields (article-level and cluster-level)
+- `analysis_language` VARCHAR
+- `analysis_confidence` FLOAT
+- `analysis_sentiment` JSON (e.g., polarity, strengths)
+- `analysis_bias_score` FLOAT
+- `analysis_entities` JSON: [{type, text, links}] for core entity extraction
+- `analysis_keywords` JSON
+- `analysis_summary` TEXT (clean summary of the analysis useful for human editors and for the SynthesisService to use)
+
 Migrations:
 - Add a migration script in `database/core/migrations/` with `CREATE, ALTER TABLE` to add the columns.
 - Acceptance: DB migration should be idempotent and reversible, with zero downtime if possible.
@@ -74,9 +84,11 @@ File/Module: `agents/synthesizer/service.py` (or under `agents/journalist/synthe
 Responsibilities:
 - Accept event payload { cluster_id | article_ids, options }
 - Call `ClusterFetcher` to collect article content and metadata
+- Call `Analyst` to get per-article and cluster-level analysis summaries used to guide the prompt and synthesis strategy
 - Build prompt using defined templates (templates stored in repo or DB; ensure version/ID captured)
 - Call the configured synthesis model or use a fallback deterministic method in tests
 - Return `DraftArticle` with trace and source IDs
+- `DraftArticle` must include an `analysis_summary` derived from Analyst output, showing aggregated language/sentiment/bias scores and entity counts used to bias prompt and mark sections for fact-checking.
 - Log metrics and produce observability signals
 
 Testing:
@@ -94,12 +106,44 @@ Edge handling and safety:
 
 ---
 
+## Analyst Agent: Implementation Details
+
+File/Module: `agents/analyst/service.py` (or `agents/journalist/analyst.py`)
+
+Responsibilities:
+- Accept event payloads `{ article_ids | cluster_id | options }` and fetch the relevant content via `ClusterFetcher`.
+- Produce per-article and cluster-level analysis including:
+  - `language` and `language_confidence`
+  - `sentiment` (polarity / scores)
+  - `bias_score` (quantitative de-bias metrics)
+  - `entities` and `entity_types` (extracted named entities with confidence)
+  - `keywords` / `topics`
+  - `extraction_confidence` and `source_quality` score
+- Return an `AnalysisReport` object with aggregate metrics and per-article details.
+
+Integrations & Use:
+- The `SynthesisService` consumes `AnalysisReport` to select voice, adjust prompts, and flag sections for deeper fact-checking.
+- The `Critic` uses `AnalysisReport` entities and low-confidence statements to prioritize checks.
+- The `FactChecker` can use the extracted entity list to seed verification (e.g., claims involving person/place/time).
+
+Testing:
+- Unit tests for parsing, entity extraction, sentiment/bias scoring, language detection and confidence thresholds.
+- Integration tests to assert Analyst output shape and that it is used by the SynthesisService in draft generation.
+
+Prompts & Config:
+- Support multiple analysis engines and fallback (e.g. langdetect, open-source sentiment tools, and named-entity recognition models) configured via `ANALYST_BACKEND`.
+- Config flags like `ANALYST_MIN_CONFIDENCE` and `ANALYST_SCORE_WEIGHTS` should be available to tune scoring.
+
+
+---
+
 ## Critic & Fact-Check Integration
 
 - After the draft is generated, call the `Critic` agent: `agent/critic` or module call: `agents/critic/validate()`.
 - Capture `critic_result` JSON including issues, categories, severity.
 - If Critic indicates `block` severity, set `status=needs_revision` and optionally escalate to HITL.
 - Fact-check (optional): `agents/fact_checker/check_claims(draft_text, quotes)` to verify factual claims; store `fact_check_status`.
+ - Use analyst-generated entity metadata and detected claims to seed fact-checking (e.g., verify entity-based claims or flagged low-confidence statements)
 
 ---
 
@@ -114,12 +158,15 @@ Edge handling and safety:
 ## API Endpoints & Scripts
 
 - POST `/api/v1/articles/synthesize` { cluster_id | article_ids, options } -> returns a job_id / draft.
+ - POST `/api/v1/articles/analyze` { article_ids | cluster_id } -> returns analysis results for articles & cluster
+ - GET `/api/v1/articles/:id/analysis` -> returns analysis metadata for a single article
 - GET `/api/v1/articles/synthesize/{job_id}` -> job status + preview + critic_result
 - GET `/api/v1/articles/:id/draft` -> retrieve a draft article
 - POST `/api/v1/articles/:id/publish` -> publish (Chief Editor or automated if gate allows)
 
 Script for debugging:
 - `scripts/synthesize_cluster.py` should exist to exercise the service locally and return the draft
+ - `scripts/analyze_cluster.py` should exist to exercise `Analyst` locally and preview analysis results
 
 ---
 
@@ -132,6 +179,8 @@ Script for debugging:
 
 - Integration Tests:
   - `tests/integration/test_article_creation_flow.py` marked with `integration` marker: a simulated run from cluster -> draft -> critic -> saved; requires integration fixtures.
+ - `tests/agents/analyst/test_analyst_service.py`: verify entity parsing, bias scoring and confidence handling;
+ - Add an integration path: `tests/integration/test_analysis_synthesis_flow.py` that demonstrates Analyst + SynthesisService usage with mocked LLM & Chroma.
 
 - Performance Tests (later):
   - `tests/database/test_dual_database_performance.py` style tests for large cluster sizes
@@ -154,6 +203,10 @@ Script for debugging:
   - `synthesis_jobs_failed` (counter)
   - `synthesis_jobs_published` (counter)
   - Traces for model latency (gauge)
+    - `analysis_jobs_started` (counter)
+    - `analysis_jobs_failed` (counter)
+    - `analysis_latency` (gauge)
+    - `analysis_bias_score_distribution` (histogram)
 
 ---
 

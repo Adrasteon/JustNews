@@ -70,3 +70,6 @@ artifacts/
 *.tgz
 *.zip
 
+# Also ignore specific artifact metadata files
+artifacts/*.txt
+

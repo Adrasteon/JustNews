@@ -17,6 +17,7 @@ different analysis tasks.
 """
 
 import re
+import os
 import time
 import warnings
 from dataclasses import dataclass

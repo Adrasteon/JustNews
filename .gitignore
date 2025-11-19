@@ -63,3 +63,10 @@ infrastructure/kubernetes/DEPRECATED.md
 infrastructure/kubernetes/base/DEPRECATED.md
 infrastructure/kubernetes/overlays/DEPRECATED.md
 
+# Backup and package artifacts (tarballs, zips)
+artifacts/
+*.tar.gz
+*.tar
+*.tgz
+*.zip
+

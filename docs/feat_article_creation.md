@@ -74,9 +74,10 @@ Analyst-related fields (article-level and cluster-level)
  - `reasoning_version` VARCHAR
  - `reasoning_score` FLOAT
 
-Migrations:
-- Add a migration script in `database/core/migrations/` with `CREATE, ALTER TABLE` to add the columns.
-- Acceptance: DB migration should be idempotent and reversible, with zero downtime if possible.
+Migrations (deferred):
+- DO NOT implement database migrations or persistent schema changes until we have finalized the agent outputs.
+- The schema fields listed above are provisional and illustrative. They will be finalized after the `Analyst`, `Fact-Checker`, and `Reasoning` agents are implemented and their precise output formats are defined.
+- Once agent outputs are finalized, add migration scripts under `database/core/migrations/` that are idempotent, reversible, and support safe deployment strategies.
 
 Model Class Changes:
 - Update `Article` (or add a `SynthesizedArticle` subclass) in `database/models/migrated_models.py` to serialize new metadata fields, and tests for to/from conversions.
@@ -355,14 +356,16 @@ Script for debugging:
 
 ## Work Items (MVP prioritized)
 
-- Implement DB migration & models
+- Define agent outputs and finalize schema (Analyst, Fact-Checker, Reasoning) — DO NOT implement DB migrations until outputs are finalized.
 - Implement `ClusterFetcher`
-- Implement `SynthesisService` skeleton with a deterministic test stub
-- Add Critic integration & simple Fact-checker stub
- - Implement a dedicated `Fact-Checker` agent with a staged plan (MVP stub -> external sources -> knowledge graph)
-- Add API endpoints and `scripts/synthesize_cluster.py`
+- Implement `Analyst` agent skeleton & unit tests
+- Implement per-article Fact-Checker (MVP stub) and `scripts/fact_check_cluster.py`
+- Implement `Reasoning` agent skeleton & unit tests
+- Implement `SynthesisService` skeleton with a deterministic test stub and `scripts/synthesize_cluster.py`
+- Add Critic integration & finish Fact-Checker integration
+- Add API endpoints for analyze/fact_check/reason/reasoning results and `synthesize` endpoints
 - Add Chief Editor review and publish endpoints (backend only for MVP)
-- Add unit tests and a basic integration test
+- Add unit tests and a basic integration test for Analysis -> Reasoning -> FactChecker -> Synthesis -> Critic -> Draft Fact-Check -> Publish
 - Add observability metrics and feature flags
 
 ---

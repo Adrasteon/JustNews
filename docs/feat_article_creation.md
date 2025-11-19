@@ -27,7 +27,7 @@ Out of scope (for this branch): full HITL UX polishing, advanced retraining inte
 4. `SynthesisService` synthesizes a draft article using a model/prompt template and returns a structured `DraftArticle` object containing: `title`, `body`, `summary`, `quotes`, `source_ids`, `trace` and an `analysis_summary`.
 4. Save draft to MariaDB (or `synthesized_articles` table); generate embedding and store in Chroma.
 5. Send draft to `Critic` agent for assertions and policy checks; capture `critic_result`.
-6. Call `FactChecker` and optional `Entity` identification services; capture `fact_check_status`.
+6. Call `FactChecker` (REQUIRED) and `Entity` identification services; capture `fact_check_status`.
 7. If Critic or FactChecker fail, escalate to HITL or mark `needs_revision` and update metadata.
 8. If passes and `CHIEF_EDITOR_REVIEW_REQUIRED` is `false`, publish; otherwise enqueue for review in `chief_editor` agent workflow.
 9. On publishing: set `is_published=true`, record `published_at` and `published_by`, update Chroma and index in the content hosting layer.
@@ -53,6 +53,7 @@ Fields:
 - `synth_trace` TEXT (or JSON) — store model prompt, steps, summary of trace
 - `critic_result` JSON (or TEXT)
 - `fact_check_status` ENUM: `pending`, `passed`, `failed`, `not_checked`
+- `fact_check_trace` JSON or TEXT: structured claim-level evidence entries: [{claim, verdict, evidence: [{url, snippet, confidence}], timestamp}]
 - `is_published` BOOLEAN DEFAULT FALSE
 - `published_at` DATETIME NULLABLE
 - `created_by` VARCHAR: `agent:synthesizer` or `user:...`
@@ -142,7 +143,47 @@ Prompts & Config:
 - After the draft is generated, call the `Critic` agent: `agent/critic` or module call: `agents/critic/validate()`.
 - Capture `critic_result` JSON including issues, categories, severity.
 - If Critic indicates `block` severity, set `status=needs_revision` and optionally escalate to HITL.
-- Fact-check (optional): `agents/fact_checker/check_claims(draft_text, quotes)` to verify factual claims; store `fact_check_status`.
+## Fact-Checker: Implementation & Challenges (MANDATORY)
+
+Fact-checking is mandatory and is the most critical and technically challenging component in this workflow. The fact-checker validates claims in the synthesized draft and verifies any content that would materially affect the reader’s understanding. This component must be robust, auditable, and tuned for a low false-positive rate while prioritizing safety and correctness.
+
+Responsibilities:
+- Accept an `AnalysisReport` and `DraftArticle` as inputs.
+- Extract claims from the text using the Analyst's entity & claim detection metadata.
+- For each claim, perform verification steps including: cross-referencing trusted sources, knowledgebase queries, supporting evidence collection, timestamped provenance logging, and confidence scoring.
+- Summarize results into an actionable `fact_check_status` for the draft: `pending`, `passed`, `failed`, `needs_review`.
+- Produce a `fact_check_trace` detailing the sources checked and evidence IDs for auditability.
+- Provide an API for manual and automated review: `POST /api/v1/articles/:id/fact_check` to force re-checks or revalidate upon new evidence.
+
+Behavior & failure modes:
+- The fact-checker must never be optional for publishing paths: if the system cannot perform a fact check because of environmental failures (downstream API unreachable, missing resources, etc.), the draft must default to `needs_review` and not auto-publish.
+- For low-confidence checks, the fact-checker returns `needs_review` and attaches suggested remedial actions that the Chief Editor or HITL reviewer should consider.
+- For high-confidence failures (claims contradicted by multiple independent sources or internally contradictory statements), the fact-checker returns `failed` which should automatically block publishing until addressed.
+
+Implementation considerations & complexity:
+- Claim extraction and classification is non-trivial; the Analyst agent must provide high-quality candidate claims and entity tags so the fact-checker can prioritize.
+- The fact-checker will likely combine multiple resources: curated internal knowledge graphs, external fact-checking APIs, newswire datasets, and trusted data sources. Establishing reliable sources and maintaining coverage across topics is a long-term effort.
+- For scalable verification, introduce caching of evidence and results (with TTL), dedup of requests, and batch verification of claims for cluster-level efficiency.
+- Rely on robust identity/resource handling to minimize false matches (canonicalize entity names and references).
+- Evaluate trade-offs between speed and depth of verification; the initial MVP can use faster, conservative checks to avoid publishing incorrect items.
+
+Testing and QA:
+- Build a `fact_check_test_dataset` with labelled claims and known verdicts to validate algorithm accuracy and to evaluate false-positive/false-negative rates.
+- Add unit tests for claim extraction and matching logic.
+- Add integration-level tests that simulate untrusted and trusted evidence sources and confirm correct `fact_check_status` aggregation.
+- Add continuous evaluation via a validation harness that tests the system with real-world examples before enabling auto-publish for an article category.
+
+Acceptance criteria for Fact-checker:
+- The system should not auto-publish an article unless Fact-checker returns `passed` or `passed-with-notes` where Chief Editor overrides allowed.
+- Fact-check `failed` should populate `fact_check_trace` and block publishing automatically.
+- Audit logs must be stored with claim-level provenance and source evidence identifiers.
+- Baseline accuracy thresholds (to be determined by the project): e.g., >80% precision on verified claims for a given category is a desirable target for MVP; but the initial rollout must use a conservative default.
+
+Integration & rollout policy:
+- Start with a conservative MVP that runs checks against a small set of curated trusted reference sources or an external fact-check service (if available) and defaults to `needs_review` on uncertain items.
+- Improve coverage iteratively by adding more sources, offline-scraped knowledge graphs, and canonicalization logic.
+- Prioritize high-risk claim categories (public figures, numbers, legal/medical statements) in early rollout phases.
+
  - Use analyst-generated entity metadata and detected claims to seed fact-checking (e.g., verify entity-based claims or flagged low-confidence statements)
 
 ---
@@ -167,6 +208,7 @@ Prompts & Config:
 Script for debugging:
 - `scripts/synthesize_cluster.py` should exist to exercise the service locally and return the draft
  - `scripts/analyze_cluster.py` should exist to exercise `Analyst` locally and preview analysis results
+ - `scripts/fact_check_article.py` should exist to run fact-checks locally against a sample dataset and to debug evidence collection
 
 ---
 
@@ -192,6 +234,7 @@ Script for debugging:
 - Add unit tests to run as part of existing CI suite
 - Add an `integration` marked job in `.github/workflows/pytest.yml` that runs the integration workflows in a dedicated runner
 - Feature flags: use `SKIP_PREFLIGHT` and `ARTICLE_SYNTHESIS_ENABLED` controls for dev vs CI
+- Fact-checker integration tests should be required in CI for main PRs and a staged `pre-prod` run is recommended before auto-publish is permitted in production.
 
 ---
 
@@ -253,6 +296,7 @@ Script for debugging:
 - Implement `ClusterFetcher`
 - Implement `SynthesisService` skeleton with a deterministic test stub
 - Add Critic integration & simple Fact-checker stub
+ - Implement a dedicated `Fact-Checker` agent with a staged plan (MVP stub -> external sources -> knowledge graph)
 - Add API endpoints and `scripts/synthesize_cluster.py`
 - Add Chief Editor review and publish endpoints (backend only for MVP)
 - Add unit tests and a basic integration test
@@ -263,9 +307,11 @@ Script for debugging:
 ## Owner & Timeline
 
 - Owner: `agents/journalist`, `agents/synthesizer`, and `database` owners together
+ - Owner: `agents/journalist`, `agents/synthesizer`, `agents/fact_checker`, and `database` owners together
 - Timeline: break down into 2-week sprints:
   - Sprint 1: Data model + SynthesisService + ClusterFetcher + Unit tests
   - Sprint 2: Critic & Fact-check integration + API endpoints + Integration tests
+  - Sprint 2.5: Fact-Checker dataset & API expansion (dedicated data & backend sprint)
   - Sprint 3: Chief Editor review flow + UI hooks + Staging rollout
 
 ---

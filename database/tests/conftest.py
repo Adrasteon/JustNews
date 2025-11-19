@@ -130,7 +130,21 @@ def mock_env_vars():
         'DB_RETRY_DELAY': '1.0'
     }
 
+    # Ensure that no external DATABASE_URL or Postgres envvars from the
+    # developer's environment can override the explicit MariaDB testing
+    # values. We don't clear the whole environment because other test
+    # helpers (e.g. PYTEST_RUNNING) are provided by the top-level
+    # conftest; just remove keys that could shadow the explicit values
+    # above and make the tests deterministic.
     with patch.dict(os.environ, env_vars):
+        # Remove any global/outer overrides which would otherwise take
+        # precedence (DATABASE_URL, Postgres envvars).  This makes the
+        # tests deterministic regardless of a developer's shell env.
+        os.environ.pop('DATABASE_URL', None)
+        os.environ.pop('POSTGRES_DB', None)
+        os.environ.pop('POSTGRES_HOST', None)
+        os.environ.pop('POSTGRES_USER', None)
+        os.environ.pop('POSTGRES_PASSWORD', None)
         yield
 
 

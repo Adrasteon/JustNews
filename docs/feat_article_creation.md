@@ -12,7 +12,7 @@ We aim to implement an MVP with safe defaults and meaningful tests, followed by 
 
 - Input: cluster of articles (list of article IDs or a cluster ID) produced by existing clustering logic.
 - Output: a new synthesized article persisted in MariaDB and Chroma, with full metadata and traceability.
-- Integrations: Critic agent, optional fact-checker, Chief Editor review. External LLMs can be mocked in tests.
+- Integrations: Critic agent, Fact-checker (MANDATORY), Chief Editor review, Reasoning & Analyst agents. External LLMs can be mocked in tests.
 - Feature flags to prevent automatic publishing in production by default.
 
 Out of scope (for this branch): full HITL UX polishing, advanced retraining integrations, or complex multi-agent coordination beyond the basic flow.
@@ -24,14 +24,15 @@ Out of scope (for this branch): full HITL UX polishing, advanced retraining inte
 1. (Trigger) A `SYNTHESIZE_CLUSTER` job is created (API, scheduled job, or agent event).
 2. `ClusterFetcher` queries Chroma and MariaDB to collect and deduplicate the articles for the cluster.
 3. `Analyst` agent analyzes the fetched articles and the cluster for language, sentiment, bias, entity extraction, and other scoring metadata used to influence synthesis and for traceability.
-4. `Reasoning` agent builds a `reasoning_plan` from the `AnalysisReport` and `source_fact_checks`. The plan prioritizes sources/claims, proposes a structure and sections for inclusion, and identifies excluded or flagged content.
-5. `SynthesisService` synthesizes a draft article using a model/prompt template and the `reasoning_plan`, and returns a structured `DraftArticle` object containing: `title`, `body`, `summary`, `quotes`, `source_ids`, `trace`, and an `analysis_summary`.
-6. Save draft to MariaDB (or `synthesized_articles` table); generate embedding and store in Chroma.
-5. Send draft to `Critic` agent for assertions and policy checks; capture `critic_result`.
-6. Call `FactChecker` (REQUIRED) and `Entity` identification services; capture `fact_check_status`.
-7. If Critic or FactChecker fail, escalate to HITL or mark `needs_revision` and update metadata.
-8. If passes and `CHIEF_EDITOR_REVIEW_REQUIRED` is `false`, publish; otherwise enqueue for review in `chief_editor` agent workflow.
-9. On publishing: set `is_published=true`, record `published_at` and `published_by`, update Chroma and index in the content hosting layer.
+4. Per-article Fact-check (MANDATORY): For each article in the cluster, run a per-article fact-check to validate claims, collect evidence, and store a `source_fact_check` result. These results are stored in `source_fact_checks` and are used to influence further planning.
+5. `Reasoning` agent builds a `reasoning_plan` from the `AnalysisReport` and `source_fact_checks`. The plan prioritizes sources/claims, proposes a structure and sections for inclusion, and identifies excluded or flagged content.
+6. `SynthesisService` synthesizes a draft article using a model/prompt template and the `reasoning_plan`, and returns a structured `DraftArticle` object containing: `title`, `body`, `summary`, `quotes`, `source_ids`, `trace`, and an `analysis_summary`.
+7. Save draft to MariaDB (or `synthesized_articles` table); generate embedding and store in Chroma.
+8. Send draft to `Critic` agent for assertions and policy checks; capture `critic_result`.
+9. Post-synthesis Draft Fact-check (MANDATORY): Run the fact-checker against the synthesized draft to validate any newly generated claims or paraphrased claims. Capture a `draft_fact_check_status` and `draft_fact_check_trace` for the synthesized content. Draft-level `failed` blocks publishing; `needs_review` requires HITL.
+10. If the Critic or draft-level FactChecker returns `failed` or a `needs_review` result, escalate to HITL or mark `needs_revision` and update metadata. No auto-publish on `failed`.
+11. When the draft passes Critic and draft FactChecker and `CHIEF_EDITOR_REVIEW_REQUIRED` is `false`, auto-publish; otherwise enqueue for Chief Editor review in the `chief_editor` agent workflow.
+12. On publishing: set `is_published=true`, record `published_at` and `published_by`, and update Chroma and the content hosting index.
 
 
 ---
@@ -180,6 +181,10 @@ Acceptance criteria for Reasoning:
 ---
 
 ## Critic & Fact-Check Integration
+
+- There are two Fact-Check phases:
+  - Pre-reasoning: Per-article fact-checks (MANDATORY) — run against each ingested article to produce `source_fact_checks` used by Reasoning.
+  - Post-synthesis: Draft-level fact-checks (MANDATORY) — run against the synthesized draft to validate any newly generated or paraphrased claims.
 
 - After the draft is generated, call the `Critic` agent: `agent/critic` or module call: `agents/critic/validate()`.
 - Capture `critic_result` JSON including issues, categories, severity.

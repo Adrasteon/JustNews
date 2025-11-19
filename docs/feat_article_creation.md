@@ -66,6 +66,8 @@ Analyst-related fields (article-level and cluster-level)
 - `analysis_entities` JSON: [{type, text, links}] for core entity extraction
 - `analysis_keywords` JSON
 - `analysis_summary` TEXT (clean summary of the analysis useful for human editors and for the SynthesisService to use)
+ - `source_fact_checks` JSON: list per ingested article of {article_id, fact_check_status, fact_check_trace, primary_claims} for auditing provenance
+ - `cluster_fact_check_summary` JSON: aggregated cluster-level fact check metrics (e.g. percent_verified_sources, flagged_sources_count)
 
 Migrations:
 - Add a migration script in `database/core/migrations/` with `CREATE, ALTER TABLE` to add the columns.
@@ -124,6 +126,7 @@ Responsibilities:
 
 Integrations & Use:
 - The `SynthesisService` consumes `AnalysisReport` to select voice, adjust prompts, and flag sections for deeper fact-checking.
+ - The `SynthesisService` consumes `AnalysisReport` to select voice, adjust prompts, and flag sections for deeper fact-checking. It must take into account the per-article `source_fact_checks` and exclude or de-prioritize articles that have `fact_check_status=failed` or have low evidence confidence.
 - The `Critic` uses `AnalysisReport` entities and low-confidence statements to prioritize checks.
 - The `FactChecker` can use the extracted entity list to seed verification (e.g., claims involving person/place/time).
 
@@ -163,6 +166,8 @@ Behavior & failure modes:
 Implementation considerations & complexity:
 - Claim extraction and classification is non-trivial; the Analyst agent must provide high-quality candidate claims and entity tags so the fact-checker can prioritize.
 - The fact-checker will likely combine multiple resources: curated internal knowledge graphs, external fact-checking APIs, newswire datasets, and trusted data sources. Establishing reliable sources and maintaining coverage across topics is a long-term effort.
+ - The fact-checker will likely combine multiple resources: curated internal knowledge graphs, external fact-checking APIs, newswire datasets, and trusted data sources. Establishing reliable sources and maintaining coverage across topics is a long-term effort.
+ - The fact-checker must evaluate and return per-source verdicts to allow full traceability for the final synthesized article: for each article in the input cluster a `source_fact_check` record must be produced and stored.
 - For scalable verification, introduce caching of evidence and results (with TTL), dedup of requests, and batch verification of claims for cluster-level efficiency.
 - Rely on robust identity/resource handling to minimize false matches (canonicalize entity names and references).
 - Evaluate trade-offs between speed and depth of verification; the initial MVP can use faster, conservative checks to avoid publishing incorrect items.
@@ -171,11 +176,14 @@ Testing and QA:
 - Build a `fact_check_test_dataset` with labelled claims and known verdicts to validate algorithm accuracy and to evaluate false-positive/false-negative rates.
 - Add unit tests for claim extraction and matching logic.
 - Add integration-level tests that simulate untrusted and trusted evidence sources and confirm correct `fact_check_status` aggregation.
+ - Add integration-level tests that simulate untrusted and trusted evidence sources and confirm correct `fact_check_status` aggregation AND per-article `source_fact_checks` are produced and included in the `AnalysisReport`.
 - Add continuous evaluation via a validation harness that tests the system with real-world examples before enabling auto-publish for an article category.
 
 Acceptance criteria for Fact-checker:
 - The system should not auto-publish an article unless Fact-checker returns `passed` or `passed-with-notes` where Chief Editor overrides allowed.
 - Fact-check `failed` should populate `fact_check_trace` and block publishing automatically.
+ - All cluster input articles must produce a `source_fact_check` entry. The final draft must include references to the verified source IDs and their fact-check verdicts.
+ - If a cluster has a high percentage of `source_fact_check` failures above a configured threshold (e.g., 50%), the SynthesisService should automatically abort synthesis and require human intervention.
 - Audit logs must be stored with claim-level provenance and source evidence identifiers.
 - Baseline accuracy thresholds (to be determined by the project): e.g., >80% precision on verified claims for a given category is a desirable target for MVP; but the initial rollout must use a conservative default.
 
@@ -200,6 +208,7 @@ Integration & rollout policy:
 
 - POST `/api/v1/articles/synthesize` { cluster_id | article_ids, options } -> returns a job_id / draft.
  - POST `/api/v1/articles/analyze` { article_ids | cluster_id } -> returns analysis results for articles & cluster
+ - POST `/api/v1/articles/fact_check` { article_ids | cluster_id } -> runs fact-check for each article and returns `source_fact_checks` and `cluster_fact_check_summary`
  - GET `/api/v1/articles/:id/analysis` -> returns analysis metadata for a single article
 - GET `/api/v1/articles/synthesize/{job_id}` -> job status + preview + critic_result
 - GET `/api/v1/articles/:id/draft` -> retrieve a draft article
@@ -209,6 +218,7 @@ Script for debugging:
 - `scripts/synthesize_cluster.py` should exist to exercise the service locally and return the draft
  - `scripts/analyze_cluster.py` should exist to exercise `Analyst` locally and preview analysis results
  - `scripts/fact_check_article.py` should exist to run fact-checks locally against a sample dataset and to debug evidence collection
+ - `scripts/fact_check_cluster.py` should exist to exercise fact-checks for each article in a cluster and produce a cluster summary with per-article `source_fact_checks`
 
 ---
 
@@ -223,6 +233,7 @@ Script for debugging:
   - `tests/integration/test_article_creation_flow.py` marked with `integration` marker: a simulated run from cluster -> draft -> critic -> saved; requires integration fixtures.
  - `tests/agents/analyst/test_analyst_service.py`: verify entity parsing, bias scoring and confidence handling;
  - Add an integration path: `tests/integration/test_analysis_synthesis_flow.py` that demonstrates Analyst + SynthesisService usage with mocked LLM & Chroma.
+ - `tests/agents/fact_checker/test_fact_checker_per_article.py`: verify per-article claims are extracted, verified, and produce `source_fact_checks` entries and a cluster summary.
 
 - Performance Tests (later):
   - `tests/database/test_dual_database_performance.py` style tests for large cluster sizes

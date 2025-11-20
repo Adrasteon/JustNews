@@ -344,6 +344,7 @@ Integration & rollout policy:
 ## API Endpoints & Scripts
 
 - POST `/api/v1/articles/synthesize` { cluster_id | article_ids, options } -> returns a job_id / draft.
+ - POST `/api/v1/articles/synthesize` { cluster_id | article_ids, options } -> returns a job id for asynchronous processing. Use `GET /api/v1/articles/synthesize/{job_id}` to poll for status and results.
  - POST `/api/v1/articles/analyze` { article_ids | cluster_id } -> returns analysis results for articles & cluster
  - POST `/api/v1/articles/fact_check` { article_ids | cluster_id } -> runs fact-check for each article and returns `source_fact_checks` and `cluster_fact_check_summary`
  - POST `/api/v1/articles/reason` { article_ids | cluster_id } -> produces a `reasoning_plan` and returns a `reasoning_plan_id` and summarized plan
@@ -351,6 +352,7 @@ Integration & rollout policy:
  - GET `/api/v1/articles/:id/analysis` -> returns analysis metadata for a single article
 - GET `/api/v1/articles/synthesize/{job_id}` -> job status + preview + critic_result
 - GET `/api/v1/articles/:id/draft` -> retrieve a draft article
+ - GET `/api/v1/articles/drafts` -> list of drafts for Chief Editor review (supports both Option A and Option B persistence)
 - POST `/api/v1/articles/:id/publish` -> publish (Chief Editor or automated if gate allows)
 
 Script for debugging:

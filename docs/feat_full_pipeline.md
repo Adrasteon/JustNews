@@ -21,6 +21,7 @@ This document is intended to be the canonical reference for the full pipeline de
 ## High-Level Flow
 
 1. Trigger (API, scheduled job, or orbit event) begins a `SYNTHESIZE_CLUSTER` job.
+0. Pre-flight: Web crawl & scrape — the pipeline starts here. `CrawlerEngine` (`agents/crawler/crawler_engine.py`) or the `GenericSiteCrawler` discovers article URLs, applies paywall detection and initial heuristics, then calls the `memory` agent (`/ingest_article`) to persist candidate articles. The earliest decision is whether a page qualifies as a valid article via `agents/crawler/extraction.extract_article_content()` (word count, text/html ratio), `skip_ingest` (paywalled), and `needs_review` flags.
 2. `ClusterFetcher` collects deduplicated articles for the given cluster.
 3. `Analyst` runs per-article claim extraction and a per-article `source_fact_check` using `FactCheckerEngine`.
 4. `Reasoning` agent receives the `AnalysisReport` and produces a `reasoning_plan` with prioritized sources, outline, and claims.
@@ -39,6 +40,7 @@ Notes:
 ## Major Components
 
 - `agents/cluster_fetcher/ClusterFetcher` — harvests cluster content and normalizes article records.
+ - `agents/crawler/CrawlerEngine` & `GenericSiteCrawler` — initial webcrawl, scraping and article extraction. They apply a multi-tier extraction pipeline (`agents/crawler/extraction.py`) and simple heuristics that mark `needs_review` when the content is short (below `ARTICLE_MIN_WORDS`) or has a low text-to-HTML ratio (`ARTICLE_MIN_TEXT_HTML_RATIO`). Paywall detection and `skip_ingest` are used to avoid ingesting behind-paywall pages unless explicitly permitted.
 - `agents/analyst/AnalystEngine` — extracts claims, runs per-article fact checks, and outputs `AnalysisReport` with `source_fact_checks` and `cluster_fact_check_summary`.
 - `agents/reasoning/Reasoning` — converts `AnalysisReport` into a `reasoning_plan` used to guide synthesis.
 - `agents/synthesizer/SynthesizerEngine` — synthesizes the article draft from the plan, records model traces, and creates a DB-backed job when async.
@@ -83,6 +85,20 @@ Migration summary:
 - `SourceFactCheck` verdict mapping: `>= 0.8 => passed`, `0.6-0.79 => needs_review`, `< 0.6 => failed` (default thresholds — configurable).
 - Draft `fact_check_status` can be `pending`, `passed`, `needs_review`, `failed`. Auto-publish requires `passed` unless the chief editor overrides.
 - Critic policies with severity `block` or `must_edit` will prevent publishing and escalate to HITL. Critic results are stored as `critic_result` JSON with detailed messages.
+
+---
+
+## Crawl & Ingest Details (Where the pipeline starts) 🔎
+
+The very beginning of the pipeline is the web crawl and scrape stage — this is where candidate pages are accepted, rejected, or flagged for review.
+
+- Crawler: `agents/crawler/crawler_engine.py` coordinates site-specific strategies (`ultra_fast`, `ai_enhanced`, `generic`) and optionally delegates to `crawl4ai` crawlers. `GenericSiteCrawler` fetches homepages, extracts article links with `_extract_article_links()`, fetches article HTML and runs `_build_article()`.
+- Extraction & heuristics: `agents/crawler/extraction.py` runs a multi-tier extraction (Trafilatura -> Readability -> jusText -> plain-css driven fallback). It computes `word_count` and `boilerplate_ratio` (text-to-HTML ratio) and sets `needs_review` when thresholds are not met. The environment flags `ARTICLE_MIN_WORDS` and `ARTICLE_MIN_TEXT_HTML_RATIO` are used to tune this behaviour.
+- Paywalls & skip policy: A `PaywallDetector` can mark `paywall_flag` and `skip_ingest`. The crawler records paywall statistics and may trigger `record_paywall_detection()` if dominated by paywalled content. Paywalled pages are not ingested by default.
+- HITL & review flow: Pre-ingestion candidates that are borderline can be submitted to the HITL queue via `_submit_hitl_candidates()` for editorial review before ingest. This is useful for novel or low-confidence pages.
+- Ingestion: `_ingest_articles()` in `CrawlerEngine` calls the `memory` agent's `ingest_article` tool (`POST /ingest_article` in `agents/memory/main.py`). The memory agent handles upserts into the `sources` table and finalizes `articles` insertion; it also sets `ingestion_status` as `new`, `duplicate`, or `error` and includes `extraction_metadata` for downstream analysers.
+
+These early decisions - whether a page is valid, paywalled, or a candidate for review - strongly influence which articles become available for downstream clustering, analysis, fact-check, and ultimately synthesis.
 
 ---
 

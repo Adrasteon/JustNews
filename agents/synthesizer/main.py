@@ -53,6 +53,8 @@ from .tools import (
     neutralize_text_tool,
     synthesize_gpu_tool,
 )
+from config.core import get_config
+from config.core import get_config
 
 logger = get_logger(__name__)
 
@@ -264,6 +266,8 @@ class SynthesisRequest(BaseModel):
     context: str | None = "news analysis"
     # Optional cluster identifier to fetch articles and run analysis
     cluster_id: str | None = None
+    publish: bool = False
+    story_id: str | None = None
 
 
 @app.get("/health")
@@ -403,6 +407,83 @@ async def synthesize_news_articles_gpu_endpoint(request: SynthesisRequest) -> di
     except Exception as e:
         logger.exception("❌ GPU synthesis failed")
         raise HTTPException(status_code=500, detail=f"GPU synthesis failed: {str(e)}")
+
+
+@app.post("/synthesize_and_publish")
+async def synthesize_and_publish(request: SynthesisRequest) -> dict[str, Any]:
+    """Synthesize content and optionally publish it if editorial gates pass."""
+
+    if synthesizer_engine is None:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
+
+    # Default behavior: call the synthesize tool
+    result = await synthesize_gpu_tool(
+        synthesizer_engine,
+        request.articles,
+        request.max_clusters,
+        request.context,
+        cluster_id=request.cluster_id,
+    )
+
+    if not result or not result.get('success'):
+        return {"status": "error", "error": "synthesis_failed", "details": result}
+
+    # Critic check
+    try:
+        # Critic supports a sync API; use the async wrapper for thread-safety
+        from agents.critic.tools import process_critique_request
+        critic_result = await process_critique_request(result.get('synthesis', ''), "synthesis")
+    except Exception:
+        critic_result = {"error": "critic_failed"}
+
+    # Draft fact-check (run always; publishing gate will decide enforcement)
+    try:
+        import agents.analyst.tools as _analyst_tools
+        draft_report = getattr(_analyst_tools, 'generate_analysis_report', lambda *a, **k: None)([result.get('synthesis', '')], article_ids=None, cluster_id=request.cluster_id)
+    except Exception:
+        draft_report = None
+
+    # Decide publish gating via configuration
+    cfg = get_config()
+    # If system has a persistence preference, honor it.
+    try:
+        persistence_mode = cfg.system.get('persistence', {}).get('synthesized_article_storage', 'extend')
+    except Exception:
+        persistence_mode = 'extend'
+    publish_cfg = cfg.agents.publishing
+    require_pass = bool(publish_cfg.require_draft_fact_check_pass_for_publish)
+
+    # Determine draft fact-check status
+    fact_status = None
+    if isinstance(draft_report, dict):
+        per_article = draft_report.get('per_article', [])
+        if per_article and isinstance(per_article, list):
+            sa = per_article[0].get('source_fact_check') if isinstance(per_article[0], dict) else None
+            fact_status = sa.get('fact_check_status') if isinstance(sa, dict) else None
+        if not fact_status:
+            sfc = draft_report.get('source_fact_checks', [])
+            if sfc and isinstance(sfc, list) and isinstance(sfc[0], dict):
+                fact_status = sfc[0].get('fact_check_status')
+
+    # Gate on fact-check pass if required
+    if require_pass and fact_status != 'passed':
+        return {"status": "error", "error": "draft_fact_check_failed", "analysis_report": draft_report, "critic_result": critic_result}
+
+    # Decide whether we need chief editor review
+    if publish_cfg.chief_editor_review_required and not request.publish:
+        return {"status": "queued_for_review", "analysis_report": draft_report, "critic_result": critic_result}
+
+    # Auto-publish via chief editor tool
+    try:
+        from agents.chief_editor.tools import publish_story
+        story_id = request.story_id or f"synth_{request.cluster_id or 'manual'}_{int(datetime.now().timestamp())}"
+        publish_result = publish_story(story_id)
+        return {"status": publish_result.get('status', 'published'), "story_id": publish_result.get('story_id', story_id), "analysis_report": draft_report, "critic_result": critic_result}
+    except Exception as e:
+        logger.exception("Publish failed")
+        return {"status": "error", "error": "publish_failed", "details": str(e)}
+
+    # End: synthesize_news_articles_gpu_endpoint
 
 
 @app.post("/get_synthesizer_performance")

@@ -302,11 +302,20 @@ class AgentPorts(BaseModel):
     dashboard: PositiveInt = Field(default=8013, description="Dashboard port")
 
 
+class PublishingConfig(BaseModel):
+    """Publishing and editorial workflow configuration"""
+
+    require_draft_fact_check_pass_for_publish: bool = Field(default=False)
+    chief_editor_review_required: bool = Field(default=True)
+    allow_publish_override_by_agent: list[str] = Field(default_factory=list)
+
+
 class AgentsConfig(BaseModel):
     """Agent configuration"""
     ports: AgentPorts = Field(default_factory=AgentPorts)
     timeouts: AgentTimeouts = Field(default_factory=AgentTimeouts)
     batch_sizes: AgentBatchSizes = Field(default_factory=AgentBatchSizes)
+    publishing: PublishingConfig = Field(default_factory=PublishingConfig)
 
 
 # ============================================================================
@@ -457,6 +466,14 @@ class ExternalServicesConfig(BaseModel):
     """External services configuration"""
     news_sources: ExternalNewsSourcesConfig = Field(default_factory=ExternalNewsSourcesConfig)
     apis: ExternalAPIsConfig = Field(default_factory=ExternalAPIsConfig)
+
+
+# ============================================================================
+# PUBLISHING CONFIGURATION
+# ============================================================================
+
+
+# PublishingConfig defined earlier to avoid forward reference issues
 
 
 # ============================================================================

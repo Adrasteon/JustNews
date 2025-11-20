@@ -941,6 +941,46 @@ class SynthesizerEngine:
                 except Exception as e:
                     logger.warning(f"final refinement failed: {e}")
 
+            # Post-synthesis draft fact-check (MANDATORY): run Analyst on the
+            # synthesized draft to validate claims introduced or paraphrased
+            # in the synthesis. If the draft-level fact check fails, abort
+            # synthesis and return the analysis report for auditing/HITL.
+            try:
+                import agents.analyst.tools as _analyst_tools
+                generate_analysis_report = getattr(_analyst_tools, 'generate_analysis_report', None)
+            except Exception:
+                generate_analysis_report = None
+
+            if generate_analysis_report:
+                try:
+                    draft_report = generate_analysis_report([final_synthesis], article_ids=None, cluster_id=cluster_id)
+                    # Prefer per_article.source_fact_check; fall back to source_fact_checks
+                    fact_check_status = None
+                    if isinstance(draft_report, dict):
+                        per_article = draft_report.get('per_article', [])
+                        if per_article and isinstance(per_article, list) and len(per_article) > 0:
+                            sac = per_article[0].get('source_fact_check') if isinstance(per_article[0], dict) else None
+                            if sac and isinstance(sac, dict):
+                                fact_check_status = sac.get('fact_check_status')
+
+                        if not fact_check_status:
+                            sfc_list = draft_report.get('source_fact_checks', [])
+                            if sfc_list and isinstance(sfc_list, list):
+                                first = sfc_list[0]
+                                if isinstance(first, dict):
+                                    fact_check_status = first.get('fact_check_status')
+
+                    if fact_check_status == 'failed':
+                        logger.warning("Draft fact-check failed; aborting synthesis")
+                        return {"status": "error", "error": "draft_fact_check_failed", "analysis_report": draft_report}
+                    elif fact_check_status == 'needs_review':
+                        # Expose needs_review so controllers can route to HITL
+                        logger.info("Draft fact-check suggests HITL review; gating publish")
+                        return {"status": "error", "error": "draft_fact_check_needs_review", "analysis_report": draft_report}
+
+                except Exception as e:
+                    logger.exception("Draft fact-check run failed; continuing with synthesis", exc_info=e)
+
             # Update performance stats
             self.performance_stats['total_processed'] += len(articles)
             if self.gpu_allocated:

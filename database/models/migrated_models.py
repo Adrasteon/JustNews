@@ -110,6 +110,21 @@ class Article:
         self.publication_date = kwargs.get('publication_date')
         self.metadata = kwargs.get('metadata', {})
         self.collection_timestamp = kwargs.get('collection_timestamp')
+        # Synthesis/Publishing metadata (Option A: extend `articles` table)
+        self.is_synthesized = kwargs.get('is_synthesized', False)
+        # can be a JSON list of cluster ids or a comma-delimited string
+        self.input_cluster_ids = kwargs.get('input_cluster_ids', [])
+        self.synth_model = kwargs.get('synth_model')
+        self.synth_version = kwargs.get('synth_version')
+        self.synth_prompt_id = kwargs.get('synth_prompt_id')
+        # store as JSON/str for auditability
+        self.synth_trace = kwargs.get('synth_trace')
+        self.critic_result = kwargs.get('critic_result', {})
+        self.fact_check_status = kwargs.get('fact_check_status')
+        self.fact_check_trace = kwargs.get('fact_check_trace')
+        self.is_published = kwargs.get('is_published', False)
+        self.published_at = kwargs.get('published_at')
+        self.created_by = kwargs.get('created_by')
 
     @classmethod
     def from_row(cls, row) -> 'Article':
@@ -140,6 +155,19 @@ class Article:
             publication_date=row[22],
             metadata=json.loads(row[23]) if row[23] else {},
             collection_timestamp=row[24]
+            # Optional synthesis/publishing columns (added in migration)
+            , is_synthesized=row[25] if len(row) > 25 else False
+            , input_cluster_ids=json.loads(row[26]) if len(row) > 26 and row[26] else []
+            , synth_model=row[27] if len(row) > 27 else None
+            , synth_version=row[28] if len(row) > 28 else None
+            , synth_prompt_id=row[29] if len(row) > 29 else None
+            , synth_trace=json.loads(row[30]) if len(row) > 30 and row[30] else None
+            , critic_result=json.loads(row[31]) if len(row) > 31 and row[31] else {}
+            , fact_check_status=row[32] if len(row) > 32 else None
+            , fact_check_trace=json.loads(row[33]) if len(row) > 33 and row[33] else None
+            , is_published=row[34] if len(row) > 34 else False
+            , published_at=row[35] if len(row) > 35 else None
+            , created_by=row[36] if len(row) > 36 else None
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -170,6 +198,18 @@ class Article:
             'publication_date': self.publication_date,
             'metadata': self.metadata,
             'collection_timestamp': self.collection_timestamp
+            , 'is_synthesized': self.is_synthesized
+            , 'input_cluster_ids': self.input_cluster_ids
+            , 'synth_model': self.synth_model
+            , 'synth_version': self.synth_version
+            , 'synth_prompt_id': self.synth_prompt_id
+            , 'synth_trace': self.synth_trace
+            , 'critic_result': self.critic_result
+            , 'fact_check_status': self.fact_check_status
+            , 'fact_check_trace': self.fact_check_trace
+            , 'is_published': self.is_published
+            , 'published_at': self.published_at
+            , 'created_by': self.created_by
         }
 
 
@@ -207,6 +247,68 @@ class ArticleSourceMap:
             'confidence': self.confidence,
             'detected_at': self.detected_at,
             'metadata': self.metadata
+        }
+
+
+class SynthesizedArticle:
+    """Dedicated table for synthesized articles (Option B)."""
+
+    __tablename__ = "synthesized_articles"
+
+    def __init__(self, **kwargs):
+        self.id = kwargs.get('id')
+        self.story_id = kwargs.get('story_id')
+        self.cluster_id = kwargs.get('cluster_id')
+        self.input_articles = kwargs.get('input_articles', [])
+        self.title = kwargs.get('title')
+        self.body = kwargs.get('body')
+        self.summary = kwargs.get('summary')
+        self.reasoning_plan = kwargs.get('reasoning_plan', {})
+        self.analysis_summary = kwargs.get('analysis_summary', {})
+        self.synth_metadata = kwargs.get('synth_metadata', {})
+        self.created_at = kwargs.get('created_at')
+        self.updated_at = kwargs.get('updated_at')
+        self.is_published = kwargs.get('is_published', False)
+        self.published_at = kwargs.get('published_at')
+        self.published_by = kwargs.get('published_by')
+
+    @classmethod
+    def from_row(cls, row) -> 'SynthesizedArticle':
+        return cls(
+            id=row[0],
+            story_id=row[1],
+            cluster_id=row[2],
+            input_articles=json.loads(row[3]) if row[3] else [],
+            title=row[4],
+            body=row[5],
+            summary=row[6],
+            reasoning_plan=json.loads(row[7]) if row[7] else {},
+            analysis_summary=json.loads(row[8]) if row[8] else {},
+            synth_metadata=json.loads(row[9]) if row[9] else {},
+            created_at=row[10],
+            updated_at=row[11],
+            is_published=row[12],
+            published_at=row[13],
+            published_by=row[14]
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'id': self.id,
+            'story_id': self.story_id,
+            'cluster_id': self.cluster_id,
+            'input_articles': self.input_articles,
+            'title': self.title,
+            'body': self.body,
+            'summary': self.summary,
+            'reasoning_plan': self.reasoning_plan,
+            'analysis_summary': self.analysis_summary,
+            'synth_metadata': self.synth_metadata,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at,
+            'is_published': self.is_published,
+            'published_at': self.published_at,
+            'published_by': self.published_by,
         }
 
 

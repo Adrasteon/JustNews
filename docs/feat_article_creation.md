@@ -30,6 +30,18 @@ Out of scope (for this branch): full HITL UX polishing, advanced retraining inte
 7. Save draft to MariaDB (or `synthesized_articles` table); generate embedding and store in Chroma.
 8. Send draft to `Critic` agent for assertions and policy checks; capture `critic_result`.
 9. Post-synthesis Draft Fact-check (MANDATORY): Run the fact-checker against the synthesized draft to validate any newly generated claims or paraphrased claims. Capture a `draft_fact_check_status` and `draft_fact_check_trace` for the synthesized content. Draft-level `failed` blocks publishing; `needs_review` requires HITL.
+
+- Implementation note (new): The `SynthesisService` now calls `Analyst.generate_analysis_report()` on the synthesized draft immediately after synthesis. If the returned `source_fact_check.fact_check_status` is `failed`, the synthesis call returns an error `draft_fact_check_failed` and includes the `analysis_report` for auditing. If the status is `needs_review`, the call returns `draft_fact_check_needs_review` to force HITL intervention.
+
+### Tests added (new)
+
+- `tests/agents/synthesizer/test_synthesizer_cluster_integration.py` now includes three tests verifying post-synthesis behavior: `test_post_synthesis_draft_fact_check_blocks_when_failed`, `test_post_synthesis_draft_fact_check_needs_review`, and `test_post_synthesis_draft_fact_check_allows_on_pass`.
+
+### Next steps
+
+- Add API endpoint wiring and a GUI flag for "Require draft fact-check pass before publish"; ensure chief editor endpoints and frontend components are integrated in a subsequent PR.
+
+- Implementation: `POST /synthesize_and_publish` in `agents/synthesizer/main.py` runs the full pipeline (synthesis→critic→draft fact-check) and then either auto-publishes or queues for `Chief Editor` review depending on config flags. The GUI exposes `Require draft fact-check pass before publish` under `Settings -> Publishing` and it defaults to `false`.
 10. If the Critic or draft-level FactChecker returns `failed` or a `needs_review` result, escalate to HITL or mark `needs_revision` and update metadata. No auto-publish on `failed`.
 11. When the draft passes Critic and draft FactChecker and `CHIEF_EDITOR_REVIEW_REQUIRED` is `false`, auto-publish; otherwise enqueue for Chief Editor review in the `chief_editor` agent workflow.
 12. On publishing: set `is_published=true`, record `published_at` and `published_by`, and update Chroma and the content hosting index.
@@ -43,6 +55,20 @@ A. DB Model choices (Two options):
 
 - Option A (extend `articles` table): add fields for synthesized metadata.
 - Option B (new `synthesized_articles` table): dedicated table for synthesized content and traceability metadata.
+ - Option B (new `synthesized_articles` table): dedicated table for synthesized content and traceability metadata.
+
+Status: BOTH OPTIONS IMPLEMENTED
+
+ - Option A (extend `articles`): `Article` model in `database/models/migrated_models.py` now contains synthesis and publishing fields such as `is_synthesized`, `input_cluster_ids`, `synth_model`, `synth_version`, `synth_prompt_id`, `synth_trace`, `critic_result`, `fact_check_status` and publishing metadata (`is_published`, `published_at`, `created_by`). A database migration `004_add_synthesis_fields.sql` adds these columns to the `articles` table (MariaDB compatible).
+
+ - Option B (new table): A dedicated `synthesized_articles` table and model `SynthesizedArticle` implemented in `database/models/migrated_models.py`. Migration `005_create_synthesized_articles_table.sql` creates the `synthesized_articles` table and includes traceability and editorial fields.
+
+Migrations (implemented):
+
+- `database/migrations/004_add_synthesis_fields.sql` — adds synthesis and publishing fields to the `articles` table. This is used by Option A (extend `articles`).
+- `database/migrations/005_create_synthesized_articles_table.sql` — creates a dedicated `synthesized_articles` table for Option B.
+
+Why both? Support both models in the codebase for flexibility — the `SynthesisService` will select a persistence strategy via `SYSTEM_CONFIG` (feature flag) so operators can choose "extend" vs "new table" when deploying. Tests validate both models (see tests under `tests/database/`).
 
 MVP Recommendation: Extend the `articles` table with the following new fields to keep minimal migration surface.
 
@@ -78,6 +104,7 @@ Migrations (deferred):
 - DO NOT implement database migrations or persistent schema changes until we have finalized the agent outputs.
 - The schema fields listed above are provisional and illustrative. They will be finalized after the `Analyst`, `Fact-Checker`, and `Reasoning` agents are implemented and their precise output formats are defined.
 - Once agent outputs are finalized, add migration scripts under `database/core/migrations/` that are idempotent, reversible, and support safe deployment strategies.
+ - The migrations created for this feature (see above) are included in `database/migrations/` and are ready for operator review and staging run: `004_add_synthesis_fields.sql` and `005_create_synthesized_articles_table.sql`.
 
 Model Class Changes:
 - Update `Article` (or add a `SynthesizedArticle` subclass) in `database/models/migrated_models.py` to serialize new metadata fields, and tests for to/from conversions.
@@ -102,6 +129,12 @@ Responsibilities:
 - `DraftArticle` must include an `analysis_summary` derived from Analyst output, showing aggregated language/sentiment/bias scores and entity counts used to bias prompt and mark sections for fact-checking.
  - `DraftArticle` should include a `reasoning_plan_id` or `reasoning_plan` snippet indicating why certain sources were included or excluded, and summaries of prioritized claims.
 - Log metrics and produce observability signals
+
+### Status updates (new)
+
+- `ClusterFetcher` implemented and unit-tested; it fetches article content for clusters and deduplicates by URL and content.
+- `Analyst` now runs per-article fact checks and produces `AnalysisReport.source_fact_checks` and `cluster_fact_check_summary` (used for gating).
+- `SynthesisService` and `SynthesizerEngine` now accept `cluster_id` when `articles` are empty and will run the Analyst pre-flight check; synthesis is blocked when `cluster_fact_check_summary.percent_verified < SynthesizerConfig.min_fact_check_percent_for_synthesis` (default 60.0).
 
 Testing:
 - Unit tests for the generator logic using small prompt templates & known inputs
@@ -162,6 +195,11 @@ Integrations & Use:
 - The `SynthesisService` consumes `AnalysisReport` to select voice, adjust prompts, and flag sections for deeper fact-checking. It must take into account the per-article `source_fact_checks` and exclude or de-prioritize articles that have `fact_check_status=failed` or have low evidence confidence.
 - The `Critic` uses `AnalysisReport` entities and low-confidence statements to prioritize checks.
 - The `FactChecker` can use the extracted entity list to seed verification (e.g., claims involving person/place/time).
+
+### Status updates (new)
+
+- The Analyst is implemented and integrates per-article fact-checking by default; `AnalysisReport` now contains `source_fact_checks` (per-article) and `cluster_fact_check_summary` (aggregate) that `SynthesisService` uses.
+- A convenience tool `agents/analyst/tools.generate_analysis_report()` will fetch cluster content via `ClusterFetcher` if a `cluster_id` is provided.
 
 Testing ✅:
 - Unit tests for parsing, entity extraction, sentiment/bias scoring, language detection and confidence thresholds.

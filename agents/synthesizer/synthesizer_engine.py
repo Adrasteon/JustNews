@@ -137,6 +137,8 @@ class SynthesizerConfig:
     min_samples: int = 1
     n_clusters: int = 3
     min_articles_for_clustering: int = 3
+    # Cluster-level gating: minimum percent of sources that must be verified
+    min_fact_check_percent_for_synthesis: float = 60.0
 
     # GPU parameters
     device: str = "auto"
@@ -848,8 +850,47 @@ class SynthesizerEngine:
             article_texts = [article.get('content', '') for article in articles if isinstance(article, dict)]
             article_texts = [text for text in article_texts if text.strip()]
 
+
+            # If we have no article text, and the caller provided a cluster_id or article_ids,
+            # try to fetch the cluster and refill `articles` / `article_texts` before bailing.
+            cluster_id = options.get('cluster_id') if isinstance(options, dict) else None
+            article_ids = options.get('article_ids') if isinstance(options, dict) else None
+            if not article_texts and (cluster_id or article_ids):
+                try:
+                    from agents.cluster_fetcher.cluster_fetcher import ClusterFetcher
+                    fetcher = ClusterFetcher()
+                    fetched = fetcher.fetch_cluster(cluster_id=cluster_id, article_ids=article_ids)
+                    articles = [a.to_dict() for a in fetched]
+                    article_texts = [a.get('content', '') for a in articles if a.get('content')]
+                except Exception:
+                    logger.exception("Failed to fetch cluster for synthesis")
+
             if not article_texts:
                 return {"status": "error", "error": "no_content"}
+
+            # Optionally allow caller to provide a cluster_id or article_ids to fetch
+            cluster_id = options.get('cluster_id') if isinstance(options, dict) else None
+            article_ids = options.get('article_ids') if isinstance(options, dict) else None
+
+            # If the articles were fetched from a cluster, pre-run the Analyst
+            # (which triggers fact-check) and gate synthesis on percent_verified
+            if cluster_id or article_ids:
+                try:
+                    from agents.analyst.tools import generate_analysis_report
+                except Exception:
+                    generate_analysis_report = None
+
+                if generate_analysis_report and article_texts:
+                    try:
+                        report = generate_analysis_report(article_texts, article_ids=[a.get('article_id') for a in articles], cluster_id=cluster_id)
+                        if report and isinstance(report, dict):
+                            cluster_summary = report.get('cluster_fact_check_summary', {})
+                            percent_verified = cluster_summary.get('percent_verified', 0.0)
+                            if percent_verified < self.config.min_fact_check_percent_for_synthesis:
+                                logger.warning(f"Cluster {cluster_id} not verified enough ({percent_verified}%); aborting synthesis")
+                                return {"status": "error", "error": "fact_check_failed", "details": {"percent_verified": percent_verified}, "analysis_report": report}
+                    except Exception as e:
+                        logger.exception("Analyst pre-analysis failed", exc_info=e)
 
             # Cluster articles (cluster_articles returns dict for compatibility)
             cluster_result = await self.cluster_articles(article_texts, max_clusters)

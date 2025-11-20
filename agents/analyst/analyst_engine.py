@@ -348,6 +348,242 @@ class AnalystEngine:
                 "error": str(e)
             }
 
+
+    def extract_claims(self, text: str) -> list[dict[str, Any]]:
+        """
+        Extract candidate claims from text using the helper module.
+        Wraps agents.analyst.claims.extract_claims for engine usage.
+        """
+        try:
+            from .claims import extract_claims as _extract_claims
+            claims = _extract_claims(text)
+            # Try to fill in start/end positions if they are None
+            for c in claims:
+                if c.get("start") is None and c.get("claim_text"):
+                    idx = text.find(c["claim_text"])
+                    if idx >= 0:
+                        c["start"] = int(idx)
+                        c["end"] = int(idx + len(c["claim_text"]))
+            return claims
+        except Exception as e:
+            logger.warning(f"Claim extraction failed: {e}")
+            return []
+
+    def generate_analysis_report(
+        self, 
+        texts: list[str], 
+        article_ids: list[str] | None = None, 
+        cluster_id: str | None = None,
+        enable_fact_check: bool = True
+    ) -> dict[str, Any]:
+        """
+        Generate an AnalysisReport for a cluster of texts.
+
+        Returns a dictionary matching the AnalysisReport schema with
+        per-article analysis and aggregate metrics.
+
+        Args:
+            texts: List of article texts to analyze
+            article_ids: Optional list of article IDs
+            cluster_id: Optional cluster identifier
+            enable_fact_check: Whether to run per-article fact-checking (default: True)
+        """
+        try:
+            from .schemas import AnalysisReport, Claim, PerArticleAnalysis, SourceFactCheck, ClaimVerdict
+
+            per_article_results = []
+            sentiments = []
+            biases = []
+            all_entities = []
+            source_fact_checks = []
+
+            for i, text in enumerate(texts or []):
+                article_id = (article_ids or [None] * len(texts))[i] if article_ids else None
+                start_time = time.time()
+
+                sentiment = self.analyze_sentiment(text)
+                bias = self.detect_bias(text)
+                entities = self.extract_entities(text).get("entities", [])
+                claim_dicts = self.extract_claims(text)
+                claims = [Claim(**{k: v for k, v in c.items() if k in {"claim_text", "start", "end", "confidence", "claim_type"}}) for c in claim_dicts]
+
+                # Per-article fact-checking (mandatory per feature doc)
+                source_fact_check = None
+                if enable_fact_check:
+                    source_fact_check = self._run_per_article_fact_check(text, article_id)
+                    if source_fact_check:
+                        source_fact_checks.append(source_fact_check)
+
+                processing_time = time.time() - start_time
+
+                per_article_results.append(PerArticleAnalysis(
+                    article_id=article_id,
+                    language="en",
+                    sentiment=sentiment,
+                    bias=bias,
+                    entities=entities,
+                    claims=claims,
+                    source_fact_check=source_fact_check,
+                    processing_time_seconds=processing_time,
+                ))
+
+                if sentiment and isinstance(sentiment, dict) and sentiment.get("confidence") is not None:
+                    sentiments.append(sentiment.get("confidence", 0.0))
+                if bias and isinstance(bias, dict) and bias.get("bias_score") is not None:
+                    biases.append(bias.get("bias_score", 0.0))
+                if entities:
+                    all_entities.extend(entities)
+
+            avg_sentiment = None
+            if sentiments:
+                avg_sentiment = {"average_confidence": sum(sentiments) / len(sentiments)}
+
+            avg_bias = None
+            if biases:
+                avg_bias = {"average_bias_score": sum(biases) / len(biases)}
+
+            unique_entities = []
+            seen = set()
+            for ent in all_entities:
+                t = ent.get("text", "").lower().strip()
+                if t and t not in seen:
+                    seen.add(t)
+                    unique_entities.append(ent)
+
+            primary_claims = []
+            # Simple heuristic: take highest confidence claims from each article up to 6
+            for p in per_article_results:
+                top = sorted((p.claims or []), key=lambda c: c.confidence, reverse=True)
+                primary_claims.extend(top[:1])
+            primary_claims = primary_claims[:6]
+
+            # Aggregate cluster-level fact-check summary
+            cluster_fact_check_summary = None
+            if source_fact_checks:
+                cluster_fact_check_summary = self._aggregate_fact_check_summary(source_fact_checks)
+
+            report = AnalysisReport(
+                cluster_id=cluster_id,
+                language="en",
+                articles_count=len(texts or []),
+                aggregate_sentiment=avg_sentiment,
+                aggregate_bias=avg_bias,
+                entities=unique_entities,
+                primary_claims=primary_claims,
+                per_article=per_article_results,
+                source_fact_checks=source_fact_checks,
+                cluster_fact_check_summary=cluster_fact_check_summary,
+            )
+
+            return report.to_dict()
+        except Exception as e:
+            logger.error(f"Failed to generate analysis report: {e}")
+            return {"error": str(e)}
+
+    def _run_per_article_fact_check(self, text: str, article_id: str | None = None) -> "SourceFactCheck | None":
+        """
+        Run comprehensive fact-check on a single article.
+
+        Calls fact-checker's comprehensive_fact_check() method with CPU fallback.
+        Returns SourceFactCheck object with results.
+        """
+        try:
+            from .schemas import SourceFactCheck, ClaimVerdict
+
+            # Import fact-checker tools
+            try:
+                from agents.fact_checker.tools import comprehensive_fact_check
+            except ImportError:
+                logger.warning("Fact-checker tools not available, skipping fact-check")
+                return None
+
+            # Call fact-checker comprehensive_fact_check
+            result = comprehensive_fact_check(
+                content=text,
+                source_url=article_id or "unknown",
+                metadata={"article_id": article_id}
+            )
+
+            if not result or "error" in result:
+                logger.error(f"Fact-check failed for article {article_id}: {result.get('error')}")
+                return None
+
+            # Extract fact-check results
+            overall_score = result.get("overall_score", 0.0)
+            fact_verification = result.get("fact_verification", {})
+            credibility_assessment = result.get("credibility_assessment", {})
+            claims_analysis = result.get("claims_analysis", {})
+
+            # Determine fact_check_status based on overall_score
+            if overall_score >= 0.8:
+                status = "passed"
+            elif overall_score >= 0.6:
+                status = "needs_review"
+            else:
+                status = "failed"
+
+            # Extract claim verdicts
+            claim_verdicts = []
+            for claim in claims_analysis.get("claims", [])[:10]:  # Limit to 10 claims
+                claim_verdicts.append(ClaimVerdict(
+                    claim_text=claim.get("text", ""),
+                    verdict=claim.get("verdict", "unverifiable"),
+                    confidence=claim.get("confidence", 0.0),
+                    evidence=claim.get("evidence"),
+                    timestamp=result.get("processing_timestamp")
+                ))
+
+            return SourceFactCheck(
+                article_id=article_id or "unknown",
+                fact_check_status=status,
+                overall_score=overall_score,
+                claim_verdicts=claim_verdicts,
+                credibility_score=credibility_assessment.get("credibility_score"),
+                source_url=article_id,
+                fact_check_trace={
+                    "fact_verification": fact_verification,
+                    "credibility_assessment": credibility_assessment,
+                    "claims_analyzed": claims_analysis.get("claim_count", 0),
+                    "contradictions": result.get("contradictions_analysis", {}),
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Per-article fact-check failed for {article_id}: {e}")
+            return None
+
+    def _aggregate_fact_check_summary(self, source_fact_checks: list["SourceFactCheck"]) -> dict[str, Any]:
+        """
+        Aggregate cluster-level fact-check summary from per-article results.
+
+        Returns summary dict with:
+        - total_articles_checked
+        - passed_count, failed_count, needs_review_count
+        - average_overall_score
+        - articles_flagged (list of article_ids with status=failed)
+        """
+        if not source_fact_checks:
+            return {}
+
+        total = len(source_fact_checks)
+        passed = sum(1 for sfc in source_fact_checks if sfc.fact_check_status == "passed")
+        failed = sum(1 for sfc in source_fact_checks if sfc.fact_check_status == "failed")
+        needs_review = sum(1 for sfc in source_fact_checks if sfc.fact_check_status == "needs_review")
+
+        avg_score = sum(sfc.overall_score for sfc in source_fact_checks) / total if total > 0 else 0.0
+
+        flagged = [sfc.article_id for sfc in source_fact_checks if sfc.fact_check_status == "failed"]
+
+        return {
+            "total_articles_checked": total,
+            "passed_count": passed,
+            "failed_count": failed,
+            "needs_review_count": needs_review,
+            "average_overall_score": float(avg_score),
+            "articles_flagged": flagged,
+            "percent_verified": (passed / total * 100) if total > 0 else 0.0,
+        }
+
     def _extract_entities_patterns(self, text: str) -> list[dict[str, Any]]:
         """Pattern-based entity extraction as last resort fallback."""
         entities = []

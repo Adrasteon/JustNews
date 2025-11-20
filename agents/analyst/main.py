@@ -147,6 +147,8 @@ async def lifespan(app: FastAPI):
             tools=[
                 "identify_entities",
                 "analyze_text_statistics",
+                "extract_claims",
+                "analysis_report",
                 "extract_key_metrics",
                 "analyze_content_trends",
                 "analyze_sentiment",
@@ -364,6 +366,45 @@ def identify_entities_endpoint(call: ToolCall):
         return identify_entities(*call.args, **call.kwargs)
     except Exception as e:
         logger.error(f"An error occurred in identify_entities: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.post("/extract_claims")
+def extract_claims_endpoint(call: ToolCall):
+    """Extract claims from provided text content via Analyst heuristics."""
+    try:
+        if call.kwargs and 'text' in call.kwargs:
+            if not validate_content_size(call.kwargs['text']):
+                log_security_event('content_size_exceeded', {'function': 'extract_claims_endpoint'})
+                raise HTTPException(status_code=400, detail="Content size exceeds maximum allowed limit")
+
+            call.kwargs['text'] = sanitize_content(call.kwargs['text'])
+
+        from .tools import extract_claims
+        return extract_claims(*call.args, **call.kwargs)
+    except Exception as e:
+        logger.error(f"An error occurred in extract_claims: {e}")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.post("/analysis_report")
+def analysis_report_endpoint(call: ToolCall):
+    """Generate a cluster-level AnalysisReport for provided texts."""
+    try:
+        # Expect texts in kwargs: either 'texts' (list) or 'text' for a single article
+        texts = call.kwargs.get('texts') or ([call.kwargs.get('text')] if call.kwargs.get('text') else None)
+        article_ids = call.kwargs.get('article_ids')
+        cluster_id = call.kwargs.get('cluster_id')
+
+        if not texts:
+            raise HTTPException(status_code=400, detail="No texts provided")
+
+        from .tools import generate_analysis_report
+        return generate_analysis_report(texts, article_ids=article_ids, cluster_id=cluster_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"An error occurred in analysis_report: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/log_feedback")

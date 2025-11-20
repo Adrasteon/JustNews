@@ -262,6 +262,8 @@ class SynthesisRequest(BaseModel):
     articles: list[dict[str, Any]]
     max_clusters: int | None = 5
     context: str | None = "news analysis"
+    # Optional cluster identifier to fetch articles and run analysis
+    cluster_id: str | None = None
 
 
 @app.get("/health")
@@ -391,7 +393,8 @@ async def synthesize_news_articles_gpu_endpoint(request: SynthesisRequest) -> di
             synthesizer_engine,
             request.articles,
             request.max_clusters,
-            request.context
+            request.context,
+            cluster_id=request.cluster_id
         )
         return result
 

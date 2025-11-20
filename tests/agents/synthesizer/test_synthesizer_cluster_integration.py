@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import patch, Mock
+import pytest_asyncio
 
 from agents.synthesizer.synthesizer_engine import SynthesizerEngine, SynthesisResult
 
@@ -13,6 +14,36 @@ class FakeArticle:
         return {"article_id": self.article_id, "content": self.content}
 
 
+@pytest_asyncio.fixture
+async def synthesizer_engine(monkeypatch):
+    from types import SimpleNamespace
+    from agents.synthesizer.synthesizer_engine import SynthesizerEngine
+
+    class StubGPUManager:
+        def __init__(self):
+            self.is_available = True
+            self.device = "cuda:0"
+
+        def get_device(self):
+            return self.device
+
+        def get_available_memory(self):
+            return 8 * 1024 * 1024 * 1024
+
+    mock_gpu_manager = StubGPUManager()
+
+    with patch('agents.synthesizer.synthesizer_engine.GPUManager', return_value=mock_gpu_manager), \
+         patch('agents.synthesizer.synthesizer_engine.AutoTokenizer'), \
+         patch('agents.synthesizer.synthesizer_engine.AutoModelForSeq2SeqLM'), \
+         patch('agents.synthesizer.synthesizer_engine.BERTopic'), \
+         patch('agents.synthesizer.synthesizer_engine.pipeline'), \
+         patch('agents.synthesizer.synthesizer_engine.TfidfVectorizer'), \
+         patch('agents.synthesizer.synthesizer_engine.KMeans'):
+        engine = SynthesizerEngine()
+        await engine.initialize()
+        yield engine
+        await engine.close()
+
 @pytest.mark.asyncio
 async def test_synthesize_cluster_fact_check_aborts_when_unverified(synthesizer_engine, monkeypatch):
     engine: SynthesizerEngine = synthesizer_engine
@@ -25,13 +56,25 @@ async def test_synthesize_cluster_fact_check_aborts_when_unverified(synthesizer_
             return fake_articles
 
     monkeypatch.setattr('agents.cluster_fetcher.cluster_fetcher.ClusterFetcher', lambda: FakeFetcher())
+    # verify cluster fetcher monkeypatch
+    import importlib
+    m = importlib.import_module('agents.cluster_fetcher.cluster_fetcher')
+    assert isinstance(m.ClusterFetcher(), FakeFetcher)
 
     # Patch analyst to return low verified percent
-    monkeypatch.setattr('agents.analyst.tools.generate_analysis_report', lambda texts, article_ids=None, cluster_id=None: {"cluster_fact_check_summary": {"percent_verified": 50.0}})
+    called = {'ok': False}
+    def fake_generate(texts, article_ids=None, cluster_id=None):
+        called['ok'] = True
+        return {"cluster_fact_check_summary": {"percent_verified": 50.0}}
+
+    import importlib
+    importlib.import_module('agents.analyst.tools')
+    monkeypatch.setattr('agents.analyst.tools.generate_analysis_report', fake_generate)
 
     # Call synthesis with cluster_id and empty articles to trigger fetch
     res = await engine.synthesize_gpu([], max_clusters=2, context="news", options={"cluster_id": "cluster-abc"})
 
+    assert called['ok'] is True
     assert res.get('status') == 'error'
     assert res.get('error') == 'fact_check_failed'
     assert 'analysis_report' in res
@@ -50,7 +93,14 @@ async def test_synthesize_cluster_proceeds_when_verified(synthesizer_engine, mon
     monkeypatch.setattr('agents.cluster_fetcher.cluster_fetcher.ClusterFetcher', lambda: FakeFetcher())
 
     # Patch analyst to return high verified percent
-    monkeypatch.setattr('agents.analyst.tools.generate_analysis_report', lambda texts, article_ids=None, cluster_id=None: {"cluster_fact_check_summary": {"percent_verified": 80.0}})
+    called = {'ok': False}
+    def fake_generate_ok(texts, article_ids=None, cluster_id=None):
+        called['ok'] = True
+        return {"cluster_fact_check_summary": {"percent_verified": 80.0}}
+
+    import importlib
+    importlib.import_module('agents.analyst.tools')
+    monkeypatch.setattr('agents.analyst.tools.generate_analysis_report', fake_generate_ok)
 
     # Patch cluster_articles and aggregate_cluster so we don't require heavy ML dependencies
     async def fake_cluster_articles(texts, max_clusters):
@@ -60,10 +110,15 @@ async def test_synthesize_cluster_proceeds_when_verified(synthesizer_engine, mon
         return SynthesisResult(success=True, content="Combined synthesis", method="fake", processing_time=0.1, model_used="none", confidence=0.9)
 
     monkeypatch.setattr(engine, 'cluster_articles', fake_cluster_articles)
+    called_agg = {'ok': False}
+    async def fake_aggregate_cluster(texts):
+        called_agg['ok'] = True
+        return SynthesisResult(success=True, content="Combined synthesis", method="fake", processing_time=0.1, model_used="none", confidence=0.9)
     monkeypatch.setattr(engine, 'aggregate_cluster', fake_aggregate_cluster)
 
     res = await engine.synthesize_gpu([], max_clusters=2, context="news", options={"cluster_id": "cluster-abc"})
 
     assert res.get('status') == 'success'
     assert 'synthesized_content' in res
+    assert called_agg['ok'] is True
     assert res['synthesized_content'] == 'Combined synthesis'

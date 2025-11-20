@@ -839,11 +839,14 @@ class SynthesizerEngine:
             raise RuntimeError("not initialized")
 
         try:
-            if not articles:
+            # If caller passes no articles, still allow cluster-driven synthesis by
+            # providing an `options` dict with a `cluster_id` or `article_ids`.
+            options = options or {}
+            if not articles and not (options.get('cluster_id') or options.get('article_ids')):
                 return {"status": "success", "clusters": [], "synthesized_content": "", "processing_stats": {"articles_processed": 0}}
 
             # Handle options (compatibility with tests)
-            options = options or {}
+            # `options` variable is already created above when considering cluster fetch
             max_clusters = options.get('max_clusters', max_clusters)
 
             # Extract article texts
@@ -876,7 +879,8 @@ class SynthesizerEngine:
             # (which triggers fact-check) and gate synthesis on percent_verified
             if cluster_id or article_ids:
                 try:
-                    from agents.analyst.tools import generate_analysis_report
+                    import agents.analyst.tools as _analyst_tools
+                    generate_analysis_report = getattr(_analyst_tools, 'generate_analysis_report', None)
                 except Exception:
                     generate_analysis_report = None
 

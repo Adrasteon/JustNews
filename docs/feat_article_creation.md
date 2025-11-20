@@ -1,3 +1,12 @@
+ - `scripts/fact_check_cluster.py` exists to exercise fact-checks for each article in a cluster and produce a cluster summary with per-article `source_fact_checks`
+ - `scripts/reason_cluster.py` exists to run the reasoning agent on a cluster and preview the `reasoning_plan` results
+ - `scripts/synthesize_cluster.py` exists to exercise the `POST /synthesize_and_publish` endpoint for debugging and local runs
+ - `scripts/fact_check_article.py` provides a convenience wrapper to run `generate_analysis_report()` on a single text
+ - Add an integration path: `tests/integration/test_analysis_synthesis_flow.py` that demonstrates Analyst + SynthesisService usage with mocked LLM & Chroma.
+ - `tests/agents/synthesizer/test_persistence.py` tests persistence to `articles` and `synthesized_articles` and adding Chroma embeddings (mocked)
+ - `tests/agents/synthesizer/test_job_api.py` tests the asynchronous job API for `POST /api/v1/articles/synthesize` and `GET job`.
+ - Add an `integration` marked job in `.github/workflows/pytest.yml` that runs the integration workflows in a dedicated runner
+ - Add `scripts/ops/apply_synthesis_migration.sh` to apply the migrations `004` and `005` in an audited way
 # Feature: Article Creation Workflow (feat/article_creation)
 
 ## Summary

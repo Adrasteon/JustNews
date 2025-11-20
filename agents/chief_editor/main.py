@@ -582,6 +582,41 @@ async def publish_story_endpoint(request: PublishRequest):
         )
         return response
 
+
+    @app.get("/api/v1/articles/drafts")
+    def list_drafts():
+        """List drafts of synthesized articles for Chief Editor review.
+
+        Returns both Option A (articles.is_synthesized) and Option B (synthesized_articles)
+        depending on the persistence used.
+        """
+        try:
+            from database.utils.migrated_database_utils import create_database_service
+            db_service = create_database_service()
+            cursor = db_service.mb_conn.cursor(dictionary=True)
+            # Check which table is in use by system config
+            from config.core import get_config
+            cfg = get_config()
+            storage = cfg.system.get('persistence', {}).get('synthesized_article_storage', 'extend')
+            if storage == 'extend':
+                cursor.execute("SELECT id, title, summary, is_published, created_at FROM articles WHERE is_synthesized = 1 ORDER BY created_at DESC LIMIT 100")
+                rows = cursor.fetchall()
+                for r in rows:
+                    # Normalize datatypes
+                    r['created_at'] = str(r.get('created_at'))
+                cursor.close()
+                return {'drafts': rows}
+            else:
+                cursor.execute("SELECT id, story_id, title, summary, is_published, created_at FROM synthesized_articles ORDER BY created_at DESC LIMIT 100")
+                rows = cursor.fetchall()
+                for r in rows:
+                    r['created_at'] = str(r.get('created_at'))
+                cursor.close()
+                return {'drafts': rows}
+        except Exception as e:
+            logger.exception("Failed to list drafts")
+            raise HTTPException(status_code=500, detail=str(e))
+
     except Exception as e:
         processing_time = time.time() - start_time
         logger.error(f"❌ Story publishing failed: {e}")

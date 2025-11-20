@@ -53,6 +53,7 @@ from .tools import (
     neutralize_text_tool,
     synthesize_gpu_tool,
 )
+from .job_store import create_job, set_result, set_error, update_status, get_job
 from config.core import get_config
 from config.core import get_config
 
@@ -469,6 +470,32 @@ async def synthesize_and_publish(request: SynthesisRequest) -> dict[str, Any]:
     if require_pass and fact_status != 'passed':
         return {"status": "error", "error": "draft_fact_check_failed", "analysis_report": draft_report, "critic_result": critic_result}
 
+    # Persist synthesized draft depending on persistence mode (best-effort)
+    try:
+        from .persistence import save_synthesized_draft
+        # If we can compute an embedding, pass it; otherwise let save function handle None
+        embedding = None
+        try:
+            if synthesizer_engine and getattr(synthesizer_engine, 'embedding_model', None):
+                # compute embedding via sentence-transformers model
+                embedding = list(map(float, synthesizer_engine.embedding_model.encode(result.get('synthesis', ''))))
+        except Exception:
+            embedding = None
+
+        save_synthesized_draft(
+            story_id=request.story_id or f"synth_{request.cluster_id or 'manual'}_{int(datetime.now().timestamp())}",
+            title=result.get('title') or result.get('synthesis', '')[:200],
+            body=result.get('synthesis', ''),
+            summary=result.get('summary'),
+            analysis_summary=getattr(draft_report, 'analysis_summary', None) if draft_report else None,
+            synth_metadata={'critique': critic_result},
+            persistence_mode=persistence_mode,
+            embedding=embedding,
+        )
+    except Exception:
+        # best-effort: persist may fail, but publishing should proceed; log and continue
+        logger.exception("Failed to persist synthesized draft (non-fatal)")
+
     # Decide whether we need chief editor review
     if publish_cfg.chief_editor_review_required and not request.publish:
         return {"status": "queued_for_review", "analysis_report": draft_report, "critic_result": critic_result}
@@ -497,6 +524,43 @@ async def get_synthesizer_performance_endpoint(call: ToolCall) -> dict[str, Any]
 
         result = await get_stats(synthesizer_engine)
         return result
+
+
+@app.post("/api/v1/articles/synthesize")
+async def synthesize_article_job(request: SynthesisRequest):
+    """Kick off an asynchronous synthesis job and return a job_id for status checks."""
+    import uuid
+    if synthesizer_engine is None:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
+    job_id = str(uuid.uuid4())
+    create_job(job_id)
+
+    async def _run_job(job_id_local: str):
+        try:
+            update_status(job_id_local, "running")
+            res = await synthesize_gpu_tool(
+                synthesizer_engine,
+                request.articles,
+                request.max_clusters,
+                request.context,
+                cluster_id=request.cluster_id,
+            )
+            set_result(job_id_local, res)
+        except Exception as exc:
+            set_error(job_id_local, str(exc))
+
+    # Fire-and-forget background task
+    import asyncio
+    asyncio.create_task(_run_job(job_id))
+    return {"job_id": job_id}
+
+
+@app.get("/api/v1/articles/synthesize/{job_id}")
+async def get_synthesis_job(job_id: str):
+    job = get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
 
     except Exception as e:
         logger.exception("❌ Performance stats failed")

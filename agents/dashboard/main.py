@@ -191,6 +191,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.post("/admin/set_publishing_config")
+def set_publishing_config(payload: dict):
+    """Admin endpoint to update publishing configuration at runtime.
+
+    Example payload: {"require_draft_fact_check_pass_for_publish": true, "chief_editor_review_required": false}
+    """
+    try:
+        from config.core import get_config_manager
+        manager = get_config_manager()
+        # Set individual flags
+        if "require_draft_fact_check_pass_for_publish" in payload:
+            # dot-path
+            manager.set("agents.publishing.require_draft_fact_check_pass_for_publish", bool(payload["require_draft_fact_check_pass_for_publish"]), persist=True)
+        if "chief_editor_review_required" in payload:
+            manager.set("agents.publishing.chief_editor_review_required", bool(payload["chief_editor_review_required"]), persist=True)
+        if "synthesized_article_storage" in payload:
+            manager.set("system.persistence.synthesized_article_storage", str(payload["synthesized_article_storage"]), persist=True)
+        return {"status": "success"}
+    except Exception as e:
+        logger.exception("Failed to set publishing config")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Mount static files for public website
 static_path = Path(__file__).parent / "static"
 static_path.mkdir(exist_ok=True)

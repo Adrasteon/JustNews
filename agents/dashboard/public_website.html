@@ -104,6 +104,29 @@
                             <canvas id="gpuChart" aria-label="GPU utilization chart" role="img" style="max-width:100%;height:140px"></canvas>
                         </div>
                     </div>
+                    <!-- Publishing Settings Card -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Publishing Settings</h5>
+                            <div class="mb-2 form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="requireDraftFactCheckSwitch">
+                                <label class="form-check-label" for="requireDraftFactCheckSwitch">Require draft fact-check pass for publish</label>
+                            </div>
+                            <div class="mb-2 form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="chiefEditorReviewSwitch">
+                                <label class="form-check-label" for="chiefEditorReviewSwitch">Require chief editor review</label>
+                            </div>
+                            <div class="mb-3">
+                                <label for="synthesizedArticleStorageSelect" class="form-label">Synthesized article storage</label>
+                                <select id="synthesizedArticleStorageSelect" class="form-select">
+                                    <option value="extend">Extend articles table (default)</option>
+                                    <option value="new_table">Use synthesized_articles table</option>
+                                </select>
+                            </div>
+                            <div id="publishingFeedback" class="mb-2"></div>
+                            <button id="savePublishingBtn" class="btn btn-sm btn-primary">Save Publishing Settings</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <h2 class="text-center mb-4">Latest News</h2>
@@ -324,6 +347,55 @@
                         const isExternal = /^https?:\/\//i.test(p.path) ? ' target="_blank" rel="noopener noreferrer"' : '';
                         return `<li><a class="dropdown-item" href="${p.path}"${isExternal}>${p.title}</a></li>`;
                     }).join('');
+                }
+            })();
+
+            // Fetch the current publishing configuration and populate UI
+            (async () => {
+                const feedback = document.getElementById('publishingFeedback');
+                try {
+                    const cfg = await fetchJSON('/admin/get_publishing_config');
+                    if (cfg && cfg.status === 'success') {
+                        const requireDraft = cfg.require_draft_fact_check_pass_for_publish === true;
+                        const chief = cfg.chief_editor_review_required === true;
+                        const storage = cfg.synthesized_article_storage || 'extend';
+                        const rd = document.getElementById('requireDraftFactCheckSwitch');
+                        const cr = document.getElementById('chiefEditorReviewSwitch');
+                        const sel = document.getElementById('synthesizedArticleStorageSelect');
+                        if (rd) rd.checked = requireDraft;
+                        if (cr) cr.checked = chief;
+                        if (sel) sel.value = storage;
+                    }
+                } catch (e) {
+                    console.debug('Publishing config not available:', e);
+                    feedback.innerHTML = '<div class="text-muted small">Publishing UI: admin API not available</div>';
+                }
+
+                // Wire save button
+                const btn = document.getElementById('savePublishingBtn');
+                if (btn) {
+                    btn.addEventListener('click', async () => {
+                        const rd = document.getElementById('requireDraftFactCheckSwitch');
+                        const cr = document.getElementById('chiefEditorReviewSwitch');
+                        const sel = document.getElementById('synthesizedArticleStorageSelect');
+                        const payload = {};
+                        if (rd) payload.require_draft_fact_check_pass_for_publish = !!rd.checked;
+                        if (cr) payload.chief_editor_review_required = !!cr.checked;
+                        if (sel) payload.synthesized_article_storage = sel.value;
+
+                        try {
+                            const resp = await fetch('/admin/set_publishing_config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+                            if (resp.ok) {
+                                feedback.innerHTML = '<div class="alert alert-success py-1">Saved publishing settings</div>';
+                            } else {
+                                const txt = await resp.text();
+                                feedback.innerHTML = `<div class="alert alert-danger py-1">Failed: ${resp.status} ${txt}</div>`;
+                            }
+                        } catch (err) {
+                            feedback.innerHTML = `<div class="alert alert-danger py-1">Error saving settings: ${err}</div>`;
+                        }
+                        setTimeout(()=> feedback.innerHTML = '', 3000);
+                    });
                 }
             })();
 

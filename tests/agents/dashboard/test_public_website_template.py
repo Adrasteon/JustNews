@@ -18,3 +18,7 @@ def test_public_website_template_exists_and_contains_pages():
     assert 'id="jsonModal"' in content
     assert 'id="crawlerJobsTable"' in content
     assert 'id="gpuChart"' in content
+    # Ensure publishing UI controls exist
+    assert 'id="requireDraftFactCheckSwitch"' in content
+    assert 'id="chiefEditorReviewSwitch"' in content
+    assert 'id="synthesizedArticleStorageSelect"' in content

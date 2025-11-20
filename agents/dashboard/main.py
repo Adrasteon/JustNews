@@ -214,6 +214,32 @@ def set_publishing_config(payload: dict):
         logger.exception("Failed to set publishing config")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.get("/admin/get_publishing_config")
+def get_publishing_config():
+    """Return current publishing configuration values to the UI."""
+    try:
+        from config.core import get_config
+
+        cfg = get_config()
+        publishing = getattr(cfg.agents, 'publishing', None)
+        require_draft = bool(getattr(publishing, 'require_draft_fact_check_pass_for_publish', False))
+        chief_required = bool(getattr(publishing, 'chief_editor_review_required', False))
+        # Persistence storage option
+        persistence = getattr(cfg, 'persistence', None)
+        storage = None
+        if persistence is not None:
+            storage = getattr(persistence, 'synthesized_article_storage', None)
+        return {
+            "status": "success",
+            "require_draft_fact_check_pass_for_publish": require_draft,
+            "chief_editor_review_required": chief_required,
+            "synthesized_article_storage": storage,
+        }
+    except Exception as e:
+        logger.exception("Failed to read publishing config")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Mount static files for public website
 static_path = Path(__file__).parent / "static"
 static_path.mkdir(exist_ok=True)

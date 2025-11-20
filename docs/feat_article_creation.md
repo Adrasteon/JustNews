@@ -49,8 +49,38 @@ Out of scope (for this branch): full HITL UX polishing, advanced retraining inte
 ### Next steps
 
 - Add API endpoint wiring and a GUI flag for "Require draft fact-check pass before publish"; ensure chief editor endpoints and frontend components are integrated in a subsequent PR.
+  - The Dashboard has been updated to add a new "Publishing Settings" card which allows operators to toggle several flags at runtime and choose the configured persistence strategy for synthesized drafts.
 
 - Implementation: `POST /synthesize_and_publish` in `agents/synthesizer/main.py` runs the full pipeline (synthesis→critic→draft fact-check) and then either auto-publishes or queues for `Chief Editor` review depending on config flags. The GUI exposes `Require draft fact-check pass before publish` under `Settings -> Publishing` and it defaults to `false`.
+
+### Dashboard Publishing Settings & Admin API
+
+The Dashboard provides a small admin UI for runtime control over publishing and persistence.
+
+- UI: `agents/dashboard/public_website.html` contains a new "Publishing Settings" card with switches for:
+  - `Require draft fact-check pass for publish` (maps to `agents.publishing.require_draft_fact_check_pass_for_publish`)
+  - `Require chief editor review` (maps to `agents.publishing.chief_editor_review_required`)
+  - `Synthesized article storage` (maps to `system.persistence.synthesized_article_storage`, choices: `extend` | `new_table`)
+
+- Endpoints: There are two admin endpoints:
+  - `GET /admin/get_publishing_config` — returns the current publishing flags & persistence setting to populate the Dashboard UI.
+  - `POST /admin/set_publishing_config` — already present; accepts the same keys and persists changes via the `config.core.ConfigurationManager` with `persist=True`.
+
+Example payload for `POST /admin/set_publishing_config`:
+
+```
+POST /admin/set_publishing_config
+{ "require_draft_fact_check_pass_for_publish": true, "chief_editor_review_required": false, "synthesized_article_storage": "extend" }
+```
+
+Security: This admin API writes to runtime configuration; in production you must restrict access (API key or internal network only) since it toggles what articles can be auto-published.
+
+Tests were added/updated:
+- `tests/agents/dashboard/test_get_publishing_config.py` — unit test for the GET endpoint
+- `tests/agents/dashboard/test_set_publishing_config.py` — verifies POST is successful (already existed)
+- `tests/agents/dashboard/test_public_website_template.py` — updated to ensure the new UI elements are present
+
+UI visibility: The Dashboard page is served from `/` in the dashboard agent. When running locally in tests, `JUSTNEWS_ENABLE_PUBLIC_API=1` is set to expose the public website helpers. For production deployments you should evaluate whether the admin UI should remain accessible publicly.
 10. If the Critic or draft-level FactChecker returns `failed` or a `needs_review` result, escalate to HITL or mark `needs_revision` and update metadata. No auto-publish on `failed`.
 11. When the draft passes Critic and draft FactChecker and `CHIEF_EDITOR_REVIEW_REQUIRED` is `false`, auto-publish; otherwise enqueue for Chief Editor review in the `chief_editor` agent workflow.
 12. On publishing: set `is_published=true`, record `published_at` and `published_by`, and update Chroma and the content hosting index.

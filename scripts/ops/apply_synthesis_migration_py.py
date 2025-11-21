@@ -90,6 +90,7 @@ def run():
             conn.autocommit = False
             cursor = conn.cursor()
             logging.info('Connected via mysql.connector')
+            used_connector = 'mysql_connector'
         except Exception:
             logging.exception('mysql.connector failed to connect; will try pymysql fallback')
 
@@ -99,6 +100,7 @@ def run():
             conn = pymysql.connect(host=cfg['host'], port=cfg['port'], user=cfg['user'], password=cfg['password'], database=cfg['database'], autocommit=False)
             cursor = conn.cursor()
             logging.info('Connected via pymysql')
+            used_connector = 'pymysql'
         used_connector = 'pymysql'
         except Exception:
             logging.exception('pymysql failed to connect as well')

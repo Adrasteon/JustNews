@@ -94,6 +94,8 @@ Public-facing products:
 
 Modeling choices are documented in `feat_article_creation.md`, but the pipeline enforces full traceability: every synthesized article draft stores metadata like `synth_trace`, `critic_result`, `analysis_summary`, `source_fact_checks`, `reasoning_plan_id`, and `fact_check_trace`.
 
+Knowledge Graph (KG) storage: The system now uses a DB-backed Knowledge Graph by default (MariaDB tables `entities` and `article_entities` created in migration 007). The `agents/archive` code will persist extracted entities and article->entity links to MariaDB for scale, queryability and auditing. A file-backed KG (legacy) remains available as a fallback if `KG_BACKEND=file` is set — this is intended only for lightweight local development or when MariaDB is temporarily unavailable.
+
 Chroma: store `is_synthesized` metadata on embeddings to help retrieval & housekeeping.
 
 Raw HTML archive & retention: The extractor (`agents/crawler/extraction.py`) saves raw HTML artefacts to `archive_storage/raw_html/` for forensic analysis, re-extraction, and model/data backfills. Ensure retention & backfill policies are documented and a clear reprocessing path exists: crawl -> raw_html -> extraction -> ingest.

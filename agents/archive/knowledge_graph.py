@@ -44,6 +44,10 @@ class KnowledgeGraphManager:
             self._entity_dir = self._storage_path / "entities"
             self._entity_dir.mkdir(parents=True, exist_ok=True)
 
+        # Backwards-compatibility shim: expose a .kg attribute to match older callers
+        # (e.g., scripts that used kg_manager.kg.query_entities)
+        self.kg = self
+
     async def extract_entities(self, article: dict[str, Any]) -> list[str]:
         text = f"{article.get('title', '')} {article.get('content', '')}"
         tokens = {token.strip().lower() for token in text.split() if token.isalpha()}
@@ -178,6 +182,84 @@ class KnowledgeGraphManager:
                 if any(query in entity for entity in payload.get("entities", [])):
                     results.append(payload)
             return results
+
+    # Backwards-compatible helpers expected by older callers/scripts
+    def query_entities(self, entity_type: str | None = None, limit: int = 20) -> list[dict[str, Any]]:
+        """Return entities (and counts) optionally filtered by entity_type.
+
+        This method is synchronous to match older callers; it returns a list of
+        dicts with keys: name, entity_type, mention_count.
+        """
+        if self.backend == 'file':
+            # Load all files, count occurrences
+            results = []
+            for file_path in self._entity_dir.glob("*.json"):
+                try:
+                    payload = self._read_json(file_path)
+                    for ent in payload.get('entities', []):
+                        results.append({'name': ent, 'entity_type': 'unknown', 'mention_count': 1})
+                except Exception:
+                    continue
+            # aggregate
+            agg = {}
+            for r in results:
+                key = (r['name'], r['entity_type'])
+                agg[key] = agg.get(key, 0) + r['mention_count']
+            out = [{'name': k[0], 'entity_type': k[1], 'mention_count': v} for k, v in agg.items()]
+            out.sort(key=lambda x: x['mention_count'], reverse=True)
+            return out[:limit]
+
+        # DB-backed path
+        try:
+            svc = self.db_service
+            svc.ensure_conn()
+            cursor = svc.mb_conn.cursor()
+            params = []
+            where = ''
+            if entity_type:
+                where = 'WHERE e.entity_type = %s'
+                params.append(entity_type)
+
+            q = f"SELECT e.name, e.entity_type, COUNT(ae.article_id) AS mention_count FROM entities e LEFT JOIN article_entities ae ON e.id = ae.entity_id {where} GROUP BY e.id ORDER BY mention_count DESC LIMIT %s"
+            params.append(limit)
+            cursor.execute(q, tuple(params))
+            rows = cursor.fetchall()
+            cursor.close()
+            return [{'name': r[0], 'entity_type': r[1], 'mention_count': int(r[2] or 0)} for r in rows]
+        except Exception as e:
+            logger.warning(f"query_entities failed: {e}")
+            return []
+
+    def get_graph_statistics(self) -> dict[str, Any]:
+        """Return simple graph statistics: total nodes, edges, types, etc."""
+        if self.backend == 'file':
+            files = list(self._entity_dir.glob("*.json"))
+            nodes = set()
+            edges = 0
+            for f in files:
+                try:
+                    payload = self._read_json(f)
+                    for e in payload.get('entities', []):
+                        nodes.add(e)
+                    edges += len(payload.get('relationships', []))
+                except Exception:
+                    pass
+            return {'total_nodes': len(nodes), 'total_edges': edges, 'node_types': list(), 'edge_types': ['cooccurs']}
+
+        try:
+            svc = self.db_service
+            cursor = svc.mb_conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM entities')
+            nodes = cursor.fetchone()[0]
+            cursor.execute('SELECT COUNT(*) FROM article_entities')
+            edges = cursor.fetchone()[0]
+            cursor.execute('SELECT entity_type, COUNT(*) FROM entities GROUP BY entity_type')
+            types = {r[0]: r[1] for r in cursor.fetchall()}
+            cursor.close()
+            return {'total_nodes': int(nodes), 'total_edges': int(edges), 'node_types': types, 'edge_types': ['cooccurs']}
+        except Exception as e:
+            logger.warning(f"get_graph_statistics failed: {e}")
+            return {'total_nodes': 0, 'total_edges': 0, 'node_types': {}, 'edge_types': []}
 
         # DB-backed: search entities and return matching articles storage_keys
         try:

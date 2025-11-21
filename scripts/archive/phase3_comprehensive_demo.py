@@ -61,8 +61,8 @@ async def run_phase3_comprehensive_demo():
     }
     archive_manager = ArchiveManager(archive_config)
 
-    # Direct Knowledge Graph access for advanced queries
-    kg_manager = KnowledgeGraphManager("./kg_storage")
+    # Direct Knowledge Graph access for advanced queries (DB-backed by default)
+    kg_manager = KnowledgeGraphManager("./kg_storage", backend='db')
 
     print("✅ Phase 3 components initialized")
 

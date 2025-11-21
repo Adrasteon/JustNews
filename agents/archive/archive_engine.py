@@ -12,6 +12,7 @@ from typing import Any
 
 from agents.archive.archive_manager import ArchiveManager
 from agents.archive.entity_linker import EntityLinkerManager
+import os
 from agents.archive.knowledge_graph import KnowledgeGraphManager
 from common.observability import get_logger
 
@@ -79,7 +80,9 @@ class ArchiveEngine:
         kg_config = self.config.get("knowledge_graph", {})
         if kg_config.get("enabled", True):
             kg_storage_path = self.config["storage"]["kg_storage_path"]
-            self.kg_manager = KnowledgeGraphManager(kg_storage_path=kg_storage_path)
+            backend = kg_config.get('backend') or os.environ.get('KG_BACKEND', 'db')
+            # Default to DB-backed KG for production + scalability
+            self.kg_manager = KnowledgeGraphManager(kg_storage_path=kg_storage_path, backend=backend)
             self.logger.info("Knowledge graph manager initialized")
         else:
             self.kg_manager = None

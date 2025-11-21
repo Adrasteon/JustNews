@@ -10,16 +10,19 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
+import json
+from datetime import UTC, datetime
 
 import requests
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from common.metrics import JustNewsMetrics
+from common.semantic_search_service import get_search_service
 from common.observability import get_logger
 
 # Compatibility: expose create_database_service for tests that patch agent modules
@@ -47,6 +50,7 @@ except Exception:  # pragma: no cover - unified config not available in this run
     _get_config_manager = None  # type: ignore[assignment]
 
 from .dashboard_engine import dashboard_engine
+from agents.common.auth_models import verify_token, get_user_by_id, UserRole
 from .transparency_router import router as transparency_router
 
 logger = get_logger(__name__)
@@ -193,12 +197,41 @@ app.add_middleware(
 
 
 @app.post("/admin/set_publishing_config")
-def set_publishing_config(payload: dict):
+def set_publishing_config(payload: dict, request: Request):
     """Admin endpoint to update publishing configuration at runtime.
 
     Example payload: {"require_draft_fact_check_pass_for_publish": true, "chief_editor_review_required": false}
     """
     try:
+        # Authentication strategy (supports both API key for simple envs and
+        # role-based JWT for production). If ADMIN_API_KEY is configured the
+        # request may supply it via `Authorization: Bearer <key>` or
+        # `X-Admin-API-Key: <key>`. Otherwise a JWT bearer token with admin
+        # role is required.
+        admin_key = os.environ.get("ADMIN_API_KEY")
+        auth_header = (request.headers.get("Authorization") or request.headers.get("X-Admin-API-Key") or "").strip()
+        if admin_key and auth_header:
+            # accept either a raw key header or Authorization: Bearer <key>
+            if auth_header.lower().startswith("bearer "):
+                token = auth_header.split(" ", 1)[1]
+            else:
+                token = auth_header
+            if token != admin_key:
+                raise HTTPException(status_code=401, detail="Admin API key missing or invalid")
+        else:
+            # No API key or header; try JWT bearer token
+            if not auth_header:
+                raise HTTPException(status_code=401, detail="Admin credentials required")
+            if auth_header.lower().startswith("bearer "):
+                token = auth_header.split(" ", 1)[1]
+            else:
+                token = auth_header
+            token_payload = verify_token(token)
+            if payload is None:
+                raise HTTPException(status_code=401, detail="Invalid authentication token")
+            user = get_user_by_id(payload.user_id)
+            if user is None or user.get("role") != UserRole.ADMIN.value:
+                raise HTTPException(status_code=403, detail="Admin role required")
         from config.core import get_config_manager
         manager = get_config_manager()
         # Set individual flags
@@ -209,6 +242,33 @@ def set_publishing_config(payload: dict):
             manager.set("agents.publishing.chief_editor_review_required", bool(payload["chief_editor_review_required"]), persist=True)
         if "synthesized_article_storage" in payload:
             manager.set("system.persistence.synthesized_article_storage", str(payload["synthesized_article_storage"]), persist=True)
+        # Audit: persist change to disk for governance
+        try:
+            audit_dir = Path(os.environ.get("SERVICE_DIR", ".")) / "logs" / "audit"
+            audit_dir.mkdir(parents=True, exist_ok=True)
+            audit_file = audit_dir / "publishing_config_changes.jsonl"
+            audit_entry = {
+                "ts": datetime.now(UTC).isoformat(),
+                "payload": payload,
+            }
+            # If admin action was performed with a JWT, record admin identity
+            try:
+                # `payload` variable above may be set when JWT auth is used
+                if 'token_payload' in locals() and locals().get('token_payload') and hasattr(locals().get('token_payload'), 'user_id'):
+                    token_payload = locals().get('token_payload')
+                    admin_user = get_user_by_id(token_payload.user_id)
+                    if admin_user:
+                        audit_entry["admin_user"] = {
+                            "user_id": admin_user.get("user_id"),
+                            "username": admin_user.get("username"),
+                            "email": admin_user.get("email")
+                        }
+            except Exception:
+                pass
+            with open(audit_file, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(audit_entry, default=str) + "\n")
+        except Exception:
+            logger.exception("Failed to write audit log for publishing config change")
         return {"status": "success"}
     except Exception as e:
         logger.exception("Failed to set publishing config")
@@ -216,10 +276,37 @@ def set_publishing_config(payload: dict):
 
 
 @app.get("/admin/get_publishing_config")
-def get_publishing_config():
+def get_publishing_config(request: Request):
     """Return current publishing configuration values to the UI."""
     try:
         from config.core import get_config
+
+        # This endpoint supports either the legacy ADMIN_API_KEY (header) or
+        # an admin JWT Bearer token. If no header is passed and ADMIN_API_KEY
+        # isn't set, a valid JWT with admin role is required.
+        admin_key = os.environ.get("ADMIN_API_KEY")
+        auth_header = (request.headers.get("Authorization") or request.headers.get("X-Admin-API-Key") or "").strip()
+        if admin_key and auth_header:
+            if auth_header.lower().startswith("bearer "):
+                token = auth_header.split(" ", 1)[1]
+            else:
+                token = auth_header
+            if token != admin_key:
+                raise HTTPException(status_code=401, detail="Admin API key missing or invalid")
+        else:
+            # Jack back to JWT admin role requirement
+            if not auth_header:
+                raise HTTPException(status_code=401, detail="Admin credentials required")
+            if auth_header.lower().startswith("bearer "):
+                token = auth_header.split(" ", 1)[1]
+            else:
+                token = auth_header
+            token_payload = verify_token(token)
+            if token_payload is None:
+                raise HTTPException(status_code=401, detail="Invalid authentication token")
+            user = get_user_by_id(token_payload.user_id)
+            if user is None or user.get("role") != UserRole.ADMIN.value:
+                raise HTTPException(status_code=403, detail="Admin role required")
 
         cfg = get_config()
         publishing = getattr(cfg.agents, 'publishing', None)
@@ -276,7 +363,7 @@ except Exception:
 # Register reload endpoint if available
 try:
     from agents.common.reload import register_reload_endpoint
-    register_reload_endpoint(app)
+    register_reload_endpoint(app, require_admin=True)
 except Exception:
     logger.debug("reload endpoint not registered for dashboard")
 
@@ -850,6 +937,37 @@ async def get_system_health():
             health[name] = False
 
     return health
+
+
+@app.get("/api/public/articles")
+def public_articles(n: int = 10):
+    """Compatibility endpoint used by the public website to fetch recent articles.
+
+    This endpoint mirrors `/api/public/search/articles` but lives at the
+    '/api/public/articles' path for a simpler, stable public website API.
+    """
+    try:
+        service = get_search_service()
+        articles = service.get_recent_articles_with_search(n_results=min(n, 50))
+        # Convert to simplified schema
+        return {
+            "total_results": len(articles),
+            "articles": [
+                {
+                    "id": a.id,
+                    "title": a.title,
+                    "summary": (a.content[:300] + "...") if len(a.content) > 300 else a.content,
+                    "source": a.source_name,
+                    "published_date": a.published_date,
+                    "sentiment_score": getattr(a, 'sentiment_score', 0),
+                    "fact_check_score": getattr(a, 'fact_check_score', None),
+                    "url": getattr(a, 'url', None)
+                } for a in articles
+            ]
+        }
+    except Exception as exc:
+        logger.exception("Public articles endpoint failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Recent articles temporarily unavailable")
 
 
 def get_fallback_dashboard_html():

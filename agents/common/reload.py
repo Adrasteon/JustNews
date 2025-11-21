@@ -20,6 +20,8 @@ from collections.abc import Callable
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
+import os
+from agents.common.auth_models import verify_token, get_user_by_id, UserRole
 
 from common.observability import get_logger
 
@@ -39,7 +41,7 @@ def register_reload_handler(name: str, fn: Callable[[], Any]) -> None:
     _RELOAD_HANDLERS[name] = fn
 
 
-def register_reload_endpoint(app: FastAPI, path: str = "/admin/reload") -> None:
+def register_reload_endpoint(app: FastAPI, path: str = "/admin/reload", require_admin: bool = False) -> None:
     """Register the POST reload endpoint on the provided FastAPI app.
 
     Request JSON schema:
@@ -78,5 +80,35 @@ def register_reload_endpoint(app: FastAPI, path: str = "/admin/reload") -> None:
                 results[t] = {"ok": False, "error": str(e), "trace": traceback.format_exc()}
 
         return {"results": results}
+
+    if require_admin:
+        # Wrap endpoint with basic admin auth: supports ADMIN_API_KEY env var
+        # or a JWT Bearer token with admin role.
+        async def _secure_reload(request: Request):
+            admin_key = os.environ.get("ADMIN_API_KEY")
+            auth_header = (request.headers.get("Authorization") or request.headers.get("X-Admin-API-Key") or "").strip()
+            if admin_key and auth_header:
+                if auth_header.lower().startswith("bearer "):
+                    token = auth_header.split(" ", 1)[1]
+                else:
+                    token = auth_header
+                if token != admin_key:
+                    raise HTTPException(status_code=401, detail="Admin API key missing or invalid")
+            else:
+                if not auth_header:
+                    raise HTTPException(status_code=401, detail="Admin credentials missing")
+                if auth_header.lower().startswith("bearer "):
+                    token = auth_header.split(" ", 1)[1]
+                else:
+                    token = auth_header
+                payload = verify_token(token)
+                if payload is None:
+                    raise HTTPException(status_code=401, detail="Invalid authentication token")
+                user = get_user_by_id(payload.user_id)
+                if user is None or user.get("role") != UserRole.ADMIN.value:
+                    raise HTTPException(status_code=403, detail="Admin role required")
+
+        app.post(path)(_secure_reload)
+        return
 
     app.post(path)(_reload)

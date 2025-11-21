@@ -5,7 +5,7 @@ This module provides REST API endpoints for semantic search functionality
 using the migrated MariaDB + ChromaDB database system.
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel, Field
 
 from common.observability import get_logger
@@ -303,7 +303,14 @@ def include_public_api(app):
     from fastapi import APIRouter
     from fastapi.middleware.cors import CORSMiddleware
 
-    public_router = APIRouter(prefix="/api/public/search", tags=["public-search"])
+    from .rate_limit import rate_limiter_dependency  # local import to avoid top-level dependency
+
+    from fastapi import Request as _FastAPIRequest
+
+    def _rate_dep(request: _FastAPIRequest):
+        return rate_limiter_dependency(request, max_requests=20, window_seconds=60)
+
+    public_router = APIRouter(prefix="/api/public/search", tags=["public-search"], dependencies=[Depends(_rate_dep)])
 
     @public_router.get("/semantic")
     async def public_semantic_search(
@@ -396,3 +403,38 @@ def include_public_api(app):
     # Include the public router
     app.include_router(public_router)
     logger.info("Public search API endpoints registered")
+
+    @public_router.get("/articles")
+    async def public_articles(n: int = Query(10, description="Number of articles", ge=1, le=50)):
+        """
+        Public recent articles endpoint tailored for the published website.
+
+        This returns a lightweight list of article summaries for rendering on the
+        public site. It is intentionally a smaller, page-focused endpoint than
+        the research-facing `/api/public/search/*` endpoints.
+        """
+        try:
+            service = get_search_service()
+
+            articles = service.get_recent_articles_with_search(n_results=min(n, 50))
+
+            return {
+                "total_results": len(articles),
+                "articles": [
+                    {
+                        "id": a.id,
+                        "title": a.title,
+                        "summary": (a.content[:300] + "...") if len(a.content) > 300 else a.content,
+                        "source": a.source_name,
+                        "published_date": a.published_date,
+                        "sentiment_score": getattr(a, 'sentiment_score', 0),
+                        "fact_check_score": getattr(a, 'fact_check_score', None),
+                        "url": getattr(a, 'url', None)
+                    }
+                    for a in articles
+                ]
+            }
+
+        except Exception as e:
+            logger.error(f"Public articles endpoint failed: {e}")
+            raise HTTPException(status_code=500, detail="Recent articles temporarily unavailable")

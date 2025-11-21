@@ -73,14 +73,14 @@ POST /admin/set_publishing_config
 { "require_draft_fact_check_pass_for_publish": true, "chief_editor_review_required": false, "synthesized_article_storage": "extend" }
 ```
 
-Security: This admin API writes to runtime configuration; in production you must restrict access (API key or internal network only) since it toggles what articles can be auto-published.
+Security: This admin API writes to runtime configuration; in production you must restrict access (API key or internal network only) since it toggles what articles can be auto-published. The Dashboard supports `ADMIN_API_KEY` for legacy deployments but prefers JWTs issued by `agents/common/auth_api` (set `role=admin`). See `tests/agents/dashboard/test_admin_jwt_auth.py` for automated checks.
 
 Tests were added/updated:
 - `tests/agents/dashboard/test_get_publishing_config.py` — unit test for the GET endpoint
 - `tests/agents/dashboard/test_set_publishing_config.py` — verifies POST is successful (already existed)
 - `tests/agents/dashboard/test_public_website_template.py` — updated to ensure the new UI elements are present
 
-UI visibility: The Dashboard page is served from `/` in the dashboard agent. When running locally in tests, `JUSTNEWS_ENABLE_PUBLIC_API=1` is set to expose the public website helpers. For production deployments you should evaluate whether the admin UI should remain accessible publicly.
+UI visibility: The Dashboard page is served from `/` in the dashboard agent. When running locally in tests, `JUSTNEWS_ENABLE_PUBLIC_API=1` is set to expose the public website helpers. For production deployments you should evaluate whether the admin UI should remain accessible publicly. If you need to protect runtime operations in a multi-replica environment prefer per-user role-based JWTs and short-lived service tokens rather than a long-lived `ADMIN_API_KEY`.
 10. If the Critic or draft-level FactChecker returns `failed` or a `needs_review` result, escalate to HITL or mark `needs_revision` and update metadata. No auto-publish on `failed`.
 11. When the draft passes Critic and draft FactChecker and `CHIEF_EDITOR_REVIEW_REQUIRED` is `false`, auto-publish; otherwise enqueue for Chief Editor review in the `chief_editor` agent workflow.
 12. On publishing: set `is_published=true`, record `published_at` and `published_by`, and update Chroma and the content hosting index.

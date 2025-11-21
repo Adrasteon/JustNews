@@ -128,6 +128,11 @@
       "scout_batch_size": 10,
       "analyst_batch_size": 16,
       "synthesizer_batch_size": 8
+    },
+    "publishing": {
+      "require_draft_fact_check_pass_for_publish": false,
+      "chief_editor_review_required": true,
+      "allow_publish_override_by_agent": []
     }
   },
   "training": {

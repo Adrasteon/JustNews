@@ -22,9 +22,10 @@ JustNews provides multiple REST APIs for different system components and user in
 - **GraphQL API**: Port 8020 - Advanced query interface
 
 ### Authentication & Security
-- **API Keys**: Required for external API access
-- **JWT Tokens**: Used for authenticated sessions
-- **Rate Limiting**: Implemented on all public endpoints
+- **API Keys**: Required for external API access in some research or legacy flows
+- **JWT Tokens**: Used for authenticated sessions; `agents/common/auth_api` issues tokens. Admin endpoints accept a valid JWT with `role=admin` when `ADMIN_API_KEY` is not configured.
+- **ADMIN API Key (legacy)**: For simple single-host deployments or scripted operations a static `ADMIN_API_KEY` may be set; admin endpoints accept it via `Authorization: Bearer <ADMIN_API_KEY>` or `X-Admin-API-Key: <key>`. Use JWTs for multi-user production setups.
+- **Rate Limiting**: Implemented on public endpoints; production deployments should set `REDIS_URL` to use a Redis-backed limiter across replicas.
 - **CORS**: Configured for web application access
 
 ### Response Format
@@ -201,6 +202,12 @@ Content synthesis and summarization.
 X-RateLimit-Limit: 1000
 X-RateLimit-Remaining: 999
 X-RateLimit-Reset: 1634900000
+
+### Redis & multi-replica rate limiting
+
+- To enable consistent rate limiting across replicas, set `REDIS_URL` in your environment (e.g. `redis://:password@redis:6379/0`). The public search router in `agents/dashboard/search_api.py` will prefer a Redis-backed limiter (fixed-window INCR+EXPIRE) and fall back to the in-memory limiter if `REDIS_URL` is not configured.
+
+- For high-volume production systems where exact token-bucket semantics and per-request atomicity are required, implement a Redis Lua script for atomic INCR+EXPIRE operations or use a dedicated rate limiter proxy (for example Kong or Envoy with a Redis rate limiter).
 ```
 
 ## SDKs & Client Libraries

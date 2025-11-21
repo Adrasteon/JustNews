@@ -22,6 +22,7 @@ This document is intended to be the canonical reference for the full pipeline de
 
 1. Trigger (API, scheduled job, or orbit event) begins a `SYNTHESIZE_CLUSTER` job.
 0. Pre-flight: Web crawl & scrape — the pipeline starts here. `CrawlerEngine` (`agents/crawler/crawler_engine.py`) or the `GenericSiteCrawler` discovers article URLs, applies paywall detection and initial heuristics, then calls the `memory` agent (`/ingest_article`) to persist candidate articles. The earliest decision is whether a page qualifies as a valid article via `agents/crawler/extraction.extract_article_content()` (word count, text/html ratio), `skip_ingest` (paywalled), and `needs_review` flags.
+0.5. Scheduling & budgets: Crawls are orchestrated by the scheduler script `scripts/ops/run_crawl_schedule.py` which builds crawl windows from `config/crawl_schedule.yaml` and optionally loads per-site `config/crawl_profiles`. The scheduler manages budgets, target articles per hour, and adaptive Crawl4AI runs; it emits Prometheus metrics (e.g., `justnews_crawler_scheduler_*`). This is the canonical production entrypoint for scheduled crawling and influences pre-flight gating and ingestion volumes.
 2. `ClusterFetcher` collects deduplicated articles for the given cluster.
 3. `Analyst` runs per-article claim extraction and a per-article `source_fact_check` using `FactCheckerEngine`.
 4. `Reasoning` agent receives the `AnalysisReport` and produces a `reasoning_plan` with prioritized sources, outline, and claims.
@@ -48,6 +49,7 @@ Notes:
 - `agents/fact_checker/FactCheckerEngine` — claim verification for both pre-flight (`source_fact_check`) and post-synthesis draft checks.
 - `agents/chief_editor` — HITL queue and review/publish APIs.
 - `database` migrations 004/005/006 — schema changes for extended `articles`, new `synthesized_articles`, and job store.
+ - `scripts/ops/run_crawl_schedule.py` — scheduler and orchestrator for large-scale crawls. It builds schedules from `config/crawl_schedule.yaml`, enforces budgets, publishes Prometheus textfile metrics, and submits crawler jobs. This script is the canonical production entrypoint for scheduled crawling and should be used in production timers and CI smoke tests.
 
 ---
 
@@ -61,8 +63,30 @@ The Dashboard offers a small Admin UI for runtime toggles (under `Settings -> Pu
 Endpoints:
 - `GET /admin/get_publishing_config` — returns runtime flags and persistence choice.
 - `POST /admin/set_publishing_config` — sets config via the `ConfigurationManager` and persists when requested.
+ - Authentication: `GET` and `POST` admin endpoints now require `Authorization: Bearer <ADMIN_API_KEY>` or `X-Admin-API-Key: <key>` when `ADMIN_API_KEY` is configured. Use `ConfigurationManager` to persist runtime changes.
+ - Authentication: `GET` and `POST` admin endpoints now support two modes:
+	 1. A legacy `ADMIN_API_KEY` header (via `Authorization: Bearer <ADMIN_API_KEY>` or `X-Admin-API-Key: <key>`) for simple deployments and local testing.
+	 2. A role-based JWT authentication mechanism — if no `ADMIN_API_KEY` is set the admin endpoints require a valid JWT Bearer token with `role=admin` issued via the `agents/common/auth_api` flow.
+ - Audit log: admin changes are appended to `logs/audit/publishing_config_changes.jsonl` for traceability.
+ - Audit log: admin changes are appended to `logs/audit/publishing_config_changes.jsonl` for traceability. When admin JWTs are used those admin actions should include the `user_id` or `username` in the audit entry; we recommend enhancing the audit log to include requestor identity and IP address for better traceability. This is tracked as a follow-up action in the docs.
+ - Reload endpoint protection: the common `/admin/reload` endpoint can now be registered as `require_admin=True` which enforces the same admin auth (static `ADMIN_API_KEY` or `role=admin` JWT) when used by agents like the dashboard. The dashboard uses `require_admin=True` by default for `/admin/reload` to prevent unauthorised runtime reloads.
+
+Operator notes:
+
+ - To enable admin authentication set `ADMIN_API_KEY` in `/etc/justnews/global.env` or the deployment environment. The endpoints will require the header: `Authorization: Bearer <ADMIN_API_KEY>` or `X-Admin-API-Key: <ADMIN_API_KEY>`. If you prefer per-user authorization and auditing, omit the `ADMIN_API_KEY` and enforce role-based JWTs via the `agents/common/auth_api` endpoints instead.
+
+ - Tests: Add `tests/agents/dashboard/test_admin_jwt_auth.py` which validates JWT admin flows for `/admin/get_publishing_config`, `/admin/set_publishing_config` and `/admin/reload` (the latter validates admin auth succeeds even if no reload handlers are registered, proving auth is enforced).
+
+ - Add to Systemd env example: `infrastructure/systemd/examples/dashboard.env.example`: set `ADMIN_API_KEY` for the dashboard to enforce admin authentication. Rotate the key regularly and use an audit log retention policy in `monitoring/`. For production, prefer a JWT-based model and short-lived tokens.
+- For production rollouts prefer an internal-only API gateway that enforces authentication and mTLS instead of a single static key; this is especially important for multi-user environments. Rotate keys using the `ConfigurationManager` and store audit logs in `logs/audit` (retention managed by infra).
 
 Security: These endpoints should be protected in production (internal IP, API key or service-token-based access).
+
+Public-facing products:
+
+- Published Website — the UI served under `agents/dashboard/public_website.html` and accessible at `/` is the real-time, curated site. It should use the lightweight `GET /api/public/articles` endpoint (already present in the Dashboard `include_public_api`) to fetch recent, balanced, and fact-checked article summaries for display. This product is focused on news readership and should avoid exposing full traceability metadata for every article.
+
+- Public Research API — `/api/public/search/*` endpoints (semantic/text/hybrid search) are the research-facing API. Scholars and journalists use these endpoints to query the full traceable corpus (includes vector metadata and similarity scores). This API offers more context and is intended for analysis with clear terms of usage and rate limiting.
 
 ---
 
@@ -71,6 +95,8 @@ Security: These endpoints should be protected in production (internal IP, API ke
 Modeling choices are documented in `feat_article_creation.md`, but the pipeline enforces full traceability: every synthesized article draft stores metadata like `synth_trace`, `critic_result`, `analysis_summary`, `source_fact_checks`, `reasoning_plan_id`, and `fact_check_trace`.
 
 Chroma: store `is_synthesized` metadata on embeddings to help retrieval & housekeeping.
+
+Raw HTML archive & retention: The extractor (`agents/crawler/extraction.py`) saves raw HTML artefacts to `archive_storage/raw_html/` for forensic analysis, re-extraction, and model/data backfills. Ensure retention & backfill policies are documented and a clear reprocessing path exists: crawl -> raw_html -> extraction -> ingest.
 
 Migration summary:
 - `004_add_synthesis_fields.sql` — adds synth fields to `articles` for Option A.
@@ -85,6 +111,10 @@ Migration summary:
 - `SourceFactCheck` verdict mapping: `>= 0.8 => passed`, `0.6-0.79 => needs_review`, `< 0.6 => failed` (default thresholds — configurable).
 - Draft `fact_check_status` can be `pending`, `passed`, `needs_review`, `failed`. Auto-publish requires `passed` unless the chief editor overrides.
 - Critic policies with severity `block` or `must_edit` will prevent publishing and escalate to HITL. Critic results are stored as `critic_result` JSON with detailed messages.
+
+ - Training-forward & HITL labeling: The HITL staging service (`agents/hitl_service`) collects reviewer decisions and can forward labels to the `training_system` when `HITL_TRAINING_FORWARD_AGENT` is configured. The integration test suite should assert that labeled HITL outputs can be exported and used to retrain extractors/classifiers in `training_system`.
+
+ - Evidence audit integration: If `EVIDENCE_AUDIT_BASE_URL` is set and accessible it should be used as a canonical evidence provenance store. If unavailable, fact-checkers must conservatively default to `needs_review` rather than `passed` to avoid unsafe auto-publishing.
 
 ---
 
@@ -108,6 +138,8 @@ These early decisions - whether a page is valid, paywalled, or a candidate for r
 - `GET /api/v1/articles/synthesize/{job_id}` polls the job state and returns preview + `critic_result`.
 - Job store: `agents/synthesizer/job_store.py` supports in-memory or DB persistence. Default for production: DB-based table migration 006.
 
+ - Retry & job recovery: DB-backed job store must be used in production to handle restarts, retries and backoffs. Integration tests should validate that state persists through agent restarts and that scheduled retries follow retry policies in `agents/synthesizer/job_store.py`.
+
 ---
 
 ## Tests & CI
@@ -125,6 +157,8 @@ These early decisions - whether a page is valid, paywalled, or a candidate for r
 - `scripts/fact_check_cluster.py`: debug fact-check for cluster articles.
 - `scripts/reason_cluster.py`: preview the `reasoning_plan` for a cluster.
 - `scripts/ops/apply_synthesis_migration.sh`: audited apply for DB migrations 004–006.
+ - `scripts/ops/run_crawl_schedule.py`: schedule orchestration for crawls — builds windows from `config/crawl_schedule.yaml`, enforces budgets, and publishes scheduler metrics to Prometheus via textfile exports. Use this script for production scheduled crawling and CI smoke tests.
+ - `scripts/chroma_diagnose.py` / `scripts/chroma_bootstrap.py`: helper scripts to ensure the Chroma tenant and 'articles' collection are available for the memory agent; include these in the E2E integration docs.
 
 ---
 
@@ -132,6 +166,11 @@ These early decisions - whether a page is valid, paywalled, or a candidate for r
 
 - Log: `synthesis_job_id`, `cluster_id`, `draft_id`, `model_version`, `start`/`end` times, `critic_result`, `fact_check_status`, `published`boolean.
 - Metrics: `synthesis_jobs_started`, `synthesis_jobs_published`, `analysis_latency`, `reasoning_latency`, `fact_check_pass_rate`.
+ - Metrics: `synthesis_jobs_started`, `synthesis_jobs_published`, `analysis_latency`, `reasoning_latency`, `fact_check_pass_rate`.
+ - Scheduler metrics: `justnews_crawler_scheduler_*` and adaptive metrics (`justnews_crawler_scheduler_adaptive_*`) produced by `scripts/ops/run_crawl_schedule.py` and `agents/crawler/adaptive_metrics`.
+
+ - Rate Limiting: Public API endpoints (`/api/public/*`) are protected by an in-memory rate limiter for ad-hoc deployments; production deployments should configure `REDIS_URL` so the router uses a Redis-backed rate limiter (consistent across replicas). The search router enforces `max_requests=20` per minute by default for public API requests.
+ - Rate Limiting: Public API endpoints (`/api/public/*`) are protected by an in-memory rate limiter for ad-hoc deployments; production deployments should configure `REDIS_URL` so the router uses a Redis-backed rate limiter (consistent across replicas). The search router enforces `max_requests=20` per minute by default for public API requests. Unit tests exist in `tests/agents/dashboard/test_rate_limiting.py` to check both in-memory and Redis-backed behavior (with a fake Redis object in tests).
 - Use Prometheus and Grafana dashboards to monitor the above metrics.
 
 ---
@@ -141,6 +180,11 @@ These early decisions - whether a page is valid, paywalled, or a candidate for r
 - Disable auto-publish by default for new categories. Clear feature toggles enable limited production rollout with Chief Editor review enforced.
 - Start with an internal-only rollout for a narrow category; after validation, expand to canary and full production.
 - Make sure the Evidence Audit service is accessible in production; otherwise, any fact-check downstream errors should default to `needs_review`.
+
+ - Retention & Backfill:
+	 - Raw HTML archival in `archive_storage/raw_html/` is the forensic record. Implement retention (cleanup) & backfill scripts in `scripts/ops/` to manage storage and ensure reproducible extraction runs.
+
+ - Deprecated components: ultra-fast per-site crawlers (e.g., `agents/sites/bbc_crawler.py`) are kept as stubs and flagged for deprecation. The recommended path is to migrate specialized behaviour into `config/crawl_profiles` and the `crawl4ai_adapter` so adaptive Crawl4AI is the canonical strategy.
 
 ---
 
@@ -152,7 +196,10 @@ These early decisions - whether a page is valid, paywalled, or a candidate for r
 - `POST /synthesize_and_publish` uses `min_fact_check_percent_for_synthesis` preflight gating and respects `require_draft_fact_check_pass_for_publish`.
 - The job store persists job state when DB option is selected and recovers job status after restarts.
 
----
+## Known Gaps & Action Items (Post-Review)
+
+ - CI: The repository now includes a GitHub Actions file `.github/workflows/integration-chroma-mariadb.yml` which spins up MariaDB and Chroma and runs a smoke test for `agents.memory` saving articles into Chroma. This ensures chroma/mariaDB-based flows are exercised in CI (requires enabling workflows on PRs for feature branch).
+
 
 ## Next steps
 

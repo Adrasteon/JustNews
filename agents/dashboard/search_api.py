@@ -12,10 +12,19 @@ from common.observability import get_logger
 from common.semantic_search_service import (
     SearchResponse,
     SearchResult,
-    get_search_service,
 )
 
 logger = get_logger(__name__)
+
+
+def get_search_service():
+    """Compatibility wrapper that returns the active Search service.
+
+    This exists to allow tests to monkeypatch `agents.dashboard.search_api.get_search_service`
+    without depending on import-time binding to the implementation module.
+    """
+    from common.semantic_search_service import get_search_service as _get_search_service
+    return _get_search_service()
 
 # Create router for search endpoints
 router = APIRouter(prefix="/api/search", tags=["search"])
@@ -235,11 +244,11 @@ async def get_recent_articles(
     Returns the most recent articles, optionally filtered by search query.
     """
     try:
+        # Use runtime resolver so tests can monkeypatch `get_search_service`.
         service = get_search_service()
-
         articles = service.get_recent_articles_with_search(
             query=q,
-            n_results=n
+            n_results=n,
         )
 
         return articles
@@ -257,7 +266,8 @@ async def get_search_statistics():
     Returns information about the search database and configuration.
     """
     try:
-        service = get_search_service()
+        from common.semantic_search_service import get_search_service as _get_search_service
+        service = _get_search_service()
 
         stats = service.get_search_statistics()
 
@@ -282,7 +292,8 @@ async def clear_search_cache():
     This can help resolve issues with stale cached data.
     """
     try:
-        service = get_search_service()
+        from common.semantic_search_service import get_search_service as _get_search_service
+        service = _get_search_service()
         service.clear_cache()
 
         return {"message": "Search cache cleared successfully"}
@@ -319,8 +330,8 @@ def include_public_api(app):
     ):
         """Public semantic search endpoint with rate limiting"""
         try:
-            service = get_search_service()
 
+            service = get_search_service()
             response = service.search(
                 query=q,
                 n_results=min(n, 20),  # Limit results for public API
@@ -353,8 +364,8 @@ def include_public_api(app):
     async def public_recent_articles(n: int = Query(10, description="Number of articles", ge=1, le=50)):
         """Public recent articles endpoint"""
         try:
-            service = get_search_service()
 
+            service = get_search_service()
             articles = service.get_recent_articles_with_search(n_results=min(n, 50))
 
             return {
@@ -400,9 +411,8 @@ def include_public_api(app):
         allow_headers=["*"],
     )
 
-    # Include the public router
-    app.include_router(public_router)
-    logger.info("Public search API endpoints registered")
+    # NOTE: router inclusion is performed after all handlers are defined so
+    # tests and dynamic imports can add handlers before inclusion. See below.
 
     @public_router.get("/articles")
     async def public_articles(n: int = Query(10, description="Number of articles", ge=1, le=50)):
@@ -418,23 +428,33 @@ def include_public_api(app):
 
             articles = service.get_recent_articles_with_search(n_results=min(n, 50))
 
-            return {
-                "total_results": len(articles),
-                "articles": [
-                    {
-                        "id": a.id,
-                        "title": a.title,
-                        "summary": (a.content[:300] + "...") if len(a.content) > 300 else a.content,
-                        "source": a.source_name,
-                        "published_date": a.published_date,
-                        "sentiment_score": getattr(a, 'sentiment_score', 0),
-                        "fact_check_score": getattr(a, 'fact_check_score', None),
-                        "url": getattr(a, 'url', None)
-                    }
-                    for a in articles
-                ]
-            }
+            out = []
+            for a in articles:
+                # Support both `FakeArticle`-style objects (id/title/content)
+                # and SearchResult dataclasses (article_id/title/content)
+                art_id = getattr(a, 'id', None) or getattr(a, 'article_id', None)
+                title = getattr(a, 'title', '')
+                content = getattr(a, 'content', '')
+                source = getattr(a, 'source_name', None) or getattr(a, 'source', None)
+                published_date = getattr(a, 'published_date', '')
+
+                out.append({
+                    "id": art_id,
+                    "title": title,
+                    "summary": (content[:300] + "...") if len(content) > 300 else content,
+                    "source": source,
+                    "published_date": published_date,
+                    "sentiment_score": getattr(a, 'sentiment_score', 0),
+                    "fact_check_score": getattr(a, 'fact_check_score', None),
+                    "url": getattr(a, 'url', None),
+                })
+
+            return {"total_results": len(articles), "articles": out}
 
         except Exception as e:
             logger.error(f"Public articles endpoint failed: {e}")
             raise HTTPException(status_code=500, detail="Recent articles temporarily unavailable")
+
+    # Include the public router after all public handlers are defined
+    app.include_router(public_router)
+    logger.info("Public search API endpoints registered")

@@ -22,7 +22,14 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from common.metrics import JustNewsMetrics
-from common.semantic_search_service import get_search_service
+def get_search_service():
+    """Runtime resolver for the Search service to make tests monkeypatch-friendly.
+
+    Avoid importing `common.semantic_search_service.get_search_service` at module
+    import time so tests can patch the implementation in `common.semantic_search_service`.
+    """
+    from common.semantic_search_service import get_search_service as _get_search_service
+    return _get_search_service()
 from common.observability import get_logger
 
 # Compatibility: expose create_database_service for tests that patch agent modules

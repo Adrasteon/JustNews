@@ -384,6 +384,30 @@ def setup_test_environment():
     if 'requests' not in sys.modules and not os.environ.get('USE_REAL_REQUESTS'):
         sys.modules['requests'] = create_mock_requests()
 
+    # Mock chromadb to avoid importing optional telemetry-heavy SDK during tests
+    if 'chromadb' not in sys.modules and not os.environ.get('USE_REAL_CHROMADB'):
+        fake_chromadb = types.ModuleType('chromadb')
+
+        class FakeHttpClient:
+            def __init__(self, host=None, port=None, tenant=None):
+                self.host = host
+                self.port = port
+                self.tenant = tenant
+
+            def heartbeat(self):
+                return True
+
+            def list_collections(self):
+                return []
+
+            def get_collection(self, name):
+                return types.SimpleNamespace(name=name)
+
+        fake_chromadb.HttpClient = FakeHttpClient
+        # telemetry module stub
+        fake_chromadb.telemetry = types.SimpleNamespace(opentelemetry=types.SimpleNamespace())
+        sys.modules['chromadb'] = fake_chromadb
+
     yield
 
     # Cleanup if needed

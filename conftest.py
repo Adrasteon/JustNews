@@ -125,12 +125,34 @@ try:
 except Exception:  # pragma: no cover - best-effort during test startup
     pass
 
-# Mock ChromaDB client to avoid making HTTP requests to a local Chroma server
-# during unit tests. Tests that need a real client can patch this explicitly.
+# Mock ChromaDB for unit tests to avoid importing the real package and
+# pulling in optional telemetry dependencies (opentelemetry/google.rpc).
+# Tests that require a real Chroma client (integration tests) should
+# explicitly import and patch it in their own scopes.
 try:
-    import chromadb  # type: ignore
+    import importlib.util
+    import types
     from unittest.mock import MagicMock as _MagicMock
+    import sys
 
-    chromadb.HttpClient = _MagicMock(name="chromadb.HttpClient")
-except Exception:  # pragma: no cover - only relevant when chromadb is present
+    _spec = importlib.util.find_spec('chromadb')
+    if _spec is not None:
+        # Create a lightweight stub module so subsequent `import chromadb`
+        # will return the stub (avoids importing real package during test
+        # collection and prevents opentelemetry/google.rpc from being loaded).
+        chroma_stub = types.ModuleType('chromadb')
+        # Provide a mocked HttpClient so code under test that constructs
+        # `chromadb.HttpClient` doesn't attempt network calls.
+        chroma_stub.HttpClient = _MagicMock(name='chromadb.HttpClient')
+        # Provide a minimal api.client.Client stub used in some code paths
+        api_mod = types.ModuleType('chromadb.api')
+        client_mod = types.ModuleType('chromadb.api.client')
+        client_mod.Client = _MagicMock(name='chromadb.api.client.Client')
+        api_mod.client = client_mod
+        chroma_stub.api = api_mod
+        # Install stub in sys.modules to short-circuit real import
+        sys.modules['chromadb'] = chroma_stub
+except Exception:
+    # Best-effort: don't fail test collection if any of these operations error
+    # (for example, tests running in minimal environments).
     pass

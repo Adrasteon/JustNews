@@ -63,7 +63,13 @@ def allow_request_redis(request: Request, max_requests: int = 10, window_seconds
     strict atomicity across replicas use a Redis Lua script (not required for
     our initial implementation).
     """
-    client = _get_redis_client()
+    # Prefer the cached client when available; when tests monkeypatch
+    # _get_redis_client to return a fresh fake instance on each call we want
+    # to keep a stable client for the duration of the process.
+    global _redis_client
+    client = _redis_client if _redis_client is not None else _get_redis_client()
+    if _redis_client is None and client is not None:
+        _redis_client = client
     if client is None:
         return allow_request(request, max_requests=max_requests, window_seconds=window_seconds)
 

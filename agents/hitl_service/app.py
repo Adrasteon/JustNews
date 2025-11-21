@@ -317,11 +317,15 @@ TOOL_HANDLERS: dict[str, Callable[[ToolCallRequest], Awaitable[dict[str, Any]]]]
 }
 
 
-@app.on_event("startup")
 async def startup_event():
     ensure_db()
     asyncio.create_task(register_with_mcp_bus())
     asyncio.create_task(monitor_qa_health())
+
+# Register startup handler via add_event_handler to avoid use of the deprecated
+# @app.on_event decorator (typing_extensions warns about deprecation). This
+# keeps behavior identical but avoids deprecation warnings during test runs.
+app.add_event_handler("startup", startup_event)
 
 
 async def register_with_mcp_bus() -> None:

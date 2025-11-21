@@ -12,7 +12,6 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 import json
 import mysql.connector
-import chromadb
 from sentence_transformers import SentenceTransformer
 
 from common.observability import get_logger
@@ -356,6 +355,16 @@ class MigratedDatabaseService:
         self.chroma_client = None
         self.collection = None
         try:
+            # Import chromadb lazily. Importing it at module import time pulls in
+            # large optional dependencies (opentelemetry, google.rpc) which can
+            # cause warnings/errors during test collection. Attempt to import the
+            # package here and fall back to a local None to keep the service
+            # functional when chroma is not installed/available.
+            try:
+                import chromadb  # type: ignore
+            except Exception:
+                chromadb = None
+
             host = chroma_config.get('host')
             port = chroma_config.get('port')
             tenant = chroma_config.get('tenant')

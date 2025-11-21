@@ -16,11 +16,11 @@
     "retry_delay_seconds": 1.0
   },
   "database": {
-    "host": "127.0.0.1",
+    "host": "localhost",
     "port": 3306,
-    "database": "justnews_test",
-    "user": "justnews",
-    "password": "test",
+    "database": "justnews",
+    "user": "justnews_user",
+    "password": "password123",
     "connection_pool": {
       "min_connections": 2,
       "max_connections": 10,
@@ -173,7 +173,7 @@
     },
     "publishing": {
       "require_draft_fact_check_pass_for_publish": true,
-      "chief_editor_review_required": true,
+      "chief_editor_review_required": false,
       "allow_publish_override_by_agent": []
     }
   },

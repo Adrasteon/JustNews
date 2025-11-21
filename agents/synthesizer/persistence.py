@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional
 import json
 from common.observability import get_logger
-from database.utils.migrated_database_utils import create_database_service
+import database.utils.migrated_database_utils as db_utils
 
 logger = get_logger(__name__)
 
@@ -32,7 +32,7 @@ def save_synthesized_draft(
     """
     db_service = None
     try:
-        db_service = create_database_service()
+        db_service = db_utils.create_database_service()
         cursor = db_service.mb_conn.cursor()
 
         if persistence_mode == 'extend':

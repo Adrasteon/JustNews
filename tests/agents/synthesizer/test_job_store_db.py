@@ -44,7 +44,6 @@ class FakeConn:
 
     def __enter__(self):
         return self
-n
     def __exit__(self, exc_type, exc, tb):
         pass
 

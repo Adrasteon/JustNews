@@ -1,0 +1,16 @@
+{
+  "mariadb": {
+    "articles": 2358,
+    "sources": 12564,
+    "mappings": 0
+  },
+  "chromadb": {
+    "vectors": 2358,
+    "collections": [
+      "articles"
+    ]
+  },
+  "total_articles": 2358,
+  "total_sources": 12564,
+  "total_vectors": 2358
+}

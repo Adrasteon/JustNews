@@ -74,8 +74,11 @@ def include_public_api(app: FastAPI) -> None:
             logger.info("Public API routes registered for dashboard agent.")
         else:
             logger.warning("Public API module missing include_public_api(); skipping registration.")
-    except ModuleNotFoundError:
-        logger.warning("Public API module not found; skipping registration.")
+    except (ModuleNotFoundError, ImportError) as exc:
+        # In some test runs PUBLIC_API_AVAILABLE may be enabled but the
+        # optional public_api module may not exist or may not export the
+        # expected symbol. Treat either case as non-fatal and continue.
+        logger.warning("Public API module unavailable or invalid; skipping registration: %s", exc)
 
 
 def load_config() -> dict[str, Any]:
@@ -226,11 +229,14 @@ def set_publishing_config(payload: dict, request: Request):
                 token = auth_header.split(" ", 1)[1]
             else:
                 token = auth_header
-            token_payload = verify_token(token)
-            if payload is None:
+            # runtime import so tests can monkeypatch the auth_models module
+            import agents.common.auth_models as auth_models
+
+            token_payload = auth_models.verify_token(token)
+            if token_payload is None:
                 raise HTTPException(status_code=401, detail="Invalid authentication token")
-            user = get_user_by_id(payload.user_id)
-            if user is None or user.get("role") != UserRole.ADMIN.value:
+            user = auth_models.get_user_by_id(token_payload.user_id)
+            if user is None or user.get("role") != auth_models.UserRole.ADMIN.value:
                 raise HTTPException(status_code=403, detail="Admin role required")
         from config.core import get_config_manager
         manager = get_config_manager()
@@ -297,15 +303,23 @@ def get_publishing_config(request: Request):
             # Jack back to JWT admin role requirement
             if not auth_header:
                 raise HTTPException(status_code=401, detail="Admin credentials required")
+
+            # Extract the token or raw API key value when an Authorization header
+            # is present; then verify via JWT-based admin role checks.
             if auth_header.lower().startswith("bearer "):
                 token = auth_header.split(" ", 1)[1]
             else:
                 token = auth_header
-            token_payload = verify_token(token)
+
+            # Use runtime import so tests can monkeypatch agents.common.auth_models
+            # and have the patched functions observed by this endpoint.
+            import agents.common.auth_models as auth_models
+
+            token_payload = auth_models.verify_token(token)
             if token_payload is None:
                 raise HTTPException(status_code=401, detail="Invalid authentication token")
-            user = get_user_by_id(token_payload.user_id)
-            if user is None or user.get("role") != UserRole.ADMIN.value:
+            user = auth_models.get_user_by_id(token_payload.user_id)
+            if user is None or user.get("role") != auth_models.UserRole.ADMIN.value:
                 raise HTTPException(status_code=403, detail="Admin role required")
 
         cfg = get_config()

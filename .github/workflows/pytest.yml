@@ -7,6 +7,20 @@ on:
     branches: [ main ]
 
 jobs:
+  check-global-env:
+    name: Validate global.env (PYTHON_BIN present)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run global.env validation
+        env:
+          CI: true
+        run: |
+          # The script will fall back to the repo example file when /etc/justnews/global.env
+          # is not present on the runner, so this is CI-friendly.
+          bash infrastructure/scripts/validate-global-env.sh
+
   processing_check:
     runs-on: ubuntu-latest
     steps:
@@ -32,7 +46,7 @@ jobs:
           make check-processing-time
 
   pytest:
-    needs: [processing_check, lint]
+    needs: [processing_check, lint, check-global-env]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -65,6 +79,29 @@ jobs:
       - name: Run tests
         run: |
           pytest -q
+
+  integration_smoke:
+    name: "Integration smoke: synthesize -> publish -> public API (mocked)"
+    needs: [processing_check, lint, check-global-env]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run integration smoke test (uses mocks)
+        run: |
+          # Run only the mocked, CI-friendly integration-style test we added to avoid infra
+          pytest -q tests/integration/test_full_pipeline_5_variations.py::test_full_pipeline_5_variations
 
   lint:
     runs-on: ubuntu-latest

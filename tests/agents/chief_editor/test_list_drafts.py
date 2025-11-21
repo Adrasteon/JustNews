@@ -30,9 +30,14 @@ class FakeDB:
 
 
 def test_list_drafts(monkeypatch):
-    from config.core import get_config
+    from config.core import get_config, get_config_manager
     cfg = get_config()
-    cfg.system.persistence.synthesized_article_storage = 'synthesized_articles'
+    # The configuration schema in tests may not include a top-level 'persistence' section.
+    # Monkeypatch get_config so code in agents.chief_editor reads the expected value
+    # from cfg.system (dict-like) without relying on a concrete config manager.
+    from types import SimpleNamespace
+    fake_system = {"persistence": {"synthesized_article_storage": "synthesized_articles"}}
+    monkeypatch.setattr('config.core.get_config', lambda: SimpleNamespace(system=fake_system))
 
     # Fake DB return
     rows = [{

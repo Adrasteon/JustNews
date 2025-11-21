@@ -12,7 +12,7 @@ except Exception:
 def test_pages_dropdown_navigation_localhost():
     # This E2E test requires Playwright to be installed and a local server running on :8013
     try:
-        r = requests.get('http://127.0.0.1:8013/', timeout=1)
+        _r = requests.get('http://127.0.0.1:8013/', timeout=1)
     except Exception:
         pytest.skip('Local dashboard not running on http://127.0.0.1:8013')
     with sync_playwright() as p:

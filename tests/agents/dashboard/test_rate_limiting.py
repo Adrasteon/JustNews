@@ -14,7 +14,7 @@ def test_in_memory_rate_limiter(monkeypatch):
     # ensure in-memory cleaned
     rate._windows.clear()
     # limit 3 requests
-    for i in range(3):
+    for _i in range(3):
         assert rate.allow_request(req, max_requests=3, window_seconds=60)
     # fourth should fail
     assert not rate.allow_request(req, max_requests=3, window_seconds=60)

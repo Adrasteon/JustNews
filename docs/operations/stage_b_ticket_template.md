@@ -40,7 +40,7 @@ tags: ["stage-b", "ops", "ticket-template"]
 | --- | --- | --- |
 | Migration 003 | `<psql output or screenshot>` | Pending |
 | Scheduler | `journalctl -u justnews-crawl-scheduler.service -n 200` | Pending |
-| Metrics | `conda run -n justnews-v2-py312 python -m pytest ...` | Pending |
+| Metrics | `conda run -n justnews-v2-py312-fix python -m pytest ...` | Pending |
 | Dashboard | `<Grafana panel link>` | Pending |
 | QA Sampling | `logs/governance/crawl_terms_audit.md` entry | Pending |
 

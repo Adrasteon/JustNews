@@ -280,13 +280,13 @@ async def lifespan(app: FastAPI):
 
     # Initialize training system components
     try:
-        # Initialize system-wide training manager
-        training_manager = get_system_training_manager()
+        # Initialize system-wide training manager (call for side-effects)
+        _training_manager = get_system_training_manager()
         logger.info("System-wide training manager initialized")
 
-        # Initialize training coordinator
+        # Initialize training coordinator (call for side-effects)
         from training_system.core.training_coordinator import initialize_online_training
-        training_coordinator = initialize_online_training()
+        _training_coordinator = initialize_online_training()
         logger.info("Online training coordinator initialized")
 
     except Exception as e:
@@ -367,7 +367,7 @@ async def add_training_example(request: TrainingRequest):
     except Exception as e:
         logger.error(f"Failed to add training example: {e}")
         training_metrics.record_error("training_example_error", "/tool/add_training_example")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/tool/submit_user_correction")
@@ -393,7 +393,7 @@ async def submit_user_correction(request: CorrectionRequest):
 
     except Exception as e:
         logger.error(f"Failed to submit user correction: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/tool/add_prediction_feedback")
@@ -418,7 +418,7 @@ async def add_prediction_feedback(request: PredictionFeedback):
 
     except Exception as e:
         logger.error(f"Failed to add prediction feedback: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/tool/receive_hitl_label")
@@ -440,7 +440,7 @@ async def receive_hitl_label(payload: HitlLabelPayload):
     except Exception as e:
         logger.error(f"Failed to process HITL label payload: {e}")
         training_metrics.record_error("hitl_label_error", "/tool/receive_hitl_label")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/tool/get_training_status")
@@ -462,7 +462,7 @@ async def get_training_status():
 
     except Exception as e:
         logger.error(f"Failed to get training status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/tool/get_system_training_dashboard")
@@ -479,7 +479,7 @@ async def get_system_training_dashboard():
 
     except Exception as e:
         logger.error(f"Failed to get training dashboard: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/tool/force_agent_update")
@@ -502,7 +502,7 @@ async def force_agent_update(agent_name: str):
 
     except Exception as e:
         logger.error(f"Failed to force agent update: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/tool/get_training_metrics")
@@ -519,7 +519,7 @@ async def get_training_metrics():
 
     except Exception as e:
         logger.error(f"Failed to get training metrics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # Global MCP Bus client instance

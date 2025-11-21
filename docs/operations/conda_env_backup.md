@@ -1,6 +1,6 @@
 # Conda Environment Backup & Restore
 
-This document explains how to back up and restore the `justnews-v2-py312` conda environment used by the project.
+This document explains how to back up and restore the `justnews-v2-py312-fix` conda environment used by the project.
 
 ## Why back up the environment
 - To ensure reproducible test and CI runs
@@ -18,36 +18,36 @@ This document explains how to back up and restore the `justnews-v2-py312` conda 
 
 ```bash
 # Back up the conda environment to artifacts/
-./scripts/backup_conda_env.sh justnews-v2-py312 artifacts
+./scripts/backup_conda_env.sh justnews-v2-py312-fix artifacts
 ```
 
 - To restore from YAML:
 
 ```bash
-conda env create -f artifacts/justnews-v2-py312.yml -n justnews-v2-py312-restored
-# Optionally: pip install -r artifacts/justnews-v2-py312.pip.txt
+conda env create -f artifacts/justnews-v2-py312-fix.yml -n justnews-v2-py312-fix-restored
+# Optionally: pip install -r artifacts/justnews-v2-py312-fix.pip.txt
 ```
 
 - To restore from explicit spec (exact binary builds):
 
 ```bash
-conda create --name justnews-v2-py312-restored --file artifacts/justnews-v2-py312.explicit.txt
+conda create --name justnews-v2-py312-fix-restored --file artifacts/justnews-v2-py312-fix.explicit.txt
 ```
 
 - To unpack the condapack tarball:
 
 ```bash
-mkdir -p ~/envs/justnews-v2-py312-unpacked
-tar -xzf artifacts/justnews-v2-py312.tar.gz -C ~/envs/justnews-v2-py312-unpacked
-~/envs/justnews-v2-py312-unpacked/bin/conda-unpack
+mkdir -p ~/envs/justnews-v2-py312-fix-unpacked
+tar -xzf artifacts/justnews-v2-py312-fix.tar.gz -C ~/envs/justnews-v2-py312-fix-unpacked
+~/envs/justnews-v2-py312-fix-unpacked/bin/conda-unpack
 ```
 
 - Re-run preflight checks and tests after restoring:
 
 ```bash
-PYTHONPATH=$(pwd) PYTHON_BIN=$(conda run -n justnews-v2-py312-restored --no-capture-output which python) \
+PYTHONPATH=$(pwd) PYTHON_BIN=$(conda run -n justnews-v2-py312-fix-restored --no-capture-output which python) \
     /path/to/python scripts/check_protobuf_version.py
-PYTHONPATH=$(pwd) PYTHON_BIN=$(conda run -n justnews-v2-py312-restored --no-capture-output which python) \
+PYTHONPATH=$(pwd) PYTHON_BIN=$(conda run -n justnews-v2-py312-fix-restored --no-capture-output which python) \
     /path/to/python scripts/check_deprecation_warnings.py
 ```
 

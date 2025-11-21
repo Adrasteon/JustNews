@@ -1,4 +1,4 @@
-name: justnews-v2-py312
+name: justnews-v2-py312-fix
 channels:
   - pytorch
   - nvidia

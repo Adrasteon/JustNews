@@ -109,9 +109,9 @@ check_gpu_environment() {
 
     # Attempt PyTorch CUDA probe via the standard env (optional)
     if command -v conda &> /dev/null; then
-        if conda env list 2>/dev/null | grep -E '^\s*justnews-v2-py312\s' > /dev/null; then
+        if conda env list 2>/dev/null | grep -E '^\s*justnews-v2-py312-fix\s' > /dev/null; then
             local torch_probe
-            if torch_probe=$(conda run -n justnews-v2-py312 python - <<'PY' 2>/dev/null
+            if torch_probe=$(conda run -n justnews-v2-py312-fix python - <<'PY' 2>/dev/null
 import json, sys
 try:
     import torch
@@ -133,10 +133,10 @@ PY
                     log_success "✓ PyTorch probe: $torch_probe"
                 fi
             else
-                log_warning "⚠ Unable to run PyTorch probe in conda env justnews-v2-py312"
+                log_warning "⚠ Unable to run PyTorch probe in conda env justnews-v2-py312-fix"
             fi
         else
-            log_info "Conda env justnews-v2-py312 not found; skipping PyTorch probe."
+            log_info "Conda env justnews-v2-py312-fix not found; skipping PyTorch probe."
         fi
     else
         log_info "Conda not found; skipping PyTorch probe."
@@ -149,10 +149,10 @@ PY
 check_conda_env_exists() {
     log_info "Checking conda environment availability..."
     if command -v conda &> /dev/null; then
-        if conda env list 2>/dev/null | grep -E '^\s*justnews-v2-py312\s' > /dev/null; then
-            log_success "✓ Conda env justnews-v2-py312 exists"
+        if conda env list 2>/dev/null | grep -E '^\s*justnews-v2-py312-fix\s' > /dev/null; then
+            log_success "✓ Conda env justnews-v2-py312-fix exists"
         else
-            log_warning "⚠ Conda env justnews-v2-py312 not found"
+            log_warning "⚠ Conda env justnews-v2-py312-fix not found"
         fi
     else
         log_warning "⚠ conda not found in PATH; ensure the runtime env is available"
@@ -407,7 +407,7 @@ check_python_environment() {
         log_success "✓ Conda environment active: $CONDA_DEFAULT_ENV"
     else
         log_warning "⚠ No conda environment active"
-        log_info "  Consider activating: conda activate justnews-v2-py312"
+        log_info "  Consider activating: conda activate justnews-v2-py312-fix"
     fi
 
     return 0

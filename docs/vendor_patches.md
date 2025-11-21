@@ -23,7 +23,7 @@ Whenever the Python environment is rebuilt (new conda env, dependency upgrade,
 CI image refresh, etc.), rerun:
 
 ```bash
-conda run --name justnews-v2-py312 python scripts/vendor_patches/apply_google_rpc_namespace_patch.py
+conda run --name justnews-v2-py312-fix python scripts/vendor_patches/apply_google_rpc_namespace_patch.py
 ```
 
 Use `--dry-run` to verify whether the patch needs to be applied. The script is

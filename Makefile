@@ -34,7 +34,7 @@ DOCKER_TAG ?= latest
 # Python and tools
 PYTHON := python3.12
 PIP := $(PYTHON) -m pip
-CONDA_ENV := justnews-v2-py312
+CONDA_ENV := justnews-v2-py312-fix
 CONDA := $(shell command -v conda 2>/dev/null || echo)
 ifeq ($(CONDA),)
 RUN_PY := $(PYTHON)
@@ -209,6 +209,13 @@ docs-validate:
 # CI validation targets
 ci-check: check-processing-time lint test security-check
 	$(call log_success,"CI checks passed")
+
+# Validate global.env has PYTHON_BIN (CI-friendly check; does not require root)
+.PHONY: check-global-env
+check-global-env:
+	$(call log_info,"Validating /etc/justnews/global.env or example config contains PYTHON_BIN")
+	bash infrastructure/scripts/validate-global-env.sh || { $(call log_error,"global.env PYTHON_BIN validation failed"); exit 1; }
+	$(call log_success,"global.env validation OK")
 
 security-check:
 	$(call log_info,"Running security checks...")

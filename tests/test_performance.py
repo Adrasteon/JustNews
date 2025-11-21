@@ -199,7 +199,7 @@ class TestSystemPerformance:
             mock_response.json.return_value = {"status": "success"}
             mock_client.return_value.post.return_value = mock_response
 
-            for i in range(num_requests):
+            for _i in range(num_requests):
                 start_time = time.perf_counter()
                 # Simulate MCP Bus call
                 await asyncio.sleep(delay)  # Simulate processing
@@ -328,7 +328,7 @@ class TestScalabilityBenchmarks:
 
             # Simulate parallel processing
             tasks = []
-            for i in range(num_instances):
+            for _i in range(num_instances):
                 task = asyncio.create_task(self._simulate_instance_load(load_per_instance))
                 tasks.append(task)
 

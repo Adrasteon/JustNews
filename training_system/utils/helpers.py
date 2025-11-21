@@ -1,6 +1,4 @@
-"""
-from common.observability import get_logger
-Training System Utilities
+"""Training System Utilities
 Helper functions and tools for the online training system
 """
 
@@ -9,6 +7,7 @@ from datetime import datetime
 from typing import Any
 
 import pandas as pd
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 

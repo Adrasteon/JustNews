@@ -93,7 +93,7 @@ async def test_synthesize_cluster_fact_check_aborts_when_unverified(synthesizer_
 async def test_synthesize_cluster_proceeds_when_verified(synthesizer_engine, monkeypatch):
     engine: SynthesizerEngine = synthesizer_engine
 
-    fake_articles = [FakeArticle("a1", "Test content"), FakeArticle("a2", "Other content")] 
+    fake_articles = [FakeArticle("a1", "Test content"), FakeArticle("a2", "Other content")]
 
     class FakeFetcher:
         def fetch_cluster(self, cluster_id=None, article_ids=None, max_results=50, dedupe=True):

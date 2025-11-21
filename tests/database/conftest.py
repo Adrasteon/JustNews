@@ -20,15 +20,12 @@ pytestmark = [
     pytest.mark.asyncio,
     pytest.mark.integration
 ]
-
-
 @pytest.fixture(scope="session")
 def event_loop():
     """Create an instance of the default event loop for the test session."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
-
 
 @pytest.fixture(scope="session")
 def test_config() -> dict[str, Any]:
@@ -65,8 +62,6 @@ def test_config() -> dict[str, Any]:
             'cleanup_after_tests': True
         }
     }
-
-
 @pytest.fixture
 def mock_mariadb_connection():
     """Mock MariaDB connection with cursor"""
@@ -77,8 +72,6 @@ def mock_mariadb_connection():
     mock_conn.commit = MagicMock()
     mock_conn.rollback = MagicMock()
     return mock_conn, mock_cursor
-
-
 @pytest.fixture
 def mock_chromadb_client():
     """Mock ChromaDB client with collection"""
@@ -210,7 +203,6 @@ def mock_query_results():
             }
 
 
-            
         ],
         'sources': [
             {

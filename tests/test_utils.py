@@ -327,7 +327,7 @@ class MockFactory:
             async def search_articles(self, query: str, limit: int = 10):
                 # Simple mock search
                 results = []
-                for article_id, article in self.data.items():
+                for _article_id, article in self.data.items():
                     if query.lower() in article.get("content", "").lower():
                         results.append(article)
                         if len(results) >= limit:

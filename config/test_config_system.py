@@ -14,6 +14,7 @@ Tests cover:
 """
 
 import tempfile
+import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -431,7 +432,14 @@ class TestIntegration:
         with tempfile.TemporaryDirectory() as temp_dir:
             # Ensure env does not override file-backed configuration during test
             from unittest.mock import patch
-            with patch.dict(os.environ, {}, clear=True):
+            # Ensure the loader does not import system or repo-level global.env
+            # during this test: mark PYTEST_RUNNING so load_global_env skips
+            # Provide an empty explicit JUSTNEWS_GLOBAL_ENV inside temp_dir
+            # so load_global_env will prefer that path and not load repo/system
+            # global.env files which would override our test configuration.
+            env_file = Path(temp_dir) / 'global.env'
+            env_file.write_text('')
+            with patch.dict(os.environ, {'PYTEST_RUNNING': '1', 'JUSTNEWS_GLOBAL_ENV': str(env_file)}, clear=True):
                 temp_path = Path(temp_dir)
 
                 # Create configuration file

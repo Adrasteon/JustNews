@@ -10,6 +10,6 @@ def test_validate_chroma_detects_mcp_bus(monkeypatch):
     # Raise-on-fail behavior
     try:
         validate_chroma_is_canonical('localhost', 8000, raise_on_fail=True)
-        assert False, 'Expected ChromaCanonicalValidationError'
+        raise AssertionError('Expected ChromaCanonicalValidationError')
     except ChromaCanonicalValidationError:
         pass

@@ -63,12 +63,12 @@ The Dashboard offers a small Admin UI for runtime toggles (under `Settings -> Pu
 Endpoints:
 - `GET /admin/get_publishing_config` — returns runtime flags and persistence choice.
 - `POST /admin/set_publishing_config` — sets config via the `ConfigurationManager` and persists when requested.
- - Authentication: `GET` and `POST` admin endpoints now require `Authorization: Bearer <ADMIN_API_KEY>` or `X-Admin-API-Key: <key>` when `ADMIN_API_KEY` is configured. Use `ConfigurationManager` to persist runtime changes.
- - Authentication: `GET` and `POST` admin endpoints now support two modes:
-	 1. A legacy `ADMIN_API_KEY` header (via `Authorization: Bearer <ADMIN_API_KEY>` or `X-Admin-API-Key: <key>`) for simple deployments and local testing.
-	 2. A role-based JWT authentication mechanism — if no `ADMIN_API_KEY` is set the admin endpoints require a valid JWT Bearer token with `role=admin` issued via the `agents/common/auth_api` flow.
- - Audit log: admin changes are appended to `logs/audit/publishing_config_changes.jsonl` for traceability.
- - Audit log: admin changes are appended to `logs/audit/publishing_config_changes.jsonl` for traceability. When admin JWTs are used those admin actions should include the `user_id` or `username` in the audit entry; we recommend enhancing the audit log to include requestor identity and IP address for better traceability. This is tracked as a follow-up action in the docs.
+ - Authentication: `GET` and `POST` admin endpoints support two modes and will accept either:
+	 1. A legacy static API key via `Authorization: Bearer <ADMIN_API_KEY>` or `X-Admin-API-Key: <key>` (suitable for simple/local deployments), or
+	 2. A role-based JWT Bearer token (when `ADMIN_API_KEY` is not set). The token must validate (`verify_token`) and the user must have `role=admin`.
+
+	Implementation note: the dashboard uses a runtime import of `agents.common.auth_models` so tests can monkeypatch `verify_token` and `get_user_by_id`. A recent fix ensures the `GET /admin/get_publishing_config` codepath properly extracts and verifies JWTs — invalid tokens now correctly return HTTP 401 (the behaviour asserted by `tests/agents/dashboard/test_admin_jwt_auth.py`).
+ - Audit log: admin changes are appended to `logs/audit/publishing_config_changes.jsonl` for traceability. When admin JWTs are used those admin actions include `user_id`/`username` in the audit entry; we recommend extending audit entries to capture requestor identity and IP address for richer traceability (tracked as a follow-up).
  - Reload endpoint protection: the common `/admin/reload` endpoint can now be registered as `require_admin=True` which enforces the same admin auth (static `ADMIN_API_KEY` or `role=admin` JWT) when used by agents like the dashboard. The dashboard uses `require_admin=True` by default for `/admin/reload` to prevent unauthorised runtime reloads.
 
 Operator notes:
@@ -165,11 +165,9 @@ These early decisions - whether a page is valid, paywalled, or a candidate for r
 ## Observability & Metrics
 
 - Log: `synthesis_job_id`, `cluster_id`, `draft_id`, `model_version`, `start`/`end` times, `critic_result`, `fact_check_status`, `published`boolean.
-- Metrics: `synthesis_jobs_started`, `synthesis_jobs_published`, `analysis_latency`, `reasoning_latency`, `fact_check_pass_rate`.
  - Metrics: `synthesis_jobs_started`, `synthesis_jobs_published`, `analysis_latency`, `reasoning_latency`, `fact_check_pass_rate`.
  - Scheduler metrics: `justnews_crawler_scheduler_*` and adaptive metrics (`justnews_crawler_scheduler_adaptive_*`) produced by `scripts/ops/run_crawl_schedule.py` and `agents/crawler/adaptive_metrics`.
 
- - Rate Limiting: Public API endpoints (`/api/public/*`) are protected by an in-memory rate limiter for ad-hoc deployments; production deployments should configure `REDIS_URL` so the router uses a Redis-backed rate limiter (consistent across replicas). The search router enforces `max_requests=20` per minute by default for public API requests.
  - Rate Limiting: Public API endpoints (`/api/public/*`) are protected by an in-memory rate limiter for ad-hoc deployments; production deployments should configure `REDIS_URL` so the router uses a Redis-backed rate limiter (consistent across replicas). The search router enforces `max_requests=20` per minute by default for public API requests. Unit tests exist in `tests/agents/dashboard/test_rate_limiting.py` to check both in-memory and Redis-backed behavior (with a fake Redis object in tests).
 - Use Prometheus and Grafana dashboards to monitor the above metrics.
 

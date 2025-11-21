@@ -271,7 +271,7 @@ class TestRunner:
         passed_tests = 0
         failed_tests = 0
 
-        for test_type, result in self.results.items():
+        for _test_type, result in self.results.items():
             if isinstance(result, dict) and 'success' in result:
                 if result['success']:
                     passed_tests += 1

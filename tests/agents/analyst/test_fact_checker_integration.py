@@ -58,7 +58,7 @@ class TestFactCheckerIntegration:
         texts = ["Article 1 text", "Article 2 text"]
         article_ids = ["art1", "art2"]
 
-        report = fake_engine.generate_analysis_report(
+        _report = fake_engine.generate_analysis_report(
             texts=texts,
             article_ids=article_ids,
             cluster_id="test_cluster",
@@ -223,8 +223,10 @@ class TestFactCheckerIntegration:
             )
 
             # Should not crash, just log error
-            assert ("Per-article fact-check failed for art1" in caplog.text or 
-                    "Fact-checker tools not available" in caplog.text)
+            assert (
+                "Per-article fact-check failed for art1" in caplog.text
+                or "Fact-checker tools not available" in caplog.text
+            )
             assert report["source_fact_checks"] == []
 
     def test_fact_checker_error_response_handling(self, fake_engine, mock_fact_checker, caplog):

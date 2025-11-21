@@ -3,8 +3,8 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEV_ENV_FILE="$REPO_ROOT/dev-environment.yml"
-DEV_ENV_NAME="justnews-v2-py312-dev"
-EXISTING_ENV_NAME="justnews-v2-py312"
+DEV_ENV_NAME="justnews-v2-py312-fix-dev"
+EXISTING_ENV_NAME="justnews-v2-py312-fix"
 
 usage() {
   cat <<EOF

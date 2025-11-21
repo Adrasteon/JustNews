@@ -46,7 +46,7 @@ class TestMemoryEngineInitialization:
              patch('agents.memory.memory_engine.get_embedding_model', return_value=mock_embedding_model):
 
             engine = MemoryEngine()
-            result = await engine.initialize()
+            await engine.initialize()
             # MemoryEngine.initialize() doesn't return anything (None), just sets db_initialized
             assert engine.db_initialized is True
             assert engine.db_service is not None

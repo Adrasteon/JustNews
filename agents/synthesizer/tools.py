@@ -288,7 +288,23 @@ async def synthesize_gpu_tool(
         cluster_id = None
         if 'cluster_id' in locals() and locals().get('cluster_id'):
             cluster_id = locals().get('cluster_id')
-        result = await engine.synthesize_gpu(articles, max_clusters, context, options=options)
+        # Some engine implementations accept an `options` kwarg; older ones
+        # don't — detect and call accordingly for compatibility with tests
+        import inspect
+
+        try:
+            sig = inspect.signature(engine.synthesize_gpu)
+            if 'options' in sig.parameters:
+                result = await engine.synthesize_gpu(articles, max_clusters, context, options=options)
+            else:
+                result = await engine.synthesize_gpu(articles, max_clusters, context)
+        except (ValueError, TypeError):
+            # If signature inspection fails (e.g. C-bound function), fall back to
+            # attempting a kwargs call and then a positional-only call.
+            try:
+                result = await engine.synthesize_gpu(articles, max_clusters, context, options=options)
+            except TypeError:
+                result = await engine.synthesize_gpu(articles, max_clusters, context)
 
         processing_time = time.time() - start_time
 

@@ -119,7 +119,7 @@ curl -fsS http://127.0.0.1:8014/models/status | jq
 Global (`/etc/justnews/global.env`):
 
 ```
-JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-v2-py312/bin/python
+JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-v2-py312-fix/bin/python
 SERVICE_DIR=/home/adra/JustNews
 JUSTNEWS_DB_URL=mysql://user:pass@localhost:3306/justnews
 ENABLE_MPS=true
@@ -303,7 +303,7 @@ Outputs:
 
 Dry-run (no crawler calls):
 ```
-sudo conda run -n justnews-v2-py312 python scripts/ops/run_crawl_schedule.py --dry-run --profiles config/crawl_profiles
+sudo conda run -n justnews-v2-py312-fix python scripts/ops/run_crawl_schedule.py --dry-run --profiles config/crawl_profiles
 ```
 ```
 

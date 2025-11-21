@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Usage: scripts/backup_conda_env.sh <env_name> <output_dir>
-# Default env: justnews-v2-py312
-ENV_NAME=${1:-justnews-v2-py312}
+# Default env: justnews-v2-py312-fix
+ENV_NAME=${1:-justnews-v2-py312-fix}
 OUTDIR=${2:-artifacts}
 
 mkdir -p "$OUTDIR"

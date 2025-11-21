@@ -131,7 +131,7 @@ class TestMCPBusIntegration:
         with patch('httpx.AsyncClient') as mock_client:
             # Setup sequential responses
             call_responses = []
-            for agent, response in mock_responses.items():
+            for _agent, response in mock_responses.items():
                 mock_call = AsyncMock()
                 mock_call.json.return_value = response
                 call_responses.append(mock_call)
@@ -139,7 +139,7 @@ class TestMCPBusIntegration:
             mock_client.return_value.post.side_effect = call_responses
 
             # Simulate the pipeline by making mock calls
-            for i, (agent, expected_response) in enumerate(mock_responses.items()):
+            for _i, (agent, expected_response) in enumerate(mock_responses.items()):
                 # This simulates what the pipeline would do
                 result = await self._simulate_pipeline_step(agent, expected_response)
                 assert result["status"] == "success"
@@ -183,7 +183,7 @@ class TestMCPBusIntegration:
     @pytest.mark.integration
     async def test_agent_failure_recovery(self):
         """Test system recovery when agents fail"""
-        failure_sequence = [
+        _failure_sequence = [
             {"agent": "analyst", "error": "GPU memory error", "retry_count": 2},
             {"agent": "fact_checker", "error": "Network timeout", "retry_count": 1},
             {"agent": "synthesizer", "error": None, "success": True}
@@ -279,8 +279,8 @@ class TestMCPBusIntegration:
         import httpx
         async with httpx.AsyncClient() as client:
             # This will be mocked, so it doesn't actually make a call
-            response = await client.post(f"http://localhost/{agent}")
-            return {"status": "success", "data": expected_response}
+            await client.post(f"http://localhost/{agent}")
+        return {"status": "success", "data": expected_response}
 
     async def _execute_full_news_pipeline(self) -> dict[str, Any]:
         """Execute complete news processing pipeline"""
@@ -346,15 +346,12 @@ class TestAgentIntegrationPatterns:
             mock_response = AsyncMock()
             mock_response.json.return_value = {"status": "healthy", "uptime": 3600}
             mock_client.return_value.get.return_value = mock_response
-
             # Test all agent health checks
             health_results = await self._check_all_agent_health(agents_to_test)
 
             # Verify all agents are healthy
             assert all(result["healthy"] for result in health_results.values())
             assert len(health_results) == len(agents_to_test)
-
-    @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_configuration_consistency(self):
         """Test configuration consistency across agents"""
@@ -380,7 +377,7 @@ class TestAgentIntegrationPatterns:
     async def _check_all_agent_health(self, agents: list[tuple]) -> dict[str, dict]:
         """Check health of all agents"""
         results = {}
-        for agent_name, port in agents:
+        for agent_name, _port in agents:
             results[agent_name] = {"healthy": True, "response_time": 0.1}
         return results
 

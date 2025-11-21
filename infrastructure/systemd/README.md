@@ -86,7 +86,17 @@ Global: `/etc/justnews/global.env`
 
 ```
 # absolute python for agents
-JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-v2-py312/bin/python
+JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-v2-py312-fix/bin/python
+
+Helpers & validation
+--------------------
+This repository includes two helper scripts to ensure and validate that the system
+has a canonical runtime configured in `/etc/justnews/global.env`:
+
+- `infrastructure/systemd/scripts/ensure_global_python_bin.sh` — idempotent helper which will create or add `PYTHON_BIN` to `/etc/justnews/global.env` (invoked by canonical startup flow). Requires root to write `/etc/justnews/global.env`.
+- `infrastructure/scripts/validate-global-env.sh` — CI-friendly validation helper that checks for `PYTHON_BIN` in `/etc/justnews/global.env` and, as a fallback, checks the repository example `infrastructure/systemd/examples/justnews.env.example`.
+
+Use `make check-global-env` in the repository to run the validation script (CI-friendly). The canonical startup flow runs the ensure helper so hosts booted with the repository's deployment scripts will have `PYTHON_BIN` set when possible.
 
 # optional: default working directory
 SERVICE_DIR=/home/adra/JustNews

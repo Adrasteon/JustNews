@@ -1,8 +1,8 @@
 # Crawl Profile Tuning Log
 
 ## 2025-11-01 - BBC link_preview_only (max_articles=100)
-- Environment: justnews-v2-py312, Crawl4AI 0.7.4, Playwright Chromium refreshed 2025-11-01.
-- Command: `PYTHONPATH=. conda run -n justnews-v2-py312 python - <<'PY' ... max_articles=100`.
+- Environment: justnews-v2-py312-fix, Crawl4AI 0.7.4, Playwright Chromium refreshed 2025-11-01.
+- Command: `PYTHONPATH=. conda run -n justnews-v2-py312-fix python - <<'PY' ... max_articles=100`.
 - Metrics: total 100, unique 100, non-news 2, domain split {'www.bbc.co.uk': 76, 'www.bbc.com': 24}.
 - Notes: include/exclude filters held steady; two seed URLs surfaced at the tail of the run for monitoring.
 
@@ -109,8 +109,8 @@
 100. https://www.bbc.com/news
 
 ## 2025-11-01 - BBC link_preview_only (strict seed skip, retry resets)
-- Environment: justnews-v2-py312, Crawl4AI 0.7.4, Playwright Chromium refreshed 2025-11-01.
-- Command: `PYTHONPATH=. conda run -n justnews-v2-py312 python - <<'PY' ... max_articles=100` after updating concurrency to 1, max links to 120.
+- Environment: justnews-v2-py312-fix, Crawl4AI 0.7.4, Playwright Chromium refreshed 2025-11-01.
+- Command: `PYTHONPATH=. conda run -n justnews-v2-py312-fix python - <<'PY' ... max_articles=100` after updating concurrency to 1, max links to 120.
 - Metrics: total 100, unique 98, non-news 0, domain split {'www.bbc.co.uk': 75, 'www.bbc.com': 23}.
 - Notes: enabled `extra.strict_skip_seed_articles`, introduced per-request AsyncWebCrawler reinitialisation to absorb Playwright `Connection closed` errors, and set `timeout: 15` on link previews. Resulting harvest maintained article-only output with slight shortfall (2 duplicates filtered). Console run log retained in tuning session notes.
 

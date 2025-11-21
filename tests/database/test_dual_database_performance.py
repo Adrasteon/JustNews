@@ -103,7 +103,7 @@ class TestDualDatabasePerformance:
         # Measure performance
         start_time = time.time()
         for _ in range(100):
-            article = mock_performance_service.get_article_by_id(1)
+            _ = mock_performance_service.get_article_by_id(1)
         end_time = time.time()
 
         total_time = end_time - start_time
@@ -231,7 +231,7 @@ class TestDualDatabasePerformance:
         end_time = time.time()
 
         total_time = end_time - start_time
-        total_operations = num_threads * 100
+        _total_operations = num_threads * 100
 
         # Performance assertions
         assert total_time < 5.0  # Concurrent operations should complete quickly
@@ -260,7 +260,7 @@ class TestDualDatabasePerformance:
             articles.append(article)
 
         # Measure memory after creating objects
-        after_creation_memory = process.memory_info().rss / 1024 / 1024
+        _after_creation_memory = process.memory_info().rss / 1024 / 1024
 
         # Perform operations
         mock_cursor = MagicMock()
@@ -268,7 +268,7 @@ class TestDualDatabasePerformance:
 
         for article in articles[:100]:  # Process subset
             mock_cursor.fetchone.return_value = (article.id, article.title)
-            retrieved = mock_performance_service.get_article_by_id(article.id)
+            _ = mock_performance_service.get_article_by_id(article.id)
 
         # Measure memory after operations
         after_operations_memory = process.memory_info().rss / 1024 / 1024
@@ -381,7 +381,7 @@ class TestDualDatabasePerformance:
         connections = []
 
         # Create multiple connection mocks
-        for i in range(10):
+        for _i in range(10):
             mock_conn = MagicMock()
             mock_conn.close = MagicMock()
             connections.append(mock_conn)
@@ -398,7 +398,7 @@ class TestDualDatabasePerformance:
 
             # Simulate query
             cursor = conn.cursor()
-            result = cursor.fetchone()
+            _result = cursor.fetchone()
 
         end_time = time.time()
 
@@ -429,7 +429,7 @@ class TestDualDatabasePerformance:
 
         # Simulate statistics calculation
         total_articles = len(articles)
-        sources_count = len(set(a.source_id for a in articles))
+        sources_count = len({a.source_id for a in articles})
         avg_content_length = sum(len(a.content) for a in articles) / len(articles)
 
         end_time = time.time()
@@ -509,7 +509,7 @@ def test_scalability_under_load(concurrency_level, mock_database_service):
             mock_cursor.fetchone.return_value = (task_id * 10 + i, f"Data {i}")
             service.mb_conn.cursor.return_value = mock_cursor
 
-            result = service.get_article_by_id(task_id * 10 + i)
+            _ = service.get_article_by_id(task_id * 10 + i)
 
         end_time = time.time()
         results[task_id] = end_time - start_time
@@ -531,7 +531,7 @@ def test_scalability_under_load(concurrency_level, mock_database_service):
     total_time = time.time() - start_time
 
     # Scalability assertions
-    avg_task_time = sum(results.values()) / len(results)
+    _avg_task_time = sum(results.values()) / len(results)
     max_task_time = max(results.values())
 
     # Performance should degrade gracefully with concurrency

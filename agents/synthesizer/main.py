@@ -524,6 +524,9 @@ async def get_synthesizer_performance_endpoint(call: ToolCall) -> dict[str, Any]
 
         result = await get_stats(synthesizer_engine)
         return result
+    except Exception as e:
+        logger.exception("❌ Performance stats failed")
+        raise HTTPException(status_code=500, detail=f"Performance stats failed: {str(e)}")
 
 
 @app.post("/api/v1/articles/synthesize")
@@ -561,10 +564,7 @@ async def get_synthesis_job(job_id: str):
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
-
-    except Exception as e:
-        logger.exception("❌ Performance stats failed")
-        raise HTTPException(status_code=500, detail=f"Performance stats failed: {str(e)}")
+    
 
 
 # Health and stats endpoints

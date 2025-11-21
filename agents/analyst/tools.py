@@ -29,6 +29,8 @@ logger = get_logger(__name__)
 
 # Global engine instance
 _engine: AnalystEngine | None = None
+# Exposed hook for tests: tests may monkeypatch ClusterFetcher at module level
+ClusterFetcher = None
 
 def get_analyst_engine() -> AnalystEngine:
     """Get or create the global analyst engine instance."""
@@ -296,7 +298,13 @@ def generate_analysis_report(texts: list[str], article_ids: list[str] | None = N
     # backwards-compatible.
     if cluster_id and (not texts or len(texts) == 0):
         try:
-            from agents.cluster_fetcher.cluster_fetcher import ClusterFetcher
+            # Allow tests to monkeypatch a module-level ClusterFetcher attribute
+            # (tests can set analyst_tools.ClusterFetcher = <fake>) so prefer the
+            # attribute if it exists, otherwise import the real implementation.
+            if 'ClusterFetcher' in globals() and globals().get('ClusterFetcher') is not None:
+                ClusterFetcher = globals().get('ClusterFetcher')
+            else:
+                from agents.cluster_fetcher.cluster_fetcher import ClusterFetcher
 
             fetcher = ClusterFetcher()
             records = fetcher.fetch_cluster(cluster_id=cluster_id)

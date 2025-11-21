@@ -16,11 +16,11 @@
     "retry_delay_seconds": 1.0
   },
   "database": {
-    "host": "127.0.0.1",
+    "host": "localhost",
     "port": 3306,
     "database": "justnews",
-    "user": "justnews",
-    "password": "migration_password_2024",
+    "user": "justnews_user",
+    "password": "password123",
     "connection_pool": {
       "min_connections": 2,
       "max_connections": 10,
@@ -170,10 +170,9 @@
       "scout_batch_size": 10,
       "analyst_batch_size": 16,
       "synthesizer_batch_size": 8
-    }
-    ,
+    },
     "publishing": {
-      "require_draft_fact_check_pass_for_publish": false,
+      "require_draft_fact_check_pass_for_publish": true,
       "chief_editor_review_required": true,
       "allow_publish_override_by_agent": []
     }
@@ -255,9 +254,6 @@
       "ttl_seconds": 3600,
       "max_size_mb": 512
     }
-  },
-  "persistence": {
-    "synthesized_article_storage": "extend"  
   },
   "external_services": {
     "news_sources": {

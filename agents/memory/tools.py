@@ -125,6 +125,24 @@ def _make_chroma_metadata_safe(metadata: dict) -> dict:
     return safe_metadata
 
 
+def _ensure_embedding_metadata(metadata: dict) -> dict:
+    """Attach embedding model metadata to Chroma metadatas for traceability."""
+    try:
+        model = os.environ.get('EMBEDDING_MODEL') or os.environ.get('SENTENCE_TRANSFORMER_MODEL') or 'all-MiniLM-L6-v2'
+        dims = os.environ.get('EMBEDDING_DIMENSIONS')
+        metadata = metadata or {}
+        if isinstance(metadata, dict):
+            metadata.setdefault('embedding_model', model)
+            if dims:
+                try:
+                    metadata.setdefault('embedding_dimensions', int(dims))
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return metadata
+
+
 def save_article(content: str, metadata: dict, embedding_model=None, db_service=None) -> dict:
     """Saves an article to the migrated MariaDB + ChromaDB system.
 
@@ -351,7 +369,7 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
         try:
             if getattr(db_service, 'collection', None):
                 embedding_list = list(map(float, embedding))
-                chroma_metadata = _make_chroma_metadata_safe(metadata)
+                chroma_metadata = _make_chroma_metadata_safe(_ensure_embedding_metadata(metadata))
                 db_service.collection.add(
                     ids=[str(next_id)],
                     embeddings=[embedding_list],

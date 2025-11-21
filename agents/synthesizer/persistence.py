@@ -11,6 +11,16 @@ def _make_chroma_metadata_safe(metadata: Dict[str, Any]) -> Dict[str, Any]:
     safe = metadata.copy() if metadata is not None else {}
     # Add a marker for synthesized
     safe.setdefault('is_synthesized', True)
+    # Add embedding model metadata for traceability
+    import os
+    model = os.environ.get('EMBEDDING_MODEL') or os.environ.get('SENTENCE_TRANSFORMER_MODEL') or 'all-MiniLM-L6-v2'
+    dims = os.environ.get('EMBEDDING_DIMENSIONS')
+    safe.setdefault('embedding_model', model)
+    if dims:
+        try:
+            safe.setdefault('embedding_dimensions', int(dims))
+        except Exception:
+            pass
     return safe
 
 

@@ -489,6 +489,93 @@ def get_database_stats(service: MigratedDatabaseService) -> dict[str, Any]:
     return stats
 
 
+## Knowledge Graph helpers (DB-backed)
+
+
+def add_entity(service: MigratedDatabaseService, name: str, entity_type: str, confidence: float | None = None) -> int | None:
+    """Add or find an entity in the DB-backed entities table.
+
+    Returns the entity id on success, or None on error.
+    """
+    try:
+        service.ensure_conn()
+        cursor = service.mb_conn.cursor()
+        # Check existing
+        cursor.execute("SELECT id FROM entities WHERE name=%s AND entity_type=%s LIMIT 1", (name, entity_type))
+        row = cursor.fetchone()
+        if row:
+            eid = row[0]
+            cursor.close()
+            return eid
+
+        cursor.execute("INSERT INTO entities (name, entity_type, confidence_score) VALUES (%s,%s,%s)", (name, entity_type, confidence))
+        service.mb_conn.commit()
+        cursor.execute("SELECT LAST_INSERT_ID()")
+        lid = cursor.fetchone()
+        cursor.close()
+        return lid[0] if lid else None
+    except Exception as e:
+        logger.warning(f"add_entity failed: {e}")
+        try:
+            service.mb_conn.rollback()
+        except Exception:
+            pass
+        return None
+
+
+def link_entity_to_article(service: MigratedDatabaseService, article_id: int, entity_id: int, relevance: float | None = None) -> bool:
+    """Link an entity to an article in the article_entities junction table."""
+    try:
+        service.ensure_conn()
+        cursor = service.mb_conn.cursor()
+        cursor.execute("INSERT IGNORE INTO article_entities (article_id, entity_id, relevance_score) VALUES (%s,%s,%s)", (article_id, entity_id, relevance))
+        service.mb_conn.commit()
+        cursor.close()
+        return True
+    except Exception as e:
+        logger.warning(f"link_entity_to_article failed: {e}")
+        try:
+            service.mb_conn.rollback()
+        except Exception:
+            pass
+        return False
+
+
+def get_article_entities(service: MigratedDatabaseService, article_id: int) -> list[dict[str, Any]]:
+    """Return list of entity dicts attached to an article."""
+    try:
+        service.ensure_conn()
+        cursor = service.mb_conn.cursor()
+        cursor.execute(
+            "SELECT e.id, e.name, e.entity_type, e.confidence_score, ae.relevance_score FROM entities e JOIN article_entities ae ON e.id = ae.entity_id WHERE ae.article_id = %s",
+            (article_id,)
+        )
+        rows = cursor.fetchall()
+        cursor.close()
+        return [
+            {"id": r[0], "name": r[1], "entity_type": r[2], "confidence_score": float(r[3]) if r[3] is not None else None, "relevance": float(r[4]) if r[4] is not None else None}
+            for r in rows
+        ]
+    except Exception as e:
+        logger.warning(f"get_article_entities failed: {e}")
+        return []
+
+
+def search_entities(service: MigratedDatabaseService, query: str, limit: int = 20) -> list[dict[str, Any]]:
+    """Search entities by name prefix or substring."""
+    try:
+        service.ensure_conn()
+        cursor = service.mb_conn.cursor()
+        pattern = f"%{query}%"
+        cursor.execute("SELECT id, name, entity_type, confidence_score FROM entities WHERE name LIKE %s OR entity_type LIKE %s LIMIT %s", (pattern, pattern, limit))
+        rows = cursor.fetchall()
+        cursor.close()
+        return [{"id": r[0], "name": r[1], "entity_type": r[2], "confidence_score": float(r[3]) if r[3] is not None else None} for r in rows]
+    except Exception as e:
+        logger.warning(f"search_entities failed: {e}")
+        return []
+
+
 def semantic_search(
     service: MigratedDatabaseService,
     query: str,

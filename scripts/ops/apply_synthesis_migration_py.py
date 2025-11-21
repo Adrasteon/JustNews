@@ -13,11 +13,19 @@ import time
 import logging
 from pathlib import Path
 
+# Prefer mysql.connector if available (C-extension) because it supports multi-statement execution
+MYSQL_CONNECTOR_AVAILABLE = True
 try:
     import mysql.connector
-except Exception as e:
-    print('Missing mysql.connector in environment – install python mysql-connector or mysqlclient', file=sys.stderr)
-    raise
+except Exception:
+    MYSQL_CONNECTOR_AVAILABLE = False
+
+# Fallback to pure-Python pymysql if mysql.connector isn't available or fails
+PYMYSQL_AVAILABLE = True
+try:
+    import pymysql
+except Exception:
+    PYMYSQL_AVAILABLE = False
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -72,16 +80,37 @@ def run():
 
     logging.info('Using DB host=%s port=%s db=%s user=%s', cfg['host'], cfg['port'], cfg['database'], cfg['user'])
 
-    try:
-        conn = mysql.connector.connect(host=cfg['host'], port=cfg['port'], user=cfg['user'], password=cfg['password'], database=cfg['database'])
-        conn.autocommit = False
-    except Exception as e:
-        logging.exception('Could not connect to MariaDB: %s', e)
+    conn = None
+    cursor = None
+    # Try mysql.connector first
+    if MYSQL_CONNECTOR_AVAILABLE:
+        try:
+            conn = mysql.connector.connect(host=cfg['host'], port=cfg['port'], user=cfg['user'], password=cfg['password'], database=cfg['database'])
+            conn.autocommit = False
+            cursor = conn.cursor()
+            logging.info('Connected via mysql.connector')
+        except Exception:
+            logging.exception('mysql.connector failed to connect; will try pymysql fallback')
+
+    # Try pymysql as fallback (pure Python, usually avoids local client plugin issues)
+    if conn is None and PYMYSQL_AVAILABLE:
+        try:
+            conn = pymysql.connect(host=cfg['host'], port=cfg['port'], user=cfg['user'], password=cfg['password'], database=cfg['database'], autocommit=False)
+            cursor = conn.cursor()
+            logging.info('Connected via pymysql')
+        except Exception:
+            logging.exception('pymysql failed to connect as well')
+
+    if conn is None:
+        logging.error('Could not connect to MariaDB via mysql.connector or pymysql. Aborting.')
         sys.exit(2)
 
     cursor = conn.cursor()
 
     try:
+        use_mysql_connector = 'mysql' in globals() and MYSQL_CONNECTOR_AVAILABLE and isinstance(conn.__class__.__name__, str)
+        use_pymysql = 'pymysql' in globals() and PYMYSQL_AVAILABLE and conn is not None and conn.__class__.__module__.startswith('pymysql')
+
         for migration in MIGRATIONS:
             migration = Path(migration)
             if not migration.exists():
@@ -90,15 +119,43 @@ def run():
             logging.info('Applying %s', migration)
             sql = migration.read_text(encoding='utf-8')
             try:
-                # mysql.connector supports multi according to default
-                for result in cursor.execute(sql, multi=True):
-                    # iterate to consume results, errors raise
-                    pass
-                conn.commit()
+                if use_mysql_connector:
+                    for result in cursor.execute(sql, multi=True):
+                        # consume results
+                        pass
+                    conn.commit()
+                elif use_pymysql:
+                    # PyMySQL cursor doesn't support multi=True; execute statements sequentially.
+                    # Strip SQL comments and split on semicolons safely for our migrations.
+                    statements = []
+                    cleaned = []
+                    for line in sql.splitlines():
+                        # remove SQL line comments starting with --
+                        if line.strip().startswith('--'):
+                            continue
+                        cleaned.append(line)
+                    joined = '\n'.join(cleaned)
+                    # naively split on semicolons; migrations here are safe for this.
+                    for stmt in joined.split(';'):
+                        stmt = stmt.strip()
+                        if not stmt:
+                            continue
+                        statements.append(stmt)
+
+                    for stmt in statements:
+                        cursor.execute(stmt)
+                    conn.commit()
+                else:
+                    logging.error('No supported DB client available to execute SQL')
+                    raise RuntimeError('No DB client')
+
                 logging.info('Applied %s', migration)
             except Exception:
                 logging.exception('Failed to apply %s', migration)
-                conn.rollback()
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
                 raise
 
     finally:

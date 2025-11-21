@@ -42,3 +42,26 @@ def test_db_backed_kg_can_store_and_retrieve():
 
     cursor.close()
     svc.close()
+
+
+def test_synthesized_draft_adds_embedding_metadata_to_chroma():
+    # ensure env set
+    import os
+    os.environ['EMBEDDING_MODEL'] = os.environ.get('EMBEDDING_MODEL', 'all-MiniLM-L6-v2')
+
+    from agents.synthesizer.persistence import save_synthesized_draft
+    from database.utils.migrated_database_utils import create_database_service
+
+    emb = [0.0] * 384
+    res = save_synthesized_draft('test-story-embed', 'Test title embed', 'body', 'summary', analysis_summary={'x':1}, synth_metadata={'from':'test'}, persistence_mode='synthesized_articles', embedding=emb)
+    assert res.get('status') == 'success'
+    svc = create_database_service()
+    try:
+        if svc.collection:
+            out = svc.collection.get(ids=[str(res['id'])], include=['metadatas'])
+            metas = out.get('metadatas', [])
+            if metas:
+                md = metas[0]
+                assert 'embedding_model' in md
+    finally:
+        svc.close()

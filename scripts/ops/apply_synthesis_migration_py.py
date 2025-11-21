@@ -101,7 +101,6 @@ def run():
             cursor = conn.cursor()
             logging.info('Connected via pymysql')
             used_connector = 'pymysql'
-        used_connector = 'pymysql'
         except Exception:
             logging.exception('pymysql failed to connect as well')
 

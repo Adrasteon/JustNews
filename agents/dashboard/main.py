@@ -276,6 +276,10 @@ def set_publishing_config(payload: dict, request: Request):
         except Exception:
             logger.exception("Failed to write audit log for publishing config change")
         return {"status": "success"}
+    except HTTPException:
+        # Preserve explicit FastAPI HTTP errors (401/403 etc.) so callers and
+        # tests receive the intended status code rather than a 500.
+        raise
     except Exception as e:
         logger.exception("Failed to set publishing config")
         raise HTTPException(status_code=500, detail=str(e))
@@ -337,6 +341,10 @@ def get_publishing_config(request: Request):
             "chief_editor_review_required": chief_required,
             "synthesized_article_storage": storage,
         }
+    except HTTPException:
+        # Preserve explicit FastAPI HTTP errors (401/403 etc.) so tests and
+        # callers receive the intended status code instead of a 500.
+        raise
     except Exception as e:
         logger.exception("Failed to read publishing config")
         raise HTTPException(status_code=500, detail=str(e))

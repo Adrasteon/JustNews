@@ -101,12 +101,20 @@ def register_reload_endpoint(app: FastAPI, path: str = "/admin/reload", require_
                     token = auth_header.split(" ", 1)[1]
                 else:
                     token = auth_header
-                payload = verify_token(token)
+
+                # Use runtime imports so tests can monkeypatch auth_models.
+                import agents.common.auth_models as auth_models
+
+                payload = auth_models.verify_token(token)
                 if payload is None:
                     raise HTTPException(status_code=401, detail="Invalid authentication token")
-                user = get_user_by_id(payload.user_id)
-                if user is None or user.get("role") != UserRole.ADMIN.value:
+                user = auth_models.get_user_by_id(payload.user_id)
+                if user is None or user.get("role") != auth_models.UserRole.ADMIN.value:
                     raise HTTPException(status_code=403, detail="Admin role required")
+
+            # Auth passed — delegate to the actual reload behavior and return its
+            # response. _reload is async so await it.
+            return await _reload(request)
 
         app.post(path)(_secure_reload)
         return

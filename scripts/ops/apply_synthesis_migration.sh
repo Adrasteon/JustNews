@@ -52,7 +52,6 @@ for MIGRATION in "${MIGRATIONS[@]}"; do
     MYSQL_PORT=$(echo "$DB_URL" | sed -E 's#.*:([0-9]+)/.*#\1#' )
     MYSQL_DBNAME=$(echo "$DB_URL" | sed -E 's#.*/([^/]+)$#\1#' )
     MYSQL_PORT=${MYSQL_PORT:-3306}
-    MYSQL_PWD="$MYSQL_PASS" mysql --user="$MYSQL_USER" --host="$MYSQL_HOST" --port="$MYSQL_PORT" "$MYSQL_DBNAME" < "$MIGRATION" | tee "$LOG_DIR/migration_${timestamp}.log"
   else
     PAGER=cat psql "$DB_URL" -v ON_ERROR_STOP=1 -1 -f "$MIGRATION" | tee "$LOG_DIR/migration_${timestamp}.log"
   fi

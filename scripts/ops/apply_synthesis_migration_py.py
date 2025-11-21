@@ -82,6 +82,7 @@ def run():
 
     conn = None
     cursor = None
+    used_connector = None
     # Try mysql.connector first
     if MYSQL_CONNECTOR_AVAILABLE:
         try:
@@ -98,6 +99,7 @@ def run():
             conn = pymysql.connect(host=cfg['host'], port=cfg['port'], user=cfg['user'], password=cfg['password'], database=cfg['database'], autocommit=False)
             cursor = conn.cursor()
             logging.info('Connected via pymysql')
+        used_connector = 'pymysql'
         except Exception:
             logging.exception('pymysql failed to connect as well')
 
@@ -105,11 +107,13 @@ def run():
         logging.error('Could not connect to MariaDB via mysql.connector or pymysql. Aborting.')
         sys.exit(2)
 
-    cursor = conn.cursor()
+    # If we connected via mysql.connector earlier we already have a cursor
+    if cursor is None:
+        cursor = conn.cursor()
 
     try:
-        use_mysql_connector = 'mysql' in globals() and MYSQL_CONNECTOR_AVAILABLE and isinstance(conn.__class__.__name__, str)
-        use_pymysql = 'pymysql' in globals() and PYMYSQL_AVAILABLE and conn is not None and conn.__class__.__module__.startswith('pymysql')
+        use_mysql_connector = used_connector == 'mysql_connector' or (MYSQL_CONNECTOR_AVAILABLE and conn.__class__.__module__.startswith('mysql'))
+        use_pymysql = used_connector == 'pymysql' or (PYMYSQL_AVAILABLE and conn.__class__.__module__.startswith('pymysql'))
 
         for migration in MIGRATIONS:
             migration = Path(migration)

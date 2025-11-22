@@ -1,4 +1,4 @@
-Nice — I understand the constraint: the new model must be fully open-source and have good support for refining/fine‑tuning (not just inference). Below are OSS 7B candidates that meet that requirement, my recommendation, quantization & training compatibility notes, and concrete next steps you can pick.
+Nice — I understand the constraint: the new model must be fully open-source and have good support for refining/fine‑tuning (not just inference). Given the need for task-specific training without cross-task weight conflicts, the recommended approach is to use a single stable base model (e.g. Mistral‑7B) and keep separate, per‑task adapters (LoRA / PEFT / QLoRA). Below are OSS 7B candidates that meet that requirement, the adapter-first workflow, quantization & training compatibility notes, and concrete next steps you can pick.
 
 ## Best fully-OSS 7B models for refining + int8 inference (short list)
 
@@ -26,9 +26,10 @@ Notes about “fully OSS”: confirm the exact checkpoint / tag (HF model card) 
 
 ---
 
-## Why these fit your refining & training setup
+## Why these fit your refining & training setup (and the adapter-first approach)
 
-- Support for LoRA / PEFT and QLoRA workflows — lets you refine models without expensive full-weight updates.
+- Support for LoRA / PEFT and QLoRA workflows — lets you refine models without expensive full-weight updates and avoids conflicts when multiple agents need different training.
+- Use a single canonical base model (Mistral‑7B recommended) and store small per-agent adapters for each task. Adapters are lightweight, independent, versionable, and hot-swappable at runtime.
 - Good compatibility with bitsandbytes / transformers / accelerate on GPU.
 - Well-documented training recipes and community tools (AutoTrain, Hugging Face PEFT, QLoRA implementations) so your existing pipeline can plug in easily.
 
@@ -47,7 +48,7 @@ Notes about “fully OSS”: confirm the exact checkpoint / tag (HF model card) 
 
 ---
 
-## Practical tooling & commands (what integrates with your repo)
+## Practical tooling & commands (what integrates with your repo) — adapter-first
 
 - Required libs: transformers, accelerate, bitsandbytes, peft, evaluate/datasets, (optionally) auto-gptq for GPTQ conversions.
 - Sample inference load (int8 with bitsandbytes):
@@ -64,6 +65,11 @@ Notes about “fully OSS”: confirm the exact checkpoint / tag (HF model card) 
   model_id = "mistralai/Mistral-7B-Instruct"   # example - pick repo with OSS license
   tok = AutoTokenizer.from_pretrained(model_id)
   model = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb, device_map="auto")
+
+  # Example: load a small per-task adapter at runtime (PEFT/LoRA)
+  from peft import PeftModel
+  adapter_path = "modelstore/agents/synthesizer/adapters/mistral_synth_v1"
+  model = PeftModel.from_pretrained(model, adapter_path)
   ```
 
 - Quick QLoRA starter (finetuning adapters):
@@ -82,7 +88,7 @@ Notes about “fully OSS”: confirm the exact checkpoint / tag (HF model card) 
    - Loads an OSS 7B int8 model (bnb),
    - Scores candidate (top-k) outputs,
    - Provides a small test using existing dataset/fixtures.
-2) Add a training/refinement template (QLoRA + PEFT) to the repo with a runnable example that works on RTX 3090.
+2) Add a training/refinement template (QLoRA + PEFT) to the repo with a runnable example that works on RTX 3090. The template will produce small per-task adapters and store them in the ModelStore so each agent can load their adapter at runtime.
 3) Run a short local experiment right now (on your machine) testing one chosen model’s int8 memory + latency and produce a short report.
 
 Which one do you want me to implement next? (If you pick 1 or 2, tell me which model from the shortlist to use: Mistral, MPT, Pythia, or Falcon.)

@@ -1,0 +1,41 @@
+import os
+import time
+from fastapi.testclient import TestClient
+
+from agents.gpu_orchestrator.main import app
+
+
+def test_policy_enforcement_eviction(monkeypatch):
+    # run everything in test mode (workers are sleepers)
+    monkeypatch.setenv('RE_RANKER_TEST_MODE', '1')
+
+    client = TestClient(app)
+
+    # ensure policy is permissive initially, set enforcement period short
+    resp = client.post('/workers/policy', json={'max_total_workers': 10, 'enforce_period_s': 1})
+    assert resp.status_code == 200
+
+    # create three pools each with 2 workers -> total 6
+    for i in range(3):
+        r = client.post('/workers/pool', params={'agent': f'tpool{i}', 'num_workers': 2, 'hold_seconds': 30})
+        assert r.status_code == 200
+
+    # list should show 3 pools
+    l = client.get('/workers/pool')
+    pools = l.json()
+    assert len(pools) >= 3
+
+    # now tighten policy to max_total_workers = 3 (should evict at least one pool)
+    r = client.post('/workers/policy', json={'max_total_workers': 3, 'enforce_period_s': 1})
+    assert r.status_code == 200
+
+    # wait up to 5s for the enforcer to run
+    for _ in range(6):
+        l = client.get('/workers/pool')
+        pools = l.json()
+        total_workers = sum(p.get('running_workers', 0) for p in pools)
+        if total_workers <= 3:
+            break
+        time.sleep(1)
+
+    assert total_workers <= 3

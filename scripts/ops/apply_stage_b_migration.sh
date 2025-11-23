@@ -33,6 +33,22 @@ if [[ -z "$DB_URL" ]]; then
   DB_URL="${JUSTNEWS_DB_URL:-}"
 fi
 
+# If still not set, prefer MariaDB env vars from global.env to avoid falling back
+# to deprecated postgres-only defaults.
+if [[ -z "$DB_URL" ]]; then
+  M_HOST="${MARIADB_HOST:-127.0.0.1}"
+  M_PORT="${MARIADB_PORT:-3306}"
+  M_DB="${MARIADB_DB:-justnews}"
+  M_USER="${MARIADB_USER:-justnews}"
+  M_PASS="${MARIADB_PASSWORD:-}"
+
+  if [[ -n "$M_USER" && -n "$M_PASS" ]]; then
+    DB_URL="mysql://${M_USER}:${M_PASS}@${M_HOST}:${M_PORT}/${M_DB}"
+  else
+    DB_URL="mysql://${M_HOST}:${M_PORT}/${M_DB}"
+  fi
+fi
+
 if [[ -z "$DB_URL" ]]; then
   echo "Error: database URL not provided. Set JUSTNEWS_DB_URL or pass it as the first argument." >&2
   exit 1

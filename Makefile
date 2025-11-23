@@ -34,7 +34,7 @@ DOCKER_TAG ?= latest
 # Python and tools
 PYTHON := python3.12
 PIP := $(PYTHON) -m pip
-CONDA_ENV := justnews-v2-py312-fix
+CONDA_ENV := justnews-py312
 CONDA := $(shell command -v conda 2>/dev/null || echo)
 ifeq ($(CONDA),)
 RUN_PY := $(PYTHON)

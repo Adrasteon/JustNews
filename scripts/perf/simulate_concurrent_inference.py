@@ -69,9 +69,76 @@ def load_model_if_available(model_id: str | None):
         if not model_id:
             raise RuntimeError('No model id configured (RE_RANKER_MODEL)')
 
-        bnb = BitsAndBytesConfig(load_in_8bit=True, bnb_8bit_use_double_quant=True, bnb_8bit_compute_dtype=getattr(torch, 'float16', None))
-        model = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb, device_map='auto')
+        # Prepare load kwargs and create quantization config if bitsandbytes native binary is present.
+        load_kwargs = {}
+        bnb = None
+        try:
+            # Lightweight check for bitsandbytes native binary WITHOUT importing the module
+            import importlib.util as _il
+            spec = _il.find_spec('bitsandbytes')
+            bnb_dir = None
+            if spec and spec.submodule_search_locations:
+                # spec gives us the location of the package files
+                bnb_dir = list(spec.submodule_search_locations)[0]
+            has_native = any(name.startswith('libbitsandbytes') for name in os.listdir(bnb_dir)) if bnb_dir and os.path.isdir(bnb_dir) else False
+            if has_native:
+                bnb = BitsAndBytesConfig(load_in_8bit=True, bnb_8bit_use_double_quant=True, bnb_8bit_compute_dtype=getattr(torch, 'float16', None))
+                load_kwargs['quantization_config'] = bnb
+            else:
+                print('bitsandbytes native binary not found — skipping 8-bit quantization and using float16/device_map instead')
+        except Exception:
+            # if bitsandbytes is completely missing or cannot provide a native binary, skip quantization
+            print('bitsandbytes check failed; skipping 8-bit quantization and using float16/device_map when possible')
+
+        # Prefer forcing the model onto GPU to get realistic inference latency when a GPU is available.
+        # We'll try a strict placement first (all parameters to cuda:0) and on failure fall back to auto device_map.
+        # load_kwargs already prepared above depending on bitsandbytes availability
+        tried_forced = False
+        if torch.cuda.is_available():
+            try:
+                tried_forced = True
+                print('Attempting to load model directly onto gpu:0 (may OOM if not enough memory)')
+                # If we couldn't create a BitsAndBytesConfig (bnb is None) then prefer float16 dtype
+                if bnb is None:
+                    model = AutoModelForCausalLM.from_pretrained(model_id, device_map={'': 'cuda:0'}, dtype=getattr(torch, 'float16', None), **load_kwargs)
+                else:
+                    model = AutoModelForCausalLM.from_pretrained(model_id, device_map={'': 'cuda:0'}, torch_dtype=getattr(torch, 'float16', None), **load_kwargs)
+            except Exception as e_forced:
+                print('Direct cuda:0 placement failed, falling back to device_map=auto; error:', e_forced)
+                # If bnb None, don't pass quantization_config (load as float16 if possible) to avoid bitsandbytes errors.
+                if bnb is None:
+                    model = AutoModelForCausalLM.from_pretrained(model_id, device_map='auto', dtype=getattr(torch, 'float16', None))
+                else:
+                    model = AutoModelForCausalLM.from_pretrained(model_id, device_map='auto', **load_kwargs)
+        else:
+            model = AutoModelForCausalLM.from_pretrained(model_id, device_map='auto', **load_kwargs)
         tokenizer = AutoTokenizer.from_pretrained(model_id)
+
+        # Log device placement info to help diagnose where parameters land
+        try:
+            if hasattr(model, 'hf_device_map'):
+                print('Model hf_device_map:', getattr(model, 'hf_device_map'))
+        except Exception:
+            pass
+
+        # count params on cuda
+        try:
+            params_on_cuda = sum(1 for p in model.parameters() if p.is_cuda)
+            total_params = sum(1 for _ in model.parameters())
+            print(f'Parameters on CUDA: {params_on_cuda}/{total_params}')
+        except Exception:
+            pass
+
+        # If there are no params on CUDA but we have a GPU, attempt to move model there
+        if torch.cuda.is_available():
+            try:
+                if params_on_cuda == 0:
+                    print('Trying model.to("cuda") to force GPU placement...')
+                    model.to('cuda')
+                    params_on_cuda = sum(1 for p in model.parameters() if p.is_cuda)
+                    print(f'Parameters on CUDA after model.to("cuda"): {params_on_cuda}/{total_params}')
+            except Exception as e_move:
+                print('model.to("cuda") failed (likely OOM), keeping current placement:', e_move)
 
         class RealScorer:
             def __init__(self, m, tkn):
@@ -82,13 +149,38 @@ def load_model_if_available(model_id: str | None):
                 inp = f"Query: {q}\nCandidate: {c}\nScore:"
                 tokens = self.t(inp, return_tensors='pt')
                 if torch.cuda.is_available():
-                    tokens = {k: v.to('cuda') for k, v in tokens.items()}
+                    # ensure tokens land on the same device as model if possible
+                    try:
+                        # prefer model device for placement
+                        dev = next(self.m.parameters()).device
+                        tokens = {k: v.to(dev) for k, v in tokens.items()}
+                    except Exception:
+                        tokens = {k: v.to('cuda') for k, v in tokens.items()}
                 with torch.no_grad():
                     out = self.m(**tokens)
                 # heuristic: return max softmax on last token
                 logits = out.logits[:, -1, :]
-                probs = logits.softmax(dim=-1).max().values.item()
-                return float(probs)
+                # Robust handling of logits in either torch tensor or numpy/other
+                try:
+                    # Preferred: torch tensor path
+                    probs = logits.softmax(dim=-1).max().values.item()
+                    return float(probs)
+                except Exception:
+                    # Fallback: coerce to numpy and compute softmax then max
+                    try:
+                        import numpy as _np
+                        if hasattr(logits, 'detach'):
+                            arr = logits.detach().cpu().numpy()
+                        else:
+                            arr = _np.array(logits)
+                        # safe softmax implementation
+                        exps = _np.exp(arr - _np.max(arr, axis=-1, keepdims=True))
+                        soft = exps / _np.sum(exps, axis=-1, keepdims=True)
+                        val = float(_np.max(soft))
+                        return val
+                    except Exception:
+                        # Last-ditch: if everything fails, return 0.0
+                        return 0.0
 
         return RealScorer(model, tokenizer)
     except Exception as e:
@@ -137,6 +229,7 @@ def run_workers(workers: int, total_requests: int, model_id: str | None = None):
         'duration_s': duration,
         'gpu_used_before_mb': used_mb,
         'gpu_used_after_mb': used_mb2,
+        'latencies_ms': all_latencies,
     }
 
 
@@ -145,12 +238,67 @@ def main(argv=None):
     p.add_argument('--workers', type=int, default=4)
     p.add_argument('--requests', type=int, default=100)
     p.add_argument('--model', type=str, default=None)
+    p.add_argument('--repeat', type=int, default=1, help='Repeat each experiment N times')
+    p.add_argument('--sweep', action='store_true', help='Run a sweep of worker counts from 1..N instead of a single workers value')
+    p.add_argument('--sweep-max', type=int, default=6, help='When --sweep is used, maximum workers to try')
+    p.add_argument('--output-csv', type=str, default=None, help='Write per-experiment summary rows to CSV file')
+    p.add_argument('--output-json', type=str, default=None, help='Write full results to JSON file')
     args = p.parse_args(argv)
 
-    res = run_workers(args.workers, args.requests, args.model)
-    print('\nSummary:')
-    for k, v in res.items():
-        print(f"  {k}: {v}")
+    # run experiments: either a single run (workers) or a sweep
+    all_results = []
+
+    def record_result(w, r, run_idx, res):
+        summary = {
+            'workers': w,
+            'total_requests': res['total_requests'],
+            'duration_s': res['duration_s'],
+            'p50_ms': statistics.median(res['latencies_ms']) if res['latencies_ms'] else None,
+            'p95_ms': (statistics.quantiles(res['latencies_ms'], n=100)[94] if res['latencies_ms'] else None),
+            'max_ms': (max(res['latencies_ms']) if res['latencies_ms'] else None),
+            'avg_ms': (statistics.mean(res['latencies_ms']) if res['latencies_ms'] else None),
+            'gpu_used_before_mb': res['gpu_used_before_mb'],
+            'gpu_used_after_mb': res['gpu_used_after_mb'],
+            'run_idx': run_idx,
+            'requests_per_worker': max(1, r // w),
+        }
+        all_results.append(summary)
+
+    if args.sweep:
+        max_workers = args.sweep_max
+        for w in range(1, max_workers + 1):
+            for rep in range(args.repeat):
+                print(f"\n=== sweep: workers={w} repeat={rep+1}/{args.repeat} ===")
+                res = run_workers(w, args.requests, args.model)
+                record_result(w, args.requests, rep + 1, res)
+    else:
+        for rep in range(args.repeat):
+            print(f"\n=== run: workers={args.workers} repeat={rep+1}/{args.repeat} ===")
+            res = run_workers(args.workers, args.requests, args.model)
+            record_result(args.workers, args.requests, rep + 1, res)
+
+    # print a compact summary
+    print('\nOverall summary:')
+    for rr in all_results:
+        print(f"  workers={rr['workers']} run={rr['run_idx']} p50={rr['p50_ms']:.1f}ms p95={rr['p95_ms']:.1f}ms avg={rr['avg_ms']:.1f}ms gpu_before={rr['gpu_used_before_mb']} gpu_after={rr['gpu_used_after_mb']}")
+
+    # optional CSV / JSON outputs
+    import json
+    if args.output_json:
+        with open(args.output_json, 'w') as jf:
+            json.dump(all_results, jf, indent=2)
+        print(f'Wrote JSON results to {args.output_json}')
+
+    if args.output_csv:
+        import csv
+        headers = ['workers','run_idx','requests_per_worker','total_requests','duration_s','p50_ms','p95_ms','avg_ms','max_ms','gpu_used_before_mb','gpu_used_after_mb']
+        with open(args.output_csv, 'w', newline='') as cf:
+            wtr = csv.DictWriter(cf, fieldnames=headers)
+            wtr.writeheader()
+            for rr in all_results:
+                row = {k: rr.get(k) for k in headers}
+                wtr.writerow(row)
+        print(f'Wrote CSV results to {args.output_csv}')
 
 
 if __name__ == '__main__':

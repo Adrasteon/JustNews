@@ -73,3 +73,16 @@ artifacts/
 # Also ignore specific artifact metadata files
 artifacts/*.txt
 
+# Notebook, interactive and perf result artifacts
+*.ipynb
+scripts/perf/results/
+scripts/perf/results/**
+
+# Ignore local third-party build/cache directories which may contain large binaries
+third_party/
+third_party/**
+
+# Ignore runtime model caches and large model blobs
+models/**
+model_store/**
+

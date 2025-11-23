@@ -10,6 +10,7 @@ from common.observability import get_logger
 from database.utils.migrated_database_utils import (
     add_entity,
     link_entity_to_article,
+    log_kg_operation,
     get_article_entities as db_get_article_entities,
     search_entities as db_search_entities,
 )
@@ -104,10 +105,20 @@ class KnowledgeGraphManager:
             # Create or find entities and link them
             for ent in entities:
                 name = ent
-                entity_type = 'unknown'
-                eid = add_entity(service, name, entity_type, confidence=None)
+                # Normalize and detect entity type
+                canonical, detected_type, detection_src = self._normalize_and_detect_entity(name)
+                eid = add_entity(service, name, detected_type or 'unknown', confidence=None, canonical_name=canonical, detection_source=detection_src)
+                try:
+                    log_kg_operation(service, operation='ensure_entity', actor=os.environ.get('USER') or 'system', target_type='entity', target_id=eid, details={'name': name, 'canonical': canonical, 'detected_type': detected_type})
+                except Exception:
+                    logger.debug('kg audit log failed for ensure_entity')
                 if eid:
-                    link_entity_to_article(service, article_id, eid, relevance=None)
+                    linked = link_entity_to_article(service, article_id, eid, relevance=None)
+                    # Audit operation
+                    try:
+                        log_kg_operation(service, operation='link_entity', actor=os.environ.get('USER') or 'system', target_type='article', target_id=article_id, details={'entity_id': eid, 'entity_name': name, 'canonical': canonical, 'detected_type': detected_type})
+                    except Exception:
+                        logger.debug('kg audit log failed for link_entity')
 
             try:
                 cursor.close()
@@ -115,6 +126,46 @@ class KnowledgeGraphManager:
                 pass
         except Exception as e:
             logger.warning(f"Error storing article entities to DB: {e}")
+
+    def _normalize_and_detect_entity(self, name: str) -> tuple[str, str | None, str]:
+        """Return (canonical_name, detected_type, detection_source).
+
+        Uses simple heuristics to canonicalize a token and infer type.
+        """
+        import unicodedata, re
+
+        if not name:
+            return (name, None, 'heuristic:v1')
+
+        s = str(name).strip()
+        # Normalize unicode and collapse whitespace
+        s_norm = unicodedata.normalize('NFKC', s)
+        s_norm = re.sub(r"\s+", ' ', s_norm)
+        # Remove surrounding punctuation
+        s_clean = s_norm.strip('"\'()[]{},:;')
+
+        # Heuristics for type detection
+        up = s_clean.upper()
+        title_words = s_clean.split()
+        detected = None
+        # Organization indicators
+        org_indicators = ['INC', 'LTD', 'LLC', 'CORP', 'CORPORATION', 'COMPANY', 'UNIVERSITY', 'BANK', '&']
+        if any(ind in up for ind in org_indicators):
+            detected = 'ORG'
+        # Person heuristics: two words with capitalized first letters
+        elif len(title_words) >= 2 and all(w[0].isupper() for w in title_words[:2]):
+            detected = 'PERSON'
+        # Location heuristics
+        else:
+            loc_indicators = ['CITY', 'COUNTRY', 'UN', 'STATE', 'TOWN', 'VILLAGE']
+            if any(ind in up for ind in loc_indicators) or up.endswith(('IA','LAND','STAN','NIA')):
+                detected = 'GPE'
+
+        # Canonical form - lower case with spaces, but preserve original-case for display
+        canonical = re.sub(r"[^\w\s-]", '', s_clean).strip()
+        canonical = re.sub(r"\s+", ' ', canonical)
+
+        return (canonical or s_clean, detected, 'heuristic:v1')
 
     def _write_json(self, file_path: Path, payload: dict[str, Any]) -> None:
         file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -166,6 +217,10 @@ class KnowledgeGraphManager:
                 relationships.append({"source": ents[i]["name"], "target": ents[i + 1]["name"], "type": "cooccurs"})
 
             return {"storage_key": storage_key, "entities": ents, "relationships": relationships}
+            try:
+                log_kg_operation(svc, operation='read_article_entities', actor=os.environ.get('USER') or 'system', target_type='article', target_id=article_id, details={'count': len(ents)})
+            except Exception:
+                pass
         except Exception as e:
             logger.warning(f"get_article_entities (DB) failed: {e}")
             return {"storage_key": storage_key, "entities": [], "relationships": []}
@@ -182,6 +237,31 @@ class KnowledgeGraphManager:
                 if any(query in entity for entity in payload.get("entities", [])):
                     results.append(payload)
             return results
+
+        # DB-backed search: use DB helper then return matching storage_keys
+        try:
+            svc = self.db_service
+            ents = db_search_entities(svc, query)
+            svc.ensure_conn()
+            cursor = svc.mb_conn.cursor()
+            results = []
+            for e in ents:
+                cursor.execute("SELECT a.url_hash FROM article_entities ae JOIN articles a ON a.id = ae.article_id WHERE ae.entity_id = %s LIMIT 10", (e['id'],))
+                rows = cursor.fetchall()
+                for r in rows:
+                    results.append({"storage_key": r[0], "entity": e})
+
+            cursor.close()
+            return results
+        except Exception as e:
+            logger.warning(f"search_entities (DB) failed: {e}")
+            return []
+        finally:
+            try:
+                # audit search
+                log_kg_operation(self.db_service, operation='search_entities', actor=os.environ.get('USER') or 'system', details={'query': query})
+            except Exception:
+                pass
 
     # Backwards-compatible helpers expected by older callers/scripts
     def query_entities(self, entity_type: str | None = None, limit: int = 20) -> list[dict[str, Any]]:
@@ -261,25 +341,7 @@ class KnowledgeGraphManager:
             logger.warning(f"get_graph_statistics failed: {e}")
             return {'total_nodes': 0, 'total_edges': 0, 'node_types': {}, 'edge_types': []}
 
-        # DB-backed: search entities and return matching articles storage_keys
-        try:
-            svc = self.db_service
-            ents = db_search_entities(svc, query)
-            # For matched entities, find articles that reference them
-            svc.ensure_conn()
-            cursor = svc.mb_conn.cursor()
-            results = []
-            for e in ents:
-                cursor.execute("SELECT a.url_hash FROM article_entities ae JOIN articles a ON a.id = ae.article_id WHERE ae.entity_id = %s LIMIT 10", (e['id'],))
-                rows = cursor.fetchall()
-                for r in rows:
-                    results.append({"storage_key": r[0], "entity": e})
-
-            cursor.close()
-            return results
-        except Exception as e:
-            logger.warning(f"search_entities (DB) failed: {e}")
-            return []
+        
 
     async def health_check(self) -> dict[str, Any]:
         if self.backend == 'file':

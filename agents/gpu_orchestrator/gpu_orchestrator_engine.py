@@ -7,6 +7,11 @@ This module contains the sophisticated GPU orchestration functionality including
 - GPU lease allocation and management
 - MPS (Multi-Process Service) detection and configuration
 - Comprehensive telemetry and health monitoring
+
+Integration note:
+ - For automatic telemetry capture when a GPU is active, this repo includes
+     `scripts/perf/gpu_activity_agent.py` and `scripts/perf/gpu_telemetry_exporter.py`.
+     See `docs/gpu_telemetry_integration.md` for recommended deployment and systemd examples.
 """
 
 import os

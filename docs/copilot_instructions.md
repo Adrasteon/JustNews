@@ -8,11 +8,11 @@ Make the repository's expectations explicit when automated assistants (GitHub Co
 
 Python runtime (project default)
 --------------------------------
-- The canonical project Python environment is a conda environment named `justnews-v2-py312-fix`.
+- The canonical project Python environment is a conda environment named `justnews-py312`.
 - When invoking scripts or running code snippets in documentation, prefer either:
-	- `conda run -n justnews-v2-py312-fix python <script>` or
-	- `PYTHON_BIN=/home/adra/miniconda3/envs/justnews-v2-py312-fix/bin/python <script>`
-- When adding examples or CI configuration, ensure `justnews-v2-py312-fix` is used by default (unless a different environment is explicitly requested).
+	- `conda run -n justnews-py312 python <script>` or
+	- `PYTHON_BIN=/home/adra/miniconda3/envs/justnews-py312/bin/python <script>`
+- When adding examples or CI configuration, ensure `justnews-py312` is used by default (unless a different environment is explicitly requested).
 
 Global env policy
 ------------------

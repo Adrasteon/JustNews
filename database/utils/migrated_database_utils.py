@@ -11,6 +11,7 @@ Features:
 
 import asyncio
 import os
+import json
 from importlib import import_module
 from typing import Any
 
@@ -492,7 +493,7 @@ def get_database_stats(service: MigratedDatabaseService) -> dict[str, Any]:
 ## Knowledge Graph helpers (DB-backed)
 
 
-def add_entity(service: MigratedDatabaseService, name: str, entity_type: str, confidence: float | None = None) -> int | None:
+def add_entity(service: MigratedDatabaseService, name: str, entity_type: str, confidence: float | None = None, canonical_name: str | None = None, detection_source: str | None = None) -> int | None:
     """Add or find an entity in the DB-backed entities table.
 
     Returns the entity id on success, or None on error.
@@ -501,14 +502,17 @@ def add_entity(service: MigratedDatabaseService, name: str, entity_type: str, co
         service.ensure_conn()
         cursor = service.mb_conn.cursor()
         # Check existing
-        cursor.execute("SELECT id FROM entities WHERE name=%s AND entity_type=%s LIMIT 1", (name, entity_type))
+        if canonical_name:
+            cursor.execute("SELECT id FROM entities WHERE (name=%s AND entity_type=%s) OR (canonical_name=%s AND entity_type=%s) LIMIT 1", (name, entity_type, canonical_name, entity_type))
+        else:
+            cursor.execute("SELECT id FROM entities WHERE name=%s AND entity_type=%s LIMIT 1", (name, entity_type))
         row = cursor.fetchone()
         if row:
             eid = row[0]
             cursor.close()
             return eid
 
-        cursor.execute("INSERT INTO entities (name, entity_type, confidence_score) VALUES (%s,%s,%s)", (name, entity_type, confidence))
+        cursor.execute("INSERT INTO entities (name, entity_type, confidence_score, canonical_name, detection_source) VALUES (%s,%s,%s,%s,%s)", (name, entity_type, confidence, canonical_name, detection_source))
         service.mb_conn.commit()
         cursor.execute("SELECT LAST_INSERT_ID()")
         lid = cursor.fetchone()
@@ -541,19 +545,50 @@ def link_entity_to_article(service: MigratedDatabaseService, article_id: int, en
         return False
 
 
+    def log_kg_operation(service: MigratedDatabaseService, operation: str, actor: str | None = None, target_type: str | None = None, target_id: int | None = None, details: dict | None = None) -> bool:
+        """Write a KG audit event to kg_audit table (and fallback to file log).
+
+        operation: one of create_entity, link_entity, read_entities, search_entities, etc.
+        """
+        payload = details or {}
+        try:
+            if service:
+                service.ensure_conn()
+                cursor = service.mb_conn.cursor()
+                cursor.execute("INSERT INTO kg_audit (operation, actor, target_type, target_id, details) VALUES (%s,%s,%s,%s,%s)", (operation, actor, target_type, target_id, json.dumps(payload)))
+                service.mb_conn.commit()
+                cursor.close()
+                return True
+        except Exception as e:
+            logger.warning(f"kg_audit DB insert failed: {e}")
+
+        # Fallback - append to logs/audit/kg_operations.jsonl
+        try:
+            log_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'logs', 'audit')
+            os.makedirs(log_dir, exist_ok=True)
+            path = os.path.join(log_dir, 'kg_operations.jsonl')
+            entry = {'operation': operation, 'actor': actor, 'target_type': target_type, 'target_id': target_id, 'details': payload}
+            with open(path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(entry, default=str) + '\n')
+            return True
+        except Exception as e:
+            logger.warning(f"kg_audit file fallback failed: {e}")
+            return False
+
+
 def get_article_entities(service: MigratedDatabaseService, article_id: int) -> list[dict[str, Any]]:
     """Return list of entity dicts attached to an article."""
     try:
         service.ensure_conn()
         cursor = service.mb_conn.cursor()
         cursor.execute(
-            "SELECT e.id, e.name, e.entity_type, e.confidence_score, ae.relevance_score FROM entities e JOIN article_entities ae ON e.id = ae.entity_id WHERE ae.article_id = %s",
+            "SELECT e.id, e.name, e.entity_type, e.confidence_score, e.canonical_name, e.detection_source, ae.relevance_score FROM entities e JOIN article_entities ae ON e.id = ae.entity_id WHERE ae.article_id = %s",
             (article_id,)
         )
         rows = cursor.fetchall()
         cursor.close()
         return [
-            {"id": r[0], "name": r[1], "entity_type": r[2], "confidence_score": float(r[3]) if r[3] is not None else None, "relevance": float(r[4]) if r[4] is not None else None}
+            {"id": r[0], "name": r[1], "entity_type": r[2], "confidence_score": float(r[3]) if r[3] is not None else None, "canonical_name": r[4], "detection_source": r[5], "relevance": float(r[6]) if r[6] is not None else None}
             for r in rows
         ]
     except Exception as e:
@@ -567,10 +602,10 @@ def search_entities(service: MigratedDatabaseService, query: str, limit: int = 2
         service.ensure_conn()
         cursor = service.mb_conn.cursor()
         pattern = f"%{query}%"
-        cursor.execute("SELECT id, name, entity_type, confidence_score FROM entities WHERE name LIKE %s OR entity_type LIKE %s LIMIT %s", (pattern, pattern, limit))
+        cursor.execute("SELECT id, name, entity_type, confidence_score, canonical_name, detection_source FROM entities WHERE name LIKE %s OR entity_type LIKE %s LIMIT %s", (pattern, pattern, limit))
         rows = cursor.fetchall()
         cursor.close()
-        return [{"id": r[0], "name": r[1], "entity_type": r[2], "confidence_score": float(r[3]) if r[3] is not None else None} for r in rows]
+        return [{"id": r[0], "name": r[1], "entity_type": r[2], "confidence_score": float(r[3]) if r[3] is not None else None, "canonical_name": r[4], "detection_source": r[5]} for r in rows]
     except Exception as e:
         logger.warning(f"search_entities failed: {e}")
         return []

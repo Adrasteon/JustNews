@@ -3,14 +3,14 @@
 This guide explains the repeatable workflow we use to tune Crawl4AI profiles for high-volume news domains such as BBC. Follow the same sequence when onboarding a new site, revalidating an existing profile, or reacting to structural changes on the publisher site.
 
 ## 1. Environment Checklist
-- Activate the project environment: `conda run -n justnews-v2-py312-fix ...` or use the preconfigured tasks in the repo.
+ - Activate the project environment: `conda run -n justnews-py312 ...` or use the preconfigured tasks in the repo.
 - Ensure Playwright browsers are installed for the environment (`playwright install chromium`).
 - Confirm the target domain has a profile file under `config/crawl_profiles/` and that you understand any custom `extra` flags already applied (e.g., `skip_seed_articles`).
 
 ## 2. Quick Variant Probe
 1. Load the current crawl profile and exercise the standard variants:
    ```bash
-  PYTHONPATH=. conda run -n justnews-v2-py312-fix python scripts/dev/crawl4ai_profile_variants_probe.py \
+   PYTHONPATH=. conda run -n justnews-py312 python scripts/dev/crawl4ai_profile_variants_probe.py \
      --domain bbc.co.uk \
      --max-articles 30
    ```
@@ -42,7 +42,7 @@ This guide explains the repeatable workflow we use to tune Crawl4AI profiles for
 - Use the scheduler with the updated profile to mimic production:
   ```bash
   set -a && source global.env && set +a
-  conda run -n justnews-v2-py312-fix python scripts/ops/run_crawl_schedule.py \
+   conda run -n justnews-py312 python scripts/ops/run_crawl_schedule.py \
     --schedule /tmp/crawl_schedule_bbc.yaml \
     --testrun --no-wait --timeout 2400
   ```

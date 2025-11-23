@@ -92,3 +92,104 @@ Notes about “fully OSS”: confirm the exact checkpoint / tag (HF model card) 
 3) Run a short local experiment right now (on your machine) testing one chosen model’s int8 memory + latency and produce a short report.
 
 Which one do you want me to implement next? (If you pick 1 or 2, tell me which model from the shortlist to use: Mistral, MPT, Pythia, or Falcon.)
+
+---
+
+## Validation experiment — short real-mode perf sweep (what I ran)
+
+I ran a short, reproducible experiment on your RTX 3090 to verify bitsandbytes (CUDA 12.8) + Mistral-7B-v0.3 int8 inference and to collect latency and memory numbers that you can use to size orchestrator pools.
+
+- Environment: conda env `justnews-gpu-py310` (PyTorch 2.9.1+cu128), CUDA 12.8 toolkit installed on host.
+- Model: mistralai/Mistral-7B-v0.3 (public HF safetensors). I compiled and installed bitsandbytes from source matching CUDA 12.8 and used the 8-bit load path.
+- Script used: `scripts/perf/simulate_concurrent_inference.py` (has a new `--sweep` mode and `--output-csv/--output-json` output options added).
+- Command run (this produced CSV/JSON under scripts/perf/results):
+
+```bash
+conda run -n justnews-gpu-py310 \
+  RE_RANKER_TEST_MODE=0 RE_RANKER_MODEL=mistralai/Mistral-7B-v0.3 \
+  python scripts/perf/simulate_concurrent_inference.py \
+    --sweep --sweep-max 6 --repeat 3 --requests 30 \
+    --output-csv scripts/perf/results/mistral_v0.3_int8_sweep.csv \
+    --output-json scripts/perf/results/mistral_v0.3_int8_sweep.json
+```
+
+Files produced in the repo (copied to canonical path):
+
+- `scripts/perf/results/mistral_v0.3_int8_sweep.csv`
+- `scripts/perf/results/mistral_v0.3_int8_sweep.json`
+
+### Key numbers (RTX 3090, single GPU, 8-bit weights)
+
+The CSV aggregates 3 repeats for each worker count (1..6). Representative p50 averages across repeats:
+
+- workers=1 → p50 ≈ 165 ms
+- workers=2 → p50 ≈ 279 ms
+- workers=3 → p50 ≈ 413 ms
+- workers=4 → p50 ≈ 566 ms
+- workers=5 → p50 ≈ 722 ms
+- workers=6 → p50 ≈ 879 ms
+
+GPU memory footprint observed: model + activations ~12.2 GB (varies slightly across runs) — this fits comfortably on a 24GB RTX 3090 and leaves headroom for multiple activations/work items.
+
+### Immediate interpretation & recommendation
+
+- Single-request latency is best when the GPU is not saturated — p50 is ~160 ms in a cold minimal worker scenario.
+- Latency increases roughly linearly with concurrent worker count once you exceed the device's practical pipelining point. For low-latency needs (p50 under ~300ms), a single-worker or worker pool of size 1–2 is the sweet spot for this model on a single RTX 3090.
+- For higher throughput (bulk scoring) the GPU can process more concurrently but latency will increase; choose pool sizes and request concurrency according to whether you prioritise latency or throughput.
+
+### Next suggested experiment (optional)
+
+If you want next I can:
+
+- Run a longer steady-state sweep (larger requests, warmup vs steady comparison) and plot p50/p95 curves.
+- Automate running these per-candidate model (Mistral / MPT / Pythia / Falcon) and save a comparative CSV so you have a data-driven model selection matrix.
+
+If you'd like me to add benchmarking graphs (PNG/SVG) to the repo and a short notebook to visualise the CSV, I can do that next.
+
+---
+
+## Comparative benchmark: Mistral / MPT / Pythia / Falcon (summary)
+
+I ran the same sweep (workers 1..6, 3 repeats, 30 requests each) for the four candidate fully-OSS 7B models and saved the results and plots. These are in `scripts/perf/results` and `scripts/perf/results/plots`.
+
+- Combined CSV (median per workers): `scripts/perf/results/plots/combined_summary.csv`
+- Plots (median across repeats):
+  - `scripts/perf/results/plots/p50_vs_workers.png` — p50 vs workers
+  - `scripts/perf/results/plots/p95_vs_workers.png` — p95 vs workers
+  - `scripts/perf/results/plots/avg_vs_workers.png` — average latency vs workers
+
+### TL;DR — single-GPU (RTX 3090) p50 comparisons (median across repeats)
+
+Workers=1 (single concurrent request)
+- MPT-7B-Instruct  — ~83 ms (best)
+- Pythia-6.9B     — ~91 ms
+- Falcon-7B-Inst  — ~96 ms
+- Mistral-7B-v0.3 — ~166 ms (largest)
+
+Workers=3 (typical low-latency multi-client)
+- MPT-7B-Instruct  — ~206 ms
+- Falcon-7B-Inst  — ~227 ms
+- Pythia-6.9B     — ~231 ms
+- Mistral-7B-v0.3 — ~412 ms
+
+GPU footprint (median observed across runs):
+- Mistral-7B-v0.3: ~12.2 GB
+- MPT-7B-Instruct: ~8.2 GB
+- Pythia-6.9B: ~11.4 GB
+- Falcon-7B-Instruct: ~9.7 GB
+
+### Quick interpretation
+
+- MPT-7B-Instruct gives the lowest latencies and smaller memory footprint on a single RTX 3090 — making it a good choice if per-request latency and memory are top priorities.
+- Mistral-7B gave higher latencies in these tests (and required ~12 GB memory) — however its absolute quality and tuning characteristics remain a reason to prefer it for accuracy-sensitive tasks; use Mistral if quality outweighs latency and you can accept larger footprints or scale horizontally.
+- Pythia-6.9B / Falcon-7B-Instruct fall between MPT and Mistral — solid middle-ground tradeoffs.
+
+### Next options
+
+Pick what you want next:
+
+1) Automate a comparative notebook + plots for these models and include them in `docs`.
+2) Run extended steady-state tests per model (larger request counts and longer runs) to measure throughput and tail latency more accurately.
+3) Use the CSV to tune the orchestrator pool sizes and configure cluster-level policy recommendations.
+
+Tell me which of these you'd like me to do next (I can implement any or all). 

@@ -307,6 +307,11 @@ def create_worker_pool(request: Request, agent: str | None = None, model: str | 
     pool_id = agent or f"pool_{int(time.time())}"
     # Require admin and capture requestor identity for audit
     requestor = _require_admin(request)
+    # enrich requestor with client IP if available
+    try:
+        requestor['ip'] = request.client.host
+    except Exception:
+        pass
     try:
         resp = engine.start_worker_pool(pool_id=pool_id, model_id=model, adapter=adapter, num_workers=num_workers, hold_seconds=hold_seconds, requestor=requestor)
         return resp
@@ -324,6 +329,10 @@ def list_pools(request: Request):
 @app.delete("/workers/pool/{pool_id}")
 def delete_pool(request: Request, pool_id: str):
     requestor = _require_admin(request)
+    try:
+        requestor['ip'] = request.client.host
+    except Exception:
+        pass
     try:
         resp = engine.stop_worker_pool(pool_id)
         # audit stop with requestor
@@ -406,7 +415,20 @@ def get_pool_policy():
 def set_pool_policy(request: Request, payload: dict):
     requestor = _require_admin(request)
     try:
+        requestor['ip'] = request.client.host
+    except Exception:
+        pass
+    try:
         new = engine.set_pool_policy(payload)
+        # Persist policy to system configuration for durable storage
+        try:
+            from config.core import get_config_manager
+            mgr = get_config_manager()
+            mgr.update_config({'gpu_orchestrator': {'pool_policy': payload}})
+        except Exception:
+            # if persistence fails, log & continue — do not block operator action
+            engine.logger.warning('Failed to persist pool policy to system config')
+
         engine._audit_policy_event('policy_update', payload, requestor=requestor)
         return new
     except Exception as e:
@@ -416,6 +438,10 @@ def set_pool_policy(request: Request, payload: dict):
 @app.post('/workers/pool/{pool_id}/swap')
 def swap_pool_adapter(request: Request, pool_id: str, new_adapter: str | None = None, wait_seconds: int = 10):
     requestor = _require_admin(request)
+    try:
+        requestor['ip'] = request.client.host
+    except Exception:
+        pass
     try:
         return engine.hot_swap_pool_adapter(pool_id=pool_id, new_adapter=new_adapter, requestor=requestor, wait_seconds=wait_seconds)
     except ValueError:

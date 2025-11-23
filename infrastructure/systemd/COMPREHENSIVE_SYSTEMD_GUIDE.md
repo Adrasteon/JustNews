@@ -31,7 +31,7 @@ EnvironmentFile=-/etc/justnews/%i.env
 Minimum keys (examples):
 
 ```
-JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-v2-py312-fix/bin/python
+JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-py312/bin/python
 SERVICE_DIR=/home/adra/JustNews
 JUSTNEWS_DB_URL=postgresql://user:pass@localhost:5432/justnews
 ENABLE_MPS=true
@@ -344,7 +344,7 @@ journalctl -u justnews-crawl-scheduler.service -e -n 200 -f
 Outputs land in the paths above; Prometheus gauges (`justnews_crawler_scheduler_*`) are emitted via the textfile target. For a dry run without touching the crawler agent:
 
 ```
-conda run -n justnews-v2-py312-fix python scripts/ops/run_crawl_schedule.py --dry-run --profiles config/crawl_profiles
+conda run -n justnews-py312 python scripts/ops/run_crawl_schedule.py --dry-run --profiles config/crawl_profiles
 ```
 
 Governance notes and rate-limit reviews belong in `logs/governance/crawl_terms_audit.md`.

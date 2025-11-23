@@ -465,7 +465,22 @@ class MigratedDatabaseService:
                     logger.debug("ChromaDB extra diagnostics not available")
         
         # Create collection if it doesn't exist - but fail gracefully if ChromaDB isn't available
-        collection_name = chroma_config.get('collection')
+        base_collection_name = chroma_config.get('collection')
+        # Optionally scope collection to embedding model and dimensions to support
+        # versioned indices when swapping embedding models/dimensions. This avoids
+        # mixing incompatible dimensionalities and provides clear traceability.
+        # Controlled by CHROMADB_MODEL_SCOPED_COLLECTION (default enabled).
+        collection_name = base_collection_name
+        try:
+            enable_scoped = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION', '1') == '1'
+            if enable_scoped and base_collection_name:
+                emb_model = self.config['database']['embedding'].get('model', '')
+                emb_dims = str(self.config['database']['embedding'].get('dimensions', ''))
+                # sanitize model name for collection
+                safe_model = ''.join(c if c.isalnum() or c in ('-', '_') else '_' for c in emb_model)
+                collection_name = f"{base_collection_name}__{safe_model}__{emb_dims}"
+        except Exception:
+            collection_name = base_collection_name
         if self.chroma_client and collection_name:
             try:
                 self.collection = self.chroma_client.get_collection(collection_name)

@@ -140,8 +140,8 @@ check_python_runtime() {
     exit 1
   fi
   log_success "Python runtime detected: $python_version"
-   if [[ "$python_path" != *"justnews-v2-py312-fix"* ]]; then
-     log_warn "PYTHON_BIN path does not include 'justnews-v2-py312-fix'; confirm the correct environment is targeted"
+  if [[ "$python_path" != *"justnews-py312"* ]]; then
+   log_warn "PYTHON_BIN path does not include 'justnews-py312'; confirm the correct environment is targeted"
   fi
 }
 
@@ -462,7 +462,7 @@ main() {
   ensure_env_value PYTHON_BIN
   check_python_runtime
   # Ensure protobuf version meets minimum requirements to avoid deprecated C-API usage
-  if ! PYTHONPATH=. conda run -n justnews-v2-py312-fix python "$repo_root/scripts/check_protobuf_version.py"; then
+  if ! PYTHONPATH=. conda run -n justnews-py312 python "$repo_root/scripts/check_protobuf_version.py"; then
     log_error "Protobuf version does not meet the recommended minimum; please upgrade your Python environment's protobuf to >=4.24.0. Aborting startup."
     exit 1
   fi
@@ -511,13 +511,13 @@ main() {
       log_error "CHROMADB_HOST/PORT in environment $chroma_host:$chroma_port does not match canonical $chroma_canonical_host:$chroma_canonical_port; aborting startup."
       log_info "Helpful steps:"
       log_info "  1) Use $ROOT/scripts/chroma_diagnose.py to discover endpoints and root info"
-      log_info "     - Example: PYTHONPATH=. conda run -n justnews-v2-py312-fix python scripts/chroma_diagnose.py --host $chroma_host --port $chroma_port"
+      log_info "     - Example: PYTHONPATH=. conda run -n justnews-py312 python scripts/chroma_diagnose.py --host $chroma_host --port $chroma_port"
       log_info "  2) If tenant/collection missing, run the bootstrap helper: scripts/chroma_bootstrap.py"
-      log_info "     - Example: PYTHONPATH=. conda run -n justnews-v2-py312-fix python scripts/chroma_bootstrap.py --host $chroma_canonical_host --port $chroma_canonical_port --tenant default_tenant --collection articles"
+      log_info "     - Example: PYTHONPATH=. conda run -n justnews-py312 python scripts/chroma_bootstrap.py --host $chroma_canonical_host --port $chroma_canonical_port --tenant default_tenant --collection articles"
       exit 1
     fi
     # Run a diagnostic to confirm the canonical host/port is a Chroma instance
-    if ! PYTHONPATH=. conda run -n justnews-v2-py312-fix python "$repo_root/scripts/chroma_diagnose.py" --host "$chroma_host" --port "$chroma_port"; then
+    if ! PYTHONPATH=. conda run -n justnews-py312 python "$repo_root/scripts/chroma_diagnose.py" --host "$chroma_host" --port "$chroma_port"; then
       log_error "Chroma diagnostic failed for $chroma_host:$chroma_port (fatal under CHROMADB_REQUIRE_CANONICAL)"
       exit 1
     fi

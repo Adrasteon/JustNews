@@ -25,7 +25,7 @@ cd JustNews
 conda env create -f environment.yml
 
 # Activate the environment
-conda activate justnews-v2-py312-fix
+conda activate justnews-py312
 ```
 
 3. Install dependencies (prefer conda-forge for the crawler extraction stack):
@@ -68,7 +68,7 @@ make start
 ### Environment Setup
 Before running any development commands, always activate the conda environment:
 ```bash
-conda activate justnews-v2-py312-fix
+conda activate justnews-py312
 ```
 
 ### Available Commands
@@ -93,15 +93,15 @@ Environment variables:
 ### Conda Environment Management
 ```bash
 # Activate environment
-conda activate justnews-v2-py312-fix
-Note: the canonical project conda environment is `justnews-v2-py312-fix`. When running scripts from documentation or CI, prefer:
+conda activate justnews-py312
+Note: the canonical project conda environment is `justnews-py312`. When running scripts from documentation or CI, prefer:
 
 ```bash
 # Run via conda-run
-conda run -n justnews-v2-py312-fix python scripts/your_script.py
+conda run -n justnews-py312 python scripts/your_script.py
 
 # Or use PYTHON_BIN to force a known interpreter
-PYTHON_BIN=/home/adra/miniconda3/envs/justnews-v2-py312-fix/bin/python python scripts/your_script.py
+PYTHON_BIN=/home/adra/miniconda3/envs/justnews-py312/bin/python python scripts/your_script.py
 ```
 
 This ensures scripts are executed with the same environment and binary used by deployment & startup helpers.
@@ -123,10 +123,10 @@ conda env export > environment_backup.yml
 Prefer running tests using the project's conda environment to ensure third-party compiled extensions and dependencies are available.
 ```bash
 # Either set `PYTHONPATH` and run pytest using the activated conda env:
-PYTHONPATH=$(pwd) conda run -n justnews-v2-py312-fix pytest tests/agents/crawler -q
+PYTHONPATH=$(pwd) conda run -n justnews-py312 pytest tests/agents/crawler -q
 
 # Or set the `PYTHON_BIN` environment variable to the conda python executable:
-PYTHONPATH=$(pwd) PYTHON_BIN=/home/adra/miniconda3/envs/justnews-v2-py312-fix/bin/python pytest tests/agents/crawler -q
+PYTHONPATH=$(pwd) PYTHON_BIN=/home/adra/miniconda3/envs/justnews-py312/bin/python pytest tests/agents/crawler -q
 ```
 
 This suite covers the Stage B2 extraction pipeline, including the Trafilatura/readability/jusText cascade, raw HTML persistence, and ingestion metadata enrichment.
@@ -200,8 +200,8 @@ CHROMADB_CANONICAL_PORT=3307
 
 Operational commands to inspect and bootstrap Chroma: run the diagnostic and bootstrap helpers.
 ```bash
-PYTHONPATH=. conda run -n justnews-v2-py312-fix python scripts/chroma_diagnose.py --host <host> --port <port> --autocreate
-PYTHONPATH=. conda run -n justnews-v2-py312-fix python scripts/chroma_bootstrap.py --host <host> --port <port> --tenant default_tenant --collection articles
+PYTHONPATH=. conda run -n justnews-py312 python scripts/chroma_diagnose.py --host <host> --port <port> --autocreate
+PYTHONPATH=. conda run -n justnews-py312 python scripts/chroma_bootstrap.py --host <host> --port <port> --tenant default_tenant --collection articles
 ```
 
 See `docs/chroma_setup.md` for advanced guidance and troubleshooting.

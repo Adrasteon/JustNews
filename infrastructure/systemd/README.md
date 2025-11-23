@@ -86,7 +86,7 @@ Global: `/etc/justnews/global.env`
 
 ```
 # absolute python for agents
-JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-v2-py312-fix/bin/python
+JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-py312/bin/python
 
 Helpers & validation
 --------------------

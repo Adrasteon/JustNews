@@ -1,0 +1,30 @@
+[Unit]
+Description=JustNews GPU activity monitor and telemetry agent
+After=network.target
+
+# Read runtime overrides from /etc/default/justnews-gpu-telemetry (optional)
+EnvironmentFile=-/etc/default/justnews-gpu-telemetry
+Environment=JN_PYTHON_BIN=${JN_PYTHON_BIN:-/home/adra/miniconda3/envs/justnews-py312/bin/python}
+
+[Service]
+Type=simple
+User=${JN_USER:-adra}
+WorkingDirectory=${JN_WORKDIR:-/home/adra/JustNews}
+
+# Ensure logs dir exists and has the configured ownership before starting
+ExecStartPre=/bin/mkdir -p ${JN_LOGDIR:-/var/log/justnews-perf}
+ExecStartPre=/bin/chown ${JN_USER:-adra}:${JN_GROUP:-syslog} ${JN_LOGDIR:-/var/log/justnews-perf}
+
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=justnews-gpu-telemetry
+
+ExecStart=${JN_PYTHON_BIN:-/usr/bin/python3} ${JN_WORKDIR:-/home/adra/JustNews}/scripts/perf/gpu_activity_agent.py \
+	--start-util ${JN_START_UTIL:-20} --start-seconds ${JN_START_SECONDS:-5} \
+	--stop-util ${JN_STOP_UTIL:-10} --stop-seconds ${JN_STOP_SECONDS:-15} \
+	--out-dir ${JN_LOGDIR:-/var/log/justnews-perf} --exporter-port ${JN_EXPORTER_PORT:-9118} --exporter-interval ${JN_EXPORTER_INTERVAL:-1}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

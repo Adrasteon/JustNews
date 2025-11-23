@@ -63,8 +63,8 @@ This playbook captures the operational steps required to consider Stage B comple
 ## 5. Integration and Regression Validation
 
 - Run targeted tests:
-  - `conda run -n justnews-v2-py312-fix python -m pytest tests/agents/crawler/test_extraction.py tests/agents/memory/test_save_article.py -q`
-  - `conda run -n justnews-v2-py312-fix python -m pytest tests/scripts/test_run_crawl_schedule_integration.py -q`
+  - `conda run -n justnews-py312 python -m pytest tests/agents/crawler/test_extraction.py tests/agents/memory/test_save_article.py -q`
+  - `conda run -n justnews-py312 python -m pytest tests/scripts/test_run_crawl_schedule_integration.py -q`
 - Optional end-to-end smoke: trigger the scheduler with `--no-wait` and ensure articles flow into the database with embeddings present.
 - Record test outputs (command, environment, timestamp) in the bring-up ticket.
 

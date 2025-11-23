@@ -1,6 +1,6 @@
 # Conda Environment Backup & Restore
 
-This document explains how to back up and restore the `justnews-v2-py312-fix` conda environment used by the project.
+This document explains how to back up and restore the `justnews-py312` conda environment used by the project.
 
 ## Why back up the environment
 - To ensure reproducible test and CI runs
@@ -17,37 +17,52 @@ This document explains how to back up and restore the `justnews-v2-py312-fix` co
 - Create artifacts using the helper script (recommended):
 
 ```bash
-# Back up the conda environment to artifacts/
-./scripts/backup_conda_env.sh justnews-v2-py312-fix artifacts
+# Back up the conda environment to artifacts/ (will also create a date-stamped copy)
+# Example: writes these files in artifacts/:
+#   - justnews-py312.yml
+#   - justnews-py312-YYYYMMDD.yml
+#   - justnews-py312.explicit.txt
+#   - justnews-py312-YYYYMMDD.explicit.txt
+#   - justnews-py312.pip.txt
+#   - justnews-py312-YYYYMMDD.pip.txt
+./scripts/backup_conda_env.sh justnews-py312 artifacts
+
+# Optionally provide an explicit date (UTC) to the script instead of using today's
+# date -- useful when scripting: e.g. $(date -u +%Y%m%d)
+./scripts/backup_conda_env.sh justnews-py312 artifacts $(date -u +%Y%m%d)
+
+# For CI/tests where conda may not be available, use a dry-run to validate outputs
+# without running conda: the script will print the files it would create.
+DRY_RUN=1 ./scripts/backup_conda_env.sh justnews-py312 artifacts 20251123
 ```
 
 - To restore from YAML:
 
 ```bash
-conda env create -f artifacts/justnews-v2-py312-fix.yml -n justnews-v2-py312-fix-restored
-# Optionally: pip install -r artifacts/justnews-v2-py312-fix.pip.txt
+conda env create -f artifacts/justnews-py312.yml -n justnews-py312-restored
+# Optionally: pip install -r artifacts/justnews-py312.pip.txt
 ```
 
 - To restore from explicit spec (exact binary builds):
 
 ```bash
-conda create --name justnews-v2-py312-fix-restored --file artifacts/justnews-v2-py312-fix.explicit.txt
+conda create --name justnews-py312-restored --file artifacts/justnews-py312.explicit.txt
 ```
 
 - To unpack the condapack tarball:
 
 ```bash
-mkdir -p ~/envs/justnews-v2-py312-fix-unpacked
-tar -xzf artifacts/justnews-v2-py312-fix.tar.gz -C ~/envs/justnews-v2-py312-fix-unpacked
-~/envs/justnews-v2-py312-fix-unpacked/bin/conda-unpack
+mkdir -p ~/envs/justnews-py312-unpacked
+tar -xzf artifacts/justnews-py312.tar.gz -C ~/envs/justnews-py312-unpacked
+~/envs/justnews-py312-unpacked/bin/conda-unpack
 ```
 
 - Re-run preflight checks and tests after restoring:
 
 ```bash
-PYTHONPATH=$(pwd) PYTHON_BIN=$(conda run -n justnews-v2-py312-fix-restored --no-capture-output which python) \
+PYTHONPATH=$(pwd) PYTHON_BIN=$(conda run -n justnews-py312-restored --no-capture-output which python) \
     /path/to/python scripts/check_protobuf_version.py
-PYTHONPATH=$(pwd) PYTHON_BIN=$(conda run -n justnews-v2-py312-fix-restored --no-capture-output which python) \
+PYTHONPATH=$(pwd) PYTHON_BIN=$(conda run -n justnews-py312-restored --no-capture-output which python) \
     /path/to/python scripts/check_deprecation_warnings.py
 ```
 

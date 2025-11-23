@@ -258,6 +258,31 @@ def models_preload_endpoint(req: PreloadRequest):
     return models_preload(req.agents, req.refresh, req.strict)
 
 
+@app.post("/workers/pool")
+def create_worker_pool(agent: str | None = None, model: str | None = None, adapter: str | None = None, num_workers: int = 1, hold_seconds: int = 600):
+    """Create a named worker pool. `agent` is an optional name used to derive an id when omitted."""
+    pool_id = agent or f"pool_{int(time.time())}"
+    try:
+        return engine.start_worker_pool(pool_id=pool_id, model_id=model, adapter=adapter, num_workers=num_workers, hold_seconds=hold_seconds)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/workers/pool")
+def list_pools():
+    return engine.list_worker_pools()
+
+
+@app.delete("/workers/pool/{pool_id}")
+def delete_pool(pool_id: str):
+    try:
+        return engine.stop_worker_pool(pool_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="unknown_pool")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/models/status")
 def models_status_endpoint():
     """Return current model preload status."""

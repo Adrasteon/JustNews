@@ -11,6 +11,7 @@ This module contains the sophisticated GPU orchestration functionality including
 
 import os
 import subprocess
+import multiprocessing as mp
 import threading
 import time
 import uuid
@@ -59,6 +60,9 @@ class GPUOrchestratorEngine:
         self.logger = self._setup_logging()
         self.metrics = JustNewsMetrics("gpu_orchestrator")
         self._initialize_metrics()
+        # Worker pool management: track spawned adapter worker pools
+        # Structure: {pool_id: {"model": str, "adapter": str|None, "num_workers": int, "procs": [Process], "started_at": float}}
+        self._WORKER_POOLS: dict[str, dict] = {}
 
     def _setup_logging(self):
         """Set up logging for the GPU orchestrator."""
@@ -512,6 +516,108 @@ class GPUOrchestratorEngine:
             "started_at": _MODEL_PRELOAD_STATE.get("started_at"),
             "completed_at": _MODEL_PRELOAD_STATE.get("completed_at"),
         }
+
+    # --- Worker pool management -------------------------------------------------
+    def _spawn_pool_worker(self, model_id: str | None, adapter: str | None, hold_seconds: int):
+        """Process entrypoint that loads base model and adapter then sleeps for hold_seconds.
+
+        Note: in RE_RANKER_TEST_MODE this function will avoid heavy loads and simply sleep.
+        """
+        # Local import to avoid heavy deps at module import time in tests
+        if os.environ.get('RE_RANKER_TEST_MODE', '1') in ('1', 'true'):
+            # test mode: minimal work and hold
+            time.sleep(hold_seconds)
+            return
+
+        try:
+            from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+            import torch
+            bnb = BitsAndBytesConfig(load_in_8bit=True, bnb_8bit_use_double_quant=True, bnb_8bit_compute_dtype=getattr(torch, 'float16', None))
+            model = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb, device_map='auto')
+            _tok = AutoTokenizer.from_pretrained(model_id)
+
+            if adapter:
+                try:
+                    from peft import PeftModel
+                    model = PeftModel.from_pretrained(model, adapter)
+                except Exception:
+                    # adapter not available or failed – proceed
+                    pass
+
+            time.sleep(hold_seconds)
+
+        except Exception:
+            # Fail fast but keep process alive a short while so parent can introspect
+            time.sleep(min(hold_seconds, 3))
+
+    def start_worker_pool(self, pool_id: str, model_id: str | None, adapter: str | None, num_workers: int = 1, hold_seconds: int = 600) -> dict[str, Any]:
+        """Start a named pool of warm workers for a given base model + adapter.
+
+        This is intended for interactive dev/test and to allow GPU Orchestrator to
+        keep a set of worker processes warm and ready. Pools are idempotent – attempting
+        to start an already-running pool will return its existing state.
+        """
+        if pool_id in self._WORKER_POOLS:
+            return {**self._WORKER_POOLS[pool_id], 'note': 'already_running'}
+
+        # Validate args
+        if num_workers < 1:
+            raise ValueError('num_workers must be >= 1')
+
+        procs: list[mp.Process] = []
+        for _ in range(num_workers):
+            p = mp.Process(target=self._spawn_pool_worker, args=(model_id, adapter, hold_seconds), daemon=True)
+            p.start()
+            procs.append(p)
+            time.sleep(0.2)
+
+        self._WORKER_POOLS[pool_id] = {
+            'model': model_id,
+            'adapter': adapter,
+            'num_workers': num_workers,
+            'procs': procs,
+            'started_at': time.time(),
+            'hold_seconds': hold_seconds,
+        }
+
+        return {'pool_id': pool_id, 'num_workers': num_workers, 'status': 'started'}
+
+    def stop_worker_pool(self, pool_id: str) -> dict[str, Any]:
+        """Terminate a previously started pool and reap processes."""
+        pool = self._WORKER_POOLS.get(pool_id)
+        if not pool:
+            raise ValueError('unknown_pool')
+
+        procs = pool.get('procs', [])
+        for p in procs:
+            try:
+                p.terminate()
+            except Exception:
+                pass
+        # wait join
+        for p in procs:
+            try:
+                p.join(timeout=1.0)
+            except Exception:
+                pass
+
+        self._WORKER_POOLS.pop(pool_id, None)
+        return {'pool_id': pool_id, 'status': 'stopped'}
+
+    def list_worker_pools(self) -> list[dict[str, Any]]:
+        """Return summary of active pools."""
+        out = []
+        for pid, meta in list(self._WORKER_POOLS.items()):
+            running = sum(1 for p in meta.get('procs', []) if p.is_alive())
+            out.append({
+                'pool_id': pid,
+                'model': meta.get('model'),
+                'adapter': meta.get('adapter'),
+                'configured_workers': meta.get('num_workers'),
+                'running_workers': running,
+                'started_at': meta.get('started_at'),
+            })
+        return out
 
     def get_mps_allocation_config(self) -> dict[str, Any]:
         """Get MPS allocation configuration."""

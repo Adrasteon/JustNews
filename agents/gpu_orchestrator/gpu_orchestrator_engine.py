@@ -21,6 +21,8 @@ from typing import Any
 import pynvml  # type: ignore
 from fastapi import HTTPException
 from prometheus_client import Counter, Gauge
+import json
+from pathlib import Path
 
 from common.metrics import JustNewsMetrics
 
@@ -60,6 +62,13 @@ class GPUOrchestratorEngine:
         self.logger = self._setup_logging()
         self.metrics = JustNewsMetrics("gpu_orchestrator")
         self._initialize_metrics()
+        # Start background lifecycle enforcer thread
+        try:
+            t = threading.Thread(target=self._background_policy_enforcer, daemon=True)
+            t.start()
+            self.logger.debug('Worker pool lifecycle enforcer started')
+        except Exception as e:
+            self.logger.warning(f'Failed to start lifecycle enforcer: {e}')
         # Worker pool management: track spawned adapter worker pools
         # Structure: {pool_id: {"model": str, "adapter": str|None, "num_workers": int, "procs": [Process], "started_at": float}}
         self._WORKER_POOLS: dict[str, dict] = {}
@@ -105,6 +114,42 @@ class GPUOrchestratorEngine:
             'gpu_orchestrator_nvml_supported',
             'Whether NVML is supported and enabled (1) or not (0)',
             ['agent', 'agent_display_name'],
+            registry=self.metrics.registry
+        )
+
+        # Worker pool metrics
+        self.worker_pools_gauge = Gauge(
+            'gpu_orchestrator_worker_pools_total',
+            'Number of active worker pools',
+            ['agent', 'agent_display_name'],
+            registry=self.metrics.registry
+        )
+
+        self.worker_pool_workers_gauge = Gauge(
+            'gpu_orchestrator_worker_pool_workers',
+            'Number of workers in a pool',
+            ['pool_id'],
+            registry=self.metrics.registry
+        )
+
+        self.worker_pool_running_workers_gauge = Gauge(
+            'gpu_orchestrator_worker_pool_running_workers',
+            'Number of running worker processes in a pool',
+            ['pool_id'],
+            registry=self.metrics.registry
+        )
+
+        self.worker_pool_started_timestamp = Gauge(
+            'gpu_orchestrator_worker_pool_started_ts',
+            'Start timestamp of a worker pool (epoch seconds)',
+            ['pool_id'],
+            registry=self.metrics.registry
+        )
+
+        self.worker_pool_evictions_counter = Counter(
+            'gpu_orchestrator_worker_pool_evictions_total',
+            'Total number of pool evictions performed by lifecycle manager',
+            ['reason'],
             registry=self.metrics.registry
         )
 
@@ -359,6 +404,100 @@ class GPUOrchestratorEngine:
             self.logger.info(f"Updated GPU policy: {POLICY}")
         return POLICY
 
+    # Default pool lifecycle policy values (configurable via env or API)
+    def _pool_policy_defaults(self):
+        # Merge defaults from system configuration if available
+        defaults = {
+            'min_warm_workers_per_pool': int(os.environ.get('GPU_POOL_MIN_WARM', '0')),
+            'max_total_workers': int(os.environ.get('GPU_POOL_MAX_TOTAL', '8')),
+            'pool_idle_timeout_s': int(os.environ.get('GPU_POOL_IDLE_TIMEOUT_S', '300')),
+            'enforce_period_s': int(os.environ.get('GPU_POOL_POLICY_PERIOD_S', '10')),
+        }
+        try:
+            # runtime import of config module so tests can monkeypatch
+            from config.core import get_gpu_config
+            gconf = get_gpu_config()
+            if gconf:
+                defaults['min_warm_workers_per_pool'] = gconf.get('min_warm_workers_per_pool', defaults['min_warm_workers_per_pool'])
+                defaults['max_total_workers'] = gconf.get('max_total_workers', defaults['max_total_workers'])
+                defaults['pool_idle_timeout_s'] = gconf.get('pool_idle_timeout_s', defaults['pool_idle_timeout_s'])
+                defaults['enforce_period_s'] = gconf.get('enforce_period_s', defaults['enforce_period_s'])
+        except Exception:
+            pass
+        return defaults
+
+    def get_pool_policy(self) -> dict[str, Any]:
+        if not hasattr(self, '_POOL_POLICY'):
+            self._POOL_POLICY = self._pool_policy_defaults()
+        return self._POOL_POLICY
+
+    def set_pool_policy(self, policy: dict[str, Any]) -> dict[str, Any]:
+        cur = self.get_pool_policy()
+        cur.update(policy)
+        self._POOL_POLICY = cur
+        return self._POOL_POLICY
+
+    def _background_policy_enforcer(self):
+        """Background thread that enforces pool lifecycle policies periodically."""
+        while True:
+            try:
+                policy = self.get_pool_policy()
+                # Compute total configured workers
+                total = sum(p.get('num_workers', 0) for p in self._WORKER_POOLS.values())
+                max_total = policy.get('max_total_workers', 8)
+
+                # Evict least-recently used pools if over max_total
+                if total > max_total:
+                    # sort by started_at ascending
+                    ordered = sorted(self._WORKER_POOLS.items(), key=lambda kv: kv[1].get('started_at', 0))
+                    evicted = 0
+                    for pool_id, meta in ordered:
+                        if total <= max_total:
+                            break
+                        # skip pools with min_warm requirement
+                        min_warm = policy.get('min_warm_workers_per_pool', 0)
+                        if meta.get('num_workers', 0) <= min_warm:
+                            continue
+                        # evict whole pool
+                        try:
+                            self.stop_worker_pool(pool_id)
+                            total -= meta.get('num_workers', 0)
+                            evicted += 1
+                            self.worker_pool_evictions_counter.labels(reason='over_total').inc()
+                        except Exception:
+                            pass
+
+                # Evict pools that have been idle longer than pool_idle_timeout_s
+                now = time.time()
+                idle_timeout = policy.get('pool_idle_timeout_s', 300)
+                for pool_id, meta in list(self._WORKER_POOLS.items()):
+                    started = meta.get('started_at', now)
+                    running = sum(1 for p in meta.get('procs', []) if p.is_alive())
+                    # if no running workers and older than timeout, evict
+                    if running == 0 and (now - started) > idle_timeout:
+                        try:
+                            self.stop_worker_pool(pool_id)
+                            self.worker_pool_evictions_counter.labels(reason='idle_timeout').inc()
+                        except Exception:
+                            pass
+
+                # update metrics per pool
+                self.worker_pools_gauge.labels(agent=self.metrics.agent_name, agent_display_name=self.metrics.display_name).set(len(self._WORKER_POOLS))
+                for pid, meta in self._WORKER_POOLS.items():
+                    self.worker_pool_workers_gauge.labels(pool_id=pid).set(meta.get('num_workers', 0))
+                    running = sum(1 for p in meta.get('procs', []) if p.is_alive())
+                    self.worker_pool_running_workers_gauge.labels(pool_id=pid).set(running)
+                    if meta.get('started_at'):
+                        self.worker_pool_started_timestamp.labels(pool_id=pid).set(meta.get('started_at'))
+
+            except Exception:
+                pass
+
+            # Sleep until next enforcement
+            period = self.get_pool_policy().get('enforce_period_s', 10)
+            time.sleep(period)
+
+
     def get_policy(self) -> dict[str, Any]:
         """Get current policy."""
         return POLICY
@@ -550,7 +689,7 @@ class GPUOrchestratorEngine:
             # Fail fast but keep process alive a short while so parent can introspect
             time.sleep(min(hold_seconds, 3))
 
-    def start_worker_pool(self, pool_id: str, model_id: str | None, adapter: str | None, num_workers: int = 1, hold_seconds: int = 600) -> dict[str, Any]:
+    def start_worker_pool(self, pool_id: str, model_id: str | None, adapter: str | None, num_workers: int = 1, hold_seconds: int = 600, requestor: dict | None = None) -> dict[str, Any]:
         """Start a named pool of warm workers for a given base model + adapter.
 
         This is intended for interactive dev/test and to allow GPU Orchestrator to
@@ -580,6 +719,8 @@ class GPUOrchestratorEngine:
             'hold_seconds': hold_seconds,
         }
 
+        # Audit with optional requestor
+        self._audit_worker_pool_event('start', pool_id, model_id, adapter, num_workers, requestor=requestor)
         return {'pool_id': pool_id, 'num_workers': num_workers, 'status': 'started'}
 
     def stop_worker_pool(self, pool_id: str) -> dict[str, Any]:
@@ -602,6 +743,7 @@ class GPUOrchestratorEngine:
                 pass
 
         self._WORKER_POOLS.pop(pool_id, None)
+        self._audit_worker_pool_event('stop', pool_id, None, None, 0, requestor=None)
         return {'pool_id': pool_id, 'status': 'stopped'}
 
     def list_worker_pools(self) -> list[dict[str, Any]]:
@@ -618,6 +760,97 @@ class GPUOrchestratorEngine:
                 'started_at': meta.get('started_at'),
             })
         return out
+
+    def hot_swap_pool_adapter(self, pool_id: str, new_adapter: str | None, requestor: dict | None = None, wait_seconds: int = 10) -> dict[str, Any]:
+        """Hot-swap adapter for a named pool: start new workers with new adapter, then stop old workers.
+
+        This performs a blue-green style swap to avoid downtime: it spawns the same
+        number of new workers, waits for a short warm period, then terminates the old ones.
+        """
+        meta = self._WORKER_POOLS.get(pool_id)
+        if not meta:
+            raise ValueError('unknown_pool')
+
+        num_workers = meta.get('num_workers', 1)
+        model = meta.get('model')
+
+        # Start a temporary replacement pool id
+        temp_id = f"{pool_id}__swap_{int(time.time())}"
+        procs: list[mp.Process] = []
+        for _ in range(num_workers):
+            p = mp.Process(target=self._spawn_pool_worker, args=(model, new_adapter, meta.get('hold_seconds', 600)), daemon=True)
+            p.start()
+            procs.append(p)
+            time.sleep(0.2)
+
+        # Wait for a short warm period
+        time.sleep(min(wait_seconds, 30))
+
+        # stop old pool
+        old_procs = meta.get('procs', [])
+        for p in old_procs:
+            try:
+                p.terminate()
+            except Exception:
+                pass
+        for p in old_procs:
+            try:
+                p.join(timeout=1.0)
+            except Exception:
+                pass
+
+        # Replace metadata
+        self._WORKER_POOLS[pool_id] = {
+            'model': model,
+            'adapter': new_adapter,
+            'num_workers': num_workers,
+            'procs': procs,
+            'started_at': time.time(),
+            'hold_seconds': meta.get('hold_seconds', 600),
+        }
+
+        # audit swap
+        self._audit_worker_pool_event('swap_adapter', pool_id, model, new_adapter, num_workers, requestor=requestor)
+        return {'pool_id': pool_id, 'status': 'swapped', 'new_adapter': new_adapter}
+
+    def _audit_worker_pool_event(self, action: str, pool_id: str, model_id: str | None, adapter: str | None, num_workers: int, requestor: dict | None = None):
+        try:
+            audit_dir = Path('logs/audit')
+            audit_dir.mkdir(parents=True, exist_ok=True)
+            entry = {
+                'timestamp': time.time(),
+                'action': action,
+                'pool_id': pool_id,
+                'model_id': model_id,
+                'adapter': adapter,
+                'num_workers': num_workers,
+            }
+            if requestor:
+                entry['requestor'] = requestor
+            # optionally include requestor identity when available (controller should add 'requestor' key)
+            # Write as JSON line
+            with open(audit_dir / 'gpu_orchestrator_worker_pools.jsonl', 'a') as f:
+                f.write(json.dumps(entry) + '\n')
+        except Exception:
+            # Do not fail the operation if auditing fails
+            self.logger.warning('Failed to write worker pool audit entry')
+
+    def _audit_policy_event(self, action: str, detail: dict, requestor: dict | None = None):
+        try:
+            audit_dir = Path('logs/audit')
+            audit_dir.mkdir(parents=True, exist_ok=True)
+            entry = {
+                'timestamp': time.time(),
+                'action': action,
+                'detail': detail,
+            }
+            if requestor:
+                entry['requestor'] = requestor
+
+            with open(audit_dir / 'gpu_orchestrator_pool_policy.jsonl', 'a') as f:
+                f.write(json.dumps(entry) + '\n')
+        except Exception:
+            self.logger.warning('Failed to write policy audit entry')
 
     def get_mps_allocation_config(self) -> dict[str, Any]:
         """Get MPS allocation configuration."""

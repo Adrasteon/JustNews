@@ -19,6 +19,49 @@ from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from .gpu_orchestrator_engine import engine
+from fastapi import Request
+
+
+def _require_admin(request: Request):
+    """Admin guard used by orchestration endpoints.
+
+    Accepts either ADMIN_API_KEY (static) or a role-based JWT (requires role=admin).
+    Returns requestor info dict (may be empty) on success, or raises HTTPException.
+    """
+    admin_key = os.environ.get('ADMIN_API_KEY')
+    auth_header = (request.headers.get('Authorization') or request.headers.get('X-Admin-API-Key') or '').strip()
+    if admin_key and auth_header:
+        if auth_header.lower().startswith('bearer '):
+            token = auth_header.split(' ', 1)[1]
+        else:
+            token = auth_header
+        if token != admin_key:
+            raise HTTPException(status_code=401, detail='Admin API key missing or invalid')
+        # return simple admin identity
+        return {'method': 'api_key', 'user': 'admin_api_key'}
+
+    if not auth_header:
+        raise HTTPException(status_code=401, detail='Admin credentials missing')
+
+    # JWT path
+    if auth_header.lower().startswith('bearer '):
+        token = auth_header.split(' ', 1)[1]
+    else:
+        token = auth_header
+
+    try:
+        import agents.common.auth_models as auth_models
+        payload = auth_models.verify_token(token)
+        if payload is None:
+            raise HTTPException(status_code=401, detail='Invalid authentication token')
+        user = auth_models.get_user_by_id(payload.user_id)
+        if user is None or user.get('role') != auth_models.UserRole.ADMIN.value:
+            raise HTTPException(status_code=403, detail='Admin role required')
+        return {'method': 'jwt', 'user': {'user_id': payload.user_id, 'username': payload.username}}
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail='Auth verification failed')
 from .tools import (
     get_allocations,
     get_gpu_info,
@@ -259,24 +302,33 @@ def models_preload_endpoint(req: PreloadRequest):
 
 
 @app.post("/workers/pool")
-def create_worker_pool(agent: str | None = None, model: str | None = None, adapter: str | None = None, num_workers: int = 1, hold_seconds: int = 600):
+def create_worker_pool(request: Request, agent: str | None = None, model: str | None = None, adapter: str | None = None, num_workers: int = 1, hold_seconds: int = 600):
     """Create a named worker pool. `agent` is an optional name used to derive an id when omitted."""
     pool_id = agent or f"pool_{int(time.time())}"
+    # Require admin and capture requestor identity for audit
+    requestor = _require_admin(request)
     try:
-        return engine.start_worker_pool(pool_id=pool_id, model_id=model, adapter=adapter, num_workers=num_workers, hold_seconds=hold_seconds)
+        resp = engine.start_worker_pool(pool_id=pool_id, model_id=model, adapter=adapter, num_workers=num_workers, hold_seconds=hold_seconds, requestor=requestor)
+        return resp
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/workers/pool")
-def list_pools():
+def list_pools(request: Request):
+    # listing pools is a sensitive operational endpoint — restrict to admins
+    _require_admin(request)
     return engine.list_worker_pools()
 
 
 @app.delete("/workers/pool/{pool_id}")
-def delete_pool(pool_id: str):
+def delete_pool(request: Request, pool_id: str):
+    requestor = _require_admin(request)
     try:
-        return engine.stop_worker_pool(pool_id)
+        resp = engine.stop_worker_pool(pool_id)
+        # audit stop with requestor
+        engine._audit_worker_pool_event('stop', pool_id, None, None, 0, requestor=requestor)
+        return resp
     except ValueError:
         raise HTTPException(status_code=404, detail="unknown_pool")
     except Exception as e:
@@ -343,6 +395,33 @@ def notify_ready_endpoint():
     except Exception as e:
         engine.logger.error(f"Failed to register GPU Orchestrator with MCP Bus: {e}")
         raise HTTPException(status_code=500, detail="Registration failed")
+
+
+@app.get('/workers/policy')
+def get_pool_policy():
+    return engine.get_pool_policy()
+
+
+@app.post('/workers/policy')
+def set_pool_policy(request: Request, payload: dict):
+    requestor = _require_admin(request)
+    try:
+        new = engine.set_pool_policy(payload)
+        engine._audit_policy_event('policy_update', payload, requestor=requestor)
+        return new
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post('/workers/pool/{pool_id}/swap')
+def swap_pool_adapter(request: Request, pool_id: str, new_adapter: str | None = None, wait_seconds: int = 10):
+    requestor = _require_admin(request)
+    try:
+        return engine.hot_swap_pool_adapter(pool_id=pool_id, new_adapter=new_adapter, requestor=requestor, wait_seconds=wait_seconds)
+    except ValueError:
+        raise HTTPException(status_code=404, detail='unknown_pool')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.on_event("startup")

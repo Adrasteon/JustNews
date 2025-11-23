@@ -1,0 +1,49 @@
+Mistral‑7B adapter rollout & perf testing
+=========================================
+
+This document describes the test & rollout flow for adopting a single base
+Mistral‑7B model with per‑task adapters (LoRA/QLoRA) and how to experiment with
+worker pool sizing and performance on RTX‑3090 nodes.
+
+Files added
+- scripts/perf/simulate_concurrent_inference.py — multi‑worker inference tester (stub-friendly)
+- scripts/ops/adapter_worker_pool.py — spawn warm worker pool processes that load base+adapter
+
+Quick smoke tests (developer machine or GPU node)
+
+1) Dry-run mode (no heavy downloads). This uses the stub scorer so you can
+   exercise concurrency safely:
+
+```bash
+RE_RANKER_TEST_MODE=1 python scripts/perf/simulate_concurrent_inference.py --workers 4 --requests 400
+```
+
+2) Spawn a warm pool using the stub (good to estimate concurrency patterns):
+
+```bash
+RE_RANKER_TEST_MODE=1 python scripts/ops/adapter_worker_pool.py --workers 3 --hold 300
+# watch 'nvidia-smi' and observe memory/compute while the pool is warm
+```
+
+3) Real model test (ONLY on GPU node with CUDA + bitsandbytes):
+
+```bash
+export RE_RANKER_TEST_MODE=0
+export RE_RANKER_MODEL=mistralai/Mistral-7B-Instruct
+# simulate 3 slow workers each doing 30 requests
+python scripts/perf/simulate_concurrent_inference.py --workers 3 --requests 30 --model $RE_RANKER_MODEL
+
+# or warm a pool with an adapter
+python scripts/ops/adapter_worker_pool.py --workers 2 --model $RE_RANKER_MODEL --adapter modelstore/agents/synthesizer/adapters/mistral_synth_v1 --hold 600
+```
+
+Interpreting the numbers
+- Watch GPU memory (nvidia-smi) while warming: ensure base + adapters fit in 24GB and observe headroom for activations.
+- Use `simulate_concurrent_inference` p95/p50 to decide pool size (target p95 latency & throughput).
+
+Pool sizing guidance (empirical)
+- On a single RTX 3090 (24GB) with Mistral‑7B int8: a single base model instance uses ~6–9GB. Each worker process that holds base + adapter will add ~0.5–1.0GB overhead (depending on CUDA memory fragmentation & activations). A safe small pool is 1–3 workers per GPU; tune with perf tests.
+
+Next ops to add
+- Add a GPU Orchestrator policy that keeps 1 base model resident and spawns adapter workers on demand.
+- Add monitoring/alerts (prometheus metrics) for adapter load, p95 latency, and OOM events.

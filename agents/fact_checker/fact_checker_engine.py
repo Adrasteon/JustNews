@@ -138,11 +138,7 @@ class FactCheckerEngine:
             # Initialize transformers models
             try:
                 import torch
-                from transformers import (
-                    AutoModelForSequenceClassification,
-                    AutoTokenizer,
-                    pipeline,
-                )
+                from transformers import pipeline
 
                 # Check GPU availability
                 self.gpu_available = torch.cuda.is_available() and self.config.gpu_config["enable_gpu"]
@@ -396,7 +392,7 @@ class FactCheckerEngine:
                 try:
                     from urllib.parse import urlparse
                     domain = urlparse(source_url).netloc.lower()
-                except:
+                except Exception:
                     domain = None
 
             # Domain-based credibility assessment

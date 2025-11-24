@@ -18,7 +18,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any
 
 from common.observability import get_logger
 
@@ -75,7 +75,6 @@ class EnvironmentProfile:
         Returns:
             JustNewsConfig: Configuration with overrides applied
         """
-        import copy
         config_dict = config.model_dump()
 
         # Apply overrides
@@ -85,7 +84,7 @@ class EnvironmentProfile:
         try:
             return JustNewsConfig(**config_dict)
         except Exception as e:
-            raise ValueError(f"Failed to apply profile overrides for {self.name}: {e}")
+            raise ValueError(f"Failed to apply profile overrides for {self.name}: {e}") from e
 
     def _deep_merge(self, base: dict[str, Any], override: dict[str, Any]):
         """Deep merge override dictionary into base dictionary"""
@@ -382,7 +381,7 @@ class EnvironmentProfileManager:
         except Exception as e:
             error_msg = f"Failed to save profile '{profile.name}': {e}"
             logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise RuntimeError(error_msg) from e
 
     def create_profile(
         self,

@@ -5,16 +5,15 @@ test discovery paths (not only `tests/` dir). This sets a minimal test
 read `/etc/justnews/global.env` on development hosts.
 """
 import os
-import tempfile
-from pathlib import Path
-import textwrap
-import warnings
-from shutil import which
-import sys
 
 # Filter known protobuf upb deprecation (PyType_Spec + custom tp_new) in test runs until
 # the system environment is upgraded to a protobuf wheel built with the newer API.
 import subprocess
+import sys
+import tempfile
+import textwrap
+from pathlib import Path
+from shutil import which
 
 # Prefer project-level PYTHON_BIN or a conda env for running preflight scripts; fall
 # back to the system python if not available.
@@ -71,7 +70,12 @@ if os.environ.get('SKIP_PREFLIGHT', '0') != '1':
             # failing the CI/test run; tests should still signal via logs
             # for maintainers to upgrade compiled wheels when needed.
             import warnings as _warnings
-            _warnings.warn('Deprecation warnings detected from third-party compiled extensions (e.g. google._upb._message); please upgrade your environment and reinstall compiled wheels for affected packages.', DeprecationWarning)
+            # Include stacklevel so the warning points to the caller in test runs
+            _warnings.warn(
+                'Deprecation warnings detected from third-party compiled extensions (e.g. google._upb._message); please upgrade your environment and reinstall compiled wheels for affected packages.',
+                DeprecationWarning,
+                stacklevel=2,
+            )
     except FileNotFoundError:
     # In minimal developer/test environments the scripts may not be available.
     # Print a message and continue; CI should run with the script present to enforce this check.
@@ -112,8 +116,8 @@ os.environ.setdefault('EMBEDDING_SUPPRESS_WARNINGS', '0')
 # Prevent tests from opening real MySQL connections during unit tests.
 # Tests that intentionally need a live connector can patch it explicitly.
 try:
+
     import mysql.connector as _mysql_connector  # type: ignore
-    from unittest.mock import Mock
 
     # Replace the `connect` function with a helper that raises by default
     # to ensure code paths fall back to in-memory behavior unless tests
@@ -131,9 +135,9 @@ except Exception:  # pragma: no cover - best-effort during test startup
 # explicitly import and patch it in their own scopes.
 try:
     import importlib.util
+    import sys
     import types
     from unittest.mock import MagicMock as _MagicMock
-    import sys
 
     _spec = importlib.util.find_spec('chromadb')
     if _spec is not None:

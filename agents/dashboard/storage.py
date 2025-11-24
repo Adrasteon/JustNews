@@ -190,8 +190,7 @@ class DashboardStorage:
     def _iter_file_lines(self, path: Path) -> Iterable[str]:
         try:
             with path.open("r", encoding="utf-8") as handle:
-                for line in handle:
-                    yield line
+                yield from handle
         except OSError as exc:
             logger.warning("Failed to iterate storage file %s: %s", path, exc)
 

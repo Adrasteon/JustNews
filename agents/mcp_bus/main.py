@@ -29,7 +29,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response, JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from common.metrics import JustNewsMetrics
@@ -191,10 +191,10 @@ async def register_agent_endpoint(agent: AgentRegistration):
 
     except ValueError as e:
         logger.error(f"❌ Invalid registration request: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"❌ Registration error: {e}")
-        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}") from e
 
 @app.post("/call", response_model=ToolCallResponse)
 async def call_tool_endpoint(call: ToolCallRequest):
@@ -226,16 +226,16 @@ async def call_tool_endpoint(call: ToolCallRequest):
 
     except ValueError as e:
         logger.warning(f"❌ Tool call validation error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except RuntimeError as e:
         logger.error(f"❌ Tool call runtime error: {e}")
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e)) from e
     except ConnectionError as e:
         logger.error(f"❌ Tool call connection error: {e}")
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e)) from e
     except Exception as e:
         logger.error(f"❌ Unexpected tool call error: {e}")
-        raise HTTPException(status_code=500, detail=f"Tool call failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Tool call failed: {str(e)}") from e
 
 @app.get("/agents")
 async def get_agents_endpoint():
@@ -250,7 +250,7 @@ async def get_agents_endpoint():
         return agents
     except Exception as e:
         logger.error(f"❌ Failed to retrieve agents: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve agents: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve agents: {str(e)}") from e
 
 @app.get("/health", response_model=HealthResponse)
 async def health_endpoint():
@@ -260,7 +260,7 @@ async def health_endpoint():
         return HealthResponse(**health_result)
     except Exception as e:
         logger.error(f"❌ Health check error: {e}")
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}") from e
 
 @app.get("/ready")
 async def ready_endpoint():
@@ -288,7 +288,7 @@ async def stats_endpoint():
 
     except Exception as e:
         logger.error(f"❌ Stats retrieval error: {e}")
-        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}") from e
 
 @app.get("/circuit_breaker_status")
 async def circuit_breaker_status_endpoint():
@@ -299,7 +299,7 @@ async def circuit_breaker_status_endpoint():
         return status
     except Exception as e:
         logger.error(f"❌ Failed to get circuit breaker status: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get circuit breaker status: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get circuit breaker status: {str(e)}") from e
 
 @app.get("/metrics")
 async def metrics_endpoint():

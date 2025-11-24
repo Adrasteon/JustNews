@@ -73,7 +73,7 @@ async def main():
         print(f"  Access Token: {admin_tokens['access_token'][:50]}...")
 
         # User login
-        user_tokens = await security.authenticate_user(
+        _user_tokens = await security.authenticate_user(
             username="journalist",
             password="JournalistPass123!",
             ip_address="192.168.1.101",

@@ -1,12 +1,13 @@
-from typing import Any, Dict, Optional
 import json
-from common.observability import get_logger
+from typing import Any
+
 import database.utils.migrated_database_utils as db_utils
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 
 
-def _make_chroma_metadata_safe(metadata: Dict[str, Any]) -> Dict[str, Any]:
+def _make_chroma_metadata_safe(metadata: dict[str, Any]) -> dict[str, Any]:
     # Minimal sanitize helper, reuse from other agents if needed
     safe = metadata.copy() if metadata is not None else {}
     # Add a marker for synthesized
@@ -28,12 +29,12 @@ def save_synthesized_draft(
     story_id: str,
     title: str,
     body: str,
-    summary: Optional[str] = None,
-    analysis_summary: Optional[Dict[str, Any]] = None,
-    synth_metadata: Optional[Dict[str, Any]] = None,
+    summary: str | None = None,
+    analysis_summary: dict[str, Any] | None = None,
+    synth_metadata: dict[str, Any] | None = None,
     persistence_mode: str = 'extend',
-    embedding: Optional[list[float]] = None,
-) -> Dict[str, Any]:
+    embedding: list[float] | None = None,
+) -> dict[str, Any]:
     """Persist synthesized draft either by extending articles (Option A) or as a SynthesizedArticle (Option B).
 
     Uses the `create_database_service()` helper to access MariaDB and Chroma.

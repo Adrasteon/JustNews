@@ -1,7 +1,6 @@
-from fastapi.testclient import TestClient
-from types import SimpleNamespace
-
 import importlib
+
+from fastapi.testclient import TestClient
 
 
 def test_public_articles(monkeypatch):

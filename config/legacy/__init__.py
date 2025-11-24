@@ -18,7 +18,7 @@ import shutil
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any
 
 from common.observability import get_logger
 
@@ -287,7 +287,8 @@ class LegacyConfigurationMigrator:
             else:
                 raise ValueError(f"Unsupported format: {legacy_file.format}")
         except Exception as e:
-            raise ValueError(f"Failed to load {legacy_file.path}: {e}")
+            # Preserve original exception context
+            raise ValueError(f"Failed to load {legacy_file.path}: {e}") from e
 
     def _load_python_config(self, file_path: Path) -> dict[str, Any]:
         """Load Python configuration file"""
@@ -391,7 +392,8 @@ class LegacyConfigurationMigrator:
             new_config = JustNewsConfig(**config_dict)
             return new_config, steps
         except Exception as e:
-            raise ValueError(f"Failed to merge {config_type} configuration: {e}")
+            # Preserve source exception when failing to merge legacy config
+            raise ValueError(f"Failed to merge {config_type} configuration: {e}") from e
 
     def _merge_database_config(self, config_dict: dict[str, Any], legacy: dict[str, Any]) -> list[str]:
         """Merge database configuration"""

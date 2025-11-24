@@ -5,23 +5,29 @@ This module provides the FastAPI application for the dashboard agent,
 including web interface, GPU monitoring, and agent management endpoints.
 """
 
+import json
 import os
 import time
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-import json
-from datetime import UTC, datetime
 
 import requests
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, Header, Depends
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from agents.common.auth_models import get_user_by_id
+from agents.dashboard.dashboard_engine import dashboard_engine
+from agents.dashboard.transparency_router import router as transparency_router
 from common.metrics import JustNewsMetrics
+from common.observability import get_logger
+
+
 def get_search_service():
     """Runtime resolver for the Search service to make tests monkeypatch-friendly.
 
@@ -30,7 +36,6 @@ def get_search_service():
     """
     from common.semantic_search_service import get_search_service as _get_search_service
     return _get_search_service()
-from common.observability import get_logger
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
@@ -55,10 +60,6 @@ try:
 except Exception:  # pragma: no cover - unified config not available in this runtime
     _get_global_config = None  # type: ignore[assignment]
     _get_config_manager = None  # type: ignore[assignment]
-
-from .dashboard_engine import dashboard_engine
-from agents.common.auth_models import verify_token, get_user_by_id, UserRole
-from .transparency_router import router as transparency_router
 
 logger = get_logger(__name__)
 
@@ -289,7 +290,7 @@ def set_publishing_config(payload: dict, request: Request):
         raise
     except Exception as e:
         logger.exception("Failed to set publishing config")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/admin/get_publishing_config")
@@ -354,7 +355,7 @@ def get_publishing_config(request: Request):
         raise
     except Exception as e:
         logger.exception("Failed to read publishing config")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 # Mount static files for public website
 static_path = Path(__file__).parent / "static"
@@ -409,7 +410,7 @@ def get_status():
         return dashboard_engine.get_agent_status()
     except Exception as e:
         logger.error(f"An error occurred while fetching agent status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/health")
@@ -431,7 +432,7 @@ def send_command(call: ToolCall):
         return dashboard_engine.send_command(call)
     except Exception as e:
         logger.error(f"An error occurred while sending a command: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # Web Interface Endpoints
@@ -547,7 +548,7 @@ def get_gpu_info():
         return dashboard_engine.gpu_monitor.get_gpu_info()
     except Exception as e:
         logger.error(f"Error in get_gpu_info endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/history")
@@ -564,7 +565,7 @@ def get_gpu_history(hours: int = 1):
         }
     except Exception as e:
         logger.error(f"Error in get_gpu_history endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/agents")
@@ -574,7 +575,7 @@ def get_agent_gpu_usage():
         return dashboard_engine.gpu_monitor.get_agent_gpu_usage()
     except Exception as e:
         logger.error(f"Error in get_agent_gpu_usage endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/config")
@@ -598,7 +599,7 @@ def update_gpu_config(new_config: dict):
         return dashboard_engine.update_gpu_config(new_config)
     except Exception as e:
         logger.error(f"Error updating GPU config: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/manager/status")
@@ -608,7 +609,7 @@ def get_gpu_manager_status():
         return dashboard_engine.get_gpu_manager_status()
     except Exception as e:
         logger.error(f"Error getting GPU manager status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/allocations")
@@ -618,7 +619,7 @@ def get_gpu_allocations():
         return dashboard_engine.get_gpu_allocations()
     except Exception as e:
         logger.error(f"Error getting GPU allocations: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/metrics")
@@ -628,7 +629,7 @@ def get_gpu_metrics():
         return dashboard_engine.get_gpu_metrics()
     except Exception as e:
         logger.error(f"Error getting GPU metrics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 class IngestRequest(BaseModel):
@@ -646,7 +647,7 @@ def ingest_gpu_jsonl(req: IngestRequest):
         raise
     except Exception as e:
         logger.error(f"Error ingesting GPU JSONL: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/dashboard")
@@ -656,7 +657,7 @@ def get_gpu_dashboard_data():
         return dashboard_engine.get_comprehensive_gpu_dashboard_data()
     except Exception as e:
         logger.error(f"Error in get_gpu_dashboard_data endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/history/db")
@@ -666,7 +667,7 @@ def get_gpu_history_from_db(hours: int = 24, gpu_index: int | None = None, metri
         return dashboard_engine.get_gpu_history_from_db(hours, gpu_index, metric)
     except Exception as e:
         logger.error(f"Error getting GPU history from DB: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/allocations/history")
@@ -676,7 +677,7 @@ def get_allocation_history(hours: int = 24, agent_name: str | None = None):
         return dashboard_engine.get_allocation_history(hours, agent_name)
     except Exception as e:
         logger.error(f"Error getting allocation history: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/trends")
@@ -686,7 +687,7 @@ def get_performance_trends(hours: int = 24):
         return dashboard_engine.get_performance_trends(hours)
     except Exception as e:
         logger.error(f"Error getting performance trends: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/alerts")
@@ -696,7 +697,7 @@ def get_recent_alerts(limit: int = 50):
         return dashboard_engine.get_recent_alerts(limit)
     except Exception as e:
         logger.error(f"Error getting recent alerts: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/storage/stats")
@@ -706,7 +707,7 @@ def get_storage_stats():
         return dashboard_engine.get_storage_stats()
     except Exception as e:
         logger.error(f"Error getting storage stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # Orchestrator proxy helpers & endpoints
@@ -789,7 +790,7 @@ async def start_crawl(request: CrawlRequest):
         return response.json()
     except requests.RequestException as e:
         logger.error(f"Failed to start crawl: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to start crawl: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to start crawl: {str(e)}") from e
 
 
 @app.get("/api/crawl/status")
@@ -809,7 +810,7 @@ async def get_crawl_status():
 
         # Get details for each job
         job_details = {}
-        for job_id, status in jobs.items():
+        for job_id, _status in jobs.items():
             try:
                 detail_payload = {
                     "agent": "crawler",
@@ -826,7 +827,7 @@ async def get_crawl_status():
         return job_details
     except requests.RequestException as e:
         logger.error(f"Failed to get crawl status: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get crawl status: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get crawl status: {str(e)}") from e
 
 
 @app.get("/api/crawl/scheduler")
@@ -842,7 +843,7 @@ async def get_crawl_scheduler(include_runs: bool = True, history_limit: int = 20
         return snapshot
     except Exception as exc:
         logger.error(f"Failed to load crawl scheduler snapshot: {exc}")
-        raise HTTPException(status_code=500, detail=f"Failed to load crawl scheduler snapshot: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed to load crawl scheduler snapshot: {exc}") from exc
 
 
 @app.get("/api/metrics/crawler")
@@ -996,7 +997,7 @@ def public_articles(n: int = 10):
         }
     except Exception as exc:
         logger.exception("Public articles endpoint failed: %s", exc)
-        raise HTTPException(status_code=500, detail="Recent articles temporarily unavailable")
+        raise HTTPException(status_code=500, detail="Recent articles temporarily unavailable") from exc
 
 
 def get_fallback_dashboard_html():

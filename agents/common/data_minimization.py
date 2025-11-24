@@ -1,5 +1,4 @@
 """
-from common.observability import get_logger
 Data Minimization Module for GDPR Compliance
 
 This module implements data minimization principles by:
@@ -22,6 +21,7 @@ from agents.common.compliance_audit import (
     AuditEventType,
     ComplianceAuditLogger,
 )
+from common.observability import get_logger
 
 
 class DataPurpose(Enum):

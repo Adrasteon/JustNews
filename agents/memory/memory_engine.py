@@ -73,7 +73,9 @@ class MemoryEngine:
         try:
             if self.db_initialized and self.db_service:
                 try:
-                    from database.utils.migrated_database_utils import close_cached_service
+                    from database.utils.migrated_database_utils import (
+                        close_cached_service,
+                    )
                     close_cached_service()
                 except Exception:
                     # Fall back: close the service instance directly

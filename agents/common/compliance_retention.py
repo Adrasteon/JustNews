@@ -1,5 +1,3 @@
-from common.observability import get_logger
-
 #!/usr/bin/env python3
 """
 Legal Compliance Framework - Data Retention Policies
@@ -22,6 +20,8 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any
+
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 
@@ -147,7 +147,7 @@ class DataRetentionManager:
                 with open(self.config_path, encoding='utf-8') as f:
                     data = json.load(f)
                     policies = {}
-                    for key, policy_data in data.items():
+                    for _key, policy_data in data.items():
                         policy = RetentionPolicy.from_dict(policy_data)
                         policies[policy.data_type] = policy
                     return policies

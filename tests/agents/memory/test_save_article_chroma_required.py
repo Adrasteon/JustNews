@@ -1,5 +1,3 @@
-import os
-import pytest
 
 from agents.memory.tools import save_article
 

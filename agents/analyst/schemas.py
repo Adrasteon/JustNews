@@ -3,9 +3,9 @@ Analyst Schemas - Output datatypes for Analyst agent
 
 Defines minimal dataclasses used for AnalysisReport and Claim objects.
 """
-from dataclasses import dataclass, asdict, field
-from typing import List, Dict, Any, Optional
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
+from typing import Any
 
 
 @dataclass
@@ -14,10 +14,10 @@ class ClaimVerdict:
     claim_text: str
     verdict: str  # 'verified', 'questionable', 'false', 'unverifiable'
     confidence: float
-    evidence: Optional[List[Dict[str, Any]]] = None
-    timestamp: Optional[str] = None
+    evidence: list[dict[str, Any]] | None = None
+    timestamp: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["confidence"] = float(d["confidence"])
         return d
@@ -29,13 +29,13 @@ class SourceFactCheck:
     article_id: str
     fact_check_status: str  # 'passed', 'failed', 'needs_review', 'pending'
     overall_score: float
-    claim_verdicts: Optional[List[ClaimVerdict]] = field(default_factory=list)
-    credibility_score: Optional[float] = None
-    source_url: Optional[str] = None
-    processed_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    fact_check_trace: Optional[Dict[str, Any]] = None
+    claim_verdicts: list[ClaimVerdict] | None = field(default_factory=list)
+    credibility_score: float | None = None
+    source_url: str | None = None
+    processed_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    fact_check_trace: dict[str, Any] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "article_id": self.article_id,
             "fact_check_status": self.fact_check_status,
@@ -51,12 +51,12 @@ class SourceFactCheck:
 @dataclass
 class Claim:
     claim_text: str
-    start: Optional[int] = None
-    end: Optional[int] = None
+    start: int | None = None
+    end: int | None = None
     confidence: float = 0.5
-    claim_type: Optional[str] = None
+    claim_type: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["confidence"] = float(d["confidence"])
         return d
@@ -64,16 +64,16 @@ class Claim:
 
 @dataclass
 class PerArticleAnalysis:
-    article_id: Optional[str] = None
-    language: Optional[str] = "en"
-    sentiment: Optional[Dict[str, Any]] = None
-    bias: Optional[Dict[str, Any]] = None
-    entities: Optional[List[Dict[str, Any]]] = None
-    claims: Optional[List[Claim]] = None
-    source_fact_check: Optional[SourceFactCheck] = None
-    processing_time_seconds: Optional[float] = None
+    article_id: str | None = None
+    language: str | None = "en"
+    sentiment: dict[str, Any] | None = None
+    bias: dict[str, Any] | None = None
+    entities: list[dict[str, Any]] | None = None
+    claims: list[Claim] | None = None
+    source_fact_check: SourceFactCheck | None = None
+    processing_time_seconds: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "article_id": self.article_id,
             "language": self.language,
@@ -88,19 +88,19 @@ class PerArticleAnalysis:
 
 @dataclass
 class AnalysisReport:
-    cluster_id: Optional[str] = None
-    language: Optional[str] = "en"
+    cluster_id: str | None = None
+    language: str | None = "en"
     articles_count: int = 0
-    aggregate_sentiment: Optional[Dict[str, Any]] = None
-    aggregate_bias: Optional[Dict[str, Any]] = None
-    entities: Optional[List[Dict[str, Any]]] = None
-    primary_claims: Optional[List[Claim]] = None
-    per_article: Optional[List[PerArticleAnalysis]] = None
-    source_fact_checks: Optional[List[SourceFactCheck]] = field(default_factory=list)
-    cluster_fact_check_summary: Optional[Dict[str, Any]] = None
-    generated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    aggregate_sentiment: dict[str, Any] | None = None
+    aggregate_bias: dict[str, Any] | None = None
+    entities: list[dict[str, Any]] | None = None
+    primary_claims: list[Claim] | None = None
+    per_article: list[PerArticleAnalysis] | None = None
+    source_fact_checks: list[SourceFactCheck] | None = field(default_factory=list)
+    cluster_fact_check_summary: dict[str, Any] | None = None
+    generated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "cluster_id": self.cluster_id,
             "language": self.language,

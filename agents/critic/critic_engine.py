@@ -23,6 +23,7 @@ All operations include robust error handling, validation, and fallbacks.
 
 import json
 import os
+import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -883,5 +884,5 @@ class CriticEngine:
         """Destructor to ensure cleanup."""
         try:
             self.cleanup()
-        except:
+        except Exception:
             pass

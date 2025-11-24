@@ -7,9 +7,12 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from agents.common.auth_models import create_user_tables
-from agents.common.database import execute_query, initialize_connection_pool
-from common.observability import get_logger
+from agents.common.auth_models import create_user_tables  # noqa: E402
+from agents.common.database import (  # noqa: E402
+    execute_query,
+    initialize_connection_pool,
+)
+from common.observability import get_logger  # noqa: E402
 
 """
 Database initialization script for JustNews Authentication System

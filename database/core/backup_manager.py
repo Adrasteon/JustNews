@@ -479,7 +479,8 @@ class BackupManager:
         except ImportError:
             logger.warning("boto3 not available for S3 upload")
         except Exception as e:
-            raise Exception(f"S3 upload failed: {e}")
+            # Preserve original exception context for clearer tracebacks
+            raise Exception(f"S3 upload failed: {e}") from e
 
     def _upload_to_azure(self, backup_path: Path, config: dict[str, Any]):
         """Upload to Azure Blob Storage"""

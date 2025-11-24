@@ -26,9 +26,12 @@ import time
 import warnings
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from common.observability import get_logger
+
+if TYPE_CHECKING:
+    from .schemas import SourceFactCheck
 
 # Configure centralized logging
 logger = get_logger(__name__)
@@ -370,9 +373,9 @@ class AnalystEngine:
             return []
 
     def generate_analysis_report(
-        self, 
-        texts: list[str], 
-        article_ids: list[str] | None = None, 
+        self,
+        texts: list[str],
+        article_ids: list[str] | None = None,
         cluster_id: str | None = None,
         enable_fact_check: bool = True
     ) -> dict[str, Any]:
@@ -389,7 +392,11 @@ class AnalystEngine:
             enable_fact_check: Whether to run per-article fact-checking (default: True)
         """
         try:
-            from .schemas import AnalysisReport, Claim, PerArticleAnalysis, SourceFactCheck, ClaimVerdict
+            from .schemas import (
+                AnalysisReport,
+                Claim,
+                PerArticleAnalysis,
+            )
 
             per_article_results = []
             sentiments = []
@@ -480,7 +487,7 @@ class AnalystEngine:
             logger.error(f"Failed to generate analysis report: {e}")
             return {"error": str(e)}
 
-    def _run_per_article_fact_check(self, text: str, article_id: str | None = None) -> "SourceFactCheck | None":
+    def _run_per_article_fact_check(self, text: str, article_id: str | None = None) -> SourceFactCheck | None:
         """
         Run comprehensive fact-check on a single article.
 
@@ -488,7 +495,7 @@ class AnalystEngine:
         Returns SourceFactCheck object with results.
         """
         try:
-            from .schemas import SourceFactCheck, ClaimVerdict
+            from .schemas import ClaimVerdict, SourceFactCheck
 
             # Import fact-checker tools
             try:
@@ -552,7 +559,7 @@ class AnalystEngine:
             logger.error(f"Per-article fact-check failed for {article_id}: {e}")
             return None
 
-    def _aggregate_fact_check_summary(self, source_fact_checks: list["SourceFactCheck"]) -> dict[str, Any]:
+    def _aggregate_fact_check_summary(self, source_fact_checks: list[SourceFactCheck]) -> dict[str, Any]:
         """
         Aggregate cluster-level fact-check summary from per-article results.
 
@@ -725,7 +732,7 @@ class AnalystEngine:
         if not words:
             return 0.0
 
-        unique_words = set(word.lower().strip('.,!?;:"()[]') for word in words)
+        unique_words = {word.lower().strip('.,!?;:"()[]') for word in words}
         return round(len(unique_words) / len(words), 3)
 
     def extract_key_metrics(self, text: str, url: str | None = None) -> dict[str, Any]:

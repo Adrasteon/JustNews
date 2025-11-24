@@ -1,6 +1,5 @@
-import warnings
 import importlib
-import sys
+import warnings
 
 
 def test_no_protobuf_upb_deprecation():

@@ -14,9 +14,10 @@ Integration note:
      See `docs/gpu_telemetry_integration.md` for recommended deployment and systemd examples.
 """
 
+import json
+import multiprocessing as mp
 import os
 import subprocess
-import multiprocessing as mp
 import threading
 import time
 import uuid
@@ -26,8 +27,6 @@ from typing import Any
 import pynvml  # type: ignore
 from fastapi import HTTPException
 from prometheus_client import Counter, Gauge
-import json
-from pathlib import Path
 
 from common.metrics import JustNewsMetrics
 
@@ -674,8 +673,12 @@ class GPUOrchestratorEngine:
             return
 
         try:
-            from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
             import torch
+            from transformers import (
+                AutoModelForCausalLM,
+                AutoTokenizer,
+                BitsAndBytesConfig,
+            )
             bnb = BitsAndBytesConfig(load_in_8bit=True, bnb_8bit_use_double_quant=True, bnb_8bit_compute_dtype=getattr(torch, 'float16', None))
             model = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb, device_map='auto')
             _tok = AutoTokenizer.from_pretrained(model_id)
@@ -780,7 +783,7 @@ class GPUOrchestratorEngine:
         model = meta.get('model')
 
         # Start a temporary replacement pool id
-        temp_id = f"{pool_id}__swap_{int(time.time())}"
+        _temp_id = f"{pool_id}__swap_{int(time.time())}"
         procs: list[mp.Process] = []
         for _ in range(num_workers):
             p = mp.Process(target=self._spawn_pool_worker, args=(model, new_adapter, meta.get('hold_seconds', 600)), daemon=True)

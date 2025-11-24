@@ -309,7 +309,7 @@ async def assess_content_quality_endpoint(request: QualityAssessmentRequest):
     except Exception as e:
         processing_time = time.time() - start_time
         logger.error(f"❌ Content quality assessment failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Content quality assessment failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Content quality assessment failed: {str(e)}") from e
 
 @app.post("/categorize_content", response_model=EditorialResponse)
 async def categorize_content_endpoint(request: CategorizationRequest):
@@ -355,7 +355,7 @@ async def categorize_content_endpoint(request: CategorizationRequest):
     except Exception as e:
         processing_time = time.time() - start_time
         logger.error(f"❌ Content categorization failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Content categorization failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Content categorization failed: {str(e)}") from e
 
 @app.post("/analyze_editorial_sentiment", response_model=EditorialResponse)
 async def analyze_editorial_sentiment_endpoint(request: SentimentAnalysisRequest):
@@ -401,7 +401,7 @@ async def analyze_editorial_sentiment_endpoint(request: SentimentAnalysisRequest
     except Exception as e:
         processing_time = time.time() - start_time
         logger.error(f"❌ Editorial sentiment analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Editorial sentiment analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Editorial sentiment analysis failed: {str(e)}") from e
 
 @app.post("/generate_editorial_commentary", response_model=EditorialResponse)
 async def generate_editorial_commentary_endpoint(request: CommentaryRequest):
@@ -447,7 +447,7 @@ async def generate_editorial_commentary_endpoint(request: CommentaryRequest):
     except Exception as e:
         processing_time = time.time() - start_time
         logger.error(f"❌ Editorial commentary generation failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Editorial commentary generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Editorial commentary generation failed: {str(e)}") from e
 
 @app.post("/make_editorial_decision", response_model=EditorialResponse)
 async def make_editorial_decision_endpoint(request: EditorialDecisionRequest):
@@ -493,7 +493,7 @@ async def make_editorial_decision_endpoint(request: EditorialDecisionRequest):
     except Exception as e:
         processing_time = time.time() - start_time
         logger.error(f"❌ Editorial decision making failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Editorial decision making failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Editorial decision making failed: {str(e)}") from e
 
 @app.post("/request_story_brief", response_model=EditorialResponse)
 async def request_story_brief_endpoint(request: StoryBriefRequest):
@@ -539,7 +539,7 @@ async def request_story_brief_endpoint(request: StoryBriefRequest):
     except Exception as e:
         processing_time = time.time() - start_time
         logger.error(f"❌ Story brief generation failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Story brief generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Story brief generation failed: {str(e)}") from e
 
 @app.post("/publish_story", response_model=EditorialResponse)
 async def publish_story_endpoint(request: PublishRequest):
@@ -585,7 +585,7 @@ async def publish_story_endpoint(request: PublishRequest):
     except Exception as e:
         processing_time = time.time() - start_time
         logger.error(f"❌ Story publishing failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Story publishing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Story publishing failed: {str(e)}") from e
 
 @app.get("/api/v1/articles/drafts")
 def list_drafts():
@@ -621,7 +621,7 @@ def list_drafts():
             return {'drafts': rows}
     except Exception as e:
         logger.exception("Failed to list drafts")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/review_evidence", response_model=EditorialResponse)
 async def review_evidence_endpoint(request: EvidenceReviewRequest):
@@ -658,7 +658,7 @@ async def review_evidence_endpoint(request: EvidenceReviewRequest):
     except Exception as e:
         processing_time = time.time() - start_time
         logger.error(f"❌ Evidence review queuing failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Evidence review queuing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Evidence review queuing failed: {str(e)}") from e
 
 @app.get("/health", response_model=HealthResponse)
 async def health_endpoint():
@@ -668,7 +668,7 @@ async def health_endpoint():
         return HealthResponse(**health_result)
     except Exception as e:
         logger.error(f"❌ Health check error: {e}")
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}") from e
 
 @app.get("/stats", response_model=StatsResponse)
 async def stats_endpoint():
@@ -695,7 +695,7 @@ async def stats_endpoint():
 
     except Exception as e:
         logger.error(f"❌ Stats retrieval error: {e}")
-        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}") from e
 
 @app.get("/capabilities")
 async def capabilities_endpoint():

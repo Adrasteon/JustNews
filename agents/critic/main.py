@@ -180,7 +180,7 @@ def critique_synthesis_endpoint(call: ToolCall):
 
     except Exception as e:
         logger.error(f"❌ Critique synthesis error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/critique_neutrality")
 def critique_neutrality_endpoint(call: ToolCall):
@@ -199,7 +199,7 @@ def critique_neutrality_endpoint(call: ToolCall):
 
     except Exception as e:
         logger.error(f"❌ Neutrality analysis error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 # Specialized analysis endpoints
 @app.post("/analyze_argument_structure")
@@ -220,7 +220,7 @@ def analyze_argument_structure_endpoint(request: ArgumentAnalysisRequest):
 
     except Exception as e:
         logger.error(f"❌ Argument structure analysis error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/assess_editorial_consistency")
 def assess_editorial_consistency_endpoint(request: ConsistencyRequest):
@@ -240,7 +240,7 @@ def assess_editorial_consistency_endpoint(request: ConsistencyRequest):
 
     except Exception as e:
         logger.error(f"❌ Editorial consistency error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/detect_logical_fallacies")
 def detect_logical_fallacies_endpoint(request: FallacyRequest):
@@ -260,7 +260,7 @@ def detect_logical_fallacies_endpoint(request: FallacyRequest):
 
     except Exception as e:
         logger.error(f"❌ Logical fallacy detection error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/assess_source_credibility")
 def assess_source_credibility_endpoint(request: CredibilityRequest):
@@ -280,7 +280,7 @@ def assess_source_credibility_endpoint(request: CredibilityRequest):
 
     except Exception as e:
         logger.error(f"❌ Source credibility error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 # Utility endpoints
 @app.post("/health_check")
@@ -301,7 +301,7 @@ def health_check_endpoint(call: ToolCall):
 
     except Exception as e:
         logger.error(f"❌ Health check error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/validate_critique_result")
 def validate_critique_result_endpoint(call: ToolCall):
@@ -315,7 +315,7 @@ def validate_critique_result_endpoint(call: ToolCall):
 
     except Exception as e:
         logger.error(f"❌ Result validation error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/format_critique_output")
 def format_critique_output_endpoint(call: ToolCall):
@@ -329,7 +329,7 @@ def format_critique_output_endpoint(call: ToolCall):
 
     except Exception as e:
         logger.error(f"❌ Output formatting error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/get_critic_engine")
 def get_critic_engine_endpoint(call: ToolCall):
@@ -343,7 +343,7 @@ def get_critic_engine_endpoint(call: ToolCall):
 
     except Exception as e:
         logger.error(f"❌ Engine retrieval error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 # Feedback logging endpoint
 @app.post("/log_feedback")
@@ -361,7 +361,7 @@ def log_feedback_endpoint(call: ToolCall):
 
     except Exception as e:
         logger.error(f"❌ Feedback logging error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 if __name__ == "__main__":
     import uvicorn

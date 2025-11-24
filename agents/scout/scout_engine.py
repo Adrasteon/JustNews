@@ -16,8 +16,8 @@ Architecture: Streamlined for AI-first approach with specialized models for
 different analysis tasks.
 """
 
-import re
 import os
+import re
 import time
 import warnings
 from dataclasses import dataclass

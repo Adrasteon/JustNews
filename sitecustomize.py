@@ -1,6 +1,6 @@
 import os
-import sys
 import subprocess
+import sys
 
 # Run strict preflight checks when running in CI/test context to ensure
 # no DeprecationWarnings from older compiled protobuf/upb code are present.

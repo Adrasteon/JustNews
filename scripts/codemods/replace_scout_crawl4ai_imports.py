@@ -43,7 +43,7 @@ def should_skip_path(path: Path) -> bool:
 
 def find_python_files(root: Path) -> list[Path]:
     results: list[Path] = []
-    for dirpath, dirnames, filenames in os.walk(root):
+    for dirpath, _dirnames, filenames in os.walk(root):
         # skip some large or irrelevant directories early
         if any(part.startswith(".") for part in Path(dirpath).parts):
             continue

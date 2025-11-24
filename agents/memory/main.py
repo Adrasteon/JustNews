@@ -305,7 +305,7 @@ def save_article_endpoint(request: dict):
 
     except Exception as e:
         logger.error(f"Error saving article: {e}")
-        raise HTTPException(status_code=400, detail=f"Error saving article: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error saving article: {str(e)}") from e
 
 
 @app.post("/get_article")
@@ -338,7 +338,7 @@ async def get_article_endpoint(request: Request):
         raise
     except Exception as e:
         logger.error(f"Error retrieving article: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving article: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving article: {str(e)}") from e
 
 
 @app.post("/get_all_article_ids")
@@ -351,7 +351,7 @@ async def get_all_article_ids_endpoint():
         return result
     except Exception as e:
         logger.error(f"Error retrieving article IDs: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving article IDs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving article IDs: {str(e)}") from e
 
 
 @app.post("/vector_search_articles")
@@ -377,7 +377,7 @@ def vector_search_articles_endpoint(request: dict):
 
     except Exception as e:
         logger.error(f"Error searching articles: {e}")
-        raise HTTPException(status_code=400, detail=f"Error searching articles: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error searching articles: {str(e)}") from e
 
 
 @app.post("/get_recent_articles")
@@ -402,7 +402,7 @@ def get_recent_articles_endpoint(request: dict):
 
     except Exception as e:
         logger.error(f"Error retrieving recent articles: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving recent articles: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving recent articles: {str(e)}") from e
 
 
 @app.post("/log_training_example")
@@ -415,7 +415,7 @@ def log_training_example_endpoint(example: TrainingExample):
         return result
     except Exception as e:
         logger.error(f"Error logging training example: {e}")
-        raise HTTPException(status_code=500, detail=f"Error logging training example: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error logging training example: {str(e)}") from e
 
 
 @app.post("/ingest_article")
@@ -445,7 +445,7 @@ def ingest_article_endpoint(request: dict):
         raise
     except Exception as e:
         logger.error(f"Ingestion failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Ingestion error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ingestion error: {str(e)}") from e
 
 
 @app.get("/get_article_count")
@@ -456,7 +456,7 @@ def get_article_count_endpoint():
         return {"count": count}
     except Exception as e:
         logger.error(f"Error getting article count: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving article count: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving article count: {str(e)}") from e
 
 
 @app.post("/get_sources")
@@ -478,7 +478,7 @@ def get_sources_endpoint(request: dict):
 
     except Exception as e:
         logger.error(f"Error getting sources: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving sources: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving sources: {str(e)}") from e
 
 
 @app.get("/stats")
@@ -500,7 +500,7 @@ def get_stats_endpoint():
 
     except Exception as e:
         logger.error(f"Error getting stats: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving stats: {str(e)}") from e
 
 
 if __name__ == "__main__":

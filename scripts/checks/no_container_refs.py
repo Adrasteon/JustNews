@@ -43,6 +43,7 @@ EXCLUDE_DIRS = [
     "raw_html",
     "logs",
     "scripts/checks",
+    "third_party",
 ]
 
 # File extensions to scan (only these will be scanned for banned tokens)
@@ -80,7 +81,7 @@ def main() -> int:
     matches = []
     compiled = [re.compile(p, flags=re.IGNORECASE) for p in BANNED_PATTERNS]
 
-    for root, dirs, files in os.walk(repo_root):
+    for root, _dirs, files in os.walk(repo_root):
         # Skip vendor/ or .git or site-packages
         try:
             top_element = Path(root).resolve().relative_to(repo_root.resolve()).parts[0]

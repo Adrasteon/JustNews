@@ -1,5 +1,5 @@
-from types import SimpleNamespace
 import importlib
+from types import SimpleNamespace
 
 
 def test_in_memory_rate_limiter(monkeypatch):

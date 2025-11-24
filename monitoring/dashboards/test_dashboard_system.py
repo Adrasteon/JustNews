@@ -30,14 +30,10 @@ try:
     from executive_dashboard import (
         BusinessKPI,
         ExecutiveDashboard,
-        ExecutiveMetric,
         ExecutiveSummary,
-        KPICategory,
         KPIStatus,
     )
     from grafana_integration import (
-        DashboardPanel,
-        GrafanaAlertRule,
         GrafanaConfig,
         GrafanaIntegration,
     )
@@ -90,8 +86,6 @@ class TestDashboardGenerator(unittest.TestCase):
 
     def test_create_template(self):
         """Test template creation"""
-    def setUp(self):
-        """Setup test fixtures"""
         self.generator = DashboardGenerator()
         config = DashboardConfig(
             title="Test Dashboard",
@@ -197,10 +191,16 @@ class TestRealTimeMonitor(unittest.TestCase):
             buffer_size=100
         )
 
-        # Mock asyncio.create_task to avoid event loop issues
+        # Mock asyncio.create_task to avoid event loop issues while ensuring
+        # created coroutines are properly closed to prevent warnings
         with patch('asyncio.create_task') as mock_create_task:
             mock_task = AsyncMock()
-            mock_create_task.return_value = mock_task
+
+            def _fake_create_task(coro, *args, **kwargs):
+                coro.close()
+                return mock_task
+
+            mock_create_task.side_effect = _fake_create_task
 
             self.monitor.add_custom_stream(config)
             self.assertIn("test_stream", self.monitor.streams)
@@ -215,8 +215,13 @@ class TestRealTimeMonitor(unittest.TestCase):
             buffer_size=10
         )
 
-        # Mock asyncio.create_task to avoid event loop issues
-        with patch('asyncio.create_task'):
+        # Mock asyncio.create_task similarly to ensure clean coroutine shutdown
+        with patch('asyncio.create_task') as mock_create_task:
+            def _fake_create_task(coro, *args, **kwargs):
+                coro.close()
+                return AsyncMock()
+
+            mock_create_task.side_effect = _fake_create_task
             self.monitor.add_custom_stream(config)
 
         # Simulate adding data to buffer (this would normally be limited by the update loop)
@@ -238,22 +243,22 @@ class TestRealTimeMonitor(unittest.TestCase):
         buffer = self.monitor.get_stream_data("test_stream")
         self.assertLessEqual(len(buffer), 10)  # Should be limited to buffer size
 
-    @patch('websockets.serve')
+    @patch('monitoring.dashboards.realtime_monitor.websockets.serve')
     def test_start_monitoring_mock(self, mock_serve):
         """Test monitoring startup with mocked WebSocket server"""
-        async def mock_server_coro():
-            mock_server = AsyncMock()
-            mock_server.is_serving = True
+        mock_server = AsyncMock()
+        mock_server.is_serving = True
+        async def fake_serve(*_args, **_kwargs):
             return mock_server
-
-        mock_serve.return_value = mock_server_coro()
+        mock_serve.side_effect = fake_serve
 
         async def test_start():
-            # Mock the _start_stream_updates method to avoid additional async calls
+            # Mock the update/cleanup coroutines to avoid background tasks
             with patch.object(self.monitor, '_start_stream_updates', new_callable=AsyncMock):
-                server = await self.monitor.start_server()
-                mock_serve.assert_called_once()
-                self.assertIsNotNone(server)
+                with patch.object(self.monitor, '_cleanup_inactive_clients', new_callable=AsyncMock):
+                    server = await self.monitor.start_server()
+                    mock_serve.assert_called_once()
+                    self.assertIsNotNone(server)
 
         asyncio.run(test_start())
 
@@ -469,24 +474,22 @@ class TestGrafanaIntegration(unittest.TestCase):
         self.assertGreater(len(self.integration.templates), 0)
         self.assertGreater(len(self.integration.alert_rules), 0)
 
-    @patch('aiohttp.ClientSession')
-    def test_connection_test_mock(self, mock_session):
+    def test_connection_test_mock(self):
         """Test connection testing with mocked session"""
-        mock_instance = AsyncMock()
-        mock_session.return_value = mock_instance
-
+        mock_session = Mock()
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_instance.get.return_value.__aenter__.return_value = mock_response
+        mock_context = AsyncMock()
+        mock_context.__aenter__.return_value = mock_response
+        mock_session.get.return_value = mock_context
 
         async def test_connection():
-            self.integration.session = mock_instance
-            # Just test that the method can be called without error
+            self.integration.session = mock_session
             try:
                 await self.integration._test_connection()
             except Exception:
-                pass  # Expected with mock setup
-            mock_instance.get.assert_called()
+                pass
+            mock_session.get.assert_called()
 
         asyncio.run(test_connection())
 
@@ -499,24 +502,26 @@ class TestGrafanaIntegration(unittest.TestCase):
         self.assertEqual(dashboard_json["dashboard"]["title"], "Test Dashboard")
         self.assertEqual(dashboard_json["overwrite"], True)
 
-    @patch('aiohttp.ClientSession')
-    def test_deploy_dashboard_mock(self, mock_session):
+    def test_deploy_dashboard_mock(self):
         """Test dashboard deployment with mocked session"""
-        mock_instance = AsyncMock()
-        mock_session.return_value = mock_instance
-
+        mock_session = Mock()
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_instance.post.return_value.__aenter__.return_value = mock_response
+
+        mock_get_context = AsyncMock()
+        mock_get_context.__aenter__.return_value = mock_response
+        mock_session.get.return_value = mock_get_context
+
+        mock_post_context = AsyncMock()
+        mock_post_context.__aenter__.return_value = mock_response
+        mock_session.post.return_value = mock_post_context
 
         async def test_deploy():
-            self.integration.session = mock_instance
-            # Just test that the method can be called
+            self.integration.session = mock_session
             try:
                 await self.integration._ensure_folder()
             except Exception:
-                pass  # Expected with mock setup
-            # The method may or may not call post depending on folder existence
+                pass
 
         asyncio.run(test_deploy())
 
@@ -566,15 +571,14 @@ class IntegrationTests(unittest.TestCase):
         self.assertIn("Integration Test", self.dashboard_gen.templates)
         self.assertIn("Integration Alert", [rule.name for rule in self.alert_dashboard.get_rules()])
 
-    @patch('websockets.serve')
+    @patch('monitoring.dashboards.realtime_monitor.websockets.serve')
     @patch('aiohttp.ClientSession')
     def test_full_workflow_mock(self, mock_session, mock_websockets):
         """Test full dashboard workflow with mocked external dependencies"""
-        async def mock_server_coro():
-            mock_ws_server = AsyncMock()
+        mock_ws_server = AsyncMock()
+        async def fake_serve(*_args, **_kwargs):
             return mock_ws_server
-
-        mock_websockets.return_value = mock_server_coro()
+        mock_websockets.side_effect = fake_serve
 
         mock_http_session = AsyncMock()
         mock_session.return_value = mock_http_session
@@ -582,8 +586,9 @@ class IntegrationTests(unittest.TestCase):
         async def test_workflow():
             # Start real-time monitor
             with patch.object(self.realtime_monitor, '_start_stream_updates', new_callable=AsyncMock):
-                await self.realtime_monitor.start_server()
-                self.assertIsNotNone(self.realtime_monitor.server)
+                with patch.object(self.realtime_monitor, '_cleanup_inactive_clients', new_callable=AsyncMock):
+                    await self.realtime_monitor.start_server()
+                    self.assertIsNotNone(self.realtime_monitor.server)
 
             # Deploy dashboard
             template = self.dashboard_gen.templates.get("system_overview")

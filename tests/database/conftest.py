@@ -132,9 +132,9 @@ def sample_source_data():
         'url': 'https://example.com',
         'domain': 'example.com',
         'name': 'Example News',
-        'created_at': datetime(2024, 1, 1, 12, 0, 0)
+        'created_at': datetime(2024, 1, 1, 12, 0, 0),
+        'metadata': {'test': True, 'version': '1.0'},
     }
-
 
 @pytest.fixture
 def sample_article_data():
@@ -164,9 +164,7 @@ def sample_article_data():
         'sentiment_analysis': {'polarity': 0.1, 'subjectivity': 0.3},
         'word_count': 42,
         'read_time_minutes': 2,
-        'created_at': datetime(2024, 1, 1, 12, 0, 0),
-        'metadata': {'test': True, 'version': '1.0'},
-        'updated_at': datetime(2024, 1, 2, 12, 0, 0)
+        # created_at/updated_at already provided earlier in this record
     }
 
 

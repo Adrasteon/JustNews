@@ -554,7 +554,7 @@ def format_fact_check_output(result: dict[str, Any], format_type: str = "json") 
                 lines.append(f"- **Total Claims**: {len(claims)}")
                 if claims:
                     lines.append("- **Sample Claims**:")
-                    for i, claim in enumerate(claims[:3]):
+                    for _i, claim in enumerate(claims[:3]):
                         lines.append(f"  - {claim[:100]}{'...' if len(claim) > 100 else ''}")
 
             if "contradictions_found" in result and result["contradictions_found"] > 0:

@@ -9,12 +9,12 @@ Design decisions:
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Callable, List, Sequence
 
 try:
-    from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
     import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 except Exception:
     AutoTokenizer = None
     AutoModelForCausalLM = None
@@ -37,7 +37,7 @@ class _StubReRanker:
     def __init__(self):
         pass
 
-    def score(self, query: str, candidates: Sequence[ReRankCandidate]) -> List[float]:
+    def score(self, query: str, candidates: Sequence[ReRankCandidate]) -> list[float]:
         # deterministic scoring: longer overlap / length heuristics
         qwords = set(query.lower().split())
         scores = []
@@ -94,7 +94,7 @@ class ReRanker:
         self.tokenizer = tokenizer
         self._impl = model
 
-    def score(self, query: str, candidates: Sequence[ReRankCandidate]) -> List[float]:
+    def score(self, query: str, candidates: Sequence[ReRankCandidate]) -> list[float]:
         """Return a list of scores aligned with candidates.
 
         If using a real model, we implement a cheap scoring heuristic: compute

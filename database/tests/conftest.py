@@ -46,23 +46,58 @@ def mock_pool(mock_db_config):
     # This module previously mocked psycopg2 (Postgres) behavior. Since
     # Postgres is deprecated, rely on MySQL/MariaDB mocks for tests and
     # avoid importing psycopg2-related things here. The migrated service and
-    # DatabaseConnectionPool support Postgres only when explicitly requested.
-    # Allow creating a patch for psycopg2 even when the package isn't
-    # installed; it's deprecated and only used for Postgres-specific tests.
-    with patch('mysql.connector.connect') as mock_connect, patch('psycopg2.pool.ThreadedConnectionPool', create=True) as mock_pg_pool:
+    # DatabaseConnectionPool now exclusively target MariaDB.
+    with patch('mysql.connector.connect'), \
+            patch('database.core.connection_pool.create_database_service') as mock_create_service, \
+            patch('database.core.connection_pool.get_db_config') as mock_get_db_config:
         from database.core.connection_pool import DatabaseConnectionPool
-        # Ensure psycopg2 pool doesn't attempt real connections during tests
-        mock_pg_pool.return_value = Mock()
-        pool = DatabaseConnectionPool(mock_db_config)
-        # Mock the pool attribute to avoid actual database connections
-        pool.pool = Mock()
-        pool.pool.getconn = Mock(return_value=Mock())
-        pool.pool.putconn = Mock()
-        pool.pool.closeall = Mock()
-        pool.pool._pool = []
-        pool.pool._used = []
 
-        # Mock the execute_query method
+        # Provide deterministic config for the pool initialization
+        mock_get_db_config.return_value = {
+            'mariadb': {
+                'host': 'localhost',
+                'port': 3306,
+                'database': 'test_db',
+                'user': 'test_user',
+                'password': 'test_password'
+            },
+            'connection_pool': {
+                'min_connections': 1,
+                'max_connections': 5,
+                'health_check_interval': 30,
+                'max_retries': 3,
+                'retry_delay': 1.0,
+                'connection_timeout_seconds': 3.0,
+                'command_timeout_seconds': 30.0
+            },
+            'chromadb': {
+                'host': 'localhost',
+                'port': 8000,
+                'collection': 'articles'
+            },
+            'embedding': {
+                'model': 'all-MiniLM-L6-v2',
+                'dimensions': 384,
+                'device': 'cpu'
+            }
+        }
+
+        mock_service = Mock()
+        mock_connection = Mock()
+        mock_cursor = Mock()
+        mock_cursor.execute = Mock()
+        mock_cursor.fetchone = Mock(return_value=(1,))
+        mock_cursor.fetchall = Mock(return_value=[])
+        mock_cursor.close = Mock()
+        mock_connection.cursor.return_value = mock_cursor
+        mock_connection.rollback = Mock()
+        mock_connection.commit = Mock()
+        mock_service.mb_conn = mock_connection
+        mock_create_service.return_value = mock_service
+
+        pool = DatabaseConnectionPool(mock_db_config)
+
+        # Mock the execute_query method (individual tests stub behavior as needed)
         pool.execute_query = Mock()
 
         # Mock the get_metrics method

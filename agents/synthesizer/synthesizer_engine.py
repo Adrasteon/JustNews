@@ -62,9 +62,10 @@ except ImportError:
     SKLEARN_AVAILABLE = False
 
 try:
-    import numpy as np
-    NUMPY_AVAILABLE = True
-except ImportError:
+    # Avoid importing numpy at module-level if unused; prefer checking availability
+    import importlib.util as _importlib_util
+    NUMPY_AVAILABLE = _importlib_util.find_spec("numpy") is not None
+except Exception:
     NUMPY_AVAILABLE = False
 
 # GPU manager integration
@@ -380,7 +381,8 @@ class SynthesizerEngine:
             # a `side_effect` attribute. This is a best-effort check used only
             # to make test expectations deterministic.
             try:
-                if hasattr(tokenizer_loader, 'side_effect') and callable(getattr(tokenizer_loader, '__call__', None)):
+                # Ensure mock tokenizers with side_effect still trigger in tests.
+                if hasattr(tokenizer_loader, 'side_effect') and callable(tokenizer_loader):
                     tokenizer_loader()
             except Exception:
                 # propagate so initialize() can fail when tokenizer mock is set to raise
@@ -494,7 +496,7 @@ class SynthesizerEngine:
         if not self.is_initialized:
             raise RuntimeError("not initialized")
 
-        start_time = time.time()
+        # start_time previously used for profiling; removed when not referenced
 
         try:
             # Normalize input: accept list of dicts or strings
@@ -601,7 +603,7 @@ class SynthesizerEngine:
 
         except Exception as e:
             logger.error(f"❌ KMeans clustering failed: {e}")
-            clusters = [[i for i in range(len(article_texts))]]
+            clusters = [list(range(len(article_texts)))]
             return SynthesisResult(
                 success=False,
                 content="",
@@ -688,7 +690,7 @@ class SynthesizerEngine:
         if not self.is_initialized:
             raise RuntimeError("not initialized")
 
-        start_time = time.time()
+        _start_time = time.time()
         try:
             if not article_texts:
                 return {"status": "success", "summary": "", "key_points": [], "article_count": 0}
@@ -728,7 +730,7 @@ class SynthesizerEngine:
 
     async def _summarize_text(self, text: str) -> SynthesisResult:
         """Summarize individual text using BART."""
-        start_time = time.time()
+        _start_time = time.time()
 
         try:
             # Prefer using an explicit bart_model + tokenizer when present (tests set bart_model.generate to simulate failures)
@@ -750,7 +752,7 @@ class SynthesizerEngine:
                         success=True,
                         content=decoded,
                         method="bart_model_generate",
-                        processing_time=time.time() - start_time,
+                        processing_time=time.time() - _start_time,
                         model_used="bart",
                         confidence=0.8
                     )
@@ -760,7 +762,7 @@ class SynthesizerEngine:
                         success=False,
                         content=text[:200] + "..." if len(text) > 200 else text,
                         method="error_fallback",
-                        processing_time=time.time() - start_time,
+                        processing_time=time.time() - _start_time,
                         model_used="none",
                         confidence=0.0,
                         metadata={"error": str(e)}
@@ -775,7 +777,7 @@ class SynthesizerEngine:
                     success=True,
                     content=summary,
                     method="simple_fallback",
-                    processing_time=time.time() - start_time,
+                    processing_time=time.time() - _start_time,
                     model_used="none",
                     confidence=0.6
                 )
@@ -787,7 +789,7 @@ class SynthesizerEngine:
                     success=True,
                     content=text,
                     method="too_short",
-                    processing_time=time.time() - start_time,
+                    processing_time=time.time() - _start_time,
                     model_used="none",
                     confidence=1.0
                 )
@@ -810,7 +812,7 @@ class SynthesizerEngine:
                 success=True,
                 content=summary,
                 method="bart_summarization",
-                processing_time=time.time() - start_time,
+                processing_time=time.time() - _start_time,
                 model_used="bart",
                 confidence=0.8
             )
@@ -821,7 +823,7 @@ class SynthesizerEngine:
                 success=False,
                 content=text[:200] + "..." if len(text) > 200 else text,
                 method="error_fallback",
-                processing_time=time.time() - start_time,
+                processing_time=time.time() - _start_time,
                 model_used="none",
                 confidence=0.0,
                 metadata={"error": str(e)}
@@ -904,13 +906,13 @@ class SynthesizerEngine:
             if isinstance(cluster_result, dict):
                 if cluster_result.get('status') != 'success':
                     return {"status": "error", "error": "synthesis_failed", "details": cluster_result.get('error')}
-                clusters = cluster_result.get('clusters', [[i for i in range(len(article_texts))]])
+                clusters = cluster_result.get('clusters', [list(range(len(article_texts)))])
             elif isinstance(cluster_result, SynthesisResult):
                 if not cluster_result.success:
                     return {"status": "error", "error": "synthesis_failed", "details": cluster_result.metadata.get('error')}
-                clusters = cluster_result.metadata.get('clusters', [[i for i in range(len(article_texts))]])
+                clusters = cluster_result.metadata.get('clusters', [list(range(len(article_texts)))])
             else:
-                clusters = [[i for i in range(len(article_texts))]]
+                clusters = [list(range(len(article_texts)))]
 
             # Synthesize each cluster
             cluster_syntheses = []

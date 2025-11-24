@@ -458,7 +458,8 @@ class TestMigratedDatabaseService:
                     'collection': 'articles'
                 },
                 'embedding': {
-                    'model': 'all-MiniLM-L6-v2'
+                    'model': 'all-MiniLM-L6-v2',
+                    'dimensions': 384
                 }
             }
         }
@@ -522,7 +523,8 @@ class TestMigratedDatabaseService:
                     mock_chroma_client.assert_called_once_with(
                         host='localhost', port=8000
                     )
-                    mock_client.get_collection.assert_called_once_with('articles')
+                    expected_collection = 'articles__all-MiniLM-L6-v2__384'
+                    mock_client.get_collection.assert_called_once_with(expected_collection)
 
     def test_close(self, mock_service):
         """Test closing database connections"""

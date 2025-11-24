@@ -1,5 +1,4 @@
 """
-from common.observability import get_logger
 Multi-GPU Cluster Support for JustNews
 
 Provides comprehensive multi-GPU cluster management with:
@@ -22,6 +21,8 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+
+from common.observability import get_logger
 
 # GPU and ML imports with graceful fallbacks
 try:

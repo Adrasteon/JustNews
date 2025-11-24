@@ -1,5 +1,5 @@
-import sys
 import pkg_resources
+
 
 def parse_version(ver: str):
     parts = [int(x) for x in ver.split('.') if x.isdigit()]

@@ -1,6 +1,7 @@
+import importlib
+
 import pytest
 from fastapi.testclient import TestClient
-import importlib
 
 
 def test_synthesize_job_and_status(monkeypatch):

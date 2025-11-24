@@ -1,7 +1,7 @@
-import subprocess
-import sys
 import os
 import shutil
+import subprocess
+import sys
 
 
 def test_protobuf_version_meets_requirement():

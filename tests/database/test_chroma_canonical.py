@@ -1,8 +1,7 @@
-import os
 import pytest
 
-from database.utils.migrated_database_utils import get_db_config, create_database_service
 from database.utils.chromadb_utils import ChromaCanonicalValidationError
+from database.utils.migrated_database_utils import create_database_service
 
 
 def test_chroma_canonical_enforcement(tmp_path, monkeypatch):

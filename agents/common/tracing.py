@@ -1,17 +1,17 @@
-from common.observability import get_logger
-
 #!/usr/bin/env python3
 """
 Distributed Tracing Module for JustNews
 Provides tracing functionality for distributed operations across agents
 """
 
-
+import logging
 import time
 import uuid
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
+
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 

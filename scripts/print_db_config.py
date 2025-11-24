@@ -2,8 +2,9 @@
 """
 Print the database config to help debugging Chroma & MariaDB settings
 """
-import os
 import json
+import os
+
 from database.utils.migrated_database_utils import get_db_config
 
 

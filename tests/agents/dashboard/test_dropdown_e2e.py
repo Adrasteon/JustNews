@@ -1,8 +1,8 @@
 import pytest
 
 try:
-    from playwright.sync_api import sync_playwright
     import requests
+    from playwright.sync_api import sync_playwright
     PLAYWRIGHT_AVAILABLE = True
 except Exception:
     PLAYWRIGHT_AVAILABLE = False

@@ -83,10 +83,10 @@ def load_transformers_model(
             model = ModelClass.from_pretrained(str(ms_path))
             tokenizer = TokenizerClass.from_pretrained(str(ms_path))
             return model, tokenizer
-        except Exception:
+        except Exception as e:
             logger.warning("Failed to load model from ModelStore path %s, falling back", ms_path)
             if strict:
-                raise RuntimeError(f"STRICT_MODEL_STORE=1 but failed to load model for agent={agent} from {ms_path}")
+                raise RuntimeError(f"STRICT_MODEL_STORE=1 but failed to load model for agent={agent} from {ms_path}") from e
 
     # Fallback to supplied cache_dir or model_id_or_path
     load_kwargs = {}
@@ -111,10 +111,10 @@ def load_sentence_transformer(model_name: str, agent: str | None = None, cache_f
     if ms_path:
         try:
             return SentenceTransformer(str(ms_path))
-        except Exception:
+        except Exception as e:
             logger.warning("Failed to load SentenceTransformer from ModelStore %s", ms_path)
             if strict:
-                raise RuntimeError(f"STRICT_MODEL_STORE=1 but failed to load SentenceTransformer for agent={agent} from {ms_path}")
+                raise RuntimeError(f"STRICT_MODEL_STORE=1 but failed to load SentenceTransformer for agent={agent} from {ms_path}") from e
 
     if cache_folder:
         return SentenceTransformer(model_name, cache_folder=cache_folder)

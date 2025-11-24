@@ -80,7 +80,7 @@ def process_python_file(path: Path, apply: bool) -> tuple[bool, list[str]]:
     # Replace literal model ids inside quotes
     for lit in MODEL_LITERALS:
         # replace quoted occurrences
-        pattern = re.compile(r"([\'\"])%s([\'\"])" % re.escape(lit))
+        pattern = re.compile(rf"([\'\"]){re.escape(lit)}([\'\"])")
         if pattern.search(text):
             repl = 'os.environ.get("DIALOGPT_REPLACEMENT_MODEL", "distilgpt2")'
             text = pattern.sub(repl, text)

@@ -15,7 +15,6 @@ from __future__ import annotations
 import argparse
 import multiprocessing as mp
 import os
-import signal
 import time
 
 
@@ -27,12 +26,13 @@ def worker_main(model_id: str | None, adapter: str | None, run_seconds: int = 36
         return
 
     try:
-        from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
         import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
         bnb = BitsAndBytesConfig(load_in_8bit=True, bnb_8bit_use_double_quant=True, bnb_8bit_compute_dtype=getattr(torch, 'float16', None))
         model = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb, device_map='auto')
-        tok = AutoTokenizer.from_pretrained(model_id)
+        # tokenizer not used directly here; call to warm model cache
+        _ = AutoTokenizer.from_pretrained(model_id)
 
         if adapter:
             try:
@@ -51,7 +51,7 @@ def worker_main(model_id: str | None, adapter: str | None, run_seconds: int = 36
 
 def spawn_pool(num_workers: int, model_id: str | None, adapter: str | None, hold_time: int):
     procs = []
-    for i in range(num_workers):
+    for _ in range(num_workers):
         p = mp.Process(target=worker_main, args=(model_id, adapter, hold_time))
         p.start()
         procs.append(p)

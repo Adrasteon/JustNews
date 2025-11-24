@@ -3,9 +3,11 @@ ChromaDB Utility Helpers
 Provides health checks, endpoint discovery and optional auto-provisioning helpers
 """
 from __future__ import annotations
-import os
+
+from typing import Any
+
 import requests
-from typing import Dict, Any
+
 from common.observability import get_logger
 
 logger = get_logger(__name__)
@@ -34,7 +36,7 @@ COMMON_ENDPOINTS = [
 ]
 
 
-def discover_chroma_endpoints(host: str, port: int) -> Dict[str, Any]:
+def discover_chroma_endpoints(host: str, port: int) -> dict[str, Any]:
     base = _base_url(host, port)
     results = {}
     for e in COMMON_ENDPOINTS:
@@ -110,7 +112,7 @@ def ensure_collection_exists_using_http(host: str, port: int, collection_name: s
     return False
 
 
-def get_root_info(host: str, port: int) -> Dict[str, Any]:
+def get_root_info(host: str, port: int) -> dict[str, Any]:
     base = _base_url(host, port)
     try:
         r = requests.get(base, timeout=2)
@@ -123,7 +125,7 @@ class ChromaCanonicalValidationError(Exception):
     """Raised when the Chroma server does not meet canonical requirements."""
 
 
-def validate_chroma_is_canonical(host: str, port: int, canonical_host: str | None = None, canonical_port: int | None = None, raise_on_fail: bool = False) -> Dict[str, Any]:
+def validate_chroma_is_canonical(host: str, port: int, canonical_host: str | None = None, canonical_port: int | None = None, raise_on_fail: bool = False) -> dict[str, Any]:
     """Validate that a given chroma host/port identifies a Chroma server and matches canonical.
 
     Returns a dict with keys: ok (bool), reason (str), root_info (dict)
@@ -157,7 +159,7 @@ def validate_chroma_is_canonical(host: str, port: int, canonical_host: str | Non
     # Finally, check for a Chroma-friendly endpoint (e.g., /api/v2/auth/identity or /health) via discovery
     endpoints = discover_chroma_endpoints(host, port)
     # If at least one known path looks OK, consider this a chroma server
-    for path, info in endpoints.items():
+    for _path, info in endpoints.items():
         if isinstance(info, dict) and info.get('ok'):
             return {'ok': True, 'reason': 'Canonical Chroma detected', 'root_info': root_info}
 

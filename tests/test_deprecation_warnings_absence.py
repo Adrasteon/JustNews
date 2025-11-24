@@ -1,7 +1,7 @@
-import subprocess
-import sys
 import os
 import shutil
+import subprocess
+import sys
 
 
 def test_no_upb_deprecation_warnings():
@@ -22,4 +22,7 @@ def test_no_upb_deprecation_warnings():
     if res.returncode != 0:
         # Do not fail the test; only emit a warning for maintainers to review.
         import warnings
-        warnings.warn("Deprecation warnings detected; upgrade protobuf/upb and recompile dependent wheels.")
+        warnings.warn(
+            "Deprecation warnings detected; upgrade protobuf/upb and recompile dependent wheels.",
+            stacklevel=2,
+        )

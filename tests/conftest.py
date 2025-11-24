@@ -25,13 +25,13 @@ Usage:
 import asyncio
 import os
 import sys
+import tempfile
+import textwrap
 import types
 from pathlib import Path
 
 import pytest
 import pytest_asyncio
-import tempfile
-import textwrap
 
 # Add the repository root to sys.path so project packages import cleanly regardless
 # of how pytest is launched (e.g. via `conda run`). The previous logic walked one
@@ -73,7 +73,7 @@ if not os.environ.get('JUSTNEWS_GLOBAL_ENV'):
 os.environ['PYTEST_RUNNING'] = '1'
 
 # Import common utilities
-from common.observability import get_logger
+from common.observability import get_logger  # noqa: E402
 
 logger = get_logger(__name__)
 

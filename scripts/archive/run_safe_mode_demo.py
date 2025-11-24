@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Mini SAFE_MODE toggle demonstration
 
-Runs orchestrator in SAFE_MODE=true then SAFE_MODE=false modes (in-process FastAPI lifespan) 
+Runs orchestrator in SAFE_MODE=true then SAFE_MODE=false modes (in-process FastAPI lifespan)
 and captures lease behavior + /metrics snapshots for documentation.
 
 Outputs JSONL records under orchestrator_demo_results/.

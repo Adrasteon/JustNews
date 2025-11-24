@@ -15,13 +15,12 @@ and returns per-handler success/failure details.
 """
 from __future__ import annotations
 
+import os
 import traceback
 from collections.abc import Callable
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
-import os
-from agents.common.auth_models import verify_token, get_user_by_id, UserRole
 
 from common.observability import get_logger
 
@@ -52,8 +51,8 @@ def register_reload_endpoint(app: FastAPI, path: str = "/admin/reload", require_
     async def _reload(request: Request):
         try:
             body = await request.json()
-        except Exception:
-            raise HTTPException(status_code=400, detail="Invalid JSON")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="Invalid JSON") from e
 
         if not body:
             raise HTTPException(status_code=400, detail="Missing request body")

@@ -7,7 +7,9 @@ Usage:
 This tool examines the installed `protobuf` package version and exits with code 1 if it is older than the minimum required version.
 """
 from __future__ import annotations
+
 import sys
+
 import pkg_resources
 
 MIN_PROTOBUF = (4, 24, 0)
@@ -32,7 +34,7 @@ def main():
     ver_tuple = parse_version(v)
     print('protobuf detected version:', v)
     if ver_tuple < MIN_PROTOBUF:
-        print('ERROR: protobuf version older than recommended: >=%d.%d.%d' % MIN_PROTOBUF)
+        print(f'ERROR: protobuf version older than recommended: >={MIN_PROTOBUF[0]}.{MIN_PROTOBUF[1]}.{MIN_PROTOBUF[2]}')
         print('Please update conda / pip environment to upgrade to protobuf >= 4.24.0')
         sys.exit(1)
     print('protobuf meets minimum version requirement.')

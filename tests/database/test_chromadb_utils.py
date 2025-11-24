@@ -1,4 +1,7 @@
-from database.utils.chromadb_utils import validate_chroma_is_canonical, ChromaCanonicalValidationError
+from database.utils.chromadb_utils import (
+    ChromaCanonicalValidationError,
+    validate_chroma_is_canonical,
+)
 
 
 def test_validate_chroma_detects_mcp_bus(monkeypatch):

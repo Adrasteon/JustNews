@@ -7,9 +7,10 @@ Usage:
 """
 
 import argparse
-import requests
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import requests
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 

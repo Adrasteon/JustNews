@@ -1,6 +1,5 @@
-import time
 import os
-from typing import Optional
+import time
 
 from fastapi import HTTPException, Request
 
@@ -10,7 +9,7 @@ except Exception:  # pragma: no cover - optional dependency
     redis = None
 
 _windows = {}
-_redis_client: Optional[object] = None
+_redis_client: object | None = None
 
 def allow_request(request: Request, max_requests: int = 10, window_seconds: int = 60) -> bool:
     """Simple in-memory per-IP rate limiter. For production use, consider

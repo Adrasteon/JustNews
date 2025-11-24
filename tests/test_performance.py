@@ -15,7 +15,7 @@ import gc
 import time
 import tracemalloc
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import psutil
 import pytest

@@ -248,10 +248,10 @@ async def process_url_endpoint(
 
     except ValueError as e:
         logger.error(f"❌ Invalid request: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"❌ Processing error: {e}")
-        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}") from e
 
 @app.get("/health", response_model=HealthResponse)
 async def health_endpoint():
@@ -266,7 +266,7 @@ async def health_endpoint():
         return HealthResponse(**health_result)
     except Exception as e:
         logger.error(f"❌ Health check error: {e}")
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}") from e
 
 @app.get("/stats", response_model=StatsResponse)
 async def stats_endpoint():
@@ -291,7 +291,7 @@ async def stats_endpoint():
 
     except Exception as e:
         logger.error(f"❌ Stats retrieval error: {e}")
-        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}") from e
 
 @app.get("/capabilities")
 async def capabilities_endpoint():

@@ -69,7 +69,7 @@ def clear_mariadb_data(db_service) -> list[str]:
     except Exception as e:
         db_service.mb_conn.rollback()
         cursor.close()
-        raise Exception(f"MariaDB clear failed: {e}")
+        raise Exception(f"MariaDB clear failed: {e}") from e
 
 
 def clear_chromadb_data() -> list[str]:
@@ -98,7 +98,7 @@ def clear_chromadb_data() -> list[str]:
         return operations
 
     except Exception as e:
-        raise Exception(f"ChromaDB clear failed: {e}")
+        raise Exception(f"ChromaDB clear failed: {e}") from e
 
 
 def verify_cleanup(db_service) -> list[str]:
@@ -131,7 +131,7 @@ def verify_cleanup(db_service) -> list[str]:
 
     except Exception as e:
         cursor.close()
-        raise Exception(f"Verification failed: {e}")
+        raise Exception(f"Verification failed: {e}") from e
 
 
 def main():

@@ -17,12 +17,19 @@ to manage Chroma tenants/collections. This script performs best-effort HTTP call
 diagnostics on failures.
 """
 from __future__ import annotations
+
 import argparse
 import os
 import sys
-import json
 from pprint import pprint
-from database.utils.chromadb_utils import discover_chroma_endpoints, get_root_info, create_tenant, ensure_collection_exists_using_http, validate_chroma_is_canonical
+
+from database.utils.chromadb_utils import (
+    create_tenant,
+    discover_chroma_endpoints,
+    ensure_collection_exists_using_http,
+    get_root_info,
+    validate_chroma_is_canonical,
+)
 
 
 def main():

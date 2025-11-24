@@ -436,7 +436,7 @@ class CustomMetrics:
             metrics.content_type, "unknown", metrics.source, metrics.content_id
         )
 
-        quality_scores = {metric: score for metric, score in metrics.quality_scores.items()}
+        quality_scores = dict(metrics.quality_scores)
         self.record_quality_assessment(metrics.content_type, quality_scores)
 
         self.record_sentiment_analysis(
@@ -532,7 +532,7 @@ class CustomMetrics:
         n = len(x_values)
         sum_x = sum(x_values)
         sum_y = sum(y_values)
-        sum_xy = sum(x * y for x, y in zip(x_values, y_values))
+        sum_xy = sum(x * y for x, y in zip(x_values, y_values, strict=True))
         sum_x2 = sum(x * x for x in x_values)
 
         denominator = n * sum_x2 - sum_x * sum_x

@@ -1,5 +1,9 @@
 from unittest.mock import MagicMock, patch
-from database.utils.migrated_database_utils import create_database_service, close_cached_service
+
+from database.utils.migrated_database_utils import (
+    close_cached_service,
+    create_database_service,
+)
 
 
 def test_create_database_service_caching(monkeypatch):

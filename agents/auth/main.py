@@ -132,7 +132,7 @@ async def service_info():
 
     except Exception as e:
         logger.error(f"Service info error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get service information")
+        raise HTTPException(status_code=500, detail="Failed to get service information") from e
 
 
 @app.get("/ready")

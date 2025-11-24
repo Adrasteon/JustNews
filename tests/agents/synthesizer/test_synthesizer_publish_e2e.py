@@ -1,8 +1,6 @@
-import pytest
-import time
-from fastapi.testclient import TestClient
-
 import importlib
+
+from fastapi.testclient import TestClient
 
 # Import inside test after monkeypatching so that FastAPI lifespan uses the
 # patched SynthesizerEngine class. See tests below.
@@ -24,7 +22,6 @@ def test_synthesize_and_publish_auto_publishes_with_flag(monkeypatch):
 
     monkeypatch.setattr('agents.synthesizer.main.SynthesizerEngine', FakeEngine, raising=False)
 
-    import importlib
     synth_main = importlib.import_module('agents.synthesizer.main')
     # Ensure the engine is present & we bypass transparency gate for tests
     synth_main.synthesizer_engine = FakeEngine()
@@ -96,7 +93,6 @@ def test_synthesize_and_publish_blocks_when_draft_factcheck_fail(monkeypatch):
 
     monkeypatch.setattr('agents.synthesizer.main.SynthesizerEngine', FakeEngine, raising=False)
 
-    import importlib
     synth_main = importlib.import_module('agents.synthesizer.main')
     # Ensure the engine is present & we bypass transparency gate for tests
     synth_main.synthesizer_engine = FakeEngine()

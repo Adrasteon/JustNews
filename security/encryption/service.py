@@ -149,7 +149,7 @@ class EncryptionService:
 
         except Exception as e:
             logger.error(f"Data encryption failed: {e}")
-            raise EncryptionError(f"Encryption failed: {str(e)}")
+            raise EncryptionError(f"Encryption failed: {str(e)}") from e
 
     async def decrypt_data(self, encrypted_data: str, key_id: str | None = None) -> str | bytes:
         """
@@ -188,11 +188,11 @@ class EncryptionService:
             except UnicodeDecodeError:
                 return decrypted
 
-        except InvalidToken:
-            raise EncryptionError("Invalid encrypted data or key")
+        except InvalidToken as exc:
+            raise EncryptionError("Invalid encrypted data or key") from exc
         except Exception as e:
             logger.error(f"Data decryption failed: {e}")
-            raise EncryptionError(f"Decryption failed: {str(e)}")
+            raise EncryptionError(f"Decryption failed: {str(e)}") from e
 
     async def generate_key(self, algorithm: str = "AES-256",
                           key_type: str = "symmetric",
@@ -280,7 +280,7 @@ class EncryptionService:
 
         except Exception as e:
             logger.error(f"Key generation failed: {e}")
-            raise EncryptionError(f"Key generation failed: {str(e)}")
+            raise EncryptionError(f"Key generation failed: {str(e)}") from e
 
     async def rotate_key(self, old_key_id: str) -> str:
         """
@@ -324,7 +324,7 @@ class EncryptionService:
 
         except Exception as e:
             logger.error(f"Key rotation failed: {e}")
-            raise EncryptionError(f"Key rotation failed: {str(e)}")
+            raise EncryptionError(f"Key rotation failed: {str(e)}") from e
 
     async def generate_key_pair(self, algorithm: str = "RSA-2048") -> KeyPair:
         """
@@ -349,7 +349,7 @@ class EncryptionService:
 
         except Exception as e:
             logger.error(f"Key pair generation failed: {e}")
-            raise EncryptionError(f"Key pair generation failed: {str(e)}")
+            raise EncryptionError(f"Key pair generation failed: {str(e)}") from e
 
     async def sign_data(self, data: str | bytes, key_id: str) -> str:
         """
@@ -404,7 +404,7 @@ class EncryptionService:
 
         except Exception as e:
             logger.error(f"Data signing failed: {e}")
-            raise EncryptionError(f"Signing failed: {str(e)}")
+            raise EncryptionError(f"Signing failed: {str(e)}") from e
 
     async def verify_signature(self, data: str | bytes, signature: str, key_id: str) -> bool:
         """

@@ -1,5 +1,6 @@
-from fastapi.testclient import TestClient
 import importlib
+
+from fastapi.testclient import TestClient
 
 
 def test_set_publishing_config(monkeypatch):

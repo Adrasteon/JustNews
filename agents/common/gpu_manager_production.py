@@ -12,10 +12,10 @@ Features:
 - Atomic allocation operations
 """
 
-import subprocess
-import shutil
-import threading
 import os
+import shutil
+import subprocess
+import threading
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -207,21 +207,6 @@ class GPUHealthMonitor:
 
         except Exception as e:
             logger.error(f"GPU health check failed for {device_id}: {e}")
-            # Return unhealthy status
-            return GPUStatus(
-                device_id=device_id,
-                device_type=device_id.split(":")[0] if ":" in device_id else "unknown",
-                total_memory_gb=0,
-                used_memory_gb=0,
-                free_memory_gb=0,
-                utilization_percent=0,
-                temperature_c=0,
-                power_draw_w=0,
-                is_healthy=False
-            )
-
-        except Exception as e:
-            logger.error(f"GPU health check failed for device {device_id}: {e}")
             # Return unhealthy status
             return GPUStatus(
                 device_id=device_id,
@@ -777,9 +762,10 @@ class MultiAgentGPUManager:
         """Attempt to recover an unhealthy GPU (CUDA or MPS)"""
         try:
             if device_id.startswith("cuda:"):
-                cuda_device_id = int(device_id.split(":")[1])
                 # Clear CUDA cache
                 if TORCH_AVAILABLE and torch.cuda.is_available():
+                    cuda_device_id = int(device_id.split(":")[1])
+                    torch.cuda.set_device(cuda_device_id)
                     torch.cuda.empty_cache()
             elif device_id == "mps":
                 # MPS recovery - limited options available

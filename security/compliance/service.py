@@ -274,7 +274,7 @@ class ComplianceService:
 
         except Exception as e:
             logger.error(f"Failed to record consent: {e}")
-            raise ComplianceError(f"Consent recording failed: {str(e)}")
+            raise ComplianceError(f"Consent recording failed: {str(e)}") from e
 
     async def check_consent(self, user_id: int, purpose: str) -> ConsentStatus:
         """
@@ -348,7 +348,7 @@ class ComplianceService:
 
         except Exception as e:
             logger.error(f"Failed to submit data request: {e}")
-            raise ComplianceError(f"Data request submission failed: {str(e)}")
+            raise ComplianceError(f"Data request submission failed: {str(e)}") from e
 
     async def process_data_request(self, request_id: str, action: str,
                                  result: dict[str, Any] = None) -> None:
@@ -395,7 +395,7 @@ class ComplianceService:
 
         except Exception as e:
             logger.error(f"Failed to process data request: {e}")
-            raise ComplianceError(f"Data request processing failed: {str(e)}")
+            raise ComplianceError(f"Data request processing failed: {str(e)}") from e
 
     async def export_user_data(self, user_id: int) -> dict[str, Any]:
         """
@@ -461,7 +461,7 @@ class ComplianceService:
 
         except Exception as e:
             logger.error(f"Failed to export user data: {e}")
-            raise ComplianceError(f"Data export failed: {str(e)}")
+            raise ComplianceError(f"Data export failed: {str(e)}") from e
 
     async def delete_user_data(self, user_id: int) -> None:
         """
@@ -493,7 +493,7 @@ class ComplianceService:
 
         except Exception as e:
             logger.error(f"Failed to delete user data: {e}")
-            raise ComplianceError(f"Data deletion failed: {str(e)}")
+            raise ComplianceError(f"Data deletion failed: {str(e)}") from e
 
     async def get_compliance_report(self, standard: str = "gdpr",
                                   date_from: datetime | None = None,
@@ -554,7 +554,7 @@ class ComplianceService:
 
         except Exception as e:
             logger.error(f"Failed to generate compliance report: {e}")
-            raise ComplianceError(f"Report generation failed: {str(e)}")
+            raise ComplianceError(f"Report generation failed: {str(e)}") from e
 
     async def get_status(self) -> dict[str, Any]:
         """

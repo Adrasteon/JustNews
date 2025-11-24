@@ -19,7 +19,18 @@ from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from .gpu_orchestrator_engine import engine
-from fastapi import Request
+from .tools import (
+    get_allocations,
+    get_gpu_info,
+    get_metrics,
+    get_mps_allocation,
+    get_policy,
+    lease_gpu,
+    models_preload,
+    models_status,
+    release_gpu_lease,
+    set_policy,
+)
 
 
 def _require_admin(request: Request):
@@ -60,20 +71,8 @@ def _require_admin(request: Request):
         return {'method': 'jwt', 'user': {'user_id': payload.user_id, 'username': payload.username}}
     except HTTPException:
         raise
-    except Exception:
-        raise HTTPException(status_code=401, detail='Auth verification failed')
-from .tools import (
-    get_allocations,
-    get_gpu_info,
-    get_metrics,
-    get_mps_allocation,
-    get_policy,
-    lease_gpu,
-    models_preload,
-    models_status,
-    release_gpu_lease,
-    set_policy,
-)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail='Auth verification failed') from e
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
@@ -167,6 +166,8 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     global READINESS
     engine.logger.info("GPU Orchestrator starting up")
+    engine.initialize_nvml()
+    engine.logger.info("GPU Orchestrator startup sequence complete")
 
     # Registration status tracker
     registration_complete = threading.Event()
@@ -258,7 +259,7 @@ def gpu_info_endpoint():
         return data
     except Exception as e:
         engine.logger.error(f"Failed to get GPU snapshot: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/policy")
@@ -316,7 +317,7 @@ def create_worker_pool(request: Request, agent: str | None = None, model: str | 
         resp = engine.start_worker_pool(pool_id=pool_id, model_id=model, adapter=adapter, num_workers=num_workers, hold_seconds=hold_seconds, requestor=requestor)
         return resp
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/workers/pool")
@@ -338,10 +339,10 @@ def delete_pool(request: Request, pool_id: str):
         # audit stop with requestor
         engine._audit_worker_pool_event('stop', pool_id, None, None, 0, requestor=requestor)
         return resp
-    except ValueError:
-        raise HTTPException(status_code=404, detail="unknown_pool")
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="unknown_pool") from exc
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/models/status")
@@ -403,7 +404,7 @@ def notify_ready_endpoint():
         engine.logger.info("Successfully registered GPU Orchestrator with MCP Bus after notification.")
     except Exception as e:
         engine.logger.error(f"Failed to register GPU Orchestrator with MCP Bus: {e}")
-        raise HTTPException(status_code=500, detail="Registration failed")
+        raise HTTPException(status_code=500, detail="Registration failed") from e
 
 
 @app.get('/workers/policy')
@@ -432,7 +433,7 @@ def set_pool_policy(request: Request, payload: dict):
         engine._audit_policy_event('policy_update', payload, requestor=requestor)
         return new
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @app.post('/workers/pool/{pool_id}/swap')
@@ -444,18 +445,10 @@ def swap_pool_adapter(request: Request, pool_id: str, new_adapter: str | None = 
         pass
     try:
         return engine.hot_swap_pool_adapter(pool_id=pool_id, new_adapter=new_adapter, requestor=requestor, wait_seconds=wait_seconds)
-    except ValueError:
-        raise HTTPException(status_code=404, detail='unknown_pool')
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail='unknown_pool') from exc
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.on_event("startup")
-async def orchestrator_startup():
-    """Initialize GPU orchestrator on startup."""
-    engine.logger.info("Starting GPU Orchestrator...")
-    engine.initialize_nvml()
-    engine.logger.info("GPU Orchestrator startup sequence complete.")
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 if __name__ == "__main__":

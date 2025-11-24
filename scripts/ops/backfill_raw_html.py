@@ -7,9 +7,9 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import os
 from pathlib import Path
+
 import requests
 
 SERVICE_DIR = Path(os.environ.get("SERVICE_DIR", Path(__file__).resolve().parents[2]))

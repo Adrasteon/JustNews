@@ -1,6 +1,9 @@
-import os, sys
+import os
+import sys
+
 sys.path.insert(0, os.getcwd())
 from database.utils.migrated_database_utils import create_database_service
+
 
 def main():
     s = create_database_service()

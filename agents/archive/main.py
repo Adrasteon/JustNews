@@ -181,7 +181,7 @@ async def archive_articles_endpoint(call: ToolCall):
 
     except Exception as e:
         logger.error(f"Error in archive_articles endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/retrieve_article")
@@ -204,7 +204,7 @@ async def retrieve_article_endpoint(call: ToolCall):
         raise
     except Exception as e:
         logger.error(f"Error in retrieve_article endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/search_archive")
@@ -226,7 +226,7 @@ async def search_archive_endpoint(call: ToolCall):
         raise
     except Exception as e:
         logger.error(f"Error in search_archive endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/get_archive_stats")
@@ -240,7 +240,7 @@ def get_archive_stats_endpoint(call: ToolCall):
 
     except Exception as e:
         logger.error(f"Error in get_archive_stats endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/store_single_article")
@@ -254,7 +254,7 @@ async def store_single_article_endpoint(call: ToolCall):
 
     except Exception as e:
         logger.error(f"Error in store_single_article endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/get_article_entities")
@@ -272,7 +272,7 @@ async def get_article_entities_endpoint(call: ToolCall):
 
     except Exception as e:
         logger.error(f"Error in get_article_entities endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/search_knowledge_graph")
@@ -292,7 +292,7 @@ async def search_knowledge_graph_endpoint(call: ToolCall):
         raise
     except Exception as e:
         logger.error(f"Error in search_knowledge_graph endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/link_entities")
@@ -312,7 +312,7 @@ async def link_entities_endpoint(call: ToolCall):
         raise
     except Exception as e:
         logger.error(f"Error in link_entities endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # Additional utility endpoints
@@ -324,7 +324,7 @@ async def api_health():
         return health_data
     except Exception as e:
         logger.error(f"Health check failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}") from e
 
 
 @app.get("/api/stats")
@@ -335,7 +335,7 @@ def api_stats():
         return stats
     except Exception as e:
         logger.error(f"Stats retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}") from e
 
 
 if __name__ == "__main__":

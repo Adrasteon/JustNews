@@ -16,8 +16,7 @@ def test_backup_script_dryrun_creates_expected_filenames(tmp_path, monkeypatch):
     result = subprocess.run(
         ["bash", script, "justnews-py312", str(tmp_path), date_str],
         env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
         check=True,
     )

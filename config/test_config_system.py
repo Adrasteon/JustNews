@@ -13,8 +13,8 @@ Tests cover:
 - Performance and benchmarking
 """
 
-import tempfile
 import os
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 

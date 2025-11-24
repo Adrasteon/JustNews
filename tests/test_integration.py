@@ -352,6 +352,7 @@ class TestAgentIntegrationPatterns:
             # Verify all agents are healthy
             assert all(result["healthy"] for result in health_results.values())
             assert len(health_results) == len(agents_to_test)
+    @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_configuration_consistency(self):
         """Test configuration consistency across agents"""

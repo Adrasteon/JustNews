@@ -16,13 +16,12 @@ metrics it cannot read.
 from __future__ import annotations
 
 import argparse
-import time
-import subprocess
 import math
 import os
-import sys
+import subprocess
+import time
 
-from prometheus_client import start_http_server, Gauge
+from prometheus_client import Gauge, start_http_server
 
 
 def run_cmd(cmd: list[str], timeout: float = 1.0) -> str:
@@ -66,7 +65,7 @@ def read_rapl_w() -> float | None:
     if not os.path.exists(rapl):
         return None
     try:
-        with open(rapl, 'r') as f:
+        with open(rapl) as f:
             v = f.read().strip()
         return float(v)  # but in microJoules - caller must compute delta
     except Exception:
@@ -205,7 +204,9 @@ def main(argv=None):
     args = p.parse_args(argv)
 
     start_http_server(args.port)
-    print('Prometheus exporter listening on :%d, scraping interval=%ss' % (args.port, args.interval))
+    print(
+        f"Prometheus exporter listening on :{args.port}, scraping interval={args.interval}s"
+    )
     metrics_loop(args.interval, args.port)
 
 

@@ -202,7 +202,7 @@ def get_shared_embedding_model(model_name: str = "all-MiniLM-L6-v2", cache_folde
         from sentence_transformers import SentenceTransformer
     except Exception as e:
         logger.error("sentence-transformers not available: %s", e)
-        raise ImportError("sentence-transformers package is required to load embedding models")
+        raise ImportError("sentence-transformers package is required to load embedding models") from e
 
     # Normalize cache folder: prefer explicit value, else detect agent caller and use agent-local models dir
     if cache_folder is None:

@@ -233,13 +233,14 @@ class AuthenticationService:
 
             return payload
 
-        except jwt.ExpiredSignatureError:
-            raise AuthenticationError("Token expired")
-        except jwt.InvalidTokenError:
-            raise AuthenticationError("Invalid token")
+        except jwt.ExpiredSignatureError as exc:
+            # Chain specific JWT exception for clearer tracebacks
+            raise AuthenticationError("Token expired") from exc
+        except jwt.InvalidTokenError as exc:
+            raise AuthenticationError("Invalid token") from exc
         except Exception as e:
             logger.error(f"Token validation error: {e}")
-            raise AuthenticationError("Token validation failed")
+            raise AuthenticationError("Token validation failed") from e
 
     async def refresh_access_token(self, refresh_token: str) -> dict[str, str]:
         """

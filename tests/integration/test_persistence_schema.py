@@ -1,8 +1,17 @@
+import os
+
 import pytest
+
 from database.utils.migrated_database_utils import create_database_service
+
+requires_live_db = pytest.mark.skipif(
+    os.environ.get('ENABLE_DB_INTEGRATION_TESTS') != '1',
+    reason="Requires live MariaDB deployment",
+)
 
 
 @pytest.mark.integration
+@requires_live_db
 def test_persistence_tables_exist_and_smoke_insert():
     """Integration test: verify core persistence tables exist and accept writes.
 

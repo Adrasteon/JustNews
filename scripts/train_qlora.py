@@ -23,12 +23,9 @@ from __future__ import annotations
 
 import argparse
 import os
-import sys
-from dataclasses import dataclass
-from typing import Optional
 
 
-def parse_args(argv: Optional[list[str]] = None):
+def parse_args(argv: list[str] | None = None):
     p = argparse.ArgumentParser(description="QLoRA starter (safe defaults for RTX3090)")
     p.add_argument("--model_name_or_path", type=str, default=os.environ.get("QLORA_MODEL", "mistralai/Mistral-7B-Instruct"))
     p.add_argument("--output_dir", type=str, default="output/qlora_adapters")
@@ -44,7 +41,7 @@ def parse_args(argv: Optional[list[str]] = None):
     return args
 
 
-def main(argv: Optional[list[str]] = None):
+def main(argv: list[str] | None = None):
     args = parse_args(argv)
 
     print("QLoRA starter invoked with:", args)

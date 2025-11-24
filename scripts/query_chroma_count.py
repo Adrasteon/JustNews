@@ -1,7 +1,10 @@
-import os, sys
+import os
+import sys
+
 sys.path.insert(0, os.getcwd())
 
 import chromadb
+
 
 def main():
     host = os.environ.get('CHROMADB_HOST', 'localhost')

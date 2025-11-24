@@ -103,7 +103,8 @@ def check_chromadb():
                 for i, (doc_id, metadata, document) in enumerate(zip(
                     results['ids'],
                     results['metadatas'],
-                    results['documents']
+                    results['documents'],
+                    strict=True
                 )):
                     print(f"    Document {i+1}:")
                     print(f"      ID: {doc_id}")

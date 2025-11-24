@@ -487,7 +487,7 @@ class EnhancedMetricsCollector:
     async def _evaluate_alert_rules(self):
         """Evaluate alert rules against current metrics"""
         try:
-            for rule_name, rule in self._alert_rules.items():
+            for _rule_name, rule in self._alert_rules.items():
                 if not rule.enabled:
                     continue
 

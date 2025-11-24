@@ -506,7 +506,7 @@ class ReasoningEngine:
             boolean_statements = [stmt for stmt in statements if any(op in stmt for op in ["==", "!=", ">", "<", ">=", "<="])]
 
             for i, stmt1 in enumerate(boolean_statements):
-                for j, stmt2 in enumerate(boolean_statements[i+1:], i+1):
+                for _j, stmt2 in enumerate(boolean_statements[i+1:], i+1):
                     # Extract variable and values from boolean statements
                     try:
                         if self._are_contradictory_booleans(stmt1, stmt2):

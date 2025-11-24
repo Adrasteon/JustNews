@@ -21,11 +21,10 @@ The script reports per-request latency (p50, p95, max) and GPU memory snapshots.
 from __future__ import annotations
 
 import argparse
-import os
-import time
-import statistics
 import concurrent.futures
-from typing import Tuple, List
+import os
+import statistics
+import time
 
 try:
     import pynvml
@@ -36,7 +35,7 @@ except Exception:
 RETRY_SLEEP = 0.01
 
 
-def gpu_mem_snapshot() -> Tuple[int, int]:
+def gpu_mem_snapshot() -> tuple[int, int]:
     if not NVML_AVAILABLE:
         return (0, 0)
     try:
@@ -63,8 +62,8 @@ def load_model_if_available(model_id: str | None):
 
     try:
         # Try real loading
-        from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
         import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
         model_id = model_id or os.environ.get('RE_RANKER_MODEL')
         if not model_id:
             raise RuntimeError('No model id configured (RE_RANKER_MODEL)')
@@ -93,10 +92,10 @@ def load_model_if_available(model_id: str | None):
         # Prefer forcing the model onto GPU to get realistic inference latency when a GPU is available.
         # We'll try a strict placement first (all parameters to cuda:0) and on failure fall back to auto device_map.
         # load_kwargs already prepared above depending on bitsandbytes availability
-        tried_forced = False
+        _tried_forced = False
         if torch.cuda.is_available():
             try:
-                tried_forced = True
+                _tried_forced = True
                 print('Attempting to load model directly onto gpu:0 (may OOM if not enough memory)')
                 # If we couldn't create a BitsAndBytesConfig (bnb is None) then prefer float16 dtype
                 if bnb is None:
@@ -117,7 +116,7 @@ def load_model_if_available(model_id: str | None):
         # Log device placement info to help diagnose where parameters land
         try:
             if hasattr(model, 'hf_device_map'):
-                print('Model hf_device_map:', getattr(model, 'hf_device_map'))
+                print('Model hf_device_map:', model.hf_device_map)
         except Exception:
             pass
 
@@ -188,7 +187,7 @@ def load_model_if_available(model_id: str | None):
         return StubModel()
 
 
-def worker_task(worker_id: int, scorer, num_requests: int) -> List[float]:
+def worker_task(worker_id: int, scorer, num_requests: int) -> list[float]:
     latencies = []
     for i in range(num_requests):
         q = f"Test query from worker {worker_id} iter {i}"
@@ -210,7 +209,7 @@ def run_workers(workers: int, total_requests: int, model_id: str | None = None):
     print(f"GPU snapshot before workers: total={total_mb}MB used={used_mb}MB")
 
     start = time.monotonic()
-    all_latencies: List[float] = []
+    all_latencies: list[float] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
         futures = [ex.submit(worker_task, i, scorer, requests_per_worker) for i in range(workers)]
         for fut in concurrent.futures.as_completed(futures):

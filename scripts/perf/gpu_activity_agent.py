@@ -24,11 +24,10 @@ Test mode:
 from __future__ import annotations
 
 import argparse
-import subprocess
-import time
 import os
 import shlex
-from typing import Optional
+import subprocess
+import time
 
 PID_TELEMETRY = '/tmp/gpu_telemetry.pid'
 PID_EXPORTER = '/tmp/gpu_telemetry_exporter.pid'
@@ -45,7 +44,7 @@ def run_cmd(cmd, capture=False):
         return subprocess.call(cmd)
 
 
-def get_gpu_util() -> Optional[float]:
+def get_gpu_util() -> float | None:
     try:
         out = subprocess.check_output([
             'nvidia-smi', '--query-gpu=utilization.gpu', '--format=csv,noheader,nounits'

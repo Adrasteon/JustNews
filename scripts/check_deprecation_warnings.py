@@ -7,6 +7,7 @@ outdated upb API. If any such deprecation warnings are raised during import,
 this script will exit with a non-zero status and print the warnings.
 """
 from __future__ import annotations
+
 import sys
 import warnings
 

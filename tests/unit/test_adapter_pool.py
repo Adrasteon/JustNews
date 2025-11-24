@@ -1,5 +1,4 @@
 import importlib.util
-import os
 
 
 def test_adapter_pool_spawn(tmp_path, monkeypatch):

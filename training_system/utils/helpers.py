@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any
 
 import pandas as pd
+
 from common.observability import get_logger
 
 logger = get_logger(__name__)
@@ -14,11 +15,11 @@ logger = get_logger(__name__)
 def export_training_data_to_csv(training_data: list[dict], filename: str = None) -> str:
     """
     Export training data to CSV format
-    
+
     Args:
         training_data: List of training examples
         filename: Output filename (auto-generated if None)
-    
+
     Returns:
         Path to exported CSV file
     """
@@ -43,10 +44,10 @@ def export_training_data_to_csv(training_data: list[dict], filename: str = None)
 def calculate_training_metrics(performance_history: list[dict]) -> dict[str, Any]:
     """
     Calculate comprehensive training metrics
-    
+
     Args:
         performance_history: List of performance records
-        
+
     Returns:
         Dictionary of calculated metrics
     """
@@ -88,10 +89,10 @@ def calculate_training_metrics(performance_history: list[dict]) -> dict[str, Any
 def validate_training_example(example: dict[str, Any]) -> bool:
     """
     Validate training example format and content
-    
+
     Args:
         example: Training example dictionary
-        
+
     Returns:
         True if valid, False otherwise
     """
@@ -139,10 +140,10 @@ def validate_training_example(example: dict[str, Any]) -> bool:
 def format_training_status_report(status_data: dict[str, Any]) -> str:
     """
     Format training status data into a readable report
-    
+
     Args:
         status_data: Training status dictionary
-        
+
     Returns:
         Formatted report string
     """
@@ -202,12 +203,12 @@ def calculate_training_efficiency(articles_per_hour: int,
                                 avg_threshold: int = 35) -> dict[str, Any]:
     """
     Calculate training system efficiency metrics
-    
+
     Args:
         articles_per_hour: Rate of article processing
         examples_percentage: Percentage of articles that generate training examples
         avg_threshold: Average training threshold across agents
-        
+
     Returns:
         Efficiency metrics dictionary
     """
@@ -244,11 +245,11 @@ def create_training_backup(training_data: dict[str, Any],
                           backup_path: str = None) -> str:
     """
     Create backup of training system data
-    
+
     Args:
         training_data: Training system data to backup
         backup_path: Path for backup file (auto-generated if None)
-        
+
     Returns:
         Path to backup file
     """
@@ -278,10 +279,10 @@ def create_training_backup(training_data: dict[str, Any],
 def load_training_backup(backup_path: str) -> dict[str, Any]:
     """
     Load training system backup
-    
+
     Args:
         backup_path: Path to backup file
-        
+
     Returns:
         Loaded training data
     """

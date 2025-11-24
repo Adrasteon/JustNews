@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
 
+from common.json_utils import make_json_safe
 from common.observability import get_logger
 from common.stage_b_metrics import get_stage_b_metrics
 
@@ -67,7 +68,6 @@ except ImportError:  # pragma: no cover
     detect_language = None
 
 # Shared JSON-sanitising helper
-from common.json_utils import make_json_safe
 
 # Heuristic thresholds (configurable via env)
 _MIN_WORDS = int(os.environ.get("ARTICLE_MIN_WORDS", "120"))

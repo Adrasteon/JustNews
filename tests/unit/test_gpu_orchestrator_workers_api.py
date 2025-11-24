@@ -1,5 +1,5 @@
 import os
-import time
+
 from fastapi.testclient import TestClient
 
 from agents.gpu_orchestrator.main import app
@@ -21,9 +21,9 @@ def test_worker_pool_lifecycle(monkeypatch):
     assert data.get('pool_id') in ('testpool',) or data.get('status') == 'started'
 
     # list pools and confirm testpool present
-    l = client.get('/workers/pool', headers=headers)
-    assert l.status_code == 200
-    pools = l.json()
+    resp = client.get('/workers/pool', headers=headers)
+    assert resp.status_code == 200
+    pools = resp.json()
     assert any(p['pool_id'] == 'testpool' for p in pools)
 
     # delete pool
@@ -41,4 +41,4 @@ def test_worker_pool_lifecycle(monkeypatch):
     assert os.path.exists(audit_file)
     with open(audit_file) as f:
         lines = f.read().strip().splitlines()
-    assert any('testpool' in l for l in lines)
+    assert any('testpool' in line for line in lines)

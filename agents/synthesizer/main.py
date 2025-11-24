@@ -44,6 +44,9 @@ except Exception:
     create_database_service = None
 
 # Import refactored components
+from config.core import get_config
+
+from .job_store import create_job, get_job, set_error, set_result, update_status
 from .synthesizer_engine import SynthesizerEngine
 from .tools import (
     aggregate_cluster_tool,
@@ -53,9 +56,6 @@ from .tools import (
     neutralize_text_tool,
     synthesize_gpu_tool,
 )
-from .job_store import create_job, set_result, set_error, update_status, get_job
-from config.core import get_config
-from config.core import get_config
 
 logger = get_logger(__name__)
 
@@ -303,9 +303,9 @@ def log_feedback(call: ToolCall) -> dict[str, Any]:
         }
         logger.info(f"📝 Logging feedback: {feedback_data}")
         return feedback_data
-    except Exception:
+    except Exception as e:
         logger.exception("❌ Failed to log feedback")
-        raise HTTPException(status_code=500, detail="Failed to log feedback")
+        raise HTTPException(status_code=500, detail="Failed to log feedback") from e
 
 
 @app.post("/cluster_articles")
@@ -331,7 +331,7 @@ async def cluster_articles_endpoint(call: ToolCall) -> Any:
         raise
     except Exception as e:
         logger.exception("❌ Cluster articles failed")
-        raise HTTPException(status_code=500, detail=f"Clustering failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Clustering failed: {str(e)}") from e
 
 
 @app.post("/neutralize_text")
@@ -355,7 +355,7 @@ async def neutralize_text_endpoint(call: ToolCall) -> Any:
         raise
     except Exception as e:
         logger.exception("❌ Neutralize text failed")
-        raise HTTPException(status_code=500, detail=f"Neutralization failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Neutralization failed: {str(e)}") from e
 
 
 @app.post("/aggregate_cluster")
@@ -379,7 +379,7 @@ async def aggregate_cluster_endpoint(call: ToolCall) -> Any:
         raise
     except Exception as e:
         logger.exception("❌ Aggregate cluster failed")
-        raise HTTPException(status_code=500, detail=f"Aggregation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Aggregation failed: {str(e)}") from e
 
 
 @app.post("/synthesize_news_articles_gpu")
@@ -407,7 +407,7 @@ async def synthesize_news_articles_gpu_endpoint(request: SynthesisRequest) -> di
         raise
     except Exception as e:
         logger.exception("❌ GPU synthesis failed")
-        raise HTTPException(status_code=500, detail=f"GPU synthesis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"GPU synthesis failed: {str(e)}") from e
 
 
 @app.post("/synthesize_and_publish")
@@ -526,7 +526,7 @@ async def get_synthesizer_performance_endpoint(call: ToolCall) -> dict[str, Any]
         return result
     except Exception as e:
         logger.exception("❌ Performance stats failed")
-        raise HTTPException(status_code=500, detail=f"Performance stats failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Performance stats failed: {str(e)}") from e
 
 
 @app.post("/api/v1/articles/synthesize")
@@ -564,7 +564,7 @@ async def get_synthesis_job(job_id: str):
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
-    
+
 
 
 # Health and stats endpoints

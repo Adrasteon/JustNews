@@ -1,13 +1,12 @@
 """Tests for the ClusterFetcher: ensures cluster membership resolution and DB fetches work.
 """
 
-from unittest.mock import patch
 
 import pytest
 
-pytestmark = pytest.mark.database
+from agents.cluster_fetcher.cluster_fetcher import ClusterFetcher
 
-from agents.cluster_fetcher.cluster_fetcher import ClusterFetcher, ArticleRecord
+pytestmark = pytest.mark.database
 
 
 def make_db_row(article_id, title, content, url, metadata=None):

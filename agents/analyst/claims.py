@@ -8,7 +8,7 @@ identify verifiable claims. This is intentionally conservative for MVP.
 from __future__ import annotations
 
 import re
-from typing import List, Dict, Any
+from typing import Any
 
 from common.observability import get_logger
 
@@ -26,20 +26,20 @@ CLAIM_PATTERN = re.compile(r"\b(?:is|are|was|were|reported|claims|say|says|said|
                            flags=re.IGNORECASE)
 
 
-def _sentences_spacy(text: str) -> List[str]:
+def _sentences_spacy(text: str) -> list[str]:
     nlp = SpacyEnglish()
     nlp.add_pipe("sentencizer")
     doc = nlp(text)
     return [sent.text.strip() for sent in doc.sents]
 
 
-def _sentences_regex(text: str) -> List[str]:
+def _sentences_regex(text: str) -> list[str]:
     # fallback: split by sentence-like punctuation
     parts = re.split(r"(?<=[.!?])\s+", text)
     return [p.strip() for p in parts if p.strip()]
 
 
-def extract_claims(text: str, max_claims: int = 8) -> List[Dict[str, Any]]:
+def extract_claims(text: str, max_claims: int = 8) -> list[dict[str, Any]]:
     """
     Extract candidate claims from text using heuristics.
 

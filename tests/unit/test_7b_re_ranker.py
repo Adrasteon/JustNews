@@ -1,5 +1,3 @@
-import os
-import pytest
 
 from agents.tools import re_ranker_7b as rr_mod
 

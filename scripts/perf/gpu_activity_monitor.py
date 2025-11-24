@@ -21,11 +21,10 @@ by the orchestrator or as a standalone background service.
 from __future__ import annotations
 
 import argparse
-import time
-import subprocess
 import os
 import signal
-import sys
+import subprocess
+import time
 from collections import deque
 
 
@@ -111,7 +110,9 @@ def main(argv=None):
     active = False
     idle_counter = 0
 
-    print('starting GPU activity monitor (start>=%.1f%% stop<=%.1f%% window=%ds idle=%ds)' % (args.start_threshold, args.stop_threshold, args.window, args.idle))
+    print(
+        f"starting GPU activity monitor (start>={args.start_threshold:.1f}% stop<={args.stop_threshold:.1f}% window={args.window}s idle={args.idle}s)"
+    )
     try:
         while True:
             util = get_gpu_util()
@@ -125,7 +126,7 @@ def main(argv=None):
             avg = sum(buf) / len(buf)
 
             if not active and avg >= args.start_threshold:
-                print('activity detected avg util=%.1f%% - starting telemetry' % avg)
+                print(f"activity detected avg util={avg:.1f}% - starting telemetry")
                 os.makedirs(args.out_dir, exist_ok=True)
                 start_telemetry(args.out_dir, exporter_port=args.exporter_port)
                 active = True
@@ -134,7 +135,7 @@ def main(argv=None):
                 if avg <= args.stop_threshold:
                     idle_counter += args.poll_seconds
                     if idle_counter >= args.idle:
-                        print('idle detected avg util=%.1f%% - stopping telemetry' % avg)
+                        print(f"idle detected avg util={avg:.1f}% - stopping telemetry")
                         stop_telemetry()
                         active = False
                         idle_counter = 0

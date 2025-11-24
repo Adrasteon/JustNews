@@ -15,17 +15,16 @@ Key Features:
 - IDE support with auto-completion
 """
 
-import os
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
     field_validator,
     model_validator,
-    ConfigDict,
 )
 from pydantic.types import NonNegativeInt, PositiveFloat, PositiveInt
 
@@ -517,8 +516,9 @@ class JustNewsConfig(BaseModel):
             for key in keys:
                 current = getattr(current, key)
             return current
-        except AttributeError:
-            raise KeyError(f"Configuration key not found: {key_path}")
+        except AttributeError as exc:
+            # Chain the AttributeError for clearer tracebacks
+            raise KeyError(f"Configuration key not found: {key_path}") from exc
 
     def set_nested_value(self, key_path: str, value: Any):
         """Set nested configuration value using dot notation"""

@@ -11,10 +11,6 @@ from database.utils.database_utils import (
     execute_transaction,
     get_database_stats,
     get_db_config,
-    get_slow_queries,
-    kill_query,
-    reindex_table,
-    vacuum_analyze_table,
 )
 
 

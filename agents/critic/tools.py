@@ -681,7 +681,7 @@ def _detect_contradictions(text: str) -> list[dict[str, Any]]:
 
     # Simple contradiction detection
     for i, sentence1 in enumerate(sentences):
-        for j, sentence2 in enumerate(sentences[i+1:], i+1):
+        for _j, sentence2 in enumerate(sentences[i+1:], i+1):
             if 'not' in sentence1.lower() and any(word in sentence2.lower() for word in sentence1.lower().split() if word != 'not'):
                 contradictions.append({
                     "sentence1": sentence1.strip(),

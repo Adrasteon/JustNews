@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from common.observability import get_logger
+
 try:
     # DB service is heavy to import in test contexts - lazily import when needed
     create_database_service = None
@@ -18,11 +19,11 @@ logger = get_logger(__name__)
 class ArticleRecord:
     article_id: str
     content: str
-    url: Optional[str] = None
-    title: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    url: str | None = None
+    title: str | None = None
+    metadata: dict[str, Any] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "article_id": self.article_id,
             "content": self.content,
@@ -43,12 +44,14 @@ class ClusterFetcher:
 
     def __init__(self, db_service=None):
         if db_service is None:
-            from database.utils.migrated_database_utils import create_database_service as _create_db
+            from database.utils.migrated_database_utils import (
+                create_database_service as _create_db,
+            )
             self.db_service = _create_db()
         else:
             self.db_service = db_service
 
-    def fetch_cluster(self, cluster_id: Optional[str] = None, article_ids: Optional[List[str]] = None, max_results: int = 50, dedupe: bool = True) -> List[ArticleRecord]:
+    def fetch_cluster(self, cluster_id: str | None = None, article_ids: list[str] | None = None, max_results: int = 50, dedupe: bool = True) -> list[ArticleRecord]:
         """
         Fetch normalized article records for a cluster id or list of article ids.
 
@@ -61,10 +64,10 @@ class ClusterFetcher:
         Returns:
             List of ArticleRecord objects
         """
-        articles: List[ArticleRecord] = []
+        articles: list[ArticleRecord] = []
 
         # First: attempt to read cluster membership from the Transparency repository if a cluster_id is given.
-        member_article_ids: List[str] = []
+        member_article_ids: list[str] = []
         if cluster_id:
             try:
                 repo = default_repository()
@@ -129,7 +132,7 @@ class ClusterFetcher:
         # Optional de-duplication: by URL and content
         if dedupe and articles:
             seen_urls = set()
-            unique_articles: List[ArticleRecord] = []
+            unique_articles: list[ArticleRecord] = []
             for a in articles:
                 url = (a.url or "").strip().lower()
                 content_key = (a.content or "").strip()[:512]

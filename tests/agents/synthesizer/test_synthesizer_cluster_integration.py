@@ -1,8 +1,9 @@
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import patch, Mock
 import pytest_asyncio
 
-from agents.synthesizer.synthesizer_engine import SynthesizerEngine, SynthesisResult
+from agents.synthesizer.synthesizer_engine import SynthesisResult, SynthesizerEngine
 
 
 def _make_fake(pre, post):
@@ -25,7 +26,6 @@ class FakeArticle:
 
 @pytest_asyncio.fixture
 async def synthesizer_engine(monkeypatch):
-    from types import SimpleNamespace
     from agents.synthesizer.synthesizer_engine import SynthesizerEngine
 
     class StubGPUManager:
@@ -114,9 +114,6 @@ async def test_synthesize_cluster_proceeds_when_verified(synthesizer_engine, mon
     # Patch cluster_articles and aggregate_cluster so we don't require heavy ML dependencies
     async def fake_cluster_articles(texts, max_clusters):
         return {"status":"success", "clusters": [[0, 1]]}
-
-    async def fake_aggregate_cluster(texts):
-        return SynthesisResult(success=True, content="Combined synthesis", method="fake", processing_time=0.1, model_used="none", confidence=0.9)
 
     monkeypatch.setattr(engine, 'cluster_articles', fake_cluster_articles)
     called_agg = {'ok': False}

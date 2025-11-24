@@ -11,6 +11,7 @@ import gc
 import signal
 import sys
 from typing import Any
+
 from common.observability import get_logger
 
 logger = get_logger(__name__)

@@ -1,23 +1,22 @@
-from common.observability import get_logger
 #!/usr/bin/env python3
 """
 Download selected HF models into agent-specific model folders under agents/*/models.
 
 Usage:
-  ./scripts/download_agent_models.py [--dry-run] [--only SMALL|ALL] [--yes]
+    ./scripts/download_agent_models.py [--dry-run] [--only SMALL|ALL] [--yes]
 
 By default this downloads a conservative set of small/medium models. Use --only ALL to download everything (may be large).
 """
-from pathlib import Path
 import argparse
 import sys
+from pathlib import Path
 
+from common.observability import get_logger
 
-s %(levelname)s %(message)s")
 logger = get_logger(__name__)
 
 # Mapping of agents -> list of model ids to download. The value is a list of tuples (type, hf_id, prefer_sentence_transformers_bool)
-# type: 'transformers' or 'sentence-transformers'
+# (type, hf_id, prefer_sentence_transformers_bool)  # model_type: 'transformers' or 'sentence-transformers'
 AGENT_MODEL_MAP = {
     "scout": [
         ("transformers", "google/bert_uncased_L-2_H-128_A-2", False),  # small bert variant used for fast tests
@@ -33,7 +32,7 @@ AGENT_MODEL_MAP = {
         ("sentence-transformers", "all-MiniLM-L6-v2", True),
     ],
     "synthesizer": [
-    ("transformers", "distilgpt2", False),
+        ("transformers", "distilgpt2", False),
         ("transformers", "google/flan-t5-small", False),
     ],
     "critic": [

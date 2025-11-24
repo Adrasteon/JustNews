@@ -10,8 +10,8 @@ Features:
 """
 
 import asyncio
-import os
 import json
+import os
 from importlib import import_module
 from typing import Any
 
@@ -42,22 +42,6 @@ Features:
 - Semantic search capabilities
 - Backward compatibility with existing code
 """
-
-
-
-from common.observability import get_logger
-
-logger = get_logger(__name__)
-
-
-def _get_compat_attr(name: str, default):
-    """Retrieve an attribute from the compatibility shim if available."""
-    try:
-        compat_module = import_module("database.refactor.utils.database_utils")
-    except Exception:
-        return default
-
-    return getattr(compat_module, name, default)
 
 
 def get_db_config() -> dict[str, Any]:
@@ -99,23 +83,24 @@ def get_db_config() -> dict[str, Any]:
     # Build config from system_config (if any) or defaults
     db_config = system_config.get('database', {}) if isinstance(system_config, dict) else {}
 
-    mariadb_from_config = isinstance(db_config.get('mariadb'), dict)
-    chromadb_from_config = isinstance(db_config.get('chromadb'), dict)
     embedding_from_config = isinstance(db_config.get('embedding'), dict)
 
     # Set default values if not specified (copy to avoid mutating source dicts)
-    mariadb_config = dict(db_config.get('mariadb', {
+    file_mariadb_config = db_config.get('mariadb', {}) if isinstance(db_config.get('mariadb'), dict) else {}
+    file_chromadb_config = db_config.get('chromadb', {}) if isinstance(db_config.get('chromadb'), dict) else {}
+
+    mariadb_config = dict(file_mariadb_config or {
         'host': 'localhost',
         'port': 3306,
         'database': 'justnews',
         'user': 'justnews',
         'password': 'migration_password_2024'
-    }))
-    chromadb_config = dict(db_config.get('chromadb', {
+    })
+    chromadb_config = dict(file_chromadb_config or {
         'host': 'localhost',
         'port': 3307,
         'collection': 'articles'
-    }))
+    })
     # Tenant support (Chroma 0.4+ managed servers may have tenants)
     chromadb_tenant = db_config.get('chromadb', {}).get('tenant') or os.environ.get('CHROMADB_TENANT')
     if chromadb_tenant:
@@ -152,15 +137,21 @@ def get_db_config() -> dict[str, Any]:
     chroma_port = os.environ.get('CHROMADB_PORT')
     chroma_collection = os.environ.get('CHROMADB_COLLECTION')
 
+    def _has_config_value(section: dict[str, Any], key: str) -> bool:
+        if not isinstance(section, dict):
+            return False
+        value = section.get(key)
+        return value not in (None, "", [])
+
     # Environment variables should override system_config.json values when provided
-    if chroma_host:
+    if chroma_host and not _has_config_value(file_chromadb_config, 'host'):
         config['chromadb']['host'] = chroma_host
-    if chroma_port:
+    if chroma_port and not _has_config_value(file_chromadb_config, 'port'):
         try:
             config['chromadb']['port'] = int(chroma_port)
         except Exception:
             logger.warning(f"Invalid CHROMADB_PORT='{chroma_port}', using config value {config['chromadb'].get('port')}")
-    if chroma_collection:
+    if chroma_collection and not _has_config_value(file_chromadb_config, 'collection'):
         config['chromadb']['collection'] = chroma_collection
 
     # Ensure values from system_config.json take precedence when present
@@ -180,18 +171,18 @@ def get_db_config() -> dict[str, Any]:
     mariadb_user = os.environ.get('MARIADB_USER')
     mariadb_password = os.environ.get('MARIADB_PASSWORD')
 
-    if mariadb_host:
+    if mariadb_host and not _has_config_value(file_mariadb_config, 'host'):
         config['mariadb']['host'] = mariadb_host
-    if mariadb_port:
+    if mariadb_port and not _has_config_value(file_mariadb_config, 'port'):
         try:
             config['mariadb']['port'] = int(mariadb_port)
         except Exception:
             logger.warning(f"Invalid MARIADB_PORT='{mariadb_port}', using config value {config['mariadb'].get('port')}")
-    if mariadb_db:
+    if mariadb_db and not _has_config_value(file_mariadb_config, 'database'):
         config['mariadb']['database'] = mariadb_db
-    if mariadb_user:
+    if mariadb_user and not _has_config_value(file_mariadb_config, 'user'):
         config['mariadb']['user'] = mariadb_user
-    if mariadb_password:
+    if mariadb_password and not _has_config_value(file_mariadb_config, 'password'):
         config['mariadb']['password'] = mariadb_password
 
     embedding_model = os.environ.get('EMBEDDING_MODEL')
@@ -409,7 +400,7 @@ def execute_transaction(
     try:
         cursor = service.mb_conn.cursor()
 
-        for query, params in zip(queries, params_list):
+        for query, params in zip(queries, params_list, strict=True):
             cursor.execute(query, params or ())
 
         service.mb_conn.commit()
@@ -545,35 +536,35 @@ def link_entity_to_article(service: MigratedDatabaseService, article_id: int, en
         return False
 
 
-    def log_kg_operation(service: MigratedDatabaseService, operation: str, actor: str | None = None, target_type: str | None = None, target_id: int | None = None, details: dict | None = None) -> bool:
-        """Write a KG audit event to kg_audit table (and fallback to file log).
+def log_kg_operation(service: MigratedDatabaseService, operation: str, actor: str | None = None, target_type: str | None = None, target_id: int | None = None, details: dict | None = None) -> bool:
+    """Write a KG audit event to kg_audit table (and fallback to file log).
 
-        operation: one of create_entity, link_entity, read_entities, search_entities, etc.
-        """
-        payload = details or {}
-        try:
-            if service:
-                service.ensure_conn()
-                cursor = service.mb_conn.cursor()
-                cursor.execute("INSERT INTO kg_audit (operation, actor, target_type, target_id, details) VALUES (%s,%s,%s,%s,%s)", (operation, actor, target_type, target_id, json.dumps(payload)))
-                service.mb_conn.commit()
-                cursor.close()
-                return True
-        except Exception as e:
-            logger.warning(f"kg_audit DB insert failed: {e}")
-
-        # Fallback - append to logs/audit/kg_operations.jsonl
-        try:
-            log_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'logs', 'audit')
-            os.makedirs(log_dir, exist_ok=True)
-            path = os.path.join(log_dir, 'kg_operations.jsonl')
-            entry = {'operation': operation, 'actor': actor, 'target_type': target_type, 'target_id': target_id, 'details': payload}
-            with open(path, 'a', encoding='utf-8') as f:
-                f.write(json.dumps(entry, default=str) + '\n')
+    operation: one of create_entity, link_entity, read_entities, search_entities, etc.
+    """
+    payload = details or {}
+    try:
+        if service:
+            service.ensure_conn()
+            cursor = service.mb_conn.cursor()
+            cursor.execute("INSERT INTO kg_audit (operation, actor, target_type, target_id, details) VALUES (%s,%s,%s,%s,%s)", (operation, actor, target_type, target_id, json.dumps(payload)))
+            service.mb_conn.commit()
+            cursor.close()
             return True
-        except Exception as e:
-            logger.warning(f"kg_audit file fallback failed: {e}")
-            return False
+    except Exception as e:
+        logger.warning(f"kg_audit DB insert failed: {e}")
+
+    # Fallback - append to logs/audit/kg_operations.jsonl
+    try:
+        log_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'logs', 'audit')
+        os.makedirs(log_dir, exist_ok=True)
+        path = os.path.join(log_dir, 'kg_operations.jsonl')
+        entry = {'operation': operation, 'actor': actor, 'target_type': target_type, 'target_id': target_id, 'details': payload}
+        with open(path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(entry, default=str) + '\n')
+        return True
+    except Exception as e:
+        logger.warning(f"kg_audit file fallback failed: {e}")
+        return False
 
 
 def get_article_entities(service: MigratedDatabaseService, article_id: int) -> list[dict[str, Any]]:

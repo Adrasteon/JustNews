@@ -1,9 +1,19 @@
 import asyncio
 import os
 
-from database.utils.migrated_database_utils import create_database_service, get_article_entities
+import pytest
+
 from agents.archive.knowledge_graph import KnowledgeGraphManager
 from agents.synthesizer import persistence as synth_persistence
+from database.utils.migrated_database_utils import (
+    create_database_service,
+    get_article_entities,
+)
+
+requires_live_db = pytest.mark.skipif(
+    os.environ.get('ENABLE_DB_INTEGRATION_TESTS') != '1',
+    reason="Requires live MariaDB/Chroma deployment",
+)
 
 
 def test_make_chroma_metadata_includes_embedding_model_env():
@@ -15,6 +25,7 @@ def test_make_chroma_metadata_includes_embedding_model_env():
     assert m.get('embedding_dimensions') == 42
 
 
+@requires_live_db
 def test_db_backed_kg_can_store_and_retrieve():
     svc = create_database_service()
     cursor = svc.mb_conn.cursor()
@@ -44,6 +55,7 @@ def test_db_backed_kg_can_store_and_retrieve():
     svc.close()
 
 
+@requires_live_db
 def test_synthesized_draft_adds_embedding_metadata_to_chroma():
     # ensure env set
     import os

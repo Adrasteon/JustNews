@@ -13,7 +13,7 @@ from typing import Any
 import aiofiles
 from pydantic import BaseModel, Field
 
-from ..models import AuthorizationError, Role, SecurityConfig
+from ..models import AuthorizationError, SecurityConfig
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,3 @@
-from common.observability import get_logger
-
 #!/usr/bin/env python3
 """
 Compliance Audit Logging System
@@ -24,6 +22,8 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any
+
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 

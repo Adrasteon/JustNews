@@ -1,5 +1,3 @@
-from common.observability import get_logger
-
 #!/usr/bin/env python3
 """
 Researcher Authentication API Endpoints
@@ -63,6 +61,7 @@ from agents.common.auth_models import (
 )
 from agents.common.consent_management import ConsentType, consent_manager
 from agents.common.data_minimization import DataMinimizationManager, DataPurpose
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 
@@ -246,7 +245,7 @@ async def register_user(user_data: UserCreate, background_tasks: BackgroundTasks
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Registration failed"
-        )
+        ) from e
 
 @router.post("/login", response_model=LoginResponse)
 async def login_user(login_data: UserLogin):
@@ -334,7 +333,7 @@ async def login_user(login_data: UserLogin):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Login failed"
-        )
+        ) from e
 
 @router.post("/refresh")
 async def refresh_access_token(refresh_data: dict[str, str]):
@@ -388,7 +387,7 @@ async def refresh_access_token(refresh_data: dict[str, str]):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Token refresh failed"
-        )
+        ) from e
 
 @router.post("/logout")
 async def logout_user(refresh_data: dict[str, str], current_user: dict[str, Any] = Depends(get_current_user)):
@@ -406,7 +405,7 @@ async def logout_user(refresh_data: dict[str, str], current_user: dict[str, Any]
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Logout failed"
-        )
+        ) from e
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(current_user: dict[str, Any] = Depends(get_current_user)):
@@ -450,7 +449,7 @@ async def request_password_reset(request: PasswordResetRequest, background_tasks
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Password reset request failed"
-        )
+        ) from e
 
 @router.post("/password-reset/confirm")
 async def confirm_password_reset(reset_data: PasswordReset):
@@ -488,7 +487,7 @@ async def confirm_password_reset(reset_data: PasswordReset):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Password reset confirmation failed"
-        )
+        ) from e
 
 @router.get("/users", response_model=list[UserResponse])
 async def list_users(
@@ -518,7 +517,7 @@ async def list_users(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve users"
-        )
+        ) from e
 
 @router.put("/users/{user_id}/activate")
 async def activate_user_account(
@@ -543,7 +542,7 @@ async def activate_user_account(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to activate user"
-        )
+        ) from e
 
 @router.put("/users/{user_id}/deactivate")
 async def deactivate_user_account(
@@ -571,7 +570,7 @@ async def deactivate_user_account(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to deactivate user"
-        )
+        ) from e
 
 # Data Export Endpoints
 
@@ -612,7 +611,7 @@ async def request_data_export(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to initiate data export"
-        )
+        ) from e
 
 @router.get("/data-export/{export_id}")
 async def get_data_export_status(
@@ -649,7 +648,7 @@ async def get_data_export_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get export status"
-        )
+        ) from e
 
 @router.get("/data-export/{export_id}/download")
 async def download_data_export(
@@ -691,7 +690,7 @@ async def download_data_export(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to download export"
-        )
+        ) from e
 
 # Background task for data export
 async def perform_data_export(
@@ -840,7 +839,7 @@ async def request_data_deletion(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to initiate data deletion"
-        )
+        ) from e
 
 @router.get("/data-deletion/{request_id}")
 async def get_data_deletion_status(
@@ -877,7 +876,7 @@ async def get_data_deletion_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get deletion status"
-        )
+        ) from e
 
 # Background task for data deletion
 async def perform_data_deletion(
@@ -1053,7 +1052,7 @@ async def get_user_consents(current_user: dict[str, Any] = Depends(get_current_u
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve consent status"
-        )
+        ) from e
 
 @router.post("/consents/grant")
 async def grant_user_consent(
@@ -1065,11 +1064,11 @@ async def grant_user_consent(
         # Validate consent type
         try:
             consent_type = ConsentType(request.consent_type)
-        except ValueError:
+        except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid consent type: {request.consent_type}"
-            )
+            ) from exc
 
         # Grant consent
         consent_id = consent_manager.grant_consent(
@@ -1106,7 +1105,7 @@ async def grant_user_consent(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to grant consent"
-        )
+        ) from e
 
 @router.post("/consents/withdraw")
 async def withdraw_user_consent(
@@ -1118,11 +1117,11 @@ async def withdraw_user_consent(
         # Validate consent type
         try:
             consent_type = ConsentType(request.consent_type)
-        except ValueError:
+        except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid consent type: {request.consent_type}"
-            )
+            ) from exc
 
         # Withdraw consent
         success = consent_manager.withdraw_consent(
@@ -1162,7 +1161,7 @@ async def withdraw_user_consent(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to withdraw consent"
-        )
+        ) from e
 
 @router.get("/consents/policies")
 async def get_consent_policies(current_user: dict[str, Any] = Depends(get_current_user)):
@@ -1190,7 +1189,7 @@ async def get_consent_policies(current_user: dict[str, Any] = Depends(get_curren
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve consent policies"
-        )
+        ) from e
 
 @router.get("/consents/check/{consent_type}")
 async def check_user_consent(
@@ -1202,11 +1201,11 @@ async def check_user_consent(
         # Validate consent type
         try:
             consent_enum = ConsentType(consent_type)
-        except ValueError:
+        except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid consent type: {consent_type}"
-            )
+            ) from exc
 
         # Check consent
         has_consent = consent_manager.check_consent(current_user['user_id'], consent_enum)
@@ -1224,7 +1223,7 @@ async def check_user_consent(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to check consent"
-        )
+        ) from e
 
 # Admin Consent Management Endpoints
 
@@ -1242,7 +1241,7 @@ async def get_consent_statistics(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve consent statistics"
-        )
+        ) from e
 
 @router.get("/admin/consents/users/{user_id}")
 async def get_user_consent_details(
@@ -1270,7 +1269,7 @@ async def get_user_consent_details(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve user consent details"
-        )
+        ) from e
 
 @router.post("/admin/consents/users/{user_id}/grant")
 async def admin_grant_user_consent(
@@ -1283,11 +1282,11 @@ async def admin_grant_user_consent(
         # Validate consent type
         try:
             consent_type = ConsentType(request.consent_type)
-        except ValueError:
+        except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid consent type: {request.consent_type}"
-            )
+            ) from exc
 
         # Grant consent
         consent_id = consent_manager.grant_consent(
@@ -1329,7 +1328,7 @@ async def admin_grant_user_consent(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to grant consent"
-        )
+        ) from e
 
 # Data Minimization Endpoints
 
@@ -1362,7 +1361,7 @@ async def get_data_minimization_status(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get data minimization status"
-        )
+        ) from e
 
 @router.post("/data-minimization/validate")
 async def validate_data_collection(
@@ -1403,7 +1402,7 @@ async def validate_data_collection(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to validate data collection"
-        )
+        ) from e
 
 @router.post("/data-minimization/minimize")
 async def minimize_data_payload(
@@ -1448,7 +1447,7 @@ async def minimize_data_payload(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to minimize data"
-        )
+        ) from e
 
 @router.post("/data-minimization/cleanup")
 async def cleanup_expired_data(
@@ -1480,7 +1479,7 @@ async def cleanup_expired_data(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to cleanup expired data"
-        )
+        ) from e
 
 @router.get("/data-minimization/usage")
 async def get_data_usage_summary(
@@ -1512,7 +1511,7 @@ async def get_data_usage_summary(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get data usage summary"
-        )
+        ) from e
 
 @router.post("/data-minimization/policies")
 async def add_data_policy(
@@ -1549,11 +1548,11 @@ async def add_data_policy(
         try:
             purpose = DataPurpose(purpose_str)
             categories = [DataCategory(cat) for cat in categories_str]
-        except ValueError as e:
+        except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid purpose or category: {e}"
-            )
+                detail=f"Invalid purpose or category: {exc}"
+            ) from exc
 
         policy = DataCollectionPolicy(
             purpose=purpose,
@@ -1589,7 +1588,7 @@ async def add_data_policy(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to add data policy"
-        )
+        ) from e
 
 # Initialize database tables on import
 try:

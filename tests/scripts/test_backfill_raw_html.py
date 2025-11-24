@@ -1,9 +1,5 @@
-import os
-import tempfile
-from pathlib import Path
 import importlib
-
-import requests
+from pathlib import Path
 
 
 def test_backfill_dry_run(monkeypatch, tmp_path):

@@ -7,10 +7,10 @@ them sequentially against the configured MariaDB instance.
 
 Usage: source global.env; python3 scripts/ops/apply_synthesis_migration_py.py
 """
+import logging
 import os
 import sys
 import time
-import logging
 from pathlib import Path
 
 # Prefer mysql.connector if available (C-extension) because it supports multi-statement execution
@@ -59,20 +59,22 @@ def get_conn_cfg():
             user, password = (userpass.split(':', 1) + [''])[:2] if userpass else ('', '')
             hostport, dbname = (hostpath.split('/', 1) + [''])[:2]
             host, port = (hostport.split(':', 1) + ['3306'])[:2]
-            return dict(user=user or os.environ.get('MARIADB_USER', ''),
-                        password=password or os.environ.get('MARIADB_PASSWORD', ''),
-                        host=host or os.environ.get('MARIADB_HOST', '127.0.0.1'),
-                        port=int(port or os.environ.get('MARIADB_PORT', 3306)),
-                        database=dbname or os.environ.get('MARIADB_DB', 'justnews'))
+            return {
+                'user': user or os.environ.get('MARIADB_USER', ''),
+                'password': password or os.environ.get('MARIADB_PASSWORD', ''),
+                'host': host or os.environ.get('MARIADB_HOST', '127.0.0.1'),
+                'port': int(port or os.environ.get('MARIADB_PORT', 3306)),
+                'database': dbname or os.environ.get('MARIADB_DB', 'justnews')
+            }
 
     # fallback to MARIADB_* env vars in global.env
-    return dict(
-        user=os.environ.get('MARIADB_USER', 'justnews'),
-        password=os.environ.get('MARIADB_PASSWORD', ''),
-        host=os.environ.get('MARIADB_HOST', '127.0.0.1'),
-        port=int(os.environ.get('MARIADB_PORT', 3306)),
-        database=os.environ.get('MARIADB_DB', 'justnews'),
-    )
+    return {
+        'user': os.environ.get('MARIADB_USER', 'justnews'),
+        'password': os.environ.get('MARIADB_PASSWORD', ''),
+        'host': os.environ.get('MARIADB_HOST', '127.0.0.1'),
+        'port': int(os.environ.get('MARIADB_PORT', 3306)),
+        'database': os.environ.get('MARIADB_DB', 'justnews'),
+    }
 
 
 def run():
@@ -125,7 +127,7 @@ def run():
             sql = migration.read_text(encoding='utf-8')
             try:
                 if use_mysql_connector:
-                    for result in cursor.execute(sql, multi=True):
+                    for _result in cursor.execute(sql, multi=True):
                         # consume results
                         pass
                     conn.commit()

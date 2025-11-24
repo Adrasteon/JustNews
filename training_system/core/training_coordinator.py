@@ -26,7 +26,6 @@ from database.utils.migrated_database_utils import create_database_service
 
 # Lazy import placeholders for heavy training utilities
 _TRANSFORMERS_AVAILABLE = importlib.util.find_spec("transformers") is not None
-_PSYCOPG2_AVAILABLE = importlib.util.find_spec("psycopg2") is not None
 
 def _import_trainer_and_args():
     try:
@@ -87,7 +86,7 @@ class OnTheFlyTrainingCoordinator:
                  rollback_threshold: float = 0.05):
         """
         Initialize training coordinator
-        
+
         Args:
             update_threshold: Number of examples before triggering model update
             max_buffer_size: Maximum training examples to keep in memory
@@ -153,7 +152,7 @@ class OnTheFlyTrainingCoordinator:
                            correction_priority: int = 0):
         """
         Add a training example to the appropriate agent buffer
-        
+
         High uncertainty or user corrections get prioritized for training
         """
         example = TrainingExample(
@@ -194,7 +193,7 @@ class OnTheFlyTrainingCoordinator:
                               confidence_score: float):
         """
         Add feedback from agent predictions to improve training
-        
+
         This is called automatically when agents make predictions
         """
         # Calculate uncertainty (1 - confidence)

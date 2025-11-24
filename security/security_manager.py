@@ -24,29 +24,7 @@ from .monitoring.service import SecurityMonitor
 
 logger = logging.getLogger(__name__)
 class SecurityManager:
-    """
-    Central security orchestrator for JustNews
-
-    Coordinates all security operations including authentication, authorization,
-    encryption, compliance monitoring, and security event tracking.
-    """
-
-    def __init__(self, config: SecurityConfig):
-        self.config = config
-        self._initialized = False
-
-        # Initialize security services
-        self.auth_service = AuthenticationService(config)
-        self.authz_service = AuthorizationService(config)
-        self.encrypt_service = EncryptionService(config)
-        self.compliance_service = ComplianceService(config)
-        self.monitor_service = SecurityMonitor(config)
-
-        # Active sessions cache
-        self._active_sessions: dict[str, SecurityContext] = {}
-        self._session_cleanup_task: asyncio.Task | None = None
-
-        logger.info("SecurityManager initialized")
+    # Duplicate class documentation and initializer removed (keeps a single, canonical __init__)
     """
     Central security orchestrator for JustNews
 
@@ -267,7 +245,8 @@ class SecurityManager:
 
         except Exception as e:
             logger.error(f"Token validation failed: {e}")
-            raise AuthenticationError("Invalid token")
+            # Chain the source exception for clarity
+            raise AuthenticationError("Invalid token") from e
 
     async def check_permission(self, user_id: int, permission: str,
                              resource: str | None = None) -> bool:
@@ -394,7 +373,7 @@ class SecurityManager:
             overall_status = "healthy"
             issues = []
 
-            for service_name, status in [
+            for _service_name, status in [
                 ("authentication", auth_status),
                 ("authorization", authz_status),
                 ("encryption", encrypt_status),

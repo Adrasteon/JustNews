@@ -10,7 +10,13 @@ If --autocreate is provided, it will try to create a default tenant and a 'artic
 import argparse
 import os
 from pprint import pprint
-from database.utils.chromadb_utils import discover_chroma_endpoints, get_root_info, create_tenant, ensure_collection_exists_using_http
+
+from database.utils.chromadb_utils import (
+    create_tenant,
+    discover_chroma_endpoints,
+    ensure_collection_exists_using_http,
+    get_root_info,
+)
 
 
 def main():
@@ -54,7 +60,8 @@ def main():
             print("\nOK: This host/port matches canonical Chroma settings and appears to be a Chroma server.")
         except Exception as e:
             print(f"\nERROR: Chroma validation failed: {e}")
-            raise SystemExit(1)
+            # Chain the original validation error to the SystemExit for clarity
+            raise SystemExit(1) from e
 
 
 if __name__ == '__main__':

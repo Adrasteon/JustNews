@@ -19,7 +19,7 @@ import os
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from common.env_loader import load_global_env
 from common.observability import get_logger
@@ -197,7 +197,8 @@ class ConfigurationManager:
         try:
             return JustNewsConfig(**config_dict)
         except Exception as e:
-            raise ConfigurationValidationError(f"Environment overrides validation failed: {e}")
+            # Preserve original exception context for debugging
+            raise ConfigurationValidationError(f"Environment overrides validation failed: {e}") from e
 
     def _get_environment_overrides(self) -> dict[str, Any]:
         """Get environment-specific configuration overrides"""
@@ -390,7 +391,8 @@ class ConfigurationManager:
         except Exception as e:
             error_msg = f"Failed to save configuration: {e}"
             logger.error(error_msg)
-            raise ConfigurationError(error_msg)
+            # Chain the original exception for clarity
+            raise ConfigurationError(error_msg) from e
 
     def reset_to_defaults(self):
         """Reset configuration to defaults"""

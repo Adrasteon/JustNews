@@ -1,7 +1,5 @@
-import json
-from fastapi.testclient import TestClient
 import requests
-import types
+from fastapi.testclient import TestClient
 
 from agents.crawler_control import main as crawler_main
 

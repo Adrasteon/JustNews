@@ -6,15 +6,18 @@ from pathlib import Path
 from typing import Any
 
 from common.observability import get_logger
-
 from database.utils.migrated_database_utils import (
     add_entity,
+    create_database_service,
     link_entity_to_article,
     log_kg_operation,
+)
+from database.utils.migrated_database_utils import (
     get_article_entities as db_get_article_entities,
+)
+from database.utils.migrated_database_utils import (
     search_entities as db_search_entities,
 )
-from database.utils.migrated_database_utils import create_database_service
 
 logger = get_logger(__name__)
 
@@ -113,7 +116,7 @@ class KnowledgeGraphManager:
                 except Exception:
                     logger.debug('kg audit log failed for ensure_entity')
                 if eid:
-                    linked = link_entity_to_article(service, article_id, eid, relevance=None)
+                    link_entity_to_article(service, article_id, eid, relevance=None)
                     # Audit operation
                     try:
                         log_kg_operation(service, operation='link_entity', actor=os.environ.get('USER') or 'system', target_type='article', target_id=article_id, details={'entity_id': eid, 'entity_name': name, 'canonical': canonical, 'detected_type': detected_type})
@@ -132,7 +135,8 @@ class KnowledgeGraphManager:
 
         Uses simple heuristics to canonicalize a token and infer type.
         """
-        import unicodedata, re
+        import re
+        import unicodedata
 
         if not name:
             return (name, None, 'heuristic:v1')
@@ -324,7 +328,7 @@ class KnowledgeGraphManager:
                     edges += len(payload.get('relationships', []))
                 except Exception:
                     pass
-            return {'total_nodes': len(nodes), 'total_edges': edges, 'node_types': list(), 'edge_types': ['cooccurs']}
+            return {'total_nodes': len(nodes), 'total_edges': edges, 'node_types': [], 'edge_types': ['cooccurs']}
 
         try:
             svc = self.db_service
@@ -341,7 +345,7 @@ class KnowledgeGraphManager:
             logger.warning(f"get_graph_statistics failed: {e}")
             return {'total_nodes': 0, 'total_edges': 0, 'node_types': {}, 'edge_types': []}
 
-        
+
 
     async def health_check(self) -> dict[str, Any]:
         if self.backend == 'file':

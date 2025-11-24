@@ -281,7 +281,7 @@ async def tool_receive_candidate(call: ToolCallRequest) -> dict[str, Any]:
     try:
         event = CandidateEvent(**payload)
     except ValidationError as exc:
-        raise HTTPException(status_code=400, detail=f"invalid candidate payload: {exc}")
+        raise HTTPException(status_code=400, detail=f"invalid candidate payload: {exc}") from exc
 
     candidate_id = insert_candidate(event)
     metrics.increment("hitl_mcp_candidate_events_total")
@@ -295,7 +295,7 @@ async def tool_submit_label(call: ToolCallRequest) -> dict[str, Any]:
     try:
         label_req = LabelRequest(**payload)
     except ValidationError as exc:
-        raise HTTPException(status_code=400, detail=f"invalid label payload: {exc}")
+        raise HTTPException(status_code=400, detail=f"invalid label payload: {exc}") from exc
 
     metrics.increment("hitl_mcp_label_events_total")
     result = store_label(label_req)

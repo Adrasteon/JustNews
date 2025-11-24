@@ -4,6 +4,7 @@ test discovery paths (not only `tests/` dir). This sets a minimal test
 `global.env` and marks `PYTEST_RUNNING` so test runs don't accidentally
 read `/etc/justnews/global.env` on development hosts.
 """
+import json
 import os
 
 # Filter known protobuf upb deprecation (PyType_Spec + custom tp_new) in test runs until
@@ -19,6 +20,30 @@ from shutil import which
 # back to the system python if not available.
 project_root = Path(__file__).resolve().parent
 project_global_env = project_root / 'global.env'
+
+
+def _conda_env_available(env_name: str) -> bool:
+    """Return True if the requested conda env exists on this host."""
+    try:
+        result = subprocess.run(
+            ['conda', 'env', 'list', '--json'],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        data = json.loads(result.stdout or '{}')
+    except Exception:
+        return False
+    env_paths = data.get('envs', [])
+    for env_path in env_paths:
+        try:
+            if Path(env_path).name == env_name:
+                return True
+        except Exception:
+            continue
+    return False
+
+
 py_cmd = None
 if os.environ.get('PYTHON_BIN'):
     py_cmd = [os.environ.get('PYTHON_BIN')]
@@ -48,9 +73,10 @@ elif project_global_env.exists():
     except Exception:
         py_cmd = None
 if py_cmd is None:
-    # fallback to using conda run, if available, with the recommended env name
-    if which('conda') is not None:
-        py_cmd = ['conda', 'run', '-n', 'justnews-py312', 'python']
+    # fallback to using conda run, if the recommended env exists
+    conda_env = os.environ.get('JUSTNEWS_CONDA_ENV', 'justnews-py312')
+    if which('conda') is not None and _conda_env_available(conda_env):
+        py_cmd = ['conda', 'run', '-n', conda_env, 'python']
     else:
         py_cmd = [os.environ.get('PYTHON_BIN', sys.executable or 'python')]
 

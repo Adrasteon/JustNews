@@ -200,8 +200,8 @@ Some GPU models don't report temperature via nvidia-smi:
 # Check what metrics are available
 nvidia-smi --query-gpu=temperature.gpu --format=csv
 
-# Alternative: Use NVML if available (requires pynvml package)
-pip install pynvml
+# Alternative: Use NVML if available (install the maintained nvidia-ml-py package)
+pip install nvidia-ml-py
 ```
 
 #### High Memory Usage

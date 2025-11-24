@@ -47,3 +47,20 @@ Pool sizing guidance (empirical)
 Next ops to add
 - Add a GPU Orchestrator policy that keeps 1 base model resident and spawns adapter workers on demand.
 - Add monitoring/alerts (prometheus metrics) for adapter load, p95 latency, and OOM events.
+
+Latest rollout updates — Fact Checker & Critic
+----------------------------------------------
+- ModelStore now hosts accuracy-critical adapters at `fact_checker/adapters/mistral_fact_checker_v1` and `critic/adapters/mistral_critic_v1`; both entries are wired through `AGENT_MODEL_MAP.json` so the orchestrator preloads them alongside the existing synthesizer/summarization adapters.
+- Fact Checker still couples the adapter with its mpnet retrieval stack. When testing locally, set `RE_RANKER_TEST_MODE=1` so CI-safe stubs load while the adapter path is validated via `pytest tests/agents/test_fact_checker.py`.
+- Critic uses the same base snapshot with the `mistral_critic_v1` adapter to score drafts before Chief Editor review. Warm pools can be sanity-checked with:
+
+```bash
+MODEL_STORE_ROOT=/opt/justnews/model_store RE_RANKER_TEST_MODE=0 \
+   python scripts/ops/adapter_worker_pool.py \
+      --workers 2 \
+      --model base_models/versions/v20251123-mistral-v0.3 \
+      --adapter critic/adapters/mistral_critic_v1 \
+      --hold 240
+```
+
+- Keep legacy DistilRoBERTa/Flan weights in `AGENT_MODEL_RECOMMENDED.json` as retrieval fallbacks until the new adapters clear sustained production burn-in. Update the manifest `training_summary.json` whenever we retrain either adapter so we can track provenance and align monitoring alerts with exact versions.

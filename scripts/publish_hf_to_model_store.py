@@ -78,6 +78,10 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Overwrite an existing staged version if present.",
     )
+    parser.add_argument(
+        "--metadata",
+        help="Optional path to a JSON metadata file to embed into the ModelStore manifest.",
+    )
     return parser.parse_args()
 
 
@@ -131,8 +135,21 @@ def main() -> None:
         # Any failure during download should clean the staging directory via context manager
         raise SystemExit(f"Failed to download models: {exc}") from exc
 
+    metadata: dict | None = None
+    if args.metadata:
+        metadata_path = Path(args.metadata)
+        if not metadata_path.exists():
+            raise SystemExit(f"Metadata file not found: {metadata_path}")
+        import json
+
+        with metadata_path.open("r", encoding="utf-8") as fh:
+            try:
+                metadata = json.load(fh)
+            except Exception as exc:  # pragma: no cover - invalid json
+                raise SystemExit(f"Failed to parse metadata JSON: {exc}") from exc
+
     try:
-        store.finalize(agent, version)
+        store.finalize(agent, version, metadata=metadata)
     except Exception as exc:
         raise SystemExit(f"Failed to finalize ModelStore version: {exc}") from exc
 

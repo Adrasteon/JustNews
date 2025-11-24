@@ -50,5 +50,5 @@ crawl4ai==0.7.4
 # Embedding models
 sentence-transformers>=3.0.1
 
-# GPU orchestration / NVML integration
-pynvml>=11.4.1
+# GPU orchestration / NVML integration (PyPI package now ships as nvidia-ml-py)
+nvidia-ml-py>=13.0.0

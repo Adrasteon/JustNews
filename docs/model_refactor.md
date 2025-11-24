@@ -25,7 +25,9 @@ Files & components inspected (representative):
   - `agents/synthesizer/` — text generation, summarisation.
   - `agents/journalist/` — article assembly (generation derivative flows).
   - `agents/chief_editor/` — editorial rewrite/judgement.
-  - `agents/reasoning/`, `agents/critic/`, `agents/hitl_service/` — reasoning & HITL interactions.
+   - `agents/reasoning/`, `agents/critic/`, `agents/hitl_service/` — reasoning & HITL interactions; Critic now ships with the `mistral_critic_v1` adapter for higher-accuracy editorial gating while retaining lightweight fallback tools for outage scenarios.
+   - `agents/fact_checker/` — accuracy-critical claim verification now uses the shared Mistral base via the `mistral_fact_checker_v1` adapter for long-form evidence synthesis; retrieval/semantic search continues to rely on mpnet-sized encoders.
+   - `agents/analyst/` — bias/sentiment/persuasion scoring now prioritizes accuracy over latency, so add a Mistral adapter-powered tool alongside existing RoBERTa fallbacks.
   - Re-ranker tooling: `agents/tools/7b_re_ranker.py`, `scripts/perf/simulate_concurrent_inference.py`.
 
 - Agents primarily using embeddings or multi-modal models (these keep specialized models):
@@ -40,7 +42,7 @@ Files & components inspected (representative):
 Desired final state
 --------------------
 - Mistral‑7B base published in ModelStore and accessible from production nodes.
-- Per-agent adapter artifacts (LoRA/QLoRA) produced and published in ModelStore for: synthesizer, re-ranker, journalist, chief_editor, and reasoning agents.
+- Per-agent adapter artifacts (LoRA/QLoRA) produced and published in ModelStore for: synthesizer, re-ranker, journalist, chief_editor, reasoning, and analyst agents (analyst retains legacy RoBERTa tooling as a fallback but defaults to the new Mistral adapter for production decisions).
 - Orchestrator automatically uses model metadata (approx_vram_mb, quantized_variants, peft_support) for preloading and pool sizing, and supports adapter hot-swapping.
 - Agents transparently load the appropriate variant (ModelStore or HF) and prefer ModelStore snapshots when `MODEL_STORE_ROOT` is configured.
 - CI workflows for publishing adapters and for verifying ModelStore health, preflight checks for GPU/conda bitsandbytes availability, tests and a DRY_RUN to ensure no large artifacts are committed accidentally.
@@ -60,14 +62,14 @@ Phase 0 — Preparation & safety checks
 -------------------------------------
 1) Licensing & checkpoint selection (priority)
    - Confirm the exact Mistral checkpoint (HF model card) and license (ensure it is acceptable for production training & distribution).
-   - Choose a canonical checkpoint string to pin in documentation and artifacts (ex: `mistralai/Mistral-7B-v0.3` or the org-approved tag).
+   - Canonical checkpoint + license are now pinned to `mistralai/Mistral-7B-Instruct-v0.3` (Apache-2.0). Reference metadata lives in `models/metadata/mistral-7b-instruct-v0.3.json` for downstream tooling.
 
 2) Host readiness checklist
    - Confirm that GPU nodes have required CUDA + drivers and that bitsandbytes native binaries are built against target CUDA (documented in repo). Add an automated verification script for `bitsandbytes` compatibility in `infrastructure/systemd/preflight.sh` or a new preflight utility.
    - Confirm `MODEL_STORE_ROOT` is available and writable on target nodes; ensure backup & snapshot cadence is documented.
 
 3) Repo & QA housekeeping
-   - Add `AGENT_MODEL_MAP.json` (if not present) or update it with explicit entries for the agents we'll migrate. These will contain {agent: [base_model_id, adapters...]} or a richer per-agent structure.
+   - `AGENT_MODEL_MAP.json` now exists and seeds entries for `synthesizer` + `re_ranker` agents pointing at the canonical base and placeholder adapter slots. Continue extending it for journalist, chief_editor, reasoning, **and analyst** so all critical decision-makers pull from the shared base.
    - Add a `docs/mistral_adapter_rollout.md` -> already present; augment with an entry describing canonical base + adapter naming conventions.
 
 Phase 1 — ModelStore publishing
@@ -76,25 +78,28 @@ Goal: publish canonical Mistral base weights and a canonical path / layout in Mo
 
 Steps:
 1) Create a canonical ModelStore version for the Mistral base
-   - Use `scripts/publish_hf_to_model_store.py` for agent `synthesizer` (or `base_models` agent placeholder) with a timestamped version label.
-   - Example command:
-     ```bash
-     MODEL_STORE_ROOT=/opt/justnews/model_store HF_TOKEN=$HF_TOKEN \ 
-       python scripts/publish_hf_to_model_store.py --agent base_models --model mistralai/Mistral-7B-v0.3 --version v20251123-mistral-v0.3
-     ```
-   - Confirm `ModelStore.finalize()` succeeded and `model_store/agents/base_models/current` resolves correctly.
+    - ✅ Completed: published `mistralai/Mistral-7B-Instruct-v0.3` as `base_models/versions/v20251123-mistral-v0.3` using the metadata-aware script. All GPU hosts should replicate this command:
+       ```bash
+       MODEL_STORE_ROOT=/opt/justnews/model_store HF_TOKEN=$HF_TOKEN \
+          python scripts/publish_hf_to_model_store.py \
+             --agent base_models \
+             --model mistralai/Mistral-7B-Instruct-v0.3 \
+             --version v20251123-mistral-v0.3 \
+             --metadata models/metadata/mistral-7b-instruct-v0.3.json
+       ```
+    - Current symlink verifies to that version; checksum recorded in manifest (`847e9311…b4dc8`).
 
 2) Add model metadata & manifest
-   - For the base version, add metadata file `{version}/manifest.json` including fields: `approx_vram_mb`, `quantized_variants` (list), `peft_support: true`, `recommended_use_cases` (e.g., generation, reasoning).  Rough starting values:
-     - approx_vram_mb: 12200
-     - quantized_variants: ["int8_bnb"]
-     - peft_support: true
+   - ✅ Manifest now embeds `models/metadata/mistral-7b-instruct-v0.3.json` with Apache-2.0 license, tokenizer v3, VRAM for fp16/int8/4bit, and adapter guidance. Update the JSON as VRAM measurements evolve; rerun `publish_hf_to_model_store.py --force` for new versions when values change materially.
 
 3) Make quantized variants if possible (optional but recommended)
    - Optionally prepare pre-quantized versions for the target CUDA / bnb configuration (exported artifact or alternate snapshot path). This will avoid slow downloads and reduce runtime compilation issues.
 
 4) Publish initial adapters placeholders
-   - For agents you plan to adapt first (synthesizer, re-ranker, journalist), stage and finalize a release with an adapter directory populated (e.g., LoRA adapter files or a small stub). `scripts/publish_hf_to_model_store.py` can be called with adapter directories after training in Phase 2.
+   - ✅ Placeholder directories now live in ModelStore:
+       - `synthesizer/adapters/mistral_synth_v1` — README describes expected PEFT files.
+       - `re_ranker/adapters/mistral_re_ranker_v1` — README + reserved path for reranker adapter.
+   - Use these as publish targets once Phase 2 training jobs produce real adapters; extend to journalist/chief_editor as their plans firm up.
 
 Phase 2 — Adapter training & storage pipeline
 ----------------------------------------------
@@ -102,19 +107,26 @@ Goal: produce small PEFT adapter artifacts per agent and store them in ModelStor
 
 Steps:
 1) Add training templates and reproducible QLoRA/LoRA pipelines
-   - Expand `scripts/train_qlora.py` with explicit adapter outputs, a reproducible training config template, `--agent` and `--adapter-name` flags, plus a `--publish` flag to push to ModelStore automatically after training.
-   - Ensure safe defaults for RTX 3090 (batch sizes, gradient checkpointing, BF16/FP16 usage where appropriate).
-   - Add a `train_qlora/README.md` linking to recommended training heuristics and sample commands.
+   - ✅ `scripts/train_qlora.py` now exposes `--agent`, `--adapter-name`, `--adapter-version`, `--train-files`, hyper-parameter knobs, and `--publish` to push adapters directly into ModelStore. It saves `training_summary.json` alongside the adapter payload for auditing.
+   - Defaults target RTX 3090 int8/4bit configs (LoRA r=64, alpha=16, gradient checkpointing optional). Review `--max-train-samples` + `--dry-run` for CI-safe smoke tests.
+   - See `train_qlora/README.md` for usage recipes, dependency notes, and publishing flow.
 
 2) Example adapter training flow (synthesizer)
-   - Run a QLoRA script using a curated fine-tuning dataset for the synthesizer agent:
-     ```bash
-     conda run -n justnews-py312 python scripts/train_qlora.py --model_name mistralai/Mistral-7B-Instruct --output_dir output/adapters/mistral_synth_v1 --adapter_name mistral_synth_v1 --train_files data/synth_finetune.jsonl --epochs 3 --batch_size 4 --dry-run=0
-     ```
-   - After validation, publish adapter artifacts to ModelStore:
-     ```bash
-     python scripts/publish_hf_to_model_store.py --agent synthesizer --model <base-model> --version v20251123-mistral-synth-v1 --model output/adapters/mistral_synth_v1
-     ```
+    - Run a QLoRA script using a curated fine-tuning dataset for the synthesizer agent (adjust dataset + hyper-params as needed):
+       ```bash
+       MODEL_STORE_ROOT=/opt/justnews/model_store \
+       conda run -n justnews-py312 python scripts/train_qlora.py \
+          --agent synthesizer \
+          --adapter-name mistral_synth_v1 \
+          --model_name_or_path mistralai/Mistral-7B-Instruct-v0.3 \
+          --train-files data/synth_finetune.jsonl \
+          --output_dir output/adapters/mistral_synth_v1 \
+          --epochs 3 \
+          --train-batch-size 1 \
+          --gradient-accumulation 8 \
+          --publish
+       ```
+    - The `--publish` flag now copies `output/adapters/mistral_synth_v1` into the `synthesizer` ModelStore namespace and writes adapter metadata into the manifest. Use `--adapter-version` when you need a deterministic version tag; otherwise the script timestamps it automatically.
 
 3) QA & validation
    - Add unit tests that load adapter via `PeftModel.from_pretrained()` against the base model using `RE_RANKER_TEST_MODE` toggles for CI.
@@ -126,11 +138,12 @@ Goal: make the orchestrator, agents, and ModelLoader handle Mistral + adapters c
 
 Steps:
 1) ModelStore metadata support in orchestrator
-   - Extend `agents/gpu_orchestrator/gpu_orchestrator_engine.py` to read ModelStore metadata files when preloading models. The engine should look for per-model `manifest.json` with `approx_vram_mb` and `quantized_variants`.
-   - Use metadata to decide whether to preload `int8_bnb` variant or fallback to `device_map='auto'` float16.
+   - ✅ `agents/gpu_orchestrator/gpu_orchestrator_engine.py` now parses `AGENT_MODEL_MAP.json`, resolves each entry's manifest via `agents/common/model_loader.get_agent_model_metadata`, and tracks the metadata (approx_vram_mb, quantized_variants) when kicking off preload jobs. This ensures the orchestration layer knows exactly which base snapshot + adapter paths exist before provisioning pools.
+   - Next: plug the captured metadata into pool sizing logic so we automatically pick `bnb-int8` vs `fp16` variants when enforcing policies.
 
 2) AGENT_MODEL_MAP.json & AGENT_MODEL_RECOMMENDED.json
-   - Create or augment `AGENT_MODEL_MAP.json` entries for agents migrating to mistral + adapter. A recommended schema:
+   - ✅ `AGENT_MODEL_MAP.json` now drives both loader and orchestrator. `agents/common/model_loader.py` resolves base + adapter locations (including ModelStore versions) and exposes `load_transformers_with_adapter()` plus a metadata helper for consumers. The orchestrator consumes the same map when preloading entries, ensuring one source of truth for base/adapters.
+   - Continue extending the map for journalist/chief_editor as adapters come online; update `AGENT_MODEL_RECOMMENDED.json` once we have production-ready versions for those agents.
      ```json
      {
        "synthesizer": [{"base":"base_models/models--mistralai--Mistral-7B-v0.3","adapters":["adapters/mistral_synth_v1"]}],
@@ -138,14 +151,19 @@ Steps:
      }
      ```
    - Add recommended set into `AGENT_MODEL_RECOMMENDED.json` (was already present for non-LLM models). Ensure the orchestrator and `agents/common/model_loader.py` use `AGENT_MODEL_MAP.json` first.
+    - ✅ Fact Checker and Critic now ship with canonical entries: `fact_checker/adapters/mistral_fact_checker_v1` and `critic/adapters/mistral_critic_v1` are published to ModelStore and referenced directly in `AGENT_MODEL_MAP.json`. Retrieval-only fallbacks remain listed in `AGENT_MODEL_RECOMMENDED.json` until we migrate those pieces to adapter-aware flows.
 
 3) Agent code changes
-   - Update agent model-loading code to prefer ModelStore paths when available:
-     - `agents/common/model_loader.py` already resolves ModelStore paths; ensure adapters are loadable: add function `load_with_adapter(base_model, adapter_path)` that returns a PeftModel-wrapped model.
+   - `agents/common/model_loader.py` now provides `load_transformers_with_adapter()` plus `get_agent_model_metadata()` so agents can request the canonical base+adapter combo defined in the map. Next step is wiring individual agents (`synthesizer`, `re_ranker`, etc.) to call these helpers.
    - Update specific agents to support causal prompt wrappers vs seq2seq where necessary:
      - `agents/synthesizer/` — add option to route generation tasks to Mistral (adapter) or keep T5/BART for structured seq2seq tasks. Implement a `synthesizer.choose_model_for_task(task)` helper.
      - `agents/reasoning/` — prefer Mistral for chain-of-thought tasks.
-     - `agents/critic/`, `agents/fact_checker/` — when generation is needed, load Mistral adapter; for embeddings, keep current small models.
+       - `agents/analyst/` — add a high-accuracy Mistral adapter tool for sentiment/bias/persuasion scoring, keeping the RoBERTa pipelines as low-resource fallback paths but defaulting to the adapter for production flows.
+       - ✅ `agents/critic/` and `agents/fact_checker/` now default to their adapters (`mistral_critic_v1` and `mistral_fact_checker_v1`) for long-form judgments, while evidence retrieval continues to rely on small sentence-transformer models.
+    - Adapter coverage checklist for these accuracy-critical agents:
+       - Fact Checker smoke tests now cover the adapter load path via `tests/agents/test_fact_checker.py` with `RE_RANKER_TEST_MODE=1`, ensuring prompt formatting and retrieval fallbacks behave in CI.
+       - Critic regression harness exercises `agents/critic/critic_engine.py` through the shared loader helper so the orchestrator preloads the adapter before policy checks execute.
+       - ModelStore publishes a `training_summary.json` for each adapter so we can trace provenance when comparing to the legacy DistilRoBERTa/Flan flows.
 
 4) Warm pool & adapter hot-swap
    - Ensure `gpu_orchestrator_engine` worker pool loaders use both base and adapter loading sequence (AutoModelForCausalLM.from_pretrained + PeftModel.from_pretrained).

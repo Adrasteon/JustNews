@@ -17,6 +17,7 @@ Architecture: Streamlined for production use with GPU acceleration and CPU fallb
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -29,6 +30,12 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from common.observability import get_logger
+
+try:
+    from .mistral_adapter import AnalystMistralAdapter, AdapterResult
+except Exception:  # pragma: no cover - optional dependency wiring
+    AnalystMistralAdapter = None  # type: ignore
+    AdapterResult = Any  # type: ignore
 
 if TYPE_CHECKING:
     from .schemas import SourceFactCheck
@@ -121,6 +128,9 @@ class AnalystEngine:
         self.spacy_nlp = None
         self.ner_pipeline = None
         self.gpu_analyst = None
+        self.mistral_adapter: AnalystMistralAdapter | None = None
+        self._mistral_cache_key: str | None = None
+        self._mistral_cache_result: AdapterResult | None = None
 
         # Processing stats
         self.processing_stats = {
@@ -163,6 +173,7 @@ class AnalystEngine:
             self._initialize_spacy()
             self._initialize_ner_fallback()
             self._initialize_gpu_analyst()
+            self._initialize_mistral_adapter()
             logger.info("✅ Analyst models initialized successfully")
         except Exception as e:
             logger.error(f"Error initializing models: {e}")
@@ -214,6 +225,48 @@ class AnalystEngine:
             logger.info("✅ GPU analyst initialized for sentiment/bias analysis")
         except Exception as e:
             logger.warning(f"Could not initialize GPU analyst: {e}")
+
+    def _initialize_mistral_adapter(self):
+        """Try to prepare the high-accuracy Mistral adapter helper."""
+        if AnalystMistralAdapter is None:
+            logger.info("Mistral adapter dependencies unavailable; continuing with legacy models")
+            return
+
+        try:
+            self.mistral_adapter = AnalystMistralAdapter()
+            if getattr(self.mistral_adapter, "enabled", True):
+                logger.info("Mistral adapter enabled for Analyst; loading lazily from ModelStore")
+            else:
+                logger.info("Mistral adapter explicitly disabled via env variable")
+        except Exception as exc:
+            logger.warning(f"Failed to set up Analyst Mistral adapter: {exc}")
+            self.mistral_adapter = None
+
+    def _get_mistral_result(self, text: str) -> AdapterResult | None:
+        """Fetch (and cache) the adapter result for the given text."""
+        if not self.mistral_adapter or not text.strip():
+            return None
+
+        cache_key = hashlib.sha1(text.encode("utf-8")).hexdigest()
+        if self._mistral_cache_key == cache_key and self._mistral_cache_result:
+            return self._mistral_cache_result
+
+        try:
+            result = self.mistral_adapter.classify(text)
+        except Exception as exc:
+            logger.warning(f"Mistral adapter inference failed: {exc}")
+            self._mistral_cache_key = None
+            self._mistral_cache_result = None
+            return None
+
+        if result:
+            self._mistral_cache_key = cache_key
+            self._mistral_cache_result = result
+            return result
+
+        self._mistral_cache_key = None
+        self._mistral_cache_result = None
+        return None
 
     def _initialize_fallback_systems(self):
         """Initialize fallback analysis systems."""
@@ -995,7 +1048,10 @@ class AnalystEngine:
         logger.info(f"😊 Analyzing sentiment for {len(text)} characters")
 
         try:
-            if self.gpu_analyst:
+            adapter_payload = self._get_mistral_result(text)
+            if adapter_payload:
+                result = adapter_payload.sentiment
+            elif self.gpu_analyst:
                 sentiment_score = self.gpu_analyst.score_sentiment_gpu(text)
 
                 if sentiment_score is not None:
@@ -1104,7 +1160,10 @@ class AnalystEngine:
         logger.info(f"⚖️ Detecting bias in {len(text)} characters")
 
         try:
-            if self.gpu_analyst:
+            adapter_payload = self._get_mistral_result(text)
+            if adapter_payload:
+                result = adapter_payload.bias
+            elif self.gpu_analyst:
                 bias_score = self.gpu_analyst.score_bias_gpu(text)
 
                 if bias_score is not None:

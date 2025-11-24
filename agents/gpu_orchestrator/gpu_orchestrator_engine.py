@@ -24,7 +24,12 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-import pynvml  # type: ignore
+try:  # NVML bindings became optional once we moved to the conda-provided nvidia-ml-py package
+    import pynvml  # type: ignore
+    _HAS_PYNVML = True
+except ModuleNotFoundError:  # pragma: no cover - exercised implicitly when NVML bindings are absent
+    pynvml = None  # type: ignore
+    _HAS_PYNVML = False
 from fastapi import HTTPException
 from prometheus_client import Counter, Gauge
 
@@ -165,6 +170,12 @@ class GPUOrchestratorEngine:
             self.logger.info("NVML is disabled via environment variable.")
             return
 
+        if not _HAS_PYNVML:
+            _NVML_SUPPORTED = False
+            _NVML_INIT_ERROR = "pynvml module not available"
+            self.logger.info("NVML requested but pynvml is not installed. Install nvidia-ml-py to enable NVML metrics.")
+            return
+
         try:
             pynvml.nvmlInit()
             _NVML_SUPPORTED = True
@@ -234,7 +245,7 @@ class GPUOrchestratorEngine:
 
     def _get_nvml_enrichment(self, gpus: list[dict[str, Any]]) -> None:
         """Enrich GPU info with NVML data."""
-        if not ENABLE_NVML or SAFE_MODE or not _NVML_SUPPORTED:
+        if not ENABLE_NVML or SAFE_MODE or not _NVML_SUPPORTED or not _HAS_PYNVML:
             return
 
         try:
@@ -525,41 +536,131 @@ class GPUOrchestratorEngine:
                 return {}
 
             import json
+
             with open(model_map_path) as f:
-                return json.load(f)
+                data = json.load(f)
+            if isinstance(data, dict):
+                return data
+            # Legacy structure: treat as agents dict
+            return {"agents": data}
         except Exception as e:
             self.logger.error(f"Failed to read agent model map: {e}")
             return {}
 
-    def _validate_and_load_model(self, agent: str, model_id: str, strict: bool) -> tuple[bool, str | None]:
-        """Validate and load a model."""
+    def _agents_section(self, model_map: dict[str, Any]) -> dict[str, Any]:
+        agents_cfg = model_map.get("agents")
+        if agents_cfg is not None and isinstance(agents_cfg, dict):
+            return agents_cfg
+        # Legacy fallback: treat top-level keys as agents except metadata keys
+        legacy = {}
+        for key, value in model_map.items():
+            if key == "base_models":
+                continue
+            legacy[key] = value
+        return legacy
+
+    def _normalize_agent_entries(self, model_map: dict[str, Any], agent: str) -> list[dict[str, Any]]:
+        agents_cfg = self._agents_section(model_map)
+        raw_entries = agents_cfg.get(agent, [])
+        if not isinstance(raw_entries, list):
+            raw_entries = [raw_entries]
+        normalized: list[dict[str, Any]] = []
+        for idx, item in enumerate(raw_entries):
+            if isinstance(item, dict):
+                spec = dict(item)
+            elif isinstance(item, (list, tuple)) and len(item) >= 2:
+                spec = {
+                    "type": item[0],
+                    "legacy_model_id": item[1],
+                }
+            else:
+                spec = {"legacy_model_id": item}
+            spec.setdefault("id", spec.get("adapter_name") or spec.get("legacy_model_id") or f"{agent}-{idx}")
+            normalized.append(spec)
+        return normalized
+
+    def _validate_and_load_model(self, agent: str, spec: dict[str, Any], strict: bool) -> tuple[bool, str | None]:
+        """Validate and load a model entry for an agent."""
         try:
-            from agents.common.model_loader import load_sentence_transformer
-            self.logger.info(f"Validating and loading model {model_id} for agent {agent} (strict={strict})")
-            load_sentence_transformer(model_id, agent=agent)
+            if spec.get("base_ref"):
+                from agents.common.model_loader import load_transformers_with_adapter
+
+                adapter_name = spec.get("adapter_name")
+                self.logger.info(
+                    "Validating base model + adapter for agent %s (adapter=%s, strict=%s)",
+                    agent,
+                    adapter_name or spec.get("base_ref"),
+                    strict,
+                )
+                load_transformers_with_adapter(agent, adapter_name=adapter_name)
+                return True, None
+
+            legacy_model_id = spec.get("legacy_model_id") or spec.get("model_id")
+            if not legacy_model_id:
+                raise ValueError("AGENT_MODEL_MAP entry is missing a model identifier")
+
+            model_type = spec.get("type")
+            if not model_type:
+                model_type = "sentence-transformers" if str(legacy_model_id).startswith("sentence-transformers/") else "transformers"
+
+            self.logger.info(
+                "Validating and loading model %s (type=%s) for agent %s (strict=%s)",
+                legacy_model_id,
+                model_type,
+                agent,
+                strict,
+            )
+            if model_type == "sentence-transformers":
+                from agents.common.model_loader import load_sentence_transformer
+
+                load_sentence_transformer(legacy_model_id, agent=agent)
+            else:
+                from agents.common.model_loader import load_transformers_model
+
+                load_transformers_model(legacy_model_id, agent=agent)
             return True, None
         except Exception as e:
-            self.logger.error(f"Error validating/loading model {model_id} for agent {agent}: {e}")
+            self.logger.error(f"Error validating/loading model entry for agent {agent}: {e}")
             return False, str(e)
 
     def _preload_worker(self, selected_agents: list[str] | None, strict_override: bool | None) -> None:
         """Background worker for model preloading."""
         try:
             model_map = self._read_agent_model_map()
-            agents = selected_agents or list(model_map.keys())
+            agents_cfg = self._agents_section(model_map)
+            agents = selected_agents or list(agents_cfg.keys())
+
+            agent_specs: dict[str, list[dict[str, Any]]] = {}
+            for agent in agents:
+                specs = self._normalize_agent_entries(model_map, agent)
+                # Attach manifest/metadata for new-format entries (best-effort)
+                enriched_specs: list[dict[str, Any]] = []
+                for spec in specs:
+                    if spec.get("base_ref"):
+                        try:
+                            from agents.common.model_loader import get_agent_model_metadata
+
+                            meta = get_agent_model_metadata(agent, spec.get("adapter_name"))
+                            if meta:
+                                spec = {**spec, "_model_metadata": meta}
+                        except Exception as exc:
+                            self.logger.debug("Failed to collect model metadata for agent=%s: %s", agent, exc)
+                    enriched_specs.append(spec)
+                agent_specs[agent] = enriched_specs
 
             # Initialize status entries
             for a in agents:
-                models = model_map.get(a, [])
+                models = agent_specs.get(a, [])
                 _MODEL_PRELOAD_STATE["per_agent"][a] = {}
-                for mid in models:
-                    _MODEL_PRELOAD_STATE["per_agent"][a][mid] = {
+                for spec in models:
+                    entry_id = spec.get("id")
+                    _MODEL_PRELOAD_STATE["per_agent"][a][entry_id] = {
                         "status": "pending",
                         "error": None,
                         "duration_s": None
                     }
 
-            total = sum(len(model_map.get(a, [])) for a in agents)
+            total = sum(len(agent_specs.get(a, [])) for a in agents)
             _MODEL_PRELOAD_STATE["summary"]["total"] = total
 
             strict_env = os.environ.get("STRICT_MODEL_STORE", "0").lower() in ("1", "true", "yes")
@@ -567,11 +668,12 @@ class GPUOrchestratorEngine:
 
             # Preload models
             for a in agents:
-                for mid in model_map.get(a, []):
-                    st = _MODEL_PRELOAD_STATE["per_agent"][a][mid]
+                for spec in agent_specs.get(a, []):
+                    entry_id = spec.get("id")
+                    st = _MODEL_PRELOAD_STATE["per_agent"][a][entry_id]
                     st["status"] = "loading"
                     t0 = time.time()
-                    ok, err = self._validate_and_load_model(a, mid, strict)
+                    ok, err = self._validate_and_load_model(a, spec, strict)
                     if ok:
                         st["status"] = "ok"
                         st["duration_s"] = time.time() - t0

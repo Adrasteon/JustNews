@@ -75,7 +75,7 @@
 
  - Fact Checker, Synthesizer, Chief Editor, Journalist Agents — `agents/fact_checker/`, `agents/synthesizer/`, `agents/chief_editor/`, `agents/journalist/` — Partial
    - Intent: downstream processing — fact validation, summarization/synthesis, editorial suggestion, article drafting.
-   - Status: Several agents implemented; many functions have tests and tools but full integration and operational tuning remain ongoing.
+   - Status: Several agents implemented; many functions have tests and tools but full integration and operational tuning remain ongoing. Fact Checker (and the adjacent Critic workflows) now share the Mistral-7B base via adapters so accuracy-critical reviews stay aligned with the broader rollout.
 
  ## Functional workflow patterns
 
@@ -94,7 +94,7 @@
     - Audit and raw_html storage allow re-extraction and verification.
 
  4. Downstream Processing
-    - Agents like `fact_checker`, `synthesizer` and `chief_editor` run asynchronously on ingested articles, producing derived artifacts (checks, summaries, editor suggestions).
+   - Agents like `fact_checker`, `synthesizer` and `chief_editor` run asynchronously on ingested articles, producing derived artifacts (checks, summaries, editor suggestions). Fact Checker and Critic now lean on the shared Mistral adapter stack for long-form reasoning while retaining lightweight retrieval models for evidence gathering.
 
  5. Metrics & Observability
     - `crawl4ai_adapter._record_adaptive_metrics` emits adaptive metrics: `adaptive_runs_total`, `adaptive_confidence`, `adaptive_pages_crawled`, `adaptive_articles_emitted`.

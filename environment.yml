@@ -41,6 +41,7 @@ dependencies:
   - torchvision=0.19.1
   - torchaudio=2.4.1
   - pytorch-cuda=12.4
+  - nvidia-ml-py=13.580.82
 
   # Web/API stack
   - fastapi>=0.120
@@ -73,15 +74,14 @@ dependencies:
   - watchfiles
   - pyyaml
   - ujson
-  - rich
-  - typer
-  - click
-  - gputil
-  - cachetools
-  - humanfriendly
-  - humanize
-  - tenacity
-  - oauthlib
+  - pip:
+    - chromadb==1.3.3
+    - googleapis-common-protos>=1.59.1
+    - crawl4ai==0.7.4
+    - litellm==1.79.0
+    - websockets==14.0.0
+    - patchright==1.55.2
+    - opentelemetry-exporter-jaeger==1.21.0
   - requests-oauthlib
 
   # Content extraction / parsing
@@ -111,7 +111,7 @@ dependencies:
     - chromadb==1.3.3
     - googleapis-common-protos>=1.59.1
     - crawl4ai==0.7.4
-    - nvidia-ml-py3==7.352.0
+    - nvidia-ml-py==13.580.82
     - litellm==1.79.0
     - websockets==14.0.0
     - patchright==1.55.2

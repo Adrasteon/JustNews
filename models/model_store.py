@@ -130,7 +130,14 @@ class ModelStore:
         with open(mf, "w", encoding="utf-8") as fh:
             json.dump(manifest.to_dict(), fh, indent=2)
 
-    def finalize(self, agent: str, version: str, validate: bool = True) -> None:
+    def finalize(
+        self,
+        agent: str,
+        version: str,
+        *,
+        metadata: dict | None = None,
+        validate: bool = True,
+    ) -> None:
         """Finalize a staged version by removing .tmp suffix and updating 'current' symlink.
 
         Steps:
@@ -149,7 +156,7 @@ class ModelStore:
 
         # Optionally validate
         checksum = self.compute_checksum(staged)
-        manifest = ModelManifest(version=version, checksum=checksum, metadata={})
+        manifest = ModelManifest(version=version, checksum=checksum, metadata=metadata or {})
         # write manifest into staged
         self.write_manifest(staged, manifest)
 

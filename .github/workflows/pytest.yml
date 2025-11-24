@@ -2,9 +2,7 @@ name: CI — PyTest
 
 on:
   push:
-    branches: [ main, 'dev/**', 'feature/**', 'dev/dual-dbase-updates' ]
   pull_request:
-    branches: [ main ]
 
 jobs:
   check-global-env:

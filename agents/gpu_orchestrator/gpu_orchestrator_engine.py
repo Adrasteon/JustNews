@@ -867,7 +867,7 @@ class GPUOrchestratorEngine:
             if variant == 'fp16':
                 model = AutoModelForCausalLM.from_pretrained(
                     model_id,
-                    torch_dtype=getattr(torch, 'float16', None),
+                    dtype=getattr(torch, 'float16', None),
                     device_map='auto',
                 )
             elif variant == 'bnb-4bit-qlora':

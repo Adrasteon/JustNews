@@ -72,6 +72,10 @@ def load_model_if_available(model_id: str | None):
         load_kwargs = {}
         bnb = None
         try:
+            disable_bnb = os.environ.get('BNB_DISABLE', '0').lower() in {'1', 'true', 'yes'}
+            if disable_bnb:
+                raise RuntimeError('BNB_DISABLE=1 set')
+
             # Lightweight check for bitsandbytes native binary WITHOUT importing the module
             import importlib.util as _il
             spec = _il.find_spec('bitsandbytes')
@@ -87,7 +91,7 @@ def load_model_if_available(model_id: str | None):
                 print('bitsandbytes native binary not found — skipping 8-bit quantization and using float16/device_map instead')
         except Exception:
             # if bitsandbytes is completely missing or cannot provide a native binary, skip quantization
-            print('bitsandbytes check failed; skipping 8-bit quantization and using float16/device_map when possible')
+            print('bitsandbytes disabled or check failed; skipping 8-bit quantization and using float16/device_map when possible')
 
         # Prefer forcing the model onto GPU to get realistic inference latency when a GPU is available.
         # We'll try a strict placement first (all parameters to cuda:0) and on failure fall back to auto device_map.
@@ -101,7 +105,7 @@ def load_model_if_available(model_id: str | None):
                 if bnb is None:
                     model = AutoModelForCausalLM.from_pretrained(model_id, device_map={'': 'cuda:0'}, dtype=getattr(torch, 'float16', None), **load_kwargs)
                 else:
-                    model = AutoModelForCausalLM.from_pretrained(model_id, device_map={'': 'cuda:0'}, torch_dtype=getattr(torch, 'float16', None), **load_kwargs)
+                    model = AutoModelForCausalLM.from_pretrained(model_id, device_map={'': 'cuda:0'}, dtype=getattr(torch, 'float16', None), **load_kwargs)
             except Exception as e_forced:
                 print('Direct cuda:0 placement failed, falling back to device_map=auto; error:', e_forced)
                 # If bnb None, don't pass quantization_config (load as float16 if possible) to avoid bitsandbytes errors.

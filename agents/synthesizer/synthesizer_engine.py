@@ -410,7 +410,7 @@ class SynthesizerEngine:
             self.models['bart'] = model_loader.from_pretrained(
                 self.config.bart_model,
                 cache_dir=self.config.cache_dir,
-                torch_dtype=torch.float16 if (hasattr(target_device, 'type') and getattr(target_device, 'type', None) == 'cuda') or (isinstance(target_device, str) and 'cuda' in str(target_device)) else torch.float32
+                dtype=torch.float16 if (hasattr(target_device, 'type') and getattr(target_device, 'type', None) == 'cuda') or (isinstance(target_device, str) and 'cuda' in str(target_device)) else torch.float32
             ).to(target_device)
 
             self.tokenizers['bart'] = tokenizer_loader.from_pretrained(
@@ -444,7 +444,7 @@ class SynthesizerEngine:
             self.models['flan_t5'] = T5ForConditionalGeneration.from_pretrained(
                 self.config.flan_t5_model,
                 cache_dir=self.config.cache_dir,
-                torch_dtype=torch.float16 if (hasattr(target_device, 'type') and target_device.type == 'cuda') or (isinstance(target_device, str) and 'cuda' in str(target_device)) else torch.float32
+                dtype=torch.float16 if (hasattr(target_device, 'type') and target_device.type == 'cuda') or (isinstance(target_device, str) and 'cuda' in str(target_device)) else torch.float32
             ).to(target_device)
 
             self.tokenizers['flan_t5'] = T5Tokenizer.from_pretrained(

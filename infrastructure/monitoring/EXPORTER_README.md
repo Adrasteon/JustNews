@@ -60,3 +60,70 @@ Operational runbook snippet
 
 - Check Prometheus target status:
   curl -sS http://127.0.0.1:9090/api/v1/targets | jq '.data.activeTargets[] | select(.labels.job=="justnews-db-exporter")'
+
+
+JustNews DCGM exporter
+======================
+
+The NVIDIA DCGM exporter publishes GPU health/telemetry so we can correlate future GPU hangs or machine-wide crashes with device metrics. The exporter ships with a hardened metrics list and runs via systemd under the `justnews` account.
+
+Deployment assets
+------------------
+- Metrics profile: `infrastructure/systemd/monitoring/dcgm/metrics_default.csv`
+- Systemd unit template: `infrastructure/systemd/units/justnews-dcgm-exporter.service`
+- Installer helper: `scripts/ops/install_dcgm_exporter.sh`
+- Installed paths (after running the script):
+  - Binary: `/opt/justnews/monitoring/dcgm/dcgm-exporter`
+  - Metrics file: `/etc/justnews/monitoring/dcgm/metrics.csv`
+  - Env overrides: `/etc/justnews/monitoring/dcgm/dcgm-exporter.env`
+  - Systemd unit: `/etc/systemd/system/justnews-dcgm-exporter.service`
+
+Installation workflow
+---------------------
+1. Ensure NVIDIA drivers + DCGM libs exist (the server already has `nvidia-smi`).
+2. Run the installer as root (it drops files owned by `justnews` and installs the unit):
+   ```bash
+   cd /home/adra/JustNews
+   sudo scripts/ops/install_dcgm_exporter.sh
+   ```
+   - Script flags: set `DCGM_EXPORTER_VERSION` to override the default release, `DCGM_EXPORTER_PORT` if port 9400 cannot be used, and `DCGM_EXPORTER_LISTEN` to bind to a different interface (defaults provided inside the script). Edit `/etc/justnews/monitoring/dcgm/dcgm-exporter.env` after install to make persistent overrides.
+3. Reload systemd and start the exporter (installer already runs these, but for manual tweaks):
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now justnews-dcgm-exporter.service
+   ```
+
+Prometheus integration
+----------------------
+- Scrape config snippet (append under `scrape_configs` in `prometheus.yml` and reload the service):
+  ```yaml
+  - job_name: justnews-dcgm-exporter
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['127.0.0.1:9400']
+  ```
+- After updating Prometheus config:
+  ```bash
+  sudo systemctl reload justnews-prometheus.service || sudo systemctl restart justnews-prometheus.service
+  ```
+
+Operational notes
+-----------------
+- Check exporter logs/status:
+  ```bash
+  sudo systemctl status justnews-dcgm-exporter.service
+  sudo journalctl -u justnews-dcgm-exporter.service -n 200
+  ```
+- Query metrics locally (confirms scrape surface works):
+  ```bash
+  curl -sS http://127.0.0.1:9400/metrics | head -n 40
+  ```
+- Adjust metrics profile: edit `/etc/justnews/monitoring/dcgm/metrics.csv` and restart the service. The file defaults to the repo copy; keep a copy in Git for future updates.
+- Verify Prometheus has an active target:
+  ```bash
+  curl -sS http://127.0.0.1:9090/api/v1/targets | jq '.data.activeTargets[] | select(.labels.job=="justnews-dcgm-exporter")'
+  ```
+
+Why DCGM
+--------
+DCGM surfaces ECC/Xid error counters, clock throttling reasons, and utilization data directly from NVIDIA drivers. Capturing these metrics continuously gives us pre-crash evidence when GPUs wedge or thermal-limit. Running the exporter as `justnews` with a dedicated metrics file keeps configuration changes auditable while systemd handles restarts.

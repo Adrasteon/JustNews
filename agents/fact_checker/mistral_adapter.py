@@ -80,32 +80,32 @@ class FactCheckerMistralAdapter:
             self._load_error = "torch-missing"
             logger.debug("PyTorch unavailable; cannot load fact-checker adapter")
             return False
-        if not os.environ.get("MODEL_STORE_ROOT"):
-            self._load_error = "model-store-missing"
-            logger.debug("MODEL_STORE_ROOT not configured; skipping fact-checker adapter load")
-            return False
         try:
-            from agents.common.model_loader import load_transformers_with_adapter
+            from agents.common.mistral_loader import load_mistral_adapter_or_base
         except Exception as exc:  # pragma: no cover
             self._load_error = str(exc)
-            logger.warning("Model loader import failed for Fact Checker adapter: %s", exc)
+            logger.warning("Shared Mistral loader import failed for fact-checker: %s", exc)
             return False
 
         try:
-            model, tokenizer = load_transformers_with_adapter(
+            model, tokenizer = load_mistral_adapter_or_base(
                 "fact_checker",
                 adapter_name=MODEL_ADAPTER_NAME,
                 model_kwargs={"device_map": "auto", "low_cpu_mem_usage": True, "trust_remote_code": True},
                 tokenizer_kwargs={"use_fast": True},
             )
+            if model is None or tokenizer is None:
+                self._load_error = "adapter-or-base-load-failed"
+                logger.warning("Fact-checker adapter/base load failed despite shared loader attempt")
+                return False
             model.eval()
             self.model = model
             self.tokenizer = tokenizer
-            logger.info("Loaded Fact Checker Mistral adapter (%s)", MODEL_ADAPTER_NAME)
+            logger.info("Loaded Fact Checker Mistral weights (adapter=%s)", MODEL_ADAPTER_NAME)
             return True
         except Exception as exc:  # pragma: no cover
             self._load_error = str(exc)
-            logger.warning("Failed to load Fact Checker adapter: %s", exc)
+            logger.warning("Failed to load Fact Checker Mistral weights: %s", exc)
             return False
 
     def _run_inference(self, claim: str, context: str | None) -> Dict[str, Any] | None:

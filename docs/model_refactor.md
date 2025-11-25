@@ -36,6 +36,7 @@ Files & components inspected (representative):
 
 - Orchestrator & infra: `agents/gpu_orchestrator/gpu_orchestrator_engine.py`, `main.py`, systemd/service templates and startup scripts (these will be updated to: read model metadata, configure preload policy, and support Mistral workflows).
 - ModelStore & publish helpers: `agents/common/model_store.py`, `scripts/publish_hf_to_model_store.py`, `agents/common/model_loader.py`.
+- Shared adapter tooling: `agents/common/base_mistral_json_adapter.py` plus each agent's `mistral_adapter.py` wrapper, providing JSON-centric prompts and automatic base fallback.
 - Perf & training: `scripts/perf/`, `scripts/ops/adapter_worker_pool.py`, `scripts/train_qlora.py`.
 - Tests: `tests/unit/test_gpu_orchestrator_workers_api.py`, re-ranker tests, adapter pool tests — will need updates to test with ModelStore mapping and adapter paths.
 
@@ -139,62 +140,83 @@ Goal: make the orchestrator, agents, and ModelLoader handle Mistral + adapters c
 Steps:
 1) ModelStore metadata support in orchestrator
    - ✅ `agents/gpu_orchestrator/gpu_orchestrator_engine.py` now parses `AGENT_MODEL_MAP.json`, resolves each entry's manifest via `agents/common/model_loader.get_agent_model_metadata`, and tracks the metadata (approx_vram_mb, quantized_variants) when kicking off preload jobs. This ensures the orchestration layer knows exactly which base snapshot + adapter paths exist before provisioning pools.
-   - Next: plug the captured metadata into pool sizing logic so we automatically pick `bnb-int8` vs `fp16` variants when enforcing policies.
+   - ✅ Captured metadata now flows into pool sizing logic: worker provisioning prefers `bnb-int8` variants whenever a policy or caller marks `allow_quantized=true`, and falls back to fp16 if quantized entries are missing. The orchestrator also exposes `start_agent_worker_pool()` so call sites can request the correct variant explicitly.
 
 2) AGENT_MODEL_MAP.json & AGENT_MODEL_RECOMMENDED.json
    - ✅ `AGENT_MODEL_MAP.json` now drives both loader and orchestrator. `agents/common/model_loader.py` resolves base + adapter locations (including ModelStore versions) and exposes `load_transformers_with_adapter()` plus a metadata helper for consumers. The orchestrator consumes the same map when preloading entries, ensuring one source of truth for base/adapters.
-   - Continue extending the map for journalist/chief_editor as adapters come online; update `AGENT_MODEL_RECOMMENDED.json` once we have production-ready versions for those agents.
-     ```json
-     {
-       "synthesizer": [{"base":"base_models/models--mistralai--Mistral-7B-v0.3","adapters":["adapters/mistral_synth_v1"]}],
-       "re_ranker": [{"base":"base_models/...","adapters":["adapters/mistral_re_ranker_v1"]}]
-     }
-     ```
-   - Add recommended set into `AGENT_MODEL_RECOMMENDED.json` (was already present for non-LLM models). Ensure the orchestrator and `agents/common/model_loader.py` use `AGENT_MODEL_MAP.json` first.
-    - ✅ Fact Checker and Critic now ship with canonical entries: `fact_checker/adapters/mistral_fact_checker_v1` and `critic/adapters/mistral_critic_v1` are published to ModelStore and referenced directly in `AGENT_MODEL_MAP.json`. Retrieval-only fallbacks remain listed in `AGENT_MODEL_RECOMMENDED.json` until we migrate those pieces to adapter-aware flows.
+   - ✅ Journalist, chief_editor, reasoning, synthesizer, critic, and fact_checker entries now capture `variant_preference` hints so policy selection understands whether to go straight to int8 or reserve fp16 capacity. `AGENT_MODEL_RECOMMENDED.json` is down-scoped to fallback references only.
+   - Continue extending the map for remaining adapter targets (analyst, re_ranker) as those adapters move out of staging. Keep recommended entries in sync only for legacy fallbacks.
 
 3) Agent code changes
-   - `agents/common/model_loader.py` now provides `load_transformers_with_adapter()` plus `get_agent_model_metadata()` so agents can request the canonical base+adapter combo defined in the map. Next step is wiring individual agents (`synthesizer`, `re_ranker`, etc.) to call these helpers.
-   - Update specific agents to support causal prompt wrappers vs seq2seq where necessary:
-     - `agents/synthesizer/` — add option to route generation tasks to Mistral (adapter) or keep T5/BART for structured seq2seq tasks. Implement a `synthesizer.choose_model_for_task(task)` helper.
-     - `agents/reasoning/` — prefer Mistral for chain-of-thought tasks.
-       - `agents/analyst/` — add a high-accuracy Mistral adapter tool for sentiment/bias/persuasion scoring, keeping the RoBERTa pipelines as low-resource fallback paths but defaulting to the adapter for production flows.
-       - ✅ `agents/critic/` and `agents/fact_checker/` now default to their adapters (`mistral_critic_v1` and `mistral_fact_checker_v1`) for long-form judgments, while evidence retrieval continues to rely on small sentence-transformer models.
-    - Adapter coverage checklist for these accuracy-critical agents:
-       - Fact Checker smoke tests now cover the adapter load path via `tests/agents/test_fact_checker.py` with `RE_RANKER_TEST_MODE=1`, ensuring prompt formatting and retrieval fallbacks behave in CI.
+   - ✅ Shared adapter plumbing now lives in `agents/common/base_mistral_json_adapter.py`, reused by per-agent helpers (`agents/journalist/mistral_adapter.py`, `agents/chief_editor/mistral_adapter.py`, `agents/reasoning/mistral_adapter.py`, `agents/synthesizer/mistral_adapter.py`). These helpers encapsulate prompts + JSON coercion while relying on the loader’s caching logic.
+   - ✅ `journalist_engine`, `chief_editor_engine`, `reasoning_engine`, and `synthesizer_engine` now call their respective adapters, attach parsed outputs to the agent context, and guard fallbacks when adapters are unavailable.
+      - ✅ Analyst sentiment/bias flows now leverage the shared adapter via `agents/analyst/mistral_adapter.py`, normalizing JSON replies into the existing `AdapterResult` structure while keeping RoBERTa/heuristic paths as fallbacks. The re-ranker tooling (`agents/tools/re_ranker_7b.py`) now prefers the shared adapter before falling back to the older AutoModel heuristic or deterministic stub.
+   - Adapter coverage checklist for the newly migrated agents:
+       - Fact Checker smoke tests still cover the adapter load path via `tests/agents/test_fact_checker.py` with `RE_RANKER_TEST_MODE=1`, ensuring prompt formatting and retrieval fallbacks behave in CI.
        - Critic regression harness exercises `agents/critic/critic_engine.py` through the shared loader helper so the orchestrator preloads the adapter before policy checks execute.
-       - ModelStore publishes a `training_summary.json` for each adapter so we can trace provenance when comparing to the legacy DistilRoBERTa/Flan flows.
+         - New shared smoke tests live in `tests/agents/test_mistral_adapters.py`, covering journalist, chief_editor, reasoning, synthesizer, analyst, and the re-ranker adapter prompt wiring. Extend the suite as additional adapters ship.
 
 4) Warm pool & adapter hot-swap
-   - Ensure `gpu_orchestrator_engine` worker pool loaders use both base and adapter loading sequence (AutoModelForCausalLM.from_pretrained + PeftModel.from_pretrained).
-   - Add an orchestrator API to request a pool with `model_id` and `adapter_id` and a hot-swap endpoint already exists (`/workers/pool/{pool_id}/swap`) — test to ensure adapter swapping flows cover Mistral adapter sizes and start/stop logic.
+   - ✅ `gpu_orchestrator_engine` worker pool loaders now apply both base and adapter loading sequence (AutoModelForCausalLM.from_pretrained + PeftModel.from_pretrained) so warm pools start with adapters already mounted.
+   - ✅ `start_agent_worker_pool()` and the existing `/workers/pool/{pool_id}/swap` endpoint were validated against Mistral adapter sizes. Remaining work is exercising hot-swap with multi-adapter agents (synthesizer task router) before GA.
 
 5) Orchestrator policy updates
-   - Add `model_vram` and `quantized_variants` values into per-agent metadata and make policy consideration: e.g., prefer int8 variants when `allow_quantized=true`.
-   - Update `get_pool_policy`/`_pool_policy_defaults` or add `model_vram_lookup` function so orchestration avoids overcommitting.
+   - ✅ `model_vram` and `quantized_variants` values now live in the metadata cache used by policy evaluation, so rules prefer int8 when `allow_quantized=true` and avoid overcommitting GPUs lacking memory headroom.
+   - Next: layer watchdog metrics (Phase 5) to ensure policy drift is caught automatically.
 
 Phase 4 — Testing, perf tuning & rollout
 ----------------------------------------
 1) Perf runs and warm pool sizing
    - Use `scripts/perf/simulate_concurrent_inference.py` and `scripts/ops/adapter_worker_pool.py` to run sweeps on production-like GPU nodes. Save standard CSVs for reproducibility in `scripts/perf/results`.
-   - Use those sweep results to pick safe defaults: for RTX 3090 with Mistral int8 choose warm pool size 1–2 per GPU for low-latency agents; or a higher pool for non‑latency batch jobs.
+   - 2025-11-25 local stub sweep: `scripts/perf/simulate_concurrent_inference.py --requests 180 --sweep --repeat 2` (with `RE_RANKER_TEST_MODE=1`) produced linear scaling from 1→6 workers with p50≈2.06 ms and no GPU usage; raw CSV/JSON artifacts live in `scripts/perf/results/2025-11-25-sim_sweep_stub.{csv,json}` for reproducibility.
+   - 2025-11-25 adapter pool stub soak: `scripts/ops/adapter_worker_pool.py --workers 3 --hold 5` validated the worker launcher wiring and staggered spin-up; next run should point at real adapter paths once GPU hardware is available.
+      - 2025-11-25 RTX3090 fp16 sweep (real model): `scripts/perf/simulate_concurrent_inference.py --requests 120 --sweep --sweep-max 4 --repeat 1 --model mistralai/Mistral-7B-Instruct-v0.3` now runs end-to-end on the local GPU after removing the mismatched `bitsandbytes` package. Results: p50 latencies scale from 31 ms (1 worker) → 101 ms (4 workers) with averages following the same curve; artifacts saved to `scripts/perf/results/2025-11-25-real_fp16.{csv,json}`.
+      - Int8 sweep is presently blocked: the env only offers CUDA 12.4 while upstream publishes bitsandbytes binaries for 12.8+. The attempt (`scripts/perf/...` with quantization enabled) failed and automatically fell back to stub mode, so we removed the stale `bitsandbytes` wheel and logged the gap. Next action is to recompile bitsandbytes for CUDA 12.4 or upgrade drivers/toolkit so we can capture int8 metrics.
+      - 2025-11-25 worker-pool real soak: updated `scripts/ops/adapter_worker_pool.py` to fall back to float16 when bitsandbytes is unavailable, then launched `RE_RANKER_TEST_MODE=0 python scripts/ops/adapter_worker_pool.py --workers 2 --model mistralai/Mistral-7B-Instruct-v0.3 --hold 30`. Both processes loaded the 7B weights and held steady for the duration, validating the helper end-to-end on RTX3090.
+    - Leverage the new metadata (approx_vram_mb + variant_preference) to benchmark both fp16 and int8 pools. For RTX 3090 expect int8 warm pools sized 1–2 per GPU for latency-sensitive agents; document when policies must override to fp16. Capture both stub and real-run artifacts, noting that real GPU runs (int8 vs fp16) are still TBD pending access to production-class hardware.
+    - **Next hardware run (todo):** on a RTX 3090 node with ModelStore mounted, run the fp16/int8 sweep pairs below for both synthesizer and re-ranker adapters, each time setting `MODEL_STORE_ROOT=/opt/justnews/model_store` and exporting the agent metadata (`python -c "from agents.common import model_loader; print(model_loader.get_agent_model_metadata('synthesizer'))"`). Commands to queue once GPUs are free:
+       ```bash
+       # Int8 sweep (uses variant_preference=bnb-int8). Adapter paths pulled from AGENT_MODEL_MAP.
+       MODEL_STORE_ROOT=/opt/justnews/model_store RE_RANKER_TEST_MODE=0 \
+          conda run -n justnews-py312 python scripts/perf/simulate_concurrent_inference.py \
+             --model mistralai/Mistral-7B-Instruct-v0.3 --adapter model_store/synthesizer/adapters/mistral_synth_v1 \
+             --requests 240 --sweep --sweep-max 8 --repeat 3 --output-csv scripts/perf/results/2025-11-25-synth_int8.csv
+
+       # Matching fp16 control (set BNB_DISABLE=1 to force fp16 path if needed)
+       MODEL_STORE_ROOT=/opt/justnews/model_store RE_RANKER_TEST_MODE=0 BNB_DISABLE=1 \
+          conda run -n justnews-py312 python scripts/perf/simulate_concurrent_inference.py \
+             --model mistralai/Mistral-7B-Instruct-v0.3 --adapter model_store/synthesizer/adapters/mistral_synth_v1 \
+             --requests 240 --sweep --sweep-max 8 --repeat 3 --output-csv scripts/perf/results/2025-11-25-synth_fp16.csv
+
+       # Worker-pool soak (int8) with live adapter path
+       MODEL_STORE_ROOT=/opt/justnews/model_store RE_RANKER_TEST_MODE=0 \
+          conda run -n justnews-py312 python scripts/ops/adapter_worker_pool.py \
+             --workers 4 --model mistralai/Mistral-7B-Instruct-v0.3 \
+             --adapter model_store/re_ranker/adapters/mistral_re_ranker_v1 --hold 900
+       ```
+      Capture `nvidia-smi` before/after each run and append summaries + artifacts into `scripts/perf/results/` (naming each file `{agent}_{variant}_{yyyymmdd}.csv`).
 
 2) Health checks & tests
-   - Add CI tests that exercise `RE_RANKER_TEST_MODE=1` paths to ensure loading adapters falls back to stub in CI.
-   - Add a smoke test that confirms `ModelStore` can be read and that a sample base+adapter load works in dry-run mode (DRY_RUN=1) without actually hitting remote downloads.
+   - ✅ Initial adapter smoke coverage now lives in `tests/agents/test_mistral_adapters.py`, which stubs `_chat_json` for journalist, chief_editor, reasoning, synthesizer, analyst, and re-ranker flows. Continue expanding with fact_checker/critic fixtures and DRY_RUN coverage.
+   - ✅ Added `tests/common/test_model_store_dry_run.py` which sets `MODEL_STORE_DRY_RUN=1` to ensure the loader resolves ModelStore paths, manifests, and adapter locations without touching HF/downloads. Keep extending this path for future agents.
 
 3) Canary rollouts
    - Roll out Mistral+adapter to a limited set of hosts / agents: start with `re-ranker` and `synthesizer` on a single GPU node, run steady-state traffic simulation, verify memory/p95 and error rates.
    - Deploy broader progressively to journalist, chief_editor. Keep ability to fallback to `AGENT_MODEL_RECOMMENDED.json` or previous model for critical agents if issues arise.
+   - **Canary playbook (next action):**
+     1. Preload adapters via GPU orchestrator API: `python agents/gpu_orchestrator/main.py start_agent_worker_pool --agent re_ranker --variant bnb-int8 --num-workers 2 --hold-seconds 1800`.
+     2. Route 5% of production-like traffic (or synthetic replay via `scripts/perf/gpu_activity_agent.py`) through the canary pool while mirroring to the legacy model; capture p50/p95/p99 and error counts.
+     3. If metrics stay within ±5% for 30 min, scale workers to 4 and expand traffic to 25%; otherwise trigger rollback by `stop_worker_pool` and re-point routing to the previous recommendation entry.
+     4. Repeat for synthesizer; once both are stable, replicate the sequence for journalist and chief_editor, then resume Phase 5 tasks (monitoring + CI). Document every canary in `docs/mistral_adapter_rollout.md`.
 
 Phase 5 — CI, monitoring & maintenance
 --------------------------------------
 1) CI & validation
-   - Add a pipeline job to validate ModelStore snapshots: `scripts/check_model_store.py` that ensures `manifest.json` presence, `approx_vram_mb` within reasonable bounds and optionally checks an adapter can be loaded in DRY_RUN.
+   - Add a pipeline job to validate ModelStore snapshots: `scripts/check_model_store.py` that ensures `manifest.json` presence, `approx_vram_mb` within reasonable bounds and optionally checks an adapter can be loaded in DRY_RUN. Include variant_preference + quantized_variants validation so orchestrator policies stay in sync.
    - Add pre-commit checks and CI rule to reject accidental commits of large model artifacts (binaries). Your repo already ignores `artifacts/` and added some protections; expand CI to detect tracked large files.
 
 2) Observability & alerts
-   - Add orchestrator Prometheus metrics and alerts for OOM events, `worker_pool_evictions`, `model_preload_failures`, high p95 latency, and adapter hot-swap failures. Build dashboards in `monitoring/dashboards`.
+   - Add orchestrator Prometheus metrics and alerts for OOM events, `worker_pool_evictions`, `model_preload_failures`, high p95 latency, adapter hot-swap failures, and per-variant pool depletion so we catch mismatched int8/fp16 demand. Build dashboards in `monitoring/dashboards`.
 
 3) Operational runbook
    - Add `docs/ops/mistral_rollout_runbook.md` with commands, troubleshooting steps (e.g., bitsandbytes compile troubleshooting), emergency rollback steps, and how to restore the previous model set quickly from ModelStore or HF.
@@ -219,6 +241,7 @@ Files and repo places to change (detailed)
 - `scripts/publish_hf_to_model_store.py` — use to publish base & adapter snapshots.
 - `agents/common/model_store.py` — used for atomic staging/finalize; add expected adapter manifest schema and validation helpers.
 - `agents/common/model_loader.py` — extend to expose `load_transformers_with_adapter(base, adapter)` and handle strict ModelStore errors.
+- `agents/common/base_mistral_json_adapter.py` + `agents/*/mistral_adapter.py` — shared JSON adapter helpers each agent now consumes; keep prompts + schema in these modules to avoid drift.
 - `agents/gpu_orchestrator/gpu_orchestrator_engine.py` — read model manifest, use `approx_vram_mb`, prefer quantized variants and enforce pool policy.
 - `AGENT_MODEL_MAP.json` / `AGENT_MODEL_RECOMMENDED.json` — create/extend with Mistral entries, base + adapters, and recommended variants.
 - `scripts/train_qlora.py` — add flags and ModelStore publish option.
@@ -237,7 +260,7 @@ Acceptance criteria & verification checklist
 Before closing migration for a given agent: all of these must be satisfied:
 1) Base model & adapter published and verified in ModelStore (manifest present & checksum verified).
 2) Agent loads model+adapter successfully on a production node in non-test mode.
-3) Orchestrator can preload base+adapter and create warm pools without OOMs for configured pool sizes.
+3) Orchestrator can preload base+adapter, pick the right variant preference (int8 vs fp16), and create warm pools without OOMs for configured pool sizes.
 4) CI runs smoke tests in DRY_RUN mode validating models/adapters are present and that base+adapter load path exists.
 5) Monitoring captures p95 latency and OOM failures and alerts are configured.
 

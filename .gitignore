@@ -86,3 +86,6 @@ third_party/**
 models/**
 model_store/**
 
+# Training artifacts
+output/qlora_adapters/
+

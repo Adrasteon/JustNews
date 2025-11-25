@@ -64,3 +64,18 @@ MODEL_STORE_ROOT=/opt/justnews/model_store RE_RANKER_TEST_MODE=0 \
 ```
 
 - Keep legacy DistilRoBERTa/Flan weights in `AGENT_MODEL_RECOMMENDED.json` as retrieval fallbacks until the new adapters clear sustained production burn-in. Update the manifest `training_summary.json` whenever we retrain either adapter so we can track provenance and align monitoring alerts with exact versions.
+
+Latest rollout updates — Journalist, Chief Editor, Reasoning, Synthesizer
+------------------------------------------------------------------------
+- Shared adapter helpers now live in `agents/common/base_mistral_json_adapter.py` with per-agent wrappers in `agents/<agent>/mistral_adapter.py`. Each wrapper sets its own disable flag (for example `JOURNALIST_DISABLE_MISTRAL=1`) so you can fall back to the legacy pipeline without code edits.
+- `AGENT_MODEL_MAP.json` entries for these agents include `variant_preference` hints (int8 vs fp16) so the GPU orchestrator and `start_agent_worker_pool()` automatically preload the right model+adapter pair. Use `python -m agents.gpu_orchestrator.gpu_orchestrator_engine --dry-run` to verify metadata parsing before shipping new adapters.
+- When testing locally, you can instantiate the adapters directly inside `python -m pytest tests/agents/test_mistral_adapters.py -k <agent>`; the tests stub `_chat_json` so they never attempt a real model load yet still validate prompt wiring.
+- Production warm pools should be requested via the orchestrator; the developer helper `scripts/ops/adapter_worker_pool.py` is still useful for on-node sizing. Pass the `--adapter` path emitted by `AGENT_MODEL_MAP.json` (or read it via `agents/common/model_loader.get_agent_model_metadata()`) to guarantee you test the same path used by the agents.
+- Add smoke fixtures that feed representative payloads to each adapter to keep JSON schema stability under CI. See `tests/agents/test_mistral_adapters.py` for working examples and extend it as new adapters come online.
+- For ModelStore validation without GPU downloads, set `MODEL_STORE_DRY_RUN=1` (or `DRY_RUN=1`). The loader will verify base + adapter paths and manifes ts without invoking transformers/Peft. CI uses `tests/common/test_model_store_dry_run.py` to exercise this path.
+
+Latest rollout updates — Analyst & Re-ranker
+--------------------------------------------
+- Analyst sentiment/bias judgments now use the shared adapter wrapper while preserving the existing RoBERTa heuristics as fallback paths. The adapter normalizes JSON responses into the long-lived `AdapterResult` structure so `analyst_engine` caching stays intact.
+- Re-ranker helper `agents/tools/re_ranker_7b.py` prefers the shared adapter (with `RE_RANKER_DISABLE_MISTRAL` as an escape hatch) before falling back to the historical AutoModel heuristic or deterministic stub (`RE_RANKER_TEST_MODE=1`). The legacy `agents/tools/7b_re_ranker.py` now re-exports the canonical helper for consistency.
+- CI smoke tests (`tests/agents/test_mistral_adapters.py`) include analyst and re-ranker coverage to guard prompt/JSON drift without loading heavy weights. Extend those fixtures with new schemas as adapters evolve.

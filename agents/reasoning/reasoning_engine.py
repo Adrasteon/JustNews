@@ -13,16 +13,19 @@ The engine provides comprehensive symbolic reasoning capabilities with
 robust error handling and fallbacks.
 """
 
+import asyncio
 import importlib.util
+import json
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 
 import networkx as nx
 
 from common.observability import get_logger
+from agents.reasoning.mistral_adapter import ReasoningMistralAdapter
 
 # Configure logging
 logger = get_logger(__name__)
@@ -245,6 +248,7 @@ class ReasoningEngine:
     def __init__(self, config: ReasoningConfig):
         self.config = config
         self.logger = logger
+        self.mistral_adapter = ReasoningMistralAdapter()
 
         # Core components
         self.nucleoid: Any | None = None
@@ -446,6 +450,10 @@ class ReasoningEngine:
                 return self.cache[cache_key]
 
             # Execute query
+            llm_task = None
+            if getattr(self, "mistral_adapter", None):
+                llm_task = asyncio.to_thread(self._run_llm_analysis, query_str)
+
             if self.nucleoid:
                 result = self.nucleoid.run(query_str)
 
@@ -457,6 +465,18 @@ class ReasoningEngine:
                     (self.processing_stats["average_processing_time"] * (self.processing_stats["total_queries"] - 1)) +
                     processing_time
                 ) / self.processing_stats["total_queries"]
+
+                if llm_task is not None:
+                    try:
+                        enriched = await llm_task
+                    except Exception as exc:
+                        self.logger.debug("LLM reasoning task failed: %s", exc)
+                        enriched = None
+                    if enriched:
+                        if isinstance(result, dict):
+                            result = {**result, "llm_analysis": enriched}
+                        else:
+                            result = {"result": result, "llm_analysis": enriched}
 
                 return result
 
@@ -606,6 +626,30 @@ class ReasoningEngine:
             "facts_count": len(self.facts_store),
             "rules_count": len(self.rules_store)
         }
+
+    def _run_llm_analysis(self, query_str: str) -> dict[str, Any] | None:
+        adapter = getattr(self, "mistral_adapter", None)
+        if not adapter:
+            return None
+        try:
+            context = self._recent_facts_snapshot()
+            return adapter.analyze(query_str, context)
+        except Exception as exc:
+            self.logger.debug("Failed to run Mistral reasoning adapter: %s", exc)
+            return None
+
+    def _recent_facts_snapshot(self, limit: int = 12) -> list[str]:
+        items = list(self.facts_store.items())[-limit:]
+        snapshot: list[str] = []
+        for _, value in items:
+            if isinstance(value, dict):
+                try:
+                    snapshot.append(json.dumps(value))
+                    continue
+                except Exception:
+                    pass
+            snapshot.append(str(value))
+        return snapshot
 
     async def _ingest_neural_assessment(self, assessment: dict[str, Any]) -> list[str]:
         """Convert a NeuralAssessment into a list of statements/facts for Nucleoid."""

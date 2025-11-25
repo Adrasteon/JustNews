@@ -96,32 +96,32 @@ class CriticMistralAdapter:
             self._load_error = "torch-missing"
             logger.debug("PyTorch unavailable; cannot load Critic adapter")
             return False
-        if not os.environ.get("MODEL_STORE_ROOT"):
-            self._load_error = "model-store-missing"
-            logger.debug("MODEL_STORE_ROOT not configured; skipping Critic adapter load")
-            return False
         try:
-            from agents.common.model_loader import load_transformers_with_adapter
+            from agents.common.mistral_loader import load_mistral_adapter_or_base
         except Exception as exc:  # pragma: no cover
             self._load_error = str(exc)
-            logger.warning("Model loader import failed for Critic adapter: %s", exc)
+            logger.warning("Shared Mistral loader import failed for Critic adapter: %s", exc)
             return False
 
         try:
-            model, tokenizer = load_transformers_with_adapter(
+            model, tokenizer = load_mistral_adapter_or_base(
                 "critic",
                 adapter_name=MODEL_ADAPTER_NAME,
                 model_kwargs={"device_map": "auto", "low_cpu_mem_usage": True, "trust_remote_code": True},
                 tokenizer_kwargs={"use_fast": True},
             )
+            if model is None or tokenizer is None:
+                self._load_error = "adapter-or-base-load-failed"
+                logger.warning("Critic adapter/base load failed despite shared loader attempt")
+                return False
             model.eval()
             self.model = model
             self.tokenizer = tokenizer
-            logger.info("Loaded Critic Mistral adapter (%s)", MODEL_ADAPTER_NAME)
+            logger.info("Loaded Critic Mistral weights (adapter=%s)", MODEL_ADAPTER_NAME)
             return True
         except Exception as exc:  # pragma: no cover
             self._load_error = str(exc)
-            logger.warning("Failed to load Critic adapter: %s", exc)
+            logger.warning("Failed to load Critic Mistral weights: %s", exc)
             return False
 
     def _run_inference(self, content: str, url: str | None) -> Dict[str, Any] | None:

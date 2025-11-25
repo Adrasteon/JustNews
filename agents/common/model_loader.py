@@ -278,6 +278,12 @@ def load_sentence_transformer(model_name: str, agent: str | None = None, cache_f
     return SentenceTransformer(model_name)
 
 
+def _truthy_env(value: str | None) -> bool:
+    if value is None:
+        return False
+    return value.lower() in {"1", "true", "yes", "on"}
+
+
 def load_transformers_with_adapter(
     agent: str,
     adapter_name: str | None = None,
@@ -302,14 +308,30 @@ def load_transformers_with_adapter(
     if not base_model_identifier:
         raise RuntimeError(f"Missing base model identifier for agent={agent}")
 
-    try:
-        from transformers import AutoModelForCausalLM, AutoTokenizer
-    except Exception as exc:
-        raise ImportError("transformers is required to load adapters") from exc
+    dry_run_enabled = _truthy_env(os.environ.get("MODEL_STORE_DRY_RUN")) or _truthy_env(os.environ.get("DRY_RUN"))
 
     base_model_kwargs = {"device_map": "auto", "low_cpu_mem_usage": True, "trust_remote_code": True}
     if model_kwargs:
         base_model_kwargs.update(model_kwargs)
+
+    adapter_path = _resolve_adapter_path(agent, entry)
+    strict = _truthy_env(os.environ.get("STRICT_MODEL_STORE"))
+
+    if dry_run_enabled:
+        base_path = _resolve_model_store_path(base_agent, base_model_identifier)
+        if strict and resolved_adapter_name and adapter_path is None:
+            raise RuntimeError(
+                f"STRICT_MODEL_STORE=1 but adapter path missing for agent={agent} adapter={resolved_adapter_name}"
+            )
+        return (
+            {"dry_run": True, "agent": agent, "base_path": str(base_path or base_model_identifier)},
+            {"dry_run": True, "adapter_path": str(adapter_path) if adapter_path else None},
+        )
+
+    try:
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+    except Exception as exc:
+        raise ImportError("transformers is required to load adapters") from exc
 
     model, tokenizer = load_transformers_model(
         base_model_identifier,
@@ -320,8 +342,6 @@ def load_transformers_with_adapter(
         tokenizer_kwargs=tokenizer_kwargs,
     )
 
-    adapter_path = _resolve_adapter_path(agent, entry)
-    strict = os.environ.get("STRICT_MODEL_STORE", "0").lower() in ("1", "true", "yes")
     if adapter_path and adapter_path.exists():
         try:
             from peft import PeftModel  # type: ignore
@@ -329,13 +349,23 @@ def load_transformers_with_adapter(
             model = PeftModel.from_pretrained(model, str(adapter_path))
         except Exception as exc:
             if strict:
-                raise RuntimeError(f"Failed to load adapter {resolved_adapter_name} for agent={agent} from {adapter_path}") from exc
-            logger.warning("Adapter load failed for agent=%s adapter=%s path=%s: %s", agent, resolved_adapter_name, adapter_path, exc)
+                raise RuntimeError(
+                    f"Failed to load adapter {resolved_adapter_name} for agent={agent} from {adapter_path}"
+                ) from exc
+            logger.warning(
+                "Adapter load failed for agent=%s adapter=%s path=%s: %s",
+                agent,
+                resolved_adapter_name,
+                adapter_path,
+                exc,
+            )
     else:
         if resolved_adapter_name:
             logger.debug("Adapter path not resolved for agent=%s adapter=%s", agent, resolved_adapter_name)
         if strict and resolved_adapter_name:
-            raise RuntimeError(f"STRICT_MODEL_STORE=1 but adapter path missing for agent={agent} adapter={resolved_adapter_name}")
+            raise RuntimeError(
+                f"STRICT_MODEL_STORE=1 but adapter path missing for agent={agent} adapter={resolved_adapter_name}"
+            )
 
     return model, tokenizer
 

@@ -643,6 +643,10 @@ class GPUOrchestratorEngine:
                             meta = get_agent_model_metadata(agent, spec.get("adapter_name"))
                             if meta:
                                 spec = {**spec, "_model_metadata": meta}
+                                variant = self._select_variant_for_spec(spec)
+                                if variant:
+                                    spec["_selected_variant"] = variant
+                                    spec["_variant_vram_mb"] = self._variant_vram_mb(spec, variant)
                         except Exception as exc:
                             self.logger.debug("Failed to collect model metadata for agent=%s: %s", agent, exc)
                     enriched_specs.append(spec)
@@ -657,7 +661,9 @@ class GPUOrchestratorEngine:
                     _MODEL_PRELOAD_STATE["per_agent"][a][entry_id] = {
                         "status": "pending",
                         "error": None,
-                        "duration_s": None
+                        "duration_s": None,
+                        "variant": spec.get("_selected_variant"),
+                        "approx_vram_mb": spec.get("_variant_vram_mb"),
                     }
 
             total = sum(len(agent_specs.get(a, [])) for a in agents)
@@ -762,8 +768,84 @@ class GPUOrchestratorEngine:
             "completed_at": _MODEL_PRELOAD_STATE.get("completed_at"),
         }
 
+    def _allow_quantized_variants(self) -> bool:
+        return os.environ.get("GPU_ALLOW_QUANTIZED", "1").lower() not in {"0", "false", "no"}
+
+    def _select_variant_for_spec(self, spec: dict[str, Any]) -> str | None:
+        if spec.get("_selected_variant"):
+            return spec["_selected_variant"]
+        if spec.get("variant_preference"):
+            return spec["variant_preference"]
+        metadata = spec.get("_model_metadata") or {}
+        manifest = metadata.get("manifest") if isinstance(metadata, dict) else None
+        if not manifest:
+            return None
+        if self._allow_quantized_variants():
+            for variant in manifest.get("quantized_variants", []) or []:
+                if variant.get("recommended"):
+                    return variant.get("name")
+            variants = manifest.get("quantized_variants") or []
+            if variants:
+                return variants[0].get("name")
+        return "fp16"
+
+    def _variant_vram_mb(self, spec: dict[str, Any], variant: str | None) -> float | None:
+        metadata = spec.get("_model_metadata") or {}
+        manifest = metadata.get("manifest") if isinstance(metadata, dict) else None
+        if not manifest:
+            return None
+        if not variant or variant == "fp16":
+            return manifest.get("approx_vram_mb")
+        for candidate in manifest.get("quantized_variants", []) or []:
+            if candidate.get("name") == variant:
+                return candidate.get("approx_vram_mb")
+        return manifest.get("approx_vram_mb")
+
     # --- Worker pool management -------------------------------------------------
-    def _spawn_pool_worker(self, model_id: str | None, adapter: str | None, hold_seconds: int):
+    def start_agent_worker_pool(
+        self,
+        agent: str,
+        adapter_name: str | None = None,
+        *,
+        pool_id: str | None = None,
+        num_workers: int = 1,
+        hold_seconds: int = 600,
+        requestor: dict | None = None,
+    ) -> dict[str, Any]:
+        """Start a worker pool using AGENT_MODEL_MAP metadata."""
+        try:
+            from agents.common.model_loader import get_agent_model_metadata
+        except Exception as exc:
+            raise RuntimeError("model loader unavailable") from exc
+
+        metadata = get_agent_model_metadata(agent, adapter_name)
+        if not metadata:
+            raise ValueError(f"Unknown model metadata for agent={agent}")
+
+        version_dir = metadata.get("version_dir")
+        base_info = metadata.get("base_info", {})
+        model_ref = str(version_dir) if version_dir else base_info.get("hf_id")
+        if not model_ref:
+            raise ValueError(f"Missing base model reference for agent={agent}")
+
+        adapter_path = metadata.get("adapter_path")
+        entry = metadata.get("entry", {}) or {}
+        spec = {**entry, "_model_metadata": metadata}
+        variant = self._select_variant_for_spec(spec)
+
+        resolved_pool_id = pool_id or f"{agent}-{adapter_name or 'base'}"
+        adapter_str = str(adapter_path) if adapter_path else None
+        return self.start_worker_pool(
+            pool_id=resolved_pool_id,
+            model_id=str(model_ref),
+            adapter=adapter_str,
+            num_workers=num_workers,
+            hold_seconds=hold_seconds,
+            requestor=requestor,
+            variant=variant,
+        )
+
+    def _spawn_pool_worker(self, model_id: str | None, adapter: str | None, hold_seconds: int, variant: str | None = None):
         """Process entrypoint that loads base model and adapter then sleeps for hold_seconds.
 
         Note: in RE_RANKER_TEST_MODE this function will avoid heavy loads and simply sleep.
@@ -781,8 +863,27 @@ class GPUOrchestratorEngine:
                 AutoTokenizer,
                 BitsAndBytesConfig,
             )
-            bnb = BitsAndBytesConfig(load_in_8bit=True, bnb_8bit_use_double_quant=True, bnb_8bit_compute_dtype=getattr(torch, 'float16', None))
-            model = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb, device_map='auto')
+
+            if variant == 'fp16':
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_id,
+                    torch_dtype=getattr(torch, 'float16', None),
+                    device_map='auto',
+                )
+            elif variant == 'bnb-4bit-qlora':
+                bnb = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=getattr(torch, 'float16', None),
+                    bnb_4bit_quant_type='nf4',
+                )
+                model = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb, device_map='auto')
+            else:  # default to 8-bit
+                bnb = BitsAndBytesConfig(
+                    load_in_8bit=True,
+                    bnb_8bit_use_double_quant=True,
+                    bnb_8bit_compute_dtype=getattr(torch, 'float16', None),
+                )
+                model = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb, device_map='auto')
             _tok = AutoTokenizer.from_pretrained(model_id)
 
             if adapter:
@@ -799,7 +900,16 @@ class GPUOrchestratorEngine:
             # Fail fast but keep process alive a short while so parent can introspect
             time.sleep(min(hold_seconds, 3))
 
-    def start_worker_pool(self, pool_id: str, model_id: str | None, adapter: str | None, num_workers: int = 1, hold_seconds: int = 600, requestor: dict | None = None) -> dict[str, Any]:
+    def start_worker_pool(
+        self,
+        pool_id: str,
+        model_id: str | None,
+        adapter: str | None,
+        num_workers: int = 1,
+        hold_seconds: int = 600,
+        requestor: dict | None = None,
+        variant: str | None = None,
+    ) -> dict[str, Any]:
         """Start a named pool of warm workers for a given base model + adapter.
 
         This is intended for interactive dev/test and to allow GPU Orchestrator to
@@ -815,7 +925,7 @@ class GPUOrchestratorEngine:
 
         procs: list[mp.Process] = []
         for _ in range(num_workers):
-            p = mp.Process(target=self._spawn_pool_worker, args=(model_id, adapter, hold_seconds), daemon=True)
+            p = mp.Process(target=self._spawn_pool_worker, args=(model_id, adapter, hold_seconds, variant), daemon=True)
             p.start()
             procs.append(p)
             time.sleep(0.2)
@@ -827,11 +937,12 @@ class GPUOrchestratorEngine:
             'procs': procs,
             'started_at': time.time(),
             'hold_seconds': hold_seconds,
+            'variant': variant,
         }
 
         # Audit with optional requestor
-        self._audit_worker_pool_event('start', pool_id, model_id, adapter, num_workers, requestor=requestor)
-        return {'pool_id': pool_id, 'num_workers': num_workers, 'status': 'started'}
+        self._audit_worker_pool_event('start', pool_id, model_id, adapter, num_workers, requestor=requestor, variant=variant)
+        return {'pool_id': pool_id, 'num_workers': num_workers, 'status': 'started', 'variant': variant}
 
     def stop_worker_pool(self, pool_id: str) -> dict[str, Any]:
         """Terminate a previously started pool and reap processes."""
@@ -868,6 +979,7 @@ class GPUOrchestratorEngine:
                 'configured_workers': meta.get('num_workers'),
                 'running_workers': running,
                 'started_at': meta.get('started_at'),
+                'variant': meta.get('variant'),
             })
         return out
 
@@ -888,7 +1000,11 @@ class GPUOrchestratorEngine:
         _temp_id = f"{pool_id}__swap_{int(time.time())}"
         procs: list[mp.Process] = []
         for _ in range(num_workers):
-            p = mp.Process(target=self._spawn_pool_worker, args=(model, new_adapter, meta.get('hold_seconds', 600)), daemon=True)
+            p = mp.Process(
+                target=self._spawn_pool_worker,
+                args=(model, new_adapter, meta.get('hold_seconds', 600), meta.get('variant')),
+                daemon=True,
+            )
             p.start()
             procs.append(p)
             time.sleep(0.2)
@@ -917,13 +1033,14 @@ class GPUOrchestratorEngine:
             'procs': procs,
             'started_at': time.time(),
             'hold_seconds': meta.get('hold_seconds', 600),
+            'variant': meta.get('variant'),
         }
 
         # audit swap
-        self._audit_worker_pool_event('swap_adapter', pool_id, model, new_adapter, num_workers, requestor=requestor)
+        self._audit_worker_pool_event('swap_adapter', pool_id, model, new_adapter, num_workers, requestor=requestor, variant=meta.get('variant'))
         return {'pool_id': pool_id, 'status': 'swapped', 'new_adapter': new_adapter}
 
-    def _audit_worker_pool_event(self, action: str, pool_id: str, model_id: str | None, adapter: str | None, num_workers: int, requestor: dict | None = None):
+    def _audit_worker_pool_event(self, action: str, pool_id: str, model_id: str | None, adapter: str | None, num_workers: int, requestor: dict | None = None, variant: str | None = None):
         try:
             audit_dir = Path('logs/audit')
             audit_dir.mkdir(parents=True, exist_ok=True)
@@ -935,6 +1052,8 @@ class GPUOrchestratorEngine:
                 'adapter': adapter,
                 'num_workers': num_workers,
             }
+            if variant:
+                entry['variant'] = variant
             if requestor:
                 entry['requestor'] = requestor
             # optionally include requestor identity when available (controller should add 'requestor' key)

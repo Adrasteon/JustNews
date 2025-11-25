@@ -31,6 +31,7 @@ from typing import Any
 import torch
 
 from common.observability import get_logger
+from agents.synthesizer.mistral_adapter import SynthesizerMistralAdapter
 
 # Core ML libraries with fallbacks
 try:
@@ -204,6 +205,7 @@ class SynthesizerEngine:
 
         # Lifecycle flag
         self.is_initialized = False
+        self.mistral_adapter = SynthesizerMistralAdapter()
 
         # Performance tracking
         self.performance_stats = {
@@ -216,6 +218,23 @@ class SynthesizerEngine:
         }
 
         logger.info("🔧 SynthesizerEngine created (lazy init). Call `await initialize()` to load models.")
+
+    def choose_model_for_task(self, task: str | None = None, *, prefer_high_accuracy: bool | None = None) -> str:
+        """Select which generation path to use for a task."""
+        mode = os.getenv("SYNTHESIZER_MODEL_CHOICE", "auto").lower()
+        if mode in {"mistral", "adapter"}:
+            return "mistral"
+        if mode in {"legacy", "seq2seq"}:
+            return "seq2seq"
+        if prefer_high_accuracy is None:
+            prefer_high_accuracy = task in {"cluster", "long_form"}
+        if prefer_high_accuracy and self._mistral_ready():
+            return "mistral"
+        return "seq2seq"
+
+    def _mistral_ready(self) -> bool:
+        adapter = getattr(self, "mistral_adapter", None)
+        return bool(adapter and adapter.enabled)
 
     async def initialize(self):
         """Async compatibility initializer used by tests and callers.
@@ -698,6 +717,19 @@ class SynthesizerEngine:
             # Accept list of dicts or raw strings
             texts = [a.get('content') if isinstance(a, dict) else str(a) for a in article_texts]
 
+            if self.choose_model_for_task("cluster", prefer_high_accuracy=len(texts) > 1) == "mistral" and self._mistral_ready():
+                mistral_doc = await asyncio.to_thread(self._run_mistral_cluster_summary, texts)
+                if mistral_doc:
+                    summary = mistral_doc.get("summary") or " ".join(mistral_doc.get("key_points", [])[:2])
+                    key_points = mistral_doc.get("key_points", [])
+                    return {
+                        "status": "success",
+                        "summary": summary,
+                        "key_points": key_points,
+                        "article_count": len(article_texts),
+                        "mistral": mistral_doc,
+                    }
+
             summaries = []
             for text in texts:
                 summary_res = await self._summarize_text(text)
@@ -733,6 +765,11 @@ class SynthesizerEngine:
         _start_time = time.time()
 
         try:
+            if self.choose_model_for_task("summarization", prefer_high_accuracy=len(text) > 400) == "mistral" and self._mistral_ready():
+                mistral_res = await asyncio.to_thread(self._summarize_with_mistral, text)
+                if mistral_res:
+                    return mistral_res
+
             # Prefer using an explicit bart_model + tokenizer when present (tests set bart_model.generate to simulate failures)
             if getattr(self, 'bart_model', None) is not None and getattr(self, 'bart_tokenizer', None) is not None:
                 try:
@@ -828,6 +865,39 @@ class SynthesizerEngine:
                 confidence=0.0,
                 metadata={"error": str(e)}
             )
+
+    def _summarize_with_mistral(self, text: str) -> SynthesisResult | None:
+        adapter = getattr(self, "mistral_adapter", None)
+        if not adapter:
+            return None
+        start_time = time.time()
+        try:
+            doc = adapter.summarize_cluster([text], context="single-article")
+        except Exception as exc:
+            logger.debug("Mistral summarizer failed: %s", exc)
+            return None
+        if not doc:
+            return None
+        summary = doc.get("summary") or " ".join(doc.get("key_points", [])[:2]) or text[:200]
+        return SynthesisResult(
+            success=True,
+            content=summary,
+            method="mistral_adapter",
+            processing_time=time.time() - start_time,
+            model_used="mistral",
+            confidence=float(doc.get("confidence", 0.85)),
+            metadata={"mistral": doc},
+        )
+
+    def _run_mistral_cluster_summary(self, texts: list[str]) -> dict[str, Any] | None:
+        adapter = getattr(self, "mistral_adapter", None)
+        if not adapter:
+            return None
+        try:
+            return adapter.summarize_cluster(texts, context="cluster")
+        except Exception as exc:
+            logger.debug("Cluster-level Mistral summary failed: %s", exc)
+            return None
 
     async def synthesize_gpu(self, articles: list[dict[str, Any]], max_clusters: int = 5, context: str = "news analysis", options: dict[str, Any] | None = None) -> dict:
         """GPU-accelerated synthesis with clustering and refinement.

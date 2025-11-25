@@ -21,6 +21,11 @@ except Exception:
     BitsAndBytesConfig = None
     torch = None
 
+from agents.tools.mistral_re_ranker_adapter import ReRankerMistralAdapter
+from common.observability import get_logger
+
+logger = get_logger(__name__)
+
 
 @dataclass
 class ReRankCandidate:
@@ -61,12 +66,19 @@ class ReRanker:
         self.test_mode = os.environ.get("RE_RANKER_TEST_MODE") in ("1", "true")
         self.model = None
         self.tokenizer = None
+        self._stub = _StubReRanker()
+        self.adapter: ReRankerMistralAdapter | None = None
 
         if self.test_mode or AutoModelForCausalLM is None:
-            # fallback stub for test mode or missing deps
-            self._impl = _StubReRanker()
-        else:
-            self._impl = None
+            return
+
+        try:
+            self.adapter = ReRankerMistralAdapter()
+        except Exception as exc:  # pragma: no cover - adapter optional
+            logger.warning("ReRanker adapter init failed, falling back to direct model: %s", exc)
+            self.adapter = None
+
+        if self.adapter is None:
             self._load_model()
 
     def _load_model(self) -> None:
@@ -92,24 +104,41 @@ class ReRanker:
 
         self.model = model
         self.tokenizer = tokenizer
-        self._impl = model
 
     def score(self, query: str, candidates: Sequence[ReRankCandidate]) -> list[float]:
         """Return a list of scores aligned with candidates.
 
-        If using a real model, we implement a cheap scoring heuristic: compute
-        a log-probability for each candidate appended to query by the causal LM.
-        This is intentionally simple (no beam or full rerank pipeline) — the
-        goal is a prototype re-ranker showing how to integrate an int8 7B model.
+        Prefers the shared Mistral adapter; falls back to the original
+        AutoModel-based heuristic or the deterministic stub when unavailable.
         """
-        if isinstance(self._impl, _StubReRanker):
-            return self._impl.score(query, candidates)
+        if self.adapter is not None:
+            try:
+                adapter_scores = self.adapter.score_candidates(query, candidates)
+            except Exception as exc:  # pragma: no cover - adapter optional
+                logger.warning("ReRanker adapter scoring failed, will fall back: %s", exc)
+                adapter_scores = None
+            if adapter_scores is not None:
+                return adapter_scores
 
-        # Model-based scoring
-        scores = []
+        if self.test_mode or AutoModelForCausalLM is None:
+            return self._stub.score(query, candidates)
+
+        if self.model is None or self.tokenizer is None:
+            try:
+                self._load_model()
+            except Exception as exc:  # pragma: no cover - fallback path
+                logger.warning("Failed loading fallback re-ranker model: %s", exc)
+                return self._stub.score(query, candidates)
+
+        if self.model is None or self.tokenizer is None:
+            return self._stub.score(query, candidates)
+
+        return self._score_with_model(query, candidates)
+
+    def _score_with_model(self, query: str, candidates: Sequence[ReRankCandidate]) -> list[float]:
+        scores: list[float] = []
         for c in candidates:
-            # build prompt: query + candidate
-            input_text = f"Query: {query}\nCandidate: {c.text}\nScore:"  # model will continue
+            input_text = f"Query: {query}\nCandidate: {c.text}\nScore:"
             inputs = self.tokenizer(input_text, return_tensors="pt")
             if torch is not None and torch.cuda.is_available():
                 inputs = {k: v.to("cuda") for k, v in inputs.items()}
@@ -117,12 +146,8 @@ class ReRanker:
             with torch.no_grad():
                 out = self.model(**inputs, return_dict=True)
 
-            # heuristic: negative mean of logits for the 'Score' token region as a stand-in
-            # This is intentionally lightweight; replace with a cross-encoder for production.
             logits = out.logits
-            # take mean over last token logits, sum softmax probability of EOS-ish token
             last_logits = logits[:, -1, :]
-            # compute normalized score
             probs = last_logits.softmax(dim=-1).max().values.item()
             scores.append(float(probs))
 

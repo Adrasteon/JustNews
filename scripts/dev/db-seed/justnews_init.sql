@@ -57,3 +57,16 @@ CREATE TABLE IF NOT EXISTS crawler_jobs (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
+
+-- Seed sample data used by lightweight E2E smoke/representative tests
+INSERT INTO orchestrator_leases (token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata)
+VALUES ('seed-lease-1', 'test-agent', 0, 'gpu', NOW(), NULL, NOW(), JSON_OBJECT('note', 'seeded'))
+ON DUPLICATE KEY UPDATE token=token;
+
+INSERT INTO worker_pools (pool_id, agent_name, model_id, adapter, desired_workers, spawned_workers, started_at, last_heartbeat, status, hold_seconds, metadata)
+VALUES ('seed-pool-1', 'test-agent', 'test-model', 'test-adapter', 1, 0, NOW(), NOW(), 'running', 600, JSON_OBJECT('note', 'seeded'))
+ON DUPLICATE KEY UPDATE pool_id=pool_id;
+
+INSERT INTO orchestrator_jobs (job_id, type, payload, status, owner_pool, attempts, created_at)
+VALUES ('seed-job-1', 'inference', '{"text": "smoke test"}', 'pending', 'seed-pool-1', 0, NOW())
+ON DUPLICATE KEY UPDATE job_id=job_id;

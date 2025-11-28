@@ -14,7 +14,7 @@ The systemd-nspawn test infrastructure has proven to be awkward and time-consumi
 - Cross-distribution compatibility (debootstrap suite versions)
 - iptables/firewall rule coordination
 
-This needs further work to become a robust, reproducible developer and CI workflow. For now, prefer using Docker or other container solutions for E2E testing with real services.
+This needs further work to become a robust, reproducible developer and CI workflow. For now, prefer using Docker or other container solutions for E2E testing with real services — note that the docker-compose PoC is intended for lightweight testing and CI only. In typical developer and production setups MariaDB is expected to run on the host (outside Docker) or as a managed DB service.
 
 ## Where the helper lives
 
@@ -60,4 +60,4 @@ Note: You will typically need to run the script as root (sudo) since it manipula
 - This workflow is useful for reproducing systemd-service unit issues, DB service start ordering, or interactions between system units.
 If you want me to extend this script to provide automatic port forward rules (e.g., expose 3306 and 6379 on localhost) or to include an automated test-runner that executes the test suite inside the container, I can add that next.
 
-Note: because the systemd-nspawn flow is disabled for now, I added a Docker-based proof-of-concept that can run a lightweight E2E suite using Docker Compose. See `scripts/dev/docker-compose.e2e.yml`, `scripts/dev/run_e2e_docker.sh` and `.github/workflows/e2e-docker.yml` for details.
+Note: because the systemd-nspawn flow is disabled for now, a Docker-based proof-of-concept is provided to run a lightweight E2E suite using Docker Compose for testing and CI only. See `scripts/dev/docker-compose.e2e.yml`, `scripts/dev/run_e2e_docker.sh` and `.github/workflows/e2e-docker.yml` for details; for normal local development and production the project expects the canonical MariaDB to run on the host or as a managed service.

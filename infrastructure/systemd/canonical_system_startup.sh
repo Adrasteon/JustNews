@@ -435,9 +435,14 @@ main() {
   require_root
   require_command systemctl
 
+  # Resolve the repository root early — several checks below need an absolute
+  # repo_root path (e.g. scripts invoked later in the flow). Previously the
+  # variable was assigned too late and some checks attempted to reference
+  # "$repo_root" before it existed which would lead to incorrect behaviour.
+  local repo_root
+  repo_root="$(resolve_repo_root)"
+
   if [[ "$REQUEST_STOP" == true ]]; then
-    local repo_root
-    repo_root="$(resolve_repo_root)"
     if [[ "$DRY_RUN" == true ]]; then
       log_info "Dry-run requested; skipping service shutdown"
       log_success "Prerequisite checks completed (dry run)"

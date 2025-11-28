@@ -2,7 +2,12 @@ version: '3.8'
 
 services:
   db:
-    image: mariadb:10.6
+    # Use a local pre-seeded image if available; otherwise docker-compose will
+    # build the image from scripts/dev/db-mariadb/Dockerfile (context: scripts/dev)
+    image: justnews/mariadb-preseed:local
+    build:
+      context: ./scripts/dev
+      dockerfile: db-mariadb/Dockerfile
     environment:
       MYSQL_ROOT_PASSWORD: rootpass
       MYSQL_DATABASE: justnews_test

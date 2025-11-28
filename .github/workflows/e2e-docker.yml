@@ -15,6 +15,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up qemu
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build pre-seeded MariaDB image (with cache)
+        uses: docker/build-push-action@v4
+        with:
+          context: ./scripts/dev
+          file: db-mariadb/Dockerfile
+          push: false
+          tags: justnews/mariadb-preseed:local
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Start docker-compose services
         run: |
           docker-compose -f scripts/dev/docker-compose.e2e.yml up -d

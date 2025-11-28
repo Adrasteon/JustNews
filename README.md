@@ -225,3 +225,13 @@ PYTHONPATH=. conda run -n justnews-py312 python scripts/chroma_bootstrap.py --ho
 ```
 
 See `docs/chroma_setup.md` for advanced guidance and troubleshooting.
+
+## MariaDB startup probe (operators)
+
+The repository's `infrastructure/systemd/canonical_system_startup.sh` includes an optional startup probe that checks host MariaDB connectivity. This is intended for operator-managed hosts (the repository's Docker E2E is test-only) and can be controlled from `/etc/justnews/global.env`:
+
+- `MARIADB_HOST` / `MARIADB_PORT` / `MARIADB_USER` / `MARIADB_PASSWORD` / `MARIADB_DB` — used by the probe if present
+- `SKIP_MARIADB_CHECK=true` — skip the probe (useful for developer machines or CI dry-runs)
+- `MARIADB_CHECK_REQUIRED=true` — if set, startup will abort when the probe fails (recommended for production)
+
+The check prefers the `mysql` client and falls back to a small `PYTHON_BIN` + `pymysql` probe. Operators should ensure `mysql-client` or `pymysql` is available to get deterministic preflight checks.

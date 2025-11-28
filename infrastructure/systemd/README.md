@@ -155,6 +155,18 @@ This section documents the existing helpers and how to perform simple operator c
 - Example usage: `sudo ./infrastructure/systemd/helpers/db-check.sh` or if installed: `sudo /usr/local/bin/db-check.sh`.
 - If this fails, confirm `JUSTNEWS_DB_URL` (or `DATABASE_URL`) in `/etc/justnews/global.env` or use the native client: `mysql --user=... --host=... -p -e 'SELECT 1;'` or `psql "$DATABASE_URL" -c 'SELECT 1;'`.
 
+#### MariaDB startup probe (new)
+
+The `canonical_system_startup.sh` script includes an optional MariaDB probe which can be enabled for operator safety. The probe is designed to be lightweight and environment-driven. Relevant environment variables in `/etc/justnews/global.env`:
+
+- `MARIADB_HOST` / `MARIADB_PORT` / `MARIADB_USER` / `MARIADB_PASSWORD` / `MARIADB_DB` — used by the probe.
+- `SKIP_MARIADB_CHECK=true` — skip the probe entirely (handy for dev machines).
+- `MARIADB_CHECK_REQUIRED=true` — require a successful probe and abort startup on failure (recommended for production).
+
+The probe prefers the `mysql` client when installed. If the client is missing it will attempt a small Python check using the `PYTHON_BIN` runtime and `pymysql` (if available). If neither is available the probe will be skipped unless `MARIADB_CHECK_REQUIRED` is set.
+
+Recommendation: Install `mysql-client` on host deployments, or ensure the `PYTHON_BIN` referenced by `/etc/justnews/global.env` has `pymysql` installed to get deterministic health checks during startup.
+
 ### Chroma (vector store)
 - Config vars: `CHROMADB_HOST`, `CHROMADB_PORT` in `/etc/justnews/global.env` (defaults to `localhost:3307`).
 - Quick probe (Python):

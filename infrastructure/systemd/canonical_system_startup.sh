@@ -74,6 +74,12 @@ parse_args() {
 
 require_root() {
   if [[ $EUID -ne 0 ]]; then
+    # Allow non-root for dry-run checks to enable operator validation without
+    # requiring root privileges. If DRY_RUN is not set, require root as before.
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+      log_warn "Not running as root — continuing because --dry-run was requested"
+      return 0
+    fi
     log_error "Run this script as root (sudo)."
     exit 1
   fi
@@ -544,17 +550,21 @@ main() {
   ensure_env_value PYTHON_BIN
   check_python_runtime
   # Ensure protobuf version meets minimum requirements to avoid deprecated C-API usage
-  if ! PYTHONPATH=. conda run -n justnews-py312 python "$repo_root/scripts/check_protobuf_version.py"; then
-    log_error "Protobuf version does not meet the recommended minimum; please upgrade your Python environment's protobuf to >=4.24.0. Aborting startup."
-    exit 1
+  # CI and dry-run callers can opt out by setting SKIP_PROTOBUF_CHECK=true
+  if [[ "${SKIP_PROTOBUF_CHECK:-false}" == "true" ]]; then
+    log_warn "SKIP_PROTOBUF_CHECK=true — skipping protobuf version check"
+  else
+    if ! PYTHONPATH=. conda run -n justnews-py312 python "$repo_root/scripts/check_protobuf_version.py"; then
+      log_error "Protobuf version does not meet the recommended minimum; please upgrade your Python environment's protobuf to >=4.24.0. Aborting startup."
+      exit 1
+    fi
   fi
   check_data_mount
   # MariaDB check: skip when MARIADB_HOST unset or SKIP_MARIADB_CHECK=true
   check_mariadb_connectivity
   # Database connectivity checks are intentionally skipped here (PostgreSQL deprecated)
 
-  local repo_root
-  repo_root="$(resolve_repo_root)"
+  # repo_root was resolved earlier; do not re-declare / reassign here.
 
   # Gather args destined for reset_and_start while keeping a copy for health logic
   if [[ "$DRY_RUN" == true ]]; then

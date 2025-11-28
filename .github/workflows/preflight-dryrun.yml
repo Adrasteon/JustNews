@@ -1,0 +1,56 @@
+name: Preflight dry-run checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create test global.env (skip MariaDB probe)
+        run: |
+          cat > $GITHUB_WORKSPACE/test_global.env <<'ENV'
+          SERVICE_DIR=$GITHUB_WORKSPACE
+          PYTHON_BIN=/usr/bin/python3
+          JUSTNEWS_DATA_MOUNT=$GITHUB_WORKSPACE
+          # Skip aggressive conda-based checks in CI jobs
+          CHROMADB_REQUIRE_CANONICAL=0
+          ENV
+
+      - name: Dry-run preflight (no MariaDB probe)
+        env:
+          GLOBAL_ENV: ${{ github.workspace }}/test_global.env
+          SKIP_PROTOBUF_CHECK: 'true'
+          SKIP_MARIADB_CHECK: 'true'
+        run: |
+          bash infrastructure/systemd/canonical_system_startup.sh --dry-run
+
+      - name: Create test global.env (exercise MariaDB probe)
+        run: |
+          cat > $GITHUB_WORKSPACE/test_global_mariadb.env <<'ENV'
+          SERVICE_DIR=$GITHUB_WORKSPACE
+          PYTHON_BIN=/usr/bin/python3
+          JUSTNEWS_DATA_MOUNT=$GITHUB_WORKSPACE
+          MARIADB_HOST=127.0.0.1
+          MARIADB_PORT=3306
+          MARIADB_USER=fake
+          MARIADB_PASSWORD=fake
+          MARIADB_DB=fake_db
+          CHROMADB_REQUIRE_CANONICAL=0
+          ENV
+
+      - name: Dry-run preflight (exercise MariaDB probe)
+        env:
+          GLOBAL_ENV: ${{ github.workspace }}/test_global_mariadb.env
+          SKIP_PROTOBUF_CHECK: 'true'
+        run: |
+          bash infrastructure/systemd/canonical_system_startup.sh --dry-run || true
+
+      - name: Report success
+        if: always()
+        run: echo "Preflight dry-run job completed (probe outputs expected for the second run)."

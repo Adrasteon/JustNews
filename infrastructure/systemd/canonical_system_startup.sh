@@ -267,6 +267,7 @@ PYTHON
   fi
 
   log_warn "No mysql client or usable PYTHON_BIN+pymysql available; skipping MariaDB probe"
+  log_info "To enable the probe install 'mysql-client' on the host or ensure PYTHON_BIN points to a Python interpreter with 'pymysql' installed (pip install pymysql)"
   return 0
 }
 

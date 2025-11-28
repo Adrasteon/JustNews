@@ -48,7 +48,7 @@ To run tests now, ensure your Python environment has the repo's requirements ins
 
   MARIADB_HOST=127.0.0.1 MARIADB_PORT=13306 MARIADB_DB=justnews_test MARIADB_USER=justnews \
     MARIADB_PASSWORD=test REDIS_URL=redis://127.0.0.1:16379 PYTEST_RUNNING=1 E2E_REAL=1 \
-    pytest -q tests/e2e -q -s
+    pytest -q tests/e2e -q -s"
 
 echo "To tear down: docker-compose -f $COMPOSE_FILE down"
 

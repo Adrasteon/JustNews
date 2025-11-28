@@ -33,6 +33,23 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# Preferred conda env for Python helpers
+DEFAULT_CONDA_ENV="justnews-py312"
+CONDA_ENV="${CONDA_ENV:-$DEFAULT_CONDA_ENV}"
+
+# Helper: run a python script using conda run -n ${CONDA_ENV} when available;
+# otherwise fallback to PYTHON_BIN if configured, or system python.
+run_python_script() {
+  local script_path="$1"; shift || true
+  if command -v conda >/dev/null 2>&1; then
+    PYTHONPATH=. conda run -n "$CONDA_ENV" python "$script_path" "$@"
+  elif [[ -n "${PYTHON_BIN:-}" && -x "${PYTHON_BIN}" ]]; then
+    PYTHONPATH=. "$PYTHON_BIN" "$script_path" "$@"
+  else
+    PYTHONPATH=. python "$script_path" "$@"
+  fi
+}
+
 usage() {
   cat <<EOF
 Usage: canonical_system_startup.sh [--dry-run] [reset_and_start.sh options...]
@@ -555,7 +572,7 @@ main() {
   if [[ "${SKIP_PROTOBUF_CHECK:-false}" == "true" ]]; then
     log_warn "SKIP_PROTOBUF_CHECK=true — skipping protobuf version check"
   else
-    if ! PYTHONPATH=. conda run -n justnews-py312 python "$repo_root/scripts/check_protobuf_version.py"; then
+    if ! run_python_script "$repo_root/scripts/check_protobuf_version.py"; then
       log_error "Protobuf version does not meet the recommended minimum; please upgrade your Python environment's protobuf to >=4.24.0. Aborting startup."
       exit 1
     fi
@@ -612,7 +629,7 @@ main() {
       exit 1
     fi
     # Run a diagnostic to confirm the canonical host/port is a Chroma instance
-    if ! PYTHONPATH=. conda run -n justnews-py312 python "$repo_root/scripts/chroma_diagnose.py" --host "$chroma_host" --port "$chroma_port"; then
+    if ! run_python_script "$repo_root/scripts/chroma_diagnose.py" --host "$chroma_host" --port "$chroma_port"; then
       log_error "Chroma diagnostic failed for $chroma_host:$chroma_port (fatal under CHROMADB_REQUIRE_CANONICAL)"
       exit 1
     fi

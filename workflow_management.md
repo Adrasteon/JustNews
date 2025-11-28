@@ -156,6 +156,7 @@ POST /control/evict_pool — admin API to evict
  - Add more robust claim,XCLAIM/XAUTOCLAIM semantics for production Redis, improve idempotency guarantees and timeouts on job execution.
  - Add more monitoring & autoscaler rules based on historical metrics.
  - **TODO**: Revisit E2E testing strategy. The systemd-nspawn approach proved too complex/fragile (disabled for now). Consider Docker-based E2E tests or cloud-based test environments for real Redis/MariaDB testing. See docs/dev/systemd-nspawn.md for context on why it was disabled.
+ - **TODO**: Revisit E2E testing strategy. The systemd-nspawn approach proved too complex/fragile (disabled for now). We added a Docker-based E2E proof-of-concept which is faster to run locally and more CI-friendly — see `scripts/dev/docker-compose.e2e.yml` and `scripts/dev/run_e2e_docker.sh` for a local PoC and `.github/workflows/e2e-docker.yml` for a manual CI job.
 
 ---
 

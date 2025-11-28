@@ -1,0 +1,47 @@
+name: CI — E2E Docker (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      python_version:
+        description: 'Python version to run tests with'
+        required: false
+        default: '3.12'
+
+jobs:
+  e2e-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start docker-compose services
+        run: |
+          docker-compose -f scripts/dev/docker-compose.e2e.yml up -d
+
+      - name: Wait for DB and Redis
+        run: |
+          docker-compose -f scripts/dev/docker-compose.e2e.yml ps
+          sleep 5
+
+      - name: Install Python & deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-${{ github.event.inputs.python_version }} python3-pip
+          python3 -m pip install -r requirements.txt
+
+      - name: Run E2E tests
+        run: |
+          export MARIADB_HOST=127.0.0.1
+          export MARIADB_PORT=13306
+          export MARIADB_DB=justnews_test
+          export MARIADB_USER=justnews
+          export MARIADB_PASSWORD=test
+          export REDIS_URL=redis://127.0.0.1:16379
+          export E2E_REAL=1
+          export PYTEST_RUNNING=1
+          python3 -m pytest tests/e2e -q -s
+
+      - name: Tear down
+        if: always()
+        run: docker-compose -f scripts/dev/docker-compose.e2e.yml down -v

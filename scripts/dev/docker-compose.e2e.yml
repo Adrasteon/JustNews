@@ -6,7 +6,7 @@ services:
     # build the image from scripts/dev/db-mariadb/Dockerfile (context: scripts/dev)
     image: justnews/mariadb-preseed:local
     build:
-      context: ./scripts/dev
+      context: .
       dockerfile: db-mariadb/Dockerfile
     environment:
       MYSQL_ROOT_PASSWORD: rootpass

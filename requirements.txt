@@ -30,6 +30,7 @@ PyJWT>=2.8.0
 
 # Database client (MariaDB is preferred; legacy Postgres driver removed)
 mysql-connector-python>=9.0
+PyMySQL>=1.0
 sqlalchemy>=2.0.0
 
 # Testing dependencies

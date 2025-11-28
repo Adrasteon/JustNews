@@ -3,7 +3,7 @@ import uuid
 import json
 import time
 
-import mysql.connector
+import pymysql
 import redis
 
 
@@ -13,7 +13,8 @@ def get_db_conn():
     user = os.environ.get("MARIADB_USER", "justnews")
     passwd = os.environ.get("MARIADB_PASSWORD", "test")
     db = os.environ.get("MARIADB_DB", "justnews_test")
-    return mysql.connector.connect(host=host, port=port, user=user, password=passwd, database=db)
+    # Use a pure-Python client (pymysql) to avoid native auth-plugin loading
+    return pymysql.connect(host=host, port=port, user=user, password=passwd, database=db, charset='utf8mb4')
 
 
 def test_seed_job_present():

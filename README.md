@@ -125,6 +125,26 @@ Prefer running tests using the project's conda environment to ensure third-party
 # Either set `PYTHONPATH` and run pytest using the activated conda env:
 PYTHONPATH=$(pwd) conda run -n justnews-py312 pytest tests/agents/crawler -q
 
+Tip: To ensure you always run pytest inside the project's conda environment, use the helper:
+
+```bash
+scripts/dev/pytest.sh [pytest args]
+```
+This wrapper runs pytest via the `justnews-py312` environment (recommended for local dev).
+
+Git hooks: We ship a simple pre-push hook that encourages use of the pytest wrapper and can run quick unit smoke tests.
+Install hooks with:
+
+```bash
+./scripts/dev/install_hooks.sh
+# Optional strict mode: run quick tests on pre-push
+export GIT_STRICT_TEST_HOOK=1
+```
+
+CI note: GitHub Actions workflows were updated to create and use the `justnews-py312` conda environment during CI test runs (uses Miniconda). This keeps CI consistent with local dev.
+
+Self-hosted E2E tests: The repo now includes a self-hosted workflow (systemd-nspawn) for high-fidelity E2E tests that run MariaDB + Redis inside a systemd-nspawn container. See `.github/workflows/e2e-systemd-nspawn.yml` and `docs/dev/self-hosted-runners.md` for required runner configuration and security notes.
+
 # Or set the `PYTHON_BIN` environment variable to the conda python executable:
 PYTHONPATH=$(pwd) PYTHON_BIN=/home/adra/miniconda3/envs/justnews-py312/bin/python pytest tests/agents/crawler -q
 ```

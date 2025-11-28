@@ -34,6 +34,7 @@ from fastapi import HTTPException
 from prometheus_client import Counter, Gauge
 
 from common.metrics import JustNewsMetrics
+from database.utils.migrated_database_utils import create_database_service
 
 # Constants
 GPU_ORCHESTRATOR_PORT = int(os.environ.get("GPU_ORCHESTRATOR_PORT", "8008"))
@@ -81,6 +82,55 @@ class GPUOrchestratorEngine:
         # Worker pool management: track spawned adapter worker pools
         # Structure: {pool_id: {"model": str, "adapter": str|None, "num_workers": int, "procs": [Process], "started_at": float}}
         self._WORKER_POOLS: dict[str, dict] = {}
+        # Optional MariaDB service used for persistence of leases and pools
+        try:
+            self.db_service = create_database_service()
+        except Exception:
+            self.db_service = None
+        # Optional Redis client for streams
+        try:
+            import redis
+            redis_url = os.environ.get('REDIS_URL', None)
+            if redis_url:
+                self.redis_client = redis.from_url(redis_url)
+            else:
+                # default localhost
+                self.redis_client = redis.Redis()
+        except Exception:
+            self.redis_client = None
+
+            # Reclaim / DLQ configuration
+            self._job_retry_max = int(os.environ.get('ORCH_JOB_RETRY_MAX', '5'))
+            self._claim_idle_ms = int(os.environ.get('ORCH_CLAIM_IDLE_MS', str(60 * 1000)))
+            self._reclaim_interval_s = int(os.environ.get('ORCH_RECLAIM_INTERVAL_S', '30'))
+
+            # Start background reclaimer loop if redis available
+            try:
+                if self.redis_client:
+                    t = threading.Thread(target=self._reclaimer_loop, daemon=True)
+                    t.start()
+            except Exception:
+                self.logger.debug('Failed to start reclaimer loop')
+        # Rehydrate any persisted worker pool records so state survives restarts
+        try:
+            if self.db_service:
+                self._rehydrate_worker_pools_from_db()
+        except Exception:
+            # Best-effort: continue with empty in-memory pools if DB read fails
+            self.logger.debug('Failed to rehydrate worker pools from DB (continuing)')
+        
+        # Leader election state
+        self._leader_lock_name = os.environ.get('GPU_ORCHESTRATOR_LEADER_LOCK', 'gpu_orchestrator_leader')
+        # How long to wait for GET_LOCK when trying to acquire (seconds)
+        self._leader_try_timeout = int(os.environ.get('GPU_ORCHESTRATOR_LEADER_TRY_TIMEOUT', '1'))
+        self.is_leader = False
+
+        # Start background election loop
+        try:
+            t = threading.Thread(target=self._leader_election_loop, daemon=True)
+            t.start()
+        except Exception:
+            self.logger.debug('Failed to start leader election loop')
 
     def _setup_logging(self):
         """Set up logging for the GPU orchestrator."""
@@ -341,6 +391,17 @@ class GPUOrchestratorEngine:
                 agent_display_name=self.metrics.display_name
             ).inc(len(expired))
 
+        # Also purge expired leases from persistent DB (best-effort)
+        try:
+            if self.db_service:
+                cursor = self.db_service.mb_conn.cursor()
+                cursor.execute("DELETE FROM orchestrator_leases WHERE expires_at IS NOT NULL AND expires_at < NOW()")
+                self.db_service.mb_conn.commit()
+                cursor.close()
+        except Exception:
+            # Non-fatal - leave in-memory cleanup as primary
+            self.logger.debug("Failed to purge expired leases from DB (continuing)")
+
     def _validate_lease_request(self, req: dict[str, Any]) -> str | None:
         """Validate lease request parameters."""
         if req.get("min_memory_mb") is not None and req["min_memory_mb"] < 0:
@@ -384,6 +445,20 @@ class GPUOrchestratorEngine:
             "timestamp": time.time(),
         }
         ALLOCATIONS[token] = allocation
+        # Persist lease to DB (best-effort) with a default TTL (1h)
+        try:
+            if self.db_service:
+                ttl = int(os.environ.get('GPU_ORCHESTRATOR_LEASE_TTL', '3600'))
+                cursor = self.db_service.mb_conn.cursor()
+                # Use FROM_UNIXTIME for created_at handling where helpful, but simple NOW()/DATE_ADD is fine
+                cursor.execute(
+                    "INSERT INTO orchestrator_leases (token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata) VALUES (%s,%s,%s,%s,NOW(),DATE_ADD(NOW(), INTERVAL %s SECOND),NOW(),%s)",
+                    (token, agent, gpu_index if success else None, 'gpu' if success else 'cpu', ttl, json.dumps(allocation))
+                )
+                self.db_service.mb_conn.commit()
+                cursor.close()
+        except Exception as e:
+            self.logger.debug(f"Failed to persist lease to DB (non-fatal): {e}")
         return {"granted": True, **allocation}
 
     def release_gpu_lease(self, token: str) -> dict[str, Any]:
@@ -392,7 +467,32 @@ class GPUOrchestratorEngine:
         alloc = ALLOCATIONS.pop(token, None)
         if not alloc:
             raise HTTPException(status_code=404, detail="unknown_token")
+        # Also remove persistent lease row (best-effort)
+        try:
+            if self.db_service:
+                cursor = self.db_service.mb_conn.cursor()
+                cursor.execute("DELETE FROM orchestrator_leases WHERE token = %s", (token,))
+                self.db_service.mb_conn.commit()
+                cursor.close()
+        except Exception:
+            self.logger.debug("Failed to remove lease row from DB (non-fatal)")
         return {"released": True, "token": token}
+
+    def heartbeat_lease(self, token: str) -> bool:
+        """Update last_heartbeat for lease token in DB (best-effort)."""
+        try:
+            # Update in-memory timestamp if present
+            if token in ALLOCATIONS:
+                ALLOCATIONS[token]['timestamp'] = time.time()
+            if self.db_service:
+                cursor = self.db_service.mb_conn.cursor()
+                cursor.execute("UPDATE orchestrator_leases SET last_heartbeat = NOW() WHERE token = %s", (token,))
+                self.db_service.mb_conn.commit()
+                cursor.close()
+            return True
+        except Exception as e:
+            self.logger.debug(f"Failed to heartbeat lease in DB: {e}")
+            return False
 
     def get_allocations(self) -> dict[str, Any]:
         """Get current allocations."""
@@ -450,15 +550,67 @@ class GPUOrchestratorEngine:
         cur = self.get_pool_policy()
         cur.update(policy)
         self._POOL_POLICY = cur
+        # Trigger immediate enforcement so policy changes take effect promptly
+        try:
+            self._enforce_pool_policy_once()
+        except Exception:
+            pass
+
         return self._POOL_POLICY
+
+    def _enforce_pool_policy_once(self) -> None:
+        """Perform one enforcement pass (evict pools if over configured limits).
+
+        This is a synchronous variant used to trigger immediate enforcement after
+        policy updates or during tests/ops where waiting for the background
+        enforcer is undesirable.
+        """
+        try:
+            policy = self.get_pool_policy()
+            total = sum(p.get('num_workers', 0) for p in self._WORKER_POOLS.values())
+            max_total = policy.get('max_total_workers', 8)
+
+            if total > max_total:
+                ordered = sorted(self._WORKER_POOLS.items(), key=lambda kv: kv[1].get('started_at', 0))
+                for pool_id, meta in ordered:
+                    if total <= max_total:
+                        break
+                    try:
+                        self.stop_worker_pool(pool_id)
+                        total -= meta.get('num_workers', 0)
+                        self.worker_pool_evictions_counter.labels(reason='over_total_sync').inc()
+                    except Exception:
+                        pass
+
+                if total > max_total:
+                    for pool_id, meta in ordered:
+                        if total <= max_total:
+                            break
+                        try:
+                            self.stop_worker_pool(pool_id)
+                            total -= meta.get('num_workers', 0)
+                            self.worker_pool_evictions_counter.labels(reason='over_total_force_sync').inc()
+                        except Exception:
+                            pass
+        except Exception:
+            pass
 
     def _background_policy_enforcer(self):
         """Background thread that enforces pool lifecycle policies periodically."""
         while True:
             try:
+                # Only the leader should actively enforce pool lifecycle policies.
+                if not getattr(self, 'is_leader', False):
+                    # still update metrics snapshot but skip enforcement
+                    self.worker_pools_gauge.labels(agent=self.metrics.agent_name, agent_display_name=self.metrics.display_name).set(len(self._WORKER_POOLS))
+                    time.sleep(self.get_pool_policy().get('enforce_period_s', 10))
+                    continue
+
                 policy = self.get_pool_policy()
+                self.logger.debug(f"Policy enforcer tick: policy={policy}")
                 # Compute total configured workers
                 total = sum(p.get('num_workers', 0) for p in self._WORKER_POOLS.values())
+                self.logger.debug(f"Policy enforcer tick: current_total_workers={total}, pools={list(self._WORKER_POOLS.keys())}")
                 max_total = policy.get('max_total_workers', 8)
 
                 # Evict least-recently used pools if over max_total
@@ -475,12 +627,26 @@ class GPUOrchestratorEngine:
                             continue
                         # evict whole pool
                         try:
+                            self.logger.info(f"Evicting worker pool {pool_id} to reduce total workers")
                             self.stop_worker_pool(pool_id)
                             total -= meta.get('num_workers', 0)
                             evicted += 1
                             self.worker_pool_evictions_counter.labels(reason='over_total').inc()
                         except Exception:
                             pass
+
+                    # Fallback: if total still above threshold, evict pools regardless of min_warm to make progress
+                    if total > max_total:
+                        for pool_id, meta in ordered:
+                            if total <= max_total:
+                                break
+                            try:
+                                self.logger.info(f"Force-evicting worker pool {pool_id} to enforce limit")
+                                self.stop_worker_pool(pool_id)
+                                total -= meta.get('num_workers', 0)
+                                self.worker_pool_evictions_counter.labels(reason='over_total_force').inc()
+                            except Exception:
+                                pass
 
                 # Evict pools that have been idle longer than pool_idle_timeout_s
                 now = time.time()
@@ -511,6 +677,82 @@ class GPUOrchestratorEngine:
             # Sleep until next enforcement
             period = self.get_pool_policy().get('enforce_period_s', 10)
             time.sleep(period)
+
+    def try_acquire_leader_lock(self, timeout: int | None = None) -> bool:
+        """Attempt to acquire a MariaDB GET_LOCK for leader role.
+
+        Returns True if lock acquired and False otherwise.
+        This is best-effort and uses the current db connection associated with the
+        engine's `db_service`. If no DB is available or an error occurs, returns False.
+        """
+        if not self.db_service:
+            return False
+        try:
+            if timeout is None:
+                timeout = self._leader_try_timeout
+            cursor = self.db_service.mb_conn.cursor()
+            cursor.execute("SELECT GET_LOCK(%s,%s)", (self._leader_lock_name, int(timeout)))
+            res = cursor.fetchone()
+            cursor.close()
+            locked = bool(res and int(res[0]) == 1)
+            if locked:
+                self.is_leader = True
+                self.logger.info('Acquired leader lock')
+            return locked
+        except Exception as e:
+            self.logger.debug(f'Leader lock attempt failed: {e}')
+            return False
+
+    def release_leader_lock(self) -> bool:
+        """Release the MariaDB GET_LOCK if held.
+
+        Returns True if the lock was released, False on failure.
+        """
+        if not self.db_service:
+            return False
+        try:
+            cursor = self.db_service.mb_conn.cursor()
+            cursor.execute("SELECT RELEASE_LOCK(%s)", (self._leader_lock_name,))
+            res = cursor.fetchone()
+            cursor.close()
+            released = bool(res and res[0] == 1)
+            if released:
+                self.is_leader = False
+                self.logger.info('Released leader lock')
+            return released
+        except Exception as e:
+            self.logger.debug(f'Failed to release leader lock: {e}')
+            return False
+
+    def _leader_election_loop(self):
+        """Background loop that acquires leadership when possible and yields when lost."""
+        # If we don't have a DB connection, do nothing.
+        while True:
+            try:
+                if not getattr(self, 'is_leader', False):
+                    got = self.try_acquire_leader_lock(timeout=self._leader_try_timeout)
+                    if got:
+                        # When becoming leader, reconcile state immediately (best-effort)
+                        try:
+                            self._rehydrate_worker_pools_from_db()
+                        except Exception:
+                            pass
+                else:
+                    # we are leader; verify connection still healthy (best-effort)
+                    try:
+                        # a simple no-op query to detect dead connection
+                        cursor = self.db_service.mb_conn.cursor()
+                        cursor.execute('SELECT 1')
+                        cursor.fetchone()
+                        cursor.close()
+                    except Exception:
+                        # lost DB connection -> lose leadership
+                        self.logger.warning('Leader DB connection lost, relinquishing leadership')
+                        self.is_leader = False
+                time.sleep(int(os.environ.get('GPU_ORCHESTRATOR_LEADER_LOOP_S', '2')))
+            except Exception:
+                # don't crash the loop
+                time.sleep(2)
 
 
     def get_policy(self) -> dict[str, Any]:
@@ -942,6 +1184,18 @@ class GPUOrchestratorEngine:
 
         # Audit with optional requestor
         self._audit_worker_pool_event('start', pool_id, model_id, adapter, num_workers, requestor=requestor, variant=variant)
+        # Persist worker pool row to DB (best-effort)
+        try:
+            if self.db_service:
+                cursor = self.db_service.mb_conn.cursor()
+                cursor.execute(
+                    "INSERT INTO worker_pools (pool_id, agent_name, model_id, adapter, desired_workers, spawned_workers, started_at, status, hold_seconds, metadata) VALUES (%s,%s,%s,%s,%s,%s,NOW(),%s,%s,%s)",
+                    (pool_id, requestor.get('user') if requestor else None, model_id, adapter, num_workers, num_workers, 'running', hold_seconds, json.dumps({'variant': variant}))
+                )
+                self.db_service.mb_conn.commit()
+                cursor.close()
+        except Exception:
+            self.logger.debug('Failed to persist worker_pool to DB (non-fatal)')
         return {'pool_id': pool_id, 'num_workers': num_workers, 'status': 'started', 'variant': variant}
 
     def stop_worker_pool(self, pool_id: str) -> dict[str, Any]:
@@ -965,6 +1219,15 @@ class GPUOrchestratorEngine:
 
         self._WORKER_POOLS.pop(pool_id, None)
         self._audit_worker_pool_event('stop', pool_id, None, None, 0, requestor=None)
+        # Mark persistent pool as stopped (best-effort)
+        try:
+            if self.db_service:
+                cursor = self.db_service.mb_conn.cursor()
+                cursor.execute("UPDATE worker_pools SET status=%s, spawned_workers=0 WHERE pool_id=%s", ('stopped', pool_id))
+                self.db_service.mb_conn.commit()
+                cursor.close()
+        except Exception:
+            self.logger.debug('Failed to update worker_pool status in DB (non-fatal)')
         return {'pool_id': pool_id, 'status': 'stopped'}
 
     def list_worker_pools(self) -> list[dict[str, Any]]:
@@ -1081,6 +1344,37 @@ class GPUOrchestratorEngine:
         except Exception:
             self.logger.warning('Failed to write policy audit entry')
 
+    def _rehydrate_worker_pools_from_db(self) -> None:
+        """Load persisted worker pools from DB into memory without spawning processes.
+
+        This is a best-effort, read-only hydration used during startup so the orchestrator
+        can represent existing pools and reconcile them later.
+        """
+        try:
+            cursor = self.db_service.mb_conn.cursor(dictionary=True)
+            cursor.execute("SELECT pool_id, agent_name, model_id, adapter, desired_workers, spawned_workers, started_at, status, hold_seconds, metadata FROM worker_pools WHERE status IN ('starting','running','draining')")
+            rows = cursor.fetchall()
+            cursor.close()
+
+            for r in rows:
+                pid = r.get('pool_id')
+                # We don't (re)spawn processes here — just restore metadata for reconciliation
+                self._WORKER_POOLS[pid] = {
+                    'model': r.get('model_id'),
+                    'adapter': r.get('adapter'),
+                    'num_workers': int(r.get('desired_workers') or 0),
+                    'procs': [],
+                    'started_at': (r.get('started_at').timestamp() if getattr(r.get('started_at'), 'timestamp', None) else None),
+                    'hold_seconds': int(r.get('hold_seconds') or 600),
+                    'variant': (r.get('metadata') and (json.loads(r.get('metadata')).get('variant') if isinstance(r.get('metadata'), str) else r.get('metadata', {}).get('variant'))) or None,
+                }
+
+            # Update metrics
+            self.worker_pools_gauge.labels(agent=self.metrics.agent_name, agent_display_name=self.metrics.display_name).set(len(self._WORKER_POOLS))
+        except Exception as e:
+            # Do not fail startup, just log
+            self.logger.debug(f'Error rehydrating worker pools from DB: {e}')
+
     def get_mps_allocation_config(self) -> dict[str, Any]:
         """Get MPS allocation configuration."""
         try:
@@ -1101,6 +1395,188 @@ class GPUOrchestratorEngine:
         """Get Prometheus metrics as text."""
         from prometheus_client import generate_latest
         return generate_latest(self.metrics.registry).decode('utf-8')
+
+    # Job queue helpers
+    def submit_job(self, job_id: str, job_type: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Persist a job row and push into Redis stream (fallback to DB-only if Redis unavailable)."""
+        try:
+            # Persist job to DB if available
+            if self.db_service:
+                cursor = self.db_service.mb_conn.cursor()
+                cursor.execute(
+                    "INSERT INTO orchestrator_jobs (job_id, type, payload, status, attempts, created_at) VALUES (%s,%s,%s,%s,%s,NOW())",
+                    (job_id, job_type, json.dumps(payload), 'pending', 0)
+                )
+                self.db_service.mb_conn.commit()
+                cursor.close()
+
+            # Try to push to Redis stream if available
+            if self.redis_client:
+                try:
+                    # stream name is type-based, fallback to generic inference_jobs
+                    stream = os.environ.get('ORCH_STREAM_PREFIX', 'stream:orchestrator:') + (job_type or 'inference_jobs')
+                    # store payload as JSON string under 'payload'
+                    self.redis_client.xadd(stream, {'job_id': job_id, 'type': job_type, 'payload': json.dumps(payload)})
+                except Exception:
+                    # Non-fatal; keep job persisted in DB
+                    self.logger.debug('Failed to write job to Redis stream (non-fatal)')
+
+            return {'job_id': job_id, 'status': 'submitted'}
+        except Exception as e:
+            self.logger.error(f'Failed to submit job: {e}')
+            raise
+
+    def get_job(self, job_id: str) -> dict[str, Any] | None:
+        """Retrieve job record from DB if available, else return from in-memory cache if present."""
+        try:
+            if self.db_service:
+                cursor = self.db_service.mb_conn.cursor(dictionary=True)
+                cursor.execute("SELECT job_id, type, payload, status, attempts, created_at, updated_at, last_error FROM orchestrator_jobs WHERE job_id=%s", (job_id,))
+                row = cursor.fetchone()
+                cursor.close()
+                if row:
+                    # parse payload JSON
+                    try:
+                        row['payload'] = json.loads(row['payload']) if row.get('payload') else {}
+                    except Exception:
+                        pass
+                    return row
+            # fallback not found
+            return None
+        except Exception as e:
+            self.logger.debug(f'Failed to read job from DB: {e}')
+            return None
+
+    def _reclaimer_pass(self):
+        """Single pass over orchestrator streams to reclaim or move stale pending messages.
+
+        For each stream we examine pending messages older than _claim_idle_ms, increment attempts
+        in the job table, and either requeue them or send to DLQ if attempts exceed threshold.
+        """
+        if not self.redis_client:
+            return
+
+        streams = [
+            os.environ.get('ORCH_STREAM_PREFIX', 'stream:orchestrator:') + 'inference_jobs',
+            os.environ.get('ORCH_STREAM_PREFIX', 'stream:orchestrator:') + 'preloads'
+        ]
+
+        for s in streams:
+            try:
+                # xpending_range returns list of pending entries
+                # we use a small window per pass for risk mitigation
+                pending = []
+                try:
+                    # xpending_range exists on newer redis clients; fall back to xpending if needed
+                    pending = self.redis_client.xpending_range(s, 'cg:inference', '-', '+', count=100)
+                except Exception:
+                    # Not supported: try using XPENDING summary -> get count and range via XINFO/PENDING not ideal
+                    try:
+                        resp = self.redis_client.xpending(s, 'cg:inference')
+                        # can't parse easily; skip in this fallback
+                        pending = []
+                    except Exception:
+                        pending = []
+
+                for entry in pending:
+                    try:
+                        # entry is (message_id, consumer, idle, delivered_count)
+                        msg_id = entry[0]
+                        idle = int(entry[2]) if len(entry) > 2 else 0
+                        if idle < self._claim_idle_ms:
+                            continue
+
+                        # read full message so we can inspect job_id and payload
+                        entries = self.redis_client.xrange(s, min=msg_id, max=msg_id)
+                        if not entries:
+                            continue
+                        _, fields = entries[0]
+                        job_id = None
+                        payload = None
+                        if b'job_id' in fields or 'job_id' in fields:
+                            job_id = fields.get(b'job_id') or fields.get('job_id')
+                            if isinstance(job_id, bytes):
+                                job_id = job_id.decode('utf-8')
+                        pld = fields.get(b'payload') or fields.get('payload')
+                        if pld:
+                            if isinstance(pld, bytes):
+                                try:
+                                    payload = json.loads(pld.decode('utf-8'))
+                                except Exception:
+                                    payload = pld.decode('utf-8')
+                            else:
+                                try:
+                                    payload = json.loads(pld)
+                                except Exception:
+                                    payload = pld
+
+                        # fetch DB attempts (best-effort)
+                        attempts = 0
+                        if job_id and self.db_service:
+                            try:
+                                cursor = self.db_service.mb_conn.cursor()
+                                cursor.execute('SELECT attempts FROM orchestrator_jobs WHERE job_id=%s', (job_id,))
+                                r = cursor.fetchone()
+                                cursor.close()
+                                if r:
+                                    attempts = int(r[0])
+                            except Exception:
+                                attempts = attempts
+
+                        attempts += 1
+
+                        if job_id and self.db_service:
+                            try:
+                                cursor = self.db_service.mb_conn.cursor()
+                                cursor.execute('UPDATE orchestrator_jobs SET attempts=%s, updated_at=NOW() WHERE job_id=%s', (attempts, job_id))
+                                self.db_service.mb_conn.commit()
+                                cursor.close()
+                            except Exception:
+                                pass
+
+                        if attempts >= self._job_retry_max:
+                            # move to DLQ
+                            dlq = s + ':dlq'
+                            try:
+                                self.redis_client.xadd(dlq, {'job_id': job_id or '', 'payload': json.dumps(payload) if payload is not None else ''})
+                            except Exception:
+                                pass
+                            # mark job dead-lettered in DB
+                            if job_id and self.db_service:
+                                try:
+                                    cursor = self.db_service.mb_conn.cursor()
+                                    cursor.execute('UPDATE orchestrator_jobs SET status=%s, last_error=%s, updated_at=NOW() WHERE job_id=%s', ('dead_letter', 'max_attempts_exceeded', job_id))
+                                    self.db_service.mb_conn.commit()
+                                    cursor.close()
+                                except Exception:
+                                    pass
+                            # ack original message
+                            try:
+                                self.redis_client.xack(s, 'cg:inference', msg_id)
+                            except Exception:
+                                pass
+                        else:
+                            # requeue message as a new message for processing
+                            try:
+                                self.redis_client.xadd(s, {'job_id': job_id or '', 'type': fields.get(b'type') or fields.get('type') or '', 'payload': json.dumps(payload) if payload is not None else ''})
+                                self.redis_client.xack(s, 'cg:inference', msg_id)
+                            except Exception:
+                                pass
+
+                    except Exception:
+                        # protect loop from bad entries
+                        pass
+            except Exception:
+                # ignore stream errors, continue next stream
+                pass
+
+    def _reclaimer_loop(self):
+        while True:
+            try:
+                self._reclaimer_pass()
+            except Exception:
+                pass
+            time.sleep(self._reclaim_interval_s)
 
 
 # Global engine instance

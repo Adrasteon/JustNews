@@ -143,6 +143,69 @@ def create_knowledge_graph_tables():
             logger.error(f"❌ Error creating knowledge graph table {i}: {e}")
             raise
 
+    # Create orchestrator_leases table for GPU orchestrator durable leases
+    lease_query = """
+    CREATE TABLE IF NOT EXISTS orchestrator_leases (
+        token VARCHAR(64) PRIMARY KEY,
+        agent_name VARCHAR(255) NOT NULL,
+        gpu_index INT NULL,
+        mode VARCHAR(16) NOT NULL DEFAULT 'gpu',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NULL,
+        last_heartbeat TIMESTAMP NULL,
+        metadata JSON NULL
+    ) ENGINE=InnoDB;
+    """
+    try:
+        execute_query(lease_query, fetch=False)
+        logger.info("✅ orchestrator_leases table created or already exists")
+    except Exception as e:
+        logger.error(f"❌ Error creating orchestrator_leases table: {e}")
+        raise
+
+    pools_query = """
+    CREATE TABLE IF NOT EXISTS worker_pools (
+        pool_id VARCHAR(128) PRIMARY KEY,
+        agent_name VARCHAR(255) NULL,
+        model_id VARCHAR(255) NULL,
+        adapter VARCHAR(255) NULL,
+        desired_workers INT NOT NULL DEFAULT 0,
+        spawned_workers INT NOT NULL DEFAULT 0,
+        started_at TIMESTAMP NULL,
+        last_heartbeat TIMESTAMP NULL,
+        status VARCHAR(32) NOT NULL DEFAULT 'starting',
+        hold_seconds INT NOT NULL DEFAULT 600,
+        metadata JSON NULL
+    ) ENGINE=InnoDB;
+    """
+    try:
+        execute_query(pools_query, fetch=False)
+        logger.info("✅ worker_pools table created or already exists")
+    except Exception as e:
+        logger.error(f"❌ Error creating worker_pools table: {e}")
+        raise
+
+    # Create orchestrator_jobs table for persistent job store
+    jobs_query = """
+    CREATE TABLE IF NOT EXISTS orchestrator_jobs (
+        job_id VARCHAR(128) PRIMARY KEY,
+        type VARCHAR(64) NOT NULL,
+        payload JSON NOT NULL,
+        status VARCHAR(32) NOT NULL DEFAULT 'pending',
+        owner_pool VARCHAR(128) NULL,
+        attempts INT NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NULL,
+        last_error TEXT NULL
+    ) ENGINE=InnoDB;
+    """
+    try:
+        execute_query(jobs_query, fetch=False)
+        logger.info("✅ orchestrator_jobs table created or already exists")
+    except Exception as e:
+        logger.error(f"❌ Error creating orchestrator_jobs table: {e}")
+        raise
+
 def main():
     """Main initialization function"""
     logger.info("🚀 Starting JustNews Database Initialization")

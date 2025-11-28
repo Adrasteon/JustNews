@@ -1,0 +1,111 @@
+# TODO: This workflow is currently disabled due to setup complexity.
+# The systemd-nspawn container setup proved too time-consuming and fragile
+# for reliable CI use. Needs simplification before re-enabling.
+
+name: CI — E2E (systemd-nspawn, self-hosted) [DISABLED]
+
+on:
+  # workflow_dispatch: {}
+  # Disabled - do not run automatically
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: 'Force run (requires manual enable)'
+        required: true
+        default: 'false'
+
+jobs:
+  e2e-systemd:
+    # This job requires a self-hosted runner capable of systemd-nspawn and sudo.
+    # Use a self-hosted runner with labels like: self-hosted, linux, systemd
+    runs-on: [self-hosted, linux, systemd]
+    # NOTE: This job runs on self-hosted runners and therefore uses machine-level access
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Ensure basic tooling available
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y debootstrap systemd-container rsync tar bc sudo
+
+      - name: Prepare runner (install tooling & optionally create base cache)
+        run: |
+          sudo scripts/dev/setup_selfhosted_runner.sh || true
+
+      - name: Restore or create container
+        run: |
+          # If a prebuilt cache is present on the runner, extract it to speed up bootstrapping.
+          CACHE=/var/lib/ci_cache/justnews_test_base.tar.gz
+          if [ -f "$CACHE" ]; then
+            echo "Using cached base - extracting into machine root"
+            sudo rm -rf /var/lib/machines/justnews-test || true
+            sudo tar -xzf $CACHE -C /var/lib/machines/ || true
+          else
+            echo "No cache found, creating container via debootstrap"
+            sudo scripts/dev/run_systemd_nspawn_env.sh create
+            # Create a cache for future runs
+            sudo mkdir -p /var/lib/ci_cache
+            sudo tar -czf /var/lib/ci_cache/justnews_test_base.tar.gz -C /var/lib/machines justnews-test || true
+          fi
+
+      - name: Start container
+        run: |
+          sudo scripts/dev/run_systemd_nspawn_env.sh start
+
+      - name: Install system services inside container (MariaDB + Redis)
+        run: |
+          sudo scripts/dev/run_systemd_nspawn_env.sh install
+
+      - name: Wait for DB & Redis to start
+        run: |
+          # Give services time to start
+          sleep 5
+          sudo machinectl shell justnews-test /bin/bash -lc "systemctl is-active --quiet mariadb && echo 'mariadb ok' || (journalctl -u mariadb -n 200; exit 2)"
+          sudo machinectl shell justnews-test /bin/bash -lc "systemctl is-active --quiet redis-server && echo 'redis ok' || (journalctl -u redis-server -n 200; exit 2)"
+
+      - name: Copy project into container
+        run: |
+          TAR=/tmp/justnews_repo.tar.gz
+          sudo tar -czf $TAR --exclude .git --exclude tests/.pytest_cache -C $GITHUB_WORKSPACE .
+          sudo machinectl copy-to justnews-test $TAR /root/
+          sudo machinectl shell justnews-test /bin/bash -lc "mkdir -p /root/justnews && tar -xzf /root/justnews_repo.tar.gz -C /root/justnews"
+
+      - name: Prepare Python environment in container
+        run: |
+          # Install Python & pip in container and install repo deps
+          sudo machinectl shell justnews-test /bin/bash -lc "apt-get update && apt-get install -y python3.12 python3-pip build-essential libssl-dev libffi-dev python3.12-dev"
+          sudo machinectl shell justnews-test /bin/bash -lc "python3.12 -m pip install --upgrade pip setuptools wheel && cd /root/justnews && if [ -f requirements.txt ]; then python3.12 -m pip install -r requirements.txt; fi"
+
+      - name: Create test DB and user inside container
+        run: |
+          sudo machinectl shell justnews-test /bin/bash -lc "mysql -e \"CREATE DATABASE IF NOT EXISTS justnews_test; CREATE USER IF NOT EXISTS 'justnews'@'localhost' IDENTIFIED BY 'test'; GRANT ALL PRIVILEGES ON justnews_test.* TO 'justnews'@'localhost'; FLUSH PRIVILEGES;\""
+
+      - name: Run full E2E tests inside container
+        run: |
+          # Run the full E2E test suite under tests/e2e against real Redis & MariaDB
+          sudo machinectl shell justnews-test /bin/bash -lc "cd /root/justnews && E2E_REAL=1 PYTEST_RUNNING=1 PYTHONPATH=/root/justnews MARIADB_HOST=127.0.0.1 MARIADB_PORT=3306 MARIADB_DB=justnews_test MARIADB_USER=justnews MARIADB_PASSWORD=test REDIS_URL=redis://127.0.0.1:6379 python3.12 -m pytest -q tests/e2e -q -s"
+
+      - name: Collect container logs for debugging
+        if: always()
+        run: |
+          OUTDIR=/tmp/justnews_artifacts
+          mkdir -p $OUTDIR
+          sudo machinectl copy-from justnews-test /var/log/mysql $OUTDIR || true
+          sudo machinectl copy-from justnews-test /var/log/redis $OUTDIR || true
+          sudo machinectl shell justnews-test /bin/bash -lc "if [ -d /root/justnews/logs ]; then tar -czf /root/justnews_logs.tgz -C /root/justnews logs; fi" || true
+          sudo machinectl copy-from justnews-test /root/justnews_logs.tgz $OUTDIR || true
+
+      - name: Upload container artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-systemd-logs
+          path: /tmp/justnews_artifacts
+
+      - name: Stop and destroy container (cleanup)
+        if: always()
+        run: |
+          sudo scripts/dev/run_systemd_nspawn_env.sh stop || true
+          sudo scripts/dev/run_systemd_nspawn_env.sh destroy || true

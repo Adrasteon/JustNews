@@ -1,0 +1,74 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+  filelog/gpu:
+    include:
+      - /var/log/kern.log
+      - /var/log/nvidia-installer.log
+      - /var/log/nvidia-driver.log
+    start_at: end
+    include_file_name: true
+    operators:
+      - type: regex_parser
+        regex: '^(?P<timestamp>[^ ]+\s+[^ ]+)\s+(?P<host>[^ ]+)\s+(?P<message>.*)$'
+        timestamp:
+          parse_from: attributes.timestamp
+          layout_type: gotime
+          layout: 'Jan 2 15:04:05'
+        severity:
+          parse_from: attributes.message
+      - type: move
+        from: attributes.message
+        to: body
+
+processors:
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: ${env:OTEL_MEMORY_LIMIT_MIB}
+  batch:
+    send_batch_max_size: 2048
+    send_batch_size: 512
+    timeout: 5s
+  resource/node:
+    attributes:
+      - action: upsert
+        key: service.name
+        value: ${env:OTEL_SERVICE_NAME}
+      - action: upsert
+        key: deployment.environment
+        value: ${env:DEPLOYMENT_ENVIRONMENT}
+      - action: upsert
+        key: host.id
+        value: ${env:HOSTNAME}
+      - action: upsert
+        key: justnews.gpu.host_role
+        value: node
+
+exporters:
+  otlp/upstream:
+    endpoint: ${env:OTEL_UPSTREAM_ENDPOINT}
+    tls:
+      insecure: ${env:OTEL_UPSTREAM_INSECURE}
+    headers:
+      authorization: ${env:OTEL_UPSTREAM_AUTH}
+
+service:
+  telemetry:
+    logs:
+      level: ${env:OTEL_LOG_LEVEL}
+    metrics:
+      address: 0.0.0.0:8889
+  pipelines:
+    # Metrics pipeline temporarily disabled (2025-11) while we revisit OTEL Prom remote_write strategy.
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource/node, batch]
+      exporters: [otlp/upstream]
+    logs:
+      receivers: [otlp, filelog/gpu]
+      processors: [memory_limiter, resource/node, batch]
+      exporters: [otlp/upstream]

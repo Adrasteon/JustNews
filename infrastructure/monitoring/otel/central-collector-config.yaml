@@ -1,0 +1,61 @@
+receivers:
+  otlp/downstream:
+    protocols:
+      grpc:
+        endpoint: ${env:OTEL_CENTRAL_GRPC_ENDPOINT}
+      http:
+        endpoint: ${env:OTEL_CENTRAL_HTTP_ENDPOINT}
+
+processors:
+  memory_limiter:
+    limit_mib: ${env:OTEL_MEMORY_LIMIT_MIB}
+    check_interval: 10s
+  batch:
+    send_batch_max_size: 4096
+    send_batch_size: 1024
+    timeout: 5s
+  resource/control:
+    attributes:
+      - action: upsert
+        key: service.name
+        value: ${env:OTEL_SERVICE_NAME}
+      - action: upsert
+        key: deployment.environment
+        value: ${env:DEPLOYMENT_ENVIRONMENT}
+      - action: upsert
+        key: justnews.collector.role
+        value: central
+
+exporters:
+  otlphttp/tempo:
+    endpoint: ${env:TEMPO_ENDPOINT}
+    tls:
+      insecure: ${env:TEMPO_INSECURE}
+  otlphttp/jaeger:
+    endpoint: ${env:JAEGER_ENDPOINT}
+    tls:
+      insecure: ${env:JAEGER_INSECURE}
+  loki/default:
+    endpoint: ${env:LOKI_ENDPOINT}
+    tls:
+      insecure: ${env:LOKI_INSECURE}
+    default_labels_enabled:
+      exporter: false
+      job: true
+
+service:
+  telemetry:
+    logs:
+      level: ${env:OTEL_LOG_LEVEL}
+    metrics:
+      address: 0.0.0.0:8890
+  pipelines:
+    # Metrics pipeline temporarily disabled (2025-11) while remote write tuning is pending.
+    traces:
+      receivers: [otlp/downstream]
+      processors: [memory_limiter, resource/control, batch]
+      exporters: [otlphttp/tempo, otlphttp/jaeger]
+    logs:
+      receivers: [otlp/downstream]
+      processors: [memory_limiter, resource/control, batch]
+      exporters: [loki/default]

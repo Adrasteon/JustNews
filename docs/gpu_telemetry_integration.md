@@ -87,3 +87,47 @@ After editing `/etc/default/justnews-gpu-telemetry` restart the service to apply
 ```bash
 sudo systemctl restart justnews-gpu-telemetry.service
 ```
+
+OpenTelemetry collectors
+------------------------
+To tie GPU telemetry, kernel logs, and distributed traces together use the OpenTelemetry collector assets added in `infrastructure/monitoring/otel/`.
+
+### Node collectors (per GPU host)
+
+1. Install the collector:
+  ```bash
+  sudo scripts/ops/install_otel_node_collector.sh
+  ```
+2. Override any defaults in `/etc/justnews/monitoring/otel/node.env` (OTLP upstream endpoint, DCGM scrape target, etc.).
+3. Validate the config: `sudo /usr/local/bin/otelcol-contrib --config /etc/justnews/monitoring/otel/node-collector-config.yaml --dry-run`.
+4. Ensure `justnews-otel-node.service` is active before starting GPU workloads (`systemctl status justnews-otel-node.service`).
+
+The node config tails `/var/log/kern.log` plus NVIDIA driver logs, ingests OTLP spans/logs from agents, and forwards everything upstream over OTLP. DCGM/node exporter scraping + Prometheus remote_write fan-out are paused (2025-11) until we finish reworking the metrics story.
+
+### Central collectors (fan-out tier)
+
+1. Install on the monitoring/observability host:
+  ```bash
+  sudo scripts/ops/install_otel_central_collector.sh
+  ```
+2. Populate `/etc/justnews/monitoring/otel/central.env` with the Tempo/Loki endpoints for your environment. Prometheus remote_write inputs are currently ignored while metrics are disabled.
+3. Start and enable `justnews-otel-central.service`.
+
+The central collector receives OTLP from the nodes and fans traces to Tempo/Jaeger plus logs to Loki/Elastic. Metrics forwarding is temporarily disabled.
+
+### Application instrumentation
+
+- Services can opt-in to automatic tracing + OTLP export by calling `common.observability.bootstrap_observability("service-name")` during startup. The helper wires local logging and OpenTelemetry exporters (respecting the `OTEL_EXPORTER_*` env vars documented above).
+- Our Python tracing helpers (`agents/common/tracing.py`) now forward spans to OpenTelemetry whenever the SDK is installed and initialized, so existing `@traced` decorators produce both legacy in-process summaries and OTLP spans.
+
+### Prometheus integration
+
+- For now, keep Prometheus scraping exporters directly. The OTEL remote_write fan-out is disabled while we address duplicate-series issues.
+- Collector self-metrics remain exposed on `127.0.0.1:8889`/`8890`, but we no longer scrape them by default. Feel free to add ad-hoc scrapes if you need health signals during testing.
+
+### Validation checklist
+
+- `systemctl status justnews-otel-node.service` shows `active (running)` on every GPU host.
+- (Optional) `curl -s http://127.0.0.1:8889/metrics | head` returns collector metrics if you are manually checking collector health.
+- Tempo/Jaeger receives spans with `service.name` equal to your override in `/etc/justnews/monitoring/otel/*.env`.
+- Loki/Elastic contains kernel/Xid lines with `justnews.gpu.host_role=node` labels.

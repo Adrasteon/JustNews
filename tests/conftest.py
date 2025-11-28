@@ -72,6 +72,27 @@ if not os.environ.get('JUSTNEWS_GLOBAL_ENV'):
 # hermetic and not rely on the host's installed system files.
 os.environ['PYTEST_RUNNING'] = '1'
 
+# Enforce usage of the project's conda environment for local runs
+# - In CI we allow broader environments (CI=true will skip the check)
+# - Developers can temporarily bypass with ALLOW_ANY_PYTEST_ENV=1
+if os.environ.get('CI', '').lower() not in ('1', 'true') and os.environ.get('ALLOW_ANY_PYTEST_ENV', '') != '1':
+    conda_env = os.environ.get('CONDA_DEFAULT_ENV') or os.environ.get('CONDA_PREFIX') or ''
+    # If CONDA_DEFAULT_ENV is not present, also detect if sys.executable path contains the env name
+    in_exec = 'justnews-py312' in (sys.executable or '')
+    if 'justnews-py312' not in conda_env and not in_exec:
+        # Friendly guidance to developers on how to run tests correctly
+        msg = (
+            """
+Tests should be run inside the 'justnews-py312' conda environment for consistent results.
+
+Use the helper script: scripts/dev/pytest.sh <args>
+Or re-run with: PYTHONPATH=$(pwd) conda run -n justnews-py312 pytest <args>
+
+If you intentionally want to run in a different environment set ALLOW_ANY_PYTEST_ENV=1 to bypass this check.
+"""
+        )
+        pytest.exit(msg)
+
 # Import common utilities
 from common.observability import get_logger  # noqa: E402
 

@@ -14,7 +14,7 @@ import threading
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -161,6 +161,20 @@ class PreloadRequest(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
+class WorkerPoolRequest(BaseModel):
+    """Request payload for orchestrator-managed worker pools."""
+
+    pool_id: str | None = Field(default=None, description="Explicit pool identifier; defaults to agent or timestamp")
+    agent: str | None = Field(default=None, description="Logical agent name used for auditing")
+    model: str | None = Field(default=None, description="Model identifier to load")
+    adapter: str | None = Field(default=None, description="Optional adapter path to apply after loading the base model")
+    num_workers: int = Field(default=1, ge=1, le=64, description="Number of warm workers to spawn")
+    hold_seconds: int = Field(default=600, ge=1, le=7200, description="How long workers remain alive without external intervention")
+    variant: str | None = Field(default=None, description="Optional loading strategy hint (fp16, bnb-4bit-qlora, etc.)")
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
@@ -246,6 +260,34 @@ def ready():
     return {"ready": READINESS}
 
 
+@app.get('/leader')
+def get_leader(request: Request):
+    """Return leader state for the orchestrator instance (true/false)."""
+    # No admin required — provides visibility
+    try:
+        return {'is_leader': getattr(engine, 'is_leader', False), 'lock_name': getattr(engine, '_leader_lock_name', None)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.post('/control/reclaim')
+def trigger_reclaim(request: Request):
+    """Trigger an immediate reclaim pass (leader only)."""
+    requestor = _require_admin(request)
+    try:
+        if not getattr(engine, 'is_leader', False):
+            raise HTTPException(status_code=409, detail='not_leader')
+        try:
+            engine._reclaimer_pass()
+            return {'reclaimed': True}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e)) from e
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
 @app.get("/gpu/info")
 def gpu_info_endpoint():
     """Return current GPU telemetry (read-only)."""
@@ -290,6 +332,45 @@ def lease_endpoint(req: LeaseRequest):
     return lease_gpu(req.agent, req.min_memory_mb)
 
 
+@app.post("/leases/{token}/heartbeat")
+def lease_heartbeat(request: Request, token: str):
+    """Heartbeat a persisted lease token so it is not considered expired."""
+    # best-effort (engine may not have DB connectivity)
+    try:
+        ok = engine.heartbeat_lease(token)
+        if not ok:
+            raise HTTPException(status_code=500, detail="heartbeat_failed")
+        return {"token": token, "heartbeat": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get("/leases")
+def list_leases(request: Request):
+    """Admin endpoint to list persistent and in-memory leases."""
+    _require_admin(request)
+    try:
+        # engine.get_allocations() will purge expired leases from memory
+        mem = engine.get_allocations()
+        resp = {"in_memory": mem}
+        # Add persistent rows when DB accessible
+        if getattr(engine, 'db_service', None):
+            try:
+                cursor = engine.db_service.mb_conn.cursor(dictionary=True)
+                cursor.execute("SELECT token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata FROM orchestrator_leases")
+                rows = cursor.fetchall()
+                cursor.close()
+                resp['persistent'] = rows
+            except Exception:
+                resp['persistent'] = None
+
+        return resp
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
 @app.post("/release")
 def release_endpoint(req: ReleaseRequest):
     """Release a GPU lease."""
@@ -303,18 +384,46 @@ def models_preload_endpoint(req: PreloadRequest):
 
 
 @app.post("/workers/pool")
-def create_worker_pool(request: Request, agent: str | None = None, model: str | None = None, adapter: str | None = None, num_workers: int = 1, hold_seconds: int = 600):
-    """Create a named worker pool. `agent` is an optional name used to derive an id when omitted."""
-    pool_id = agent or f"pool_{int(time.time())}"
+def create_worker_pool(
+    request: Request,
+    payload: WorkerPoolRequest | None = Body(default=None),
+    agent: str | None = None,
+    model: str | None = None,
+    adapter: str | None = None,
+    num_workers: int = 1,
+    hold_seconds: int = 600,
+    variant: str | None = None,
+):
+    """Create or reuse a named worker pool.
+
+    Accepts either a JSON payload (preferred) or legacy query parameters for backwards compatibility.
+    """
+
+    body = payload.model_dump(exclude_unset=True) if payload else {}
+    pool_id = body.get('pool_id') or agent or body.get('agent') or f"pool_{int(time.time())}"
+    model_id = body.get('model') or model
+    adapter_id = body.get('adapter') or adapter
+    configured_workers = int(body.get('num_workers', num_workers))
+    hold_time = int(body.get('hold_seconds', hold_seconds))
+    variant_hint = body.get('variant') or variant
+
     # Require admin and capture requestor identity for audit
     requestor = _require_admin(request)
-    # enrich requestor with client IP if available
     try:
         requestor['ip'] = request.client.host
     except Exception:
         pass
+
     try:
-        resp = engine.start_worker_pool(pool_id=pool_id, model_id=model, adapter=adapter, num_workers=num_workers, hold_seconds=hold_seconds, requestor=requestor)
+        resp = engine.start_worker_pool(
+            pool_id=pool_id,
+            model_id=model_id,
+            adapter=adapter_id,
+            num_workers=configured_workers,
+            hold_seconds=hold_time,
+            requestor=requestor,
+            variant=variant_hint,
+        )
         return resp
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -349,6 +458,34 @@ def delete_pool(request: Request, pool_id: str):
 def models_status_endpoint():
     """Return current model preload status."""
     return models_status()
+
+
+@app.post('/jobs/submit')
+def jobs_submit(request: Request, payload: dict):
+    """Submit a job to the orchestrator: persists and optionally pushes to job stream."""
+    # admin or agent may submit jobs; always accept
+    try:
+        job_id = payload.get('job_id') or f"job_{int(time.time()*1000)}"
+        job_type = payload.get('type') or 'inference_jobs'
+        job_payload = payload.get('payload') or {}
+        resp = engine.submit_job(job_id, job_type, job_payload)
+        return resp
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get('/jobs/{job_id}')
+def jobs_get(request: Request, job_id: str):
+    _require_admin(request)
+    try:
+        record = engine.get_job(job_id)
+        if not record:
+            raise HTTPException(status_code=404, detail='not_found')
+        return record
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/mps/allocation")

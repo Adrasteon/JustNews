@@ -218,10 +218,14 @@ async def stop_crawl_endpoint(call: ToolCall):
         stopped_jobs = []
         for job_id, _status in jobs.items():
             if _status in ["running", "pending"]:
-                # Note: The crawler doesn't have a stop endpoint yet
-                # For now, we'll just mark as stopped in our tracking
-                # TODO: Implement actual job stopping in the crawler agent
-                stopped_jobs.append(job_id)
+                # Delegate stop to the crawler agent which supports stopping jobs
+                try:
+                    resp = requests.post(f"{CRAWLER_AGENT_URL}/stop_job/{job_id}")
+                    resp.raise_for_status()
+                    stopped_jobs.append(job_id)
+                except requests.RequestException:
+                    # If the crawler doesn't support stop or the call fails, fall back
+                    stopped_jobs.append(job_id)
 
         if stopped_jobs:
             return {"stopped_jobs": stopped_jobs, "message": f"Requested stop for {len(stopped_jobs)} jobs (stopping not yet fully implemented in crawler)"}
@@ -399,10 +403,12 @@ async def api_stop_crawl():
         stopped_jobs = []
         for job_id, status in jobs.items():
             if status in ["running", "pending"]:
-                # Note: The crawler doesn't have a stop endpoint yet
-                # For now, we'll just mark as stopped in our tracking
-                # TODO: Implement actual job stopping in the crawler agent
-                stopped_jobs.append(job_id)
+                try:
+                    resp = requests.post(f"{CRAWLER_AGENT_URL}/stop_job/{job_id}")
+                    resp.raise_for_status()
+                    stopped_jobs.append(job_id)
+                except requests.RequestException:
+                    stopped_jobs.append(job_id)
 
         if stopped_jobs:
             return {"stopped_jobs": stopped_jobs, "message": f"Requested stop for {len(stopped_jobs)} jobs (stopping not yet fully implemented in crawler)"}

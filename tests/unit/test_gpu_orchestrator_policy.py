@@ -20,7 +20,11 @@ def test_policy_enforcement_eviction(monkeypatch):
 
     # create three pools each with 2 workers -> total 6
     for i in range(3):
-        r = client.post('/workers/pool', params={'agent': f'tpool{i}', 'num_workers': 2, 'hold_seconds': 30}, headers=headers)
+        r = client.post(
+            '/workers/pool',
+            json={'pool_id': f'tpool{i}', 'agent': f'tpool{i}', 'num_workers': 2, 'hold_seconds': 30},
+            headers=headers,
+        )
         assert r.status_code == 200
 
     # list should show 3 pools

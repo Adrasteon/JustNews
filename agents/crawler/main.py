@@ -46,6 +46,11 @@ ready = False
 # In-memory storage of crawl job statuses
 crawl_jobs: dict[str, Any] = {}
 
+# Map job_id -> asyncio.Task for running background crawl jobs so they can be cancelled
+import asyncio
+
+crawl_task_map: dict[str, asyncio.Task] = {}
+
 # Environment variables
 CRAWLER_AGENT_PORT = int(os.environ.get("CRAWLER_AGENT_PORT", 8015))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
@@ -199,11 +204,77 @@ async def unified_production_crawl_endpoint(call: ToolCall, background_tasks: Ba
     logger.info(f"Enqueueing background crawl job {job_id} for {len(domains)} domains")
     profile_overrides = call.kwargs.get("profile_overrides")
 
-    # Enqueue background task
-    background_tasks.add_task(run_crawl_background, job_id, domains, max_articles, concurrent, profile_overrides)
+    # Enqueue background task by creating an asyncio.Task so it can be cancelled later
+    task = asyncio.create_task(run_crawl_background(job_id, domains, max_articles, concurrent, profile_overrides))
+    crawl_task_map[job_id] = task
+    # When the background task completes, remove it from the task map
+    def _on_task_done(t: asyncio.Task, jid: str = job_id):
+        try:
+            # Observe exception to avoid "Task exception was never retrieved"
+            _ = t.exception()
+        except Exception:
+            pass
+        crawl_task_map.pop(jid, None)
+
+    task.add_done_callback(_on_task_done)
 
     # Return accepted status with job ID
     return JSONResponse(status_code=202, content={"status": "accepted", "job_id": job_id})
+
+
+@app.post("/stop_job/{job_id}")
+async def stop_job(job_id: str):
+    """Stop a single active crawl job by id. Cancels running tasks and updates job store.
+
+    Returns 200 if a cancellation was requested, 404 if the job id is unknown.
+    """
+    # Try to cancel a running task
+    if job_id in crawl_task_map:
+        task = crawl_task_map[job_id]
+        logger.info(f"Cancelling running crawl job {job_id}")
+        task.cancel()
+        try:
+            # Allow a short grace period for cleanup
+            await asyncio.wait_for(task, timeout=5)
+        except asyncio.TimeoutError:
+            logger.debug(f"Timed out waiting for job {job_id} to cancel; task may still be cleaning up")
+        except asyncio.CancelledError:
+            logger.debug(f"Task for job {job_id} cancelled")
+
+        try:
+            set_error(job_id, "cancelled by user")
+        except Exception:
+            # Best-effort fallback to in-memory status
+            if job_id in crawl_jobs:
+                crawl_jobs[job_id]["status"] = "cancelled"
+
+        return {"status": "cancelled", "job_id": job_id}
+
+    # If there's no active task, but a persisted job exists, mark it cancelled
+    try:
+        job = get_job(job_id)
+        if job is not None:
+            # Only update if job is not already completed/failed
+            current = job.get("status")
+            if current in {"pending", "running"}:
+                set_error(job_id, "cancelled by user")
+                return {"status": "cancelled", "job_id": job_id}
+            return {"status": current, "job_id": job_id}
+    except Exception:
+        pass
+
+    # Lastly check in-memory tracking
+    if job_id in crawl_jobs:
+        status = crawl_jobs[job_id].get("status")
+        if status in ["running", "pending"]:
+            crawl_jobs[job_id]["status"] = "cancelled"
+            try:
+                set_error(job_id, "cancelled by user")
+            except Exception:
+                pass
+            return {"status": "cancelled", "job_id": job_id}
+
+    raise HTTPException(status_code=404, detail=f"Job not found: {job_id}")
 
 @app.get("/job_status/{job_id}")
 def job_status(job_id: str, token_ok: None = Depends(require_api_token)):

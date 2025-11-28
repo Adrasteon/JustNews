@@ -15,7 +15,11 @@ def test_worker_pool_lifecycle(monkeypatch):
     headers = {'Authorization': 'Bearer adminkey123'}
 
     # create a pool named 'testpool'
-    resp = client.post('/workers/pool', params={'agent': 'testpool', 'num_workers': 1, 'hold_seconds': 2}, headers=headers)
+    resp = client.post(
+        '/workers/pool',
+        json={'pool_id': 'testpool', 'agent': 'testpool', 'num_workers': 1, 'hold_seconds': 2},
+        headers=headers,
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data.get('pool_id') in ('testpool',) or data.get('status') == 'started'

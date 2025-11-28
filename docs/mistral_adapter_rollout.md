@@ -37,6 +37,26 @@ python scripts/perf/simulate_concurrent_inference.py --workers 3 --requests 30 -
 python scripts/ops/adapter_worker_pool.py --workers 2 --model $RE_RANKER_MODEL --adapter modelstore/agents/synthesizer/adapters/mistral_synth_v1 --hold 600
 ```
 
+4) Orchestrator-managed warm pool (recommended on shared nodes). Delegate pool
+    lifecycle to the GPU orchestrator so the same policy/monitoring applies as in
+    production:
+
+```bash
+export GPU_ORCHESTRATOR_URL=http://localhost:8008
+export GPU_ORCHESTRATOR_ADMIN_KEY="$(cat /etc/justnews/gpu_orch_admin.key)"
+python scripts/ops/adapter_worker_pool.py \
+   --remote \
+   --agent synthesizer \
+   --model base_models/versions/v20251123-mistral-v0.3 \
+   --adapter modelstore/agents/synthesizer/adapters/mistral_synth_v1 \
+   --workers 2 \
+   --hold 600
+
+# Inspect or tear down remote pools when finished
+python scripts/ops/adapter_worker_pool.py --list-remote
+python scripts/ops/adapter_worker_pool.py --stop-remote synthesizer
+```
+
 Interpreting the numbers
 - Watch GPU memory (nvidia-smi) while warming: ensure base + adapters fit in 24GB and observe headroom for activations.
 - Use `simulate_concurrent_inference` p95/p50 to decide pool size (target p95 latency & throughput).

@@ -60,6 +60,33 @@ To ensure telemetry is captured whenever the GPU is under load we provide a ligh
 GPU activity monitor agent `scripts/perf/gpu_activity_agent.py` which will automatically
 start the CSV collector and Prometheus exporter when the GPU utilization exceeds a
 threshold for a configurable period, and stop them once the GPU becomes idle.
+ 
+NVML dropout watchdog
+---------------------
+`scripts/perf/nvml_dropout_watchdog.py` uses the `pynvml` bindings to stream NVML samples, register XID/event callbacks, and dump the last N seconds of context whenever NVML throws (for example `NVML_ERROR_GPU_IS_LOST`). Run it next to any medium-load scenario so you capture the exact state leading up to the drop-out:
+
+```bash
+mkdir -p /var/log/justnews-perf
+python3 scripts/perf/nvml_dropout_watchdog.py \
+  --log-file /var/log/justnews-perf/nvml_watchdog.jsonl \
+  --context-samples 180 \
+  --capture-dmesg &
+WATCHDOG_PID=$!
+
+# run the medium load scenario (gpu_activity_agent, simulate_concurrent_inference, etc.)
+
+wait ${WATCHDOG_PID}
+```
+
+Afterwards inspect the structured JSONL log for `nvml_exception` or `nvml_event` entries:
+
+```bash
+jq 'select(.event == "nvml_exception")' /var/log/justnews-perf/nvml_watchdog.jsonl
+```
+
+Each exception entry includes the rolling telemetry context (utilisation, memory, clocks, temps, running compute processes) captured right before NVML failed plus an optional `dmesg` tail, making it easier to pinpoint the trigger.
+
+````
 
 Key options
 - `--start-util` / `--start-seconds` — start telemetry when GPU util exceeds start-util %% for start-seconds

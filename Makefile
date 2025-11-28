@@ -92,6 +92,14 @@ install-dev:
 test: test-unit test-integration
 	$(call log_success,"All tests completed")
 
+# Local pytest wrapper target which ensures tests are launched in the
+# `justnews-py312` conda environment. Developers should prefer this target
+# for local runs to ensure consistent environments.
+pytest-local:
+	$(call log_info,"Running local pytest via scripts/dev/pytest.sh")
+	$(shell [ -x ./scripts/dev/pytest.sh ] || chmod +x ./scripts/dev/pytest.sh)
+	./scripts/dev/pytest.sh
+
 test-unit:
 	$(call log_info,"Running unit tests...")
 	$(RUN_PY) -m pytest tests/ -v --cov=. --cov-report=term-missing --cov-report=xml \

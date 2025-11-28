@@ -21,6 +21,12 @@ function require_docker() {
 require_docker
 
 echo "Bringing up mariadb + redis (docker-compose)..."
+# If a pre-seeded image is not present locally, build it (faster CI/PoC path)
+if ! docker image inspect justnews/mariadb-preseed:local >/dev/null 2>&1; then
+  echo "Preseeded Mariadb image not found locally — building one (justnews/mariadb-preseed:local)..."
+  docker build -t justnews/mariadb-preseed:local -f "$REPO_ROOT/scripts/dev/db-mariadb/Dockerfile" "$REPO_ROOT/scripts/dev"
+fi
+
 docker-compose -f "$COMPOSE_FILE" up -d --remove-orphans
 
 echo "Waiting for services to become healthy (this may take a little while)"

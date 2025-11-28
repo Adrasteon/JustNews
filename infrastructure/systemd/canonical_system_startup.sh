@@ -128,7 +128,10 @@ resolve_repo_root() {
     echo "$candidate"
     return 0
   fi
-  log_warn "Falling back to repository default path."
+  # Emit warning to stderr so callers capturing stdout (e.g., when assigning
+  # the output to a variable) do not receive the warning text as part of the
+  # repo root value.
+  log_warn "Falling back to repository default path." >&2
   echo "${SERVICE_DIR:-/home/adra/JustNews}"
 }
 

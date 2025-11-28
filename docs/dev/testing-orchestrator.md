@@ -31,6 +31,8 @@ Test tiers
    - The repository CI workflow has been updated to use Miniconda and create a `justnews-py312` conda environment in CI, matching local dev setups; CI now runs `pytest` inside that environment.
    - If you want true end-to-end tests hitting live Redis and MariaDB, prefer a dedicated CI job that runs on self-hosted runners capable of running systemd-nspawn or LXD (not possible on the default hosted runners due to privilege constraints). Adding such a CI job is recommended for deeper validation but needs self-hosted capabilities.
 
+      - Docker-based E2E PoC (recommended for CI): We added a lightweight Docker Compose-based PoC which boots a pre-seeded MariaDB and Redis for faster E2E verification without requiring systemd-nspawn privileges. See `scripts/dev/docker-compose.e2e.yml`, `scripts/dev/run_e2e_docker.sh` and `.github/workflows/e2e-docker.yml`.
+
 Developer ergonomics & helpers
 - `scripts/dev/pytest.sh` — wrapper which runs pytest inside `justnews-py312` conda env and sets `PYTHONPATH` to the repo root. Use it for consistent local runs.
 - `scripts/dev/install_hooks.sh` — installs local git hooks (from `scripts/dev/git-hooks/`) into `.git/hooks` (opt-in). The `pre-push` hook prints guidance and can optionally run a quick smoke test when `GIT_STRICT_TEST_HOOK=1`.
@@ -67,6 +69,10 @@ Tips & gotchas
 - When debugging a failing integration test, try:
   - Enabling more verbose pytest output (-vv or -s) and reviewing debug prints in `agents/gpu_orchestrator/worker.py` and engine logs
   - Spawning a systemd-nspawn container and running the engine against a real MariaDB inside the container to identify behaviour differences between sqlite and MariaDB
+ - Running the Docker-based PoC locally (recommended for CI-friendly debugging):
+       1) Start services: `docker-compose -f scripts/dev/docker-compose.e2e.yml up -d --build`
+       2) Run the smoke tests: `scripts/dev/e2e_smoke.sh`
+       3) Run full E2E: set the env vars described in `scripts/dev/run_e2e_docker.sh` and run `pytest -q tests/e2e -q -s`
 
 Where to add tests
 - Add new unit tests in `tests/unit/` for engine methods (lease persistence, leader election mocks, reclaimer), and integration tests in `tests/integration/` for end-to-end flows (submit->claim->done, DLQ handling, reclaimer pass). Follow patterns seen in the repository for sqlite/redis emulators to remain CI-friendly.

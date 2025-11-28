@@ -187,6 +187,83 @@ check_data_mount() {
   fi
 }
 
+# Check MariaDB connectivity (host/managed DB expected in normal deployments).
+# This probe is optional but recommended; it tries the "mysql" client first and
+# falls back to a small Python check via PYTHON_BIN if available. The probe will
+# be skipped when MARIADB_HOST is not configured or when SKIP_MARIADB_CHECK=true.
+# If MARIADB_CHECK_REQUIRED=true then a failing probe will abort startup.
+check_mariadb_connectivity() {
+  if [[ "${SKIP_MARIADB_CHECK:-false}" == "true" ]]; then
+    log_info "Skipping MariaDB connectivity check (SKIP_MARIADB_CHECK=true)"
+    return 0
+  fi
+
+  if [[ -z "${MARIADB_HOST:-}" ]]; then
+    log_info "MARIADB_HOST not set; skipping MariaDB connectivity check"
+    return 0
+  fi
+
+  local host="${MARIADB_HOST:-localhost}"
+  local port="${MARIADB_PORT:-3306}"
+  local user="${MARIADB_USER:-justnews}"
+  local pass="${MARIADB_PASSWORD:-}"
+  local db="${MARIADB_DB:-justnews}"
+
+  log_info "Checking MariaDB connectivity to ${host}:${port} (db=${db})"
+
+  # Helper: report failure and potentially abort
+  _handle_fail() {
+    local rc=$1 msg="$2"
+    log_error "MariaDB connectivity check failed: ${msg} (rc=${rc})"
+    if [[ "${MARIADB_CHECK_REQUIRED:-false}" == "true" ]]; then
+      exit 1
+    fi
+    return 0
+  }
+
+  # Try using mysql client if present
+  if command -v mysql >/dev/null 2>&1; then
+    if timeout 5 mysql -h "${host}" -P "${port}" -u "${user}" -p"${pass}" -e "SELECT 1;" "${db}" >/dev/null 2>&1; then
+      log_success "MariaDB probe succeeded using mysql client"
+      return 0
+    else
+      _handle_fail $? "mysql client failed to connect or run query"
+      return 0
+    fi
+  fi
+
+  # Fallback: try using PYTHON_BIN (if present) and pymysql
+  if [[ -n "${PYTHON_BIN:-}" && -x "${PYTHON_BIN}" ]]; then
+    if ${PYTHON_BIN} - <<PYTHON >/dev/null 2>&1
+import sys
+try:
+    import pymysql
+except Exception:
+    sys.exit(2)
+try:
+    conn = pymysql.connect(host='${host}', port=${port}, user='${user}', password='${pass}', database='${db}', connect_timeout=5)
+    cur = conn.cursor()
+    cur.execute('SELECT 1')
+    conn.close()
+    sys.exit(0)
+except Exception as e:
+    print('err:'+str(e))
+    sys.exit(3)
+PYTHON
+    then
+      log_success "MariaDB probe succeeded using PYTHON_BIN"
+      return 0
+    else
+      # We get rc 2 if pymysql isn't available, 3 for connection errors
+      _handle_fail $? "python pymysql probe failed (pymysql may be missing or connection failed)"
+      return 0
+    fi
+  fi
+
+  log_warn "No mysql client or usable PYTHON_BIN+pymysql available; skipping MariaDB probe"
+  return 0
+}
+
 ## Utility: safe_grep_dir <dir> <pattern>
 ## Guard grep usage to avoid noisy stderr when directory contains broken symlinks
 safe_grep_dir() {
@@ -472,6 +549,8 @@ main() {
     exit 1
   fi
   check_data_mount
+  # MariaDB check: skip when MARIADB_HOST unset or SKIP_MARIADB_CHECK=true
+  check_mariadb_connectivity
   # Database connectivity checks are intentionally skipped here (PostgreSQL deprecated)
 
   local repo_root
@@ -538,4 +617,6 @@ main() {
   fi
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

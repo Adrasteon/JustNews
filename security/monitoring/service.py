@@ -11,7 +11,7 @@ import secrets
 from collections import defaultdict, deque
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any
 
@@ -195,7 +195,7 @@ class SecurityMonitor:
         """
         try:
             event = {
-                "timestamp": datetime.utcnow(),
+                "timestamp": datetime.now(timezone.utc),
                 "event_type": event_type,
                 "user_id": user_id,
                 "severity": severity.value,
@@ -260,7 +260,7 @@ class SecurityMonitor:
         if alert_id in self._active_alerts:
             alert = self._active_alerts[alert_id]
             alert.resolved = True
-            alert.resolved_at = datetime.utcnow()
+            alert.resolved_at = datetime.now(timezone.utc)
             alert.resolution_notes = resolution_notes
 
             await self._save_monitoring_data()
@@ -277,7 +277,7 @@ class SecurityMonitor:
             Security metrics
         """
         try:
-            cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
 
             # Filter events in time window
             recent_events = [
@@ -313,7 +313,7 @@ class SecurityMonitor:
             )[:5]
 
             return SecurityMetrics(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 total_events=len(recent_events),
                 events_by_type=dict(events_by_type),
                 active_alerts=len([a for a in self._active_alerts.values() if not a.resolved]),
@@ -326,7 +326,7 @@ class SecurityMonitor:
         except Exception as e:
             logger.error(f"Failed to get security metrics: {e}")
             return SecurityMetrics(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 total_events=0,
                 events_by_type={},
                 active_alerts=0,
@@ -418,7 +418,7 @@ class SecurityMonitor:
                 # Check cooldown
                 if rule.last_triggered:
                     cooldown_end = rule.last_triggered + timedelta(minutes=rule.cooldown_minutes)
-                    if datetime.utcnow() < cooldown_end:
+                    if datetime.now(timezone.utc) < cooldown_end:
                         continue
 
                 # Check event pattern match
@@ -429,7 +429,7 @@ class SecurityMonitor:
                 if await self._evaluate_condition(event, rule):
                     # Generate alert
                     await self._generate_alert(event, rule)
-                    rule.last_triggered = datetime.utcnow()
+                    rule.last_triggered = datetime.now(timezone.utc)
 
         except Exception as e:
             logger.error(f"Error checking monitoring rules: {e}")
@@ -484,11 +484,11 @@ class SecurityMonitor:
     async def _generate_alert(self, event: dict[str, Any], rule: MonitoringRule) -> None:
         """Generate security alert"""
         try:
-            alert_id = f"alert_{datetime.utcnow().timestamp()}_{secrets.token_hex(4)}"
+            alert_id = f"alert_{datetime.now(timezone.utc).timestamp()}_{secrets.token_hex(4)}"
 
             alert = SecurityAlert(
                 id=alert_id,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 event_type=event["event_type"],
                 severity=rule.severity,
                 title=f"Security Alert: {rule.name}",
@@ -519,7 +519,7 @@ class SecurityMonitor:
     async def _cleanup_old_ip_activity(self) -> None:
         """Cleanup old IP activity data"""
         try:
-            cutoff_time = datetime.utcnow() - timedelta(hours=24)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
 
             for ip in list(self._ip_activity.keys()):
                 self._ip_activity[ip] = [
@@ -547,7 +547,7 @@ class SecurityMonitor:
             try:
                 await asyncio.sleep(86400)  # Run daily
 
-                cutoff_date = datetime.utcnow() - timedelta(days=self.monitoring_config.alert_retention_days)
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=self.monitoring_config.alert_retention_days)
 
                 alerts_to_remove = []
                 for alert_id, alert in self._active_alerts.items():

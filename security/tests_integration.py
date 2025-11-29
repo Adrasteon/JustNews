@@ -5,7 +5,7 @@ Comprehensive tests for the JustNews Security Framework
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -249,7 +249,7 @@ class TestSecurityFrameworkIntegration:
         assert context.session_id in security_manager._active_sessions
 
         # Simulate session expiration
-        context.timestamp = datetime.utcnow() - timedelta(minutes=10)  # Expired
+        context.timestamp = datetime.now(timezone.utc) - timedelta(minutes=10)  # Expired
 
         # Session should be cleaned up on next validation attempt
         with pytest.raises(AuthenticationError):

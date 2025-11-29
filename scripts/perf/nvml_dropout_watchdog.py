@@ -1,3 +1,4 @@
+from datetime import timezone
 #!/usr/bin/env python3
 """NVML dropout watchdog.
 
@@ -90,7 +91,7 @@ class NvmlDropoutWatchdog:
 
     @staticmethod
     def _now_iso() -> str:
-        return _dt.datetime.utcnow().isoformat(timespec="milliseconds") + "Z"
+        return _dt.datetime.now(timezone.utc).isoformat(timespec="milliseconds") + "Z"
 
     def _write_log(self, payload: dict[str, Any]) -> None:
         if self._fh is None:

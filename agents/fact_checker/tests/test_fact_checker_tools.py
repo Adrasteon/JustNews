@@ -55,3 +55,19 @@ def test_extract_claims_and_assess_credibility(monkeypatch):
     cred = assess_credibility('Some article content')
     assert isinstance(cred, dict)
     assert 'credibility_score' in cred
+
+
+async def _sample_coro():
+    return 42
+
+
+def test__await_if_needed_in_async_context():
+    from agents.fact_checker.tools import _await_if_needed
+
+    async def runner():
+        task = _await_if_needed(_sample_coro())
+        # Task should be awaitable and produce the value
+        result = await task
+        assert result == 42
+
+    asyncio.run(runner())

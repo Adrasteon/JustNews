@@ -380,7 +380,10 @@ def synthesize_content(
     if loop.is_running():
         return loop.create_task(_run())
 
-    return loop.run_until_complete(_run())
+    # If the loop exists but isn't running, prefer asyncio.run which manages lifecycle
+    # and is the modern recommended API. This avoids calling run_until_complete on a
+    # potentially non-running loop object.
+    return asyncio.run(_run())
 
 async def health_check(engine: SynthesizerEngine) -> dict[str, Any]:
     """

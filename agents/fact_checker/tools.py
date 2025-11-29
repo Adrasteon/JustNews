@@ -138,9 +138,12 @@ def _await_if_needed(result: Any) -> Any:
         except RuntimeError:
             return asyncio.run(result)
         else:
+            # We're inside a running event loop — we cannot block the loop. Instead
+            # schedule the coroutine as a Task and return it; callers executing in
+            # an async context can await the returned Task, while sync contexts
+            # will not hit this branch (they'll use the asyncio.run path above).
             future = asyncio.ensure_future(result, loop=loop)
-            # In practice the wrappers are called from sync contexts, but guard anyway.
-            return loop.run_until_complete(future)  # pragma: no cover
+            return future  # pragma: no cover
     return result
 
 

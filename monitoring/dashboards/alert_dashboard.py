@@ -545,9 +545,9 @@ class AlertDashboard:
     def export_alerts(self, format: str = "json") -> str:
         """Export alerts in specified format"""
         alerts_data = {
-            "active_alerts": [alert.dict() for alert in self.active_alerts.values()],
-            "alert_history": [alert.dict() for alert in self.alert_history[-100:]],  # Last 100
-            "rules": [rule.dict() for rule in self.rules.values()],
+            "active_alerts": [alert.model_dump() for alert in self.active_alerts.values()],
+            "alert_history": [alert.model_dump() for alert in self.alert_history[-100:]],  # Last 100
+            "rules": [rule.model_dump() for rule in self.rules.values()],
             "stats": self.stats,
             "exported_at": datetime.now().isoformat()
         }

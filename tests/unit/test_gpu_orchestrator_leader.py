@@ -32,7 +32,7 @@ def test_try_acquire_and_release_leader(monkeypatch):
     fake_service.mb_conn = fake_conn
 
     with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=fake_service):
-        engine = GPUOrchestratorEngine()
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
         ok = engine.try_acquire_leader_lock(timeout=1)
         assert ok is True
         assert engine.is_leader is True

@@ -190,8 +190,11 @@ async def lifespan(app: FastAPI):
         """Register the agent with the MCP Bus in a background thread."""
         def background_task():
             client = MCPBusClient()
-            client.register_agent(agent_name, agent_address, tools)
-            registration_complete.set()  # Signal registration completion
+            try:
+                client.register_agent(agent_name, agent_address, tools)
+            finally:
+                # Always signal completion — tests and startup shouldn't stall indefinitely
+                registration_complete.set()  # Signal registration completion (success or fail)
 
         thread = threading.Thread(target=background_task, daemon=True)
         thread.start()

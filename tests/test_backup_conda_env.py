@@ -13,8 +13,10 @@ def test_backup_script_dryrun_creates_expected_filenames(tmp_path, monkeypatch):
     # Use a fixed date for predictable output
     date_str = "20251123"
 
+    env_name = os.environ.get('CANONICAL_ENV', 'justnews-py312')
+
     result = subprocess.run(
-        ["bash", script, "justnews-py312", str(tmp_path), date_str],
+        ["bash", script, env_name, str(tmp_path), date_str],
         env=env,
         capture_output=True,
         text=True,
@@ -24,7 +26,7 @@ def test_backup_script_dryrun_creates_expected_filenames(tmp_path, monkeypatch):
     out = result.stdout
 
     # Expect the dry-run messages to reference the date-stamped artifact names
-    assert f"{tmp_path}/justnews-py312-{date_str}.yml" in out
-    assert f"{tmp_path}/justnews-py312-{date_str}.explicit.txt" in out
-    assert f"{tmp_path}/justnews-py312-{date_str}.pip.txt" in out
-    assert f"{tmp_path}/justnews-py312-{date_str}.tar.gz" in out or "conda-pack not installed" in out
+    assert f"{tmp_path}/{env_name}-{date_str}.yml" in out
+    assert f"{tmp_path}/{env_name}-{date_str}.explicit.txt" in out
+    assert f"{tmp_path}/{env_name}-{date_str}.pip.txt" in out
+    assert f"{tmp_path}/{env_name}-{date_str}.tar.gz" in out or "conda-pack not installed" in out

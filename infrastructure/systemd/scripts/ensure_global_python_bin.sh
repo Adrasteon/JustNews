@@ -5,11 +5,11 @@ set -euo pipefail
 # Ensure /etc/justnews/global.env contains a valid PYTHON_BIN setting.
 # - If the file is missing, it will create it with a safe default.
 # - If PYTHON_BIN is absent, this script will add a canonical value derived
-#   from the requested CONDA_ENV (default: justnews-py312).
+#   from the requested CONDA_ENV (default: ${CANONICAL_ENV:-justnews-py312}).
 # - Does not overwrite an existing PYTHON_BIN unless --force is passed.
 
 GLOBAL_ENV="/etc/justnews/global.env"
-DEFAULT_CONDA_ENV="${CONDA_ENV:-justnews-py312}"
+DEFAULT_CONDA_ENV="${CONDA_ENV:-${CANONICAL_ENV:-justnews-py312}}"
 DEFAULT_PY_BIN="/home/adra/miniconda3/envs/${DEFAULT_CONDA_ENV}/bin/python"
 
 usage() {

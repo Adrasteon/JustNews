@@ -12,7 +12,7 @@ def test_protobuf_version_meets_requirement():
     py = os.environ.get('PYTHON_BIN')
     if not py or not os.path.exists(py):
         if shutil.which('conda') is not None:
-            cmd = ['conda', 'run', '-n', 'justnews-py312', 'python']
+            cmd = ['conda', 'run', '-n', os.environ.get('CANONICAL_ENV', 'justnews-py312'), 'python']
         else:
             cmd = [sys.executable]
     else:

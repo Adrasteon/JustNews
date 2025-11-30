@@ -12,7 +12,7 @@ If you're setting up or maintaining the JustNews system:
 1. **Prerequisites Check**
    ```bash
    # Verify system requirements
-   python --version  # Should be 3.12+
+    python --version  # Should be 3.11+
    nvidia-smi        # GPU verification
    docker --version  # Container support
    ```

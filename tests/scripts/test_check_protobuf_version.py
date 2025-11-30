@@ -1,4 +1,7 @@
-import pkg_resources
+try:
+    from importlib import metadata as importlib_metadata
+except ImportError:  # pragma: no cover
+    import importlib_metadata  # type: ignore
 
 
 def parse_version(ver: str):
@@ -14,7 +17,7 @@ def test_protobuf_version_meets_minimum():
         import google.protobuf as pb
         v = getattr(pb, '__version__', None) or getattr(pb, 'version', None)
         if not v:
-            v = pkg_resources.get_distribution('protobuf').version
+            v = importlib_metadata.version('protobuf')
     except Exception:
         # If not installed in CI, skip this test
         import pytest

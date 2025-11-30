@@ -100,7 +100,7 @@ def test_worker_claims_lease_runs_and_updates_db():
     mid = r.xadd('stream:orchestrator:inference_jobs', {'job_id': 'wjob1', 'payload': json.dumps({'foo': 'bar'})})
 
     with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=svc):
-        engine = GPUOrchestratorEngine()
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
         engine.redis_client = r
 
         # make allocate deterministic
@@ -132,7 +132,7 @@ def test_worker_handler_failure_marks_failed_and_sets_last_error():
     mid = r.xadd('stream:orchestrator:inference_jobs', {'job_id': 'wj-fail', 'payload': json.dumps({'foo': 'bar'})})
 
     with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=svc):
-        engine = GPUOrchestratorEngine()
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
         engine.redis_client = r
 
         # ensure lease is granted so we exercise release path
@@ -182,7 +182,7 @@ def test_worker_without_lease_still_marks_done_and_failure_works():
     r.xadd('stream:orchestrator:inference_jobs', {'job_id': 'wj-nolease-fail', 'payload': json.dumps({'a':2})})
 
     with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=svc):
-        engine = GPUOrchestratorEngine()
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
         engine.redis_client = r
 
         # force allocation to fail (no lease granted)

@@ -10,7 +10,10 @@ from __future__ import annotations
 
 import sys
 
-import pkg_resources
+try:
+    from importlib import metadata as importlib_metadata
+except ImportError:  # pragma: no cover - older Python fallback
+    import importlib_metadata  # type: ignore
 
 MIN_PROTOBUF = (4, 24, 0)
 
@@ -22,14 +25,26 @@ def parse_version(ver: str):
 
 def main():
     try:
-        import google.protobuf as pb
+        import google.protobuf as pb  # type: ignore
+    except Exception as exc:
+        pb = None
+        import_error = exc
+    else:
+        import_error = None
+
+    v = None
+    if pb is not None:
         v = getattr(pb, '__version__', None) or getattr(pb, 'version', None)
-        if not v:
-            # fallback: check pkg_resources
-            v = pkg_resources.get_distribution('protobuf').version
-    except Exception as e:
-        print('ERROR: protobuf not installed or could not be imported:', e)
-        sys.exit(1)
+
+    if not v:
+        try:
+            v = importlib_metadata.version('protobuf')
+        except importlib_metadata.PackageNotFoundError:
+            if import_error is not None:
+                print('ERROR: protobuf not installed or could not be imported:', import_error)
+            else:
+                print('ERROR: protobuf package metadata not found; ensure protobuf >= 4.24.0 is installed in the active environment.')
+            sys.exit(1)
 
     ver_tuple = parse_version(v)
     print('protobuf detected version:', v)

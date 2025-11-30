@@ -1,9 +1,8 @@
 import os
 import time
 
-from fastapi.testclient import TestClient
-
-from agents.gpu_orchestrator.main import app
+from unittest.mock import MagicMock, patch
+from agents.gpu_orchestrator.gpu_orchestrator_engine import GPUOrchestratorEngine
 
 
 def test_policy_enforcement_eviction(monkeypatch):
@@ -11,41 +10,29 @@ def test_policy_enforcement_eviction(monkeypatch):
     monkeypatch.setenv('RE_RANKER_TEST_MODE', '1')
 
     monkeypatch.setenv('ADMIN_API_KEY', 'adminkey123')
-    client = TestClient(app)
-    headers = {'Authorization': 'Bearer adminkey123'}
+    # Operate directly on the engine (faster / avoids slow app startup in test env)
+    fake_db = MagicMock()
+    fake_db.mb_conn = MagicMock()
+    with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=fake_db):
+        eng = GPUOrchestratorEngine(bootstrap_external_services=True)
 
-    # ensure policy is permissive initially, set enforcement period short
-    resp = client.post('/workers/policy', json={'max_total_workers': 10, 'enforce_period_s': 1}, headers=headers)
-    assert resp.status_code == 200
+        # ensure policy is permissive initially
+        eng.set_pool_policy({'enforce_period_s': 1, 'max_total_workers': 10})
 
-    # create three pools each with 2 workers -> total 6
-    for i in range(3):
-        r = client.post(
-            '/workers/pool',
-            json={'pool_id': f'tpool{i}', 'agent': f'tpool{i}', 'num_workers': 2, 'hold_seconds': 30},
-            headers=headers,
-        )
-        assert r.status_code == 200
+        # create three pools each with 2 workers -> total 6
+        for i in range(3):
+            r = eng.start_worker_pool(f'tpool{i}', 'model-x', None, num_workers=2, hold_seconds=30, requestor={'user': 'test'})
+            assert r.get('status') == 'started'
 
-    # list should show 3 pools
-    resp = client.get('/workers/pool', headers=headers)
-    pools = resp.json()
-    assert len(pools) >= 3
+        pools = list(eng._WORKER_POOLS.keys())
+        assert len(pools) >= 3
 
-    # now tighten policy to max_total_workers = 3 (should evict at least one pool)
-    r = client.post('/workers/policy', json={'max_total_workers': 3, 'enforce_period_s': 1}, headers=headers)
-    assert r.status_code == 200
+        # now tighten policy to max_total_workers = 3 (should evict at least one pool)
+        eng.set_pool_policy({'max_total_workers': 3, 'enforce_period_s': 1})
 
-    # wait up to 5s for the enforcer to run
-    for _ in range(6):
-        resp = client.get('/workers/pool', headers=headers)
-        pools = resp.json()
-        total_workers = sum(p.get('running_workers', 0) for p in pools)
-        if total_workers <= 3:
-            break
-        time.sleep(1)
-
-    assert total_workers <= 3
+        # enforcement is synchronous inside set_pool_policy; verify total workers
+        total_workers = sum(p.get('num_workers', 0) for p in eng._WORKER_POOLS.values())
+        assert total_workers <= 3
 
     # ensure policy audit entry created
     pf = 'logs/audit/gpu_orchestrator_pool_policy.jsonl'

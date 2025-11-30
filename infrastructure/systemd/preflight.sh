@@ -21,6 +21,7 @@ GATE_ONLY=false
 GATE_INSTANCE=""
 # Allow environment override for gate timeout (defaults to 180s)
 GATE_TIMEOUT=${GATE_TIMEOUT:-180}
+CANONICAL_ENV="${CANONICAL_ENV:-justnews-py312}"
 
 # Logging functions
 log_info() {
@@ -109,9 +110,9 @@ check_gpu_environment() {
 
     # Attempt PyTorch CUDA probe via the standard env (optional)
     if command -v conda &> /dev/null; then
-        if conda env list 2>/dev/null | grep -E '^\s*justnews-py312\s' > /dev/null; then
+        if conda env list 2>/dev/null | grep -E "^\s*${CANONICAL_ENV}\s" > /dev/null; then
             local torch_probe
-            if torch_probe=$(conda run -n justnews-py312 python - <<'PY' 2>/dev/null
+            if torch_probe=$(conda run -n "${CANONICAL_ENV}" python - <<'PY' 2>/dev/null
 import json, sys
 try:
     import torch
@@ -133,10 +134,10 @@ PY
                     log_success "✓ PyTorch probe: $torch_probe"
                 fi
             else
-                log_warning "⚠ Unable to run PyTorch probe in conda env justnews-py312"
+                log_warning "⚠ Unable to run PyTorch probe in conda env ${CANONICAL_ENV}"
             fi
         else
-            log_info "Conda env justnews-py312 not found; skipping PyTorch probe."
+            log_info "Conda env ${CANONICAL_ENV} not found; skipping PyTorch probe."
         fi
     else
         log_info "Conda not found; skipping PyTorch probe."
@@ -149,10 +150,10 @@ PY
 check_conda_env_exists() {
     log_info "Checking conda environment availability..."
     if command -v conda &> /dev/null; then
-        if conda env list 2>/dev/null | grep -E '^\s*justnews-py312\s' > /dev/null; then
-            log_success "✓ Conda env justnews-py312 exists"
+        if conda env list 2>/dev/null | grep -E "^\s*${CANONICAL_ENV}\s" > /dev/null; then
+            log_success "✓ Conda env ${CANONICAL_ENV} exists"
         else
-            log_warning "⚠ Conda env justnews-py312 not found"
+            log_warning "⚠ Conda env ${CANONICAL_ENV} not found"
         fi
     else
         log_warning "⚠ conda not found in PATH; ensure the runtime env is available"
@@ -387,15 +388,15 @@ stop_occupied_services() {
 check_python_environment() {
     log_info "Checking Python environment..."
 
-    # Check if Python 3.12+ is available
+    # Check if Python 3.11+ is available
     if python3 --version 2>&1 | grep -q "Python 3\."; then
         local python_version
         python_version=$(python3 --version 2>&1 | grep -oP 'Python \K[0-9]+\.[0-9]+')
 
-        if [[ "$(printf '%s\n' "$python_version" "3.12" | sort -V | head -n1)" == "3.12" ]]; then
+        if [[ "$(printf '%s\n' "$python_version" "3.11" | sort -V | head -n1)" == "3.11" ]]; then
             log_success "✓ Python $python_version available"
         else
-            log_warning "⚠ Python $python_version found (3.12+ recommended)"
+            log_warning "⚠ Python $python_version found (3.11+ recommended)"
         fi
     else
         log_error "✗ Python 3 not found"
@@ -407,7 +408,7 @@ check_python_environment() {
         log_success "✓ Conda environment active: $CONDA_DEFAULT_ENV"
     else
         log_warning "⚠ No conda environment active"
-        log_info "  Consider activating: conda activate justnews-py312"
+        log_info "  Consider activating: conda activate ${CANONICAL_ENV}"
     fi
 
     return 0

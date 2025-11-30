@@ -28,14 +28,14 @@ Run the following to check and bootstrap your Chroma instance:
 
 ```bash
 # Show configured DB / Chroma values
-PYTHONPATH=. conda run -n justnews-py312 python scripts/print_db_config.py
+PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/print_db_config.py
 
 # Diagnose Chroma endpoints and canonical settings
 PYTHONPATH=. CHROMADB_REQUIRE_CANONICAL=1 CHROMADB_CANONICAL_HOST=localhost CHROMADB_CANONICAL_PORT=3307 \
-  conda run -n justnews-py312 python scripts/chroma_diagnose.py --host localhost --port 3307 --autocreate
+  conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_diagnose.py --host localhost --port 3307 --autocreate
 
 # If diagnosis shows missing tenant or collection, attempt to create them
-PYTHONPATH=. conda run -n justnews-py312 python scripts/chroma_bootstrap.py --host localhost --port 3307 --tenant default_tenant --collection articles
+PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_bootstrap.py --host localhost --port 3307 --tenant default_tenant --collection articles
 ```
 
 ## Troubleshooting

@@ -1,18 +1,9 @@
 #!/usr/bin/env bash
-# Wrapper to run pytest under the justnews-py312 conda environment.
-# Usage: scripts/dev/pytest.sh [pytest args]
-
+# Backwards-compatible wrapper for local pytest runs that prefer the canonical conda env
 set -euo pipefail
 
-ENV_NAME="justnews-py312"
-
-# Prefer explicit PYTHONPATH so tests import from repo root
-export PYTHONPATH="$(pwd)"
-
-if ! command -v conda >/dev/null 2>&1; then
-  echo "conda not found in PATH. Please install Miniconda/Anaconda or run pytest via your preferred Python environment."
-  exit 1
-fi
-
-echo "Running pytest in conda env: ${ENV_NAME}"
-conda run -n "${ENV_NAME}" pytest "$@"
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# Respect global CANONICAL_ENV if exported in environment (fallback is inside
+# run_pytest_conda.sh). This wrapper simply delegates to run_pytest_conda.sh
+# to ensure a single behavior for local & CI test runs.
+exec "${SCRIPT_DIR}/run_pytest_conda.sh" "$@"

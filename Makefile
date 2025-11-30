@@ -32,9 +32,13 @@ VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v0.1.0")
 DOCKER_TAG ?= latest
 
 # Python and tools
-PYTHON := python3.12
+PYTHON := python3.11
 PIP := $(PYTHON) -m pip
-CONDA_ENV := justnews-py312
+# Allow a single, overrideable canonical environment name that can be set in
+# /etc/justnews/global.env or exported by the operator. Default remains
+# `${CANONICAL_ENV:-justnews-py312}` for compatibility.
+CANONICAL_ENV ?= justnews-py312
+CONDA_ENV ?= $(CANONICAL_ENV)
 CONDA := $(shell command -v conda 2>/dev/null || echo)
 ifeq ($(CONDA),)
 RUN_PY := $(PYTHON)
@@ -93,7 +97,7 @@ test: test-unit test-integration
 	$(call log_success,"All tests completed")
 
 # Local pytest wrapper target which ensures tests are launched in the
-# `justnews-py312` conda environment. Developers should prefer this target
+# `${CANONICAL_ENV:-justnews-py312}` conda environment. Developers should prefer this target
 # for local runs to ensure consistent environments.
 pytest-local:
 	$(call log_info,"Running local pytest via scripts/dev/pytest.sh")
@@ -180,7 +184,7 @@ deploy-check:
 	$(call log_info,"Running pre-deployment checks...")
 	test -f $(CONFIG_DIR)/system_config.json || ($(call log_error,"Config file missing"); exit 1)
 	$(PYTHON) -c "import sys; sys.exit(0 if sys.version_info >= (3, 12) else 1)" || \
-		($(call log_error,"Python 3.12+ required"); exit 1)
+			($(call log_error,"Python 3.11+ required"); exit 1)
 	$(call log_success,"Pre-deployment checks passed")
 
 deploy-development: deploy-check

@@ -5,8 +5,9 @@ set -euo pipefail
 # If `date` is provided (format YYYYMMDD), artifacts will be created
 # with that suffix. If omitted the script will use UTC date (YYYYMMDD).
 # Set DRY_RUN=1 to skip executing conda/python commands (useful for CI/tests).
-# Default env: justnews-py312
-ENV_NAME=${1:-justnews-py312}
+# Default env: use canonical env when available
+CANONICAL_ENV="${CANONICAL_ENV:-justnews-py312}"
+ENV_NAME=${1:-${CANONICAL_ENV}}
 OUTDIR=${2:-artifacts}
 # optional 3rd argument is a date stamp (YYYYMMDD). If omitted we generate
 # a UTC date string so backup files are date-stamped.

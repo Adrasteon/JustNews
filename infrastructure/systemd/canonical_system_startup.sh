@@ -33,8 +33,8 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-# Preferred conda env for Python helpers
-DEFAULT_CONDA_ENV="justnews-py312"
+# Preferred conda env for Python helpers (default to canonical name when present)
+DEFAULT_CONDA_ENV="${CANONICAL_ENV:-justnews-py312}"
 CONDA_ENV="${CONDA_ENV:-$DEFAULT_CONDA_ENV}"
 
 # Helper: run a python script using conda run -n ${CONDA_ENV} when available;
@@ -166,8 +166,8 @@ check_python_runtime() {
     exit 1
   fi
   log_success "Python runtime detected: $python_version"
-  if [[ "$python_path" != *"justnews-py312"* ]]; then
-   log_warn "PYTHON_BIN path does not include 'justnews-py312'; confirm the correct environment is targeted"
+  if [[ "$python_path" != *"${CONDA_ENV:-$DEFAULT_CONDA_ENV}"* ]]; then
+   log_warn "PYTHON_BIN path does not reference the expected environment (${CONDA_ENV:-$DEFAULT_CONDA_ENV}); confirm the correct environment is targeted"
   fi
 }
 
@@ -626,9 +626,9 @@ main() {
       log_error "CHROMADB_HOST/PORT in environment $chroma_host:$chroma_port does not match canonical $chroma_canonical_host:$chroma_canonical_port; aborting startup."
       log_info "Helpful steps:"
       log_info "  1) Use $ROOT/scripts/chroma_diagnose.py to discover endpoints and root info"
-      log_info "     - Example: PYTHONPATH=. conda run -n justnews-py312 python scripts/chroma_diagnose.py --host $chroma_host --port $chroma_port"
+      log_info "     - Example: PYTHONPATH=. conda run -n ${CONDA_ENV:-$DEFAULT_CONDA_ENV} python scripts/chroma_diagnose.py --host $chroma_host --port $chroma_port"
       log_info "  2) If tenant/collection missing, run the bootstrap helper: scripts/chroma_bootstrap.py"
-      log_info "     - Example: PYTHONPATH=. conda run -n justnews-py312 python scripts/chroma_bootstrap.py --host $chroma_canonical_host --port $chroma_canonical_port --tenant default_tenant --collection articles"
+      log_info "     - Example: PYTHONPATH=. conda run -n ${CONDA_ENV:-$DEFAULT_CONDA_ENV} python scripts/chroma_bootstrap.py --host $chroma_canonical_host --port $chroma_canonical_port --tenant default_tenant --collection articles"
       exit 1
     fi
     # Run a diagnostic to confirm the canonical host/port is a Chroma instance

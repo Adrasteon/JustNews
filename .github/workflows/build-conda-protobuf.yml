@@ -1,0 +1,35 @@
+name: build-conda-protobuf
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, codemod/utcnow-agents ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Miniforge
+        uses: conda-incubator/setup-miniforge@v2
+        with:
+          auto-activate-base: false
+
+      - name: Install conda-build & dependencies
+        run: |
+          mamba install -y -n base -c conda-forge conda-build python=3.12 cmake pip setuptools wheel
+
+      - name: Build protobuf conda recipe
+        run: |
+          conda-build conda/recipes/protobuf --output-folder /tmp/conda-bld || true
+
+      - name: Show built artifacts
+        run: ls -la /tmp/conda-bld || true
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: protobuf-conda-build
+          path: /tmp/conda-bld

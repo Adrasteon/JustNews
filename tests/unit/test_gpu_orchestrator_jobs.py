@@ -19,7 +19,7 @@ def test_submit_job_persists_and_pushes(monkeypatch):
     fake_redis = MagicMock()
     # patch create_database_service and redis client during engine init
     with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=fake_service):
-        engine = GPUOrchestratorEngine()
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
         # ensure redis client present
         engine.redis_client = fake_redis
         # call submit_job

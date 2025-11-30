@@ -104,7 +104,7 @@ def test_submit_job_persistence_and_redis_write():
     fake_redis = InMemoryRedis()
 
     with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=svc):
-        engine = GPUOrchestratorEngine()
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
         # ensure redis client assigned after init
         engine.redis_client = fake_redis
 
@@ -145,7 +145,7 @@ def test_reclaimer_integration_requeues_and_dlq():
     fake_redis._pending['stream:orchestrator:inference_jobs'] = [(mid, 'consumer', 120000, 1)]
 
     with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=svc):
-        engine = GPUOrchestratorEngine()
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
         engine.redis_client = fake_redis
         engine._job_retry_max = 2
 

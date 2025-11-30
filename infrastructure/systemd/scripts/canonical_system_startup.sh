@@ -27,9 +27,9 @@ fi
 # Ensure PYTHONPATH and PYTHON_BIN are exported so downstream services and
 # scripts can correctly run using the project's conda environment. If
 # `/etc/justnews/global.env` or project `global.env` has been sourced, those
-# values will be used; otherwise we prefer the `justnews-py312` conda env
-# as a conservative default where available.
+# values will be used; otherwise prefer the canonical project env (CANONICAL_ENV, default: justnews-py312)
+export PYTHON_BIN="${PYTHON_BIN:-/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python}"
 export PYTHONPATH="${PYTHONPATH:-$ROOT}"
-export PYTHON_BIN="${PYTHON_BIN:-/home/adra/miniconda3/envs/justnews-py312/bin/python}"
+# PYTHON_BIN default derived from CANONICAL_ENV when present
 
 exec "$SCRIPT" "$@"

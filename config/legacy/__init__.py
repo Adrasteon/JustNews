@@ -365,7 +365,7 @@ class LegacyConfigurationMigrator:
     ) -> tuple[JustNewsConfig, list[str]]:
         """Merge legacy configuration into target config"""
         steps = []
-        config_dict = target_config.dict()
+        config_dict = target_config.model_dump()
 
         # Type-specific merging logic
         if config_type == 'database':
@@ -603,7 +603,7 @@ class LegacyConfigurationMigrator:
             config_path.parent.mkdir(parents=True, exist_ok=True)
 
             with open(config_path, 'w') as f:
-                json.dump(plan.target_config.dict(), f, indent=2)
+                json.dump(plan.target_config.model_dump(), f, indent=2)
 
             info.append(f"Created unified configuration at {config_path}")
             info.extend(plan.migration_steps)

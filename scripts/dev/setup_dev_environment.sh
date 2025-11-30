@@ -3,8 +3,9 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEV_ENV_FILE="$REPO_ROOT/dev-environment.yml"
-DEV_ENV_NAME="justnews-py312-dev"
-EXISTING_ENV_NAME="justnews-py312"
+CANONICAL_ENV="${CANONICAL_ENV:-justnews-py312}"
+DEV_ENV_NAME="${DEV_ENV_NAME:-${CANONICAL_ENV}-dev}"
+EXISTING_ENV_NAME="${EXISTING_ENV_NAME:-${CANONICAL_ENV}}"
 
 usage() {
   cat <<EOF
@@ -58,6 +59,13 @@ create_dev_env() {
     $INSTALLER env update -f "$DEV_ENV_FILE" -n "$DEV_ENV_NAME"
   }
   echo "Dev environment created: $DEV_ENV_NAME"
+  # Apply vendor patches in this newly-created environment so third-party
+  # packages that rely on legacy pkg_resources namespace helpers are patched
+  # automatically and don't emit deprecation warnings at runtime.
+  if command -v conda >/dev/null 2>&1; then
+    echo "Applying vendor patch for google.rpc inside environment: $DEV_ENV_NAME"
+    conda run -n "$DEV_ENV_NAME" --no-capture-output python scripts/vendor_patches/apply_google_rpc_namespace_patch.py || true
+  fi
 }
 
 install_into_existing() {
@@ -79,6 +87,12 @@ install_into_existing() {
     conda run -n "$EXISTING_ENV_NAME" --no-capture-output python -m pip install --upgrade ruff isort black pre-commit
   }
   echo "Dev tools installed into $EXISTING_ENV_NAME"
+  # Also apply the vendor patch inside the target environment to avoid
+  # runtime deprecation warnings for google.rpc after tool installation.
+  if command -v conda >/dev/null 2>&1; then
+    echo "Applying vendor patch for google.rpc inside environment: $EXISTING_ENV_NAME"
+    conda run -n "$EXISTING_ENV_NAME" --no-capture-output python scripts/vendor_patches/apply_google_rpc_namespace_patch.py || true
+  fi
   echo "Please run: conda activate $EXISTING_ENV_NAME and run pre-commit install in your repo to enable hooks"
 }
 

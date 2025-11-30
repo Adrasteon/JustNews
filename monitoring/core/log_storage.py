@@ -431,8 +431,11 @@ class LogStorage:
                 # Extract date from filename
                 filename_parts = log_file.stem.split('_')
                 if len(filename_parts) >= 2:
-                    file_date_str = filename_parts[1]  # YYYYMMDD_HH
-                    file_date = datetime.strptime(file_date_str, "%Y%m%d_%H")
+                    # filename could split into multiple parts if the timestamp contains an underscore
+                    # e.g. 'logs_YYYYMMDD_HH' -> ['logs', 'YYYYMMDD', 'HH']
+                    # join the tail parts back together to restore 'YYYYMMDD_HH'
+                    file_date_str = "_".join(filename_parts[1:])  # YYYYMMDD_HH
+                    file_date = datetime.strptime(file_date_str, "%Y%m%d_%H").replace(tzinfo=timezone.utc)
 
                     if file_date < cutoff_date:
                         log_file.unlink()

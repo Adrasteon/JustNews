@@ -21,7 +21,7 @@ Example (dry-run + publish metadata only):
 
 .. code-block:: bash
 
-     conda run -n justnews-py312 \
+    conda run -n ${CANONICAL_ENV:-justnews-py312} \
          python scripts/train_qlora.py \
              --agent synthesizer \
              --adapter-name mistral_synth_v1 \

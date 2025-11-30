@@ -59,7 +59,7 @@ this path as `CUDA_HOME` in the commands below.
 
 3. **Install into the runtime env** (after copying the wheel to the repo root):
    ```bash
-   conda run -n justnews-py312 pip install -U \
+  conda run -n ${CANONICAL_ENV:-justnews-py312} pip install -U \
      /home/adra/JustNews/.build/bitsandbytes/dist/bitsandbytes-0.49.0.dev0-cp312-cp312-linux_x86_64.whl
    ```
 
@@ -85,15 +85,15 @@ this path as `CUDA_HOME` in the commands below.
    ```
 2. **Diagnostics after install**
    ```bash
-   conda run -n justnews-py312 env BNB_CUDA_VERSION=122 python -m bitsandbytes
+  conda run -n ${CANONICAL_ENV:-justnews-py312} env BNB_CUDA_VERSION=122 python -m bitsandbytes
    ```
    Expect the tool to print "SUCCESS!" and explicitly state that it is loading
    `libbitsandbytes_cuda122.so`.
 3. **Performance smoke test** – run the real-model perf helper:
    ```bash
    RE_RANKER_TEST_MODE=0 RE_RANKER_MODEL=mistralai/Mistral-7B-Instruct-v0.3 \
-   BNB_CUDA_VERSION=122 \
-   conda run -n justnews-py312 python scripts/perf/simulate_concurrent_inference.py \
+  BNB_CUDA_VERSION=122 \
+  conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/perf/simulate_concurrent_inference.py \
      --requests 20 --sweep --sweep-max 2 --model mistralai/Mistral-7B-Instruct-v0.3
    ```
 

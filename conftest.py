@@ -74,7 +74,7 @@ elif project_global_env.exists():
         py_cmd = None
 if py_cmd is None:
     # fallback to using conda run, if the recommended env exists
-    conda_env = os.environ.get('JUSTNEWS_CONDA_ENV', 'justnews-py312')
+    conda_env = os.environ.get('CANONICAL_ENV', 'justnews-py312')
     if which('conda') is not None and _conda_env_available(conda_env):
         py_cmd = ['conda', 'run', '-n', conda_env, 'python']
     else:

@@ -293,8 +293,8 @@ async def get_gdpr_compliance_report(
         # Add additional compliance metrics
         report = {
             **gdpr_summary,
-            "data_retention_status": (await get_data_retention_status(current_user)).dict(),
-            "user_request_summary": (await get_user_request_summary(50, current_user)).dict(),
+            "data_retention_status": (await get_data_retention_status(current_user)).model_dump(),
+            "user_request_summary": (await get_user_request_summary(50, current_user)).model_dump(),
             "compliance_assessment": {
                 "data_portability_compliant": gdpr_summary["gdpr_articles_referenced"].get("20", 0) > 0,
                 "right_to_be_forgotten_compliant": gdpr_summary["gdpr_articles_referenced"].get("17", 0) > 0,

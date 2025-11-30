@@ -25,7 +25,7 @@ cd JustNews
 conda env create -f environment.yml
 
 # Activate the environment
-conda activate justnews-py312
+conda activate ${CANONICAL_ENV:-justnews-py312}
 ```
 
 3. Install dependencies (prefer conda-forge for the crawler extraction stack):
@@ -68,7 +68,7 @@ make start
 ### Environment Setup
 Before running any development commands, always activate the conda environment:
 ```bash
-conda activate justnews-py312
+conda activate ${CANONICAL_ENV:-justnews-py312}
 ```
 
 ### Available Commands
@@ -93,15 +93,15 @@ Environment variables:
 ### Conda Environment Management
 ```bash
 # Activate environment
-conda activate justnews-py312
-Note: the canonical project conda environment is `justnews-py312`. When running scripts from documentation or CI, prefer:
+conda activate ${CANONICAL_ENV:-justnews-py312}
+Note: the canonical project conda environment is `${CANONICAL_ENV:-justnews-py312}`. When running scripts from documentation or CI, prefer:
 
 ```bash
 # Run via conda-run
-conda run -n justnews-py312 python scripts/your_script.py
+conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/your_script.py
 
 # Or use PYTHON_BIN to force a known interpreter
-PYTHON_BIN=/home/adra/miniconda3/envs/justnews-py312/bin/python python scripts/your_script.py
+PYTHON_BIN=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python python scripts/your_script.py
 ```
 
 This ensures scripts are executed with the same environment and binary used by deployment & startup helpers.
@@ -123,30 +123,30 @@ conda env export > environment_backup.yml
 Prefer running tests using the project's conda environment to ensure third-party compiled extensions and dependencies are available.
 ```bash
 # Either set `PYTHONPATH` and run pytest using the activated conda env:
-PYTHONPATH=$(pwd) conda run -n justnews-py312 pytest tests/agents/crawler -q
+PYTHONPATH=$(pwd) conda run -n ${CANONICAL_ENV:-justnews-py312} pytest tests/agents/crawler -q
 
 Tip: To ensure you always run pytest inside the project's conda environment, use the helper:
 
 ```bash
 scripts/dev/pytest.sh [pytest args]
 ```
-This wrapper runs pytest via the `justnews-py312` environment (recommended for local dev).
+This wrapper runs pytest via the `CANONICAL_ENV` (defaults to `${CANONICAL_ENV:-justnews-py312}`) environment (recommended for local dev).
 
 Git hooks: We ship a simple pre-push hook that encourages use of the pytest wrapper and can run quick unit smoke tests.
 Install hooks with:
 
 ```bash
-./scripts/dev/install_hooks.sh
+conda activate ${CANONICAL_ENV:-justnews-py312}
 # Optional strict mode: run quick tests on pre-push
 export GIT_STRICT_TEST_HOOK=1
 ```
 
-CI note: GitHub Actions workflows were updated to create and use the `justnews-py312` conda environment during CI test runs (uses Miniconda). This keeps CI consistent with local dev.
+CI note: GitHub Actions workflows were updated to create and use the `${CANONICAL_ENV:-justnews-py312}` conda environment during CI test runs (uses Miniconda). This keeps CI consistent with local dev.
 
 Self-hosted E2E tests: The repo now includes a self-hosted workflow (systemd-nspawn) for high-fidelity E2E tests that run MariaDB + Redis inside a systemd-nspawn container. See `.github/workflows/e2e-systemd-nspawn.yml` and `docs/dev/self-hosted-runners.md` for required runner configuration and security notes.
 
 # Or set the `PYTHON_BIN` environment variable to the conda python executable:
-PYTHONPATH=$(pwd) PYTHON_BIN=/home/adra/miniconda3/envs/justnews-py312/bin/python pytest tests/agents/crawler -q
+PYTHONPATH=$(pwd) PYTHON_BIN=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python pytest tests/agents/crawler -q
 ```
 
 This suite covers the Stage B2 extraction pipeline, including the Trafilatura/readability/jusText cascade, raw HTML persistence, and ingestion metadata enrichment.
@@ -161,12 +161,12 @@ JustNews/
 ├── infrastructure/   # Multi-platform deployment
 ├── monitoring/       # Centralized observability
 ├── scripts/          # Organized script ecosystem
-├── security/         # Enterprise security framework
+conda activate ${CANONICAL_ENV:-justnews-py312}
 ├── tests/            # Comprehensive testing suite
 ├── training_system/  # MCP-integrated learning
 ├── public_website.html    # Consumer-facing website
 └── requirements.txt       # Python dependencies
-```
+conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/your_script.py
 
 ## 📚 Documentation
 
@@ -220,8 +220,8 @@ CHROMADB_CANONICAL_PORT=3307
 
 Operational commands to inspect and bootstrap Chroma: run the diagnostic and bootstrap helpers.
 ```bash
-PYTHONPATH=. conda run -n justnews-py312 python scripts/chroma_diagnose.py --host <host> --port <port> --autocreate
-PYTHONPATH=. conda run -n justnews-py312 python scripts/chroma_bootstrap.py --host <host> --port <port> --tenant default_tenant --collection articles
+PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_diagnose.py --host <host> --port <port> --autocreate
+PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_bootstrap.py --host <host> --port <port> --tenant default_tenant --collection articles
 ```
 
 See `docs/chroma_setup.md` for advanced guidance and troubleshooting.

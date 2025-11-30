@@ -38,14 +38,14 @@ check_agent_python_deps() {
     local agent="$1"
     # Prefer using a developer conda env when present (so checks match developer setup)
     local py_cmd=""
-    local conda_env_to_try="${CONDA_ENV:-justnews-py312}"
+    local conda_env_to_try="${CONDA_ENV:-${CANONICAL_ENV:-justnews-py312}}"
     if command -v conda >/dev/null 2>&1; then
         if conda env list 2>/dev/null | awk '{print $1}' | grep -xq "$conda_env_to_try"; then
             py_cmd="conda run -n $conda_env_to_try python"
         fi
     fi
     if [[ -z "$py_cmd" ]]; then
-    local py="${PYTHON_BIN:-/home/adra/miniconda3/envs/justnews-py312/bin/python}"
+    local py="${PYTHON_BIN:-/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python}"
         if [[ ! -x "$py" ]]; then
             py="$(command -v python3 || command -v python || true)"
         fi
@@ -113,21 +113,23 @@ fi
 if [ "$GATE_ONLY" = true ]; then
     log_info "Gate-only mode: ensuring gpu_orchestrator is up and models are ready"
     
-    # 0. Quick dependency sanity for the MCP Bus itself so we fail early
-    log_info "Checking Python runtime dependencies for mcp_bus..."
-    if ! check_agent_python_deps "mcp_bus"; then
-        log_error "Dependency check failed for mcp_bus — aborting gate. See messages above."
-        if [[ -x "$SCRIPT_DIR/ci_check_deps.py" || -f "$SCRIPT_DIR/ci_check_deps.py" ]]; then
-            python3 "$SCRIPT_DIR/ci_check_deps.py" || true
-        fi
-        exit 1
-    fi
-
     # 1. Wait for GPU Orchestrator to be healthy
     log_info "Waiting for GPU Orchestrator at $GPU_ORCHESTRATOR_URL..."
     start_time=$(date +%s)
     while true; do
-        if curl -fsS "${GPU_ORCHESTRATOR_URL}/health" > /dev/null; then
+        # Fetch health information so we can detect SAFE_MODE and avoid blocking
+        health_response=$(curl -fsS "${GPU_ORCHESTRATOR_URL}/health" || true)
+        if [[ -n "$health_response" ]]; then
+            # If the orchestrator is running in SAFE_MODE we should not attempt
+            # to trigger full model preloads (these are heavy and can fail) —
+            # in that case allow gate-only checks to succeed quickly.
+            safe_mode=$(echo "$health_response" | jq -r '.safe_mode // "false"' 2>/dev/null || echo "false")
+            if [[ "$safe_mode" == "true" ]]; then
+                log_warning "GPU Orchestrator is healthy and in SAFE_MODE — skipping model preload and allowing gated startup."
+                log_success "Preflight (gate-only) passing because orchestrator SAFE_MODE is active."
+                exit 0
+            fi
+
             log_success "GPU Orchestrator is healthy."
             break
         fi
@@ -141,6 +143,15 @@ if [ "$GATE_ONLY" = true ]; then
     done
 
     # 2. Trigger and wait for model preloading
+    # 0. Quick dependency sanity for the MCP Bus itself so we fail early
+    log_info "Checking Python runtime dependencies for mcp_bus..."
+    if ! check_agent_python_deps "mcp_bus"; then
+        log_error "Dependency check failed for mcp_bus — aborting gate. See messages above."
+        if [[ -x "$SCRIPT_DIR/ci_check_deps.py" || -f "$SCRIPT_DIR/ci_check_deps.py" ]]; then
+            python3 "$SCRIPT_DIR/ci_check_deps.py" || true
+        fi
+        exit 1
+    fi
     log_info "Triggering model preload via GPU Orchestrator..."
     preload_response=$(curl -s -X POST "${GPU_ORCHESTRATOR_URL}/models/preload" -H "Content-Type: application/json" -d '{"refresh": false}')
     

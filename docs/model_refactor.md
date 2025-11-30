@@ -117,7 +117,7 @@ Steps:
     - Run a QLoRA script using a curated fine-tuning dataset for the synthesizer agent (adjust dataset + hyper-params as needed):
        ```bash
        MODEL_STORE_ROOT=/opt/justnews/model_store \
-       conda run -n justnews-py312 python scripts/train_qlora.py \
+      conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/train_qlora.py \
           --agent synthesizer \
           --adapter-name mistral_synth_v1 \
           --model_name_or_path mistralai/Mistral-7B-Instruct-v0.3 \
@@ -181,19 +181,19 @@ Phase 4 — Testing, perf tuning & rollout
        ```bash
        # Int8 sweep (uses variant_preference=bnb-int8). Adapter paths pulled from AGENT_MODEL_MAP.
        MODEL_STORE_ROOT=/opt/justnews/model_store RE_RANKER_TEST_MODE=0 \
-          conda run -n justnews-py312 python scripts/perf/simulate_concurrent_inference.py \
+          conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/perf/simulate_concurrent_inference.py \
              --model mistralai/Mistral-7B-Instruct-v0.3 --adapter model_store/synthesizer/adapters/mistral_synth_v1 \
              --requests 240 --sweep --sweep-max 8 --repeat 3 --output-csv scripts/perf/results/2025-11-25-synth_int8.csv
 
        # Matching fp16 control (set BNB_DISABLE=1 to force fp16 path if needed)
        MODEL_STORE_ROOT=/opt/justnews/model_store RE_RANKER_TEST_MODE=0 BNB_DISABLE=1 \
-          conda run -n justnews-py312 python scripts/perf/simulate_concurrent_inference.py \
+          conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/perf/simulate_concurrent_inference.py \
              --model mistralai/Mistral-7B-Instruct-v0.3 --adapter model_store/synthesizer/adapters/mistral_synth_v1 \
              --requests 240 --sweep --sweep-max 8 --repeat 3 --output-csv scripts/perf/results/2025-11-25-synth_fp16.csv
 
        # Worker-pool soak (int8) with live adapter path
        MODEL_STORE_ROOT=/opt/justnews/model_store RE_RANKER_TEST_MODE=0 \
-          conda run -n justnews-py312 python scripts/ops/adapter_worker_pool.py \
+          conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/ops/adapter_worker_pool.py \
              --workers 4 --model mistralai/Mistral-7B-Instruct-v0.3 \
              --adapter model_store/re_ranker/adapters/mistral_re_ranker_v1 --hold 900
        ```
@@ -276,7 +276,7 @@ MODEL_STORE_ROOT=/opt/justnews/model_store HF_TOKEN=$HF_TOKEN python scripts/pub
 
 Train adapter (example):
 ```bash
-conda activate justnews-py312
+   conda activate ${CANONICAL_ENV:-justnews-py312}
 python scripts/train_qlora.py --model_name_or_path mistralai/Mistral-7B-Instruct --output_dir output/adapters/mistral_synth_v1 --train_files data/synth_finetune.jsonl --adapter_name mistral_synth_v1 --epochs 3
 ```
 

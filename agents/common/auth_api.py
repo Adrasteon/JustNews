@@ -762,7 +762,7 @@ async def perform_data_export(
         # Save export data
         export_file = export_dir / f"{export_id}_data.json"
         with open(export_file, 'w') as f:
-            json.dump(export_data.dict(), f, indent=2, default=str)
+            json.dump(export_data.model_dump(), f, indent=2, default=str)
 
         # Update status to completed
         status_data.update({

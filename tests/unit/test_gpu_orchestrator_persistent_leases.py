@@ -34,7 +34,7 @@ def test_persist_lease_and_heartbeat(mock_mysql, mock_chroma, monkeypatch):
 
     # patch the symbol used by the orchestrator engine module directly
     with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=fake_service):
-        engine = GPUOrchestratorEngine()
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
 
         # Force allocation to succeed deterministically
         engine._allocate_gpu = lambda req: (True, 0)

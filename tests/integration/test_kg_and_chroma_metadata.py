@@ -42,7 +42,7 @@ def test_db_backed_kg_can_store_and_retrieve():
     entities = ['OpenAI', 'TestEntity']
     relationships = [{'source': 'OpenAI', 'target': 'TestEntity', 'type': 'cooccurs'}]
 
-    asyncio.get_event_loop().run_until_complete(kg.store_article_entities({'url_hash': url_hash}, entities, relationships))
+    asyncio.run(kg.store_article_entities({'url_hash': url_hash}, entities, relationships))
 
     # Use DB helper to confirm entities are linked
     linked = get_article_entities(svc, article_id)

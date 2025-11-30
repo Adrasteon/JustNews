@@ -41,6 +41,7 @@ GPU_ORCHESTRATOR_PORT = int(os.environ.get("GPU_ORCHESTRATOR_PORT", "8008"))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 SAFE_MODE = os.environ.get("SAFE_MODE", "false").lower() == "true"
 ENABLE_NVML = os.environ.get("ENABLE_NVML", "false").lower() == "true"
+_SKIP_BOOTSTRAP = os.environ.get("GPU_ORCHESTRATOR_SKIP_BOOTSTRAP", "").lower() in ("1", "true", "yes")
 
 # Global state
 _START_TIME = time.time()
@@ -68,10 +69,38 @@ _NVML_HANDLE_CACHE: dict[int, Any] = {}
 class GPUOrchestratorEngine:
     """Core engine for GPU orchestration and management."""
 
-    def __init__(self):
+    def __init__(self, bootstrap_external_services: bool | None = None):
         self.logger = self._setup_logging()
         self.metrics = JustNewsMetrics("gpu_orchestrator")
         self._initialize_metrics()
+
+        bootstrap = bootstrap_external_services
+        if bootstrap is None:
+            bootstrap = not _SKIP_BOOTSTRAP
+        self._bootstrap_external = bootstrap
+
+        # Worker pool management: track spawned adapter worker pools
+        # Structure: {pool_id: {"model": str, "adapter": str|None, "num_workers": int, "procs": [Process], "started_at": float}}
+        self._WORKER_POOLS: dict[str, dict] = {}
+
+        # Default optional services to None; tests can inject fakes when bootstrap is skipped.
+        self.db_service = None
+        self.redis_client = None
+
+        # Reclaim / DLQ configuration (always set so tests can exercise behavior)
+        self._job_retry_max = int(os.environ.get('ORCH_JOB_RETRY_MAX', '5'))
+        self._claim_idle_ms = int(os.environ.get('ORCH_CLAIM_IDLE_MS', str(60 * 1000)))
+        self._reclaim_interval_s = int(os.environ.get('ORCH_RECLAIM_INTERVAL_S', '30'))
+
+        # Leader election state (always initialized)
+        self._leader_lock_name = os.environ.get('GPU_ORCHESTRATOR_LEADER_LOCK', 'gpu_orchestrator_leader')
+        self._leader_try_timeout = int(os.environ.get('GPU_ORCHESTRATOR_LEADER_TRY_TIMEOUT', '1'))
+        self.is_leader = False
+
+        if not self._bootstrap_external:
+            self.logger.info('GPU Orchestrator running in lightweight test mode; external services will not auto-bootstrap.')
+            return
+
         # Start background lifecycle enforcer thread
         try:
             t = threading.Thread(target=self._background_policy_enforcer, daemon=True)
@@ -79,14 +108,13 @@ class GPUOrchestratorEngine:
             self.logger.debug('Worker pool lifecycle enforcer started')
         except Exception as e:
             self.logger.warning(f'Failed to start lifecycle enforcer: {e}')
-        # Worker pool management: track spawned adapter worker pools
-        # Structure: {pool_id: {"model": str, "adapter": str|None, "num_workers": int, "procs": [Process], "started_at": float}}
-        self._WORKER_POOLS: dict[str, dict] = {}
+
         # Optional MariaDB service used for persistence of leases and pools
         try:
             self.db_service = create_database_service()
         except Exception:
             self.db_service = None
+
         # Optional Redis client for streams
         try:
             import redis
@@ -94,36 +122,24 @@ class GPUOrchestratorEngine:
             if redis_url:
                 self.redis_client = redis.from_url(redis_url)
             else:
-                # default localhost
                 self.redis_client = redis.Redis()
         except Exception:
             self.redis_client = None
 
-            # Reclaim / DLQ configuration
-            self._job_retry_max = int(os.environ.get('ORCH_JOB_RETRY_MAX', '5'))
-            self._claim_idle_ms = int(os.environ.get('ORCH_CLAIM_IDLE_MS', str(60 * 1000)))
-            self._reclaim_interval_s = int(os.environ.get('ORCH_RECLAIM_INTERVAL_S', '30'))
+        # Start background reclaimer loop if redis available
+        try:
+            if self.redis_client:
+                t = threading.Thread(target=self._reclaimer_loop, daemon=True)
+                t.start()
+        except Exception:
+            self.logger.debug('Failed to start reclaimer loop')
 
-            # Start background reclaimer loop if redis available
-            try:
-                if self.redis_client:
-                    t = threading.Thread(target=self._reclaimer_loop, daemon=True)
-                    t.start()
-            except Exception:
-                self.logger.debug('Failed to start reclaimer loop')
         # Rehydrate any persisted worker pool records so state survives restarts
         try:
             if self.db_service:
                 self._rehydrate_worker_pools_from_db()
         except Exception:
-            # Best-effort: continue with empty in-memory pools if DB read fails
             self.logger.debug('Failed to rehydrate worker pools from DB (continuing)')
-        
-        # Leader election state
-        self._leader_lock_name = os.environ.get('GPU_ORCHESTRATOR_LEADER_LOCK', 'gpu_orchestrator_leader')
-        # How long to wait for GET_LOCK when trying to acquire (seconds)
-        self._leader_try_timeout = int(os.environ.get('GPU_ORCHESTRATOR_LEADER_TRY_TIMEOUT', '1'))
-        self.is_leader = False
 
         # Start background election loop
         try:

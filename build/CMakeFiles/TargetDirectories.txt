@@ -1,0 +1,3 @@
+/home/adra/JustNews/build/CMakeFiles/bitsandbytes.dir
+/home/adra/JustNews/build/CMakeFiles/edit_cache.dir
+/home/adra/JustNews/build/CMakeFiles/rebuild_cache.dir

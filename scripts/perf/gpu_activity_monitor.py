@@ -63,7 +63,9 @@ def start_telemetry(out_dir: str, bnb_version: str | None = None, exporter_port:
         print('started gpu_telemetry.sh pid', p.pid)
 
     if exporter_port and not os.path.exists(exporter_pid_file):
-        cmd = ['mamba', 'run', '-n', 'justnews-v2-py312-fix', 'python', os.path.join('scripts', 'perf', 'gpu_telemetry_exporter.py'), '--port', str(exporter_port), '--interval', '1']
+        # Use the canonical project conda environment name for running monitoring helpers
+        conda_env = os.environ.get('CANONICAL_ENV', 'justnews-py312')
+        cmd = ['mamba', 'run', '-n', conda_env, 'python', os.path.join('scripts', 'perf', 'gpu_telemetry_exporter.py'), '--port', str(exporter_port), '--interval', '1']
         p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         with open(exporter_pid_file, 'w') as f:
             f.write(str(p.pid))

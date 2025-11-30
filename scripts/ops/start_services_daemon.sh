@@ -10,7 +10,7 @@ LOG_DIR="$SCRIPT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
 # Conda environment name used by the project
-CONDA_ENV="justnews-py312"
+CONDA_ENV="${CANONICAL_ENV:-justnews-py312}"
 
 # Default timeout for healthchecks (seconds)
 HEALTH_TIMEOUT=10

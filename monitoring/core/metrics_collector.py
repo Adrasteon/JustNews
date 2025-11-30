@@ -11,7 +11,7 @@ import statistics
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any
 
@@ -540,7 +540,7 @@ class EnhancedMetricsCollector:
                    f"(avg: {avg:.2f}, std_dev: {std_dev:.2f})",
             value=current_value,
             threshold=avg + (3 * std_dev),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             labels={"metric": metric_name, "type": "anomaly"}
         )
 
@@ -561,7 +561,7 @@ class EnhancedMetricsCollector:
             message=rule.description,
             value=current_value,
             threshold=threshold,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             labels=rule.labels
         )
 
@@ -585,7 +585,7 @@ class EnhancedMetricsCollector:
     async def _cleanup_old_data(self):
         """Clean up old metric history and resolved alerts"""
         try:
-            cutoff_time = datetime.utcnow() - timedelta(hours=24)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
 
             # Clean up old metric history
             for metric_name in self._metric_history:
@@ -619,10 +619,10 @@ class EnhancedMetricsCollector:
         if metric_type not in self._metric_history:
             self._metric_history[metric_type] = []
 
-        self._metric_history[metric_type].append((datetime.utcnow(), value))
+        self._metric_history[metric_type].append((datetime.now(timezone.utc), value))
 
         # Keep only recent history
-        cutoff_time = datetime.utcnow() - timedelta(hours=24)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
         self._metric_history[metric_type] = [
             (ts, val) for ts, val in self._metric_history[metric_type]
             if ts > cutoff_time
@@ -696,7 +696,7 @@ class EnhancedMetricsCollector:
         """Resolve an active alert"""
         if alert_key in self._active_alerts:
             self._active_alerts[alert_key].resolved = True
-            self._active_alerts[alert_key].resolved_at = datetime.utcnow()
+            self._active_alerts[alert_key].resolved_at = datetime.now(timezone.utc)
 
     def get_health_score(self) -> float:
         """Calculate overall health score"""
@@ -716,7 +716,7 @@ class EnhancedMetricsCollector:
             "total_metrics": len(self._custom_metrics),
             "alert_rules": len(self._alert_rules),
             "performance_baselines": len(self._performance_baselines),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
 
 

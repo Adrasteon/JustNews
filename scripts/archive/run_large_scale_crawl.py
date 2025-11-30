@@ -1,4 +1,4 @@
-#!/home/adra/miniconda3/condabin/conda run -n justnews-py312 python3
+#!/usr/bin/env python3
 """
 Quick Start Guide: Large-Scale Multi-Site Crawl with AI Quality Assessment
 

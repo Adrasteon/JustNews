@@ -36,7 +36,7 @@ def test_reclaimer_moves_to_dlq_on_max_attempts(monkeypatch):
     fake_service.mb_conn = conn
 
     with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=fake_service):
-        engine = GPUOrchestratorEngine()
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
         engine.redis_client = fake_redis
         engine._job_retry_max = 5
 
@@ -68,7 +68,7 @@ def test_reclaimer_requeues_when_attempts_less_than_max(monkeypatch):
     fake_service.mb_conn = conn
 
     with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=fake_service):
-        engine = GPUOrchestratorEngine()
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
         engine.redis_client = fake_redis
         engine._job_retry_max = 5
 

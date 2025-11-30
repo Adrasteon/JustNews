@@ -10,7 +10,7 @@ This guide explains how to run `scripts/train_qlora.py` to produce per-agent LoR
 
 Install (conda env example):
 ```bash
-conda run -n justnews-py312 pip install -r training_system/requirements-qlora.txt
+conda run -n ${CANONICAL_ENV:-justnews-py312} pip install -r training_system/requirements-qlora.txt
 ```
 (Or install the packages listed above manually.)
 
@@ -24,7 +24,7 @@ conda run -n justnews-py312 pip install -r training_system/requirements-qlora.tx
 ## Common command patterns
 Dry-run sanity check (no training, creates stub output directory):
 ```bash
-conda run -n justnews-py312 \
+conda run -n ${CANONICAL_ENV:-justnews-py312} \
   python scripts/train_qlora.py \
     --agent synthesizer \
     --adapter-name mistral_synth_v1 \
@@ -37,7 +37,7 @@ conda run -n justnews-py312 \
 Full training run with ModelStore publish:
 ```bash
 MODEL_STORE_ROOT=/opt/justnews/model_store HF_TOKEN=$HF_TOKEN \
-conda run -n justnews-py312 \
+conda run -n ${CANONICAL_ENV:-justnews-py312} \
   python scripts/train_qlora.py \
     --agent synthesizer \
     --adapter-name mistral_synth_v1 \

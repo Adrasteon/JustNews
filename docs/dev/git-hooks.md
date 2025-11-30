@@ -3,7 +3,7 @@
 The repository includes a small set of optional git hooks that are intended as developer helpers. They are intentionally non-mandatory and opt-in.
 
 Why use them?
-- Encourage test consistency by recommending the `scripts/dev/pytest.sh` wrapper that runs tests inside the `justnews-py312` conda environment.
+- Encourage test consistency by recommending the `scripts/dev/pytest.sh` wrapper that runs tests inside the `${CANONICAL_ENV:-justnews-py312}` conda environment.
 - Optionally run a very quick unit smoke test on `pre-push` to catch obvious breakages before pushing to remote (non-default behavior).
 
 Installation

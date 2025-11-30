@@ -32,7 +32,7 @@ def test_start_and_stop_worker_pool_persists(monkeypatch):
 
     # Patch create_database_service used by the engine to return our fake
     with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=fake_service):
-        engine = GPUOrchestratorEngine()
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
 
         # Keep _spawn_pool_worker from actually starting heavy processes (no-op)
         engine._spawn_pool_worker = lambda *a, **k: None
@@ -65,7 +65,7 @@ def test_rehydrate_pools_reads_db_rows(monkeypatch):
     fake_service.mb_conn = mb_conn
 
     with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=fake_service):
-        engine = GPUOrchestratorEngine()
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
         # After init, reconcile should have rehydrated _WORKER_POOLS
         assert 'p1' in engine._WORKER_POOLS
         meta = engine._WORKER_POOLS['p1']

@@ -33,6 +33,10 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 
+# Keep GPU orchestrator imports lightweight during pytest runs to avoid
+# instantiating heavy services (MariaDB, Chroma, embedding models) during module import.
+os.environ.setdefault('GPU_ORCHESTRATOR_SKIP_BOOTSTRAP', '1')
+
 # Add the repository root to sys.path so project packages import cleanly regardless
 # of how pytest is launched (e.g. via `conda run`). The previous logic walked one
 # directory too far up and missed the actual repo root, so imports like
@@ -76,17 +80,18 @@ os.environ['PYTEST_RUNNING'] = '1'
 # - In CI we allow broader environments (CI=true will skip the check)
 # - Developers can temporarily bypass with ALLOW_ANY_PYTEST_ENV=1
 if os.environ.get('CI', '').lower() not in ('1', 'true') and os.environ.get('ALLOW_ANY_PYTEST_ENV', '') != '1':
+    CANONICAL_ENV = os.environ.get('CANONICAL_ENV', 'justnews-py312')
     conda_env = os.environ.get('CONDA_DEFAULT_ENV') or os.environ.get('CONDA_PREFIX') or ''
     # If CONDA_DEFAULT_ENV is not present, also detect if sys.executable path contains the env name
-    in_exec = 'justnews-py312' in (sys.executable or '')
-    if 'justnews-py312' not in conda_env and not in_exec:
+    in_exec = CANONICAL_ENV in (sys.executable or '')
+    if CANONICAL_ENV not in conda_env and not in_exec:
         # Friendly guidance to developers on how to run tests correctly
         msg = (
             """
-Tests should be run inside the 'justnews-py312' conda environment for consistent results.
+Tests should be run inside the '${CANONICAL_ENV}' conda environment for consistent results.
 
 Use the helper script: scripts/dev/pytest.sh <args>
-Or re-run with: PYTHONPATH=$(pwd) conda run -n justnews-py312 pytest <args>
+Or re-run with: PYTHONPATH=$(pwd) conda run -n ${CANONICAL_ENV} pytest <args>
 
 If you intentionally want to run in a different environment set ALLOW_ANY_PYTEST_ENV=1 to bypass this check.
 """

@@ -30,7 +30,7 @@ def test_heartbeat_refreshes_allocation_and_prevents_purge(monkeypatch):
     fake_service.mb_conn = mb_conn
 
     with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=fake_service):
-        engine = GPUOrchestratorEngine()
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
 
         # Force allocation success
         engine._allocate_gpu = lambda req: (True, 0)
@@ -85,7 +85,7 @@ def test_reclaimer_does_not_delete_lease_rows(monkeypatch):
     fake_service.mb_conn = conn
 
     with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=fake_service):
-        engine = GPUOrchestratorEngine()
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
         engine.redis_client = fake_redis
         # set low retry max so we can exercise path
         engine._job_retry_max = 2
@@ -103,6 +103,7 @@ def test_reclaimer_does_not_delete_lease_rows(monkeypatch):
 
         # Reclaimer should update orchestrator_jobs (attempts increment / requeue) but should not delete leases
         executed_sqls = [c[0][0] for c in conn.cursor.return_value.execute.call_args_list]
+        # executed_sqls captures SQL statements invoked against DB during reclaimer pass
         assert any('orchestrator_jobs' in sql for sql in executed_sqls)
         # Ensure no DELETE FROM orchestrator_leases was called
         assert not any('DELETE FROM orchestrator_leases' in sql for sql in executed_sqls)

@@ -20,7 +20,7 @@ This document helps you configure and troubleshoot ChromaDB for the JustNews sta
 ----------------------------
 Run the included diagnostic script to discover endpoints, test connectivity, and optionally try to create the default tenant and `articles` collection (best-effort, not guaranteed on all server versions):
 
-    PYTHONPATH=. conda run -n justnews-py312 python scripts/chroma_diagnose.py --autocreate
+    PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_diagnose.py --autocreate
 
 If the script reports that the root endpoint appears to be another service (for example `MCP Bus Agent`) you likely have the wrong host or port configured — update `CHROMADB_HOST` or `CHROMADB_PORT` accordingly.
 

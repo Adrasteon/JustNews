@@ -28,15 +28,15 @@ Test tiers
    - The helper is intentionally opt-in and requires root or privilege. For teams that want easier management and clustering of system containers, consider LXD on developer machines or on self-hosted runners.
 
 3. CI-level fidelity tests
-   - The repository CI workflow has been updated to use Miniconda and create a `justnews-py312` conda environment in CI, matching local dev setups; CI now runs `pytest` inside that environment.
+      - The repository CI workflow has been updated to use Miniconda and create a `${CANONICAL_ENV:-justnews-py312}` conda environment in CI, matching local dev setups; CI now runs `pytest` inside that environment.
    - If you want true end-to-end tests hitting live Redis and MariaDB, prefer a dedicated CI job that runs on self-hosted runners capable of running systemd-nspawn or LXD (not possible on the default hosted runners due to privilege constraints). Adding such a CI job is recommended for deeper validation but needs self-hosted capabilities.
 
       - Docker-based E2E PoC (test/CI only): We added a lightweight Docker Compose-based PoC which boots a pre-seeded MariaDB and Redis for faster E2E verification without requiring systemd-nspawn privileges. This PoC is intended for testing/CI only — the canonical MariaDB deployment in developer and production workflows runs on the host (outside Docker) or as a managed service. See `scripts/dev/docker-compose.e2e.yml`, `scripts/dev/run_e2e_docker.sh` and `.github/workflows/e2e-docker.yml`.
 
 Developer ergonomics & helpers
-- `scripts/dev/pytest.sh` — wrapper which runs pytest inside `justnews-py312` conda env and sets `PYTHONPATH` to the repo root. Use it for consistent local runs.
+-- `scripts/dev/pytest.sh` — wrapper which runs pytest inside `${CANONICAL_ENV:-justnews-py312}` conda env and sets `PYTHONPATH` to the repo root. Use it for consistent local runs.
 - `scripts/dev/install_hooks.sh` — installs local git hooks (from `scripts/dev/git-hooks/`) into `.git/hooks` (opt-in). The `pre-push` hook prints guidance and can optionally run a quick smoke test when `GIT_STRICT_TEST_HOOK=1`.
-- `tests/conftest.py` includes a safety check that enforces that local pytest runs are in `justnews-py312` by default. CI bypasses this check; developers can bypass locally by setting `ALLOW_ANY_PYTEST_ENV=1`.
+- `tests/conftest.py` includes a safety check that enforces that local pytest runs are in `${CANONICAL_ENV:-justnews-py312}` by default. CI bypasses this check; developers can bypass locally by setting `ALLOW_ANY_PYTEST_ENV=1`.
 
 Practical commands
 - Run all unit tests quickly:
@@ -59,7 +59,7 @@ Once you have a self-hosted runner prepared (see `scripts/dev/setup_selfhosted_r
 ```bash
 # from the runner or inside the container shell
 cd /root/justnews
-E2E_REAL=1 PYTEST_RUNNING=1 PYTHONPATH=/root/justnews python3.12 -m pytest tests/e2e -q -s
+E2E_REAL=1 PYTEST_RUNNING=1 PYTHONPATH=/root/justnews python3.11 -m pytest tests/e2e -q -s
 ```
 
 The E2E tests are gated by the `E2E_REAL=1` environment variable so they won't run in standard CI or local developer runs unless explicitly enabled.

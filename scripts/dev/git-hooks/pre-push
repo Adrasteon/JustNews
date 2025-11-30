@@ -10,7 +10,7 @@ BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "(unknown)")
 echo "[justnews] pre-push: checking pytest environment and smoke tests (optional)..."
 
 if [[ -z "${CONDA_DEFAULT_ENV:-}" ]] && [[ "${CI:-}" == "" ]]; then
-  echo "[justnews] Notice: we recommend running tests via scripts/dev/pytest.sh inside the 'justnews-py312' conda env for consistency."
+  echo "[justnews] Notice: we recommend running tests via scripts/dev/pytest.sh inside the '${CANONICAL_ENV:-justnews-py312}' conda env for consistency."
   echo "[justnews] To bypass this message set ALLOW_ANY_PYTEST_ENV=1 or set up the conda env."
 fi
 

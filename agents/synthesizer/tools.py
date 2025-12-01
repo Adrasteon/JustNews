@@ -247,7 +247,8 @@ async def synthesize_gpu_tool(
     engine: SynthesizerEngine,
     articles: list[dict[str, Any]],
     max_clusters: int = 5,
-    context: str = "news analysis"
+    context: str = "news analysis",
+    cluster_id: str | None = None
 ) -> dict[str, Any]:
     """
     GPU-accelerated full synthesis pipeline.
@@ -276,7 +277,34 @@ async def synthesize_gpu_tool(
             }
 
         # Perform GPU-accelerated synthesis
-        result = await engine.synthesize_gpu(articles, max_clusters, context)
+        # Allow caller to provide `cluster_id` in kwargs for cluster-driven synthesis
+        options = {}
+        if cluster_id:
+            options['cluster_id'] = cluster_id
+        # if caller passed kwargs with cluster_id, prefer that
+        # (compatibility: some callers pass `cluster_id` via keyword args)
+        # Check the engine argument list or kwargs passed to this function
+        # This tool is typically called from endpoints which we update accordingly.
+        cluster_id = None
+        if 'cluster_id' in locals() and locals().get('cluster_id'):
+            cluster_id = locals().get('cluster_id')
+        # Some engine implementations accept an `options` kwarg; older ones
+        # don't — detect and call accordingly for compatibility with tests
+        import inspect
+
+        try:
+            sig = inspect.signature(engine.synthesize_gpu)
+            if 'options' in sig.parameters:
+                result = await engine.synthesize_gpu(articles, max_clusters, context, options=options)
+            else:
+                result = await engine.synthesize_gpu(articles, max_clusters, context)
+        except (ValueError, TypeError):
+            # If signature inspection fails (e.g. C-bound function), fall back to
+            # attempting a kwargs call and then a positional-only call.
+            try:
+                result = await engine.synthesize_gpu(articles, max_clusters, context, options=options)
+            except TypeError:
+                result = await engine.synthesize_gpu(articles, max_clusters, context)
 
         processing_time = time.time() - start_time
 
@@ -352,7 +380,10 @@ def synthesize_content(
     if loop.is_running():
         return loop.create_task(_run())
 
-    return loop.run_until_complete(_run())
+    # If the loop exists but isn't running, prefer asyncio.run which manages lifecycle
+    # and is the modern recommended API. This avoids calling run_until_complete on a
+    # potentially non-running loop object.
+    return asyncio.run(_run())
 
 async def health_check(engine: SynthesizerEngine) -> dict[str, Any]:
     """

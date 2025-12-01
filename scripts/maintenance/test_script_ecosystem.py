@@ -70,7 +70,7 @@ class ScriptTester:
         """Test basic argument parsing"""
         try:
             # Test with --dry-run if it's a Python script using our framework
-            result = subprocess.run(
+            subprocess.run(
                 [sys.executable, str(script_path), '--dry-run'],
                 capture_output=True,
                 text=True,

@@ -27,8 +27,8 @@ This plan restores the proven systemd deployment first, validates the refactor u
 
 - OS: Linux with systemd.
 - GPU: NVIDIA drivers installed and healthy (`nvidia-smi` OK).
-- Python: 3.11/3.12 supported by this repo (see `requirements.txt` / `environment.yml`).
-- Conda environment available: justnews-v2-py312.
+- Python: 3.11.x is the canonical target (3.12 remains experimental; see `requirements.txt` / `environment.yml`).
+- Conda environment available: ${CANONICAL_ENV:-justnews-py312}.
 - MariaDB: local or external (version per `infrastructure/systemd/setup_mariadb.sh`).
 - Tooling: `git`, `curl`, `jq`, `psql`, `python`, `pip` (or conda), `virtualenv`.
 - Content tooling: ensure packages for extraction and embeddings are available (`trafilatura`, `readability-lxml`, `jusText`, `extruct`, `langdetect`, `sentence-transformers`, `chromadb`). Pin versions in `requirements.txt` before deployment.

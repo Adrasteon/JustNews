@@ -6,6 +6,7 @@ Provides research-scale archiving capabilities with complete provenance tracking
 entity linking, and temporal knowledge graphs.
 """
 
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -79,7 +80,9 @@ class ArchiveEngine:
         kg_config = self.config.get("knowledge_graph", {})
         if kg_config.get("enabled", True):
             kg_storage_path = self.config["storage"]["kg_storage_path"]
-            self.kg_manager = KnowledgeGraphManager(kg_storage_path=kg_storage_path)
+            backend = kg_config.get('backend') or os.environ.get('KG_BACKEND', 'db')
+            # Default to DB-backed KG for production + scalability
+            self.kg_manager = KnowledgeGraphManager(kg_storage_path=kg_storage_path, backend=backend)
             self.logger.info("Knowledge graph manager initialized")
         else:
             self.kg_manager = None

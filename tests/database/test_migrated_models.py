@@ -175,6 +175,11 @@ class TestArticleModel:
         assert article.extraction_metadata == {}
         assert article.structured_metadata == {}
         assert article.metadata == {}
+        # New synthesis fields default to not-synthesized
+        assert article.is_synthesized is False
+        assert article.input_cluster_ids == []
+        assert article.synth_model is None
+        assert article.is_published is False
 
     def test_article_init_with_all_values(self):
         """Test Article initialization with all values"""
@@ -262,6 +267,18 @@ class TestArticleModel:
             created_at,  # publication_date
             '{"category": "news"}',  # metadata
             created_at   # collection_timestamp
+            , False  # is_synthesized
+            , '[]'   # input_cluster_ids
+            , None   # synth_model
+            , None   # synth_version
+            , None   # synth_prompt_id
+            , None   # synth_trace
+            , None   # critic_result
+            , None   # fact_check_status
+            , None   # fact_check_trace
+            , False  # is_published
+            , None   # published_at
+            , None   # created_by
         )
 
         article = Article.from_row(row)
@@ -280,6 +297,10 @@ class TestArticleModel:
         assert article.extraction_metadata == {"confidence": 0.95}
         assert article.structured_metadata == {"word_count": 500}
         assert article.metadata == {"category": "news"}
+        # When reading from a row without synthesis columns, they default
+        assert article.is_synthesized is False
+        assert article.input_cluster_ids == []
+        assert article.synth_model is None
 
     def test_article_from_row_with_nulls(self):
         """Test creating Article from row with null values"""
@@ -296,6 +317,8 @@ class TestArticleModel:
         assert article.extraction_metadata == {}
         assert article.structured_metadata == {}
         assert article.metadata == {}
+        assert article.is_synthesized is False
+        assert article.input_cluster_ids == []
 
     def test_article_to_dict(self):
         """Test converting Article to dictionary"""
@@ -435,7 +458,8 @@ class TestMigratedDatabaseService:
                     'collection': 'articles'
                 },
                 'embedding': {
-                    'model': 'all-MiniLM-L6-v2'
+                    'model': 'all-MiniLM-L6-v2',
+                    'dimensions': 384
                 }
             }
         }
@@ -499,7 +523,8 @@ class TestMigratedDatabaseService:
                     mock_chroma_client.assert_called_once_with(
                         host='localhost', port=8000
                     )
-                    mock_client.get_collection.assert_called_once_with('articles')
+                    expected_collection = 'articles__all-MiniLM-L6-v2__384'
+                    mock_client.get_collection.assert_called_once_with(expected_collection)
 
     def test_close(self, mock_service):
         """Test closing database connections"""

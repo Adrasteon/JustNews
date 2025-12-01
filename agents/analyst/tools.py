@@ -29,6 +29,8 @@ logger = get_logger(__name__)
 
 # Global engine instance
 _engine: AnalystEngine | None = None
+# Exposed hook for tests: tests may monkeypatch ClusterFetcher at module level
+ClusterFetcher = None
 
 def get_analyst_engine() -> AnalystEngine:
     """Get or create the global analyst engine instance."""
@@ -72,6 +74,14 @@ async def process_analysis_request(
             result = engine.detect_bias(text)
         elif analysis_type == "sentiment_and_bias":
             result = engine.analyze_sentiment_and_bias(text)
+        elif analysis_type == "claims":
+            result = engine.extract_claims(text)
+        elif analysis_type == "analysis_report":
+            # expects `texts` and optional `article_ids` provided as kwargs
+            texts = kwargs.get("texts")
+            article_ids = kwargs.get("article_ids")
+            cluster_id = kwargs.get("cluster_id")
+            result = engine.generate_analysis_report(texts or [text], article_ids=article_ids, cluster_id=cluster_id)
         else:
             result = {
                 "error": f"Unknown analysis type: {analysis_type}",
@@ -263,6 +273,48 @@ def analyze_sentiment_and_bias(text: str) -> dict[str, Any]:
 
     engine = get_analyst_engine()
     return engine.analyze_sentiment_and_bias(text)
+
+
+def extract_claims(text: str) -> list[dict[str, Any]]:
+    """
+    Extract claims from the given text using the analyst engine’s heuristics.
+    """
+    if not text or not text.strip():
+        return []
+
+    engine = get_analyst_engine()
+    return engine.extract_claims(text)
+
+
+def generate_analysis_report(texts: list[str], article_ids: list[str] | None = None, cluster_id: str | None = None) -> dict[str, Any]:
+    """
+    Create a cluster-level AnalysisReport for a list of texts.
+    """
+    engine = get_analyst_engine()
+
+    # If a cluster_id is provided and no texts are supplied, attempt to fetch the
+    # underlying articles from the ClusterFetcher (Chroma / transparency). This
+    # centralises the cluster -> articles resolution and keeps the Analyst API
+    # backwards-compatible.
+    if cluster_id and (not texts or len(texts) == 0):
+        try:
+            # Allow tests to monkeypatch a module-level ClusterFetcher attribute
+            # (tests can set analyst_tools.ClusterFetcher = <fake>) so prefer the
+            # attribute if it exists, otherwise import the real implementation.
+            if 'ClusterFetcher' in globals() and globals().get('ClusterFetcher') is not None:
+                ClusterFetcher = globals().get('ClusterFetcher')
+            else:
+                from agents.cluster_fetcher.cluster_fetcher import ClusterFetcher
+
+            fetcher = ClusterFetcher()
+            records = fetcher.fetch_cluster(cluster_id=cluster_id)
+            if records:
+                texts = [r.content for r in records]
+                article_ids = [r.article_id for r in records]
+        except Exception:
+            logger.exception("Failed to fetch cluster content for cluster_id=%s", cluster_id)
+
+    return engine.generate_analysis_report(texts, article_ids=article_ids, cluster_id=cluster_id)
 
 def score_sentiment(text: str) -> dict[str, Any]:
     """

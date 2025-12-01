@@ -1,0 +1,24 @@
+[Unit]
+Description=JustNews OpenTelemetry Node Collector
+Documentation=https://github.com/open-telemetry/opentelemetry-collector
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=justnews
+Group=justnews
+SupplementaryGroups=adm
+EnvironmentFile=-/etc/justnews/monitoring/otel/node.env
+ExecStart=/usr/local/bin/otelcol-contrib \
+  --config $OTEL_NODE_CONFIG
+Restart=on-failure
+RestartSec=3
+LimitNOFILE=65535
+# Ensure the collector has a writable working directory for its persistent state.
+StateDirectory=justnews-otel-node
+WorkingDirectory=/var/lib/justnews-otel-node
+LogsDirectory=justnews-otel-node
+
+[Install]
+WantedBy=multi-user.target

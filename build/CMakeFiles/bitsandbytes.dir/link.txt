@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -g -shared -Wl,-soname,libbitsandbytes_cpu.so -o /home/adra/JustNews/.build/bitsandbytes/bitsandbytes/libbitsandbytes_cpu.so CMakeFiles/bitsandbytes.dir/csrc/common.cpp.o CMakeFiles/bitsandbytes.dir/csrc/cpu_ops.cpp.o CMakeFiles/bitsandbytes.dir/csrc/pythonInterface.cpp.o  /usr/lib/gcc/x86_64-linux-gnu/13/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.a 

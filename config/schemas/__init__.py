@@ -15,18 +15,16 @@ Key Features:
 - IDE support with auto-completion
 """
 
-import os
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
     field_validator,
     model_validator,
-    root_validator,
-    validator,
 )
 from pydantic.types import NonNegativeInt, PositiveFloat, PositiveInt
 
@@ -84,8 +82,7 @@ class SystemConfig(BaseModel):
     debug_mode: bool = Field(default=False, description="Enable debug mode")
     conda_environment: str | None = Field(default=None, description="Conda environment name")
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 # ============================================================================
@@ -131,8 +128,7 @@ class DatabaseConfig(BaseModel):
     connection_pool: DatabaseConnectionPoolConfig = Field(default_factory=DatabaseConnectionPoolConfig)
     ssl_mode: DatabaseSSLMode = Field(default=DatabaseSSLMode.PREFER, description="SSL mode")
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 # ============================================================================
@@ -305,11 +301,20 @@ class AgentPorts(BaseModel):
     dashboard: PositiveInt = Field(default=8013, description="Dashboard port")
 
 
+class PublishingConfig(BaseModel):
+    """Publishing and editorial workflow configuration"""
+
+    require_draft_fact_check_pass_for_publish: bool = Field(default=False)
+    chief_editor_review_required: bool = Field(default=True)
+    allow_publish_override_by_agent: list[str] = Field(default_factory=list)
+
+
 class AgentsConfig(BaseModel):
     """Agent configuration"""
     ports: AgentPorts = Field(default_factory=AgentPorts)
     timeouts: AgentTimeouts = Field(default_factory=AgentTimeouts)
     batch_sizes: AgentBatchSizes = Field(default_factory=AgentBatchSizes)
+    publishing: PublishingConfig = Field(default_factory=PublishingConfig)
 
 
 # ============================================================================
@@ -463,6 +468,14 @@ class ExternalServicesConfig(BaseModel):
 
 
 # ============================================================================
+# PUBLISHING CONFIGURATION
+# ============================================================================
+
+
+# PublishingConfig defined earlier to avoid forward reference issues
+
+
+# ============================================================================
 # MAIN CONFIGURATION SCHEMA
 # ============================================================================
 
@@ -481,9 +494,7 @@ class JustNewsConfig(BaseModel):
     performance: PerformanceConfig = Field(default_factory=PerformanceConfig)
     external_services: ExternalServicesConfig = Field(default_factory=ExternalServicesConfig)
 
-    class Config:
-        validate_assignment = True
-        use_enum_values = True
+    model_config = ConfigDict(validate_assignment=True, use_enum_values=True)
 
     @field_validator('system')
     def validate_environment_consistency(cls, v, values):
@@ -505,8 +516,9 @@ class JustNewsConfig(BaseModel):
             for key in keys:
                 current = getattr(current, key)
             return current
-        except AttributeError:
-            raise KeyError(f"Configuration key not found: {key_path}")
+        except AttributeError as exc:
+            # Chain the AttributeError for clearer tracebacks
+            raise KeyError(f"Configuration key not found: {key_path}") from exc
 
     def set_nested_value(self, key_path: str, value: Any):
         """Set nested configuration value using dot notation"""

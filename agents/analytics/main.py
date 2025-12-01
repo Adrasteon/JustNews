@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from agents.analytics.analytics_engine import (
     get_analytics_engine,
@@ -190,7 +191,7 @@ async def service_info():
 
     except Exception as e:
         logger.error(f"Service info error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get service information")
+        raise HTTPException(status_code=500, detail="Failed to get service information") from e
 
 
 # Metrics endpoint
@@ -202,7 +203,6 @@ def get_metrics():
 
 
 # Pydantic models
-from pydantic import BaseModel
 
 
 class ToolCall(BaseModel):
@@ -234,7 +234,7 @@ def get_system_health(call: ToolCall):
         return {"status": "success", "data": health}
     except Exception as e:
         logger.error(f"Error getting system health: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/get_performance_metrics")
@@ -254,7 +254,7 @@ def get_performance_metrics(call: ToolCall):
         return {"status": "success", "data": analytics}
     except Exception as e:
         logger.error(f"Error getting performance metrics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/get_agent_profile")
@@ -278,7 +278,7 @@ def get_agent_profile(call: ToolCall):
         return {"status": "success", "data": profile}
     except Exception as e:
         logger.error(f"Error getting agent profile: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/get_optimization_recommendations")
@@ -295,7 +295,7 @@ def get_optimization_recommendations(call: ToolCall):
         return {"status": "success", "data": recommendations}
     except Exception as e:
         logger.error(f"Error getting optimization recommendations: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/record_performance_metric")
@@ -323,7 +323,7 @@ def record_performance_metric(call: ToolCall):
         raise
     except Exception as e:
         logger.error(f"Error recording performance metric: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.exception_handler(Exception)

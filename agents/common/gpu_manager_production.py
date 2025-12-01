@@ -12,6 +12,8 @@ Features:
 - Atomic allocation operations
 """
 
+import os
+import shutil
 import subprocess
 import threading
 import time
@@ -37,6 +39,65 @@ except ImportError:
     np = None
 
 logger = get_logger(__name__)
+_TELEMETRY_AUTOSTART = os.environ.get('GPU_TELEMETRY_AUTOSTART', 'false').lower() in ('1', 'true')
+
+
+def _start_host_telemetry():
+    """Attempt to start host telemetry/exporter where available.
+    This prefers systemctl if present and the service exists, otherwise it will
+    try to start the agent directly (best-effort)."""
+    try:
+        # Prefer systemctl
+        if shutil.which('systemctl'):
+            subprocess.run(['systemctl', 'start', 'justnews-gpu-telemetry.service'], check=False)
+            return
+    except Exception:
+        pass
+    try:
+        # Best-effort: run the agent in background via nohup (if not already running)
+        if not os.path.exists('/tmp/gpu_telemetry.pid'):
+            subprocess.Popen(['nohup', './scripts/perf/gpu_telemetry.sh', '/var/log/justnews-perf'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if not os.path.exists('/tmp/gpu_telemetry_exporter.pid'):
+            subprocess.Popen(['nohup', 'python3', 'scripts/perf/gpu_telemetry_exporter.py', '--port', '9118', '--interval', '1.0'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+
+
+def _stop_host_telemetry_if_idle():
+    """Stop host telemetry if there are no active allocations (best-effort).
+    This checks for active allocations and attempts to stop telemetry when none remain."""
+    try:
+        if shutil.which('systemctl'):
+            subprocess.run(['systemctl', 'stop', 'justnews-gpu-telemetry.service'], check=False)
+            return
+    except Exception:
+        pass
+    # best-effort fallback: kill pid files if present
+    try:
+        if os.path.exists('/tmp/gpu_telemetry.pid'):
+            with open('/tmp/gpu_telemetry.pid') as f:
+                pid = int(f.read().strip())
+            try:
+                os.kill(pid, 15)
+            except Exception:
+                pass
+            try:
+                os.remove('/tmp/gpu_telemetry.pid')
+            except Exception:
+                pass
+        if os.path.exists('/tmp/gpu_telemetry_exporter.pid'):
+            with open('/tmp/gpu_telemetry_exporter.pid') as f:
+                pid = int(f.read().strip())
+            try:
+                os.kill(pid, 15)
+            except Exception:
+                pass
+            try:
+                os.remove('/tmp/gpu_telemetry_exporter.pid')
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 @dataclass
 class GPUAllocation:
@@ -146,21 +207,6 @@ class GPUHealthMonitor:
 
         except Exception as e:
             logger.error(f"GPU health check failed for {device_id}: {e}")
-            # Return unhealthy status
-            return GPUStatus(
-                device_id=device_id,
-                device_type=device_id.split(":")[0] if ":" in device_id else "unknown",
-                total_memory_gb=0,
-                used_memory_gb=0,
-                free_memory_gb=0,
-                utilization_percent=0,
-                temperature_c=0,
-                power_draw_w=0,
-                is_healthy=False
-            )
-
-        except Exception as e:
-            logger.error(f"GPU health check failed for device {device_id}: {e}")
             # Return unhealthy status
             return GPUStatus(
                 device_id=device_id,
@@ -463,6 +509,13 @@ class MultiAgentGPUManager:
 
                 logger.info(f"✅ GPU allocated: {agent_name} -> GPU {device_id} ({requested_memory_gb}GB, batch_size={batch_size}, model_type={model_type})")
 
+                # Optionally trigger host-level telemetry collection (useful on dedicated GPU nodes)
+                try:
+                    if _TELEMETRY_AUTOSTART:
+                        _start_host_telemetry()
+                except Exception:
+                    logger.debug('Telemetry autostart hook failed', exc_info=True)
+
                 return {
                     'status': 'allocated',
                     'gpu_device': device_id,
@@ -498,6 +551,14 @@ class MultiAgentGPUManager:
             self._cleanup_gpu_memory(allocation.gpu_device)
 
             logger.info(f"✅ GPU released: {agent_name} <- GPU {allocation.gpu_device}")
+            # If telemetry autostart is enabled and there are no active allocations left, stop telemetry
+            try:
+                if _TELEMETRY_AUTOSTART:
+                    active_any = any(a.status == 'active' for a in self._allocations.values())
+                    if not active_any:
+                        _stop_host_telemetry_if_idle()
+            except Exception:
+                logger.debug('Telemetry autostop hook failed', exc_info=True)
             return True
 
     def _find_available_gpu(self, requested_memory_gb: float, preferred_device: str | None = None) -> str | None:
@@ -701,9 +762,10 @@ class MultiAgentGPUManager:
         """Attempt to recover an unhealthy GPU (CUDA or MPS)"""
         try:
             if device_id.startswith("cuda:"):
-                cuda_device_id = int(device_id.split(":")[1])
                 # Clear CUDA cache
                 if TORCH_AVAILABLE and torch.cuda.is_available():
+                    cuda_device_id = int(device_id.split(":")[1])
+                    torch.cuda.set_device(cuda_device_id)
                     torch.cuda.empty_cache()
             elif device_id == "mps":
                 # MPS recovery - limited options available

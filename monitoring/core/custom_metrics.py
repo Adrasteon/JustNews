@@ -10,7 +10,7 @@ import os
 import sys
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any
 
@@ -364,10 +364,10 @@ class CustomMetrics:
         if key not in self._throughput_counters:
             self._throughput_counters[key] = []
 
-        self._throughput_counters[key].append((datetime.utcnow(), throughput))
+        self._throughput_counters[key].append((datetime.now(timezone.utc), throughput))
 
         # Keep only recent history (last 24 hours)
-        cutoff = datetime.utcnow() - timedelta(hours=24)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
         self._throughput_counters[key] = [
             (ts, val) for ts, val in self._throughput_counters[key]
             if ts > cutoff
@@ -425,7 +425,7 @@ class CustomMetrics:
         self._content_metrics_history.append(metrics)
 
         # Keep only recent history (last 7 days)
-        cutoff = datetime.utcnow() - timedelta(days=7)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=7)
         self._content_metrics_history = [
             m for m in self._content_metrics_history
             if m.timestamp > cutoff
@@ -436,7 +436,7 @@ class CustomMetrics:
             metrics.content_type, "unknown", metrics.source, metrics.content_id
         )
 
-        quality_scores = {metric: score for metric, score in metrics.quality_scores.items()}
+        quality_scores = dict(metrics.quality_scores)
         self.record_quality_assessment(metrics.content_type, quality_scores)
 
         self.record_sentiment_analysis(
@@ -452,7 +452,7 @@ class CustomMetrics:
 
     def get_processing_stats(self, hours: int = 24) -> dict[str, Any]:
         """Get processing statistics for the last N hours"""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
 
         recent_metrics = [
             m for m in self._content_metrics_history
@@ -489,7 +489,7 @@ class CustomMetrics:
     def get_throughput_trends(self, content_type: str = None, stage: str = None,
                             hours: int = 24) -> dict[str, Any]:
         """Get throughput trends for the last N hours"""
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         trends = {}
 
         for key, data_points in self._throughput_counters.items():
@@ -532,7 +532,7 @@ class CustomMetrics:
         n = len(x_values)
         sum_x = sum(x_values)
         sum_y = sum(y_values)
-        sum_xy = sum(x * y for x, y in zip(x_values, y_values))
+        sum_xy = sum(x * y for x, y in zip(x_values, y_values, strict=True))
         sum_x2 = sum(x * x for x in x_values)
 
         denominator = n * sum_x2 - sum_x * sum_x

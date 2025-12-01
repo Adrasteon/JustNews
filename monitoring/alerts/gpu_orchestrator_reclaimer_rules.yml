@@ -1,0 +1,47 @@
+groups:
+  - name: gpu_orchestrator_reclaimer
+    rules:
+      - alert: GPUOrchestratorReclaimerErrors
+        expr: increase(gpu_orchestrator_reclaimer_errors_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Reclaimer errors observed"
+          description: "The reclaimer has reported errors in the last 5 minutes. Check Redis compatibility and engine logs."
+
+      - alert: GPUOrchestratorDLQSpike
+        expr: increase(gpu_orchestrator_reclaimer_dlq_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "DLQ growth detected for GPU Orchestrator"
+          description: "Number of messages moved to DLQ by the reclaimer increased rapidly. Inspect DLQ and job failure reasons."
+
+      - alert: GPUOrchestratorRequeueFlood
+        expr: increase(gpu_orchestrator_reclaimer_requeued_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High requeue activity"
+          description: "Reclaimer is requeuing many messages; investigate potential flapping jobs or transient failures."
+
+      - alert: GPUOrchestratorPendingJobsHigh
+        expr: gpu_orchestrator_pending_jobs > 200
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High pending job count in GPU Orchestrator"
+          description: "Pending job count is high which may indicate processing backlog, leaks or insufficient workers."
+
+      - alert: GPUOrchestratorJobRetriesHigh
+        expr: increase(gpu_orchestrator_job_retries_total[5m]) > 200
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Elevated job retry rate"
+          description: "Jobs are being retried at a high rate. Investigate recent code changes or resource issues causing failures."

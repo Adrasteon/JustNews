@@ -5,17 +5,26 @@ This module provides REST API endpoints for semantic search functionality
 using the migrated MariaDB + ChromaDB database system.
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from common.observability import get_logger
 from common.semantic_search_service import (
     SearchResponse,
     SearchResult,
-    get_search_service,
 )
 
 logger = get_logger(__name__)
+
+
+def get_search_service():
+    """Compatibility wrapper that returns the active Search service.
+
+    This exists to allow tests to monkeypatch `agents.dashboard.search_api.get_search_service`
+    without depending on import-time binding to the implementation module.
+    """
+    from common.semantic_search_service import get_search_service as _get_search_service
+    return _get_search_service()
 
 # Create router for search endpoints
 router = APIRouter(prefix="/api/search", tags=["search"])
@@ -62,7 +71,7 @@ async def search_articles(search_query: SearchQuery):
 
     except Exception as e:
         logger.error(f"Search failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}") from e
 
 
 @router.get("/semantic", response_model=SearchResponse)
@@ -90,7 +99,7 @@ async def semantic_search(
 
     except Exception as e:
         logger.error(f"Semantic search failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Semantic search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Semantic search failed: {str(e)}") from e
 
 
 @router.get("/text", response_model=SearchResponse)
@@ -116,7 +125,7 @@ async def text_search(
 
     except Exception as e:
         logger.error(f"Text search failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Text search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Text search failed: {str(e)}") from e
 
 
 @router.get("/hybrid", response_model=SearchResponse)
@@ -144,7 +153,7 @@ async def hybrid_search(
 
     except Exception as e:
         logger.error(f"Hybrid search failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Hybrid search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Hybrid search failed: {str(e)}") from e
 
 
 @router.get("/similar/{article_id}", response_model=list[SearchResult])
@@ -171,7 +180,7 @@ async def find_similar_articles(
 
     except Exception as e:
         logger.error(f"Similar articles search failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Similar articles search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Similar articles search failed: {str(e)}") from e
 
 
 @router.get("/by-source/{source_id}", response_model=list[SearchResult])
@@ -196,7 +205,7 @@ async def search_articles_by_source(
 
     except Exception as e:
         logger.error(f"Source search failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Source search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Source search failed: {str(e)}") from e
 
 
 @router.get("/by-category/{category}", response_model=list[SearchResult])
@@ -221,7 +230,7 @@ async def search_articles_by_category(
 
     except Exception as e:
         logger.error(f"Category search failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Category search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Category search failed: {str(e)}") from e
 
 
 @router.get("/recent", response_model=list[SearchResult])
@@ -235,18 +244,18 @@ async def get_recent_articles(
     Returns the most recent articles, optionally filtered by search query.
     """
     try:
+        # Use runtime resolver so tests can monkeypatch `get_search_service`.
         service = get_search_service()
-
         articles = service.get_recent_articles_with_search(
             query=q,
-            n_results=n
+            n_results=n,
         )
 
         return articles
 
     except Exception as e:
         logger.error(f"Recent articles search failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Recent articles search failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Recent articles search failed: {str(e)}") from e
 
 
 @router.get("/stats", response_model=SearchStats)
@@ -257,7 +266,10 @@ async def get_search_statistics():
     Returns information about the search database and configuration.
     """
     try:
-        service = get_search_service()
+        from common.semantic_search_service import (
+            get_search_service as _get_search_service,
+        )
+        service = _get_search_service()
 
         stats = service.get_search_statistics()
 
@@ -271,7 +283,7 @@ async def get_search_statistics():
 
     except Exception as e:
         logger.error(f"Failed to get search statistics: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get search statistics: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get search statistics: {str(e)}") from e
 
 
 @router.post("/clear-cache")
@@ -282,14 +294,17 @@ async def clear_search_cache():
     This can help resolve issues with stale cached data.
     """
     try:
-        service = get_search_service()
+        from common.semantic_search_service import (
+            get_search_service as _get_search_service,
+        )
+        service = _get_search_service()
         service.clear_cache()
 
         return {"message": "Search cache cleared successfully"}
 
     except Exception as e:
         logger.error(f"Failed to clear search cache: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to clear search cache: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to clear search cache: {str(e)}") from e
 
 
 # Public API endpoints (if public API is enabled)
@@ -301,9 +316,17 @@ def include_public_api(app):
     """
     # Import here to avoid circular imports
     from fastapi import APIRouter
+    from fastapi import Request as _FastAPIRequest
     from fastapi.middleware.cors import CORSMiddleware
 
-    public_router = APIRouter(prefix="/api/public/search", tags=["public-search"])
+    from .rate_limit import (
+        rate_limiter_dependency,  # local import to avoid top-level dependency
+    )
+
+    def _rate_dep(request: _FastAPIRequest):
+        return rate_limiter_dependency(request, max_requests=20, window_seconds=60)
+
+    public_router = APIRouter(prefix="/api/public/search", tags=["public-search"], dependencies=[Depends(_rate_dep)])
 
     @public_router.get("/semantic")
     async def public_semantic_search(
@@ -312,8 +335,8 @@ def include_public_api(app):
     ):
         """Public semantic search endpoint with rate limiting"""
         try:
-            service = get_search_service()
 
+            service = get_search_service()
             response = service.search(
                 query=q,
                 n_results=min(n, 20),  # Limit results for public API
@@ -340,14 +363,14 @@ def include_public_api(app):
 
         except Exception as e:
             logger.error(f"Public semantic search failed: {e}")
-            raise HTTPException(status_code=500, detail="Search temporarily unavailable")
+            raise HTTPException(status_code=500, detail="Search temporarily unavailable") from e
 
     @public_router.get("/recent")
     async def public_recent_articles(n: int = Query(10, description="Number of articles", ge=1, le=50)):
         """Public recent articles endpoint"""
         try:
-            service = get_search_service()
 
+            service = get_search_service()
             articles = service.get_recent_articles_with_search(n_results=min(n, 50))
 
             return {
@@ -365,7 +388,7 @@ def include_public_api(app):
 
         except Exception as e:
             logger.error(f"Public recent articles failed: {e}")
-            raise HTTPException(status_code=500, detail="Recent articles temporarily unavailable")
+            raise HTTPException(status_code=500, detail="Recent articles temporarily unavailable") from e
 
     @public_router.get("/stats")
     async def public_search_stats():
@@ -382,7 +405,7 @@ def include_public_api(app):
 
         except Exception as e:
             logger.error(f"Public stats failed: {e}")
-            raise HTTPException(status_code=500, detail="Statistics temporarily unavailable")
+            raise HTTPException(status_code=500, detail="Statistics temporarily unavailable") from e
 
     # Add CORS middleware for public endpoints
     app.add_middleware(
@@ -393,6 +416,50 @@ def include_public_api(app):
         allow_headers=["*"],
     )
 
-    # Include the public router
+    # NOTE: router inclusion is performed after all handlers are defined so
+    # tests and dynamic imports can add handlers before inclusion. See below.
+
+    @public_router.get("/articles")
+    async def public_articles(n: int = Query(10, description="Number of articles", ge=1, le=50)):
+        """
+        Public recent articles endpoint tailored for the published website.
+
+        This returns a lightweight list of article summaries for rendering on the
+        public site. It is intentionally a smaller, page-focused endpoint than
+        the research-facing `/api/public/search/*` endpoints.
+        """
+        try:
+            service = get_search_service()
+
+            articles = service.get_recent_articles_with_search(n_results=min(n, 50))
+
+            out = []
+            for a in articles:
+                # Support both `FakeArticle`-style objects (id/title/content)
+                # and SearchResult dataclasses (article_id/title/content)
+                art_id = getattr(a, 'id', None) or getattr(a, 'article_id', None)
+                title = getattr(a, 'title', '')
+                content = getattr(a, 'content', '')
+                source = getattr(a, 'source_name', None) or getattr(a, 'source', None)
+                published_date = getattr(a, 'published_date', '')
+
+                out.append({
+                    "id": art_id,
+                    "title": title,
+                    "summary": (content[:300] + "...") if len(content) > 300 else content,
+                    "source": source,
+                    "published_date": published_date,
+                    "sentiment_score": getattr(a, 'sentiment_score', 0),
+                    "fact_check_score": getattr(a, 'fact_check_score', None),
+                    "url": getattr(a, 'url', None),
+                })
+
+            return {"total_results": len(articles), "articles": out}
+
+        except Exception as e:
+            logger.error(f"Public articles endpoint failed: {e}")
+            raise HTTPException(status_code=500, detail="Recent articles temporarily unavailable") from e
+
+    # Include the public router after all public handlers are defined
     app.include_router(public_router)
     logger.info("Public search API endpoints registered")

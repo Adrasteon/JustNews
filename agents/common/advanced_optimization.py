@@ -1,5 +1,4 @@
 """
-from common.observability import get_logger
 Advanced Performance Optimization Recommendation Engine
 
 Provides sophisticated optimization recommendations based on:
@@ -17,6 +16,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
+
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 

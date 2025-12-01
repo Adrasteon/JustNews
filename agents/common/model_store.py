@@ -86,8 +86,8 @@ class ModelStore:
         tmp = versions / f"{version}.tmp"
         try:
             os.makedirs(tmp, exist_ok=False)
-        except FileExistsError:
-            raise ModelStoreError(f"Staging path already exists: {tmp}")
+        except FileExistsError as e:
+            raise ModelStoreError(f"Staging path already exists: {tmp}") from e
         try:
             yield tmp
         except Exception:
@@ -177,7 +177,7 @@ class ModelStore:
                 tmp_link.unlink()
             except Exception:
                 pass
-            raise ModelStoreError(f"Failed to update symlink: {e}")
+            raise ModelStoreError(f"Failed to update symlink: {e}") from e
 
     def get_current(self, agent: str) -> Path | None:
         """Return the resolved current path or None if not found."""

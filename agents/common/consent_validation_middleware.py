@@ -1,5 +1,4 @@
 """
-from common.observability import get_logger
 Consent Validation Middleware for GDPR Compliance
 
 This middleware validates user consents before allowing data processing operations.
@@ -24,6 +23,7 @@ from agents.common.compliance_audit import (
     ComplianceAuditLogger,
 )
 from agents.common.consent_management import ConsentType, consent_manager
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 

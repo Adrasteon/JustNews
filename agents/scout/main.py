@@ -269,7 +269,7 @@ async def discover_sources_endpoint(request: DiscoverSourcesRequest):
 
     except Exception as e:
         logger.error(f"❌ Source discovery failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Source discovery failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Source discovery failed: {str(e)}") from e
 
 @app.post("/crawl_url", response_model=CrawlURLResponse)
 async def crawl_url_endpoint(request: CrawlURLRequest):
@@ -301,7 +301,7 @@ async def crawl_url_endpoint(request: CrawlURLRequest):
 
     except Exception as e:
         logger.error(f"❌ URL crawling failed: {e}")
-        raise HTTPException(status_code=500, detail=f"URL crawling failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"URL crawling failed: {str(e)}") from e
 
 @app.post("/deep_crawl_site", response_model=DeepCrawlResponse)
 async def deep_crawl_site_endpoint(request: DeepCrawlRequest):
@@ -332,7 +332,7 @@ async def deep_crawl_site_endpoint(request: DeepCrawlRequest):
 
     except Exception as e:
         logger.error(f"❌ Deep crawl failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Deep crawl failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Deep crawl failed: {str(e)}") from e
 
 @app.post("/analyze_sentiment", response_model=SentimentAnalysisResponse)
 async def analyze_sentiment_endpoint(request: SentimentAnalysisRequest):
@@ -362,7 +362,7 @@ async def analyze_sentiment_endpoint(request: SentimentAnalysisRequest):
 
     except Exception as e:
         logger.error(f"❌ Sentiment analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Sentiment analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Sentiment analysis failed: {str(e)}") from e
 
 @app.post("/detect_bias", response_model=BiasDetectionResponse)
 async def detect_bias_endpoint(request: BiasDetectionRequest):
@@ -392,7 +392,7 @@ async def detect_bias_endpoint(request: BiasDetectionRequest):
 
     except Exception as e:
         logger.error(f"❌ Bias detection failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Bias detection failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Bias detection failed: {str(e)}") from e
 
 @app.get("/health", response_model=HealthResponse)
 async def health_endpoint():
@@ -407,7 +407,7 @@ async def health_endpoint():
         return HealthResponse(**health_result)
     except Exception as e:
         logger.error(f"❌ Health check error: {e}")
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}") from e
 
 @app.get("/stats", response_model=StatsResponse)
 async def stats_endpoint():
@@ -433,7 +433,7 @@ async def stats_endpoint():
 
     except Exception as e:
         logger.error(f"❌ Stats retrieval error: {e}")
-        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}") from e
 
 @app.get("/capabilities")
 async def capabilities_endpoint():

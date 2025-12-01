@@ -11,9 +11,13 @@ from __future__ import annotations
 import asyncio
 import os
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Dict
 
 from agents.c4ai.bridge import crawl_via_local_server
+from agents.journalist.mistral_adapter import JournalistMistralAdapter
+from common.observability import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -38,15 +42,34 @@ class JournalistEngine:
     def __init__(self, config: JournalistConfig | None = None):
         self.config = config or JournalistConfig()
         self._shutdown = False
+        self._mistral_adapter = JournalistMistralAdapter()
 
     async def crawl_and_analyze(self, url: str, mode: str | None = None) -> dict[str, Any]:
         mode = mode or self.config.default_mode
         # Use the bridge helper to call the local Crawl4AI server
         results = await crawl_via_local_server(url, mode=mode, use_llm=self.config.use_llm_extraction)
-        # Minimal mapping / normalization - bridge returns a simple dict
+        if self.config.use_llm_extraction:
+            brief = await asyncio.to_thread(self._generate_llm_brief, results)
+            if brief:
+                results = dict(results)
+                results["llm_brief"] = brief
         return results
 
     async def shutdown(self) -> None:
         self._shutdown = True
         # Perform any graceful cleanup here (if needed)
         await asyncio.sleep(0)
+
+    # Internal helpers -----------------------------------------------------
+    def _generate_llm_brief(self, payload: dict[str, Any]) -> Dict[str, Any] | None:
+        if not payload or not getattr(self, "_mistral_adapter", None):
+            return None
+        try:
+            markdown = payload.get("markdown") if isinstance(payload, dict) else None
+            html = payload.get("html") if isinstance(payload, dict) else None
+            title = payload.get("title") if isinstance(payload, dict) else None
+            url = payload.get("url") if isinstance(payload, dict) else None
+            return self._mistral_adapter.generate_story_brief(markdown, html, url=url, title=title)
+        except Exception as exc:
+            logger.debug("Journalist Mistral adapter failed: %s", exc)
+            return None

@@ -10,7 +10,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -134,7 +134,7 @@ class LogStorage:
 
     async def query_logs(self, query: LogQuery) -> QueryResult:
         """Query logs with filtering and pagination"""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             # Check cache first
@@ -142,7 +142,7 @@ class LogStorage:
             if cache_key in self._query_cache:
                 cached_result = self._query_cache[cache_key]
                 # Check if cache is still valid
-                if (datetime.utcnow() - start_time).total_seconds() < self._cache_ttl_seconds:
+                if (datetime.now(timezone.utc) - start_time).total_seconds() < self._cache_ttl_seconds:
                     return cached_result
 
             # Find relevant files
@@ -171,7 +171,7 @@ class LogStorage:
                 entries=paginated_entries,
                 total_count=total_count,
                 has_more=end_idx < total_count,
-                query_time_ms=(datetime.utcnow() - start_time).total_seconds() * 1000
+                query_time_ms=(datetime.now(timezone.utc) - start_time).total_seconds() * 1000
             )
 
             # Cache result
@@ -185,7 +185,7 @@ class LogStorage:
                 entries=[],
                 total_count=0,
                 has_more=False,
-                query_time_ms=(datetime.utcnow() - start_time).total_seconds() * 1000
+                query_time_ms=(datetime.now(timezone.utc) - start_time).total_seconds() * 1000
             )
 
     async def _find_relevant_files(self, query: LogQuery) -> list[Path]:
@@ -369,7 +369,7 @@ class LogStorage:
                     'start': min(e.timestamp for e in entries).isoformat(),
                     'end': max(e.timestamp for e in entries).isoformat()
                 },
-                'last_updated': datetime.utcnow().isoformat()
+                'last_updated': datetime.now(timezone.utc).isoformat()
             }
 
             # Save index to disk
@@ -398,7 +398,7 @@ class LogStorage:
             index_data = {
                 'index': self._index,
                 'reverse_index': self._reverse_index,
-                'last_updated': datetime.utcnow().isoformat()
+                'last_updated': datetime.now(timezone.utc).isoformat()
             }
 
             async with aiofiles.open(index_file, 'w') as f:
@@ -423,7 +423,7 @@ class LogStorage:
     async def cleanup_old_logs(self, retention_days: int | None = None) -> int:
         """Clean up old log files based on retention policy"""
         retention = retention_days or self.config['retention_days']
-        cutoff_date = datetime.utcnow() - timedelta(days=retention)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention)
 
         cleaned_count = 0
         for log_file in self.storage_path.glob("logs_*.json"):
@@ -431,8 +431,11 @@ class LogStorage:
                 # Extract date from filename
                 filename_parts = log_file.stem.split('_')
                 if len(filename_parts) >= 2:
-                    file_date_str = filename_parts[1]  # YYYYMMDD_HH
-                    file_date = datetime.strptime(file_date_str, "%Y%m%d_%H")
+                    # filename could split into multiple parts if the timestamp contains an underscore
+                    # e.g. 'logs_YYYYMMDD_HH' -> ['logs', 'YYYYMMDD', 'HH']
+                    # join the tail parts back together to restore 'YYYYMMDD_HH'
+                    file_date_str = "_".join(filename_parts[1:])  # YYYYMMDD_HH
+                    file_date = datetime.strptime(file_date_str, "%Y%m%d_%H").replace(tzinfo=timezone.utc)
 
                     if file_date < cutoff_date:
                         log_file.unlink()

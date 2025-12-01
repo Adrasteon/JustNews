@@ -211,9 +211,9 @@ def _await_job(base_url: str, job_id: str, timeout_seconds: int) -> dict[str, An
             response = requests.get(status_url, timeout=per_request_timeout)
             response.raise_for_status()
             payload = response.json()
-        except requests.Timeout:
+        except requests.Timeout as exc:
             if time.time() >= deadline:
-                raise TimeoutError(f"Job {job_id} exceeded timeout {timeout_seconds}s")
+                raise TimeoutError(f"Job {job_id} exceeded timeout {timeout_seconds}s") from exc
             continue
         except requests.RequestException as exc:
             raise RuntimeError(f"Failed to fetch job status for {job_id}: {exc}") from exc

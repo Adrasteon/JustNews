@@ -308,12 +308,12 @@ class CrawlerEngine:
                         continue
             except Exception as e:
                 logger.debug(f"Playwright cleanup failed: {e}")
-            
+
             # Fallback for environments without psutil or when unit tests patch subprocess calls.
             # This replicates earlier behaviour that used `pgrep`/`ps` shell tools.
             try:
-                import subprocess
                 import signal
+                import subprocess
                 # Find chrome-like pids
                 pgrep_proc = subprocess.run(['pgrep', '-f', 'chrome'], capture_output=True, text=True, timeout=5)
                 if pgrep_proc.returncode == 0 and pgrep_proc.stdout:

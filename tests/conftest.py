@@ -25,13 +25,17 @@ Usage:
 import asyncio
 import os
 import sys
+import tempfile
+import textwrap
 import types
 from pathlib import Path
 
 import pytest
 import pytest_asyncio
-import tempfile
-import textwrap
+
+# Keep GPU orchestrator imports lightweight during pytest runs to avoid
+# instantiating heavy services (MariaDB, Chroma, embedding models) during module import.
+os.environ.setdefault('GPU_ORCHESTRATOR_SKIP_BOOTSTRAP', '1')
 
 # Add the repository root to sys.path so project packages import cleanly regardless
 # of how pytest is launched (e.g. via `conda run`). The previous logic walked one
@@ -72,8 +76,30 @@ if not os.environ.get('JUSTNEWS_GLOBAL_ENV'):
 # hermetic and not rely on the host's installed system files.
 os.environ['PYTEST_RUNNING'] = '1'
 
+# Enforce usage of the project's conda environment for local runs
+# - In CI we allow broader environments (CI=true will skip the check)
+# - Developers can temporarily bypass with ALLOW_ANY_PYTEST_ENV=1
+if os.environ.get('CI', '').lower() not in ('1', 'true') and os.environ.get('ALLOW_ANY_PYTEST_ENV', '') != '1':
+    CANONICAL_ENV = os.environ.get('CANONICAL_ENV', 'justnews-py312')
+    conda_env = os.environ.get('CONDA_DEFAULT_ENV') or os.environ.get('CONDA_PREFIX') or ''
+    # If CONDA_DEFAULT_ENV is not present, also detect if sys.executable path contains the env name
+    in_exec = CANONICAL_ENV in (sys.executable or '')
+    if CANONICAL_ENV not in conda_env and not in_exec:
+        # Friendly guidance to developers on how to run tests correctly
+        msg = (
+            """
+Tests should be run inside the '${CANONICAL_ENV}' conda environment for consistent results.
+
+Use the helper script: scripts/dev/pytest.sh <args>
+Or re-run with: PYTHONPATH=$(pwd) conda run -n ${CANONICAL_ENV} pytest <args>
+
+If you intentionally want to run in a different environment set ALLOW_ANY_PYTEST_ENV=1 to bypass this check.
+"""
+        )
+        pytest.exit(msg)
+
 # Import common utilities
-from common.observability import get_logger
+from common.observability import get_logger  # noqa: E402
 
 logger = get_logger(__name__)
 
@@ -383,6 +409,30 @@ def setup_test_environment():
     # Mock requests for HTTP calls
     if 'requests' not in sys.modules and not os.environ.get('USE_REAL_REQUESTS'):
         sys.modules['requests'] = create_mock_requests()
+
+    # Mock chromadb to avoid importing optional telemetry-heavy SDK during tests
+    if 'chromadb' not in sys.modules and not os.environ.get('USE_REAL_CHROMADB'):
+        fake_chromadb = types.ModuleType('chromadb')
+
+        class FakeHttpClient:
+            def __init__(self, host=None, port=None, tenant=None):
+                self.host = host
+                self.port = port
+                self.tenant = tenant
+
+            def heartbeat(self):
+                return True
+
+            def list_collections(self):
+                return []
+
+            def get_collection(self, name):
+                return types.SimpleNamespace(name=name)
+
+        fake_chromadb.HttpClient = FakeHttpClient
+        # telemetry module stub
+        fake_chromadb.telemetry = types.SimpleNamespace(opentelemetry=types.SimpleNamespace())
+        sys.modules['chromadb'] = fake_chromadb
 
     yield
 

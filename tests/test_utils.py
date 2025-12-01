@@ -327,7 +327,7 @@ class MockFactory:
             async def search_articles(self, query: str, limit: int = 10):
                 # Simple mock search
                 results = []
-                for article_id, article in self.data.items():
+                for _article_id, article in self.data.items():
                     if query.lower() in article.get("content", "").lower():
                         results.append(article)
                         if len(results) >= limit:
@@ -539,8 +539,8 @@ class CustomAssertions:
     def assert_mcp_response_valid(response: dict):
         """Assert that MCP response has required fields"""
         required_fields = ["status", "data"]
-        for field in required_fields:
-            assert field in response, f"MCP response missing required field: {field}"
+        for _field in required_fields:
+            assert _field in response, f"MCP response missing required field: {_field}"
 
         assert response["status"] in ["success", "error"], \
             f"Invalid status: {response['status']}"
@@ -549,8 +549,8 @@ class CustomAssertions:
     def assert_article_structure(article: dict):
         """Assert that article has required structure"""
         required_fields = ["id", "content", "meta"]
-        for field in required_fields:
-            assert field in article, f"Article missing required field: {field}"
+        for _field in required_fields:
+            assert _field in article, f"Article missing required field: {_field}"
 
         assert isinstance(article["content"], str), "Article content must be string"
         assert isinstance(article["meta"], dict), "Article meta must be dict"
@@ -582,8 +582,8 @@ class CustomAssertions:
     def assert_valid_agent_registration(registration_data: dict):
         """Assert that agent registration data is valid"""
         required_fields = ["agent", "port", "capabilities"]
-        for field in required_fields:
-            assert field in registration_data, f"Registration missing required field: {field}"
+        for _field in required_fields:
+            assert _field in registration_data, f"Registration missing required field: {_field}"
 
         assert isinstance(registration_data["port"], int), "Port must be integer"
         assert isinstance(registration_data["capabilities"], list), "Capabilities must be list"
@@ -602,10 +602,10 @@ class CustomAssertions:
             "processing_time": (int, float),
         }
 
-        for field, expected_type in required_fields.items():
-            assert field in result, f"Result missing required field: {field}"
-            assert isinstance(result[field], expected_type), \
-                f"Field {field} expected type {expected_type}, got {type(result[field])}"
+        for _field, expected_type in required_fields.items():
+            assert _field in result, f"Result missing required field: {_field}"
+            assert isinstance(result[_field], expected_type), \
+                f"Field {_field} expected type {expected_type}, got {type(result[_field])}"
 
         assert result["summary"].strip(), "Summary cannot be empty"
         assert result["processing_time"] >= 0, "Processing time must be non-negative"

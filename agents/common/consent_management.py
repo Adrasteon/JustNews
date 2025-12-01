@@ -1,6 +1,5 @@
-from common.observability import get_logger
-
 #!/usr/bin/env python3
+
 """
 Consent Management System
 
@@ -23,6 +22,7 @@ from enum import Enum
 from typing import Any
 
 from agents.common.auth_models import auth_execute_query, auth_execute_query_single
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 

@@ -11,13 +11,15 @@ Features:
 """
 
 import asyncio
-import os
 import time
 from contextlib import contextmanager
 from typing import Any
 
 from common.observability import get_logger
-from database.utils.migrated_database_utils import create_database_service
+from database.utils.migrated_database_utils import (
+    create_database_service,
+    get_db_config,
+)
 
 logger = get_logger(__name__)
 
@@ -34,63 +36,43 @@ class DatabaseConnectionPool:
         Args:
             config: Database configuration dictionary. If None, reads from environment variables.
         """
-        # Use the migrated database service (MariaDB) as the backing connection
-        # provider. If a specific config is not provided, the migrated utils will
-        # load config from system_config.json or environment.
-        if config is None:
-            service = create_database_service()
-            # Prefer explicit Postgres environment variables if present – tests
-            # expect to see the Postgres connection details when initialized
-            # with no config. Fall back to the MariaDB (migrated) config when
-            # Postgres vars are not set.
-            # Prefer MariaDB env vars, fallback to Postgres env vars for
-            # backwards compatibility only when MariaDB vars are not present.
-            if os.environ.get('MARIADB_HOST'):
-                self.config = {
-                    'host': os.environ.get('MARIADB_HOST'),
-                    'port': int(os.environ.get('MARIADB_PORT', '3306')),
-                    'database': os.environ.get('MARIADB_DB'),
-                    'user': os.environ.get('MARIADB_USER'),
-                    'password': os.environ.get('MARIADB_PASSWORD')
-                }
-            elif os.environ.get('POSTGRES_HOST'):
-                self.config = {
-                    'host': os.environ.get('POSTGRES_HOST'),
-                    'port': int(os.environ.get('POSTGRES_PORT', '5432')),
-                    'database': os.environ.get('POSTGRES_DB'),
-                    'user': os.environ.get('POSTGRES_USER'),
-                    'password': os.environ.get('POSTGRES_PASSWORD')
-                }
-            else:
-                self.config = service.config.get('database', {}).get('mariadb', {})
-        else:
-            self.config = config
+        # Build an explicit database configuration starting from the canonical
+        # MariaDB settings and overlaying any overrides provided via ``config``.
+        base_config = get_db_config()
+        if config:
+            mariadb_section = base_config.get('mariadb', {})
+            mariadb_section.update({
+                'host': config.get('host', mariadb_section.get('host')),
+                'port': config.get('port', mariadb_section.get('port', 3306)),
+                'database': config.get('database', mariadb_section.get('database')),
+                'user': config.get('user', mariadb_section.get('user')),
+                'password': config.get('password', mariadb_section.get('password')),
+            })
 
-        # Only create a migrated service if a config was not provided. When a
-        # config dict is given we derive a local PostgreSQL connection pool
-        # from it instead (via psycopg2).  The previous logic called
-        # create_database_service() unconditionally which caused heavy
-        # initialization during unit tests.
-        # If we were provided a config, interpret whether it's a MariaDB
-        # config (port 3306 or explicit mariadb key) and create a
-        # migrated service (MariaDB-based). Only create a Postgres
-        # psycopg2 pool if the config explicitly looks like Postgres.
-        if config is None:
-            self.service = create_database_service()
-        else:
-            # When a config is provided (e.g., in tests), do NOT create the
-            # full MigratedDatabaseService instance to avoid contacting
-            # external services (MySQL/Chroma/embedding models). Tests patch
-            # DatabaseConnectionPool attributes directly (pool, execute_query,
-            # get_connection) so we leave `service` as None in this case.
-            self.service = None
-        self.pool = None
-        self.backup_pools = []
-        self.min_connections = self.config.get('min_connections', 1)
-        self.max_connections = self.config.get('max_connections', 20)
-        self.health_check_interval = self.config.get('health_check_interval', 30)
-        self.max_retries = self.config.get('max_retries', 3)
-        self.retry_delay = self.config.get('retry_delay', 1.0)
+            pool_section = base_config.setdefault('connection_pool', {})
+            pool_section['min_connections'] = config.get('min_connections', pool_section.get('min_connections', 1))
+            pool_section['max_connections'] = config.get('max_connections', pool_section.get('max_connections', 20))
+            pool_section['connection_timeout_seconds'] = config.get(
+                'connection_timeout_seconds', pool_section.get('connection_timeout_seconds', 3.0)
+            )
+            pool_section['command_timeout_seconds'] = config.get(
+                'command_timeout_seconds', pool_section.get('command_timeout_seconds', 30.0)
+            )
+            pool_section['health_check_interval'] = config.get(
+                'health_check_interval', pool_section.get('health_check_interval', 30)
+            )
+            pool_section['max_retries'] = config.get('max_retries', pool_section.get('max_retries', 3))
+            pool_section['retry_delay'] = config.get('retry_delay', pool_section.get('retry_delay', 1.0))
+
+        self.service = create_database_service(base_config)
+        self.config = base_config.get('mariadb', {})
+
+        pool_config = base_config.get('connection_pool', {})
+        self.min_connections = pool_config.get('min_connections', 1)
+        self.max_connections = pool_config.get('max_connections', 20)
+        self.health_check_interval = pool_config.get('health_check_interval', 30)
+        self.max_retries = pool_config.get('max_retries', 3)
+        self.retry_delay = pool_config.get('retry_delay', 1.0)
 
         # Performance metrics
         self.metrics = {
@@ -107,7 +89,7 @@ class DatabaseConnectionPool:
         self.last_health_check = 0
         self.is_healthy = False
 
-        # Initialize the pool
+        # Initialize the pool (MariaDB service availability check)
         self._initialize_pool()
 
     def _initialize_pool(self):
@@ -119,69 +101,11 @@ class DatabaseConnectionPool:
                 self.is_healthy = True
                 logger.info("Database connection service is available via migrated service")
             else:
-                # When no migrated service is present, create a normal
-                # Postgres ThreadedConnectionPool using the provided config.
-                pool_config = {
-                    'minconn': self.min_connections,
-                    'maxconn': self.max_connections,
-                    'host': self.config.get('host', 'localhost'),
-                    'port': int(self.config.get('port', 5432)),
-                    'user': self.config.get('user', ''),
-                    'password': self.config.get('password', ''),
-                    'database': self.config.get('database', '')
-                }
-                # Lazily import psycopg2 only if we actually need to use
-                # a Postgres ThreadedConnectionPool. This avoids requiring
-                # psycopg2 to be present in MariaDB-based deployments.
-                try:
-                    import psycopg2.pool as pg_pool
-                except Exception as e:
-                    logger.error("psycopg2 package missing: cannot create Postgres pool: %s" % e)
-                    raise
-
-                self.pool = pg_pool.ThreadedConnectionPool(
-                    pool_config['minconn'], pool_config['maxconn'],
-                    host=pool_config['host'], port=pool_config['port'],
-                    user=pool_config['user'], password=pool_config['password'],
-                    database=pool_config['database']
-                )
-                self.is_healthy = True
-                logger.info("Main connection pool initialized for Postgres")
+                raise RuntimeError("Migrated database service is unavailable")
         except Exception as e:
             logger.error(f"Failed to initialize migrated DB service: {e}")
             self.is_healthy = False
             raise
-
-    def _initialize_backup_pools(self):
-        """Initialize backup connection pools for failover"""
-        for backup_config in self.config['backup_hosts']:
-            try:
-                pool_config = {
-                    'host': backup_config['host'],
-                    'database': backup_config.get('database', self.config['database']),
-                    'user': backup_config.get('user', self.config['user']),
-                    'password': backup_config.get('password', self.config['password']),
-                    'port': backup_config.get('port', 5432),
-                    'minconn': backup_config.get('min_connections', 1),
-                    'maxconn': backup_config.get('max_connections', 10)
-                }
-
-                # Lazily import pg_pool for backup Postgres pools
-                try:
-                    import psycopg2.pool as pg_pool
-                except Exception:
-                    pg_pool = None
-
-                if pg_pool is None:
-                    logger.warning(f"psycopg2 not available; skipping backup pool for {backup_config['host']}")
-                    continue
-
-                backup_pool = pg_pool.ThreadedConnectionPool(**pool_config)
-                self.backup_pools.append(backup_pool)
-                logger.info(f"Backup connection pool initialized for {backup_config['host']}")
-
-            except Exception as e:
-                logger.warning(f"Failed to initialize backup pool for {backup_config['host']}: {e}")
 
     def _perform_health_check(self) -> bool:
         """Perform health check on the database connection"""
@@ -189,19 +113,11 @@ class DatabaseConnectionPool:
             if self.service:
                 conn = self.service.mb_conn
                 cursor = conn.cursor()
-            elif self.pool:
-                conn = self.pool.getconn()
-                cursor = conn.cursor()
             else:
-                raise Exception("No database service or pool configured")
+                raise Exception("No database service configured")
             cursor.execute("SELECT 1")
             cursor.fetchone()
             cursor.close()
-            if getattr(self.pool, 'putconn', None):
-                try:
-                    self.pool.putconn(conn)
-                except Exception:
-                    pass
             return True
         except Exception as e:
             logger.warning(f"Health check failed: {e}")
@@ -220,27 +136,13 @@ class DatabaseConnectionPool:
             try:
                 if self.service:
                     conn = self.service.mb_conn
-                elif self.pool:
-                    conn = self.pool.getconn()
                 else:
-                    raise Exception("No database service or pool available")
+                    raise Exception("No database service available")
                 self.metrics['connections_acquired'] += 1
                 return conn
             except Exception as e:
                 logger.warning(f"Failed to get connection from migrated service: {e}")
                 self.is_healthy = False
-
-        # Try backup pools
-        for i, backup_pool in enumerate(self.backup_pools):
-            try:
-                conn = backup_pool.getconn()
-                self.metrics['failover_events'] += 1
-                logger.info(f"Using backup pool {i} due to main pool failure")
-                return conn
-            except Exception as e:
-                logger.warning(f"Failed to get connection from backup pool {i}: {e}")
-                continue
-
         raise Exception("No healthy database connections available")
 
     @contextmanager
@@ -349,21 +251,6 @@ class DatabaseConnectionPool:
 
     def close(self):
         """Close all connection pools"""
-        try:
-            if self.pool:
-                self.pool.closeall()
-                logger.info("Main connection pool closed")
-        except Exception as e:
-            logger.warning(f"Error closing main pool: {e}")
-
-        for i, backup_pool in enumerate(self.backup_pools):
-            try:
-                backup_pool.closeall()
-                logger.info(f"Backup connection pool {i} closed")
-            except Exception as e:
-                logger.warning(f"Error closing backup pool {i}: {e}")
-
-        self.backup_pools.clear()
         logger.info("All connection pools closed")
 
     def __enter__(self):

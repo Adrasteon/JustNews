@@ -13,6 +13,7 @@ Tests cover:
 - Performance and benchmarking
 """
 
+import os
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -429,33 +430,43 @@ class TestIntegration:
     def test_full_configuration_workflow(self):
         """Test full configuration workflow"""
         with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
+            # Ensure env does not override file-backed configuration during test
+            from unittest.mock import patch
+            # Ensure the loader does not import system or repo-level global.env
+            # during this test: mark PYTEST_RUNNING so load_global_env skips
+            # Provide an empty explicit JUSTNEWS_GLOBAL_ENV inside temp_dir
+            # so load_global_env will prefer that path and not load repo/system
+            # global.env files which would override our test configuration.
+            env_file = Path(temp_dir) / 'global.env'
+            env_file.write_text('')
+            with patch.dict(os.environ, {'PYTEST_RUNNING': '1', 'JUSTNEWS_GLOBAL_ENV': str(env_file)}, clear=True):
+                temp_path = Path(temp_dir)
 
-            # Create configuration file
-            config_file = temp_path / "system_config.json"
-            config = create_default_config()
-            config.system.debug_mode = True
-            save_config_to_file(config, config_file)
+                # Create configuration file
+                config_file = temp_path / "system_config.json"
+                config = create_default_config()
+                config.system.debug_mode = True
+                save_config_to_file(config, config_file)
 
-            # Initialize manager
-            manager = ConfigurationManager(config_file=config_file)
+                # Initialize manager
+                manager = ConfigurationManager(config_file=config_file)
 
-            # Validate configuration
-            validator = ConfigurationValidator()
-            result = validator.validate(manager.config)
+                # Validate configuration
+                validator = ConfigurationValidator()
+                result = validator.validate(manager.config)
 
-            assert result.is_valid
+                assert result.is_valid
 
-            # Test configuration updates
-            manager.set("database.host", "updated_host")
-            assert manager.config.database.host == "updated_host"
+                # Test configuration updates
+                manager.set("database.host", "updated_host")
+                assert manager.config.database.host == "updated_host"
 
-            # Save and reload
-            manager.save()
-            manager.reload()
+                # Save and reload
+                manager.save()
+                manager.reload()
 
-            assert manager.config.database.host == "updated_host"
-            assert manager.config.system.debug_mode is True
+                assert manager.config.database.host == "updated_host"
+                assert manager.config.system.debug_mode is True
 
     def test_environment_profile_workflow(self):
         """Test environment profile workflow"""

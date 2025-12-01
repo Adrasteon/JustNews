@@ -239,7 +239,7 @@ async def add_fact_endpoint(call: ToolCall):
             "fact_data": call.args if call.args else call.kwargs,
             "error": error_msg
         })
-        raise HTTPException(status_code=500, detail=error_msg)
+        raise HTTPException(status_code=500, detail=error_msg) from e
 
 @app.post("/add_facts")
 async def add_facts_endpoint(call: ToolCall):
@@ -279,7 +279,7 @@ async def add_facts_endpoint(call: ToolCall):
             "facts_data": call.args if call.args else call.kwargs,
             "error": error_msg
         })
-        raise HTTPException(status_code=500, detail=error_msg)
+        raise HTTPException(status_code=500, detail=error_msg) from e
 
 @app.post("/add_rule")
 async def add_rule_endpoint(call: ToolCall):
@@ -315,7 +315,7 @@ async def add_rule_endpoint(call: ToolCall):
             "rule_data": call.args if call.args else call.kwargs,
             "error": error_msg
         })
-        raise HTTPException(status_code=500, detail=error_msg)
+        raise HTTPException(status_code=500, detail=error_msg) from e
 
 @app.post("/query")
 async def query_endpoint(call: ToolCall):
@@ -351,7 +351,7 @@ async def query_endpoint(call: ToolCall):
             "query_data": call.args if call.args else call.kwargs,
             "error": error_msg
         })
-        raise HTTPException(status_code=500, detail=error_msg)
+        raise HTTPException(status_code=500, detail=error_msg) from e
 
 @app.post("/evaluate")
 async def evaluate_endpoint(call: ToolCall):
@@ -404,7 +404,7 @@ async def evaluate_endpoint(call: ToolCall):
             "evaluation_data": call.args if call.args else call.kwargs,
             "error": error_msg
         })
-        raise HTTPException(status_code=500, detail=error_msg)
+        raise HTTPException(status_code=500, detail=error_msg) from e
 
 @app.post("/validate_claim")
 async def validate_claim_endpoint(call: ToolCall):
@@ -468,7 +468,7 @@ async def validate_claim_endpoint(call: ToolCall):
             "claim_data": call.args if call.args else call.kwargs,
             "error": error_msg
         })
-        raise HTTPException(status_code=500, detail=error_msg)
+        raise HTTPException(status_code=500, detail=error_msg) from e
 
 @app.post("/explain_reasoning")
 async def explain_reasoning_endpoint(call: ToolCall):
@@ -522,7 +522,7 @@ async def explain_reasoning_endpoint(call: ToolCall):
             "query_data": call.args if call.args else call.kwargs,
             "error": error_msg
         })
-        raise HTTPException(status_code=500, detail=error_msg)
+        raise HTTPException(status_code=500, detail=error_msg) from e
 
 @app.post("/pipeline/validate")
 async def pipeline_validate_endpoint(payload: dict[str, Any]):
@@ -602,7 +602,7 @@ async def pipeline_validate_endpoint(payload: dict[str, Any]):
 
     except Exception as e:
         log_feedback("pipeline_error", {"error": str(e)})
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 # Status and health endpoints
 @app.get("/facts")
@@ -697,7 +697,7 @@ async def call_tool(request: dict[str, Any]):
             "request": request,
             "error": str(e)
         })
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 # Main entry point
 if __name__ == "__main__":

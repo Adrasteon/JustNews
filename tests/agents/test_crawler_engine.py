@@ -376,7 +376,7 @@ class TestCrawlerEngine:
             {"title": "Test Article", "url": "https://testsite.com/article", "content": "Content"}
         ]
 
-        with patch.object(crawler_engine, 'crawl_site', return_value=mock_articles) as mock_crawl_site, \
+        with patch.object(crawler_engine, 'crawl_site', return_value=mock_articles) as _mock_crawl_site, \
              patch.object(crawler_engine, '_ingest_articles') as mock_ingest, \
              patch.object(crawler_engine, '_cleanup_orphaned_processes'):
 
@@ -415,7 +415,7 @@ class TestCrawlerEngine:
 
         with patch.object(crawler_engine, 'crawl_site', return_value=[
             {"title": "Article 1", "url": "https://site1.com/article", "content": "Content 1"}
-        ]) as mock_crawl_site, \
+            ]) as mock_crawl_site, \
              patch.object(crawler_engine, '_ingest_articles') as mock_ingest, \
              patch.object(crawler_engine, '_cleanup_orphaned_processes'):
 
@@ -440,7 +440,7 @@ class TestCrawlerEngine:
             {"title": "Test Article", "url": "https://testsite.com/article", "content": "Content"}
         ]
 
-        with patch.object(crawler_engine, 'crawl_site', return_value=mock_articles) as mock_crawl_site, \
+        with patch.object(crawler_engine, 'crawl_site', return_value=mock_articles) as _mock_crawl_site, \
              patch.object(crawler_engine, '_ingest_articles') as mock_ingest, \
              patch.object(crawler_engine, '_cleanup_orphaned_processes'):
 
@@ -520,7 +520,7 @@ class TestCrawlerEngine:
         }
         mock_response.raise_for_status.return_value = None
 
-        with patch('agents.crawler.crawler_engine.requests.post', return_value=mock_response) as mock_post, \
+        with patch('agents.crawler.crawler_engine.requests.post', return_value=mock_response) as _mock_post, \
              patch('agents.crawler.crawler_engine.make_json_safe', side_effect=lambda x: x):
 
             result = await crawler_engine._ingest_articles(articles)
@@ -542,7 +542,7 @@ class TestCrawlerEngine:
             }
         ]
 
-        with patch('agents.crawler.crawler_engine.requests.post', side_effect=Exception("Network error")) as mock_post, \
+        with patch('agents.crawler.crawler_engine.requests.post', side_effect=Exception("Network error")) as _mock_post, \
              patch('agents.crawler.crawler_engine.make_json_safe', side_effect=lambda x: x):
 
             result = await crawler_engine._ingest_articles(articles)
@@ -641,7 +641,7 @@ class TestCrawlerEngine:
     @pytest.mark.asyncio
     async def test_error_handling_crawl_failure(self, crawler_engine, mock_site_config):
         """Test error handling when crawling fails"""
-        with patch.object(crawler_engine, 'crawl_site', side_effect=Exception("Crawl failed")) as mock_crawl_site, \
+        with patch.object(crawler_engine, 'crawl_site', side_effect=Exception("Crawl failed")) as _mock_crawl_site, \
              patch.object(crawler_engine, '_cleanup_orphaned_processes'):
 
             result = await crawler_engine.crawl_multiple_sites([mock_site_config], max_articles_per_site=1)

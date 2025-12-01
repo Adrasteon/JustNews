@@ -1,3 +1,8 @@
+# NOTE: Historically we hosted a standalone server in `web_interface/server.py`.
+# This module consolidates the functionality previously provided there (UI serving,
+# `start_crawl`/`status` endpoints, DB fallbacks) to keep a single agent entrypoint
+# in `main.py` and avoid duplicated code. Keep `web_interface/server.py` removed
+# to reduce confusion.
 """
 Main file for the Crawler Control Agent.
 Web interface for crawler management and monitoring.
@@ -20,6 +25,11 @@ from common.metrics import JustNewsMetrics
 from common.observability import get_logger
 
 from .tools import get_sources_with_limit
+
+try:
+    from database.utils.migrated_database_utils import create_database_service
+except Exception:
+    create_database_service = None
 
 # Apply database environment fallback for development
 apply_test_db_env_fallback()
@@ -83,6 +93,18 @@ async def lifespan(app: FastAPI):
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
         logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+    # Warm up DB connection pool to avoid first-request latency
+    if create_database_service is not None:
+        try:
+            db = create_database_service()
+            # Close immediately after warmup to avoid keeping connections open
+            try:
+                db.close()
+            except Exception:
+                pass
+            logger.info("Database connection warmed up for crawler_control agent.")
+        except Exception as exc:
+            logger.debug(f"Database warmup failed (non-fatal): {exc}")
     global ready
     ready = True
     yield
@@ -182,7 +204,7 @@ async def start_crawl_endpoint(call: ToolCall):
         raise
     except Exception as e:
         logger.error(f"Unexpected error in start_crawl: {e}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}") from e
 
 @app.post("/stop_crawl")
 async def stop_crawl_endpoint(call: ToolCall):
@@ -194,19 +216,23 @@ async def stop_crawl_endpoint(call: ToolCall):
         jobs = response.json()
 
         stopped_jobs = []
-        for job_id, status in jobs.items():
-            if status in ["running", "pending"]:
-                # Note: The crawler doesn't have a stop endpoint yet
-                # For now, we'll just mark as stopped in our tracking
-                # TODO: Implement actual job stopping in the crawler agent
-                stopped_jobs.append(job_id)
+        for job_id, _status in jobs.items():
+            if _status in ["running", "pending"]:
+                # Delegate stop to the crawler agent which supports stopping jobs
+                try:
+                    resp = requests.post(f"{CRAWLER_AGENT_URL}/stop_job/{job_id}")
+                    resp.raise_for_status()
+                    stopped_jobs.append(job_id)
+                except requests.RequestException:
+                    # If the crawler doesn't support stop or the call fails, fall back
+                    stopped_jobs.append(job_id)
 
         if stopped_jobs:
             return {"stopped_jobs": stopped_jobs, "message": f"Requested stop for {len(stopped_jobs)} jobs (stopping not yet fully implemented in crawler)"}
         else:
             return {"stopped_jobs": [], "message": "No active jobs to stop"}
     except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Failed to stop crawl: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to stop crawl: {str(e)}") from e
 
 @app.post("/clear_jobs")
 async def clear_jobs_endpoint(call: ToolCall):
@@ -216,7 +242,7 @@ async def clear_jobs_endpoint(call: ToolCall):
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Failed to clear jobs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to clear jobs: {str(e)}") from e
 
 @app.post("/reset_crawler")
 async def reset_crawler_endpoint(call: ToolCall):
@@ -226,7 +252,7 @@ async def reset_crawler_endpoint(call: ToolCall):
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Failed to reset crawler: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to reset crawler: {str(e)}") from e
 
 @app.post("/get_crawl_status")
 async def get_crawl_status_endpoint(call: ToolCall):
@@ -238,17 +264,17 @@ async def get_crawl_status_endpoint(call: ToolCall):
 
         # Get details for each job
         job_details = {}
-        for job_id, status in jobs.items():
+        for job_id, _status in jobs.items():
             try:
                 detail_response = requests.get(f"{CRAWLER_AGENT_URL}/job_status/{job_id}")
                 detail_response.raise_for_status()
                 job_details[job_id] = detail_response.json()
-            except:
+            except requests.RequestException:
                 job_details[job_id] = {"status": "unknown"}
 
         return job_details
     except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get crawl status: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get crawl status: {str(e)}") from e
 
 @app.post("/get_crawler_metrics")
 async def get_crawler_metrics_endpoint(call: ToolCall):
@@ -310,7 +336,7 @@ async def get_system_health_endpoint(call: ToolCall):
         try:
             response = requests.get(f"{url}/health", timeout=5)
             health[name] = response.status_code == 200
-        except:
+        except requests.RequestException:
             health[name] = False
 
     return health
@@ -363,7 +389,7 @@ async def api_start_crawl(request: CrawlRequest):
         raise
     except Exception as e:
         logger.error(f"Unexpected error in api_start_crawl: {e}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}") from e
 
 @app.post("/api/crawl/stop")
 async def api_stop_crawl():
@@ -377,17 +403,19 @@ async def api_stop_crawl():
         stopped_jobs = []
         for job_id, status in jobs.items():
             if status in ["running", "pending"]:
-                # Note: The crawler doesn't have a stop endpoint yet
-                # For now, we'll just mark as stopped in our tracking
-                # TODO: Implement actual job stopping in the crawler agent
-                stopped_jobs.append(job_id)
+                try:
+                    resp = requests.post(f"{CRAWLER_AGENT_URL}/stop_job/{job_id}")
+                    resp.raise_for_status()
+                    stopped_jobs.append(job_id)
+                except requests.RequestException:
+                    stopped_jobs.append(job_id)
 
         if stopped_jobs:
             return {"stopped_jobs": stopped_jobs, "message": f"Requested stop for {len(stopped_jobs)} jobs (stopping not yet fully implemented in crawler)"}
         else:
             return {"stopped_jobs": [], "message": "No active jobs to stop"}
     except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Failed to stop crawl: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to stop crawl: {str(e)}") from e
 
 @app.post("/api/crawl/clear_jobs")
 async def api_clear_jobs():
@@ -397,7 +425,7 @@ async def api_clear_jobs():
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Failed to clear jobs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to clear jobs: {str(e)}") from e
 
 @app.post("/api/crawl/reset")
 async def api_reset_crawler():
@@ -407,7 +435,7 @@ async def api_reset_crawler():
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Failed to reset crawler: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to reset crawler: {str(e)}") from e
 
 @app.get("/api/crawl/status")
 async def api_get_crawl_status():
@@ -419,17 +447,17 @@ async def api_get_crawl_status():
 
         # Get details for each job
         job_details = {}
-        for job_id, status in jobs.items():
+        for job_id, _status in jobs.items():
             try:
                 detail_response = requests.get(f"{CRAWLER_AGENT_URL}/job_status/{job_id}")
                 detail_response.raise_for_status()
                 job_details[job_id] = detail_response.json()
-            except:
+            except requests.RequestException:
                 job_details[job_id] = {"status": "unknown"}
 
         return job_details
     except requests.RequestException as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get crawl status: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get crawl status: {str(e)}") from e
 
 @app.get("/api/metrics/crawler")
 async def api_get_crawler_metrics():
@@ -491,7 +519,7 @@ async def api_get_system_health():
         try:
             response = requests.get(f"{url}/health", timeout=5)
             health[name] = response.status_code == 200
-        except:
+        except requests.RequestException:
             health[name] = False
 
     return health

@@ -139,7 +139,7 @@ class TraceProcessor:
         # Calculate basic metrics
         total_duration = trace_data.duration_ms or 0
         span_count = len(trace_data.spans)
-        service_count = len(set(span.service_name for span in trace_data.spans if span.service_name))
+        service_count = len({span.service_name for span in trace_data.spans if span.service_name})
         error_count = sum(1 for span in trace_data.spans if span.status != "ok")
 
         # Find critical path
@@ -458,7 +458,7 @@ class TraceProcessor:
         """Get current service dependency map"""
         service_map = defaultdict(list)
 
-        for (source, target), dep in self.service_dependencies.items():
+        for (source, _target), dep in self.service_dependencies.items():
             service_map[source].append(dep)
 
         return dict(service_map)

@@ -1,0 +1,11 @@
+# MetricName,Type,Units,Description
+DCGM_FI_DEV_GPU_TEMP,gauge,C,"Instantaneous temperature reported by the GPU sensor"
+DCGM_FI_DEV_SM_CLOCK,gauge,MHz,"Streaming Multiprocessor clock frequency"
+DCGM_FI_DEV_MEM_CLOCK,gauge,MHz,"Device memory clock frequency"
+DCGM_FI_DEV_POWER_USAGE,gauge,W,"Power draw as reported by the on-board power sensor"
+DCGM_FI_DEV_GPU_UTIL,gauge,Percent,"Percent of time the GPU was busy over the sample window"
+DCGM_FI_DEV_MEM_COPY_UTIL,gauge,Percent,"Percent of time memory copy engines were busy"
+DCGM_FI_DEV_FB_USED,gauge,MiB,"Frame buffer memory used"
+DCGM_FI_DEV_FB_FREE,gauge,MiB,"Frame buffer memory free"
+DCGM_FI_DEV_ECC_SBE_VOL_TOTAL,counter,errors,"Total single-bit ECC errors (volatile)"
+DCGM_FI_PROF_PIPE_TENSOR_ACTIVE,gauge,Percent,"Tensor core active percentage (requires profiling mode)"

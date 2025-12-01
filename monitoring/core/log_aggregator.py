@@ -12,7 +12,7 @@ import os
 import secrets
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -78,7 +78,7 @@ class LogAggregator:
 
         # Aggregation state
         self._log_buffer: list[LogEntry] = []
-        self._last_flush_time = datetime.utcnow()
+        self._last_flush_time = datetime.now(timezone.utc)
         self._flush_task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
 
@@ -91,8 +91,22 @@ class LogAggregator:
         self._batches_flushed = 0
         self._errors_count = 0
 
-        # Setup cleanup task
-        self._cleanup_task = asyncio.create_task(self._cleanup_old_logs())
+        # Cleanup task is scheduled lazily once an event loop is running
+        self._cleanup_task: asyncio.Task | None = None
+
+    def _ensure_cleanup_task(self) -> None:
+        """Start the retention cleanup loop once an event loop is available."""
+        if self._cleanup_task is not None:
+            return
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # Called outside of a running loop (e.g., during sync test setup).
+            # The cleanup loop is best-effort, so skip scheduling for now.
+            return
+
+        self._cleanup_task = loop.create_task(self._cleanup_old_logs())
 
     def _get_default_config(self) -> dict[str, Any]:
         """Get default aggregator configuration"""
@@ -127,6 +141,7 @@ class LogAggregator:
 
     async def start(self) -> None:
         """Start the log aggregator"""
+        self._ensure_cleanup_task()
         self._flush_task = asyncio.create_task(self._periodic_flush())
 
     async def shutdown(self) -> None:
@@ -148,6 +163,7 @@ class LogAggregator:
 
     async def aggregate_log(self, log_entry: LogEntry) -> None:
         """Aggregate a log entry"""
+        self._ensure_cleanup_task()
         try:
             self._log_buffer.append(log_entry)
             self._logs_processed += 1
@@ -160,7 +176,7 @@ class LogAggregator:
             elif self.aggregation_config.strategy == AggregationStrategy.EVENT_COUNT:
                 should_flush = len(self._log_buffer) >= self.aggregation_config.max_batch_size
             elif self.aggregation_config.strategy == AggregationStrategy.TIME_WINDOW:
-                time_since_last_flush = (datetime.utcnow() - self._last_flush_time).total_seconds()
+                time_since_last_flush = (datetime.now(timezone.utc) - self._last_flush_time).total_seconds()
                 should_flush = time_since_last_flush >= self.aggregation_config.time_window_seconds
 
             # Emergency flush if buffer is too large
@@ -192,7 +208,7 @@ class LogAggregator:
                     self._errors_count += 1
 
             self._batches_flushed += 1
-            self._last_flush_time = datetime.utcnow()
+            self._last_flush_time = datetime.now(timezone.utc)
             self._log_buffer.clear()
 
         except Exception as e:
@@ -214,7 +230,7 @@ class LogAggregator:
         """Store logs to file system"""
         try:
             # Create timestamped filename
-            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             batch_id = secrets.token_hex(4)
             filename = f"{self.storage_config.file_path}/logs_{timestamp}_{batch_id}.json"
 
@@ -324,7 +340,7 @@ class LogAggregator:
             try:
                 await asyncio.sleep(86400)  # Run daily
 
-                cutoff_date = datetime.utcnow() - timedelta(days=self.aggregation_config.retention_days)
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=self.aggregation_config.retention_days)
                 cutoff_timestamp = cutoff_date.strftime("%Y%m%d")
 
                 # Clean up file-based logs

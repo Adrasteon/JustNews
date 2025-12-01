@@ -1,0 +1,25 @@
+[Unit]
+Description=JustNews NVIDIA DCGM Exporter
+Documentation=https://github.com/NVIDIA/dcgm-exporter
+After=network-online.target nvidia-persistenced.service
+Wants=network-online.target nvidia-persistenced.service
+
+[Service]
+Type=simple
+User=justnews
+Group=justnews
+Environment=DCGM_EXPORTER_BIN=/usr/local/bin/dcgm-exporter
+Environment=DCGM_EXPORTER_LISTEN_ADDRESS=0.0.0.0
+Environment=DCGM_EXPORTER_PORT=9400
+Environment=DCGM_EXPORTER_METRICS_FILE=/etc/justnews/monitoring/dcgm/metrics_default.csv
+Environment=DCGM_EXPORTER_LOG_DIR=/var/log/justnews/dcgm-exporter
+EnvironmentFile=-/etc/justnews/dcgm-exporter.env
+ExecStartPre=/usr/bin/install -d -o justnews -g justnews /etc/justnews/monitoring/dcgm ${DCGM_EXPORTER_LOG_DIR}
+ExecStart=/usr/bin/env bash -c "exec ${DCGM_EXPORTER_BIN} --address ${DCGM_EXPORTER_LISTEN_ADDRESS} --port ${DCGM_EXPORTER_PORT} -f ${DCGM_EXPORTER_METRICS_FILE} ${DCGM_EXPORTER_EXTRA_FLAGS:-}"
+Restart=always
+RestartSec=5
+StandardOutput=append:${DCGM_EXPORTER_LOG_DIR}/service.log
+StandardError=append:${DCGM_EXPORTER_LOG_DIR}/service.log
+
+[Install]
+WantedBy=multi-user.target

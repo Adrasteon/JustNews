@@ -41,7 +41,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 
-class TestRunner:
+class Runner:
     """Comprehensive test runner for JustNews"""
 
     def __init__(self, args):
@@ -271,7 +271,7 @@ class TestRunner:
         passed_tests = 0
         failed_tests = 0
 
-        for test_type, result in self.results.items():
+        for _test_type, result in self.results.items():
             if isinstance(result, dict) and 'success' in result:
                 if result['success']:
                     passed_tests += 1
@@ -390,7 +390,7 @@ def main():
     args = parser.parse_args()
 
     # Run tests
-    runner = TestRunner(args)
+    runner = Runner(args)
     try:
         runner.run_all_tests()
         success = all(

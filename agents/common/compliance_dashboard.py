@@ -1,5 +1,3 @@
-from common.observability import get_logger
-
 #!/usr/bin/env python3
 """
 Compliance Dashboard API
@@ -26,6 +24,7 @@ from pydantic import BaseModel
 from agents.common.auth_models import UserRole, get_current_user
 from agents.common.compliance_audit import AuditLogAnalyzer, ComplianceAuditLogger
 from agents.common.compliance_retention import DataRetentionManager
+from common.observability import get_logger
 
 logger = get_logger(__name__)
 
@@ -136,7 +135,7 @@ async def get_compliance_metrics(
         raise HTTPException(
             status_code=500,
             detail="Failed to retrieve compliance metrics"
-        )
+        ) from e
 
 @router.get("/retention-status", response_model=DataRetentionStatus)
 async def get_data_retention_status(
@@ -185,7 +184,7 @@ async def get_data_retention_status(
         raise HTTPException(
             status_code=500,
             detail="Failed to retrieve retention status"
-        )
+        ) from e
 
 @router.get("/user-requests", response_model=UserRequestSummary)
 async def get_user_request_summary(
@@ -239,7 +238,7 @@ async def get_user_request_summary(
         raise HTTPException(
             status_code=500,
             detail="Failed to retrieve user requests"
-        )
+        ) from e
 
 @router.get("/audit-logs", response_model=AuditLogSummary)
 async def get_audit_log_summary(
@@ -279,7 +278,7 @@ async def get_audit_log_summary(
         raise HTTPException(
             status_code=500,
             detail="Failed to retrieve audit logs"
-        )
+        ) from e
 
 @router.get("/gdpr-report")
 async def get_gdpr_compliance_report(
@@ -294,8 +293,8 @@ async def get_gdpr_compliance_report(
         # Add additional compliance metrics
         report = {
             **gdpr_summary,
-            "data_retention_status": (await get_data_retention_status(current_user)).dict(),
-            "user_request_summary": (await get_user_request_summary(50, current_user)).dict(),
+            "data_retention_status": (await get_data_retention_status(current_user)).model_dump(),
+            "user_request_summary": (await get_user_request_summary(50, current_user)).model_dump(),
             "compliance_assessment": {
                 "data_portability_compliant": gdpr_summary["gdpr_articles_referenced"].get("20", 0) > 0,
                 "right_to_be_forgotten_compliant": gdpr_summary["gdpr_articles_referenced"].get("17", 0) > 0,
@@ -317,7 +316,7 @@ async def get_gdpr_compliance_report(
         raise HTTPException(
             status_code=500,
             detail="Failed to generate GDPR compliance report"
-        )
+        ) from e
 
 @router.post("/retention-cleanup")
 async def trigger_retention_cleanup(
@@ -353,7 +352,7 @@ async def trigger_retention_cleanup(
         raise HTTPException(
             status_code=500,
             detail="Failed to trigger retention cleanup"
-        )
+        ) from e
 
 # Initialize compliance components on import
 try:

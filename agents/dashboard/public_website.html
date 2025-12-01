@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JustNews - AI-Powered News Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .hero-section { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 100px 0; }
+        .news-card { transition: transform 0.2s; border: none; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .news-card:hover { transform: translateY(-5px); }
+        .credibility-badge { position: absolute; top: 10px; right: 10px; padding: 5px 10px; border-radius: 20px; font-size: 0.8em; font-weight: bold; }
+        .credibility-high { background: #28a745; color: white; }
+        .credibility-medium { background: #ffc107; color: black; }
+        .credibility-low { background: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#"><i class="fas fa-newspaper"></i> JustNews</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link active" href="#news">News</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#analysis">Analysis</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#sources">Sources</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#api">API</a></li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="pagesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Pages</a>
+                        <ul class="dropdown-menu" id="pagesDropdownMenu" aria-labelledby="pagesDropdown">
+                            <!-- Dynamically populated from /api/dashboard/pages -->
+                        </ul>
+                    </li>
+                </ul>
+                <form class="d-flex">
+                    <input class="form-control me-2" type="search" placeholder="Search news..." id="searchInput">
+                    <button class="btn btn-outline-light" type="button" onclick="searchNews()">Search</button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container text-center">
+            <h1 class="display-4 mb-4">AI-Powered News Analysis</h1>
+            <p class="lead mb-4">Discover news with transparent AI analysis, credibility scoring, and fact-checking</p>
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <i class="fas fa-brain fa-3x mb-3"></i>
+                    <h5>AI Analysis</h5>
+                    <p>Sentiment, bias, and topic analysis</p>
+                </div>
+                <div class="col-md-4">
+                    <i class="fas fa-shield-alt fa-3x mb-3"></i>
+                    <h5>Fact Checking</h5>
+                    <p>Source credibility and verification</p>
+                </div>
+                <div class="col-md-4">
+                    <i class="fas fa-chart-line fa-3x mb-3"></i>
+                    <h5>Transparency</h5>
+                    <p>Open data and research APIs</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- News Feed -->
+    <section class="py-5" id="news">
+        <div class="container">
+            <h2 class="text-center mb-4">System Status & Dashboards</h2>
+            <div class="row mb-4" id="systemStatusContainer">
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">System Health</h5>
+                            <div id="systemHealth" class="small text-muted">Loading...</div>
+                        </div>
+                    </div>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Crawler Jobs</h5>
+                            <div id="crawlerJobs">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Crawl Scheduler</h5>
+                            <div id="crawlScheduler">Loading...</div>
+                        </div>
+                    </div>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">GPU Summary</h5>
+                            <div id="gpuSummary">Loading...</div>
+                            <canvas id="gpuChart" aria-label="GPU utilization chart" role="img" style="max-width:100%;height:140px"></canvas>
+                        </div>
+                    </div>
+                    <!-- Publishing Settings Card -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Publishing Settings</h5>
+                            <div class="mb-2 form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="requireDraftFactCheckSwitch">
+                                <label class="form-check-label" for="requireDraftFactCheckSwitch">Require draft fact-check pass for publish</label>
+                            </div>
+                            <div class="mb-2 form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="chiefEditorReviewSwitch">
+                                <label class="form-check-label" for="chiefEditorReviewSwitch">Require chief editor review</label>
+                            </div>
+                            <div class="mb-3">
+                                <label for="synthesizedArticleStorageSelect" class="form-label">Synthesized article storage</label>
+                                <select id="synthesizedArticleStorageSelect" class="form-select">
+                                    <option value="extend">Extend articles table (default)</option>
+                                    <option value="new_table">Use synthesized_articles table</option>
+                                </select>
+                            </div>
+                            <div id="publishingFeedback" class="mb-2"></div>
+                            <button id="savePublishingBtn" class="btn btn-sm btn-primary">Save Publishing Settings</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <h2 class="text-center mb-4">Latest News</h2>
+            <div class="row" id="newsContainer">
+                <div class="col-12 text-center">
+                    <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+                    <p>Loading news articles...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-light py-4">
+        <div class="container text-center">
+            <p>&copy; 2025 JustNews. AI-powered news analysis platform.</p>
+            <p>Built with transparency, accuracy, and trust.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        async function fetchJSON(path) {
+            const res = await fetch(path);
+            if (!res.ok) throw new Error(`Failed to fetch ${path}: ${res.status}`);
+            return res.json();
+        }
+
+        async function loadDashboardData() {
+            try {
+                const [health, crawlStatus, scheduler, gpu] = await Promise.all([
+                    fetchJSON('/api/health').catch(()=>null),
+                    fetchJSON('/api/crawl/status').catch(()=>null),
+                    fetchJSON('/api/crawl/scheduler').catch(()=>null),
+                    fetchJSON('/gpu/dashboard').catch(()=>null)
+                ]);
+
+                renderHealth(health);
+                renderCrawlJobs(crawlStatus);
+                renderScheduler(scheduler);
+                renderGpuSummary(gpu);
+            } catch (err) {
+                console.error('Error loading dashboard data:', err);
+            }
+        }
+
+        function renderHealth(health) {
+            const el = document.getElementById('systemHealth');
+            if (!health) { el.innerHTML = '<div class="text-muted">Unavailable</div>'; return; }
+            const list = Object.entries(health).map(([agent, ok]) => {
+                const cls = ok ? 'text-success' : 'text-danger';
+                return `<div><strong>${agent}</strong>: <span class="${cls}">${ok ? 'OK' : 'DOWN'}</span></div>`;
+            }).join('');
+            el.innerHTML = list;
+        }
+
+        function renderCrawlJobs(crawlStatus) {
+            const el = document.getElementById('crawlerJobs');
+            if (!crawlStatus) { el.innerHTML = '<div class="text-muted">Unavailable</div>'; return; }
+            if (Object.keys(crawlStatus).length === 0) { el.innerHTML = '<div class="text-muted">No jobs</div>'; return; }
+            const rows = Object.entries(crawlStatus).map(([id, job]) => {
+                const status = job.status || job.state || 'unknown';
+                return `<tr data-job-id="${id}"><td>${id}</td><td>${job.source || job.agent || ''}</td><td>${status}</td><td>${job.progress || ''}</td><td>${job.started_at || ''}</td><td><button class="btn btn-sm btn-outline-primary details-btn" data-job-id="${id}">Details</button></td></tr>`;
+            }).join('');
+            el.innerHTML = `
+                <div class="table-responsive">
+                    <table id="crawlerJobsTable" class="table table-sm table-striped">
+                        <thead><tr><th>ID</th><th>Agent</th><th>Status</th><th>Progress</th><th>Started</th><th>Actions</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+            try {
+                // Initialize DataTable cleanly
+                if (window.jQuery && $.fn && !$.fn.DataTable.isDataTable('#crawlerJobsTable')) {
+                    $('#crawlerJobsTable').DataTable({"pageLength": 5, "lengthChange": false});
+                }
+            } catch (e) {
+                console.error('Failed to initialize DataTable', e);
+            }
+        }
+
+        function renderScheduler(scheduler) {
+            const el = document.getElementById('crawlScheduler');
+            if (!scheduler || !scheduler.state_available) { el.innerHTML = '<div class="text-muted">No scheduler state</div>'; return; }
+            const executed = scheduler.executed_at || '';
+            const target = scheduler.target_articles || scheduler.adaptive_summary?.articles?.total || 'N/A';
+            const remaining = scheduler.remaining_articles || 'N/A';
+            const metrics = scheduler.adaptive_metrics || {};
+            el.innerHTML = `
+                <div><strong>Last Run:</strong> ${executed}</div>
+                <div><strong>Target Articles:</strong> ${target}</div>
+                <div><strong>Remaining:</strong> ${remaining}</div>
+                <div class="mt-2"><strong>Adaptive summary:</strong>
+                    <ul class="small mb-0">
+                        <li>Articles total: ${metrics.articles_total || 0}</li>
+                        <li>Articles sufficient: ${metrics.articles_sufficient || 0}</li>
+                        <li>Avg confidence: ${metrics.confidence_average?.toFixed?.(2) || metrics.confidence_average || 'N/A'}</li>
+                        <li>Pages crawled avg: ${metrics.pages_crawled_average || 'N/A'}</li>
+                    </ul>
+                </div>`;
+            // Add recent runs if available
+            const runs = scheduler.runs || [];
+            if (runs.length) {
+                const runCards = runs.slice(0,5).map((r, idx) => {
+                    const rid = r.id || r.run_id || `run-${idx}`;
+                    const summary = r.result?.articles?.length ? `${r.result.articles.length} articles` : 'no articles';
+                    const started = r.started_at || r.executed_at || '';
+                    return `<div class="mb-2"><div class="d-flex justify-content-between"><div>${rid} - ${summary}</div><div><button class="btn btn-sm btn-outline-secondary run-details-btn" data-run-id="${rid}">Details</button></div></div><div class="small text-muted">Started: ${started}</div></div>`;
+                }).join('');
+                el.innerHTML += `<div class="mt-3"><strong>Recent Runs</strong>${runCards}</div>`;
+            }
+        }
+
+        let gpuChart = null;
+        function renderGpuSummary(gpu) {
+            const el = document.getElementById('gpuSummary');
+            if (!gpu || gpu.status !== 'success') { el.innerHTML = '<div class="text-muted">Unavailable</div>'; return; }
+            const s = gpu.summary || {};
+            const gpuList = (gpu.gpu_info?.gpus || []);
+            const cards = gpuList.map(g => `
+                <div class="mb-2">
+                    <div class="d-flex justify-content-between"><strong>${g.name}</strong><small>${g.gpu_utilization_percent}%</small></div>
+                    <div class="progress" style="height:8px"><div class="progress-bar" role="progressbar" style="width:${g.gpu_utilization_percent}%"></div></div>
+                    <div class="small text-muted">Memory: ${g.memory_used_mb}/${g.memory_total_mb} MB | Temp: ${g.temperature_celsius} °C</div>
+                </div>`).join('');
+            el.innerHTML = `<div><strong>Total GPUs</strong>: ${s.total_gpus || 0}</div><div>${cards}</div>`;
+            // Build / update Chart.js bar chart for utilization
+            try {
+                const ctx = document.getElementById('gpuChart').getContext('2d');
+                const labels = gpuList.map(g => g.name || `GPU ${g.index}`);
+                const data = gpuList.map(g => (g.gpu_utilization_percent || 0));
+                if (gpuChart) {
+                    gpuChart.data.labels = labels;
+                    gpuChart.data.datasets[0].data = data;
+                    gpuChart.update();
+                } else {
+                    gpuChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{ label: 'GPU Utilization (%)', data: data, backgroundColor: 'rgba(54, 162, 235, 0.6)' }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+                    });
+                }
+            } catch (e) {
+                console.debug('Chart.js not available or failed to render:', e);
+            }
+        }
+
+        async function loadNews() {
+            try {
+                const response = await fetch('/api/public/articles');
+                const data = await response.json();
+                displayNews(data.articles || []);
+            } catch (error) {
+                console.error('Error loading news:', error);
+                document.getElementById('newsContainer').innerHTML = '<div class="col-12 text-center"><p class="text-muted">Unable to load news articles at this time.</p></div>';
+            }
+        }
+
+        function displayNews(articles) {
+            const container = document.getElementById('newsContainer');
+            if (articles.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center"><p class="text-muted">No articles available.</p></div>';
+                return;
+            }
+            container.innerHTML = articles.map(article => `...`).join('');
+        }
+
+        function searchNews() {
+            const query = document.getElementById('searchInput').value;
+            if (query.trim()) window.location.href = `/search?q=${encodeURIComponent(query)}`;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadNews();
+            loadDashboardData();
+            setInterval(loadDashboardData, 10000); // refresh every 10s
+
+            // Build Pages dropdown from backend
+            (async () => {
+                const menu = document.getElementById('pagesDropdownMenu');
+                if (!menu) return;
+                const fallbackPages = [
+                    { title: 'Home', path: '/' },
+                    { title: 'Search', path: '/search' },
+                    { title: 'About', path: '/about' },
+                    { title: 'Crawler Status', path: '/api/crawl/status' },
+                    { title: 'Crawl Scheduler', path: '/api/crawl/scheduler' },
+                    { title: 'GPU Dashboard', path: '/gpu/dashboard' },
+                    { title: 'Transparency', path: '/transparency/status' },
+                    { title: 'Crawler Metrics', path: '/api/metrics/crawler' },
+                    { title: 'System Health', path: '/api/health' },
+                    { title: 'Crawler Control', path: 'http://localhost:8016/' }
+                ];
+
+                try {
+                    const data = await fetchJSON('/api/dashboard/pages');
+                    console.debug('Fetched /api/dashboard/pages:', data);
+                    let pages = (data && data.pages) || [];
+                    if (!pages || !pages.length) {
+                        console.debug('No pages returned from API, using fallback pages');
+                        pages = fallbackPages;
+                    }
+                    menu.innerHTML = pages.map(p => {
+                        const isExternal = /^https?:\/\//i.test(p.path) ? ' target="_blank" rel="noopener noreferrer"' : '';
+                        return `<li><a class="dropdown-item" href="${p.path}"${isExternal}>${p.title}</a></li>`;
+                    }).join('');
+                } catch (err) {
+                    console.debug('Failed to fetch /api/dashboard/pages:', err);
+                    // Use fallback so dropdown is always usable
+                    menu.innerHTML = fallbackPages.map(p => {
+                        const isExternal = /^https?:\/\//i.test(p.path) ? ' target="_blank" rel="noopener noreferrer"' : '';
+                        return `<li><a class="dropdown-item" href="${p.path}"${isExternal}>${p.title}</a></li>`;
+                    }).join('');
+                }
+            })();
+
+            // Fetch the current publishing configuration and populate UI
+            (async () => {
+                const feedback = document.getElementById('publishingFeedback');
+                try {
+                    const cfg = await fetchJSON('/admin/get_publishing_config');
+                    if (cfg && cfg.status === 'success') {
+                        const requireDraft = cfg.require_draft_fact_check_pass_for_publish === true;
+                        const chief = cfg.chief_editor_review_required === true;
+                        const storage = cfg.synthesized_article_storage || 'extend';
+                        const rd = document.getElementById('requireDraftFactCheckSwitch');
+                        const cr = document.getElementById('chiefEditorReviewSwitch');
+                        const sel = document.getElementById('synthesizedArticleStorageSelect');
+                        if (rd) rd.checked = requireDraft;
+                        if (cr) cr.checked = chief;
+                        if (sel) sel.value = storage;
+                    }
+                } catch (e) {
+                    console.debug('Publishing config not available:', e);
+                    feedback.innerHTML = '<div class="text-muted small">Publishing UI: admin API not available</div>';
+                }
+
+                // Wire save button
+                const btn = document.getElementById('savePublishingBtn');
+                if (btn) {
+                    btn.addEventListener('click', async () => {
+                        const rd = document.getElementById('requireDraftFactCheckSwitch');
+                        const cr = document.getElementById('chiefEditorReviewSwitch');
+                        const sel = document.getElementById('synthesizedArticleStorageSelect');
+                        const payload = {};
+                        if (rd) payload.require_draft_fact_check_pass_for_publish = !!rd.checked;
+                        if (cr) payload.chief_editor_review_required = !!cr.checked;
+                        if (sel) payload.synthesized_article_storage = sel.value;
+
+                        try {
+                            const resp = await fetch('/admin/set_publishing_config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+                            if (resp.ok) {
+                                feedback.innerHTML = '<div class="alert alert-success py-1">Saved publishing settings</div>';
+                            } else {
+                                const txt = await resp.text();
+                                feedback.innerHTML = `<div class="alert alert-danger py-1">Failed: ${resp.status} ${txt}</div>`;
+                            }
+                        } catch (err) {
+                            feedback.innerHTML = `<div class="alert alert-danger py-1">Error saving settings: ${err}</div>`;
+                        }
+                        setTimeout(()=> feedback.innerHTML = '', 3000);
+                    });
+                }
+            })();
+
+            // Insert JSON modal element
+            const modalHtml = `
+            <div class="modal fade" id="jsonModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Details</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body"><pre id="jsonModalBody" class="small"></pre></div>
+                        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
+                    </div>
+                </div>
+            </div>`;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+            // Handler for details buttons (job details and run details)
+            document.addEventListener('click', (ev) => {
+                const btn = ev.target.closest && ev.target.closest('button.details-btn');
+                const runBtn = ev.target.closest && ev.target.closest('button.run-details-btn');
+                if (btn) {
+                    const jobId = btn.getAttribute('data-job-id');
+                    fetchJSON(`/api/crawl/status`).then(status => {
+                        const job = status[jobId] || status.results && status.results.find(r => r.id === jobId) || {};
+                        openJsonModal(jobId, job);
+                    }).catch(() => {
+                        openJsonModal(jobId, { id: jobId, message: 'Job details unavailable' });
+                    });
+                } else if (runBtn) {
+                    const runId = runBtn.getAttribute('data-run-id');
+                    // We will attempt to fetch scheduler state and find run details
+                    fetchJSON(`/api/crawl/scheduler`).then(status => {
+                        const runs = status.runs || [];
+                        let item = null;
+                        for (const r of runs) {
+                            if ((r.id && r.id === runId) || (r.run_id && r.run_id === runId)) {
+                                item = r; break;
+                            }
+                        }
+                        if (!item) item = { id: runId, message: 'run details unavailable' };
+                        openJsonModal(runId, item);
+                    }).catch(() => {
+                        openJsonModal(runId, { id: runId, message: 'run details unavailable' });
+                    });
+                }
+            });
+
+            // Minimal DashboardUI module exposing core functions for further enhancements
+            window.DashboardUI = {
+                loadDashboardData: loadDashboardData,
+                loadNews: loadNews,
+                openJsonModal: openJsonModal
+            };
+        });
+
+        function openJsonModal(title, obj){
+            const body = document.getElementById('jsonModalBody');
+            const modalTitle = document.querySelector('#jsonModal .modal-title');
+            modalTitle.textContent = `Details: ${title}`;
+            body.textContent = JSON.stringify(obj, null, 2);
+            const modalEl = document.getElementById('jsonModal');
+            const bsModal = new bootstrap.Modal(modalEl);
+            bsModal.show();
+        }
+    </script>
+</body>
+</html>

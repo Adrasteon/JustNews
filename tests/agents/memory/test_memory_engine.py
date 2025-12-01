@@ -46,7 +46,7 @@ class TestMemoryEngineInitialization:
              patch('agents.memory.memory_engine.get_embedding_model', return_value=mock_embedding_model):
 
             engine = MemoryEngine()
-            result = await engine.initialize()
+            await engine.initialize()
             # MemoryEngine.initialize() doesn't return anything (None), just sets db_initialized
             assert engine.db_initialized is True
             assert engine.db_service is not None
@@ -71,7 +71,12 @@ class TestMemoryEngineArticleOperations:
 
             result = memory_engine.save_article(content, metadata)
             assert result == {"status": "saved", "article_id": 1}
-            mock_save.assert_called_once_with(content, metadata, embedding_model=memory_engine.embedding_model)
+            mock_save.assert_called_once_with(
+                content,
+                metadata,
+                embedding_model=memory_engine.embedding_model,
+                db_service=memory_engine.db_service,
+            )
 
     @pytest.mark.asyncio
     async def test_save_article_failure(self, memory_engine):

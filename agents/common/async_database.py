@@ -5,15 +5,15 @@ Provides async database operations using asyncpg for non-blocking operations
 
 
 from common.observability import get_logger
+from database.utils.migrated_database_utils import (
+    create_database_service,
+    execute_query_async,
+)
 
 logger = get_logger(__name__)
 
 # Use migrated database utils for async work by delegating to their executor-based
 # helpers rather than relying on asyncpg/postgres.
-from database.utils.migrated_database_utils import (
-    create_database_service,
-    execute_query_async,
-)
 
 
 async def execute_async_query(query: str, *args, fetch: bool = True):

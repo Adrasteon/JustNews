@@ -140,7 +140,7 @@ class GPUConfigManager:
 
         self.default_model_config = {
             "model_defaults": {
-                "torch_dtype": "float16",
+                "dtype": "float16",
                 "device_map": "auto",
                 "load_in_8bit": False,
                 "load_in_4bit": False,

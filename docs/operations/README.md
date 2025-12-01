@@ -64,6 +64,15 @@ This guide covers production deployment, scaling, and operational procedures for
 80/443: Web interface and APIs
 ```
 
+#### GPU / bitsandbytes (important ops note)
+
+- The repository currently ships a pre-built bitsandbytes wheel targeting CUDA 12.2 (it contains libbitsandbytes_cuda122.so). Until the host drivers, CUDA runtime and the canonical environment are upgraded to a newer, compatible CUDA ABI, you must pin the runtime so the correct native library is selected.
+
+- Operational requirement: set BNB_CUDA_VERSION=122 in your service environment (for example `/etc/justnews/*.env` or systemd unit Environment entries) to force loading the in-repo CUDA‑12.2 bitsandbytes library. If this is not set, bitsandbytes may attempt to load a native library matching the running CUDA runtime and fail if a matching binary is not available.
+
+- Artifacts & guidance: see the prebuilt wheel and notes under `.build/bitsandbytes/dist/` and `docs/bitsandbytes_cuda122_wheel.md`. When you upgrade the system/CUDA/PyTorch stacks, either rebuild a matching wheel or install a bitsandbytes package built for the new CUDA target.
+
+
 ## Deployment Methods
 
 ### Method 1: systemd (Preferred / Production)

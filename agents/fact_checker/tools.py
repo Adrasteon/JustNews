@@ -138,9 +138,12 @@ def _await_if_needed(result: Any) -> Any:
         except RuntimeError:
             return asyncio.run(result)
         else:
+            # We're inside a running event loop — we cannot block the loop. Instead
+            # schedule the coroutine as a Task and return it; callers executing in
+            # an async context can await the returned Task, while sync contexts
+            # will not hit this branch (they'll use the asyncio.run path above).
             future = asyncio.ensure_future(result, loop=loop)
-            # In practice the wrappers are called from sync contexts, but guard anyway.
-            return loop.run_until_complete(future)  # pragma: no cover
+            return future  # pragma: no cover
     return result
 
 
@@ -554,7 +557,7 @@ def format_fact_check_output(result: dict[str, Any], format_type: str = "json") 
                 lines.append(f"- **Total Claims**: {len(claims)}")
                 if claims:
                     lines.append("- **Sample Claims**:")
-                    for i, claim in enumerate(claims[:3]):
+                    for _i, claim in enumerate(claims[:3]):
                         lines.append(f"  - {claim[:100]}{'...' if len(claim) > 100 else ''}")
 
             if "contradictions_found" in result and result["contradictions_found"] > 0:

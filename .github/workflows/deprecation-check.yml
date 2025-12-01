@@ -1,0 +1,35 @@
+name: Deprecation detection
+
+on:
+  push:
+    branches: [ main, feat/** ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  check-deprecations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install pytest
+      - name: Run deprecation detection test
+        run: pytest -q tests/deprecation/test_deprecation_checks.py -q
+      - name: "Optional: generate codemod reports"
+        run: |
+          mkdir -p artifacts
+          python3 scripts/codemods/replace_utcnow.py --root . --report=artifacts/replace_utcnow_ci.json || true
+          python3 scripts/codemods/replace_run_until_complete.py --root . --report=artifacts/replace_run_until_complete_ci.json || true
+          python3 scripts/codemods/replace_pydantic_dict.py --root . --report=artifacts/replace_pydantic_dict_ci.json || true
+      - name: "Upload codemod reports"
+        uses: actions/upload-artifact@v4
+        with:
+          name: codemod-reports
+          path: artifacts/*.json

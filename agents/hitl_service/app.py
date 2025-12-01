@@ -281,7 +281,7 @@ async def tool_receive_candidate(call: ToolCallRequest) -> dict[str, Any]:
     try:
         event = CandidateEvent(**payload)
     except ValidationError as exc:
-        raise HTTPException(status_code=400, detail=f"invalid candidate payload: {exc}")
+        raise HTTPException(status_code=400, detail=f"invalid candidate payload: {exc}") from exc
 
     candidate_id = insert_candidate(event)
     metrics.increment("hitl_mcp_candidate_events_total")
@@ -295,7 +295,7 @@ async def tool_submit_label(call: ToolCallRequest) -> dict[str, Any]:
     try:
         label_req = LabelRequest(**payload)
     except ValidationError as exc:
-        raise HTTPException(status_code=400, detail=f"invalid label payload: {exc}")
+        raise HTTPException(status_code=400, detail=f"invalid label payload: {exc}") from exc
 
     metrics.increment("hitl_mcp_label_events_total")
     result = store_label(label_req)
@@ -317,11 +317,15 @@ TOOL_HANDLERS: dict[str, Callable[[ToolCallRequest], Awaitable[dict[str, Any]]]]
 }
 
 
-@app.on_event("startup")
 async def startup_event():
     ensure_db()
     asyncio.create_task(register_with_mcp_bus())
     asyncio.create_task(monitor_qa_health())
+
+# Register startup handler via add_event_handler to avoid use of the deprecated
+# @app.on_event decorator (typing_extensions warns about deprecation). This
+# keeps behavior identical but avoids deprecation warnings during test runs.
+app.add_event_handler("startup", startup_event)
 
 
 async def register_with_mcp_bus() -> None:

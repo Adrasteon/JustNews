@@ -323,7 +323,7 @@ class TestEndToEndNewsProcessingPipeline:
             # Should handle gracefully
             try:
                 mock_extract("https://failing-url.com")
-                assert False, "Should have raised exception"
+                raise AssertionError("Should have raised exception")
             except Exception as e:
                 assert "Network timeout" in str(e)
 
@@ -357,7 +357,7 @@ class TestEndToEndNewsProcessingPipeline:
                     if retry_count == 0:
                         raise Exception("Connection failed")
                     else:
-                        db_service = MagicMock()
+                        # Success on retry; break out (no DB object needed)
                         break
                 except Exception:
                     retry_count += 1

@@ -9,7 +9,7 @@ import json
 import logging
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any
 
@@ -193,8 +193,8 @@ class ComplianceService:
         """
         try:
             audit_event = AuditEvent(
-                id=f"audit_{datetime.utcnow().timestamp()}_{secrets.token_hex(4)}",
-                timestamp=datetime.utcnow(),
+                id=f"audit_{datetime.now(timezone.utc).timestamp()}_{secrets.token_hex(4)}",
+                timestamp=datetime.now(timezone.utc),
                 user_id=user_id,
                 action=event_type,
                 resource=details.get("resource", "unknown"),
@@ -234,7 +234,7 @@ class ComplianceService:
             Consent record ID
         """
         try:
-            consent_id = f"consent_{datetime.utcnow().timestamp()}_{secrets.token_hex(4)}"
+            consent_id = f"consent_{datetime.now(timezone.utc).timestamp()}_{secrets.token_hex(4)}"
 
             consent = ConsentRecord(
                 id=consent_id,
@@ -247,9 +247,9 @@ class ComplianceService:
             )
 
             if status == ConsentStatus.GRANTED:
-                consent.granted_at = datetime.utcnow()
+                consent.granted_at = datetime.now(timezone.utc)
             elif status == ConsentStatus.WITHDRAWN:
-                consent.withdrawn_at = datetime.utcnow()
+                consent.withdrawn_at = datetime.now(timezone.utc)
 
             if user_id not in self._consent_records:
                 self._consent_records[user_id] = []
@@ -274,7 +274,7 @@ class ComplianceService:
 
         except Exception as e:
             logger.error(f"Failed to record consent: {e}")
-            raise ComplianceError(f"Consent recording failed: {str(e)}")
+            raise ComplianceError(f"Consent recording failed: {str(e)}") from e
 
     async def check_consent(self, user_id: int, purpose: str) -> ConsentStatus:
         """
@@ -319,14 +319,14 @@ class ComplianceService:
             Request ID
         """
         try:
-            request_id = f"dsr_{datetime.utcnow().timestamp()}_{secrets.token_hex(4)}"
+            request_id = f"dsr_{datetime.now(timezone.utc).timestamp()}_{secrets.token_hex(4)}"
 
             request = DataSubjectRequest(
                 id=request_id,
                 user_id=user_id,
                 request_type=request_type,
                 status="pending",
-                requested_at=datetime.utcnow(),
+                requested_at=datetime.now(timezone.utc),
                 details=details or {}
             )
 
@@ -348,7 +348,7 @@ class ComplianceService:
 
         except Exception as e:
             logger.error(f"Failed to submit data request: {e}")
-            raise ComplianceError(f"Data request submission failed: {str(e)}")
+            raise ComplianceError(f"Data request submission failed: {str(e)}") from e
 
     async def process_data_request(self, request_id: str, action: str,
                                  result: dict[str, Any] = None) -> None:
@@ -374,10 +374,10 @@ class ComplianceService:
                 request.status = "in_progress"
             elif action == "complete":
                 request.status = "completed"
-                request.completed_at = datetime.utcnow()
+                request.completed_at = datetime.now(timezone.utc)
             elif action == "reject":
                 request.status = "rejected"
-                request.completed_at = datetime.utcnow()
+                request.completed_at = datetime.now(timezone.utc)
 
             # Log processing event
             await self.log_event(
@@ -395,7 +395,7 @@ class ComplianceService:
 
         except Exception as e:
             logger.error(f"Failed to process data request: {e}")
-            raise ComplianceError(f"Data request processing failed: {str(e)}")
+            raise ComplianceError(f"Data request processing failed: {str(e)}") from e
 
     async def export_user_data(self, user_id: int) -> dict[str, Any]:
         """
@@ -412,7 +412,7 @@ class ComplianceService:
             # For now, return compliance-related data
             export_data = {
                 "user_id": user_id,
-                "export_timestamp": datetime.utcnow().isoformat(),
+                "export_timestamp": datetime.now(timezone.utc).isoformat(),
                 "consent_records": [
                     {
                         "id": c.id,
@@ -461,7 +461,7 @@ class ComplianceService:
 
         except Exception as e:
             logger.error(f"Failed to export user data: {e}")
-            raise ComplianceError(f"Data export failed: {str(e)}")
+            raise ComplianceError(f"Data export failed: {str(e)}") from e
 
     async def delete_user_data(self, user_id: int) -> None:
         """
@@ -493,7 +493,7 @@ class ComplianceService:
 
         except Exception as e:
             logger.error(f"Failed to delete user data: {e}")
-            raise ComplianceError(f"Data deletion failed: {str(e)}")
+            raise ComplianceError(f"Data deletion failed: {str(e)}") from e
 
     async def get_compliance_report(self, standard: str = "gdpr",
                                   date_from: datetime | None = None,
@@ -511,9 +511,9 @@ class ComplianceService:
         """
         try:
             if date_from is None:
-                date_from = datetime.utcnow() - timedelta(days=30)
+                date_from = datetime.now(timezone.utc) - timedelta(days=30)
             if date_to is None:
-                date_to = datetime.utcnow()
+                date_to = datetime.now(timezone.utc)
 
             # Filter events by date and standard
             relevant_events = [
@@ -554,7 +554,7 @@ class ComplianceService:
 
         except Exception as e:
             logger.error(f"Failed to generate compliance report: {e}")
-            raise ComplianceError(f"Report generation failed: {str(e)}")
+            raise ComplianceError(f"Report generation failed: {str(e)}") from e
 
     async def get_status(self) -> dict[str, Any]:
         """
@@ -611,7 +611,7 @@ class ComplianceService:
             try:
                 await asyncio.sleep(86400)  # Run daily
 
-                cutoff_date = datetime.utcnow() - timedelta(days=self.compliance_config.audit_retention_days)
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=self.compliance_config.audit_retention_days)
 
                 old_count = len(self._audit_events)
                 self._audit_events = [
@@ -634,7 +634,7 @@ class ComplianceService:
             try:
                 await asyncio.sleep(86400)  # Run daily
 
-                cutoff_date = datetime.utcnow() - timedelta(days=self.compliance_config.consent_retention_days)
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=self.compliance_config.consent_retention_days)
 
                 for user_id in list(self._consent_records.keys()):
                     consents = self._consent_records[user_id]

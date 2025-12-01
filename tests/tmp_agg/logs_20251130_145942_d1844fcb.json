@@ -1,0 +1,26 @@
+[
+  {
+    "timestamp": "2025-11-30T14:59:42.828811+00:00",
+    "level": "INFO",
+    "logger_name": "logger",
+    "message": "test",
+    "agent_name": "agent",
+    "agent_id": null,
+    "request_id": null,
+    "session_id": null,
+    "user_id": null,
+    "endpoint": null,
+    "method": null,
+    "status_code": null,
+    "duration_ms": null,
+    "ip_address": null,
+    "user_agent": null,
+    "error_type": null,
+    "error_message": null,
+    "stack_trace": null,
+    "extra_data": null,
+    "correlation_id": null,
+    "trace_id": null,
+    "span_id": null
+  }
+]

@@ -32,9 +32,26 @@ VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v0.1.0")
 DOCKER_TAG ?= latest
 
 # Python and tools
-PYTHON := python3.12
+PYTHON := python3.11
 PIP := $(PYTHON) -m pip
-CONDA_ENV := justnews-v2-py312
+# Allow a single, overrideable canonical environment name that can be set in
+# /etc/justnews/global.env or exported by the operator. Default remains
+# `${CANONICAL_ENV:-justnews-py312}` for compatibility.
+CANONICAL_ENV ?= justnews-py312
+CONDA_ENV ?= $(CANONICAL_ENV)
+CONDA := $(shell command -v conda 2>/dev/null || echo)
+ifeq ($(CONDA),)
+RUN_PY := $(PYTHON)
+else
+# If the run wrapper exists prefer to load global.env before running conda-run;
+# this makes local & CI test runs consistently pick up the canonical env vars.
+RUN_WRAPPER := $(shell [ -x ./scripts/run_with_env.sh ] && printf "./scripts/run_with_env.sh" || printf "")
+ifeq ($(RUN_WRAPPER),)
+RUN_PY := conda run -n $(CONDA_ENV) $(PYTHON)
+else
+RUN_PY := $(RUN_WRAPPER) conda run -n $(CONDA_ENV) $(PYTHON)
+endif
+endif
 
 # Directories
 ROOT_DIR := $(shell pwd)
@@ -86,21 +103,29 @@ install-dev:
 test: test-unit test-integration
 	$(call log_success,"All tests completed")
 
+# Local pytest wrapper target which ensures tests are launched in the
+# `${CANONICAL_ENV:-justnews-py312}` conda environment. Developers should prefer this target
+# for local runs to ensure consistent environments.
+pytest-local:
+	$(call log_info,"Running local pytest via scripts/dev/pytest.sh")
+	$(shell [ -x ./scripts/dev/pytest.sh ] || chmod +x ./scripts/dev/pytest.sh)
+	./scripts/dev/pytest.sh
+
 test-unit:
 	$(call log_info,"Running unit tests...")
-	pytest tests/ -v --cov=. --cov-report=term-missing --cov-report=xml \
+	$(RUN_PY) -m pytest tests/ -v --cov=. --cov-report=term-missing --cov-report=xml \
 		--cov-fail-under=80 -k "not integration" --tb=short
 	$(call log_success,"Unit tests passed")
 
 test-integration:
 	$(call log_info,"Running integration tests...")
-	pytest tests/ -v -k "integration" --tb=short || \
+	$(RUN_PY) -m pytest tests/ -v -k "integration" --tb=short || \
 		($(call log_warning,"Integration tests failed, but continuing..."); true)
 	$(call log_success,"Integration tests completed")
 
 test-performance:
 	$(call log_info,"Running performance tests...")
-	pytest tests/ -v -k "performance" --tb=short --durations=10
+	$(RUN_PY) -m pytest tests/ -v -k "performance" --tb=short --durations=10
 	$(call log_success,"Performance tests completed")
 
 # Code quality targets
@@ -166,7 +191,7 @@ deploy-check:
 	$(call log_info,"Running pre-deployment checks...")
 	test -f $(CONFIG_DIR)/system_config.json || ($(call log_error,"Config file missing"); exit 1)
 	$(PYTHON) -c "import sys; sys.exit(0 if sys.version_info >= (3, 12) else 1)" || \
-		($(call log_error,"Python 3.12+ required"); exit 1)
+			($(call log_error,"Python 3.11+ required"); exit 1)
 	$(call log_success,"Pre-deployment checks passed")
 
 deploy-development: deploy-check
@@ -203,6 +228,13 @@ docs-validate:
 # CI validation targets
 ci-check: check-processing-time lint test security-check
 	$(call log_success,"CI checks passed")
+
+# Validate global.env has PYTHON_BIN (CI-friendly check; does not require root)
+.PHONY: check-global-env
+check-global-env:
+	$(call log_info,"Validating /etc/justnews/global.env or example config contains PYTHON_BIN")
+	bash infrastructure/scripts/validate-global-env.sh || { $(call log_error,"global.env PYTHON_BIN validation failed"); exit 1; }
+	$(call log_success,"global.env validation OK")
 
 security-check:
 	$(call log_info,"Running security checks...")

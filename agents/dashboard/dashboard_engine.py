@@ -414,7 +414,7 @@ class DashboardEngine:
             return response.json()
         except Exception as e:
             logger.error(f"An error occurred while fetching agent status: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     def send_command(self, call: ToolCall) -> dict:
         """Send a command to another agent."""
@@ -428,7 +428,7 @@ class DashboardEngine:
             return response.json()
         except Exception as e:
             logger.error(f"An error occurred while sending a command: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     def get_gpu_config(self) -> dict:
         """Get current GPU configuration from the GPU manager."""
@@ -475,7 +475,7 @@ class DashboardEngine:
                 }
         except Exception as e:
             logger.error(f"Error updating GPU config: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     def get_crawl_scheduler_snapshot(self, include_runs: bool = True) -> dict[str, Any]:
         """Return the most recent crawl scheduler state with adaptive metrics."""
@@ -674,7 +674,7 @@ class DashboardEngine:
                 }
         except Exception as e:
             logger.error(f"Error getting GPU manager status: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     def get_gpu_allocations(self) -> dict:
         """Get all current GPU allocations."""
@@ -704,7 +704,7 @@ class DashboardEngine:
                 }
         except Exception as e:
             logger.error(f"Error getting GPU allocations: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     def get_gpu_metrics(self) -> dict:
         """Get GPU performance metrics from the manager."""
@@ -729,7 +729,7 @@ class DashboardEngine:
                 }
         except Exception as e:
             logger.error(f"Error getting GPU metrics: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     def get_gpu_history_from_db(self, hours: int = 24, gpu_index: int | None = None, metric: str = "utilization") -> dict:
         """Get GPU metrics history from database."""
@@ -776,7 +776,7 @@ class DashboardEngine:
             }
         except Exception as e:
             logger.error(f"Error getting GPU history from DB: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     def get_allocation_history(self, hours: int = 24, agent_name: str | None = None) -> dict:
         """Get agent allocation history from database."""
@@ -792,7 +792,7 @@ class DashboardEngine:
             }
         except Exception as e:
             logger.error(f"Error getting allocation history: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     def get_performance_trends(self, hours: int = 24) -> dict:
         """Get performance trends data."""
@@ -806,7 +806,7 @@ class DashboardEngine:
             }
         except Exception as e:
             logger.error(f"Error getting performance trends: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     def get_recent_alerts(self, limit: int = 50) -> dict:
         """Get recent alerts from database."""
@@ -821,7 +821,7 @@ class DashboardEngine:
             }
         except Exception as e:
             logger.error(f"Error getting recent alerts: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     def get_storage_stats(self) -> dict:
         """Get database storage statistics."""
@@ -834,7 +834,7 @@ class DashboardEngine:
             }
         except Exception as e:
             logger.error(f"Error getting storage stats: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     def get_comprehensive_gpu_dashboard_data(self) -> dict:
         """Get comprehensive GPU dashboard data including manager integration."""
@@ -893,7 +893,7 @@ class DashboardEngine:
             }
         except Exception as e:
             logger.error(f"Error in get_comprehensive_gpu_dashboard_data: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     def _fetch_orchestrator_policy(self) -> dict:
         """Fetch policy from orchestrator (fast timeout)."""
@@ -985,7 +985,7 @@ class DashboardEngine:
             raise
         except Exception as e:
             logger.error(f"Error ingesting GPU JSONL: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
 
     def _ingest_single_gpu_record(self, record: dict) -> None:
         """Normalize and store a single GPU watcher record into storage."""

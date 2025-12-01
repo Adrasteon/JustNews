@@ -446,6 +446,136 @@ class DashboardGenerator:
             ]
         )
 
+    def _create_otel_collectors_template(self) -> DashboardTemplate:
+        """Create OpenTelemetry collector health dashboard template"""
+        # NOTE: This template is intentionally not registered by default while OTEL metrics are disabled
+        # (Nov 2025). Re-add it via add_template() once the metrics pipeline returns.
+        # Surface the key OTEL pipeline stages so ops can spot back pressure quickly.
+        return DashboardTemplate(
+            name="otel_collectors",
+            config=DashboardConfig(
+                title="OpenTelemetry Collectors",
+                description="Health and throughput metrics for the node and central OTEL collectors",
+                tags=["otel", "collectors", "monitoring"],
+                refresh="30s",
+                time_range="30m"
+            ),
+            panels=[
+                PanelConfig(
+                    title="Collector Target Status",
+                    type="table",
+                    targets=[{
+                        "expr": "up{job=\"justnews-otel-collectors\"}",
+                        "legendFormat": "{{instance}}"
+                    }],
+                    grid_pos={"h": 6, "w": 8, "x": 0, "y": 0},
+                    description="Target availability for each OTEL collector scrape endpoint"
+                ),
+                PanelConfig(
+                    title="Receiver Accepted Rate",
+                    type="graph",
+                    targets=[{
+                        "expr": "sum by(instance) (rate(otelcol_receiver_accepted_metric_points{job=\"justnews-otel-collectors\"}[5m]))",
+                        "legendFormat": "{{instance}} accepted"
+                    }],
+                    grid_pos={"h": 8, "w": 16, "x": 8, "y": 0},
+                    description="Incoming OTLP metrics successfully accepted by each collector"
+                ),
+                PanelConfig(
+                    title="Receiver Refused Rate",
+                    type="graph",
+                    targets=[{
+                        "expr": "sum by(instance) (rate(otelcol_receiver_refused_metric_points{job=\"justnews-otel-collectors\"}[5m]))",
+                        "legendFormat": "{{instance}} refused"
+                    }],
+                    grid_pos={"h": 8, "w": 8, "x": 0, "y": 6},
+                    description="Drop or refusal rate from the collector receivers"
+                ),
+                PanelConfig(
+                    title="Exporter Queue Size",
+                    type="graph",
+                    targets=[{
+                        "expr": "otelcol_exporter_queue_size{job=\"justnews-otel-collectors\"}",
+                        "legendFormat": "{{instance}} → {{exporter}}"
+                    }],
+                    grid_pos={"h": 8, "w": 8, "x": 8, "y": 8},
+                    description="Current exporter queue depth per collector/exporter" 
+                ),
+                PanelConfig(
+                    title="Exporter Send Failures",
+                    type="graph",
+                    targets=[{
+                        "expr": "sum by(instance) (rate(otelcol_exporter_send_failed_metric_points{job=\"justnews-otel-collectors\"}[5m]))",
+                        "legendFormat": "{{instance}} failed"
+                    }],
+                    grid_pos={"h": 8, "w": 8, "x": 16, "y": 8},
+                    description="Failed metric point transmissions to downstream systems"
+                ),
+                PanelConfig(
+                    title="Exporter Throughput",
+                    type="graph",
+                    targets=[{
+                        "expr": "sum by(instance) (rate(otelcol_exporter_sent_metric_points{job=\"justnews-otel-collectors\"}[5m]))",
+                        "legendFormat": "{{instance}} sent"
+                    }],
+                    grid_pos={"h": 8, "w": 12, "x": 0, "y": 14},
+                    description="Metric points per second successfully delivered downstream"
+                ),
+                PanelConfig(
+                    title="Filtered Datapoints",
+                    type="graph",
+                    targets=[{
+                        "expr": "sum by(instance) (increase(otelcol_processor_filter_datapoints_filtered{job=\"justnews-otel-collectors\"}[15m]))",
+                        "legendFormat": "{{instance}} filtered"
+                    }],
+                    grid_pos={"h": 8, "w": 12, "x": 12, "y": 14},
+                    description="Number of datapoints dropped by filter processors"
+                ),
+                PanelConfig(
+                    title="Process Uptime",
+                    type="stat",
+                    targets=[{
+                        "expr": "otelcol_process_uptime{job=\"justnews-otel-collectors\"}",
+                        "legendFormat": "{{instance}}"
+                    }],
+                    grid_pos={"h": 4, "w": 8, "x": 0, "y": 22},
+                    description="Seconds each collector process has been running"
+                ),
+                PanelConfig(
+                    title="Scraper Errors vs Scrapes",
+                    type="graph",
+                    targets=[
+                        {
+                            "expr": "sum by(instance) (rate(otelcol_scraper_scraped_metric_points{job=\"justnews-otel-collectors\"}[5m]))",
+                            "legendFormat": "{{instance}} scraped"
+                        },
+                        {
+                            "expr": "sum by(instance) (rate(otelcol_scraper_errored_metric_points{job=\"justnews-otel-collectors\"}[5m]))",
+                            "legendFormat": "{{instance}} errors"
+                        }
+                    ],
+                    grid_pos={"h": 8, "w": 16, "x": 8, "y": 22},
+                    description="Comparison of successful scraper pulls vs errors"
+                )
+            ],
+            variables=[
+                {
+                    "name": "instance",
+                    "label": "Instance",
+                    "type": "query",
+                    "query": "label_values(up{job=\"justnews-otel-collectors\"}, instance)",
+                    "multi": True
+                },
+                {
+                    "name": "exporter",
+                    "label": "Exporter",
+                    "type": "query",
+                    "query": "label_values(otelcol_exporter_queue_size{job=\"justnews-otel-collectors\"}, exporter)",
+                    "multi": True
+                }
+            ]
+        )
+
     async def generate_dashboard(self, template_name: str, custom_config: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Generate a dashboard from template

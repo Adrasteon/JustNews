@@ -1,17 +1,22 @@
-from common.observability import get_logger
-
 #!/usr/bin/env python3
 """
 Distributed Tracing Module for JustNews
 Provides tracing functionality for distributed operations across agents
 """
 
-
+import logging
 import time
 import uuid
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
+
+from common.observability import get_logger
+
+try:
+    from common import otel
+except ImportError:  # pragma: no cover - optional dependency
+    otel = None
 
 logger = get_logger(__name__)
 
@@ -238,9 +243,14 @@ class trace_span:
     def __init__(self, operation_name: str):
         self.operation_name = operation_name
         self.span = None
+        self._otel_cm = None
 
     def __enter__(self):
         self.span = create_child_span(self.operation_name)
+        if otel and getattr(otel, "is_enabled", lambda: False)():
+            self._otel_cm = otel.span_context(self.operation_name)
+            if self._otel_cm is not None:
+                self._otel_cm.__enter__()
         return self.span
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -249,6 +259,8 @@ class trace_span:
             record_exception(exc_val)
         else:
             finish_current_span("completed")
+        if self._otel_cm is not None:
+            self._otel_cm.__exit__(exc_type, exc_val, exc_tb)
 
 # Decorator for automatic function tracing
 def traced(operation_name: str | None = None):

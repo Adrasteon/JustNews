@@ -11,6 +11,10 @@ from common.env_loader import load_global_env
 
 # psycopg2 removed: use migrated MariaDB utilities instead
 from common.observability import get_logger
+from database.utils.migrated_database_utils import (
+    create_database_service,
+    execute_mariadb_query,
+)
 
 # Configure centralized logging
 logger = get_logger(__name__)
@@ -52,12 +56,6 @@ def get_db_config():
                 logger.warning(f"Failed to parse DATABASE_URL: {e}")
 
     return config
-
-# Use the migrated MariaDB/Chroma database utilities
-from database.utils.migrated_database_utils import (
-    create_database_service,
-    execute_mariadb_query,
-)
 
 # Global migrated DB service instance
 _db_service = None

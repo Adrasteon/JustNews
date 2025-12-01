@@ -44,6 +44,9 @@ except Exception:
     create_database_service = None
 
 # Import refactored components
+from config.core import get_config
+
+from .job_store import create_job, get_job, set_error, set_result, update_status
 from .synthesizer_engine import SynthesizerEngine
 from .tools import (
     aggregate_cluster_tool,
@@ -262,6 +265,10 @@ class SynthesisRequest(BaseModel):
     articles: list[dict[str, Any]]
     max_clusters: int | None = 5
     context: str | None = "news analysis"
+    # Optional cluster identifier to fetch articles and run analysis
+    cluster_id: str | None = None
+    publish: bool = False
+    story_id: str | None = None
 
 
 @app.get("/health")
@@ -296,9 +303,9 @@ def log_feedback(call: ToolCall) -> dict[str, Any]:
         }
         logger.info(f"📝 Logging feedback: {feedback_data}")
         return feedback_data
-    except Exception:
+    except Exception as e:
         logger.exception("❌ Failed to log feedback")
-        raise HTTPException(status_code=500, detail="Failed to log feedback")
+        raise HTTPException(status_code=500, detail="Failed to log feedback") from e
 
 
 @app.post("/cluster_articles")
@@ -324,7 +331,7 @@ async def cluster_articles_endpoint(call: ToolCall) -> Any:
         raise
     except Exception as e:
         logger.exception("❌ Cluster articles failed")
-        raise HTTPException(status_code=500, detail=f"Clustering failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Clustering failed: {str(e)}") from e
 
 
 @app.post("/neutralize_text")
@@ -348,7 +355,7 @@ async def neutralize_text_endpoint(call: ToolCall) -> Any:
         raise
     except Exception as e:
         logger.exception("❌ Neutralize text failed")
-        raise HTTPException(status_code=500, detail=f"Neutralization failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Neutralization failed: {str(e)}") from e
 
 
 @app.post("/aggregate_cluster")
@@ -372,7 +379,7 @@ async def aggregate_cluster_endpoint(call: ToolCall) -> Any:
         raise
     except Exception as e:
         logger.exception("❌ Aggregate cluster failed")
-        raise HTTPException(status_code=500, detail=f"Aggregation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Aggregation failed: {str(e)}") from e
 
 
 @app.post("/synthesize_news_articles_gpu")
@@ -391,7 +398,8 @@ async def synthesize_news_articles_gpu_endpoint(request: SynthesisRequest) -> di
             synthesizer_engine,
             request.articles,
             request.max_clusters,
-            request.context
+            request.context,
+            cluster_id=request.cluster_id
         )
         return result
 
@@ -399,7 +407,110 @@ async def synthesize_news_articles_gpu_endpoint(request: SynthesisRequest) -> di
         raise
     except Exception as e:
         logger.exception("❌ GPU synthesis failed")
-        raise HTTPException(status_code=500, detail=f"GPU synthesis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"GPU synthesis failed: {str(e)}") from e
+
+
+@app.post("/synthesize_and_publish")
+async def synthesize_and_publish(request: SynthesisRequest) -> dict[str, Any]:
+    """Synthesize content and optionally publish it if editorial gates pass."""
+
+    if synthesizer_engine is None:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
+
+    # Default behavior: call the synthesize tool
+    result = await synthesize_gpu_tool(
+        synthesizer_engine,
+        request.articles,
+        request.max_clusters,
+        request.context,
+        cluster_id=request.cluster_id,
+    )
+
+    if not result or not result.get('success'):
+        return {"status": "error", "error": "synthesis_failed", "details": result}
+
+    # Critic check
+    try:
+        # Critic supports a sync API; use the async wrapper for thread-safety
+        from agents.critic.tools import process_critique_request
+        critic_result = await process_critique_request(result.get('synthesis', ''), "synthesis")
+    except Exception:
+        critic_result = {"error": "critic_failed"}
+
+    # Draft fact-check (run always; publishing gate will decide enforcement)
+    try:
+        import agents.analyst.tools as _analyst_tools
+        draft_report = getattr(_analyst_tools, 'generate_analysis_report', lambda *a, **k: None)([result.get('synthesis', '')], article_ids=None, cluster_id=request.cluster_id)
+    except Exception:
+        draft_report = None
+
+    # Decide publish gating via configuration
+    cfg = get_config()
+    # If system has a persistence preference, honor it.
+    try:
+        persistence_mode = cfg.system.get('persistence', {}).get('synthesized_article_storage', 'extend')
+    except Exception:
+        persistence_mode = 'extend'
+    publish_cfg = cfg.agents.publishing
+    require_pass = bool(publish_cfg.require_draft_fact_check_pass_for_publish)
+
+    # Determine draft fact-check status
+    fact_status = None
+    if isinstance(draft_report, dict):
+        per_article = draft_report.get('per_article', [])
+        if per_article and isinstance(per_article, list):
+            sa = per_article[0].get('source_fact_check') if isinstance(per_article[0], dict) else None
+            fact_status = sa.get('fact_check_status') if isinstance(sa, dict) else None
+        if not fact_status:
+            sfc = draft_report.get('source_fact_checks', [])
+            if sfc and isinstance(sfc, list) and isinstance(sfc[0], dict):
+                fact_status = sfc[0].get('fact_check_status')
+
+    # Gate on fact-check pass if required
+    if require_pass and fact_status != 'passed':
+        return {"status": "error", "error": "draft_fact_check_failed", "analysis_report": draft_report, "critic_result": critic_result}
+
+    # Persist synthesized draft depending on persistence mode (best-effort)
+    try:
+        from .persistence import save_synthesized_draft
+        # If we can compute an embedding, pass it; otherwise let save function handle None
+        embedding = None
+        try:
+            if synthesizer_engine and getattr(synthesizer_engine, 'embedding_model', None):
+                # compute embedding via sentence-transformers model
+                embedding = list(map(float, synthesizer_engine.embedding_model.encode(result.get('synthesis', ''))))
+        except Exception:
+            embedding = None
+
+        save_synthesized_draft(
+            story_id=request.story_id or f"synth_{request.cluster_id or 'manual'}_{int(datetime.now().timestamp())}",
+            title=result.get('title') or result.get('synthesis', '')[:200],
+            body=result.get('synthesis', ''),
+            summary=result.get('summary'),
+            analysis_summary=getattr(draft_report, 'analysis_summary', None) if draft_report else None,
+            synth_metadata={'critique': critic_result},
+            persistence_mode=persistence_mode,
+            embedding=embedding,
+        )
+    except Exception:
+        # best-effort: persist may fail, but publishing should proceed; log and continue
+        logger.exception("Failed to persist synthesized draft (non-fatal)")
+
+    # Decide whether we need chief editor review
+    if publish_cfg.chief_editor_review_required and not request.publish:
+        return {"status": "queued_for_review", "analysis_report": draft_report, "critic_result": critic_result}
+
+    # Auto-publish via chief editor tool
+    try:
+        from agents.chief_editor.tools import publish_story
+        story_id = request.story_id or f"synth_{request.cluster_id or 'manual'}_{int(datetime.now().timestamp())}"
+        publish_result = publish_story(story_id)
+        return {"status": publish_result.get('status', 'published'), "story_id": publish_result.get('story_id', story_id), "analysis_report": draft_report, "critic_result": critic_result}
+    except Exception as e:
+        logger.exception("Publish failed")
+        return {"status": "error", "error": "publish_failed", "details": str(e)}
+
+    # End: synthesize_news_articles_gpu_endpoint
 
 
 @app.post("/get_synthesizer_performance")
@@ -413,10 +524,47 @@ async def get_synthesizer_performance_endpoint(call: ToolCall) -> dict[str, Any]
 
         result = await get_stats(synthesizer_engine)
         return result
-
     except Exception as e:
         logger.exception("❌ Performance stats failed")
-        raise HTTPException(status_code=500, detail=f"Performance stats failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Performance stats failed: {str(e)}") from e
+
+
+@app.post("/api/v1/articles/synthesize")
+async def synthesize_article_job(request: SynthesisRequest):
+    """Kick off an asynchronous synthesis job and return a job_id for status checks."""
+    import uuid
+    if synthesizer_engine is None:
+        raise HTTPException(status_code=503, detail="Engine not initialized")
+    job_id = str(uuid.uuid4())
+    create_job(job_id)
+
+    async def _run_job(job_id_local: str):
+        try:
+            update_status(job_id_local, "running")
+            res = await synthesize_gpu_tool(
+                synthesizer_engine,
+                request.articles,
+                request.max_clusters,
+                request.context,
+                cluster_id=request.cluster_id,
+            )
+            set_result(job_id_local, res)
+        except Exception as exc:
+            set_error(job_id_local, str(exc))
+
+    # Fire-and-forget background task
+    import asyncio
+    asyncio.create_task(_run_job(job_id))
+    return {"job_id": job_id}
+
+
+@app.get("/api/v1/articles/synthesize/{job_id}")
+async def get_synthesis_job(job_id: str):
+    job = get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
 
 
 # Health and stats endpoints

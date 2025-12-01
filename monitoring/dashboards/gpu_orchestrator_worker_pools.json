@@ -1,0 +1,25 @@
+{
+  "title": "GPU Orchestrator - Worker Pools",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Active worker pools",
+      "targets": [{ "expr": "gpu_orchestrator_worker_pools_total", "format": "time_series" }]
+    },
+    {
+      "type": "graph",
+      "title": "Workers by pool",
+      "targets": [{ "expr": "gpu_orchestrator_worker_pool_running_workers", "format": "time_series" }]
+    },
+    {
+      "type": "graph",
+      "title": "Pool start times",
+      "targets": [{ "expr": "gpu_orchestrator_worker_pool_started_ts", "format": "time_series" }]
+    },
+    {
+      "type": "stat",
+      "title": "Evictions (total)",
+      "targets": [{ "expr": "sum(gpu_orchestrator_worker_pool_evictions_total)", "format": "time_series" }]
+    }
+  ]
+}

@@ -148,7 +148,7 @@ class TestSecretManagementScripts:
 
         # Should identify sensitive variables
         sensitive_vars = []
-        for key, value in mock_environ.items():
+        for key, _value in mock_environ.items():
             if any(secret in key.lower() for secret in ['password', 'secret', 'key', 'token']):
                 sensitive_vars.append(key)
 

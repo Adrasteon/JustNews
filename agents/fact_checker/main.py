@@ -318,7 +318,7 @@ async def verify_facts_tool(call: ToolCall) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"An error occurred in verify_facts: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/validate_sources")
 async def validate_sources(call: ToolCall) -> dict[str, Any]:
@@ -352,7 +352,7 @@ async def validate_sources(call: ToolCall) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"An error occurred in validate_sources: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/validate_is_news_gpu")
 async def validate_is_news_gpu(call: ToolCall) -> dict[str, Any]:
@@ -388,7 +388,7 @@ async def validate_is_news_gpu(call: ToolCall) -> dict[str, Any]:
             return result
         except Exception as fallback_error:
             logger.error(f"Fallback CPU validation also failed: {fallback_error}")
-            raise HTTPException(status_code=500, detail=f"GPU and CPU validation failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"GPU and CPU validation failed: {str(e)}") from fallback_error
 
 @app.post("/verify_claims_gpu")
 async def verify_claims_gpu(call: ToolCall) -> dict[str, Any]:
@@ -426,7 +426,7 @@ async def verify_claims_gpu(call: ToolCall) -> dict[str, Any]:
             return result
         except Exception as fallback_error:
             logger.error(f"Fallback CPU verification also failed: {fallback_error}")
-            raise HTTPException(status_code=500, detail=f"GPU and CPU verification failed: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"GPU and CPU verification failed: {str(e)}") from fallback_error
 
 @app.post("/comprehensive_fact_check")
 async def comprehensive_fact_check_endpoint(request: FactCheckRequest) -> dict[str, Any]:
@@ -452,7 +452,7 @@ async def comprehensive_fact_check_endpoint(request: FactCheckRequest) -> dict[s
 
     except Exception as e:
         logger.error(f"An error occurred in comprehensive_fact_check: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/extract_claims")
 async def extract_claims_tool(call: ToolCall) -> dict[str, Any]:
@@ -481,7 +481,7 @@ async def extract_claims_tool(call: ToolCall) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"An error occurred in extract_claims: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/assess_credibility")
 async def assess_credibility(call: ToolCall) -> dict[str, Any]:
@@ -513,7 +513,7 @@ async def assess_credibility(call: ToolCall) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"An error occurred in assess_credibility: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/detect_contradictions")
 async def detect_contradictions(call: ToolCall) -> dict[str, Any]:
@@ -538,7 +538,7 @@ async def detect_contradictions(call: ToolCall) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"An error occurred in detect_contradictions: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.get("/performance/stats")
 def get_performance_stats():
@@ -581,7 +581,7 @@ def log_feedback(call: ToolCall) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"An error occurred while logging feedback: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/correct_verification")
 def correct_verification(call: ToolCall) -> dict[str, Any]:
@@ -604,7 +604,7 @@ def correct_verification(call: ToolCall) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"An error occurred while submitting verification correction: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/correct_credibility")
 def correct_credibility(call: ToolCall) -> dict[str, Any]:
@@ -627,7 +627,7 @@ def correct_credibility(call: ToolCall) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(f"An error occurred while submitting credibility correction: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.get("/training/status")
 def get_training_status():
@@ -649,7 +649,7 @@ def force_model_update() -> dict[str, Any]:
         return result
     except Exception as e:
         logger.error(f"An error occurred while forcing model update: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 # Legacy endpoint compatibility
 @app.post("/validate_is_news")
@@ -667,10 +667,8 @@ def validate_claims_legacy(request: dict) -> dict[str, Any]:
     """Legacy endpoint for backward compatibility."""
     try:
         # Handle MCP Bus format
-        if "args" in request and len(request["args"]) > 0:
-            content = request["args"][0]
-        elif "kwargs" in request and "content" in request["kwargs"]:
-            content = request["kwargs"]["content"]
+        if not (("args" in request and len(request["args"]) > 0) or ("kwargs" in request and "content" in request["kwargs"])):
+            raise ValueError("Missing 'content' in request")
         else:
             raise ValueError("Missing 'content' in request")
 
@@ -679,10 +677,10 @@ def validate_claims_legacy(request: dict) -> dict[str, Any]:
         return {"validation_score": validation_score, "legacy_endpoint": True}
     except ValueError as ve:
         logger.warning(f"Validation error in legacy validate_claims: {ve}")
-        raise HTTPException(status_code=400, detail=str(ve))
+        raise HTTPException(status_code=400, detail=str(ve)) from ve
     except Exception as e:
         logger.error(f"An error occurred in legacy validate_claims: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 if __name__ == "__main__":
     import uvicorn

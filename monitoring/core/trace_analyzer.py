@@ -276,7 +276,7 @@ class TraceAnalyzer:
                     anomaly_type=AnomalyType.UNUSUAL_PATTERN,
                     severity="medium",
                     description=f"Unusual span count {direction}: {span_count} spans (baseline: {baseline_span_count})",
-                    affected_services=list(set(span.service_name for span in trace_data.spans if span.service_name)),
+                    affected_services=list({span.service_name for span in trace_data.spans if span.service_name}),
                     evidence={
                         'trace_id': trace_data.trace_id,
                         'actual_span_count': span_count,
@@ -304,7 +304,7 @@ class TraceAnalyzer:
                 anomaly_type=AnomalyType.UNUSUAL_PATTERN,
                 severity="low",
                 description=f"Unusual service involvement: {service_count} services (baseline: {baseline_service_count})",
-                affected_services=list(set(span.service_name for span in trace_data.spans if span.service_name)),
+                affected_services=list({span.service_name for span in trace_data.spans if span.service_name}),
                 evidence={
                     'trace_id': trace_data.trace_id,
                     'actual_service_count': service_count,
@@ -576,7 +576,7 @@ class TraceAnalyzer:
 
         sum_x = sum(x_values)
         sum_y = sum(y_values)
-        sum_xy = sum(x * y for x, y in zip(x_values, y_values))
+        sum_xy = sum(x * y for x, y in zip(x_values, y_values, strict=True))
         sum_x2 = sum(x * x for x in x_values)
 
         denominator = n * sum_x2 - sum_x * sum_x

@@ -129,7 +129,7 @@ class TransparencyRepository:
         ]
 
         missing.extend(
-            f"evidence:{evidence_id}" for evidence_id, payload in zip(evidence_ids, evidence_payloads)
+            f"evidence:{evidence_id}" for evidence_id, payload in zip(evidence_ids, evidence_payloads, strict=True)
             if payload is None
         )
 
@@ -154,7 +154,7 @@ class TransparencyRepository:
         return {
             "cluster": cluster_payload,
             "facts": [fact for fact in facts if fact is not None],
-            "missing_facts": [fact_id for fact_id, fact in zip(fact_ids, facts) if fact is None]
+            "missing_facts": [fact_id for fact_id, fact in zip(fact_ids, facts, strict=True) if fact is None]
         }
 
     def get_article(self, article_id: str) -> dict[str, Any]:

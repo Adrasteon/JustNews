@@ -1,6 +1,6 @@
 {
   "model_defaults": {
-    "torch_dtype": "float16",
+    "dtype": "float16",
     "device_map": "auto",
     "load_in_8bit": false,
     "load_in_4bit": false,

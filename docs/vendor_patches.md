@@ -23,7 +23,7 @@ Whenever the Python environment is rebuilt (new conda env, dependency upgrade,
 CI image refresh, etc.), rerun:
 
 ```bash
-conda run --name justnews-v2-py312 python scripts/vendor_patches/apply_google_rpc_namespace_patch.py
+conda run --name ${CANONICAL_ENV:-justnews-py312} python scripts/vendor_patches/apply_google_rpc_namespace_patch.py
 ```
 
 Use `--dry-run` to verify whether the patch needs to be applied. The script is
@@ -35,3 +35,12 @@ idempotent and safe to re-execute.
 - Patch availability: pending upstream migration away from `pkg_resources`.
   Remove this vendor patch once the upstream module adopts implicit namespace
   packages.
+
+### Conda / conda-forge
+
+If your CI / platform requires a python `protobuf` wheel compatible with
+Python 3.12, consider providing a conda recipe so conda-forge can build and
+distribute a matching package. This repository includes an example recipe at
+`conda/recipes/protobuf` which is intended as a starting point for a
+`conda-forge/staged-recipes` PR. See `conda/README.md` for usage and local build
+instructions.

@@ -151,13 +151,16 @@ class TestCreateDatabaseService:
             }
         }
 
-    def test_create_database_service_with_config(self, mock_config):
+    def test_create_database_service_with_config(self, mock_config, monkeypatch):
         """Test creating service with provided config"""
-        with patch('database.utils.migrated_database_utils.check_database_connections', return_value=True):
-            with patch('mysql.connector.connect') as mock_connect:
-                with patch('chromadb.HttpClient') as mock_chroma:
-                    with patch('database.models.migrated_models.SentenceTransformer') as mock_st:
-                        mock_connect.return_value = MagicMock()
+        with patch('database.models.migrated_models.SentenceTransformer') as mock_st:
+            # Ensure canonical enforcement is disabled for this unit test unless explicitly tested
+            monkeypatch.setenv('CHROMADB_REQUIRE_CANONICAL', '0')
+            with patch('database.utils.migrated_database_utils.check_database_connections', return_value=True):
+                with patch('mysql.connector.connect') as mock_connect:
+                    with patch('chromadb.HttpClient') as mock_chroma:
+                        with patch('database.utils.chromadb_utils.validate_chroma_is_canonical', return_value={'ok': True}):
+                            mock_connect.return_value = MagicMock()
                         mock_chroma_instance = MagicMock()
                         mock_chroma_instance.get_collection.return_value = MagicMock()
                         mock_chroma.return_value = mock_chroma_instance
@@ -168,14 +171,16 @@ class TestCreateDatabaseService:
                         assert result is not None
                         assert hasattr(result, 'mb_conn')
 
-    def test_create_database_service_without_config(self, mock_config):
+    def test_create_database_service_without_config(self, mock_config, monkeypatch):
         """Test creating service without config (uses get_db_config)"""
-        with patch('database.utils.migrated_database_utils.get_db_config', return_value=mock_config):
-            with patch('database.utils.migrated_database_utils.check_database_connections', return_value=True):
-                with patch('mysql.connector.connect') as mock_connect:
-                    with patch('chromadb.HttpClient') as mock_chroma:
-                        with patch('database.models.migrated_models.SentenceTransformer') as mock_st:
-                            mock_connect.return_value = MagicMock()
+        with patch('database.models.migrated_models.SentenceTransformer') as mock_st:
+            monkeypatch.setenv('CHROMADB_REQUIRE_CANONICAL', '0')
+            with patch('database.utils.migrated_database_utils.get_db_config', return_value=mock_config):
+                with patch('database.utils.migrated_database_utils.check_database_connections', return_value=True):
+                    with patch('mysql.connector.connect') as mock_connect:
+                        with patch('chromadb.HttpClient') as mock_chroma:
+                            with patch('database.utils.chromadb_utils.validate_chroma_is_canonical', return_value={'ok': True}):
+                                mock_connect.return_value = MagicMock()
                             mock_chroma_instance = MagicMock()
                             mock_chroma_instance.get_collection.return_value = MagicMock()
                             mock_chroma.return_value = mock_chroma_instance

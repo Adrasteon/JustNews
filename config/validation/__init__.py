@@ -13,20 +13,15 @@ Provides comprehensive validation with:
 - Performance and security validation
 """
 
-import json
-import subprocess
-import tempfile
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 from common.observability import get_logger
 
-from ..core import ConfigurationManager
-from ..schemas import Environment, JustNewsConfig, create_default_config
+from ..schemas import Environment, JustNewsConfig
 
 logger = get_logger(__name__)
 
@@ -418,7 +413,7 @@ class ConfigurationTester:
             "average_deserialization_time": 0
         }
 
-        for i in range(iterations):
+        for _i in range(iterations):
             # Validation benchmark
             start_time = time.time()
             self.validator.validate(config)

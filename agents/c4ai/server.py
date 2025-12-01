@@ -69,7 +69,7 @@ async def crawl(req: CrawlRequest, token_ok: None = Depends(_require_api_token))
             CrawlerRunConfig,
         )
     except Exception as exc:  # pragma: no cover - dependency may be missing in test envs
-        raise HTTPException(status_code=503, detail=f"crawl4ai not available: {exc}")
+        raise HTTPException(status_code=503, detail=f"crawl4ai not available: {exc}") from exc
 
     # best-effort optional helpers
     def _get_crawler_utils_module():

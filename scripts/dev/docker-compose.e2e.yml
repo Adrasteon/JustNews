@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  db:
+    # Use a local pre-seeded image if available; otherwise docker-compose will
+    # build the image from scripts/dev/db-mariadb/Dockerfile (context: scripts/dev)
+    image: justnews/mariadb-preseed:local
+    build:
+      context: .
+      dockerfile: db-mariadb/Dockerfile
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: justnews_test
+      MYSQL_USER: justnews
+      MYSQL_PASSWORD: test
+    ports:
+      - "13306:3306" # map to non-default host port to avoid colliding with host database
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7
+    ports:
+      - "16379:6379" # non-default host port
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20

@@ -19,7 +19,6 @@ def get_logger(name: str) -> logging.Logger:
 
     Args:
         name: Logger name (typically __name__)
-        
     Returns:
         Configured logger instance
     """
@@ -74,7 +73,6 @@ def setup_logging(level: int = logging.INFO, format_string: str | None = None) -
     Setup basic logging configuration for the application.
     This function is now a compatibility wrapper and the main configuration
     is handled by get_logger to ensure file-based logging.
-    
     Args:
         level: Logging level (default: INFO)
         format_string: Custom format string (optional)
@@ -94,3 +92,18 @@ def setup_logging(level: int = logging.INFO, format_string: str | None = None) -
             datefmt="%Y-%m-%d %H:%M:%S",
             handlers=[logging.StreamHandler()],  # Default to console
         )
+
+
+def bootstrap_observability(service_name: str, *, level: int = logging.INFO, enable_otel: bool = True) -> None:
+    """Configure logging and optional OpenTelemetry exporters for a service."""
+    setup_logging(level=level)
+    if not enable_otel:
+        return
+    try:
+        from common import otel
+
+        initialized = otel.init_telemetry(service_name)
+        if not initialized:
+            logging.getLogger(__name__).debug("OpenTelemetry not initialized (missing SDK or disabled)")
+    except Exception as exc:  # pragma: no cover - defensive
+        logging.getLogger(__name__).warning("Failed to initialize OpenTelemetry: %s", exc)

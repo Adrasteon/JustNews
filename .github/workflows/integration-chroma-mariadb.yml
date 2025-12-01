@@ -1,0 +1,43 @@
+name: Integration - Chroma + MariaDB
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.6
+        ports: ["3306:3306"]
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: justnews_test
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=5s
+      chroma:
+        image: chromadb/chromadb:0.3.22
+        ports: ["8000:8000"]
+        options: >-
+          --health-cmd="curl -sS http://localhost:8000/" --health-interval=5s
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install requirements
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Wait for services
+        run: |
+          echo "Waiting for MariaDB..."
+          until mysqladmin ping -h 127.0.0.1 -P 3306 --silent; do sleep 1; done
+          echo "Waiting for Chroma..."
+          until curl -sS http://127.0.0.1:8000/ | grep -q "Chroma"; do sleep 1; done
+      - name: Run integration tests
+        run: |
+          pytest tests/agents/memory/test_save_article.py::test_save_article_chroma_required -q

@@ -33,6 +33,23 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# Preferred conda env for Python helpers (default to canonical name when present)
+DEFAULT_CONDA_ENV="${CANONICAL_ENV:-justnews-py312}"
+CONDA_ENV="${CONDA_ENV:-$DEFAULT_CONDA_ENV}"
+
+# Helper: run a python script using conda run -n ${CONDA_ENV} when available;
+# otherwise fallback to PYTHON_BIN if configured, or system python.
+run_python_script() {
+  local script_path="$1"; shift || true
+  if command -v conda >/dev/null 2>&1; then
+    PYTHONPATH=. conda run -n "$CONDA_ENV" python "$script_path" "$@"
+  elif [[ -n "${PYTHON_BIN:-}" && -x "${PYTHON_BIN}" ]]; then
+    PYTHONPATH=. "$PYTHON_BIN" "$script_path" "$@"
+  else
+    PYTHONPATH=. python "$script_path" "$@"
+  fi
+}
+
 usage() {
   cat <<EOF
 Usage: canonical_system_startup.sh [--dry-run] [reset_and_start.sh options...]
@@ -74,6 +91,12 @@ parse_args() {
 
 require_root() {
   if [[ $EUID -ne 0 ]]; then
+    # Allow non-root for dry-run checks to enable operator validation without
+    # requiring root privileges. If DRY_RUN is not set, require root as before.
+    if [[ "${DRY_RUN:-false}" == "true" ]]; then
+      log_warn "Not running as root — continuing because --dry-run was requested"
+      return 0
+    fi
     log_error "Run this script as root (sudo)."
     exit 1
   fi
@@ -105,7 +128,10 @@ resolve_repo_root() {
     echo "$candidate"
     return 0
   fi
-  log_warn "Falling back to repository default path."
+  # Emit warning to stderr so callers capturing stdout (e.g., when assigning
+  # the output to a variable) do not receive the warning text as part of the
+  # repo root value.
+  log_warn "Falling back to repository default path." >&2
   echo "${SERVICE_DIR:-/home/adra/JustNews}"
 }
 
@@ -140,8 +166,8 @@ check_python_runtime() {
     exit 1
   fi
   log_success "Python runtime detected: $python_version"
-  if [[ "$python_path" != *"justnews-v2-py312"* ]]; then
-    log_warn "PYTHON_BIN path does not include 'justnews-v2-py312'; confirm the correct environment is targeted"
+  if [[ "$python_path" != *"${CONDA_ENV:-$DEFAULT_CONDA_ENV}"* ]]; then
+   log_warn "PYTHON_BIN path does not reference the expected environment (${CONDA_ENV:-$DEFAULT_CONDA_ENV}); confirm the correct environment is targeted"
   fi
 }
 
@@ -185,6 +211,84 @@ check_data_mount() {
     # Try to set ownership to justnews user; do not fail if chown cannot run
     chown justnews:justnews "$CRAWL4AI_MODEL_CACHE_DIR" 2>/dev/null || true
   fi
+}
+
+# Check MariaDB connectivity (host/managed DB expected in normal deployments).
+# This probe is optional but recommended; it tries the "mysql" client first and
+# falls back to a small Python check via PYTHON_BIN if available. The probe will
+# be skipped when MARIADB_HOST is not configured or when SKIP_MARIADB_CHECK=true.
+# If MARIADB_CHECK_REQUIRED=true then a failing probe will abort startup.
+check_mariadb_connectivity() {
+  if [[ "${SKIP_MARIADB_CHECK:-false}" == "true" ]]; then
+    log_info "Skipping MariaDB connectivity check (SKIP_MARIADB_CHECK=true)"
+    return 0
+  fi
+
+  if [[ -z "${MARIADB_HOST:-}" ]]; then
+    log_info "MARIADB_HOST not set; skipping MariaDB connectivity check"
+    return 0
+  fi
+
+  local host="${MARIADB_HOST:-localhost}"
+  local port="${MARIADB_PORT:-3306}"
+  local user="${MARIADB_USER:-justnews}"
+  local pass="${MARIADB_PASSWORD:-}"
+  local db="${MARIADB_DB:-justnews}"
+
+  log_info "Checking MariaDB connectivity to ${host}:${port} (db=${db})"
+
+  # Helper: report failure and potentially abort
+  _handle_fail() {
+    local rc=$1 msg="$2"
+    log_error "MariaDB connectivity check failed: ${msg} (rc=${rc})"
+    if [[ "${MARIADB_CHECK_REQUIRED:-false}" == "true" ]]; then
+      exit 1
+    fi
+    return 0
+  }
+
+  # Try using mysql client if present
+  if command -v mysql >/dev/null 2>&1; then
+    if timeout 5 mysql -h "${host}" -P "${port}" -u "${user}" -p"${pass}" -e "SELECT 1;" "${db}" >/dev/null 2>&1; then
+      log_success "MariaDB probe succeeded using mysql client"
+      return 0
+    else
+      _handle_fail $? "mysql client failed to connect or run query"
+      return 0
+    fi
+  fi
+
+  # Fallback: try using PYTHON_BIN (if present) and pymysql
+  if [[ -n "${PYTHON_BIN:-}" && -x "${PYTHON_BIN}" ]]; then
+    if ${PYTHON_BIN} - <<PYTHON >/dev/null 2>&1
+import sys
+try:
+    import pymysql
+except Exception:
+    sys.exit(2)
+try:
+    conn = pymysql.connect(host='${host}', port=${port}, user='${user}', password='${pass}', database='${db}', connect_timeout=5)
+    cur = conn.cursor()
+    cur.execute('SELECT 1')
+    conn.close()
+    sys.exit(0)
+except Exception as e:
+    print('err:'+str(e))
+    sys.exit(3)
+PYTHON
+    then
+      log_success "MariaDB probe succeeded using PYTHON_BIN"
+      return 0
+    else
+      # We get rc 2 if pymysql isn't available, 3 for connection errors
+      _handle_fail $? "python pymysql probe failed (pymysql may be missing or connection failed)"
+      return 0
+    fi
+  fi
+
+  log_warn "No mysql client or usable PYTHON_BIN+pymysql available; skipping MariaDB probe"
+  log_info "To enable the probe install 'mysql-client' on the host or ensure PYTHON_BIN points to a Python interpreter with 'pymysql' installed (pip install pymysql)"
+  return 0
 }
 
 ## Utility: safe_grep_dir <dir> <pattern>
@@ -435,9 +539,14 @@ main() {
   require_root
   require_command systemctl
 
+  # Resolve the repository root early — several checks below need an absolute
+  # repo_root path (e.g. scripts invoked later in the flow). Previously the
+  # variable was assigned too late and some checks attempted to reference
+  # "$repo_root" before it existed which would lead to incorrect behaviour.
+  local repo_root
+  repo_root="$(resolve_repo_root)"
+
   if [[ "$REQUEST_STOP" == true ]]; then
-    local repo_root
-    repo_root="$(resolve_repo_root)"
     if [[ "$DRY_RUN" == true ]]; then
       log_info "Dry-run requested; skipping service shutdown"
       log_success "Prerequisite checks completed (dry run)"
@@ -452,14 +561,31 @@ main() {
   require_command mountpoint
   require_command mount
   load_environment
+  # Ensure a PYTHON_BIN is present in the system global env so downstream
+  # scripts, systemd and service templates consistently have a runtime set.
+  if [[ -x "$repo_root/infrastructure/systemd/scripts/ensure_global_python_bin.sh" ]]; then
+    # Prefer using system /etc/justnews/global.env unless caller passed a different one
+    sudo bash "$repo_root/infrastructure/systemd/scripts/ensure_global_python_bin.sh" || true
+  fi
   ensure_env_value SERVICE_DIR
   ensure_env_value PYTHON_BIN
   check_python_runtime
+  # Ensure protobuf version meets minimum requirements to avoid deprecated C-API usage
+  # CI and dry-run callers can opt out by setting SKIP_PROTOBUF_CHECK=true
+  if [[ "${SKIP_PROTOBUF_CHECK:-false}" == "true" ]]; then
+    log_warn "SKIP_PROTOBUF_CHECK=true — skipping protobuf version check"
+  else
+    if ! run_python_script "$repo_root/scripts/check_protobuf_version.py"; then
+      log_error "Protobuf version does not meet the recommended minimum; please upgrade your Python environment's protobuf to >=4.24.0. Aborting startup."
+      exit 1
+    fi
+  fi
   check_data_mount
+  # MariaDB check: skip when MARIADB_HOST unset or SKIP_MARIADB_CHECK=true
+  check_mariadb_connectivity
   # Database connectivity checks are intentionally skipped here (PostgreSQL deprecated)
 
-  local repo_root
-  repo_root="$(resolve_repo_root)"
+  # repo_root was resolved earlier; do not re-declare / reassign here.
 
   # Gather args destined for reset_and_start while keeping a copy for health logic
   if [[ "$DRY_RUN" == true ]]; then
@@ -478,6 +604,43 @@ main() {
     run_health_summary "$repo_root"
   fi
 
+  # ----------------------------
+  # Chroma canonical enforcement
+  # ----------------------------
+  chroma_require_canonical="${CHROMADB_REQUIRE_CANONICAL:-1}"
+  chroma_canonical_host="${CHROMADB_CANONICAL_HOST:-}"
+  chroma_canonical_port="${CHROMADB_CANONICAL_PORT:-}"
+  chroma_host="${CHROMADB_HOST:-}"
+  chroma_port="${CHROMADB_PORT:-}"
+
+  if [[ "$chroma_require_canonical" == "1" ]]; then
+    if [[ -z "$chroma_canonical_host" || -z "$chroma_canonical_port" ]]; then
+      log_error "CHROMADB_REQUIRE_CANONICAL is enabled but CHROMADB_CANONICAL_HOST/PORT are not set; aborting startup."
+      exit 1
+    fi
+    if [[ -z "$chroma_host" || -z "$chroma_port" ]]; then
+      log_error "CHROMADB_HOST/PORT must be set in the environment (or global.env) to connect to ChromaDB."
+      exit 1
+    fi
+    if [[ "$chroma_host" != "$chroma_canonical_host" || "$chroma_port" != "$chroma_canonical_port" ]]; then
+      log_error "CHROMADB_HOST/PORT in environment $chroma_host:$chroma_port does not match canonical $chroma_canonical_host:$chroma_canonical_port; aborting startup."
+      log_info "Helpful steps:"
+      log_info "  1) Use $ROOT/scripts/chroma_diagnose.py to discover endpoints and root info"
+      log_info "     - Example: PYTHONPATH=. conda run -n ${CONDA_ENV:-$DEFAULT_CONDA_ENV} python scripts/chroma_diagnose.py --host $chroma_host --port $chroma_port"
+      log_info "  2) If tenant/collection missing, run the bootstrap helper: scripts/chroma_bootstrap.py"
+      log_info "     - Example: PYTHONPATH=. conda run -n ${CONDA_ENV:-$DEFAULT_CONDA_ENV} python scripts/chroma_bootstrap.py --host $chroma_canonical_host --port $chroma_canonical_port --tenant default_tenant --collection articles"
+      exit 1
+    fi
+    # Run a diagnostic to confirm the canonical host/port is a Chroma instance
+    if ! run_python_script "$repo_root/scripts/chroma_diagnose.py" --host "$chroma_host" --port "$chroma_port"; then
+      log_error "Chroma diagnostic failed for $chroma_host:$chroma_port (fatal under CHROMADB_REQUIRE_CANONICAL)"
+      exit 1
+    fi
+    log_info "Chroma canonical host/port validated: $chroma_host:$chroma_port"
+  else
+    log_warn "CHROMADB_REQUIRE_CANONICAL not enabled; starting without strict Chroma enforcement"
+  fi
+
   if [[ "$DRY_RUN" == true ]]; then
     log_success "Prerequisite checks completed (dry run)"
   else
@@ -485,4 +648,6 @@ main() {
   fi
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

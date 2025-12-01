@@ -102,7 +102,7 @@ class TestSemanticSearchService:
         mock_model = Mock()
         mock_transformer.return_value = mock_model
 
-        service = SemanticSearchService()
+        _service = SemanticSearchService()
 
         mock_get_config.assert_called_once()
         mock_transformer.assert_called_once_with('all-MiniLM-L6-v2')
@@ -417,7 +417,7 @@ class TestSemanticSearchService:
         service = SemanticSearchService()
         service._semantic_search = Mock(return_value=[])
 
-        results = service.get_articles_by_category("technology")
+        _results = service.get_articles_by_category("technology")
 
         service._semantic_search.assert_called_once_with("technology", 10, 0.0)
 
@@ -438,7 +438,7 @@ class TestSemanticSearchService:
         service = SemanticSearchService()
         service._hybrid_search = Mock(return_value=[])
 
-        results = service.get_recent_articles_with_search("test query")
+        _results = service.get_recent_articles_with_search("test query")
 
         service._hybrid_search.assert_called_once_with("test query", 10, 0.0)
 

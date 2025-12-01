@@ -305,6 +305,11 @@ Traces → Trace Collector → Jaeger → Trace Analysis Tools
 
 **Dashboard URL**: `http://127.0.0.1:3000/d/ef37elu2756o0e/justnews-operations-dashboard`
 
+#### OpenTelemetry Collectors Dashboard
+**Status**: **Paused - November 26, 2025**
+
+The dedicated OTEL collector dashboard has been removed from the Grafana provisioning bundle while we disable OTLP metrics forwarding (pending a revised remote_write plan). Re-enable the OTEL metrics pipelines and regenerate the dashboard when we're ready to revisit collector telemetry.
+
 ### 🔄 **Next Priority: Advanced Dashboards & Visualization**
 
 **Target**: Implement real-time monitoring dashboards with advanced visualization and alerting.

@@ -48,7 +48,7 @@ Human-in-the-loop ingestion service that stores annotator decisions in SQLite an
 Run locally using your project Conda environment (recommended):
 
 ```bash
-conda activate justnews-v2-py312
+conda activate ${CANONICAL_ENV:-justnews-py312}
 # install minimal runtime deps (conda-first, fallback to pip if needed)
 conda install -c conda-forge fastapi uvicorn
 # if a package is unavailable via conda, use pip inside the activated env:

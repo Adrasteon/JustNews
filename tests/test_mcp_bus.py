@@ -116,7 +116,7 @@ class TestMCPBusResilience:
     async def test_circuit_breaker_activation(self, failing_bus):
         """Test circuit breaker activates on repeated failures"""
         # Make multiple calls that will trigger failures
-        for i in range(5):
+        for _i in range(5):
             try:
                 await failing_bus.call_agent("failing_agent", "test_tool")
             except Exception:
@@ -337,7 +337,7 @@ class TestMCPBusLoad:
 
         # Generate significant load
         tasks = []
-        for i in range(100):
+        for _i in range(100):
             task = mock_bus.call_agent(
                 "synthesizer", "synthesize_summary",
                 articles=[f"Article content {j}" for j in range(5)]

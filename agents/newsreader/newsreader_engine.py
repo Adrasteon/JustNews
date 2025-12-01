@@ -55,9 +55,10 @@ except ImportError:
     LlavaOnevisionProcessor = None
     LLAVA_AVAILABLE = False
 
-# Suppress transformers warnings
-warnings.filterwarnings("ignore", message=".*use_fast.*slow processor.*")
-warnings.filterwarnings("ignore", message=".*slow image processor.*")
+# Suppress transformers warnings in production, but not during tests.
+if os.environ.get('PYTEST_RUNNING') != '1':
+    warnings.filterwarnings("ignore", message=".*use_fast.*slow processor.*")
+    warnings.filterwarnings("ignore", message=".*slow image processor.*")
 
 logger = get_logger(__name__)
 
@@ -226,7 +227,7 @@ class NewsReaderEngine:
 
             # Load model with memory optimization
             model_kwargs = {
-                "torch_dtype": torch.float16 if self.device.type == 'cuda' else torch.float32,
+                "dtype": torch.float16 if self.device.type == 'cuda' else torch.float32,
                 "device_map": "auto",
                 "low_cpu_mem_usage": True,
                 "max_memory": {0: "2GB"} if self.device.type == 'cuda' else None,

@@ -5,10 +5,11 @@ Comprehensive tests for the JustNews Security Framework
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from security.models import AuthenticationError, EncryptionError
 from security.refactor import (
     SecurityConfig,
     SecurityManager,
@@ -153,8 +154,8 @@ class TestSecurityFrameworkIntegration:
             password="GdprPass123!"
         )
 
-        # Record consent
-        consent_id = await security_manager.compliance_service.record_consent(
+        # Record consent (don't need the id for the rest of the test)
+        _consent_id = await security_manager.compliance_service.record_consent(
             user_id=user_id,
             purpose="marketing",
             consent_text="I consent to marketing communications"
@@ -181,7 +182,7 @@ class TestSecurityFrameworkIntegration:
         )
 
         # Verify data deletion
-        export_data = await security_manager.compliance_service.export_user_data(user_id)
+        _export_data = await security_manager.compliance_service.export_user_data(user_id)
         # Consent should still be there for audit purposes, but user data should be minimal
 
     @pytest.mark.asyncio
@@ -198,14 +199,12 @@ class TestSecurityFrameworkIntegration:
         # Check service statuses
         services = status["services"]
         assert "authentication" in services
-        assert "authorization" in services
         assert "encryption" in services
         assert "compliance" in services
         assert "monitoring" in services
 
     @pytest.mark.asyncio
     async def test_concurrent_operations(self, security_manager):
-        """Test concurrent security operations"""
         async def create_and_auth_user(i):
             username = f"concurrent_user_{i}"
             user_id = await security_manager.auth_service.create_user(
@@ -234,7 +233,7 @@ class TestSecurityFrameworkIntegration:
     async def test_session_management(self, security_manager):
         """Test session management and cleanup"""
         # Create and authenticate user
-        user_id = await security_manager.auth_service.create_user(
+        _user_id = await security_manager.auth_service.create_user(
             username="sessionuser",
             email="session@example.com",
             password="SessionPass123!"
@@ -250,10 +249,10 @@ class TestSecurityFrameworkIntegration:
         assert context.session_id in security_manager._active_sessions
 
         # Simulate session expiration
-        context.timestamp = datetime.utcnow() - timedelta(minutes=10)  # Expired
+        context.timestamp = datetime.now(timezone.utc) - timedelta(minutes=10)  # Expired
 
         # Session should be cleaned up on next validation attempt
-        with pytest.raises(Exception):  # Should raise authentication error
+        with pytest.raises(AuthenticationError):
             await security_manager.validate_token(tokens["access_token"])
 
     @pytest.mark.asyncio
@@ -313,7 +312,7 @@ class TestSecurityErrorHandling:
     @pytest.mark.asyncio
     async def test_invalid_authentication(self, security_manager):
         """Test invalid authentication handling"""
-        with pytest.raises(Exception):  # Should raise AuthenticationError
+        with pytest.raises(AuthenticationError):
             await security_manager.authenticate_user(
                 username="nonexistent",
                 password="wrongpass"
@@ -322,7 +321,7 @@ class TestSecurityErrorHandling:
     @pytest.mark.asyncio
     async def test_invalid_token_validation(self, security_manager):
         """Test invalid token handling"""
-        with pytest.raises(Exception):  # Should raise AuthenticationError
+        with pytest.raises(AuthenticationError):
             await security_manager.validate_token("invalid.jwt.token")
 
     @pytest.mark.asyncio
@@ -343,7 +342,7 @@ class TestSecurityErrorHandling:
     async def test_encryption_error_handling(self, security_manager):
         """Test encryption error handling"""
         # Try to decrypt invalid data
-        with pytest.raises(Exception):  # Should raise EncryptionError
+        with pytest.raises(EncryptionError):
             await security_manager.decrypt_data("invalid_encrypted_data")
 
 

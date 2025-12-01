@@ -339,7 +339,7 @@ class RealTimeMonitor:
         await self._send_to_client(client_id, {
             "type": "history",
             "stream": stream_name,
-            "data": [item.dict() for item in history_data],
+            "data": [item.model_dump() for item in history_data],
             "timestamp": datetime.now().isoformat()
         })
 

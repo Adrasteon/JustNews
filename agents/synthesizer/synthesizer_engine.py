@@ -31,6 +31,7 @@ from typing import Any
 import torch
 
 from common.observability import get_logger
+from agents.synthesizer.mistral_adapter import SynthesizerMistralAdapter
 
 # Core ML libraries with fallbacks
 try:
@@ -62,9 +63,10 @@ except ImportError:
     SKLEARN_AVAILABLE = False
 
 try:
-    import numpy as np
-    NUMPY_AVAILABLE = True
-except ImportError:
+    # Avoid importing numpy at module-level if unused; prefer checking availability
+    import importlib.util as _importlib_util
+    NUMPY_AVAILABLE = _importlib_util.find_spec("numpy") is not None
+except Exception:
     NUMPY_AVAILABLE = False
 
 # GPU manager integration
@@ -137,6 +139,8 @@ class SynthesizerConfig:
     min_samples: int = 1
     n_clusters: int = 3
     min_articles_for_clustering: int = 3
+    # Cluster-level gating: minimum percent of sources that must be verified
+    min_fact_check_percent_for_synthesis: float = 60.0
 
     # GPU parameters
     device: str = "auto"
@@ -201,6 +205,7 @@ class SynthesizerEngine:
 
         # Lifecycle flag
         self.is_initialized = False
+        self.mistral_adapter = SynthesizerMistralAdapter()
 
         # Performance tracking
         self.performance_stats = {
@@ -213,6 +218,23 @@ class SynthesizerEngine:
         }
 
         logger.info("🔧 SynthesizerEngine created (lazy init). Call `await initialize()` to load models.")
+
+    def choose_model_for_task(self, task: str | None = None, *, prefer_high_accuracy: bool | None = None) -> str:
+        """Select which generation path to use for a task."""
+        mode = os.getenv("SYNTHESIZER_MODEL_CHOICE", "auto").lower()
+        if mode in {"mistral", "adapter"}:
+            return "mistral"
+        if mode in {"legacy", "seq2seq"}:
+            return "seq2seq"
+        if prefer_high_accuracy is None:
+            prefer_high_accuracy = task in {"cluster", "long_form"}
+        if prefer_high_accuracy and self._mistral_ready():
+            return "mistral"
+        return "seq2seq"
+
+    def _mistral_ready(self) -> bool:
+        adapter = getattr(self, "mistral_adapter", None)
+        return bool(adapter and adapter.enabled)
 
     async def initialize(self):
         """Async compatibility initializer used by tests and callers.
@@ -378,7 +400,8 @@ class SynthesizerEngine:
             # a `side_effect` attribute. This is a best-effort check used only
             # to make test expectations deterministic.
             try:
-                if hasattr(tokenizer_loader, 'side_effect') and callable(getattr(tokenizer_loader, '__call__', None)):
+                # Ensure mock tokenizers with side_effect still trigger in tests.
+                if hasattr(tokenizer_loader, 'side_effect') and callable(tokenizer_loader):
                     tokenizer_loader()
             except Exception:
                 # propagate so initialize() can fail when tokenizer mock is set to raise
@@ -387,7 +410,7 @@ class SynthesizerEngine:
             self.models['bart'] = model_loader.from_pretrained(
                 self.config.bart_model,
                 cache_dir=self.config.cache_dir,
-                torch_dtype=torch.float16 if (hasattr(target_device, 'type') and getattr(target_device, 'type', None) == 'cuda') or (isinstance(target_device, str) and 'cuda' in str(target_device)) else torch.float32
+                dtype=torch.float16 if (hasattr(target_device, 'type') and getattr(target_device, 'type', None) == 'cuda') or (isinstance(target_device, str) and 'cuda' in str(target_device)) else torch.float32
             ).to(target_device)
 
             self.tokenizers['bart'] = tokenizer_loader.from_pretrained(
@@ -421,7 +444,7 @@ class SynthesizerEngine:
             self.models['flan_t5'] = T5ForConditionalGeneration.from_pretrained(
                 self.config.flan_t5_model,
                 cache_dir=self.config.cache_dir,
-                torch_dtype=torch.float16 if (hasattr(target_device, 'type') and target_device.type == 'cuda') or (isinstance(target_device, str) and 'cuda' in str(target_device)) else torch.float32
+                dtype=torch.float16 if (hasattr(target_device, 'type') and target_device.type == 'cuda') or (isinstance(target_device, str) and 'cuda' in str(target_device)) else torch.float32
             ).to(target_device)
 
             self.tokenizers['flan_t5'] = T5Tokenizer.from_pretrained(
@@ -492,7 +515,7 @@ class SynthesizerEngine:
         if not self.is_initialized:
             raise RuntimeError("not initialized")
 
-        start_time = time.time()
+        # start_time previously used for profiling; removed when not referenced
 
         try:
             # Normalize input: accept list of dicts or strings
@@ -599,7 +622,7 @@ class SynthesizerEngine:
 
         except Exception as e:
             logger.error(f"❌ KMeans clustering failed: {e}")
-            clusters = [[i for i in range(len(article_texts))]]
+            clusters = [list(range(len(article_texts)))]
             return SynthesisResult(
                 success=False,
                 content="",
@@ -686,13 +709,26 @@ class SynthesizerEngine:
         if not self.is_initialized:
             raise RuntimeError("not initialized")
 
-        start_time = time.time()
+        _start_time = time.time()
         try:
             if not article_texts:
                 return {"status": "success", "summary": "", "key_points": [], "article_count": 0}
 
             # Accept list of dicts or raw strings
             texts = [a.get('content') if isinstance(a, dict) else str(a) for a in article_texts]
+
+            if self.choose_model_for_task("cluster", prefer_high_accuracy=len(texts) > 1) == "mistral" and self._mistral_ready():
+                mistral_doc = await asyncio.to_thread(self._run_mistral_cluster_summary, texts)
+                if mistral_doc:
+                    summary = mistral_doc.get("summary") or " ".join(mistral_doc.get("key_points", [])[:2])
+                    key_points = mistral_doc.get("key_points", [])
+                    return {
+                        "status": "success",
+                        "summary": summary,
+                        "key_points": key_points,
+                        "article_count": len(article_texts),
+                        "mistral": mistral_doc,
+                    }
 
             summaries = []
             for text in texts:
@@ -726,9 +762,14 @@ class SynthesizerEngine:
 
     async def _summarize_text(self, text: str) -> SynthesisResult:
         """Summarize individual text using BART."""
-        start_time = time.time()
+        _start_time = time.time()
 
         try:
+            if self.choose_model_for_task("summarization", prefer_high_accuracy=len(text) > 400) == "mistral" and self._mistral_ready():
+                mistral_res = await asyncio.to_thread(self._summarize_with_mistral, text)
+                if mistral_res:
+                    return mistral_res
+
             # Prefer using an explicit bart_model + tokenizer when present (tests set bart_model.generate to simulate failures)
             if getattr(self, 'bart_model', None) is not None and getattr(self, 'bart_tokenizer', None) is not None:
                 try:
@@ -748,7 +789,7 @@ class SynthesizerEngine:
                         success=True,
                         content=decoded,
                         method="bart_model_generate",
-                        processing_time=time.time() - start_time,
+                        processing_time=time.time() - _start_time,
                         model_used="bart",
                         confidence=0.8
                     )
@@ -758,7 +799,7 @@ class SynthesizerEngine:
                         success=False,
                         content=text[:200] + "..." if len(text) > 200 else text,
                         method="error_fallback",
-                        processing_time=time.time() - start_time,
+                        processing_time=time.time() - _start_time,
                         model_used="none",
                         confidence=0.0,
                         metadata={"error": str(e)}
@@ -773,7 +814,7 @@ class SynthesizerEngine:
                     success=True,
                     content=summary,
                     method="simple_fallback",
-                    processing_time=time.time() - start_time,
+                    processing_time=time.time() - _start_time,
                     model_used="none",
                     confidence=0.6
                 )
@@ -785,7 +826,7 @@ class SynthesizerEngine:
                     success=True,
                     content=text,
                     method="too_short",
-                    processing_time=time.time() - start_time,
+                    processing_time=time.time() - _start_time,
                     model_used="none",
                     confidence=1.0
                 )
@@ -808,7 +849,7 @@ class SynthesizerEngine:
                 success=True,
                 content=summary,
                 method="bart_summarization",
-                processing_time=time.time() - start_time,
+                processing_time=time.time() - _start_time,
                 model_used="bart",
                 confidence=0.8
             )
@@ -819,11 +860,44 @@ class SynthesizerEngine:
                 success=False,
                 content=text[:200] + "..." if len(text) > 200 else text,
                 method="error_fallback",
-                processing_time=time.time() - start_time,
+                processing_time=time.time() - _start_time,
                 model_used="none",
                 confidence=0.0,
                 metadata={"error": str(e)}
             )
+
+    def _summarize_with_mistral(self, text: str) -> SynthesisResult | None:
+        adapter = getattr(self, "mistral_adapter", None)
+        if not adapter:
+            return None
+        start_time = time.time()
+        try:
+            doc = adapter.summarize_cluster([text], context="single-article")
+        except Exception as exc:
+            logger.debug("Mistral summarizer failed: %s", exc)
+            return None
+        if not doc:
+            return None
+        summary = doc.get("summary") or " ".join(doc.get("key_points", [])[:2]) or text[:200]
+        return SynthesisResult(
+            success=True,
+            content=summary,
+            method="mistral_adapter",
+            processing_time=time.time() - start_time,
+            model_used="mistral",
+            confidence=float(doc.get("confidence", 0.85)),
+            metadata={"mistral": doc},
+        )
+
+    def _run_mistral_cluster_summary(self, texts: list[str]) -> dict[str, Any] | None:
+        adapter = getattr(self, "mistral_adapter", None)
+        if not adapter:
+            return None
+        try:
+            return adapter.summarize_cluster(texts, context="cluster")
+        except Exception as exc:
+            logger.debug("Cluster-level Mistral summary failed: %s", exc)
+            return None
 
     async def synthesize_gpu(self, articles: list[dict[str, Any]], max_clusters: int = 5, context: str = "news analysis", options: dict[str, Any] | None = None) -> dict:
         """GPU-accelerated synthesis with clustering and refinement.
@@ -837,19 +911,62 @@ class SynthesizerEngine:
             raise RuntimeError("not initialized")
 
         try:
-            if not articles:
+            # If caller passes no articles, still allow cluster-driven synthesis by
+            # providing an `options` dict with a `cluster_id` or `article_ids`.
+            options = options or {}
+            if not articles and not (options.get('cluster_id') or options.get('article_ids')):
                 return {"status": "success", "clusters": [], "synthesized_content": "", "processing_stats": {"articles_processed": 0}}
 
             # Handle options (compatibility with tests)
-            options = options or {}
+            # `options` variable is already created above when considering cluster fetch
             max_clusters = options.get('max_clusters', max_clusters)
 
             # Extract article texts
             article_texts = [article.get('content', '') for article in articles if isinstance(article, dict)]
             article_texts = [text for text in article_texts if text.strip()]
 
+
+            # If we have no article text, and the caller provided a cluster_id or article_ids,
+            # try to fetch the cluster and refill `articles` / `article_texts` before bailing.
+            cluster_id = options.get('cluster_id') if isinstance(options, dict) else None
+            article_ids = options.get('article_ids') if isinstance(options, dict) else None
+            if not article_texts and (cluster_id or article_ids):
+                try:
+                    from agents.cluster_fetcher.cluster_fetcher import ClusterFetcher
+                    fetcher = ClusterFetcher()
+                    fetched = fetcher.fetch_cluster(cluster_id=cluster_id, article_ids=article_ids)
+                    articles = [a.to_dict() for a in fetched]
+                    article_texts = [a.get('content', '') for a in articles if a.get('content')]
+                except Exception:
+                    logger.exception("Failed to fetch cluster for synthesis")
+
             if not article_texts:
                 return {"status": "error", "error": "no_content"}
+
+            # Optionally allow caller to provide a cluster_id or article_ids to fetch
+            cluster_id = options.get('cluster_id') if isinstance(options, dict) else None
+            article_ids = options.get('article_ids') if isinstance(options, dict) else None
+
+            # If the articles were fetched from a cluster, pre-run the Analyst
+            # (which triggers fact-check) and gate synthesis on percent_verified
+            if cluster_id or article_ids:
+                try:
+                    import agents.analyst.tools as _analyst_tools
+                    generate_analysis_report = getattr(_analyst_tools, 'generate_analysis_report', None)
+                except Exception:
+                    generate_analysis_report = None
+
+                if generate_analysis_report and article_texts:
+                    try:
+                        report = generate_analysis_report(article_texts, article_ids=[a.get('article_id') for a in articles], cluster_id=cluster_id)
+                        if report and isinstance(report, dict):
+                            cluster_summary = report.get('cluster_fact_check_summary', {})
+                            percent_verified = cluster_summary.get('percent_verified', 0.0)
+                            if percent_verified < self.config.min_fact_check_percent_for_synthesis:
+                                logger.warning(f"Cluster {cluster_id} not verified enough ({percent_verified}%); aborting synthesis")
+                                return {"status": "error", "error": "fact_check_failed", "details": {"percent_verified": percent_verified}, "analysis_report": report}
+                    except Exception as e:
+                        logger.exception("Analyst pre-analysis failed", exc_info=e)
 
             # Cluster articles (cluster_articles returns dict for compatibility)
             cluster_result = await self.cluster_articles(article_texts, max_clusters)
@@ -859,13 +976,13 @@ class SynthesizerEngine:
             if isinstance(cluster_result, dict):
                 if cluster_result.get('status') != 'success':
                     return {"status": "error", "error": "synthesis_failed", "details": cluster_result.get('error')}
-                clusters = cluster_result.get('clusters', [[i for i in range(len(article_texts))]])
+                clusters = cluster_result.get('clusters', [list(range(len(article_texts)))])
             elif isinstance(cluster_result, SynthesisResult):
                 if not cluster_result.success:
                     return {"status": "error", "error": "synthesis_failed", "details": cluster_result.metadata.get('error')}
-                clusters = cluster_result.metadata.get('clusters', [[i for i in range(len(article_texts))]])
+                clusters = cluster_result.metadata.get('clusters', [list(range(len(article_texts)))])
             else:
-                clusters = [[i for i in range(len(article_texts))]]
+                clusters = [list(range(len(article_texts)))]
 
             # Synthesize each cluster
             cluster_syntheses = []
@@ -895,6 +1012,46 @@ class SynthesizerEngine:
                         final_synthesis = result[0].get('generated_text', final_synthesis)
                 except Exception as e:
                     logger.warning(f"final refinement failed: {e}")
+
+            # Post-synthesis draft fact-check (MANDATORY): run Analyst on the
+            # synthesized draft to validate claims introduced or paraphrased
+            # in the synthesis. If the draft-level fact check fails, abort
+            # synthesis and return the analysis report for auditing/HITL.
+            try:
+                import agents.analyst.tools as _analyst_tools
+                generate_analysis_report = getattr(_analyst_tools, 'generate_analysis_report', None)
+            except Exception:
+                generate_analysis_report = None
+
+            if generate_analysis_report:
+                try:
+                    draft_report = generate_analysis_report([final_synthesis], article_ids=None, cluster_id=cluster_id)
+                    # Prefer per_article.source_fact_check; fall back to source_fact_checks
+                    fact_check_status = None
+                    if isinstance(draft_report, dict):
+                        per_article = draft_report.get('per_article', [])
+                        if per_article and isinstance(per_article, list) and len(per_article) > 0:
+                            sac = per_article[0].get('source_fact_check') if isinstance(per_article[0], dict) else None
+                            if sac and isinstance(sac, dict):
+                                fact_check_status = sac.get('fact_check_status')
+
+                        if not fact_check_status:
+                            sfc_list = draft_report.get('source_fact_checks', [])
+                            if sfc_list and isinstance(sfc_list, list):
+                                first = sfc_list[0]
+                                if isinstance(first, dict):
+                                    fact_check_status = first.get('fact_check_status')
+
+                    if fact_check_status == 'failed':
+                        logger.warning("Draft fact-check failed; aborting synthesis")
+                        return {"status": "error", "error": "draft_fact_check_failed", "analysis_report": draft_report}
+                    elif fact_check_status == 'needs_review':
+                        # Expose needs_review so controllers can route to HITL
+                        logger.info("Draft fact-check suggests HITL review; gating publish")
+                        return {"status": "error", "error": "draft_fact_check_needs_review", "analysis_report": draft_report}
+
+                except Exception as e:
+                    logger.exception("Draft fact-check run failed; continuing with synthesis", exc_info=e)
 
             # Update performance stats
             self.performance_stats['total_processed'] += len(articles)

@@ -9,7 +9,7 @@ import json
 import logging
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import aiofiles
@@ -149,7 +149,7 @@ class EncryptionService:
 
         except Exception as e:
             logger.error(f"Data encryption failed: {e}")
-            raise EncryptionError(f"Encryption failed: {str(e)}")
+            raise EncryptionError(f"Encryption failed: {str(e)}") from e
 
     async def decrypt_data(self, encrypted_data: str, key_id: str | None = None) -> str | bytes:
         """
@@ -188,11 +188,11 @@ class EncryptionService:
             except UnicodeDecodeError:
                 return decrypted
 
-        except InvalidToken:
-            raise EncryptionError("Invalid encrypted data or key")
+        except InvalidToken as exc:
+            raise EncryptionError("Invalid encrypted data or key") from exc
         except Exception as e:
             logger.error(f"Data decryption failed: {e}")
-            raise EncryptionError(f"Decryption failed: {str(e)}")
+            raise EncryptionError(f"Decryption failed: {str(e)}") from e
 
     async def generate_key(self, algorithm: str = "AES-256",
                           key_type: str = "symmetric",
@@ -210,7 +210,7 @@ class EncryptionService:
         """
         try:
             key_id = f"key_{secrets.token_urlsafe(8)}"
-            created_at = datetime.utcnow()
+            created_at = datetime.now(timezone.utc)
             expires_at = created_at + timedelta(days=self.encryption_config.key_rotation_days)
 
             if key_type == "symmetric":
@@ -280,7 +280,7 @@ class EncryptionService:
 
         except Exception as e:
             logger.error(f"Key generation failed: {e}")
-            raise EncryptionError(f"Key generation failed: {str(e)}")
+            raise EncryptionError(f"Key generation failed: {str(e)}") from e
 
     async def rotate_key(self, old_key_id: str) -> str:
         """
@@ -310,7 +310,7 @@ class EncryptionService:
 
             # Mark old key as inactive
             old_key["is_active"] = False
-            old_key["rotated_at"] = datetime.utcnow().isoformat()
+            old_key["rotated_at"] = datetime.now(timezone.utc).isoformat()
             old_key["rotated_to"] = new_key_id
 
             await self._save_keys()
@@ -324,7 +324,7 @@ class EncryptionService:
 
         except Exception as e:
             logger.error(f"Key rotation failed: {e}")
-            raise EncryptionError(f"Key rotation failed: {str(e)}")
+            raise EncryptionError(f"Key rotation failed: {str(e)}") from e
 
     async def generate_key_pair(self, algorithm: str = "RSA-2048") -> KeyPair:
         """
@@ -349,7 +349,7 @@ class EncryptionService:
 
         except Exception as e:
             logger.error(f"Key pair generation failed: {e}")
-            raise EncryptionError(f"Key pair generation failed: {str(e)}")
+            raise EncryptionError(f"Key pair generation failed: {str(e)}") from e
 
     async def sign_data(self, data: str | bytes, key_id: str) -> str:
         """
@@ -404,7 +404,7 @@ class EncryptionService:
 
         except Exception as e:
             logger.error(f"Data signing failed: {e}")
-            raise EncryptionError(f"Signing failed: {str(e)}")
+            raise EncryptionError(f"Signing failed: {str(e)}") from e
 
     async def verify_signature(self, data: str | bytes, signature: str, key_id: str) -> bool:
         """
@@ -465,7 +465,7 @@ class EncryptionService:
             List of active key information
         """
         active_keys = []
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         for key_data in self._keys.values():
             if key_data.get("is_active", True):
@@ -497,7 +497,7 @@ class EncryptionService:
         expired_keys = sum(1 for k in self._keys.values()
                           if not k.get("is_active", True) or
                           (k.get("expires_at") and
-                           datetime.fromisoformat(k["expires_at"]) < datetime.utcnow()))
+                           datetime.fromisoformat(k["expires_at"]) < datetime.now(timezone.utc)))
 
         return {
             "status": "healthy",
@@ -516,7 +516,7 @@ class EncryptionService:
                 key_data["key_type"] == "symmetric" and
                 key_data["usage"] in ["encrypt", "both"]):
                 expires_at = key_data.get("expires_at")
-                if expires_at and datetime.fromisoformat(expires_at) > datetime.utcnow():
+                if expires_at and datetime.fromisoformat(expires_at) > datetime.now(timezone.utc):
                     return key_data["id"]
 
         # Create new default key
@@ -569,7 +569,7 @@ class EncryptionService:
     async def _initialize_key_rotation(self) -> None:
         """Initialize automatic key rotation"""
         # Check for expired keys and rotate them
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         for key_id, key_data in list(self._keys.items()):
             if not key_data.get("is_active", True):

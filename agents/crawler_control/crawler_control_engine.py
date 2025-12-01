@@ -48,8 +48,8 @@ class CrawlerControlEngine:
             jobs = response.json()
 
             stopped_jobs = []
-            for job_id, status in jobs.items():
-                if status in ["running", "pending"]:
+            for job_id, _status in jobs.items():
+                if _status in ["running", "pending"]:
                     # Note: The crawler doesn't have a stop endpoint yet
                     # For now, we'll just mark as stopped in our tracking
                     stopped_jobs.append(job_id)
@@ -74,12 +74,13 @@ class CrawlerControlEngine:
 
             # Get details for each job
             job_details = {}
-            for job_id, status in jobs.items():
+            for job_id, _status in jobs.items():
                 try:
                     detail_response = requests.get(f"{self.crawler_agent_url}/job_status/{job_id}")
                     detail_response.raise_for_status()
                     job_details[job_id] = detail_response.json()
-                except:
+                except requests.RequestException:
+                    # best-effort - mark unknown when we can't get job details
                     job_details[job_id] = {"status": "unknown"}
 
             return job_details
@@ -163,7 +164,7 @@ class CrawlerControlEngine:
             try:
                 response = requests.get(f"{url}/health", timeout=5)
                 health[name] = response.status_code == 200
-            except:
+            except Exception:
                 health[name] = False
 
         return health

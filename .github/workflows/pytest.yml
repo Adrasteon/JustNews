@@ -2,30 +2,59 @@ name: CI — PyTest
 
 on:
   push:
-    branches: [ main, 'dev/**', 'feature/**', 'dev/dual-dbase-updates' ]
   pull_request:
-    branches: [ main ]
 
 jobs:
-  processing_check:
+  check-global-env:
+    name: Validate global.env (PYTHON_BIN present)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Run global.env validation
+        env:
+          CI: true
+        run: |
+          # The script will fall back to the repo example file when /etc/justnews/global.env
+          # is not present on the runner, so this is CI-friendly.
+          bash infrastructure/scripts/validate-global-env.sh
+
+      - name: Check canonical conda env usage
+        env:
+          CI: true
+        run: |
+          # Fails the job if any non-canonical env names remain in source/config
+          bash scripts/dev/check_canonical_env.sh
+
+  processing_check:
+    runs-on: ubuntu-latest
+    env:
+      CANONICAL_ENV: justnews-py312
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Miniconda
+        uses: conda-incubator/setup-miniconda@v2
         with:
-          python-version: '3.11'
+          python-version: '3.12'
+          auto-activate-base: false
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Preflight checks - protobuf & deprecation
+        env:
+          PYTHON_BIN: python
+          CI: true
+        run: |
+          python scripts/check_protobuf_version.py
+          python scripts/check_deprecation_warnings.py
       - name: Processing time sanity check
         run: |
           make check-processing-time
 
   pytest:
-    needs: [processing_check, lint]
+    needs: [processing_check, lint, check-global-env]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -44,20 +73,48 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Install dependencies
+      - name: Create / update conda environment
         run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f environment.yml ]; then pip install -r requirements.txt || true; fi
+          # create or update the project environment from environment.yml
+          conda env list
+          conda env create -f environment.yml -n ${CANONICAL_ENV} || conda env update -f environment.yml -n ${CANONICAL_ENV} || true
+      - name: Install dependencies (conda)
+        run: |
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install --upgrade pip
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install -r requirements.txt || true
 
-      - name: Install test dependencies
+      - name: Run tests (conda)
         run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q
 
-      - name: Run tests
+  integration_smoke:
+    name: "Integration smoke: synthesize -> publish -> public API (mocked)"
+    needs: [processing_check, lint, check-global-env]
+    runs-on: ubuntu-latest
+    env:
+      CANONICAL_ENV: justnews-py312
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: '3.12'
+          auto-activate-base: false
+
+      - name: Create / update conda environment
         run: |
-          pytest -q
+          conda env list
+          conda env create -f environment.yml -n ${CANONICAL_ENV} || conda env update -f environment.yml -n ${CANONICAL_ENV} || true
+      - name: Install dependencies (conda)
+        run: |
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install --upgrade pip
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install -r requirements.txt || true
+
+      - name: Run integration smoke test (conda)
+        run: |
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q tests/integration/test_full_pipeline_5_variations.py::test_full_pipeline_5_variations
 
   lint:
     runs-on: ubuntu-latest

@@ -250,7 +250,7 @@ check_python_deps_and_exit_if_missing() {
     local agent="$1"
     # Prefer developer conda env when available (so checks match developer setup)
     local py_cmd=""
-    local conda_env_to_try="${CONDA_ENV:-justnews-v2-py312}"
+    local conda_env_to_try="${CONDA_ENV:-${CANONICAL_ENV:-justnews-py312}}"
     if command -v conda >/dev/null 2>&1; then
         if conda env list 2>/dev/null | awk '{print $1}' | grep -xq "$conda_env_to_try"; then
             py_cmd="conda run -n $conda_env_to_try python"
@@ -258,7 +258,7 @@ check_python_deps_and_exit_if_missing() {
     fi
     if [[ -z "$py_cmd" ]]; then
     # Prefer PYTHON_BIN from env or default to canonical conda interpreter.
-    local py="${PYTHON_BIN:-/home/adra/miniconda3/envs/justnews-v2-py312/bin/python}"
+    local py="${PYTHON_BIN:-/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python}"
         if [[ ! -x "$py" ]]; then
             py="$(command -v python3 || command -v python || true)"
         fi
@@ -281,6 +281,21 @@ check_python_deps_and_exit_if_missing() {
         if [[ "$agent" == "hitl_service" ]]; then
             modules=(uvicorn fastapi requests)
         fi
+    if [[ "$agent" == "dashboard" ]]; then
+        # Dashboard imports fastapi and uvicorn at module import time; ensure they exist
+        modules=(uvicorn fastapi requests)
+    fi
+
+    # Auto-detect common modules in the agent's main script and add them to checks
+    local agent_main_path="$PROJECT_ROOT/agents/${agent}/main.py"
+    if [[ -f "$agent_main_path" ]]; then
+        if grep -E "^\s*import[[:space:]]+uvicorn" "$agent_main_path" >/dev/null 2>&1 || grep -E "^\s*from[[:space:]]+uvicorn" "$agent_main_path" >/dev/null 2>&1; then
+            modules+=(uvicorn)
+        fi
+        if grep -E "^\s*from[[:space:]]+fastapi[[:space:]]+import|^\s*import[[:space:]]+fastapi" "$agent_main_path" >/dev/null 2>&1; then
+            modules+=(fastapi)
+        fi
+    fi
 
     local modules_var="${modules[*]}"
     local missing=""
@@ -346,8 +361,8 @@ check_python_interpreter_is_conda() {
     local cmd="${SELECTED_PY_CMD:-${PYTHON_BIN:-}}"
     # If we have an explicit interpreter path and it isn't the conda env python,
     # warn the operator so they can verify their environment.
-    if [[ -n "$cmd" && "$cmd" != *"justnews-v2-py312" ]]; then
-        log_warning "Selected python ($cmd) does not appear to be the developer conda env 'justnews-v2-py312'"
+    if [[ -n "$cmd" && "$cmd" != *"${CANONICAL_ENV:-justnews-py312}" ]]; then
+        log_warning "Selected python ($cmd) does not appear to be the developer conda env '${CANONICAL_ENV:-justnews-py312}'"
         log_warning "If you intended to use the conda environment, set PYTHON_BIN in /etc/justnews/global.env or enable PATH to include conda's bin"
     fi
 }

@@ -14,8 +14,8 @@ import os
 from importlib import import_module
 from typing import Any
 
-from common.observability import get_logger
 from common.env_loader import load_global_env
+from common.observability import get_logger
 
 from ..core.connection_pool import DatabaseConnectionPool
 
@@ -195,7 +195,8 @@ def execute_transaction(
         with pool.get_connection() as conn:
             cursor = conn.cursor()
 
-            for query, params in zip(queries, params_list):
+            # Use strict zip to ensure both lists have the same length (defensive)
+            for query, params in zip(queries, params_list, strict=True):
                 cursor.execute(query, params or ())
 
             conn.commit()

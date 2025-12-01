@@ -21,6 +21,12 @@ import numpy as np
 
 from common.observability import get_logger
 
+try:
+    from .mistral_adapter import ClaimAssessment, FactCheckerMistralAdapter
+except Exception:  # pragma: no cover - optional dependency wiring
+    ClaimAssessment = None  # type: ignore
+    FactCheckerMistralAdapter = None
+
 # Configure logging
 logger = get_logger(__name__)
 
@@ -116,6 +122,8 @@ class FactCheckerEngine:
         # Cache
         self.cache = {}
         self.cache_timestamps = {}
+        self.mistral_adapter: FactCheckerMistralAdapter | None = None
+        self._mistral_cache: dict[str, ClaimAssessment] = {}
 
         # Initialize models
         self._initialize_models()
@@ -138,11 +146,7 @@ class FactCheckerEngine:
             # Initialize transformers models
             try:
                 import torch
-                from transformers import (
-                    AutoModelForSequenceClassification,
-                    AutoTokenizer,
-                    pipeline,
-                )
+                from transformers import pipeline
 
                 # Check GPU availability
                 self.gpu_available = torch.cuda.is_available() and self.config.gpu_config["enable_gpu"]
@@ -200,6 +204,8 @@ class FactCheckerEngine:
                 except Exception as e:
                     self.logger.warning(f"⚠️ TensorRT initialization failed: {e}")
 
+            self._initialize_mistral_adapter()
+
             self.logger.info("🎯 Fact Checker Engine initialization complete")
 
         except Exception as e:
@@ -223,6 +229,44 @@ class FactCheckerEngine:
         except Exception as e:
             self.logger.warning(f"⚠️ TensorRT engine initialization failed: {e}")
             self.tensorrt_engine = None
+
+    def _initialize_mistral_adapter(self) -> None:
+        """Prepare the high-accuracy Mistral adapter (lazy-loaded)."""
+        if FactCheckerMistralAdapter is None:
+            self.logger.info("Mistral adapter dependencies unavailable; continuing with legacy fact-checking stack")
+            return
+        try:
+            self.mistral_adapter = FactCheckerMistralAdapter()
+            if getattr(self.mistral_adapter, "enabled", True):
+                self.logger.info("Fact Checker Mistral adapter enabled (loaded on first use)")
+            else:
+                self.logger.info("Fact Checker Mistral adapter disabled via env variable")
+        except Exception as exc:
+            self.logger.warning(f"Failed to initialize Fact Checker Mistral adapter: {exc}")
+            self.mistral_adapter = None
+
+    def _evaluate_with_mistral(self, claim: str, context: str | None = None) -> ClaimAssessment | None:
+        """Run the Mistral adapter for the given claim when available."""
+        if not self.mistral_adapter or not claim.strip():
+            return None
+
+        cache_key = f"{hash(claim)}:{hash(context or '')}"
+        cached = self._mistral_cache.get(cache_key)
+        if cached:
+            return cached
+
+        try:
+            assessment = self.mistral_adapter.evaluate_claim(claim, context)
+        except Exception as exc:
+            self.logger.warning(f"Mistral adapter claim evaluation failed: {exc}")
+            return None
+
+        if assessment:
+            if len(self._mistral_cache) > 256:
+                self._mistral_cache.clear()
+            self._mistral_cache[cache_key] = assessment
+            return assessment
+        return None
 
     def get_model_status(self) -> dict[str, Any]:
         """Get status of all models and components."""
@@ -323,6 +367,23 @@ class FactCheckerEngine:
     def _verify_single_claim(self, claim: str, context: str | None = None) -> dict[str, Any]:
         """Verify a single claim using available models."""
         try:
+            adapter_assessment = self._evaluate_with_mistral(claim, context)
+            if adapter_assessment:
+                classification_map = {
+                    "verified": "verified",
+                    "refuted": "refuted",
+                    "unclear": "questionable",
+                }
+                classification = classification_map.get(adapter_assessment.verdict, "questionable")
+                return {
+                    "score": adapter_assessment.score,
+                    "classification": classification,
+                    "method": "mistral_adapter",
+                    "confidence": adapter_assessment.confidence,
+                    "rationale": adapter_assessment.rationale,
+                    "evidence_needed": adapter_assessment.evidence_needed,
+                }
+
             # Use DistilBERT if available
             if self.distilbert_model:
                 try:
@@ -396,7 +457,7 @@ class FactCheckerEngine:
                 try:
                     from urllib.parse import urlparse
                     domain = urlparse(source_url).netloc.lower()
-                except:
+                except Exception:
                     domain = None
 
             # Domain-based credibility assessment

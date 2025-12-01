@@ -5,9 +5,11 @@ This module provides the FastAPI application for the dashboard agent,
 including web interface, GPU monitoring, and agent management endpoints.
 """
 
+import json
 import os
 import time
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -19,8 +21,21 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from agents.common.auth_models import get_user_by_id
+from agents.dashboard.dashboard_engine import dashboard_engine
+from agents.dashboard.transparency_router import router as transparency_router
 from common.metrics import JustNewsMetrics
 from common.observability import get_logger
+
+
+def get_search_service():
+    """Runtime resolver for the Search service to make tests monkeypatch-friendly.
+
+    Avoid importing `common.semantic_search_service.get_search_service` at module
+    import time so tests can patch the implementation in `common.semantic_search_service`.
+    """
+    from common.semantic_search_service import get_search_service as _get_search_service
+    return _get_search_service()
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
@@ -46,9 +61,6 @@ except Exception:  # pragma: no cover - unified config not available in this run
     _get_global_config = None  # type: ignore[assignment]
     _get_config_manager = None  # type: ignore[assignment]
 
-from .dashboard_engine import dashboard_engine
-from .transparency_router import router as transparency_router
-
 logger = get_logger(__name__)
 
 PUBLIC_API_AVAILABLE = os.getenv("JUSTNEWS_ENABLE_PUBLIC_API", "0").lower() in {"1", "true", "yes"}
@@ -70,8 +82,11 @@ def include_public_api(app: FastAPI) -> None:
             logger.info("Public API routes registered for dashboard agent.")
         else:
             logger.warning("Public API module missing include_public_api(); skipping registration.")
-    except ModuleNotFoundError:
-        logger.warning("Public API module not found; skipping registration.")
+    except (ModuleNotFoundError, ImportError) as exc:
+        # In some test runs PUBLIC_API_AVAILABLE may be enabled but the
+        # optional public_api module may not exist or may not export the
+        # expected symbol. Treat either case as non-fatal and continue.
+        logger.warning("Public API module unavailable or invalid; skipping registration: %s", exc)
 
 
 def load_config() -> dict[str, Any]:
@@ -191,6 +206,157 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.post("/admin/set_publishing_config")
+def set_publishing_config(payload: dict, request: Request):
+    """Admin endpoint to update publishing configuration at runtime.
+
+    Example payload: {"require_draft_fact_check_pass_for_publish": true, "chief_editor_review_required": false}
+    """
+    try:
+        # Authentication strategy (supports both API key for simple envs and
+        # role-based JWT for production). If ADMIN_API_KEY is configured the
+        # request may supply it via `Authorization: Bearer <key>` or
+        # `X-Admin-API-Key: <key>`. Otherwise a JWT bearer token with admin
+        # role is required.
+        admin_key = os.environ.get("ADMIN_API_KEY")
+        auth_header = (request.headers.get("Authorization") or request.headers.get("X-Admin-API-Key") or "").strip()
+        if admin_key and auth_header:
+            # accept either a raw key header or Authorization: Bearer <key>
+            if auth_header.lower().startswith("bearer "):
+                token = auth_header.split(" ", 1)[1]
+            else:
+                token = auth_header
+            if token != admin_key:
+                raise HTTPException(status_code=401, detail="Admin API key missing or invalid")
+        else:
+            # No API key or header; try JWT bearer token
+            if not auth_header:
+                raise HTTPException(status_code=401, detail="Admin credentials required")
+            if auth_header.lower().startswith("bearer "):
+                token = auth_header.split(" ", 1)[1]
+            else:
+                token = auth_header
+            # runtime import so tests can monkeypatch the auth_models module
+            import agents.common.auth_models as auth_models
+
+            token_payload = auth_models.verify_token(token)
+            if token_payload is None:
+                raise HTTPException(status_code=401, detail="Invalid authentication token")
+            user = auth_models.get_user_by_id(token_payload.user_id)
+            if user is None or user.get("role") != auth_models.UserRole.ADMIN.value:
+                raise HTTPException(status_code=403, detail="Admin role required")
+        from config.core import get_config_manager
+        manager = get_config_manager()
+        # Set individual flags
+        if "require_draft_fact_check_pass_for_publish" in payload:
+            # dot-path
+            manager.set("agents.publishing.require_draft_fact_check_pass_for_publish", bool(payload["require_draft_fact_check_pass_for_publish"]), persist=True)
+        if "chief_editor_review_required" in payload:
+            manager.set("agents.publishing.chief_editor_review_required", bool(payload["chief_editor_review_required"]), persist=True)
+        if "synthesized_article_storage" in payload:
+            manager.set("system.persistence.synthesized_article_storage", str(payload["synthesized_article_storage"]), persist=True)
+        # Audit: persist change to disk for governance
+        try:
+            audit_dir = Path(os.environ.get("SERVICE_DIR", ".")) / "logs" / "audit"
+            audit_dir.mkdir(parents=True, exist_ok=True)
+            audit_file = audit_dir / "publishing_config_changes.jsonl"
+            audit_entry = {
+                "ts": datetime.now(UTC).isoformat(),
+                "payload": payload,
+            }
+            # If admin action was performed with a JWT, record admin identity
+            try:
+                # `payload` variable above may be set when JWT auth is used
+                if 'token_payload' in locals() and locals().get('token_payload') and hasattr(locals().get('token_payload'), 'user_id'):
+                    token_payload = locals().get('token_payload')
+                    admin_user = get_user_by_id(token_payload.user_id)
+                    if admin_user:
+                        audit_entry["admin_user"] = {
+                            "user_id": admin_user.get("user_id"),
+                            "username": admin_user.get("username"),
+                            "email": admin_user.get("email")
+                        }
+            except Exception:
+                pass
+            with open(audit_file, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(audit_entry, default=str) + "\n")
+        except Exception:
+            logger.exception("Failed to write audit log for publishing config change")
+        return {"status": "success"}
+    except HTTPException:
+        # Preserve explicit FastAPI HTTP errors (401/403 etc.) so callers and
+        # tests receive the intended status code rather than a 500.
+        raise
+    except Exception as e:
+        logger.exception("Failed to set publishing config")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.get("/admin/get_publishing_config")
+def get_publishing_config(request: Request):
+    """Return current publishing configuration values to the UI."""
+    try:
+        from config.core import get_config
+
+        # This endpoint supports either the legacy ADMIN_API_KEY (header) or
+        # an admin JWT Bearer token. If no header is passed and ADMIN_API_KEY
+        # isn't set, a valid JWT with admin role is required.
+        admin_key = os.environ.get("ADMIN_API_KEY")
+        auth_header = (request.headers.get("Authorization") or request.headers.get("X-Admin-API-Key") or "").strip()
+        if admin_key and auth_header:
+            if auth_header.lower().startswith("bearer "):
+                token = auth_header.split(" ", 1)[1]
+            else:
+                token = auth_header
+            if token != admin_key:
+                raise HTTPException(status_code=401, detail="Admin API key missing or invalid")
+        else:
+            # Jack back to JWT admin role requirement
+            if not auth_header:
+                raise HTTPException(status_code=401, detail="Admin credentials required")
+
+            # Extract the token or raw API key value when an Authorization header
+            # is present; then verify via JWT-based admin role checks.
+            if auth_header.lower().startswith("bearer "):
+                token = auth_header.split(" ", 1)[1]
+            else:
+                token = auth_header
+
+            # Use runtime import so tests can monkeypatch agents.common.auth_models
+            # and have the patched functions observed by this endpoint.
+            import agents.common.auth_models as auth_models
+
+            token_payload = auth_models.verify_token(token)
+            if token_payload is None:
+                raise HTTPException(status_code=401, detail="Invalid authentication token")
+            user = auth_models.get_user_by_id(token_payload.user_id)
+            if user is None or user.get("role") != auth_models.UserRole.ADMIN.value:
+                raise HTTPException(status_code=403, detail="Admin role required")
+
+        cfg = get_config()
+        publishing = getattr(cfg.agents, 'publishing', None)
+        require_draft = bool(getattr(publishing, 'require_draft_fact_check_pass_for_publish', False))
+        chief_required = bool(getattr(publishing, 'chief_editor_review_required', False))
+        # Persistence storage option
+        persistence = getattr(cfg, 'persistence', None)
+        storage = None
+        if persistence is not None:
+            storage = getattr(persistence, 'synthesized_article_storage', None)
+        return {
+            "status": "success",
+            "require_draft_fact_check_pass_for_publish": require_draft,
+            "chief_editor_review_required": chief_required,
+            "synthesized_article_storage": storage,
+        }
+    except HTTPException:
+        # Preserve explicit FastAPI HTTP errors (401/403 etc.) so tests and
+        # callers receive the intended status code instead of a 500.
+        raise
+    except Exception as e:
+        logger.exception("Failed to read publishing config")
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 # Mount static files for public website
 static_path = Path(__file__).parent / "static"
 static_path.mkdir(exist_ok=True)
@@ -199,10 +365,14 @@ app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 # Mount transparency and evidence audit endpoints
 app.include_router(transparency_router)
 
-# Include search API endpoints
-from .search_api import router as search_router
-
-app.include_router(search_router)
+# Include search API endpoints only when PUBLIC_API_AVAILABLE to avoid importing
+# heavy optional dependencies during tests or minimal deployments.
+if PUBLIC_API_AVAILABLE:
+    try:
+        from .search_api import router as search_router
+        app.include_router(search_router)
+    except Exception:
+        logger.warning("Search API not available; skipping search router registration.")
 
 # Include public API routes
 if PUBLIC_API_AVAILABLE:
@@ -223,7 +393,7 @@ except Exception:
 # Register reload endpoint if available
 try:
     from agents.common.reload import register_reload_endpoint
-    register_reload_endpoint(app)
+    register_reload_endpoint(app, require_admin=True)
 except Exception:
     logger.debug("reload endpoint not registered for dashboard")
 
@@ -240,7 +410,7 @@ def get_status():
         return dashboard_engine.get_agent_status()
     except Exception as e:
         logger.error(f"An error occurred while fetching agent status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/health")
@@ -262,7 +432,7 @@ def send_command(call: ToolCall):
         return dashboard_engine.send_command(call)
     except Exception as e:
         logger.error(f"An error occurred while sending a command: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # Web Interface Endpoints
@@ -378,7 +548,7 @@ def get_gpu_info():
         return dashboard_engine.gpu_monitor.get_gpu_info()
     except Exception as e:
         logger.error(f"Error in get_gpu_info endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/history")
@@ -395,7 +565,7 @@ def get_gpu_history(hours: int = 1):
         }
     except Exception as e:
         logger.error(f"Error in get_gpu_history endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/agents")
@@ -405,7 +575,7 @@ def get_agent_gpu_usage():
         return dashboard_engine.gpu_monitor.get_agent_gpu_usage()
     except Exception as e:
         logger.error(f"Error in get_agent_gpu_usage endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/config")
@@ -429,7 +599,7 @@ def update_gpu_config(new_config: dict):
         return dashboard_engine.update_gpu_config(new_config)
     except Exception as e:
         logger.error(f"Error updating GPU config: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/manager/status")
@@ -439,7 +609,7 @@ def get_gpu_manager_status():
         return dashboard_engine.get_gpu_manager_status()
     except Exception as e:
         logger.error(f"Error getting GPU manager status: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/allocations")
@@ -449,7 +619,7 @@ def get_gpu_allocations():
         return dashboard_engine.get_gpu_allocations()
     except Exception as e:
         logger.error(f"Error getting GPU allocations: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/metrics")
@@ -459,7 +629,7 @@ def get_gpu_metrics():
         return dashboard_engine.get_gpu_metrics()
     except Exception as e:
         logger.error(f"Error getting GPU metrics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 class IngestRequest(BaseModel):
@@ -477,7 +647,7 @@ def ingest_gpu_jsonl(req: IngestRequest):
         raise
     except Exception as e:
         logger.error(f"Error ingesting GPU JSONL: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/dashboard")
@@ -487,7 +657,7 @@ def get_gpu_dashboard_data():
         return dashboard_engine.get_comprehensive_gpu_dashboard_data()
     except Exception as e:
         logger.error(f"Error in get_gpu_dashboard_data endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/history/db")
@@ -497,7 +667,7 @@ def get_gpu_history_from_db(hours: int = 24, gpu_index: int | None = None, metri
         return dashboard_engine.get_gpu_history_from_db(hours, gpu_index, metric)
     except Exception as e:
         logger.error(f"Error getting GPU history from DB: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/allocations/history")
@@ -507,7 +677,7 @@ def get_allocation_history(hours: int = 24, agent_name: str | None = None):
         return dashboard_engine.get_allocation_history(hours, agent_name)
     except Exception as e:
         logger.error(f"Error getting allocation history: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/trends")
@@ -517,7 +687,7 @@ def get_performance_trends(hours: int = 24):
         return dashboard_engine.get_performance_trends(hours)
     except Exception as e:
         logger.error(f"Error getting performance trends: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/gpu/alerts")
@@ -527,7 +697,7 @@ def get_recent_alerts(limit: int = 50):
         return dashboard_engine.get_recent_alerts(limit)
     except Exception as e:
         logger.error(f"Error getting recent alerts: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/storage/stats")
@@ -537,7 +707,7 @@ def get_storage_stats():
         return dashboard_engine.get_storage_stats()
     except Exception as e:
         logger.error(f"Error getting storage stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # Orchestrator proxy helpers & endpoints
@@ -620,7 +790,7 @@ async def start_crawl(request: CrawlRequest):
         return response.json()
     except requests.RequestException as e:
         logger.error(f"Failed to start crawl: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to start crawl: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to start crawl: {str(e)}") from e
 
 
 @app.get("/api/crawl/status")
@@ -640,7 +810,7 @@ async def get_crawl_status():
 
         # Get details for each job
         job_details = {}
-        for job_id, status in jobs.items():
+        for job_id, _status in jobs.items():
             try:
                 detail_payload = {
                     "agent": "crawler",
@@ -657,7 +827,7 @@ async def get_crawl_status():
         return job_details
     except requests.RequestException as e:
         logger.error(f"Failed to get crawl status: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get crawl status: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get crawl status: {str(e)}") from e
 
 
 @app.get("/api/crawl/scheduler")
@@ -673,7 +843,7 @@ async def get_crawl_scheduler(include_runs: bool = True, history_limit: int = 20
         return snapshot
     except Exception as exc:
         logger.error(f"Failed to load crawl scheduler snapshot: {exc}")
-        raise HTTPException(status_code=500, detail=f"Failed to load crawl scheduler snapshot: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed to load crawl scheduler snapshot: {exc}") from exc
 
 
 @app.get("/api/metrics/crawler")
@@ -698,6 +868,39 @@ async def get_crawler_metrics():
             "articles_per_second": 2.5,
             "mode_usage": {"ultra_fast": 2, "ai_enhanced": 1, "generic": 2}
         }
+
+
+@app.get("/api/dashboard/pages")
+def get_dashboard_pages():
+        """Return the configured dashboard pages for dynamic menu building on the web UI."""
+        try:
+            # Prefer dashboard config in the module-level config variable
+            pages = config.get("pages") if isinstance(config, dict) else None
+            if not pages:
+                # Fallback to reading the dashboard config directly
+                path = Path(__file__).parent / "config.json"
+                if path.exists():
+                    import json
+                    with open(path, encoding="utf-8") as f:
+                        data = json.load(f)
+                        pages = data.get("pages", [])
+            # Provide a small fallback list so UI has something even if config is empty
+            fallback_pages = [
+                {"title": "Home", "path": "/"},
+                {"title": "Search", "path": "/search"},
+                {"title": "About", "path": "/about"},
+                {"title": "Crawler Status", "path": "/api/crawl/status"},
+                {"title": "Crawl Scheduler", "path": "/api/crawl/scheduler"},
+                {"title": "GPU Dashboard", "path": "/gpu/dashboard"},
+                {"title": "Transparency", "path": "/transparency/status"},
+                {"title": "Crawler Metrics", "path": "/api/metrics/crawler"},
+                {"title": "System Health", "path": "/api/health"},
+                {"title": "Crawler Control", "path": "http://localhost:8016/"}
+            ]
+            return {"status": "success", "pages": pages or fallback_pages}
+        except Exception as e:
+            logger.warning(f"Failed to read dashboard pages config: {e}")
+            return {"status": "error", "pages": [], "error": str(e)}
 
 
 @app.get("/api/metrics/analyst")
@@ -764,6 +967,37 @@ async def get_system_health():
             health[name] = False
 
     return health
+
+
+@app.get("/api/public/articles")
+def public_articles(n: int = 10):
+    """Compatibility endpoint used by the public website to fetch recent articles.
+
+    This endpoint mirrors `/api/public/search/articles` but lives at the
+    '/api/public/articles' path for a simpler, stable public website API.
+    """
+    try:
+        service = get_search_service()
+        articles = service.get_recent_articles_with_search(n_results=min(n, 50))
+        # Convert to simplified schema
+        return {
+            "total_results": len(articles),
+            "articles": [
+                {
+                    "id": a.id,
+                    "title": a.title,
+                    "summary": (a.content[:300] + "...") if len(a.content) > 300 else a.content,
+                    "source": a.source_name,
+                    "published_date": a.published_date,
+                    "sentiment_score": getattr(a, 'sentiment_score', 0),
+                    "fact_check_score": getattr(a, 'fact_check_score', None),
+                    "url": getattr(a, 'url', None)
+                } for a in articles
+            ]
+        }
+    except Exception as exc:
+        logger.exception("Public articles endpoint failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Recent articles temporarily unavailable") from exc
 
 
 def get_fallback_dashboard_html():
@@ -859,6 +1093,21 @@ def get_fallback_public_website_html():
                         <li class="nav-item"><a class="nav-link" href="#analysis">Analysis</a></li>
                         <li class="nav-item"><a class="nav-link" href="#sources">Sources</a></li>
                         <li class="nav-item"><a class="nav-link" href="#api">API</a></li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="pagesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Pages</a>
+                            <ul class="dropdown-menu" aria-labelledby="pagesDropdown">
+                                <li><a class="dropdown-item" href="/">Home</a></li>
+                                <li><a class="dropdown-item" href="/search">Search</a></li>
+                                <li><a class="dropdown-item" href="/about">About</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="/api/crawl/status">Crawler Status</a></li>
+                                <li><a class="dropdown-item" href="/api/crawl/scheduler">Crawl Scheduler</a></li>
+                                <li><a class="dropdown-item" href="/gpu/dashboard">GPU Dashboard</a></li>
+                                <li><a class="dropdown-item" href="/transparency/status">Transparency</a></li>
+                                <li><a class="dropdown-item" href="/api/metrics/crawler">Crawler Metrics</a></li>
+                                <li><a class="dropdown-item" href="/api/health">System Health</a></li>
+                            </ul>
+                        </li>
                     </ul>
                     <form class="d-flex">
                         <input class="form-control me-2" type="search" placeholder="Search news..." id="searchInput">

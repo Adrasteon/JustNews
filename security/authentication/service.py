@@ -7,7 +7,7 @@ Handles user authentication, session management, JWT tokens, and identity verifi
 import json
 import logging
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import aiofiles
@@ -113,7 +113,7 @@ class AuthenticationService:
         # Check if account is locked
         if user_data.get("locked_until"):
             locked_until = datetime.fromisoformat(user_data["locked_until"])
-            if locked_until > datetime.utcnow():
+            if locked_until > datetime.now(timezone.utc):
                 raise AuthenticationError("Account is temporarily locked")
 
         # Verify password
@@ -125,7 +125,7 @@ class AuthenticationService:
             # Lock account if too many attempts
             if user_data["login_attempts"] >= self.config.max_login_attempts:
                 lock_duration = timedelta(minutes=30)  # 30 minute lockout
-                user_data["locked_until"] = (datetime.utcnow() + lock_duration).isoformat()
+                user_data["locked_until"] = (datetime.now(timezone.utc) + lock_duration).isoformat()
 
             await self._save_user_data()
             raise AuthenticationError("Invalid username or password")
@@ -148,7 +148,7 @@ class AuthenticationService:
         Returns:
             Dict with access_token and refresh_token
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         session_id = secrets.token_urlsafe(32)
 
         # Access token payload
@@ -227,19 +227,20 @@ class AuthenticationService:
                     raise AuthenticationError("Refresh token revoked")
 
                 token_data = self._refresh_tokens[token]
-                if datetime.fromisoformat(token_data["expires_at"]) < datetime.utcnow():
+                if datetime.fromisoformat(token_data["expires_at"]) < datetime.now(timezone.utc):
                     del self._refresh_tokens[token]
                     raise AuthenticationError("Refresh token expired")
 
             return payload
 
-        except jwt.ExpiredSignatureError:
-            raise AuthenticationError("Token expired")
-        except jwt.InvalidTokenError:
-            raise AuthenticationError("Invalid token")
+        except jwt.ExpiredSignatureError as exc:
+            # Chain specific JWT exception for clearer tracebacks
+            raise AuthenticationError("Token expired") from exc
+        except jwt.InvalidTokenError as exc:
+            raise AuthenticationError("Invalid token") from exc
         except Exception as e:
             logger.error(f"Token validation error: {e}")
-            raise AuthenticationError("Token validation failed")
+            raise AuthenticationError("Token validation failed") from e
 
     async def refresh_access_token(self, refresh_token: str) -> dict[str, str]:
         """
@@ -330,7 +331,7 @@ class AuthenticationService:
             "password_hash": password_hash,
             "roles": roles or ["user"],
             "is_active": True,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "last_login": None,
             "mfa_enabled": False,
             "login_attempts": 0,
@@ -438,7 +439,7 @@ class AuthenticationService:
         """
         for user_data in self._user_store.values():
             if user_data["id"] == user_id:
-                user_data["last_login"] = datetime.utcnow().isoformat()
+                user_data["last_login"] = datetime.now(timezone.utc).isoformat()
                 await self._save_user_data()
                 break
 

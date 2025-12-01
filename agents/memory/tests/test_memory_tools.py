@@ -30,6 +30,10 @@ class FakeDBService:
     def close(self):
         pass
 
+    def ensure_conn(self):
+        """Stub method to satisfy callers that expect a database connection to be established."""
+        return True
+
 
 class FakeEmbeddingModel:
     def encode(self, content):

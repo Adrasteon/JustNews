@@ -8,7 +8,7 @@ encryption, compliance monitoring, and security event tracking.
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .authentication.service import AuthenticationService
@@ -24,29 +24,7 @@ from .monitoring.service import SecurityMonitor
 
 logger = logging.getLogger(__name__)
 class SecurityManager:
-    """
-    Central security orchestrator for JustNews
-
-    Coordinates all security operations including authentication, authorization,
-    encryption, compliance monitoring, and security event tracking.
-    """
-
-    def __init__(self, config: SecurityConfig):
-        self.config = config
-        self._initialized = False
-
-        # Initialize security services
-        self.auth_service = AuthenticationService(config)
-        self.authz_service = AuthorizationService(config)
-        self.encrypt_service = EncryptionService(config)
-        self.compliance_service = ComplianceService(config)
-        self.monitor_service = SecurityMonitor(config)
-
-        # Active sessions cache
-        self._active_sessions: dict[str, SecurityContext] = {}
-        self._session_cleanup_task: asyncio.Task | None = None
-
-        logger.info("SecurityManager initialized")
+    # Duplicate class documentation and initializer removed (keeps a single, canonical __init__)
     """
     Central security orchestrator for JustNews
 
@@ -174,7 +152,7 @@ class SecurityManager:
             # Check if account is locked
             if user_data.get("locked_until"):
                 locked_until = datetime.fromisoformat(user_data["locked_until"])
-                if locked_until > datetime.utcnow():
+                if locked_until > datetime.now(timezone.utc):
                     await self.monitor_service.log_security_event(
                         "authentication_blocked",
                         user_data["id"],
@@ -267,7 +245,8 @@ class SecurityManager:
 
         except Exception as e:
             logger.error(f"Token validation failed: {e}")
-            raise AuthenticationError("Invalid token")
+            # Chain the source exception for clarity
+            raise AuthenticationError("Invalid token") from e
 
     async def check_permission(self, user_id: int, permission: str,
                              resource: str | None = None) -> bool:
@@ -394,7 +373,7 @@ class SecurityManager:
             overall_status = "healthy"
             issues = []
 
-            for service_name, status in [
+            for _service_name, status in [
                 ("authentication", auth_status),
                 ("authorization", authz_status),
                 ("encryption", encrypt_status),
@@ -416,7 +395,7 @@ class SecurityManager:
                 },
                 "active_sessions": len(self._active_sessions),
                 "issues": issues,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
         except Exception as e:
@@ -424,7 +403,7 @@ class SecurityManager:
             return {
                 "overall_status": "error",
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
     async def _create_security_context(self, user_id: int, operation: str) -> SecurityContext:
@@ -441,7 +420,7 @@ class SecurityManager:
             roles=user_info["roles"],
             permissions=permissions,
             session_id=self._generate_session_id(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
 
     def _generate_session_id(self) -> str:
@@ -452,7 +431,7 @@ class SecurityManager:
     def _is_session_expired(self, context: SecurityContext) -> bool:
         """Check if session is expired"""
         expiration = context.timestamp + timedelta(minutes=self.config.session_timeout_minutes)
-        return datetime.utcnow() > expiration
+        return datetime.now(timezone.utc) > expiration
 
     async def _cleanup_expired_sessions(self) -> None:
         """Background task to cleanup expired sessions"""
@@ -461,7 +440,7 @@ class SecurityManager:
                 await asyncio.sleep(300)  # Check every 5 minutes
 
                 expired_sessions = []
-                now = datetime.utcnow()
+                now = datetime.now(timezone.utc)
 
                 for session_id, context in self._active_sessions.items():
                     expiration = context.timestamp + timedelta(minutes=self.config.session_timeout_minutes)

@@ -23,6 +23,7 @@ All operations include robust error handling, validation, and fallbacks.
 
 import json
 import os
+import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -39,6 +40,17 @@ from transformers import (
 )
 
 from common.observability import get_logger
+
+try:
+    from .mistral_adapter import (
+        CriticAssessment,
+        CriticMistralAdapter,
+        MODEL_ADAPTER_NAME as CRITIC_ADAPTER_NAME,
+    )
+except Exception:  # pragma: no cover - optional dependency wiring
+    CriticAssessment = None  # type: ignore
+    CriticMistralAdapter = None
+    CRITIC_ADAPTER_NAME = "mistral_critic_v1"
 
 # Configure logging
 logger = get_logger(__name__)
@@ -113,6 +125,7 @@ class CriticEngine:
 
         # Feedback collection
         self.feedback_data = []
+        self.mistral_adapter: CriticMistralAdapter | None = None
 
         # Initialize models
         self._initialize_models()
@@ -136,6 +149,8 @@ class CriticEngine:
 
             # Initialize SentenceTransformer for plagiarism detection
             self._load_sentence_transformer()
+
+            self._initialize_mistral_adapter()
 
             self.logger.info("✅ All critic models initialized successfully")
 
@@ -269,6 +284,66 @@ class CriticEngine:
             self.logger.error(f"Failed to load SentenceTransformer: {e}")
             self.models['sentence_transformer'] = None
 
+    def _initialize_mistral_adapter(self) -> None:
+        """Prepare the high-accuracy Mistral adapter for critiques."""
+        if CriticMistralAdapter is None:
+            self.logger.info("Mistral adapter dependencies unavailable; using legacy critic stack")
+            return
+        try:
+            self.mistral_adapter = CriticMistralAdapter()
+            if getattr(self.mistral_adapter, "enabled", True):
+                self.logger.info("Critic Mistral adapter enabled (lazy-loaded)")
+            else:
+                self.logger.info("Critic Mistral adapter disabled via env variable")
+        except Exception as exc:
+            self.logger.warning(f"Failed to initialize Critic Mistral adapter: {exc}")
+            self.mistral_adapter = None
+
+    def _maybe_run_mistral_review(self, content: str, url: str | None) -> ReviewResult | None:
+        if not self.mistral_adapter or not content.strip():
+            return None
+        try:
+            assessment = self.mistral_adapter.review(content, url)
+        except Exception as exc:
+            self.logger.warning(f"Critic Mistral adapter review failed: {exc}")
+            return None
+        if not assessment:
+            return None
+        return self._build_review_result_from_adapter(assessment)
+
+    def _build_review_result_from_adapter(self, assessment: CriticAssessment) -> ReviewResult:
+        plagiarism_score = max(0.0, min(1.0, 1.0 - assessment.originality))
+        recommendations = assessment.recommendations or ["No recommendations provided."]
+        versions = self._get_model_versions()
+        versions["mistral_adapter"] = CRITIC_ADAPTER_NAME
+        return ReviewResult(
+            quality_score=assessment.quality,
+            bias_score=assessment.bias,
+            factual_consistency=assessment.consistency,
+            readability_score=assessment.readability,
+            plagiarism_score=plagiarism_score,
+            overall_score=assessment.overall,
+            assessment=assessment.assessment,
+            recommendations=recommendations,
+            processing_time=0.0,
+            model_versions=versions,
+        )
+
+    def _update_processing_time(self, processing_time: float) -> None:
+        self.processing_stats["total_reviews"] += 1
+        total = self.processing_stats["total_reviews"]
+        prev_avg = self.processing_stats["average_processing_time"]
+        self.processing_stats["average_processing_time"] = (
+            (prev_avg * (total - 1)) + processing_time
+        ) / total if total else processing_time
+        if torch.cuda.is_available():
+            try:
+                max_mem = torch.cuda.max_memory_allocated()
+                if max_mem > 0:
+                    self.processing_stats["gpu_memory_usage"] = torch.cuda.memory_allocated() / max_mem
+            except Exception:
+                pass
+
     def comprehensive_review(self, content: str, url: str | None = None) -> ReviewResult:
         """
         Perform comprehensive content review using all 5 models.
@@ -297,6 +372,16 @@ class CriticEngine:
                 content = content[:self.config.max_content_length]
                 self.logger.warning(f"Content truncated to {self.config.max_content_length} characters")
 
+            adapter_result = self._maybe_run_mistral_review(content, url)
+            if adapter_result:
+                processing_time = time.time() - start_time
+                adapter_result.processing_time = processing_time
+                self._update_processing_time(processing_time)
+                self.logger.info(
+                    f"✅ Comprehensive review completed via Mistral adapter in {processing_time:.2f}s"
+                )
+                return adapter_result
+
             # Perform individual analyses
             quality_result = self._assess_quality(content)
             bias_result = self._detect_bias(content)
@@ -319,15 +404,7 @@ class CriticEngine:
 
             # Update processing stats
             processing_time = time.time() - start_time
-            self.processing_stats["total_reviews"] += 1
-            self.processing_stats["average_processing_time"] = (
-                (self.processing_stats["average_processing_time"] * (self.processing_stats["total_reviews"] - 1)) +
-                processing_time
-            ) / self.processing_stats["total_reviews"]
-
-            # Update GPU memory usage
-            if torch.cuda.is_available():
-                self.processing_stats["gpu_memory_usage"] = torch.cuda.memory_allocated() / torch.cuda.max_memory_allocated()
+            self._update_processing_time(processing_time)
 
             result = ReviewResult(
                 quality_score=quality_result.get("score", 0.0),
@@ -883,5 +960,5 @@ class CriticEngine:
         """Destructor to ensure cleanup."""
         try:
             self.cleanup()
-        except:
+        except Exception:
             pass

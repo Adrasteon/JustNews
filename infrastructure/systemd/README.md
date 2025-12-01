@@ -86,7 +86,17 @@ Global: `/etc/justnews/global.env`
 
 ```
 # absolute python for agents
-JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-v2-py312/bin/python
+JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python
+
+Helpers & validation
+--------------------
+This repository includes two helper scripts to ensure and validate that the system
+has a canonical runtime configured in `/etc/justnews/global.env`:
+
+- `infrastructure/systemd/scripts/ensure_global_python_bin.sh` — idempotent helper which will create or add `PYTHON_BIN` to `/etc/justnews/global.env` (invoked by canonical startup flow). Requires root to write `/etc/justnews/global.env`.
+- `infrastructure/scripts/validate-global-env.sh` — CI-friendly validation helper that checks for `PYTHON_BIN` in `/etc/justnews/global.env` and, as a fallback, checks the repository example `infrastructure/systemd/examples/justnews.env.example`.
+
+Use `make check-global-env` in the repository to run the validation script (CI-friendly). The canonical startup flow runs the ensure helper so hosts booted with the repository's deployment scripts will have `PYTHON_BIN` set when possible.
 
 # optional: default working directory
 SERVICE_DIR=/home/adra/JustNews
@@ -144,6 +154,18 @@ This section documents the existing helpers and how to perform simple operator c
 - Helper: `infrastructure/systemd/helpers/db-check.sh` — reads `/etc/justnews/global.env` and tries a minimal `SELECT 1;` using `mysql` or `psql`.
 - Example usage: `sudo ./infrastructure/systemd/helpers/db-check.sh` or if installed: `sudo /usr/local/bin/db-check.sh`.
 - If this fails, confirm `JUSTNEWS_DB_URL` (or `DATABASE_URL`) in `/etc/justnews/global.env` or use the native client: `mysql --user=... --host=... -p -e 'SELECT 1;'` or `psql "$DATABASE_URL" -c 'SELECT 1;'`.
+
+#### MariaDB startup probe (new)
+
+The `canonical_system_startup.sh` script includes an optional MariaDB probe which can be enabled for operator safety. The probe is designed to be lightweight and environment-driven. Relevant environment variables in `/etc/justnews/global.env`:
+
+- `MARIADB_HOST` / `MARIADB_PORT` / `MARIADB_USER` / `MARIADB_PASSWORD` / `MARIADB_DB` — used by the probe.
+- `SKIP_MARIADB_CHECK=true` — skip the probe entirely (handy for dev machines).
+- `MARIADB_CHECK_REQUIRED=true` — require a successful probe and abort startup on failure (recommended for production).
+
+The probe prefers the `mysql` client when installed. If the client is missing it will attempt a small Python check using the `PYTHON_BIN` runtime and `pymysql` (if available). If neither is available the probe will be skipped unless `MARIADB_CHECK_REQUIRED` is set.
+
+Recommendation: Install `mysql-client` on host deployments, or ensure the `PYTHON_BIN` referenced by `/etc/justnews/global.env` has `pymysql` installed to get deterministic health checks during startup.
 
 ### Chroma (vector store)
 - Config vars: `CHROMADB_HOST`, `CHROMADB_PORT` in `/etc/justnews/global.env` (defaults to `localhost:3307`).

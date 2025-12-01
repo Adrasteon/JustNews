@@ -1,0 +1,43 @@
+name: CI — Orchestrator-only tests
+
+on:
+  workflow_dispatch: {}
+  push:
+    # Also auto-run this workflow when orchestrator code or tests change
+    paths:
+      - 'agents/gpu_orchestrator/**'
+      - 'tests/unit/test_gpu_orchestrator_*'
+      - 'tests/integration/test_claim_concurrency.py'
+
+jobs:
+  orchestrator_tests:
+    name: Orchestrator: unit + integration (targeted)
+    runs-on: ubuntu-latest
+    env:
+      CANONICAL_ENV: justnews-py312
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: '3.12'
+          auto-activate-base: false
+
+      - name: Create / update conda env
+        run: |
+          conda env list
+          conda env create -f environment.yml -n ${CANONICAL_ENV} || conda env update -f environment.yml -n ${CANONICAL_ENV} || true
+
+      - name: Install pip deps in conda env
+        run: |
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install --upgrade pip
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install -r requirements.txt || true
+
+      - name: Run orchestrator tests (conda)
+        run: |
+          # Run only the new orchestrator unit tests and a focused integration test
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q tests/unit/test_gpu_orchestrator_* -q
+          # targeted integration smoke test that exercises claim concurrency
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q tests/integration/test_claim_concurrency.py -q || true

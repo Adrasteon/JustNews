@@ -20,6 +20,7 @@ from enum import Enum
 from typing import Any
 
 from common.observability import get_logger
+from agents.chief_editor.mistral_adapter import ChiefEditorMistralAdapter
 
 # Core ML Libraries with fallbacks
 try:
@@ -100,6 +101,7 @@ class ChiefEditorEngine:
     def __init__(self, config: ChiefEditorConfig | None = None):
         self.config = config or ChiefEditorConfig()
         self.device = self.config.device
+        self.mistral_adapter = ChiefEditorMistralAdapter()
 
         # Model containers
         self.pipelines = {}
@@ -424,6 +426,8 @@ class ChiefEditorEngine:
                 metadata=metadata
             )
 
+            self._attach_mistral_review(decision, content)
+
             self.log_feedback("make_editorial_decision", {
                 "priority": priority.value,
                 "stage": stage.value,
@@ -542,6 +546,18 @@ class ChiefEditorEngine:
             agent_assignments={"scout": "primary"},
             metadata=metadata or {}
         )
+
+    def _attach_mistral_review(self, decision: EditorialDecision, content: str) -> None:
+        if not getattr(self, "mistral_adapter", None):
+            return
+        try:
+            review = self.mistral_adapter.review_content(content, metadata=decision.metadata)
+        except Exception as exc:
+            logger.debug("Chief Editor Mistral adapter failed: %s", exc)
+            return
+        if review:
+            decision.metadata = dict(decision.metadata)
+            decision.metadata["mistral_review"] = review
 
     def get_model_status(self) -> dict[str, bool]:
         """Get status of all models"""

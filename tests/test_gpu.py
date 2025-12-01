@@ -274,7 +274,7 @@ class TestGPUModelOperations:
     async def test_model_loading(self):
         """Test model loading on GPU"""
         with patch('transformers.AutoModelForSequenceClassification.from_pretrained') as mock_model:
-            with patch('transformers.AutoTokenizer.from_pretrained') as mock_tokenizer:
+            with patch('transformers.AutoTokenizer.from_pretrained') as _mock_tokenizer:
                 mock_model_instance = MagicMock()
                 mock_model.return_value = mock_model_instance
                 mock_model_instance.to.return_value = mock_model_instance
@@ -293,10 +293,10 @@ class TestGPUModelOperations:
         # Setup performance monitoring
         await self.perf_tester.start_monitoring()
 
-        with patch('torch.cuda.synchronize') as mock_sync:
+        with patch('torch.cuda.synchronize') as _mock_sync:
             # Run inference operations
             inference_times = []
-            for i in range(10):
+            for _i in range(10):
                 start_time = asyncio.get_event_loop().time()
 
                 # Simulate inference

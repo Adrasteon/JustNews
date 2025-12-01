@@ -8,23 +8,35 @@ from agents.gpu_orchestrator.gpu_orchestrator_engine import GPUOrchestratorEngin
 from agents.gpu_orchestrator.worker import Worker
 
 
-requires_real_e2e = pytest.mark.skipif(os.environ.get('E2E_REAL', '') != '1', reason='Real E2E tests disabled')
+requires_real_e2e = pytest.mark.skipif(False, reason='Real E2E tests disabled')
 
 
-@requires_real_e2e
 def test_e2e_job_submission_and_processing():
     """Submit a job to the real Redis + MariaDB and verify a Worker processing pass completes the job.
 
     This test requires a running MariaDB and Redis on localhost (containerized by CI or systemd-nspawn).
     """
+    print("Starting test...")
     engine = GPUOrchestratorEngine()
 
     # configure to use local redis/mariadb (these env vars are set in the CI job)
     try:
         import redis as _redis
         engine.redis_client = _redis.Redis(host='127.0.0.1', port=6379, decode_responses=False)
-    except Exception:
+        print("Redis client created")
+    except Exception as e:
+        print(f"Redis client failed: {e}")
         pytest.skip('redis client not available')
+
+    # Initialize DB service if not already done
+    if engine.db_service is None:
+        try:
+            from database.utils.migrated_database_utils import create_database_service
+            engine.db_service = create_database_service()
+            print("DB service created")
+        except Exception as e:
+            print(f"DB service failed: {e}")
+            pytest.skip('database service not available')
 
     # deterministic lease allocation
     engine._allocate_gpu = lambda req: (True, 0)
@@ -32,6 +44,14 @@ def test_e2e_job_submission_and_processing():
     job_id = f'e2e-job-{int(time.time())}'
     res = engine.submit_job(job_id, 'inference_jobs', {'message':'hello-e2e'})
     assert res['job_id'] == job_id
+
+    # Ensure consumer group exists
+    stream = 'stream:orchestrator:inference_jobs'
+    try:
+        engine.redis_client.xgroup_create(stream, 'cg:inference', id='0', mkstream=True)
+    except Exception:
+        # group may already exist
+        pass
 
     # run a single worker pass to pick the message
     worker = Worker(engine, redis_client=engine.redis_client, agent_name='e2e-worker')

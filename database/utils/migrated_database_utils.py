@@ -52,21 +52,14 @@ def get_db_config() -> dict[str, Any]:
         Database configuration dictionary with MariaDB and ChromaDB settings
     """
     # Resolve paths
-    env_file_path = '/etc/justnews/global.env'
-    import json
+    env_file_paths = [
+        '/etc/justnews/global.env',  # System-wide location
+        os.path.join(os.path.dirname(__file__), '..', '..', 'global.env'),  # Workspace root
+    ]
     config_path = os.path.join(os.path.dirname(__file__), '..', '..', 'config', 'system_config.json')
 
-    # Prefer an explicit system_config.json when available (tests mock this path).
-    system_config = {}
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, encoding='utf-8') as f:
-                system_config = json.load(f)
-        except Exception as e:
-            logger.warning(f"Could not open system_config.json at {config_path}: {e}")
-            system_config = {}
-    else:
-        # If system config not present, allow loading a host-level env file
+    # Always try to load environment variables from global.env files first
+    for env_file_path in env_file_paths:
         if os.path.exists(env_file_path):
             logger.info(f"Loading environment variables from {env_file_path}")
             try:
@@ -76,9 +69,20 @@ def get_db_config() -> dict[str, Any]:
                         if line and not line.startswith('#') and '=' in line:
                             key, value = line.split('=', 1)
                             os.environ[key.strip()] = value.strip()
+                break  # Load from first available file
             except Exception:
                 # If global.env exists but fails to read, continue with defaults/env
                 logger.warning(f"Failed to read env file at {env_file_path}")
+    
+    # Prefer an explicit system_config.json when available (tests mock this path).
+    system_config = {}
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, encoding='utf-8') as f:
+                system_config = json.load(f)
+        except Exception as e:
+            logger.warning(f"Could not open system_config.json at {config_path}: {e}")
+            system_config = {}
 
     # Build config from system_config (if any) or defaults
     db_config = system_config.get('database', {}) if isinstance(system_config, dict) else {}
@@ -182,7 +186,7 @@ def get_db_config() -> dict[str, Any]:
         config['mariadb']['database'] = mariadb_db
     if mariadb_user and not _has_config_value(file_mariadb_config, 'user'):
         config['mariadb']['user'] = mariadb_user
-    if mariadb_password and not _has_config_value(file_mariadb_config, 'password'):
+    if mariadb_password is not None and not _has_config_value(file_mariadb_config, 'password'):
         config['mariadb']['password'] = mariadb_password
 
     embedding_model = os.environ.get('EMBEDDING_MODEL')
@@ -201,7 +205,7 @@ def get_db_config() -> dict[str, Any]:
 
     # Validate required fields
     required_mariadb = ['host', 'database', 'user', 'password']
-    missing_mariadb = [field for field in required_mariadb if not config['mariadb'].get(field)]
+    missing_mariadb = [field for field in required_mariadb if field not in config['mariadb']]
 
     if missing_mariadb:
         raise ValueError(f"Missing required MariaDB configuration fields: {missing_mariadb}")

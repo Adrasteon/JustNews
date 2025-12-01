@@ -80,3 +80,73 @@ def test_reclaimer_requeues_when_attempts_less_than_max(monkeypatch):
         # DB updated attempts (ensure an UPDATE touched orchestrator_jobs)
         executed_sqls = [c[0][0] for c in conn.cursor.return_value.execute.call_args_list]
         assert any('orchestrator_jobs' in sql for sql in executed_sqls)
+
+
+def test_reclaimer_uses_xautoclaim_when_available(monkeypatch):
+    fake_redis = MagicMock()
+
+    # Simulate xautoclaim returning one claimed message (next start id, [id, fields])
+    fields = {b'job_id': b'jx', b'payload': json.dumps({'foo': 'bar'}).encode('utf-8'), b'type': b'inference'}
+    fake_redis.xautoclaim.return_value = ['0', [b'10-0', fields]]
+    fake_redis.xadd = MagicMock()
+    fake_redis.xack = MagicMock()
+
+    # DB cursor returns attempts=1 so message will be requeued
+    cursor = MagicMock()
+    cursor.fetchone.side_effect = [(1,)]
+    conn = MagicMock()
+    conn.cursor.return_value = cursor
+
+    fake_service = MagicMock()
+    fake_service.mb_conn = conn
+
+    with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=fake_service):
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
+        engine.redis_client = fake_redis
+        engine._job_retry_max = 5
+
+        engine._reclaimer_pass()
+
+        # xautoclaim should have been called
+        assert fake_redis.xautoclaim.called
+        # Requeue should have happened and ack original should be called
+        assert fake_redis.xadd.called
+        assert fake_redis.xack.called
+
+
+def test_reclaimer_falls_back_when_xautoclaim_fails(monkeypatch):
+    fake_redis = MagicMock()
+
+    # xautoclaim exists but raises an error (server error), causing fallback
+    def raise_resp_err(*a, **k):
+        raise Exception('xautoclaim not supported by server')
+
+    fake_redis.xautoclaim.side_effect = raise_resp_err
+
+    # For fallback, xpending_range should be called and return one stale msg
+    fake_redis.xpending_range.return_value = [make_entry('f-0', 'fjob', {}, 120000)]
+    fake_redis.xrange.return_value = [make_xrange_entry('f-0', 'fjob', {'x': 1})]
+    fake_redis.xadd = MagicMock()
+    fake_redis.xack = MagicMock()
+
+    cursor = MagicMock()
+    cursor.fetchone.side_effect = [(4,)]
+    conn = MagicMock()
+    conn.cursor.return_value = cursor
+
+    fake_service = MagicMock()
+    fake_service.mb_conn = conn
+
+    with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=fake_service):
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
+        engine.redis_client = fake_redis
+        engine._job_retry_max = 5
+
+        engine._reclaimer_pass()
+
+        # xautoclaim attempted then fallback xpending_range used
+        assert fake_redis.xautoclaim.called
+        assert fake_redis.xpending_range.called
+        # DLQ path should be called because attempts >= max-1
+        assert fake_redis.xadd.called
+        assert fake_redis.xack.called

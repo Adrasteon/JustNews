@@ -91,8 +91,22 @@ class LogAggregator:
         self._batches_flushed = 0
         self._errors_count = 0
 
-        # Setup cleanup task
-        self._cleanup_task = asyncio.create_task(self._cleanup_old_logs())
+        # Cleanup task is scheduled lazily once an event loop is running
+        self._cleanup_task: asyncio.Task | None = None
+
+    def _ensure_cleanup_task(self) -> None:
+        """Start the retention cleanup loop once an event loop is available."""
+        if self._cleanup_task is not None:
+            return
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # Called outside of a running loop (e.g., during sync test setup).
+            # The cleanup loop is best-effort, so skip scheduling for now.
+            return
+
+        self._cleanup_task = loop.create_task(self._cleanup_old_logs())
 
     def _get_default_config(self) -> dict[str, Any]:
         """Get default aggregator configuration"""
@@ -127,6 +141,7 @@ class LogAggregator:
 
     async def start(self) -> None:
         """Start the log aggregator"""
+        self._ensure_cleanup_task()
         self._flush_task = asyncio.create_task(self._periodic_flush())
 
     async def shutdown(self) -> None:
@@ -148,6 +163,7 @@ class LogAggregator:
 
     async def aggregate_log(self, log_entry: LogEntry) -> None:
         """Aggregate a log entry"""
+        self._ensure_cleanup_task()
         try:
             self._log_buffer.append(log_entry)
             self._logs_processed += 1

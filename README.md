@@ -71,6 +71,15 @@ Before running any development commands, always activate the conda environment:
 conda activate ${CANONICAL_ENV:-justnews-py312}
 ```
 
+#### Environment wrapper for ad-hoc commands
+When you need the standard `global.env` variables outside the full system startup, wrap your command with `scripts/run_with_env.sh`:
+
+```bash
+scripts/run_with_env.sh python -m pytest tests/e2e/test_orchestrator_real_e2e.py -s -v
+```
+
+The helper looks for `/etc/justnews/global.env` first and falls back to the repo copy, exporting every variable (MariaDB, ChromaDB, model paths, etc.) before exec-ing your command.
+
 ### Available Commands
 ```bash
 make help          # Show all available commands
@@ -150,6 +159,16 @@ PYTHONPATH=$(pwd) PYTHON_BIN=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnew
 ```
 
 This suite covers the Stage B2 extraction pipeline, including the Trafilatura/readability/jusText cascade, raw HTML persistence, and ingestion metadata enrichment.
+
+### Live ChromaDB + ModelStore Tests
+Optional integration coverage for MariaDB + ChromaDB lives in `tests/integration/test_chromadb_live.py`. These tests expect access to the canonical ModelStore and real Chroma instance, so run them via the environment wrapper:
+
+```bash
+ENABLE_CHROMADB_LIVE_TESTS=1 scripts/run_with_env.sh \
+  python -m pytest tests/integration/test_chromadb_live.py -s -v
+```
+
+The wrapper loads `/etc/justnews/global.env` (or the repo copy) so `MODEL_STORE_ROOT`, `CHROMADB_*`, and database credentials mirror the production startup sequence.
 
 ### Project Structure
 ```

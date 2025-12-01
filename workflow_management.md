@@ -6,7 +6,17 @@ The goal: make the orchestration system durable and leader-aware, prevent GPU/ho
 
 ---
 
-## Overview — goals
+## Current Status (updated 2025-12-01)
+
+- **Core implementation**: Phases 1–6 are implemented and covered by unit, integration and e2e tests. The orchestrator now supports persistent leases, worker pool persistence, a job store (MariaDB), a reclaimer loop that handles stale Redis stream entries, and a policy enforcer for worker pools.
+
+- **Instrumentation & testing**: There are comprehensive unit tests and integration/e2e tests such as `tests/integration/test_worker_flow.py`, `tests/integration/test_orchestrator_e2e.py` and `tests/e2e/test_orchestrator_real_e2e.py` that exercise DB-backed job lifecycle, reclaimer behavior and worker flows. A Docker-based E2E PoC with `scripts/dev/docker-compose.e2e.yml` is present and used for manual and CI-driven checks.
+
+- **Production-readiness gap**: Phase 7 (operations runbook, hardened claim semantics, production-grade Redis XAUTOCLAIM/XCLAIM handling, idempotency hardening and autoscaler policies) is partially complete: many runtime components exist and are tested, but production hardening and operational runbooks need consolidation and final verification on production-like infra.
+
+- **Where code exists**: Key implementation lives under `agents/gpu_orchestrator` (`gpu_orchestrator_engine.py`, `worker.py`, `main.py`, `job_consumer.py`), DB initialization is available in `scripts/deploy/init_database.py` and `scripts/dev/db-seed/justnews_init.sql`, and runbooks/tests are under `docs/gpu_orchestrator_runbook.md` and `tests/`.
+
+---
 
 - Persistence: ensure authoritative state (leases, pools, jobs) survives orchestrator crashes and process restarts.
 - Monitoring & Observability: real-time telemetry, traces, alerts and dashboards for queue lengths, GPU utilization and worker lifecycle.
@@ -128,37 +138,92 @@ POST /leases/{token}/heartbeat — body: { "timestamp": "ts" }  -> updates last_
 POST /leases/{token}/release — returns release confirmation. On release orchestrator will also update DB and audit log.
 
 2) Worker pools
- This document specifies a resilient, persistent orchestration and resource-management plan for JustNews. It captures the design decisions, DB schemas, APIs, message bus (Redis Streams) topics & consumer patterns, safety properties, monitoring, autoscaling, and a detailed, incremental implementation and operational guide. It is maintained alongside the implementation in agents/gpu_orchestrator and the repo's integration tests.
-   "variant": "fp16"
- 
- NOTE — status summary (as of latest changes):
- - Core persistent features implemented and covered by tests: persisted leases (orchestrator_leases), persisted worker pools (worker_pools), persistent jobs (orchestrator_jobs), a reclaimer for unacked messages, and leader election / HA control. Worker process lifecycle, job claiming, lease acquisition/release, DLQ handling, and reclaimer logic are implemented in agents/gpu_orchestrator and are exercised by unit and integration tests under tests/unit and tests/integration.
- - MariaDB — persistent authoritative store for leases, worker pools, jobs, and metadata/audit logs. Schemas added in scripts/init_database.py and scripts/deploy/init_database.py. Tests exercise a conformed sqlite test harness that maps MySQL-style placeholders to sqlite for CI-friendly runs.
+
+POST /workers/pool — create worker pool
+  body: { "agent_name": "embedder", "model_id": "mistral-7b", "desired_workers": 2, "hold_seconds": 600 }
+  returns: { "pool_id": "uuid", "status": "starting" }
+
+POST /workers/pool/{pool_id}/heartbeat — body: { "timestamp": "ts" } -> updates pool last_heartbeat
+
+POST /control/evict_pool — admin API to evict pool
+  body: { "pool_id": "uuid" }
+
+3) Jobs
+
 POST /jobs/submit — body includes stable job_id, type, payload. Orchestrator persists job row and pushes into Redis stream for consumers.
- Consumer model (implemented)
- This behavior has been implemented and tested in the engine's reclaimer and worker implementation. Important implementation notes:
- 
- - The Worker (agents/gpu_orchestrator/worker.py) uses a best-effort fallback (xrange) where xreadgroup is not present, decodes fields, normalizes job ids and payloads, updates orchestrator_jobs status transitions (claimed -> done/failed), and ACKs messages.
- - The engine's `_reclaimer_pass` examines pending entries older than ORCH_CLAIM_IDLE_MS, increments attempts, requeues or moves messages to DLQ, and updates `orchestrator_jobs` accordingly. Unit tests cover both requeue and DLQ behavior.
+
+Consumer model (implemented): This behavior has been implemented and tested in the engine's reclaimer and worker implementation. Important implementation notes:
+
+- The Worker (agents/gpu_orchestrator/worker.py) uses a best-effort fallback (xrange) where xreadgroup is not present, decodes fields, normalizes job ids and payloads, updates orchestrator_jobs status transitions (claimed -> done/failed), and ACKs messages.
+
+- The engine's `_reclaimer_pass` examines pending entries older than ORCH_CLAIM_IDLE_MS, increments attempts, requeues or moves messages to DLQ, and updates `orchestrator_jobs` accordingly. Unit tests cover both requeue and DLQ behavior.
+
 4) Health & leader
- POST /leases/{token}/heartbeat — body: { "timestamp": "ts" }  -> updates last_heartbeat. Not optional. (Implemented in main endpoints & engine heartbeat_lease.)
- POST /jobs/submit — body includes stable job_id, type, payload. Orchestrator persists job row and pushes into Redis stream for consumers. (Implemented: engine.submit_job persists job and writes to Redis stream when a Redis client is available.)
- POST /control/reconcile — request immediate reconciliation (only leader will act)
- 
- NOTE: Many of the above endpoints are available in agents/gpu_orchestrator/main.py for local testing. See that module for the FastAPI routes and how the engine integrates with the web layer.
- This is implemented using MariaDB GET_LOCK-based leader election and a background reconciliation/reclaimer loop in the engine. Only the leader performs lifecycle enforcement and reclaimer passes. Leader takeover is guarded by acquiring the DB advisory lock and the engine logs leader transitions.
-POST /control/evict_pool — admin API to evict
+
+POST /leases/{token}/heartbeat — body: { "timestamp": "ts" } -> updates last_heartbeat. Not optional. (Implemented in main endpoints & engine heartbeat_lease.)
+
+POST /jobs/submit — body includes stable job_id, type, payload. Orchestrator persists job row and pushes into Redis stream for consumers. (Implemented: engine.submit_job persists job and writes to Redis stream when a Redis client is available.)
+
+POST /control/reconcile — request immediate reconciliation (only leader will act)
+
+NOTE: Many of the above endpoints are available in agents/gpu_orchestrator/main.py for local testing. See that module for the FastAPI routes and how the engine integrates with the web layer.
+
+This is implemented using MariaDB GET_LOCK-based leader election and a background reconciliation/reclaimer loop in the engine. Only the leader performs lifecycle enforcement and reclaimer passes. Leader takeover is guarded by acquiring the DB advisory lock and the engine logs leader transitions.
  ### Phase 6 — Worker + lease usage and job lifecycle (IMPLEMENTED)
  - Worker implementation completed. `agents/gpu_orchestrator/worker.py` implements a simple worker that claims messages, requests leases from the engine, updates orchestrator_jobs status transitions and releases leases.
  - Integration tests added: tests/integration/test_worker_flow.py verifies worker end-to-end behavior (claimed -> done, failure handling, lease denial behavior).
  
- ### Phase 7 — Next & operational tasks
- - Add more robust claim,XCLAIM/XAUTOCLAIM semantics for production Redis, improve idempotency guarantees and timeouts on job execution.
- - Add more monitoring & autoscaler rules based on historical metrics.
- - **TODO**: Revisit E2E testing strategy. The systemd-nspawn approach proved too complex/fragile (disabled for now). Consider Docker-based E2E tests or cloud-based test environments for real Redis/MariaDB testing — note: the Docker Compose PoC is provided for lightweight local testing and CI only; the primary/preferred MariaDB deployment runs on the host or as a managed DB instance outside Docker. See docs/dev/systemd-nspawn.md for context on why it was disabled.
- - **TODO**: Revisit E2E testing strategy. The systemd-nspawn approach proved too complex/fragile (disabled for now). We added a Docker-based E2E proof-of-concept for lightweight testing and CI only — see `scripts/dev/docker-compose.e2e.yml` and `scripts/dev/run_e2e_docker.sh` for a local PoC and `.github/workflows/e2e-docker.yml` for a manual CI job. Reminder: in normal developer and production workflows the canonical MariaDB deployment runs on the host (outside Docker) or as a managed service.
+### Phase 7 — E2E integration, production hardening & operator runbook
+
+- **Status**: Core E2E testing is present and exercised via Docker PoC tests (`tests/e2e/...`) and system-level DB initialization scripts. A draft operator runbook (`docs/gpu_orchestrator_runbook.md`) exists. However, production hardening items remain and should be prioritized before full rollout.
+
+#### Remaining/partially-implemented areas (high impact)
+
+- Robust production Redis semantics: while `xautoclaim`/`xclaim` and fallback paths are implemented, we must verify Redis version compatibility, strengthen reclaimer edge cases, and confirm performance characteristics under high churn.
+
+- Idempotency & timeouts: handlers and consumers must be hardened with explicit idempotency checks (job-level dedup, strict timeouts and cancellable work) and clearer transactional boundaries when acquiring leases + claiming jobs.
+
+- Operator runbook finalization: `docs/gpu_orchestrator_runbook.md` contains useful material, but it needs completion items and playbooks (evict/pause/drain flows, disaster recovery steps, rollback procedures, and a tested checklist for safe migrations).
+
+- Monitoring & alerting: more detailed autoscaler rules, alert tuning for reclaimer failures/infinite loops, and SLO-driven dashboards need completion.
+
+- Performance & soak testing: multi-node soak tests (real GPU workloads at production scale) are required to validate the admission controls, backpressure gates, and scaling policies.
+
+These items are blocking a safe production rollout even though the core system is feature-complete and well-tested.
 
 ---
+
+## Production readiness checklist (priority order)
+
+The following tasks should be completed and validated before we consider the orchestrator fully production-ready. Each item includes a short acceptance criteria and suggested verification steps.
+
+1) Production Redis reclaimer hardening
+  - Acceptance: `xautoclaim` / `xclaim` paths tested and stable on our fleet Redis versions; reclaimer performs safely under high-churn streams without loss or duplicate processing.
+  - Verify: run high-concurrency stream soak tests (1–24 hours) that simulate lost consumers and measure reclaimer behaviour; add targeted unit tests and e2e scenarios for edge cases.
+
+2) Idempotency and transactional safety for lease+claim
+  - Acceptance: Acquiring a lease and claiming a job are atomic w.r.t. application-level state; duplicates are detectable and safely ignored/handled.
+  - Verify: add tests for concurrent claims, duplicate job_id submissions, and race conditions; instrument audit logs for forensic checks.
+
+3) Operator runbook completion & playbooks
+  - Acceptance: playbooks for drain/evict/recover exist, are documented, and tested in a runbook validation exercise (operator walkthrough/drill).
+  - Verify: run a tabletop/drill (or staged failover) and sign-off in `docs/gpu_orchestrator_runbook.md` with remediation times and known caveats.
+
+4) Monitoring, alerts & autoscaling rules
+  - Acceptance: Effective Grafana dashboards and Prometheus alerts for reclaimer failures, job queue depth, lease saturation, and GPU OOM/pressure; autoscaler rules (KEDA/HPA) exercised and safe.
+  - Verify: smoke-test alerts using synthetic conditions and run targeted scale-up tests to confirm autoscaler response.
+
+5) Performance soak & scale tests on GPUs
+  - Acceptance: Policy enforcer + admission control remain stable under production-like load across multiple GPU nodes. No persistent queue growth or runaway OOMs over a 24–72 hour test.
+  - Verify: run `scripts/perf/` workloads and `scripts/ops/adapter_worker_pool.py` at scale; collect metrics and review for anomalies.
+
+6) Release, artifact and migration plan
+  - Acceptance: Clear upgrade/migration plan for DB/Redis schema changes and a pinned artifact publication strategy for binary wheels (bitsandbytes) used by agents.
+  - Verify: publish test release artifacts to staging bucket and perform a dry-run upgrade against staging cluster.
+
+---
+- Add more monitoring & autoscaler rules based on historical metrics.
+- Create an operator runbook: how to force-evict pools, drain cluster, recover from dead leader, and emergency steps for OOM.---
 
 ## Leader election & reconciliation
 
@@ -301,11 +366,15 @@ Deliverable: leases are persisted, survive restarts, and can be reclaimed.
 
 ---
 
-## Next steps
+## Remaining Tasks (Phase 7)
 
-- Implementation: build DB migrations and persistent adapters for `GPUOrchestratorEngine`.
-- Tests: add unit + integration tests to the repo (using the existing conftest test harness and a test DB).
-- Ops: add Redis to local dev infra for streams; add a Grafana dashboard & KEDA rules; add runbooks.
+- Add more robust claim/XCLAIM/XAUTOCLAIM semantics for production Redis; verify compatibility and performance for Redis versions in the fleet.
+- Improve idempotency guarantees and job execution timeouts; ensure acquiring a lease + job claim is safe under concurrency and retried idempotently.
+- Finalize the operator runbook with tested evacuation/drain/recovery procedures (playbook + checklists) and ensure runbook is versioned with release artifacts.
+- Complete monitoring & autoscaler configuration (KEDA rules or HPA policies) and create dashboards and alerts tuned for production behaviour (backpressure, OOM, reclaimer metrics).
+- Add large-scale soak/perf tests using real GPU workloads to validate admission control under heavy churn.
+- Add more monitoring & autoscaler rules based on historical metrics.
+- Create an operator runbook: how to force-evict pools, drain cluster, recover from dead leader, and emergency steps for OOM.
 
 ---
 

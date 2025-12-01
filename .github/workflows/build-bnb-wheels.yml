@@ -1,0 +1,60 @@
+name: Build bitsandbytes wheels
+
+on:
+  workflow_dispatch:
+  schedule:
+    # weekly rebuild / smoke test on self-hosted GPU runners
+    - cron: '0 3 * * 0'
+
+jobs:
+  build-wheels:
+    name: Build wheels for multiple CUDA targets
+    # NOTE: This workflow expects a self-hosted runner with GPUs (or a runner capable of nvidia-docker).
+    runs-on: [self-hosted, linux, gpu]
+    strategy:
+      matrix:
+        cuda_short: [122, 124, 128]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show runner info
+        run: |
+          uname -a
+          nvidia-smi || true
+
+      - name: Ensure workspace permissions
+        run: chmod -R a+rw . || true
+
+      - name: Build bitsandbytes wheel (docker if available)
+        env:
+          BNB_DOCKER: 1
+        run: |
+          set -euo pipefail
+          echo "Building for CUDA short: ${{ matrix.cuda_short }}"
+          ./.build/bitsandbytes/build_wheels.sh ${{ matrix.cuda_short }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bitsandbytes-wheel-${{ matrix.cuda_short }}
+          path: .build/bitsandbytes/dist/*.whl
+
+      - name: Publish wheel to S3 (optional)
+        if: ${{ env.PUBLISH_BNB_TO_S3 == '1' && secrets.AWS_ACCESS_KEY_ID && secrets.AWS_SECRET_ACCESS_KEY && secrets.BNB_WHEEL_BUCKET }}
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION || 'us-east-1' }}
+
+      - name: Upload wheel to S3 via AWS CLI
+        if: ${{ env.PUBLISH_BNB_TO_S3 == '1' && secrets.AWS_ACCESS_KEY_ID && secrets.AWS_SECRET_ACCESS_KEY && secrets.BNB_WHEEL_BUCKET }}
+        run: |
+          set -euo pipefail
+          echo "Publishing wheels for CUDA ${matrix.cuda_short} to s3://${{ secrets.BNB_WHEEL_BUCKET }}/.."
+          ls -l ./.build/bitsandbytes/dist || true
+          for f in ./.build/bitsandbytes/dist/*.whl; do
+            [ -f "$f" ] || continue
+            aws s3 cp "$f" s3://${{ secrets.BNB_WHEEL_BUCKET }}/wheels/${{ matrix.cuda_short }}/ --acl private
+          done

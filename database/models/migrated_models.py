@@ -332,15 +332,20 @@ class MigratedDatabaseService:
         """Connect to MariaDB and ChromaDB"""
         # MariaDB connection
         mb_config = self.config['database']['mariadb']
-        self.mb_conn = mysql.connector.connect(
-            host=mb_config['host'],
-            port=mb_config['port'],
-            user=mb_config['user'],
-            password=mb_config['password'],
-            database=mb_config['database'],
-            autocommit=False,
-            use_pure=True
-        )
+        # Build connection parameters, conditionally including password only if it's not empty
+        conn_params = {
+            'host': mb_config['host'],
+            'port': mb_config['port'],
+            'user': mb_config['user'],
+            'database': mb_config['database'],
+            'autocommit': False,
+            'use_pure': True
+        }
+        # Only include password if it's not empty (for passwordless authentication)
+        if mb_config.get('password'):
+            conn_params['password'] = mb_config['password']
+        
+        self.mb_conn = mysql.connector.connect(**conn_params)
         logger.info("Connected to MariaDB")
         # Persist mariadb config for reconnect attempts
         self._mariadb_config = mb_config
@@ -555,11 +560,13 @@ class MigratedDatabaseService:
                         'host': mb_cfg.get('host'),
                         'port': int(mb_cfg.get('port')) if mb_cfg.get('port') else None,
                         'user': mb_cfg.get('user'),
-                        'password': mb_cfg.get('password'),
                         'database': mb_cfg.get('database'),
                         'autocommit': False,
                         'use_pure': True
                     }
+                    # Only include password if it's not empty (for passwordless authentication)
+                    if mb_cfg.get('password'):
+                        params['password'] = mb_cfg.get('password')
                     # Remove None values
                     params = {k: v for k, v in params.items() if v is not None}
                     self.mb_conn = mysql.connector.connect(**params)

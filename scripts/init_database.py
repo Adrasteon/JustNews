@@ -242,6 +242,10 @@ def main():
     logger.info("🚀 Starting JustNews Database Initialization")
     logger.info("=" * 60)
 
+    # Load environment variables from global.env
+    from common.env_loader import load_global_env
+    load_global_env(logger=logger)
+
     # Check environment variables
     required_env_vars = [
         "MARIADB_HOST",
@@ -250,7 +254,7 @@ def main():
         "MARIADB_PASSWORD"
     ]
 
-    missing_vars = [var for var in required_env_vars if not os.environ.get(var)]
+    missing_vars = [var for var in required_env_vars if var not in os.environ]
     if missing_vars:
         logger.error(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
         logger.error("Please set these environment variables before running this script:")

@@ -33,6 +33,12 @@ Behavioral guidelines for assistants
 - Prefer writing clear, readable code with early returns and small helper functions.
 - Add or update `docs/` for any non-trivial change in behavior, API surface, or operational processes.
 
+Package installation policy
+---------------------------
+- When performing package installs for this project, prefer `conda install` or `mamba install` targeting the canonical conda environment (`${CANONICAL_ENV:-justnews-py312}`) and `conda-forge`/official channels.
+- Only use `pip` as a last resort when a required package or specific wheel is not available via conda; if `pip` is used, document the reason and pin the exact version/wheel in the PR and add an update to `environment.yml` where appropriate.
+- Avoid modifying the runtime environment using `pip` in CI or system-wide installation steps; prefer conda operations so environments remain reproducible. If `pip` must be used in CI, ensure a clear justification is recorded in the change and validations are added.
+
 Testing & CI
 -----------
 - Assistants should add tests or update tests when changing functionality. If the change has unavoidable infra dependencies (e.g., Redis, MariaDB, Chroma), gate tests behind environment flags and document how to run them locally.

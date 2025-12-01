@@ -80,12 +80,12 @@ jobs:
           conda env create -f environment.yml -n ${CANONICAL_ENV} || conda env update -f environment.yml -n ${CANONICAL_ENV} || true
       - name: Install dependencies (conda)
         run: |
-          conda run -n ${CANONICAL_ENV} python -m pip install --upgrade pip
-          conda run -n ${CANONICAL_ENV} python -m pip install -r requirements.txt || true
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install --upgrade pip
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install -r requirements.txt || true
 
       - name: Run tests (conda)
         run: |
-          conda run -n ${CANONICAL_ENV} pytest -q
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q
 
   integration_smoke:
     name: "Integration smoke: synthesize -> publish -> public API (mocked)"
@@ -109,12 +109,12 @@ jobs:
           conda env create -f environment.yml -n ${CANONICAL_ENV} || conda env update -f environment.yml -n ${CANONICAL_ENV} || true
       - name: Install dependencies (conda)
         run: |
-          conda run -n ${CANONICAL_ENV} python -m pip install --upgrade pip
-          conda run -n ${CANONICAL_ENV} python -m pip install -r requirements.txt || true
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install --upgrade pip
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install -r requirements.txt || true
 
       - name: Run integration smoke test (conda)
         run: |
-          conda run -n ${CANONICAL_ENV} pytest -q tests/integration/test_full_pipeline_5_variations.py::test_full_pipeline_5_variations
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q tests/integration/test_full_pipeline_5_variations.py::test_full_pipeline_5_variations
 
   lint:
     runs-on: ubuntu-latest

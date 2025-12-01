@@ -43,7 +43,14 @@ CONDA := $(shell command -v conda 2>/dev/null || echo)
 ifeq ($(CONDA),)
 RUN_PY := $(PYTHON)
 else
+# If the run wrapper exists prefer to load global.env before running conda-run;
+# this makes local & CI test runs consistently pick up the canonical env vars.
+RUN_WRAPPER := $(shell [ -x ./scripts/run_with_env.sh ] && printf "./scripts/run_with_env.sh" || printf "")
+ifeq ($(RUN_WRAPPER),)
 RUN_PY := conda run -n $(CONDA_ENV) $(PYTHON)
+else
+RUN_PY := $(RUN_WRAPPER) conda run -n $(CONDA_ENV) $(PYTHON)
+endif
 endif
 
 # Directories

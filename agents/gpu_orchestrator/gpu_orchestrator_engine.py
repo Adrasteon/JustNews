@@ -31,7 +31,7 @@ except ModuleNotFoundError:  # pragma: no cover - exercised implicitly when NVML
     pynvml = None  # type: ignore
     _HAS_PYNVML = False
 from fastapi import HTTPException
-from prometheus_client import Counter, Gauge
+from prometheus_client import Counter, Gauge, Histogram
 
 from common.metrics import JustNewsMetrics
 from database.utils.migrated_database_utils import create_database_service
@@ -192,40 +192,58 @@ class GPUOrchestratorEngine:
             registry=self.metrics.registry
         )
 
-        # Worker pool metrics
-        self.worker_pools_gauge = Gauge(
-            'gpu_orchestrator_worker_pools_total',
-            'Number of active worker pools',
-            ['agent', 'agent_display_name'],
+        # Job queue metrics
+        self.stream_length_gauge = Gauge(
+            'gpu_orchestrator_stream_length',
+            'Number of messages in Redis stream',
+            ['stream'],
             registry=self.metrics.registry
         )
 
-        self.worker_pool_workers_gauge = Gauge(
-            'gpu_orchestrator_worker_pool_workers',
-            'Number of workers in a pool',
-            ['pool_id'],
+        self.pending_jobs_gauge = Gauge(
+            'gpu_orchestrator_pending_jobs',
+            'Number of pending jobs in consumer group',
+            ['stream', 'group'],
             registry=self.metrics.registry
         )
 
-        self.worker_pool_running_workers_gauge = Gauge(
-            'gpu_orchestrator_worker_pool_running_workers',
-            'Number of running worker processes in a pool',
-            ['pool_id'],
+        self.job_processing_duration_histogram = Histogram(
+            'gpu_orchestrator_job_processing_duration_seconds',
+            'Time taken to process jobs',
+            ['job_type'],
             registry=self.metrics.registry
         )
 
-        self.worker_pool_started_timestamp = Gauge(
-            'gpu_orchestrator_worker_pool_started_ts',
-            'Start timestamp of a worker pool (epoch seconds)',
-            ['pool_id'],
+        self.job_retry_counter = Counter(
+            'gpu_orchestrator_job_retries_total',
+            'Total number of job retries',
+            ['job_type'],
             registry=self.metrics.registry
         )
 
-        self.worker_pool_evictions_counter = Counter(
-            'gpu_orchestrator_worker_pool_evictions_total',
-            'Total number of pool evictions performed by lifecycle manager',
-            ['reason'],
-            registry=self.metrics.registry
+        # Reclaimer metrics
+        self.reclaimer_runs = Counter(
+            'gpu_orchestrator_reclaimer_runs_total',
+            'Total number of reclaimer passes executed',
+            registry=self.metrics.registry,
+        )
+
+        self.reclaimer_errors = Counter(
+            'gpu_orchestrator_reclaimer_errors_total',
+            'Total number of errors observed during reclaimer passes',
+            registry=self.metrics.registry,
+        )
+
+        self.reclaimer_requeued = Counter(
+            'gpu_orchestrator_reclaimer_requeued_total',
+            'Total number of messages requeued by the reclaimer',
+            registry=self.metrics.registry,
+        )
+
+        self.reclaimer_dlq = Counter(
+            'gpu_orchestrator_reclaimer_dlq_total',
+            'Total number of messages moved to DLQ by the reclaimer',
+            registry=self.metrics.registry,
         )
 
     def initialize_nvml(self) -> None:
@@ -477,6 +495,120 @@ class GPUOrchestratorEngine:
             self.logger.debug(f"Failed to persist lease to DB (non-fatal): {e}")
         return {"granted": True, **allocation}
 
+    def claim_job_and_lease(self, job_id: str, agent: str, min_memory_mb: int | None = 0) -> dict[str, Any]:
+        """Atomically mark a job as claimed and create a GPU lease in the DB.
+
+        This method uses a DB transaction and SELECT ... FOR UPDATE semantics to
+        avoid races between multiple consumers trying to claim the same job.
+
+        Returns a dict: {claimed: bool, reason: str? , token: str?, allocation: dict?}
+        """
+        if SAFE_MODE:
+            return {"claimed": False, "reason": "SAFE_MODE"}
+
+        if not getattr(self, 'db_service', None):
+            # Fall back to non-transactional path if no DB available
+            # mark the job claimed (best-effort) and obtain a lease using existing method
+            try:
+                cursor = None
+                if self.db_service:
+                    cursor = self.db_service.mb_conn.cursor()
+                    cursor.execute('SELECT status FROM orchestrator_jobs WHERE job_id=%s', (job_id,))
+                    r = cursor.fetchone()
+                    cursor.close()
+                    if not r or r[0] != 'pending':
+                        return {"claimed": False, "reason": "not_pending_or_missing", "status": (r[0] if r else None)}
+                # Proceed with updating and leasing best-effort
+                if self.db_service:
+                    cursor = self.db_service.mb_conn.cursor()
+                    cursor.execute('UPDATE orchestrator_jobs SET status=%s, updated_at=NOW() WHERE job_id=%s', ('claimed', job_id))
+                    self.db_service.mb_conn.commit()
+                    cursor.close()
+            except Exception:
+                # Best effort — continue to attempt a lease and return accordingly
+                pass
+
+            lease = self.lease_gpu(agent, min_memory_mb)
+            if lease.get('granted'):
+                return {"claimed": True, "token": lease.get('token'), "allocation": lease}
+            return {"claimed": False, "reason": "lease_failed"}
+
+        # DB backed path: do SELECT FOR UPDATE and perform update + insert within a single transaction
+        conn = self.db_service.mb_conn
+        try:
+            cursor = conn.cursor()
+            # begin transaction
+            cursor.execute('START TRANSACTION')
+            try:
+                cursor.execute('SELECT status FROM orchestrator_jobs WHERE job_id=%s FOR UPDATE', (job_id,))
+                r = cursor.fetchone()
+                if not r:
+                    cursor.execute('ROLLBACK')
+                    cursor.close()
+                    return {"claimed": False, "reason": "not_found"}
+
+                status = r[0]
+                if status != 'pending':
+                    cursor.execute('ROLLBACK')
+                    cursor.close()
+                    return {"claimed": False, "reason": "not_pending", "status": status}
+            except Exception:
+                # Some DB backends (notably sqlite in our tests) don't support SELECT ... FOR UPDATE.
+                # Fall back to an optimistic update: attempt to atomically update only when status is pending.
+                try:
+                    updated = cursor.execute('UPDATE orchestrator_jobs SET status=%s, updated_at=NOW() WHERE job_id=%s AND status=%s', ('claimed', job_id, 'pending'))
+                    # cursor.rowcount may be available; check it if supported
+                    rowcount = getattr(cursor, 'rowcount', None)
+                    if rowcount is not None and rowcount == 0:
+                        conn.rollback()
+                        cursor.close()
+                        return {"claimed": False, "reason": "not_pending_or_missing"}
+                    # we have claimed it; continue to insert a lease
+                except Exception as e:
+                    cursor.execute('ROLLBACK')
+                    cursor.close()
+                    return {"claimed": False, "reason": "not_locked", "error": str(e)}
+
+            # mark job claimed
+            cursor.execute('UPDATE orchestrator_jobs SET status=%s, updated_at=NOW() WHERE job_id=%s', ('claimed', job_id))
+
+            # allocate a GPU SYNTHETICALLY (call internal allocator that doesn't touch DB)
+            success, gpu_index = self._allocate_gpu({"min_memory_mb": min_memory_mb})
+            token = str(uuid.uuid4())
+            ttl = int(os.environ.get('GPU_ORCHESTRATOR_LEASE_TTL', '3600'))
+            allocation = {
+                "agent": agent,
+                "gpu": gpu_index if success else 'cpu',
+                "token": token,
+                "timestamp": time.time(),
+            }
+
+            # persist lease row (co-located in same transaction)
+            cursor.execute(
+                "INSERT INTO orchestrator_leases (token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata) VALUES (%s,%s,%s,%s,NOW(),DATE_ADD(NOW(), INTERVAL %s SECOND),NOW(),%s)",
+                (token, agent, gpu_index if success else None, 'gpu' if success else 'cpu', ttl, json.dumps(allocation))
+            )
+
+            # commit transaction
+            conn.commit()
+            cursor.close()
+
+            # update in-memory allocations
+            ALLOCATIONS[token] = allocation
+
+            return {"claimed": True, "token": token, "allocation": allocation}
+        except Exception as e:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            try:
+                cursor.close()
+            except Exception:
+                pass
+            self.logger.debug(f'claim_job_and_lease failed: {e}')
+            return {"claimed": False, "reason": "internal_error", "error": str(e)}
+
     def release_gpu_lease(self, token: str) -> dict[str, Any]:
         """Release a GPU lease."""
         self._purge_expired_leases()
@@ -686,6 +818,12 @@ class GPUOrchestratorEngine:
                     self.worker_pool_running_workers_gauge.labels(pool_id=pid).set(running)
                     if meta.get('started_at'):
                         self.worker_pool_started_timestamp.labels(pool_id=pid).set(meta.get('started_at'))
+
+                # Update stream metrics
+                self._update_stream_metrics()
+
+                # Run autoscaling logic
+                self._run_autoscaler()
 
             except Exception:
                 pass
@@ -1407,21 +1545,57 @@ class GPUOrchestratorEngine:
             self.logger.error(f"Failed to load MPS allocation config: {e}")
             return {"error": str(e)}
 
-    def get_metrics_text(self) -> str:
-        """Get Prometheus metrics as text."""
-        from prometheus_client import generate_latest
-        return generate_latest(self.metrics.registry).decode('utf-8')
+    def _run_autoscaler(self):
+        """Run autoscaling logic based on historical metrics and current load."""
+        try:
+            # Get current pending jobs across all streams
+            total_pending = 0
+            streams = [
+                os.environ.get('ORCH_STREAM_PREFIX', 'stream:orchestrator:') + 'inference_jobs',
+                os.environ.get('ORCH_STREAM_PREFIX', 'stream:orchestrator:') + 'preloads'
+            ]
+
+            for stream in streams:
+                try:
+                    pending_info = self.redis_client.xpending(stream, 'cg:inference')
+                    if pending_info and len(pending_info) > 0:
+                        pending_count = pending_info[0].get('pending', 0) if isinstance(pending_info[0], dict) else pending_info[0]
+                        total_pending += pending_count
+                except Exception:
+                    pass
+
+            # Autoscaling rules based on pending jobs
+            policy = self.get_pool_policy()
+            current_total_workers = sum(p.get('num_workers', 0) for p in self._WORKER_POOLS.values())
+            max_workers = policy.get('max_total_workers', 8)
+
+            # Scale up if pending jobs > 50 and we have capacity
+            if total_pending > 50 and current_total_workers < max_workers:
+                self.logger.info(f'Autoscaler: High pending jobs ({total_pending}), considering scale up')
+                # For now, just log - production would implement actual scaling
+                # TODO: Implement intelligent pool scaling based on job types and model requirements
+
+            # Scale down if pending jobs < 5 and we have excess capacity
+            elif total_pending < 5 and current_total_workers > policy.get('min_warm_workers_per_pool', 0):
+                self.logger.info(f'Autoscaler: Low pending jobs ({total_pending}), considering scale down')
+                # TODO: Implement pool consolidation
+
+            # Monitor processing times (from histogram if available)
+            # TODO: Add rules based on job_processing_duration_histogram percentiles
+
+        except Exception as e:
+            self.logger.debug(f'Autoscaler error: {e}')
 
     # Job queue helpers
-    def submit_job(self, job_id: str, job_type: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def submit_job(self, job_id: str, job_type: str, payload: dict[str, Any], timeout_seconds: int | None = None) -> dict[str, Any]:
         """Persist a job row and push into Redis stream (fallback to DB-only if Redis unavailable)."""
         try:
             # Persist job to DB if available
             if self.db_service:
                 cursor = self.db_service.mb_conn.cursor()
                 cursor.execute(
-                    "INSERT INTO orchestrator_jobs (job_id, type, payload, status, attempts, created_at) VALUES (%s,%s,%s,%s,%s,NOW())",
-                    (job_id, job_type, json.dumps(payload), 'pending', 0)
+                    "INSERT INTO orchestrator_jobs (job_id, type, payload, status, attempts, created_at, timeout_seconds) VALUES (%s,%s,%s,%s,%s,NOW(),%s)",
+                    (job_id, job_type, json.dumps(payload), 'pending', 0, timeout_seconds)
                 )
                 self.db_service.mb_conn.commit()
                 cursor.close()
@@ -1432,7 +1606,10 @@ class GPUOrchestratorEngine:
                     # stream name is type-based, fallback to generic inference_jobs
                     stream = os.environ.get('ORCH_STREAM_PREFIX', 'stream:orchestrator:') + (job_type or 'inference_jobs')
                     # store payload as JSON string under 'payload'
-                    self.redis_client.xadd(stream, {'job_id': job_id, 'type': job_type, 'payload': json.dumps(payload)})
+                    fields = {'job_id': job_id, 'type': job_type, 'payload': json.dumps(payload)}
+                    if timeout_seconds is not None:
+                        fields['timeout_seconds'] = str(timeout_seconds)
+                    self.redis_client.xadd(stream, fields)
                 except Exception:
                     # Non-fatal; keep job persisted in DB
                     self.logger.debug('Failed to write job to Redis stream (non-fatal)')
@@ -1447,7 +1624,7 @@ class GPUOrchestratorEngine:
         try:
             if self.db_service:
                 cursor = self.db_service.mb_conn.cursor(dictionary=True)
-                cursor.execute("SELECT job_id, type, payload, status, attempts, created_at, updated_at, last_error FROM orchestrator_jobs WHERE job_id=%s", (job_id,))
+                cursor.execute("SELECT job_id, type, payload, status, attempts, created_at, updated_at, last_error, timeout_seconds FROM orchestrator_jobs WHERE job_id=%s", (job_id,))
                 row = cursor.fetchone()
                 cursor.close()
                 if row:
@@ -1464,13 +1641,23 @@ class GPUOrchestratorEngine:
             return None
 
     def _reclaimer_pass(self):
-        """Single pass over orchestrator streams to reclaim or move stale pending messages.
+        """Single pass over orchestrator streams to reclaim or move stale pending messages using XAUTOCLAIM.
 
-        For each stream we examine pending messages older than _claim_idle_ms, increment attempts
-        in the job table, and either requeue them or send to DLQ if attempts exceed threshold.
+        For each stream we use XAUTOCLAIM to atomically claim messages that have been idle
+        longer than _claim_idle_ms, increment attempts in the job table, and either requeue them
+        or send to DLQ if attempts exceed threshold.
         """
         if not self.redis_client:
             return
+
+        # Probe for xautoclaim support once and cache the result. Some redis clients
+        # or server versions may not implement xautoclaim; fall back when missing.
+        if getattr(self, '_redis_supports_xautoclaim', None) is None:
+            try:
+                self._redis_supports_xautoclaim = hasattr(self.redis_client, 'xautoclaim')
+            except Exception:
+                # Be conservative and disable xautoclaim if probing fails
+                self._redis_supports_xautoclaim = False
 
         streams = [
             os.environ.get('ORCH_STREAM_PREFIX', 'stream:orchestrator:') + 'inference_jobs',
@@ -1479,112 +1666,265 @@ class GPUOrchestratorEngine:
 
         for s in streams:
             try:
-                # xpending_range returns list of pending entries
-                # we use a small window per pass for risk mitigation
-                pending = []
-                try:
-                    # xpending_range exists on newer redis clients; fall back to xpending if needed
-                    pending = self.redis_client.xpending_range(s, 'cg:inference', '-', '+', count=100)
-                except Exception:
-                    # Not supported: try using XPENDING summary -> get count and range via XINFO/PENDING not ideal
+                # Use XAUTOCLAIM for atomic claiming of idle messages
+                # XAUTOCLAIM returns [next_start_id, [id1, fields1, id2, fields2, ...]]
+                start_id = '0'  # Start from the beginning
+                count = 10  # Process in batches to avoid blocking too long
+                reclaimer_consumer = 'reclaimer'
+
+                while True:
                     try:
-                        resp = self.redis_client.xpending(s, 'cg:inference')
-                        # can't parse easily; skip in this fallback
-                        pending = []
-                    except Exception:
-                        pending = []
+                        # Try XAUTOCLAIM first (Redis 6.2+) if supported by client/server
+                        if self._redis_supports_xautoclaim is False:
+                            raise AttributeError('xautoclaim not supported')
 
-                for entry in pending:
-                    try:
-                        # entry is (message_id, consumer, idle, delivered_count)
-                        msg_id = entry[0]
-                        idle = int(entry[2]) if len(entry) > 2 else 0
-                        if idle < self._claim_idle_ms:
-                            continue
+                        result = None
+                        try:
+                            result = self.redis_client.xautoclaim(s, 'cg:inference', reclaimer_consumer, self._claim_idle_ms, start_id, count=count)
+                        except AttributeError:
+                            # client does not implement xautoclaim
+                            raise
+                        except Exception as e:
+                            # If Redis returned an error, log and fall back once
+                            self.logger.debug(f'Redis xautoclaim failed (will fallback): {e}')
+                            self._redis_supports_xautoclaim = False
+                            raise
+                        if not result or len(result) < 2:
+                            break  # No more messages or not supported
 
-                        # read full message so we can inspect job_id and payload
-                        entries = self.redis_client.xrange(s, min=msg_id, max=msg_id)
-                        if not entries:
-                            continue
-                        _, fields = entries[0]
-                        job_id = None
-                        payload = None
-                        if b'job_id' in fields or 'job_id' in fields:
-                            job_id = fields.get(b'job_id') or fields.get('job_id')
-                            if isinstance(job_id, bytes):
-                                job_id = job_id.decode('utf-8')
-                        pld = fields.get(b'payload') or fields.get('payload')
-                        if pld:
-                            if isinstance(pld, bytes):
+                        next_start_id, claimed_messages = result[0], result[1]
+
+                        # claimed_messages is a list of [id, fields, id, fields, ...]
+                        for i in range(0, len(claimed_messages), 2):
+                            msg_id = claimed_messages[i]
+                            fields = claimed_messages[i + 1] if i + 1 < len(claimed_messages) else {}
+
+                            # Extract job_id, payload, and timeout
+                            job_id = None
+                            payload = None
+                            timeout_seconds = None
+                            if b'job_id' in fields or 'job_id' in fields:
+                                job_id = fields.get(b'job_id') or fields.get('job_id')
+                                if isinstance(job_id, bytes):
+                                    job_id = job_id.decode('utf-8')
+                            pld = fields.get(b'payload') or fields.get('payload')
+                            if pld:
+                                if isinstance(pld, bytes):
+                                    try:
+                                        payload = json.loads(pld.decode('utf-8'))
+                                    except Exception:
+                                        payload = pld.decode('utf-8')
+                                else:
+                                    try:
+                                        payload = json.loads(pld)
+                                    except Exception:
+                                        payload = pld
+                            timeout_val = fields.get(b'timeout_seconds') or fields.get('timeout_seconds')
+                            if timeout_val:
                                 try:
-                                    payload = json.loads(pld.decode('utf-8'))
+                                    timeout_seconds = int(timeout_val) if isinstance(timeout_val, (str, bytes)) else timeout_val
                                 except Exception:
-                                    payload = pld.decode('utf-8')
-                            else:
-                                try:
-                                    payload = json.loads(pld)
-                                except Exception:
-                                    payload = pld
+                                    timeout_seconds = None
 
-                        # fetch DB attempts (best-effort)
-                        attempts = 0
-                        if job_id and self.db_service:
-                            try:
-                                cursor = self.db_service.mb_conn.cursor()
-                                cursor.execute('SELECT attempts FROM orchestrator_jobs WHERE job_id=%s', (job_id,))
-                                r = cursor.fetchone()
-                                cursor.close()
-                                if r:
-                                    attempts = int(r[0])
-                            except Exception:
-                                attempts = attempts
-
-                        attempts += 1
-
-                        if job_id and self.db_service:
-                            try:
-                                cursor = self.db_service.mb_conn.cursor()
-                                cursor.execute('UPDATE orchestrator_jobs SET attempts=%s, updated_at=NOW() WHERE job_id=%s', (attempts, job_id))
-                                self.db_service.mb_conn.commit()
-                                cursor.close()
-                            except Exception:
-                                pass
-
-                        if attempts >= self._job_retry_max:
-                            # move to DLQ
-                            dlq = s + ':dlq'
-                            try:
-                                self.redis_client.xadd(dlq, {'job_id': job_id or '', 'payload': json.dumps(payload) if payload is not None else ''})
-                            except Exception:
-                                pass
-                            # mark job dead-lettered in DB
+                            # Fetch and increment attempts from DB
+                            attempts = 0
                             if job_id and self.db_service:
                                 try:
                                     cursor = self.db_service.mb_conn.cursor()
-                                    cursor.execute('UPDATE orchestrator_jobs SET status=%s, last_error=%s, updated_at=NOW() WHERE job_id=%s', ('dead_letter', 'max_attempts_exceeded', job_id))
+                                    cursor.execute('SELECT attempts FROM orchestrator_jobs WHERE job_id=%s', (job_id,))
+                                    r = cursor.fetchone()
+                                    cursor.close()
+                                    if r:
+                                        attempts = int(r[0])
+                                except Exception:
+                                    attempts = 0
+
+                            attempts += 1
+
+                            # Update attempts in DB
+                            if job_id and self.db_service:
+                                try:
+                                    cursor = self.db_service.mb_conn.cursor()
+                                    cursor.execute('UPDATE orchestrator_jobs SET attempts=%s, updated_at=NOW() WHERE job_id=%s', (attempts, job_id))
                                     self.db_service.mb_conn.commit()
                                     cursor.close()
                                 except Exception:
                                     pass
-                            # ack original message
-                            try:
-                                self.redis_client.xack(s, 'cg:inference', msg_id)
-                            except Exception:
-                                pass
-                        else:
-                            # requeue message as a new message for processing
-                            try:
-                                self.redis_client.xadd(s, {'job_id': job_id or '', 'type': fields.get(b'type') or fields.get('type') or '', 'payload': json.dumps(payload) if payload is not None else ''})
-                                self.redis_client.xack(s, 'cg:inference', msg_id)
-                            except Exception:
-                                pass
 
-                    except Exception:
-                        # protect loop from bad entries
-                        pass
+                            if attempts >= self._job_retry_max:
+                                # Move to DLQ
+                                dlq = s + ':dlq'
+                                try:
+                                    dlq_fields = {'job_id': job_id or '', 'payload': json.dumps(payload) if payload is not None else ''}
+                                    if timeout_seconds is not None:
+                                        dlq_fields['timeout_seconds'] = str(timeout_seconds)
+                                    self.redis_client.xadd(dlq, dlq_fields)
+                                except Exception:
+                                    pass
+                                # Mark job dead-lettered in DB
+                                if job_id and self.db_service:
+                                    try:
+                                        cursor = self.db_service.mb_conn.cursor()
+                                        cursor.execute('UPDATE orchestrator_jobs SET status=%s, last_error=%s, updated_at=NOW() WHERE job_id=%s', ('dead_letter', 'max_attempts_exceeded', job_id))
+                                        self.db_service.mb_conn.commit()
+                                        cursor.close()
+                                    except Exception:
+                                        pass
+                                # ACK the claimed message
+                                try:
+                                    self.redis_client.xack(s, 'cg:inference', msg_id)
+                                except Exception:
+                                    pass
+                                self.reclaimer_dlq.inc()
+                            else:
+                                # Requeue message as a new message for processing
+                                try:
+                                    requeue_fields = {'job_id': job_id or '', 'type': fields.get(b'type') or fields.get('type') or '', 'payload': json.dumps(payload) if payload is not None else ''}
+                                    if timeout_seconds is not None:
+                                        requeue_fields['timeout_seconds'] = str(timeout_seconds)
+                                    self.redis_client.xadd(s, requeue_fields)
+                                    self.redis_client.xack(s, 'cg:inference', msg_id)
+                                except Exception:
+                                    pass
+                                self.reclaimer_requeued.inc()
+
+                        start_id = next_start_id
+                        if start_id == '0':
+                            break  # Finished processing all
+
+                    except AttributeError:
+                        # XAUTOCLAIM not available (client or server) — fallback to manual reclaiming
+                        self.logger.debug('XAUTOCLAIM not available (client/server). Falling back to manual reclaiming')
+                        self._redis_supports_xautoclaim = False
+                        self._fallback_reclaimer_pass(s)
+                        break
+                    except Exception as e:
+                        # Don't let a transient redis or parsing error kill the reclaimer loop.
+                        self.logger.debug(f'Error during XAUTOCLAIM pass: {e}')
+                        self.reclaimer_errors.inc()
+                        # Fall back to the safer manual path to avoid missing messages
+                        try:
+                            self._fallback_reclaimer_pass(s)
+                        except Exception:
+                            self.logger.debug('Fallback reclaimer also failed')
+                        break
+
+            except Exception as e:
+                # Log and increment error metric — continue to next stream
+                self.logger.debug(f'Error iterating stream {s}: {e}')
+                self.reclaimer_errors.inc()
+                continue
+
+        # Count successful pass
+        self.reclaimer_runs.inc()
+
+    def _fallback_reclaimer_pass(self, stream: str):
+        """Fallback reclaimer using xpending_range for older Redis versions."""
+        try:
+            pending = []
+            try:
+                pending = self.redis_client.xpending_range(stream, 'cg:inference', '-', '+', count=100)
             except Exception:
-                # ignore stream errors, continue next stream
-                pass
+                return
+
+            for entry in pending:
+                try:
+                    msg_id = entry[0]
+                    idle = int(entry[2]) if len(entry) > 2 else 0
+                    if idle < self._claim_idle_ms:
+                        continue
+
+                    # Read full message
+                    entries = self.redis_client.xrange(stream, min=msg_id, max=msg_id)
+                    if not entries:
+                        continue
+                    _, fields = entries[0]
+
+                    job_id = None
+                    payload = None
+                    timeout_seconds = None
+                    if b'job_id' in fields or 'job_id' in fields:
+                        job_id = fields.get(b'job_id') or fields.get('job_id')
+                        if isinstance(job_id, bytes):
+                            job_id = job_id.decode('utf-8')
+                    pld = fields.get(b'payload') or fields.get('payload')
+                    if pld:
+                        if isinstance(pld, bytes):
+                            try:
+                                payload = json.loads(pld.decode('utf-8'))
+                            except Exception:
+                                payload = pld.decode('utf-8')
+                        else:
+                            try:
+                                payload = json.loads(pld)
+                            except Exception:
+                                payload = pld
+                    timeout_val = fields.get(b'timeout_seconds') or fields.get('timeout_seconds')
+                    if timeout_val:
+                        try:
+                            timeout_seconds = int(timeout_val) if isinstance(timeout_val, (str, bytes)) else timeout_val
+                        except Exception:
+                            timeout_seconds = None
+
+                    # Fetch and increment attempts
+                    attempts = 0
+                    if job_id and self.db_service:
+                        try:
+                            cursor = self.db_service.mb_conn.cursor()
+                            cursor.execute('SELECT attempts FROM orchestrator_jobs WHERE job_id=%s', (job_id,))
+                            r = cursor.fetchone()
+                            cursor.close()
+                            if r:
+                                attempts = int(r[0])
+                        except Exception:
+                            attempts = 0
+
+                    attempts += 1
+
+                    if job_id and self.db_service:
+                        try:
+                            cursor = self.db_service.mb_conn.cursor()
+                            cursor.execute('UPDATE orchestrator_jobs SET attempts=%s, updated_at=NOW() WHERE job_id=%s', (attempts, job_id))
+                            self.db_service.mb_conn.commit()
+                            cursor.close()
+                        except Exception:
+                            pass
+
+                    if attempts >= self._job_retry_max:
+                        dlq = stream + ':dlq'
+                        try:
+                            dlq_fields = {'job_id': job_id or '', 'payload': json.dumps(payload) if payload is not None else ''}
+                            if timeout_seconds is not None:
+                                dlq_fields['timeout_seconds'] = str(timeout_seconds)
+                            self.redis_client.xadd(dlq, dlq_fields)
+                        except Exception:
+                            pass
+                        if job_id and self.db_service:
+                            try:
+                                cursor = self.db_service.mb_conn.cursor()
+                                cursor.execute('UPDATE orchestrator_jobs SET status=%s, last_error=%s, updated_at=NOW() WHERE job_id=%s', ('dead_letter', 'max_attempts_exceeded', job_id))
+                                self.db_service.mb_conn.commit()
+                                cursor.close()
+                            except Exception:
+                                pass
+                        try:
+                            self.redis_client.xack(stream, 'cg:inference', msg_id)
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            requeue_fields = {'job_id': job_id or '', 'type': fields.get(b'type') or fields.get('type') or '', 'payload': json.dumps(payload) if payload is not None else ''}
+                            if timeout_seconds is not None:
+                                requeue_fields['timeout_seconds'] = str(timeout_seconds)
+                            self.redis_client.xadd(stream, requeue_fields)
+                            self.redis_client.xack(stream, 'cg:inference', msg_id)
+                        except Exception:
+                            pass
+
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     def _reclaimer_loop(self):
         while True:

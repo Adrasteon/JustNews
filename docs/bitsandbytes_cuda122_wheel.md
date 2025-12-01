@@ -109,3 +109,28 @@ this path as `CUDA_HOME` in the commands below.
   and re-test the diagnostics before publishing.
 - Store the wheel artifact (or checksum) somewhere durable if other hosts need to
   reinstall it; otherwise repeat this recipe verbatim on the target machine.
+
+## Automated rebuild (CI / reproducibility)
+
+We also provide a lightweight automation helper that reproduces the build across
+multiple CUDA targets and uploads the resulting wheel as an artifact.
+
+- Script: `.build/bitsandbytes/build_wheels.sh` — a small, documented helper that supports
+   building via docker (nvidia/cuda images) or using a local `conda` build environment.
+
+- CI: `.github/workflows/build-bnb-wheels.yml` — GitHub Actions workflow intended for
+   self-hosted GPU runners. It runs the build script in a matrix across CUDA targets
+   (e.g. 122, 124, 128) and uploads the produced wheel as an artifact so the team can
+   cache or pin it for reproducible installs.
+
+Publishing artifacts:
+
+- Optionally the build workflow can publish built wheels to an S3 bucket for durable
+   pinning. To enable publishing set `PUBLISH_BNB_TO_S3=1` in the workflow environment and
+   configure the secrets `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `BNB_WHEEL_BUCKET`.
+   The workflow will push wheels to `s3://<BNB_WHEEL_BUCKET>/wheels/<short-cuda>/`.
+
+Notes: The workflow expects runners with GPU access (or access to nvidia-docker) and
+is therefore scoped to self-hosted infrastructure. Use the workflow dispatch entrypoint
+to trigger ad-hoc rebuilds, or schedule it (the workflow includes a weekly schedule).
+

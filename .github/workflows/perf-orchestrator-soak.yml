@@ -1,0 +1,39 @@
+name: Perf — Orchestrator Soak (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      requests:
+        description: 'Number of requests to simulate'
+        required: false
+        default: '20'
+      sweep:
+        description: 'Enable sweep mode'
+        required: false
+        default: '0'
+      model:
+        description: 'Model to use for the inference simulation'
+        required: false
+        default: 'mistralai/Mistral-7B-Instruct-v0.3'
+
+jobs:
+  soak:
+    runs-on: [self-hosted, linux, gpu]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure script executable
+        run: chmod +x scripts/perf/orchestrator_soak.sh
+
+      - name: Run orchestrator soak
+        env:
+          CANONICAL_ENV: justnews-py312
+        run: |
+          ./scripts/perf/orchestrator_soak.sh --requests ${{ github.event.inputs.requests }} $([[ "${{ github.event.inputs.sweep }}" == "1" ]] && echo --sweep --sweep-max 2) --model "${{ github.event.inputs.model }}"
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: orchestrator-soak-results
+          path: scripts/perf/results/*.csv

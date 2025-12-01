@@ -97,7 +97,7 @@ def test_worker_claims_lease_runs_and_updates_db():
     svc._conn = svc.mb_conn._conn
     svc.mb_conn.commit()
 
-    mid = r.xadd('stream:orchestrator:inference_jobs', {'job_id': 'wjob1', 'payload': json.dumps({'foo': 'bar'})})
+    _mid = r.xadd('stream:orchestrator:inference_jobs', {'job_id': 'wjob1', 'payload': json.dumps({'foo': 'bar'})})
 
     with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=svc):
         engine = GPUOrchestratorEngine(bootstrap_external_services=True)
@@ -129,7 +129,7 @@ def test_worker_handler_failure_marks_failed_and_sets_last_error():
     svc._conn = svc.mb_conn._conn
     svc.mb_conn.commit()
 
-    mid = r.xadd('stream:orchestrator:inference_jobs', {'job_id': 'wj-fail', 'payload': json.dumps({'foo': 'bar'})})
+    _mid = r.xadd('stream:orchestrator:inference_jobs', {'job_id': 'wj-fail', 'payload': json.dumps({'foo': 'bar'})})
 
     with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=svc):
         engine = GPUOrchestratorEngine(bootstrap_external_services=True)

@@ -90,7 +90,7 @@ def test_e2e_reclaimer_moves_to_dlq_when_max_attempts_reached():
         pass
 
     # add to stream
-    mid = engine.redis_client.xadd(stream, {'job_id': job_id, 'payload': json.dumps({'x':1})})
+    _mid = engine.redis_client.xadd(stream, {'job_id': job_id, 'payload': json.dumps({'x':1})})
 
     # claim the message with a consumer so it becomes pending
     engine.redis_client.xreadgroup('cg:inference', 'consumer-1', {stream: '>'}, count=1, block=100)

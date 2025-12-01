@@ -52,7 +52,7 @@ class Worker:
             # Prefer xreadgroup if available
             if hasattr(self.redis, 'xreadgroup'):
                 msgs = self.redis.xreadgroup(self.group, self.consumer, {self.stream: '>'}, count=1, block=100)
-                for stream, pairs in msgs:
+                for _stream, pairs in msgs:
                     for mid, fields in pairs:
                         entries.append((mid, fields))
             else:
@@ -97,22 +97,34 @@ class Worker:
             if t is not None:
                 t = self._decode_field(t)
 
-        # mark job as claimed in DB (best-effort)
+        # Attempt to claim the job and obtain a lease atomically if DB-backed engine
         try:
-            # Debug visibility during tests
             print(f"DEBUG: Worker picked job_id={job_id} msg_id={msg_id}")
         except Exception:
             pass
+
+        lease_token = None
         if job_id and getattr(self.engine, 'db_service', None):
             try:
-                    cursor = self.engine.db_service.mb_conn.cursor()
-                    print(f"DEBUG: claiming job_id={job_id}")
-                    cursor.execute('UPDATE orchestrator_jobs SET status=%s, updated_at=CURRENT_TIMESTAMP WHERE job_id=%s', ('claimed', job_id))
-                    self.engine.db_service.mb_conn.commit()
-                    cursor.close()
-                    print(f"DEBUG: claimed update attempted for job_id={job_id}")
+                # Use engine helper that performs an atomic claim + lease transaction
+                claim_resp = self.engine.claim_job_and_lease(job_id, self.agent_name, payload.get('min_memory_mb') if isinstance(payload, dict) else 0)
+                if claim_resp.get('claimed'):
+                    lease_token = claim_resp.get('token')
+                else:
+                    # couldn't claim (not pending / already claimed) — treat as processed
+                    try:
+                        self.engine.logger.debug(f"Worker could not claim job_id={job_id}: {claim_resp}")
+                    except Exception:
+                        pass
+                    # ack & return to avoid re-processing the message repeatedly
+                    try:
+                        self.redis.xack(self.stream, self.group, msg_id)
+                    except Exception:
+                        pass
+                    return True
             except Exception:
-                pass
+                # fall back to previous best-effort claim path
+                lease_token = None
 
         # acquire lease (best-effort)
         lease_token = None
@@ -125,11 +137,18 @@ class Worker:
 
         # run handler
         try:
+            start_time = time.time()
             if handler:
                 handler(payload)
             else:
                 # light simulation of doing the work
                 time.sleep(0.01)
+            duration = time.time() - start_time
+
+            # Record processing duration
+            if hasattr(self.engine, 'job_processing_duration_histogram'):
+                job_type = t or 'unknown'
+                self.engine.job_processing_duration_histogram.labels(job_type=job_type).observe(duration)
 
             # mark running -> done
             if job_id and getattr(self.engine, 'db_service', None):
@@ -147,6 +166,11 @@ class Worker:
                     pass
 
         except Exception as e:
+            # Record retry
+            if hasattr(self.engine, 'job_retry_counter'):
+                job_type = t or 'unknown'
+                self.engine.job_retry_counter.labels(job_type=job_type).inc()
+
             # mark failed
             if job_id and getattr(self.engine, 'db_service', None):
                 try:

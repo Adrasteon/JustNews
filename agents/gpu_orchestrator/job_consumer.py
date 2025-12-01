@@ -27,7 +27,7 @@ class JobConsumer:
             msgs = self.redis.xreadgroup(self.group, self.consumer, {self.stream: '>'}, count=count, block=block_ms)
             # messages returned as list of (stream, [(id, {k:v})])
             out = []
-            for stream, entries in msgs:
+            for _stream, entries in msgs:
                 for id, fields in entries:
                     payload = fields.get(b'payload') or fields.get('payload')
                     if isinstance(payload, bytes):

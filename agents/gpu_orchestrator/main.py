@@ -276,7 +276,7 @@ def get_leader(request: Request):
 @app.post('/control/reclaim')
 def trigger_reclaim(request: Request):
     """Trigger an immediate reclaim pass (leader only)."""
-    requestor = _require_admin(request)
+    _require_admin(request)
     try:
         if not getattr(engine, 'is_leader', False):
             raise HTTPException(status_code=409, detail='not_leader')

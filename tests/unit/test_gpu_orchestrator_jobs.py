@@ -36,8 +36,8 @@ def test_api_submit_and_get_job(monkeypatch):
     from agents.gpu_orchestrator import main as orchestrator_main
 
     # Patch engine.submit_job and engine.get_job
-        with patch.object(orchestrator_main.engine, 'submit_job', return_value={'job_id':'jid','status':'submitted'}) as _sj, \
-            patch.object(orchestrator_main.engine, 'get_job', return_value={'job_id':'jid','type':'inference_jobs','payload':{'a':1},'status':'pending'}) as _gj:
+    with patch.object(orchestrator_main.engine, 'submit_job', return_value={'job_id':'jid','status':'submitted'}) as _sj, \
+         patch.object(orchestrator_main.engine, 'get_job', return_value={'job_id':'jid','type':'inference_jobs','payload':{'a':1},'status':'pending'}) as _gj:
         from fastapi.testclient import TestClient
         tc = TestClient(orchestrator_main.app)
         r = tc.post('/jobs/submit', json={'job_id':'jid','type':'inference_jobs','payload':{'a':1}})

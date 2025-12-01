@@ -93,7 +93,7 @@ def test_reclaimer_does_not_delete_lease_rows(monkeypatch):
         # Ensure there is an active lease in ALLOCATIONS and DB -- reclaimer shouldn't touch it
         engine._allocate_gpu = lambda req: (True, 0)
         resp = engine.lease_gpu('r-agent', 0)
-        token = resp.get('token')
+        _token = resp.get('token')
 
         # Reset cursor call history
         cursor.execute.reset_mock()

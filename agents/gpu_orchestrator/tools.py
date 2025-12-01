@@ -70,3 +70,4 @@ def get_mps_allocation() -> dict[str, Any]:
 def get_metrics() -> str:
     """Get Prometheus metrics as text."""
     return engine.get_metrics_text()
+

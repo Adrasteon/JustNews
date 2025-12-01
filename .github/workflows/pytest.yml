@@ -56,6 +56,9 @@ jobs:
   pytest:
     needs: [processing_check, lint, check-global-env]
     runs-on: ubuntu-latest
+    env:
+      # Default CUDA short-version used when searching for prebuilt bitsandbytes wheels
+      BNB_CUDA_VERSION: 122
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -78,6 +81,67 @@ jobs:
           # create or update the project environment from environment.yml
           conda env list
           conda env create -f environment.yml -n ${CANONICAL_ENV} || conda env update -f environment.yml -n ${CANONICAL_ENV} || true
+      - name: Attempt to install prebuilt bitsandbytes wheel from S3 (if configured)
+        if: ${{ secrets.BNB_WHEEL_BUCKET != '' }}
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION || 'us-east-1' }}
+
+      - name: Fetch & install bitsandbytes wheel from S3 (if present)
+        if: ${{ secrets.BNB_WHEEL_BUCKET != '' }}
+        run: |
+          set -euo pipefail
+          mkdir -p wheel-cache
+          echo "Checking s3://${{ secrets.BNB_WHEEL_BUCKET }}/wheels/${BNB_CUDA_VERSION}/"
+          aws s3 ls s3://${{ secrets.BNB_WHEEL_BUCKET }}/wheels/${BNB_CUDA_VERSION}/ || true
+          aws s3 cp --recursive s3://${{ secrets.BNB_WHEEL_BUCKET }}/wheels/${BNB_CUDA_VERSION}/ ./wheel-cache || true
+          if ls -1 wheel-cache/*.whl >/dev/null 2>&1; then
+            echo "Installing wheel from wheel-cache/"
+            ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install --no-deps --upgrade wheel-cache/*.whl || true
+          else
+            echo "No wheel found in S3 for CUDA ${BNB_CUDA_VERSION}, continuing to next step"
+          fi
+
+      - name: Attempt to fetch latest bitsandbytes wheel from GitHub Actions artifacts
+        run: |
+          set -euo pipefail
+          echo "Searching GH actions artifacts for bitsandbytes-wheel-${BNB_CUDA_VERSION}..."
+          if command -v jq >/dev/null 2>&1; then
+            runs_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/.github/workflows/build-bnb-wheels.yml/runs?status=success&per_page=20"
+            artifact_url=""
+            runs_json=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "$runs_url") || runs_json=""
+            if [ -z "$runs_json" ]; then
+              echo "no runs json returned" && exit 0
+            fi
+            for run_id in $(echo "$runs_json" | jq -r '.workflow_runs[].id' || true); do
+              arti_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/artifacts"
+              arti_json=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "$arti_url" || true)
+              candidate=$(echo "$arti_json" | jq -r '.artifacts[] | select(.name==("bitsandbytes-wheel-'${BNB_CUDA_VERSION}'")) | .archive_download_url' || true)
+              if [ -n "$candidate" ] && [ "$candidate" != "null" ]; then
+                artifact_url=$candidate
+                break
+              fi
+            done
+
+            if [ -n "$artifact_url" ]; then
+              echo "Found artifact: $artifact_url"
+              mkdir -p wheel-cache
+              curl -L -H "Authorization: Bearer ${GITHUB_TOKEN}" -o wheel-cache/bnb-artifact.zip "$artifact_url"
+              unzip -q wheel-cache/bnb-artifact.zip -d wheel-cache || true
+              if ls -1 wheel-cache/*.whl >/dev/null 2>&1; then
+                ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install --no-deps --upgrade wheel-cache/*.whl || true
+              else
+                echo "No whl file found inside artifact"
+              fi
+            else
+              echo "No GH Actions artifact found for bitsandbytes-wheel-${BNB_CUDA_VERSION}"
+            fi
+          else
+            echo "jq not available; skipping GH artifact fetch";
+          fi
+
       - name: Install dependencies (conda)
         run: |
           ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install --upgrade pip
@@ -107,6 +171,27 @@ jobs:
         run: |
           conda env list
           conda env create -f environment.yml -n ${CANONICAL_ENV} || conda env update -f environment.yml -n ${CANONICAL_ENV} || true
+      - name: Attempt to fetch & install bitsandbytes wheel from S3 (if configured)
+        if: ${{ secrets.BNB_WHEEL_BUCKET != '' }}
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION || 'us-east-1' }}
+
+      - name: Fetch & install bitsandbytes wheel from S3 (if present)
+        if: ${{ secrets.BNB_WHEEL_BUCKET != '' }}
+        run: |
+          set -euo pipefail
+          mkdir -p wheel-cache
+          aws s3 ls s3://${{ secrets.BNB_WHEEL_BUCKET }}/wheels/${BNB_CUDA_VERSION}/ || true
+          aws s3 cp --recursive s3://${{ secrets.BNB_WHEEL_BUCKET }}/wheels/${BNB_CUDA_VERSION}/ ./wheel-cache || true
+          if ls -1 wheel-cache/*.whl >/dev/null 2>&1; then
+            ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install --no-deps --upgrade wheel-cache/*.whl || true
+          else
+            echo "No wheel found in S3 for CUDA ${BNB_CUDA_VERSION}, continuing to pip install"
+          fi
+
       - name: Install dependencies (conda)
         run: |
           ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install --upgrade pip

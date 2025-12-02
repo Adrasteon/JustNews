@@ -11,13 +11,13 @@ on:
 
 jobs:
   orchestrator_tests:
-    name: Orchestrator: unit + integration (targeted)
+    name: "Orchestrator: unit + integration (targeted)"
     runs-on: ubuntu-latest
     env:
       CANONICAL_ENV: justnews-py312
-      # Which CUDA toolchain short we expect for bitsandbytes wheels. CI will try
-      # to fetch a prebuilt wheel for this value first (S3 or GH artifacts) and
-      # fall back to pip-based installs if not available.
+      # Which CUDA toolchain short we expect for bitsandbytes wheels. CI first
+      # tries to fetch a prebuilt wheel from GH artifacts before falling back to
+      # pip-based installs if not available.
       BNB_CUDA_VERSION: 122
     steps:
       - name: Checkout
@@ -33,29 +33,6 @@ jobs:
         run: |
           conda env list
           conda env create -f environment.yml -n ${CANONICAL_ENV} || conda env update -f environment.yml -n ${CANONICAL_ENV} || true
-
-      - name: Attempt to install prebuilt bitsandbytes wheel from S3 (if configured)
-        if: ${{ secrets.BNB_WHEEL_BUCKET != '' }}
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_DEFAULT_REGION || 'us-east-1' }}
-
-      - name: Fetch & install bitsandbytes wheel from S3 (if present)
-        if: ${{ secrets.BNB_WHEEL_BUCKET != '' }}
-        run: |
-          set -euo pipefail
-          mkdir -p wheel-cache
-          echo "Checking s3://${{ secrets.BNB_WHEEL_BUCKET }}/wheels/${BNB_CUDA_VERSION}/"
-          aws s3 ls s3://${{ secrets.BNB_WHEEL_BUCKET }}/wheels/${BNB_CUDA_VERSION}/ || true
-          aws s3 cp --recursive s3://${{ secrets.BNB_WHEEL_BUCKET }}/wheels/${BNB_CUDA_VERSION}/ ./wheel-cache || true
-          if ls -1 wheel-cache/*.whl >/dev/null 2>&1; then
-            echo "Installing wheel from wheel-cache/"
-            ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install --no-deps --upgrade wheel-cache/*.whl || true
-          else
-            echo "No wheel found in S3 for CUDA ${BNB_CUDA_VERSION}, continuing to next step"
-          fi
 
       - name: Attempt to fetch latest bitsandbytes wheel from GitHub Actions artifacts
         run: |

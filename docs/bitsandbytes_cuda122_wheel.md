@@ -128,22 +128,15 @@ multiple CUDA targets and uploads the resulting wheel as an artifact.
 Our CI workflows (including `orchestrator-only-tests.yml` and the full `pytest.yml`) now
 attempt to install a prebuilt bnb wheel automatically before falling back to pip installs.
 
-- First, CI will check for a configured S3 bucket and try to download:
-   `s3://<BNB_WHEEL_BUCKET>/wheels/<short-cuda>/` (requires `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` secrets).
-- If no S3 bucket or wheel is present, CI will attempt to find the latest `bitsandbytes-wheel-<short-cuda>` artifact
-   produced by `.github/workflows/build-bnb-wheels.yml` and install the wheel from that artifact.
-- If neither source yields a wheel the workflow will continue and fall back to `pip install -r requirements.txt`.
-
-To enable the S3 path, add the secrets `BNB_WHEEL_BUCKET`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY` to the repository or organization.
+- CI finds the latest `bitsandbytes-wheel-<short-cuda>` artifact produced by
+   `.github/workflows/build-bnb-wheels.yml` and installs the wheel from that artifact.
+- If no artifact is available the workflow will continue and fall back to `pip install -r requirements.txt`.
 
 This keeps CI fast and repeatable when an approved wheel exists, while still being resilient when a wheel isn't available.
 
 Publishing artifacts:
 
-- Optionally the build workflow can publish built wheels to an S3 bucket for durable
-   pinning. To enable publishing set `PUBLISH_BNB_TO_S3=1` in the workflow environment and
-   configure the secrets `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `BNB_WHEEL_BUCKET`.
-   The workflow will push wheels to `s3://<BNB_WHEEL_BUCKET>/wheels/<short-cuda>/`.
+- The build workflow uploads wheels as GitHub Actions artifacts for later reuse.
 
 Notes: The workflow expects runners with GPU access (or access to nvidia-docker) and
 is therefore scoped to self-hosted infrastructure. Use the workflow dispatch entrypoint

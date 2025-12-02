@@ -1,7 +1,9 @@
 # Use upstream MariaDB and copy the seed SQL into the init directory so
 # the DB is pre-populated on first container startup. The build context is
 # expected to be the 'scripts/dev' folder in docker-compose scenarios.
-FROM mariadb:10.6
+FROM bitnami/mariadb:latest
+
+# Bitnami images are already kept patched; no additional base OS update needed.
 
 # Pre-seed the test database and user so E2E CI doesn't need to apply schema every run.
 # COPY uses paths relative to the build context. With the recommended compose

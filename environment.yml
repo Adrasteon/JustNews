@@ -58,6 +58,9 @@ dependencies:
   - playwright=1.55.*
   - tf-playwright-stealth=1.2.0
   - openai=2.6.1
+  - chromadb>=1.3.3
+  - crawl4ai>=0.7.4
+  - litellm>=1.79.0
 
   # Observability and utilities
   - prometheus_client>=0.19
@@ -76,15 +79,6 @@ dependencies:
   - watchfiles
   - pyyaml
   - ujson
-  - pip:
-    - chromadb==1.3.3
-    - googleapis-common-protos>=1.59.1
-    - crawl4ai==0.7.4
-    - litellm==1.79.0
-    - websockets==14.0.0
-    - patchright==1.55.2
-    - opentelemetry-exporter-otlp==1.21.0
-    - opentelemetry-exporter-jaeger==1.21.0
   - requests-oauthlib
 
   # Content extraction / parsing
@@ -111,11 +105,7 @@ dependencies:
   - ruff>=0.1.6
 
   - pip:
-    - chromadb==1.3.3
     - googleapis-common-protos>=1.59.1
-    - crawl4ai==0.7.4
-    - nvidia-ml-py==13.580.82
-    - litellm==1.79.0
     - websockets==14.0.0
     - patchright==1.55.2
     - opentelemetry-exporter-otlp==1.21.0

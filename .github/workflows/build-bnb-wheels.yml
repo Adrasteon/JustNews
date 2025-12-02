@@ -39,22 +39,3 @@ jobs:
         with:
           name: bitsandbytes-wheel-${{ matrix.cuda_short }}
           path: .build/bitsandbytes/dist/*.whl
-
-      - name: Publish wheel to S3 (optional)
-        if: ${{ env.PUBLISH_BNB_TO_S3 == '1' && secrets.AWS_ACCESS_KEY_ID && secrets.AWS_SECRET_ACCESS_KEY && secrets.BNB_WHEEL_BUCKET }}
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_DEFAULT_REGION || 'us-east-1' }}
-
-      - name: Upload wheel to S3 via AWS CLI
-        if: ${{ env.PUBLISH_BNB_TO_S3 == '1' && secrets.AWS_ACCESS_KEY_ID && secrets.AWS_SECRET_ACCESS_KEY && secrets.BNB_WHEEL_BUCKET }}
-        run: |
-          set -euo pipefail
-          echo "Publishing wheels for CUDA ${matrix.cuda_short} to s3://${{ secrets.BNB_WHEEL_BUCKET }}/.."
-          ls -l ./.build/bitsandbytes/dist || true
-          for f in ./.build/bitsandbytes/dist/*.whl; do
-            [ -f "$f" ] || continue
-            aws s3 cp "$f" s3://${{ secrets.BNB_WHEEL_BUCKET }}/wheels/${{ matrix.cuda_short }}/ --acl private
-          done

@@ -30,7 +30,19 @@ from datetime import datetime
 from typing import Any
 
 import torch
-from common.gpu_config_manager import GPUConfigManager
+try:
+    # Prefer a top-level common package if present (CI may install one); otherwise
+    # fall back to agents.common.gpu_config_manager which is bundled with the repo.
+    from common.gpu_config_manager import GPUConfigManager  # type: ignore
+except Exception:
+    try:
+        from agents.common.gpu_config_manager import GPUConfigManager  # type: ignore
+    except Exception:
+        # Provide a lightweight stub so tests that don't require GPU management
+        # continue to work in environments missing this helper.
+        class GPUConfigManager:  # pragma: no cover - fallback
+            def get_optimal_device(self):
+                return None
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,

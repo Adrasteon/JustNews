@@ -1,0 +1,11 @@
+{
+  "url": "https://httpbin.org/html",
+  "title": "Herman Melville - Moby-Dick",
+  "summary": "Availing himself of the mild, summer-cool weather that now reigned in these latitudes, and in preparation for the peculiarly active pursuits shortly to be anticipated, Perth, the begrimed, blistered old blacksmith, had not removed his portable forge to the hold again, after concluding his contributo",
+  "word_count": 601,
+  "fact_check": {
+    "issues": [],
+    "confidence": 0.9
+  },
+  "ready_for_review": true
+}

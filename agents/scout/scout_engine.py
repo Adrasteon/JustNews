@@ -27,9 +27,14 @@ from typing import Any
 
 import requests
 import torch
-from transformers import (
-    pipeline,
-)
+try:
+    # transformers is an optional heavy dependency; import pipeline lazily and
+    # degrade to None if unavailable so test collection doesn't fail.
+    from transformers import pipeline  # type: ignore
+    TRANSFORMERS_AVAILABLE = True
+except Exception:
+    pipeline = None  # type: ignore
+    TRANSFORMERS_AVAILABLE = False
 
 from common.observability import get_logger
 
@@ -175,6 +180,9 @@ class ScoutEngine:
     def _load_sentiment_model(self):
         """Load sentiment analysis model."""
         try:
+            if not TRANSFORMERS_AVAILABLE or pipeline is None:
+                raise RuntimeError("transformers.pipeline unavailable")
+
             self.pipelines['sentiment'] = pipeline(
                 "sentiment-analysis",
                 model=self.config.bert_model,
@@ -192,6 +200,9 @@ class ScoutEngine:
     def _load_bias_model(self):
         """Load bias detection model."""
         try:
+            if not TRANSFORMERS_AVAILABLE or pipeline is None:
+                raise RuntimeError("transformers.pipeline unavailable")
+
             self.pipelines['bias'] = pipeline(
                 "text-classification",
                 model=self.config.roberta_model,

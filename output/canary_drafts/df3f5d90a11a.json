@@ -1,0 +1,11 @@
+{
+  "url": "https://www.iana.org/domains/reserved",
+  "title": "IANA-managed Reserved Domains",
+  "summary": "IANA-managed Reserved Domains\nCertain domains are set aside, and nominally registered to “IANA”, for specific policy or technical purposes.\nExample domains\nAs described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes. These",
+  "word_count": 188,
+  "fact_check": {
+    "issues": [],
+    "confidence": 0.9
+  },
+  "ready_for_review": true
+}

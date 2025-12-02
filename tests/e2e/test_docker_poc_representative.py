@@ -3,6 +3,11 @@ import uuid
 import json
 import time
 
+import pytest
+
+# pymysql is an optional dependency for E2E DB tests — skip tests gracefully when
+# the package isn't installed in the canonical test environment.
+pytest.importorskip('pymysql')
 import pymysql
 import redis
 import pytest

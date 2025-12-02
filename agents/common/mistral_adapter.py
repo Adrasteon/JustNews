@@ -17,6 +17,7 @@ class MistralAdapter(BaseAdapter):
     """
 
     def __init__(self, *, agent: str, adapter_name: str, system_prompt: str = "", disable_env: str = "") -> None:
+        super().__init__(name=f"mistral:{agent}")
         self.agent = agent
         self.adapter_name = adapter_name
         self.system_prompt = system_prompt or ""
@@ -44,7 +45,8 @@ class MistralAdapter(BaseAdapter):
                     continue
         except Exception:
             self._agent_impl = None
-        self._dry_run = os.environ.get("MODEL_STORE_DRY_RUN") == "1" or os.environ.get("DRY_RUN") == "1"
+        env_dry_run = os.environ.get("MODEL_STORE_DRY_RUN") == "1" or os.environ.get("DRY_RUN") == "1"
+        self._dry_run = self.dry_run or env_dry_run
 
     def load(self, model_id: str | None = None, config: dict | None = None) -> None:
         # Build internal base helper using existing shared class
@@ -83,6 +85,7 @@ class MistralAdapter(BaseAdapter):
             except Exception:
                 # best-effort only
                 self._agent_impl = None
+        self.mark_loaded()
 
     def infer(self, prompt: str, **kwargs: Any) -> dict:
         if self._base is None:
@@ -163,15 +166,12 @@ class MistralAdapter(BaseAdapter):
         If a per-agent implementation is available we delegate to it; otherwise
         we use the base JSON adapter / dry-run simulated payload.
         """
-        # Delegate to specialized adapter if it exists
-        if getattr(self, '_agent_impl', None) and hasattr(self._agent_impl, 'classify'):
-            return getattr(self._agent_impl, 'classify')(text)
-
         if not text or not text.strip():
             return None
-            return None
 
-        if self._dry_run:
+        # Dry-run short-circuit: avoid calling per-agent tokenizers which may
+        # not be callable in dry-run mode (tokenizer returned as dict).
+        if self._dry_run or (self._base is not None and isinstance(self._base.model, dict) and self._base.model.get("dry_run")):
             # Return a minimal compatible object similar to Analyst.AdapterResult
             from types import SimpleNamespace
             sentiment = {
@@ -214,13 +214,10 @@ class MistralAdapter(BaseAdapter):
         return getattr(self, '_agent_impl', None) and getattr(self._agent_impl, '_normalize', lambda p, e=None: p)(doc, 0.0) or doc
 
     def generate_story_brief(self, markdown: str | None, html: str | None = None, *, url: str | None = None, title: str | None = None):
-        if getattr(self, '_agent_impl', None) and hasattr(self._agent_impl, 'generate_story_brief'):
-            return getattr(self._agent_impl, 'generate_story_brief')(markdown, html, url=url, title=title)
-
         if not markdown and not html:
             return None
-
-        if self._dry_run:
+        # Dry-run early short-circuit
+        if self._dry_run or (self._base is not None and isinstance(self._base.model, dict) and self._base.model.get("dry_run")):
             return {"headline": f"Simulated brief for {title or url or 'content'}", "summary": "Simulated summary", "url": url}
 
         # Fallback to base JSON chat
@@ -237,13 +234,10 @@ class MistralAdapter(BaseAdapter):
         return doc
 
     def review(self, content: str, url: str | None = None):
-        if getattr(self, '_agent_impl', None) and hasattr(self._agent_impl, 'review'):
-            return getattr(self._agent_impl, 'review')(content, url)
-
         if not content or not content.strip():
             return None
 
-        if self._dry_run:
+        if self._dry_run or (self._base is not None and isinstance(self._base.model, dict) and self._base.model.get("dry_run")):
             # Simulated critic assessment
             from types import SimpleNamespace
             return SimpleNamespace(
@@ -268,13 +262,9 @@ class MistralAdapter(BaseAdapter):
         return getattr(self, '_agent_impl', None) and getattr(self._agent_impl, '_normalize', lambda p: p)(doc)
 
     def evaluate_claim(self, claim: str, context: str | None = None):
-        if getattr(self, '_agent_impl', None) and hasattr(self._agent_impl, 'evaluate_claim'):
-            return getattr(self._agent_impl, 'evaluate_claim')(claim, context)
-
         if not claim or not claim.strip():
             return None
-
-        if self._dry_run:
+        if self._dry_run or (self._base is not None and isinstance(self._base.model, dict) and self._base.model.get("dry_run")):
             from types import SimpleNamespace
             return SimpleNamespace(verdict="unclear", confidence=0.6, score=0.6, rationale="Simulated", evidence_needed=False)
 
@@ -291,13 +281,8 @@ class MistralAdapter(BaseAdapter):
     # method names like `analyze` (reasoning) or `review_content` (chief editor).
     def analyze(self, query: str, context_facts: list[str] | None = None) -> dict | None:
         # Delegate if implementation exists
-        if getattr(self, '_agent_impl', None) and hasattr(self._agent_impl, 'analyze'):
-            try:
-                return getattr(self._agent_impl, 'analyze')(query, context_facts)
-            except Exception:
-                pass
-
-        if self._dry_run:
+        # Dry-run first
+        if self._dry_run or (self._base is not None and isinstance(self._base.model, dict) and self._base.model.get("dry_run")):
             return {
                 'hypothesis': 'Simulated hypothesis',
                 'chain_of_thought': ['Step 1', 'Step 2'],
@@ -315,10 +300,12 @@ class MistralAdapter(BaseAdapter):
             return None
 
     def review_content(self, content: str, metadata: dict | None = None) -> dict | None:
-        # delegate to per-agent if present
+        # delegate to per-agent implementation if available
         if getattr(self, '_agent_impl', None) and hasattr(self._agent_impl, 'review_content'):
             try:
-                return getattr(self._agent_impl, 'review_content')(content, metadata)
+                val = getattr(self._agent_impl, 'review_content')(content, metadata)
+                if val is not None:
+                    return val
             except Exception:
                 pass
 
@@ -336,9 +323,15 @@ class MistralAdapter(BaseAdapter):
             return {'assessment': str(res)}
 
     def health_check(self) -> dict:
-        if self._base is None:
-            return {"available": False, "reason": "not_loaded"}
-        return {"available": self._base.is_available, "load_error": getattr(self._base, "_load_error", None)}
+        status = super().health_check()
+        available = bool(self._base and getattr(self._base, "is_available", False))
+        status.update({
+            "available": available,
+            "load_error": getattr(self._base, "_load_error", None),
+            "agent": self.agent,
+            "adapter_name": self.adapter_name,
+        })
+        return status
 
     def unload(self) -> None:
         if self._base is not None:
@@ -347,6 +340,7 @@ class MistralAdapter(BaseAdapter):
                 self._base.tokenizer = None
             except Exception:
                 pass
+        self.mark_unloaded()
 
     def metadata(self) -> dict:
         return {"agent": self.agent, "adapter": self.adapter_name, "dry_run": self._dry_run}

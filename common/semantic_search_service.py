@@ -14,7 +14,12 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-from sentence_transformers import SentenceTransformer
+try:
+    from sentence_transformers import SentenceTransformer
+    _SENTENCE_TRANSFORMERS_AVAILABLE = True
+except Exception:  # sentence-transformers may be missing or incompatible in CI/dev
+    SentenceTransformer = None  # type: ignore
+    _SENTENCE_TRANSFORMERS_AVAILABLE = False
 
 from common.observability import get_logger
 from database.utils.migrated_database_utils import (
@@ -65,11 +70,32 @@ class SemanticSearchService:
         self.config = config or get_db_config()
         self.db_service = create_database_service(self.config)
 
-        # Initialize embedding model
+        # Initialize embedding model (best-effort). If sentence-transformers is
+        # missing or incompatible, run in degraded mode and don't crash at import time.
         embedding_config = self.config.get('embedding', {})
-        self.embedding_model = SentenceTransformer(
-            embedding_config.get('model', 'all-MiniLM-L6-v2')
-        )
+        # If a test or higher scope has provided a patched `SentenceTransformer`
+        # (i.e. module-level variable has been replaced), prefer that. Otherwise
+        # attempt a runtime import. This keeps test mocking reliable and avoids
+        # import-time failures when sentence-transformers is absent.
+        st_cls = None
+        if 'SentenceTransformer' in globals() and SentenceTransformer is not None:
+            st_cls = SentenceTransformer
+        else:
+            try:
+                from sentence_transformers import SentenceTransformer as _ST  # type: ignore
+            except Exception:
+                _ST = None
+            st_cls = _ST
+
+        if st_cls is None:
+            logger.debug("sentence-transformers not available; SemanticSearchService running in degraded mode")
+            self.embedding_model = None
+        else:
+            try:
+                self.embedding_model = st_cls(embedding_config.get('model', 'all-MiniLM-L6-v2'))
+            except Exception as e:
+                logger.warning("SentenceTransformer failed to initialize, running degraded: %s", e)
+                self.embedding_model = None
 
         # Cache for frequently accessed articles
         self._article_cache = {}
@@ -137,7 +163,13 @@ class SemanticSearchService:
         Returns:
             List of SearchResult objects
         """
-        # Generate embedding for the query
+        # Generate embedding for the query — if embedding model unavailable,
+        # we run in degraded mode and return an empty result set so unit tests
+        # that only import this module won't fail during collection.
+        if not getattr(self, 'embedding_model', None):
+            logger.warning("Embedding model not available - semantic search disabled")
+            return []
+
         emb = self.embedding_model.encode(query)
         # Accept numpy arrays or plain lists from different embedding backends/mocks
         if hasattr(emb, "tolist"):

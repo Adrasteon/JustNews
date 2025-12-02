@@ -11,8 +11,8 @@ Create the Python environment
 
 ```bash
 # create or update the conda env from repository environment.yml
-conda env create -f environment.yml -n justnews-py312 || conda env update -f environment.yml -n justnews-py312
-conda activate justnews-py312
+conda env create -f environment.yml -n ${CANONICAL_ENV:-justnews-py312} || conda env update -f environment.yml -n ${CANONICAL_ENV:-justnews-py312}
+conda activate ${CANONICAL_ENV:-justnews-py312}
 
 # install dev extras if required
 pip install -r requirements.txt || true

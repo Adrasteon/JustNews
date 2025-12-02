@@ -1,0 +1,144 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "#000000",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 0},
+      "id": 2,
+      "options": {},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(justnews_custom_histogram_openai_infer_latency_seconds_bucket[5m])) by (le, agent))",
+          "legendFormat": "openai p95 - {{agent}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(justnews_custom_histogram_hf_infer_latency_seconds_bucket[5m])) by (le, agent))",
+          "legendFormat": "hf p95 - {{agent}}",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(justnews_custom_histogram_openai_infer_latency_seconds_bucket{agent=~\"$agent\"}[5m])) by (le, agent))",
+          "legendFormat": "openai p95 ($agent)",
+          "refId": "C"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(justnews_custom_histogram_hf_infer_latency_seconds_bucket{agent=~\"$agent\"}[5m])) by (le, agent))",
+          "legendFormat": "hf p95 ($agent)",
+          "refId": "D"
+        }
+      ],
+      "title": "Adapter inference p95 latency (s)"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 0},
+      "id": 3,
+      "options": {},
+      "targets": [
+        {"expr": "sum(rate(justnews_custom_counter_openai_infer_success{agent=~\"$agent\"}[5m])) by (agent)", "legendFormat": "openai success/s ($agent)", "refId": "A"},
+        {"expr": "sum(rate(justnews_custom_counter_openai_infer_errors{agent=~\"$agent\"}[5m])) by (agent)", "legendFormat": "openai errors/s ($agent)", "refId": "B"},
+        {"expr": "sum(rate(justnews_custom_counter_hf_infer_success{agent=~\"$agent\"}[5m])) by (agent)", "legendFormat": "hf success/s ($agent)", "refId": "C"},
+        {"expr": "sum(rate(justnews_custom_counter_hf_infer_errors{agent=~\"$agent\"}[5m])) by (agent)", "legendFormat": "hf errors/s ($agent)", "refId": "D"}
+      ],
+      "title": "Adapter success / error rate"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 6},
+      "id": 10,
+      "options": {},
+      "targets": [
+        {
+          "expr": "(sum(rate(justnews_custom_counter_openai_infer_errors{agent=~\\\"$agent\\\"}[5m])) by (agent)) / (sum(rate(justnews_custom_counter_openai_infer_success{agent=~\\\"$agent\\\"}[5m]) + rate(justnews_custom_counter_openai_infer_errors{agent=~\\\"$agent\\\"}[5m])) by (agent))",
+          "legendFormat": "openai error-rate ($agent)",
+          "refId": "A"
+        },
+        {
+          "expr": "(sum(rate(justnews_custom_counter_hf_infer_errors{agent=~\\\"$agent\\\"}[5m])) by (agent)) / (sum(rate(justnews_custom_counter_hf_infer_success{agent=~\\\"$agent\\\"}[5m]) + rate(justnews_custom_counter_hf_infer_errors{agent=~\\\"$agent\\\"}[5m])) by (agent))",
+          "legendFormat": "hf error-rate ($agent)",
+          "refId": "B"
+        }
+      ],
+      "title": "Adapter error rate (per agent)"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 6},
+      "id": 11,
+      "options": {},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(justnews_custom_histogram_openai_infer_latency_seconds_bucket{agent=~\\\"$agent\\\"}[5m])) by (le, agent))",
+          "legendFormat": "openai p95 ($agent)",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(justnews_custom_histogram_hf_infer_latency_seconds_bucket{agent=~\\\"$agent\\\"}[5m])) by (le, agent))",
+          "legendFormat": "hf p95 ($agent)",
+          "refId": "B"
+        }
+      ],
+      "title": "Adapter p95 latency (per agent)"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 6, "w": 24, "x": 0, "y": 8},
+      "id": 4,
+      "options": {},
+      "targets": [
+        {"expr": "sum(rate(justnews_custom_histogram_openai_infer_latency_seconds_bucket[5m])) by (le)", "legendFormat": "openai latency distribution", "refId": "A"},
+        {"expr": "sum(rate(justnews_custom_histogram_hf_infer_latency_seconds_bucket[5m])) by (le)", "legendFormat": "hf latency distribution", "refId": "B"}
+      ],
+      "title": "Adapter latency distributions"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 30,
+  "style": "dark",
+  "tags": ["adapters", "models", "metrics"],
+  "templating": {
+    "list": [
+      {
+        "type": "query",
+        "name": "agent",
+        "label": "Agent",
+        "hide": 0,
+        "datasource": "Prometheus",
+        "query": "label_values(justnews_custom_counter_openai_infer_success, agent)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1
+      }
+    ]
+  },
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "JustNews — Adapter Telemetry",
+  "uid": "justnews-adapter-telemetry"
+}

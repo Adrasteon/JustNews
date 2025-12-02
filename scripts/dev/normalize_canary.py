@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import List
-from datetime import datetime
+from datetime import datetime, UTC
 
 from common.url_normalization import normalize_article_url
 from scripts.dev.canary_metrics import incr
@@ -31,7 +31,8 @@ def normalize_file(path: Path) -> Path:
     out = {
         "url": url,
         "normalized_url": normalized,
-        "normalized_at": datetime.utcnow().isoformat() + "Z",
+        # Use timezone-aware UTC datetimes to avoid deprecation warnings
+        "normalized_at": datetime.now(UTC).isoformat(),
         "status_code": data.get("status_code"),
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)

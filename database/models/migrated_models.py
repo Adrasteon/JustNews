@@ -12,7 +12,12 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 import json
 import mysql.connector
-from sentence_transformers import SentenceTransformer
+# Module-level placeholder so tests can patch `database.models.migrated_models.SentenceTransformer`
+SentenceTransformer = None
+# NOTE: Do not import sentence_transformers at module import time — it's a
+# heavy optional dependency. Import dynamically in the initialization path so
+# tests that patch/magic-mock sentence_transformers.SentenceTransformer work
+# reliably and missing packages don't break test collection.
 
 from common.observability import get_logger
 import os
@@ -526,10 +531,20 @@ class MigratedDatabaseService:
         else:
             logger.warning("ChromaDB not available - embeddings support disabled")
 
-        # Embedding model
+        # Embedding model: import sentence-transformers at runtime (best-effort)
         embedding_config = self.config['database']['embedding']
-        self.embedding_model = SentenceTransformer(embedding_config['model'])
-        logger.info(f"Loaded embedding model: {embedding_config['model']}")
+        try:
+            from sentence_transformers import SentenceTransformer as _SentenceTransformer  # type: ignore
+        except Exception:
+            logger.warning("SentenceTransformer unavailable - embeddings disabled in MigratedDatabaseService")
+            self.embedding_model = None
+        else:
+            try:
+                self.embedding_model = _SentenceTransformer(embedding_config.get('model'))
+                logger.info(f"Loaded embedding model: {embedding_config.get('model')}")
+            except Exception as e:
+                logger.warning(f"Failed to load embedding model '{embedding_config.get('model')}': {e}")
+                self.embedding_model = None
 
     def close(self):
         """Close database connections"""

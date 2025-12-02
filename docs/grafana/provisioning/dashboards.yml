@@ -1,0 +1,12 @@
+apiVersion: 1
+providers:
+  - name: "JustNews adapter dashboards"
+    orgId: 1
+    folder: "Adapters"
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 600
+    options:
+      # In production configure Grafana to load from the directory where you copy
+      # repo dashboards (e.g. /var/lib/grafana/dashboards/justnews/adapters)
+      path: ./dashboards

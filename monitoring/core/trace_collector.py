@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 JustNews Distributed Tracing System
 
@@ -21,15 +23,32 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
-from opentelemetry import trace
-from opentelemetry.exporter.jaeger.thrift import JaegerExporter
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.trace import SpanKind, Status, StatusCode
-from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+try:
+    from opentelemetry import trace
+    from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.semconv.resource import ResourceAttributes
+    from opentelemetry.trace import SpanKind, Status, StatusCode
+    from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+    _OTEL_AVAILABLE = True
+except Exception:
+    # OpenTelemetry or dependencies may be missing or incompatible in CI/dev envs.
+    # Avoid hard failures at import time — operate in a no-op mode and log warnings when tracing is invoked.
+    trace = None
+    JaegerExporter = None
+    OTLPSpanExporter = None
+    Resource = None
+    TracerProvider = None
+    BatchSpanProcessor = None
+    ResourceAttributes = None
+    SpanKind = None
+    Status = None
+    StatusCode = None
+    TraceContextTextMapPropagator = None
+    _OTEL_AVAILABLE = False
 
 from ..common.config import get_config
 from ..common.metrics import JustNewsMetrics
@@ -49,7 +68,7 @@ class TraceContext:
     baggage: dict[str, str] = field(default_factory=dict)
 
     @classmethod
-    def from_opentelemetry(cls, span_context: trace.SpanContext) -> 'TraceContext':
+    def from_opentelemetry(cls, span_context: 'trace.SpanContext') -> 'TraceContext':
         """Create TraceContext from OpenTelemetry SpanContext"""
         return cls(
             trace_id=hex(span_context.trace_id)[2:],  # Remove 0x prefix
@@ -149,8 +168,22 @@ class TraceCollector:
         self.config = get_config()
         self.metrics = JustNewsMetrics()
 
-        # Initialize OpenTelemetry
-        self._setup_tracing()
+        # Initialize OpenTelemetry (best-effort) — skip if OTel unavailable
+        if _OTEL_AVAILABLE:
+            try:
+                self._setup_tracing()
+            except Exception as e:
+                # Prevent tracing setup failures from breaking service in test/CI envs
+                logger.warning("Trace setup failed; tracing disabled: %s", e)
+                self._setup_tracing = lambda *a, **k: None
+        else:
+            logger.debug("OpenTelemetry not available; running TraceCollector in no-op mode")
+            # Replace heavy methods with no-ops to avoid downstream errors
+            self._setup_tracing = lambda *a, **k: None
+            self.start_trace = lambda *a, **k: TraceContext(trace_id="0", span_id="0")
+            self.start_span = lambda *a, **k: TraceContext(trace_id="0", span_id="0")
+            self.end_span = lambda *a, **k: None
+            self.record_event = lambda *a, **k: None
 
         # Trace storage
         self.active_traces: dict[str, TraceData] = {}
@@ -296,8 +329,9 @@ class TraceCollector:
         """
         with self.collection_latency.time("start_span"):
             # Set parent context if provided
-            if parent_context:
-                # Create span context from parent
+            if parent_context and _OTEL_AVAILABLE and trace is not None:
+                # Create span context from parent. We guard at runtime so tests
+                # without OpenTelemetry won't try to evaluate trace.SpanContext.
                 span_context = trace.SpanContext(
                     trace_id=int(parent_context.trace_id, 16),
                     span_id=int(parent_context.span_id, 16),
@@ -333,11 +367,15 @@ class TraceCollector:
         """
         with self.collection_latency.time("end_span"):
             # Get current span from context
-            span_context = trace.SpanContext(
-                trace_id=int(context.trace_id, 16),
-                span_id=int(context.span_id, 16),
-                is_remote=True
-            )
+            if _OTEL_AVAILABLE and trace is not None:
+                span_context = trace.SpanContext(
+                    trace_id=int(context.trace_id, 16),
+                    span_id=int(context.span_id, 16),
+                    is_remote=True
+                )
+            else:
+                # In degraded / no-op mode there's no actual span context to construct.
+                span_context = None
 
             # Get current span (this is a simplified approach)
             # In a real implementation, you'd need to maintain span references

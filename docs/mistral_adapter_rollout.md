@@ -87,7 +87,11 @@ MODEL_STORE_ROOT=/opt/justnews/model_store RE_RANKER_TEST_MODE=0 \
 
 Latest rollout updates — Journalist, Chief Editor, Reasoning, Synthesizer
 ------------------------------------------------------------------------
-- Shared adapter helpers now live in `agents/common/base_mistral_json_adapter.py` with per-agent wrappers in `agents/<agent>/mistral_adapter.py`. Each wrapper sets its own disable flag (for example `JOURNALIST_DISABLE_MISTRAL=1`) so you can fall back to the legacy pipeline without code edits.
+- Shared adapter helpers now live in `agents/common/base_mistral_json_adapter.py` and the higher-level wrapper `agents/common/mistral_adapter.py`. Per-agent wrappers remain in `agents/<agent>/mistral_adapter.py`.
+
+Important: `agents/common/mistral_adapter.py` is the canonical wrapper used by agent engines (synthesizer, analyst, fact_checker, critic, journalist, reasoning, chief_editor, etc.). It provides a consistent integration surface — per-agent delegation, dry-run short-circuiting, convenience helpers (`summarize_cluster`, `classify`, `review`, `evaluate_claim`, `generate_story_brief`, `analyze`, `review_content`) and safety checks so tests/CI do not accidentally invoke heavy tokenizers or real model loads.
+
+When adding a new per-agent adapter, prefer wiring it via the shared `MistralAdapter` wrapper rather than instantiating tokenizers or transformers inside the engine — this keeps engines dry-run friendly and compatible with the CI smoke suite.
 - `AGENT_MODEL_MAP.json` entries for these agents include `variant_preference` hints (int8 vs fp16) so the GPU orchestrator and `start_agent_worker_pool()` automatically preload the right model+adapter pair. Use `python -m agents.gpu_orchestrator.gpu_orchestrator_engine --dry-run` to verify metadata parsing before shipping new adapters.
 - When testing locally, you can instantiate the adapters directly inside `python -m pytest tests/agents/test_mistral_adapters.py -k <agent>`; the tests stub `_chat_json` so they never attempt a real model load yet still validate prompt wiring.
 - Production warm pools should be requested via the orchestrator; the developer helper `scripts/ops/adapter_worker_pool.py` is still useful for on-node sizing. Pass the `--adapter` path emitted by `AGENT_MODEL_MAP.json` (or read it via `agents/common/model_loader.get_agent_model_metadata()`) to guarantee you test the same path used by the agents.

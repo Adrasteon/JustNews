@@ -1,0 +1,13 @@
+{
+  "url": "https://example.com/",
+  "title": "Example Domain",
+  "summary": "This domain is for use in documentation examples without needing permission. Avoid use in operations.\nLearn more",
+  "word_count": 17,
+  "fact_check": {
+    "issues": [
+      "too_short"
+    ],
+    "confidence": 0.2
+  },
+  "ready_for_review": false
+}

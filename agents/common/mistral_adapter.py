@@ -139,7 +139,8 @@ class MistralAdapter(BaseAdapter):
         if getattr(self, '_agent_impl', None) and hasattr(self._agent_impl, 'classify'):
             return getattr(self._agent_impl, 'classify')(text)
 
-        if not text or not text.strip() or not self._base:
+        if not text or not text.strip():
+            return None
             return None
 
         if self._dry_run:
@@ -165,6 +166,11 @@ class MistralAdapter(BaseAdapter):
         # Real path: format and send the messages through the base helper
         snippet = (text or '').strip()
         if not snippet:
+            return None
+
+        # If base isn't loaded, still allow the dry-run or simulated path above.
+        if not self._base:
+            # can't call into the base for real inference; treat as unavailable
             return None
 
         user_block = f"Text to evaluate:\n'''{self._base._truncate_content(snippet)}'''"

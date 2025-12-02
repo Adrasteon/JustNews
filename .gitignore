@@ -82,6 +82,9 @@ scripts/perf/results/**
 third_party/
 third_party/**
 
+# Local wheel build scratch space (e.g., bitsandbytes)
+.build/
+
 # Ignore runtime model caches and large model blobs
 models/**
 model_store/**

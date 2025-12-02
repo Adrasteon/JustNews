@@ -43,13 +43,22 @@ except Exception:
         class GPUConfigManager:  # pragma: no cover - fallback
             def get_optimal_device(self):
                 return None
-from transformers import (
-    AutoModelForSequenceClassification,
-    AutoTokenizer,
-    DistilBertModel,
-    DistilBertTokenizer,
-    pipeline,
-)
+try:
+    from transformers import (
+        AutoModelForSequenceClassification,
+        AutoTokenizer,
+        DistilBertModel,
+        DistilBertTokenizer,
+        pipeline,
+    )
+    TRANSFORMERS_AVAILABLE = True
+except Exception:
+    AutoModelForSequenceClassification = None
+    AutoTokenizer = None
+    DistilBertModel = None
+    DistilBertTokenizer = None
+    pipeline = None
+    TRANSFORMERS_AVAILABLE = False
 
 from common.observability import get_logger
 

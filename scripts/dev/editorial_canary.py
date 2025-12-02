@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import List
+from scripts.dev.canary_metrics import incr
 
 
 PARSED_DIR = Path.cwd() / "output" / "canary_parsed"
@@ -48,6 +49,7 @@ def create_draft(parsed_path: Path) -> Path:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / parsed_path.name
     out_path.write_text(json.dumps(draft, ensure_ascii=False, indent=2), encoding="utf-8")
+    incr("draft_created")
     return out_path
 
 

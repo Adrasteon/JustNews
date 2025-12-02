@@ -10,6 +10,7 @@ import json
 import hashlib
 from pathlib import Path
 from typing import List
+from scripts.dev.canary_metrics import incr
 
 
 DRAFT_DIR = Path.cwd() / "output" / "canary_drafts"
@@ -36,6 +37,7 @@ def publish_draft(path: Path) -> Path:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / f"{slug}.json"
     out_path.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    incr("publish_success")
     return out_path
 
 

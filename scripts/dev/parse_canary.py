@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import List
 
 from agents.crawler.extraction import extract_article_content
+from scripts.dev.canary_metrics import incr
 
 
 RAW_DIR = Path.cwd() / "output" / "canary_raw"
@@ -38,6 +39,7 @@ def parse_file(path: Path) -> Path:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / path.name
     out_path.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    incr("parse_success")
     return out_path
 
 

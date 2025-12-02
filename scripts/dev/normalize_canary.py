@@ -13,6 +13,7 @@ from typing import List
 from datetime import datetime
 
 from common.url_normalization import normalize_article_url
+from scripts.dev.canary_metrics import incr
 
 
 RAW_DIR = Path.cwd() / "output" / "canary_raw"
@@ -36,6 +37,7 @@ def normalize_file(path: Path) -> Path:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / path.name
     out_path.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    incr("normalize_success")
     return out_path
 
 

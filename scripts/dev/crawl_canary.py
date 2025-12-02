@@ -25,6 +25,9 @@ def read_canary_urls() -> List[str]:
     return lines
 
 
+from scripts.dev.canary_metrics import incr
+
+
 def fetch_and_store(url: str) -> Path:
     r = requests.get(url, timeout=20)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -38,6 +41,7 @@ def fetch_and_store(url: str) -> Path:
         "html": r.text[:50000],
     }
     out_path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
+    incr("fetch_success")
     return out_path
 
 

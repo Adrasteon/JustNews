@@ -1,0 +1,29 @@
+name: CI — Mistral dry-run adapter tests
+
+on:
+  pull_request:
+
+jobs:
+  mistral-dryrun:
+    name: Mistral adapter dry-run tests
+    runs-on: ubuntu-latest
+    env:
+      CANONICAL_ENV: justnews-py312
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: '3.12'
+          auto-activate-base: false
+
+      - name: Create / update conda environment
+        run: |
+          conda env list
+          conda env create -f environment.yml -n ${CANONICAL_ENV} || conda env update -f environment.yml -n ${CANONICAL_ENV} || true
+
+      - name: Run mistral dry-run tests (conda)
+        run: |
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q tests/adapters/test_mistral_adapter.py tests/agents/test_mistral_adapters.py tests/agents/synthesizer/test_synthesizer_mistral_integration.py tests/agents/test_analyst_mistral_engine.py tests/agents/test_fact_checker_mistral_engine.py tests/agents/test_critic_mistral_engine.py tests/agents/test_journalist_mistral_engine.py tests/agents/test_reasoning_mistral_engine.py tests/agents/test_chief_editor_mistral_engine.py -q

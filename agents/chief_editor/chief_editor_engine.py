@@ -20,7 +20,8 @@ from enum import Enum
 from typing import Any
 
 from common.observability import get_logger
-from agents.chief_editor.mistral_adapter import ChiefEditorMistralAdapter
+from agents.chief_editor.mistral_adapter import SYSTEM_PROMPT
+from agents.common.mistral_adapter import MistralAdapter
 
 # Core ML Libraries with fallbacks
 try:
@@ -101,7 +102,8 @@ class ChiefEditorEngine:
     def __init__(self, config: ChiefEditorConfig | None = None):
         self.config = config or ChiefEditorConfig()
         self.device = self.config.device
-        self.mistral_adapter = ChiefEditorMistralAdapter()
+        # Use shared MistralAdapter wrapper for consistent dry-run & modelstore behavior
+        self.mistral_adapter = MistralAdapter(agent="chief_editor", adapter_name="mistral_chief_editor_v1", system_prompt=SYSTEM_PROMPT)
 
         # Model containers
         self.pipelines = {}

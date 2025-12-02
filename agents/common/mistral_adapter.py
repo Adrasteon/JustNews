@@ -23,6 +23,27 @@ class MistralAdapter(BaseAdapter):
         self.disable_env = disable_env or f"{agent.upper()}_DISABLE_MISTRAL"
         self._base: BaseMistralJSONAdapter | None = None
         self._agent_impl: object | None = None
+        # Try to eager-populate a per-agent implementation if available.
+        try:
+            # Candidate module names to try for agent-specific helpers
+            candidates = [f"agents.{self.agent}.mistral_adapter", f"agents.tools.mistral_{self.agent}_adapter", f"agents.tools.mistral_re_ranker_adapter"]
+            for module_name in candidates:
+                try:
+                    mod = __import__(module_name, fromlist=['*'])
+                    parts = [p.capitalize() for p in self.agent.split('_')]
+                    class_name = ''.join(parts) + 'MistralAdapter'
+                    cls = getattr(mod, class_name, None)
+                    if cls:
+                        try:
+                            self._agent_impl = cls()
+                            break
+                        except Exception:
+                            # ignore instantiation errors
+                            self._agent_impl = None
+                except Exception:
+                    continue
+        except Exception:
+            self._agent_impl = None
         self._dry_run = os.environ.get("MODEL_STORE_DRY_RUN") == "1" or os.environ.get("DRY_RUN") == "1"
 
     def load(self, model_id: str | None = None, config: dict | None = None) -> None:
@@ -46,23 +67,22 @@ class MistralAdapter(BaseAdapter):
         # Try to lazy-load any per-agent adapter implementation so we can
         # delegate specialized helpers (classify, review, evaluate_claim,
         # generate_story_brief) without duplicating normalization code.
-        try:
-            module_name = f"agents.{self.agent}.mistral_adapter"
-            mod = __import__(module_name, fromlist=['*'])
-            # Derive class name from agent, e.g. "fact_checker" -> "FactCheckerMistralAdapter"
-            parts = [p.capitalize() for p in self.agent.split('_')]
-            class_name = ''.join(parts) + 'MistralAdapter'
-            cls = getattr(mod, class_name, None)
-            if cls:
-                try:
-                    self._agent_impl = cls()
-                except Exception:
-                    # If instantiation fails, silently ignore — we'll fall back
-                    # to the base JSON adapter behavior.
-                    self._agent_impl = None
-        except Exception:
-            # No specialized per-agent adapter available — that's fine.
-            self._agent_impl = None
+        # If we haven't already found an agent implementation try again (post-load)
+        if self._agent_impl is None:
+            try:
+                module_name = f"agents.{self.agent}.mistral_adapter"
+                mod = __import__(module_name, fromlist=['*'])
+                parts = [p.capitalize() for p in self.agent.split('_')]
+                class_name = ''.join(parts) + 'MistralAdapter'
+                cls = getattr(mod, class_name, None)
+                if cls:
+                    try:
+                        self._agent_impl = cls()
+                    except Exception:
+                        self._agent_impl = None
+            except Exception:
+                # best-effort only
+                self._agent_impl = None
 
     def infer(self, prompt: str, **kwargs: Any) -> dict:
         if self._base is None:
@@ -127,6 +147,14 @@ class MistralAdapter(BaseAdapter):
 
     def batch_infer(self, prompts: List[str], **kwargs: Any) -> List[dict]:
         return [self.infer(p, **kwargs) for p in prompts]
+
+    def __getattr__(self, name: str):
+        # Delegate unknown attribute access to per-agent implementation if present
+        if self._agent_impl is not None:
+            attr = getattr(self._agent_impl, name, None)
+            if attr is not None:
+                return attr
+        raise AttributeError(name)
 
     # Agent-friendly helpers ----------------------------------------------
     def classify(self, text: str) -> object | None:
@@ -258,6 +286,54 @@ class MistralAdapter(BaseAdapter):
         messages = [{"role": "system", "content": self.system_prompt}, {"role": "user", "content": user_block}]
         doc = self._base._chat_json(messages)
         return getattr(self, '_agent_impl', None) and getattr(self._agent_impl, '_normalize', lambda p: p)(doc)
+
+    # Convenience compatibility: some per-agent adapters expose different
+    # method names like `analyze` (reasoning) or `review_content` (chief editor).
+    def analyze(self, query: str, context_facts: list[str] | None = None) -> dict | None:
+        # Delegate if implementation exists
+        if getattr(self, '_agent_impl', None) and hasattr(self._agent_impl, 'analyze'):
+            try:
+                return getattr(self._agent_impl, 'analyze')(query, context_facts)
+            except Exception:
+                pass
+
+        if self._dry_run:
+            return {
+                'hypothesis': 'Simulated hypothesis',
+                'chain_of_thought': ['Step 1', 'Step 2'],
+                'verdict': 'unclear',
+                'confidence': 0.65,
+                'follow_up_questions': ['What source supports X?']
+            }
+
+        if not self._base:
+            return None
+
+        try:
+            return self._agent_impl.analyze(query, context_facts) if getattr(self, '_agent_impl', None) and hasattr(self._agent_impl, 'analyze') else None
+        except Exception:
+            return None
+
+    def review_content(self, content: str, metadata: dict | None = None) -> dict | None:
+        # delegate to per-agent if present
+        if getattr(self, '_agent_impl', None) and hasattr(self._agent_impl, 'review_content'):
+            try:
+                return getattr(self._agent_impl, 'review_content')(content, metadata)
+            except Exception:
+                pass
+
+        # fallback to review method and return dict form
+        res = self.review(content, None)
+        if res is None:
+            return None
+
+        try:
+            # convert SimpleNamespace or object to dict when possible
+            if hasattr(res, '__dict__'):
+                return dict(res.__dict__)
+            return dict(res)
+        except Exception:
+            return {'assessment': str(res)}
 
     def health_check(self) -> dict:
         if self._base is None:

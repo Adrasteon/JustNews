@@ -25,7 +25,8 @@ from typing import Any, List
 import networkx as nx
 
 from common.observability import get_logger
-from agents.reasoning.mistral_adapter import ReasoningMistralAdapter
+from agents.reasoning.mistral_adapter import SYSTEM_PROMPT
+from agents.common.mistral_adapter import MistralAdapter
 
 # Configure logging
 logger = get_logger(__name__)
@@ -248,7 +249,8 @@ class ReasoningEngine:
     def __init__(self, config: ReasoningConfig):
         self.config = config
         self.logger = logger
-        self.mistral_adapter = ReasoningMistralAdapter()
+        # use shared MistralAdapter wrapper (keeps per-agent system prompt)
+        self.mistral_adapter = MistralAdapter(agent="reasoning", adapter_name="mistral_reasoning_v1", system_prompt=SYSTEM_PROMPT)
 
         # Core components
         self.nucleoid: Any | None = None

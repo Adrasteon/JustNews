@@ -84,11 +84,13 @@ third_party/**
 
 # Local wheel build scratch space (e.g., bitsandbytes)
 .build/
+# Local build outputs
+build/
 
 # Ignore runtime model caches and large model blobs
 models/**
 model_store/**
 
 # Training artifacts
-output/qlora_adapters/
+output/
 

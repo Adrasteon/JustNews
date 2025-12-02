@@ -1,9 +1,0 @@
-{
-  "url": "https://www.iana.org/domains/reserved",
-  "title": "IANA-managed Reserved Domains",
-  "text": "IANA-managed Reserved Domains\nCertain domains are set aside, and nominally registered to “IANA”, for specific policy or technical purposes.\nExample domains\nAs described in RFC 2606 and RFC 6761, a number of domains such as example.com and example.org are maintained for documentation purposes. These domains may be used as illustrative examples in documents without prior coordination with us. They are not available for registration or transfer.\nTest IDN top-level domains\nThese domains were temporarily delegated by IANA for the IDN Evaluation being conducted by ICANN.\nPolicy-reserved domains\nWe act as both the registrant and registrar for a select number of domains which have been reserved under policy grounds. These exclusions are typically indicated in either technical standards (RFC documents), or contractual limitations.\nDomains which are described as registered to IANA or ICANN on policy grounds are not available for registration or transfer, with the exception of country-name.info domains. These domains are available for release by the ICANN Governmental Advisory Committee Secretariat.\nOther Special-Use Domains\nThere is additionally a Special-Use Domain Names registry documenting special-use domains designated by technical standards. For further information, see Special-Use Domain Names (RFC 6761).",
-  "word_count": 188,
-  "canonical_url": null,
-  "extraction_used": "trafilatura",
-  "needs_review": false
-}

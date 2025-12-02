@@ -14,7 +14,8 @@ from dataclasses import dataclass
 from typing import Any, Dict
 
 from agents.c4ai.bridge import crawl_via_local_server
-from agents.journalist.mistral_adapter import JournalistMistralAdapter
+from agents.journalist.mistral_adapter import SYSTEM_PROMPT
+from agents.common.mistral_adapter import MistralAdapter
 from common.observability import get_logger
 
 logger = get_logger(__name__)
@@ -42,7 +43,8 @@ class JournalistEngine:
     def __init__(self, config: JournalistConfig | None = None):
         self.config = config or JournalistConfig()
         self._shutdown = False
-        self._mistral_adapter = JournalistMistralAdapter()
+        # Use shared MistralAdapter wrapper for consistent dry-run and modelstore behavior
+        self._mistral_adapter = MistralAdapter(agent="journalist", adapter_name="mistral_journalist_v1", system_prompt=SYSTEM_PROMPT)
 
     async def crawl_and_analyze(self, url: str, mode: str | None = None) -> dict[str, Any]:
         mode = mode or self.config.default_mode

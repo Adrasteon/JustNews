@@ -32,9 +32,10 @@ from typing import TYPE_CHECKING, Any
 from common.observability import get_logger
 
 try:
-    from .mistral_adapter import AnalystMistralAdapter, AdapterResult
+    from agents.common.mistral_adapter import MistralAdapter
+    from .mistral_adapter import SYSTEM_PROMPT, AdapterResult
 except Exception:  # pragma: no cover - optional dependency wiring
-    AnalystMistralAdapter = None  # type: ignore
+    MistralAdapter = None  # type: ignore
     AdapterResult = Any  # type: ignore
 
 if TYPE_CHECKING:
@@ -128,7 +129,7 @@ class AnalystEngine:
         self.spacy_nlp = None
         self.ner_pipeline = None
         self.gpu_analyst = None
-        self.mistral_adapter: AnalystMistralAdapter | None = None
+        self.mistral_adapter: MistralAdapter | None = None
         self._mistral_cache_key: str | None = None
         self._mistral_cache_result: AdapterResult | None = None
 
@@ -228,12 +229,14 @@ class AnalystEngine:
 
     def _initialize_mistral_adapter(self):
         """Try to prepare the high-accuracy Mistral adapter helper."""
-        if AnalystMistralAdapter is None:
+        if MistralAdapter is None:
             logger.info("Mistral adapter dependencies unavailable; continuing with legacy models")
             return
 
         try:
-            self.mistral_adapter = AnalystMistralAdapter()
+            # Use the shared MistralAdapter wrapper so we get dry-run behavior and
+            # shared loading semantics while keeping the per-agent system prompt.
+            self.mistral_adapter = MistralAdapter(agent="analyst", adapter_name="mistral_analyst_v1", system_prompt=SYSTEM_PROMPT)
             if getattr(self.mistral_adapter, "enabled", True):
                 logger.info("Mistral adapter enabled for Analyst; loading lazily from ModelStore")
             else:

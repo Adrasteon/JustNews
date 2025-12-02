@@ -22,3 +22,8 @@ def test_mistral_adapter_dry_run(monkeypatch):
 
     batch = adapter.batch_infer(["a", "b"])
     assert isinstance(batch, list) and len(batch) == 2
+
+    # cluster-level dry-run summary
+    doc = adapter.summarize_cluster(["Article one content", "Article two content"], context="testing")
+    assert isinstance(doc, dict)
+    assert "summary" in doc and isinstance(doc["summary"], str)

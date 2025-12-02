@@ -22,10 +22,11 @@ import numpy as np
 from common.observability import get_logger
 
 try:
-    from .mistral_adapter import ClaimAssessment, FactCheckerMistralAdapter
+    from agents.common.mistral_adapter import MistralAdapter
+    from .mistral_adapter import ClaimAssessment, SYSTEM_PROMPT, MODEL_ADAPTER_NAME
 except Exception:  # pragma: no cover - optional dependency wiring
     ClaimAssessment = None  # type: ignore
-    FactCheckerMistralAdapter = None
+    MistralAdapter = None  # type: ignore
 
 # Configure logging
 logger = get_logger(__name__)
@@ -122,7 +123,7 @@ class FactCheckerEngine:
         # Cache
         self.cache = {}
         self.cache_timestamps = {}
-        self.mistral_adapter: FactCheckerMistralAdapter | None = None
+        self.mistral_adapter: MistralAdapter | None = None
         self._mistral_cache: dict[str, ClaimAssessment] = {}
 
         # Initialize models
@@ -232,11 +233,11 @@ class FactCheckerEngine:
 
     def _initialize_mistral_adapter(self) -> None:
         """Prepare the high-accuracy Mistral adapter (lazy-loaded)."""
-        if FactCheckerMistralAdapter is None:
+        if MistralAdapter is None:
             self.logger.info("Mistral adapter dependencies unavailable; continuing with legacy fact-checking stack")
             return
         try:
-            self.mistral_adapter = FactCheckerMistralAdapter()
+            self.mistral_adapter = MistralAdapter(agent="fact_checker", adapter_name=MODEL_ADAPTER_NAME, system_prompt=SYSTEM_PROMPT)
             if getattr(self.mistral_adapter, "enabled", True):
                 self.logger.info("Fact Checker Mistral adapter enabled (loaded on first use)")
             else:

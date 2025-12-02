@@ -42,14 +42,15 @@ from transformers import (
 from common.observability import get_logger
 
 try:
+    from agents.common.mistral_adapter import MistralAdapter
     from .mistral_adapter import (
         CriticAssessment,
-        CriticMistralAdapter,
         MODEL_ADAPTER_NAME as CRITIC_ADAPTER_NAME,
+        SYSTEM_PROMPT,
     )
 except Exception:  # pragma: no cover - optional dependency wiring
     CriticAssessment = None  # type: ignore
-    CriticMistralAdapter = None
+    MistralAdapter = None
     CRITIC_ADAPTER_NAME = "mistral_critic_v1"
 
 # Configure logging
@@ -125,7 +126,7 @@ class CriticEngine:
 
         # Feedback collection
         self.feedback_data = []
-        self.mistral_adapter: CriticMistralAdapter | None = None
+        self.mistral_adapter: MistralAdapter | None = None
 
         # Initialize models
         self._initialize_models()
@@ -286,11 +287,11 @@ class CriticEngine:
 
     def _initialize_mistral_adapter(self) -> None:
         """Prepare the high-accuracy Mistral adapter for critiques."""
-        if CriticMistralAdapter is None:
+        if MistralAdapter is None:
             self.logger.info("Mistral adapter dependencies unavailable; using legacy critic stack")
             return
         try:
-            self.mistral_adapter = CriticMistralAdapter()
+            self.mistral_adapter = MistralAdapter(agent="critic", adapter_name=CRITIC_ADAPTER_NAME, system_prompt=SYSTEM_PROMPT)
             if getattr(self.mistral_adapter, "enabled", True):
                 self.logger.info("Critic Mistral adapter enabled (lazy-loaded)")
             else:

@@ -13,6 +13,8 @@ class StageBMetrics:
     ingestion_total: Counter
     embedding_total: Counter
     embedding_latency_seconds: Histogram
+    editorial_total: Counter
+    editorial_acceptance: Histogram
 
     def record_extraction(self, result: str) -> None:
         self.extraction_total.labels(result=result).inc()
@@ -44,6 +46,18 @@ class StageBMetrics:
     def get_embedding_latency_sum(self, cache: str) -> float:
         return self.embedding_latency_seconds.labels(cache=cache)._sum.get()
 
+    def record_editorial_result(self, result: str) -> None:
+        self.editorial_total.labels(result=result).inc()
+
+    def get_editorial_count(self, result: str) -> float:
+        return self.editorial_total.labels(result=result)._value.get()
+
+    def observe_editorial_acceptance(self, score: float) -> None:
+        self.editorial_acceptance.observe(max(0.0, min(score, 1.0)))
+
+    def get_editorial_acceptance_sum(self) -> float:
+        return self.editorial_acceptance._sum.get()
+
 
 _metric_registry_map: dict[int, StageBMetrics] = {}
 _default_metrics = StageBMetrics(
@@ -73,6 +87,16 @@ _default_metrics = StageBMetrics(
         "Latency for embedding generation during Stage B ingestion.",
         ["cache"],
         buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
+    ),
+    editorial_total=Counter(
+        "justnews_stage_b_editorial_harness_total",
+        "Count of editorial harness outcomes (accepted, needs_followup, error).",
+        ["result"],
+    ),
+    editorial_acceptance=Histogram(
+        "justnews_stage_b_editorial_acceptance",
+        "Acceptance score distribution produced by the editorial harness.",
+        buckets=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
     ),
 )
 _active_metrics: StageBMetrics = _default_metrics
@@ -111,6 +135,18 @@ def _build_metrics(registry: CollectorRegistry | None) -> StageBMetrics:
             ["cache"],
             registry=registry,
             buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
+        ),
+        editorial_total=Counter(
+            "justnews_stage_b_editorial_harness_total",
+            "Count of editorial harness outcomes (accepted, needs_followup, error).",
+            ["result"],
+            registry=registry,
+        ),
+        editorial_acceptance=Histogram(
+            "justnews_stage_b_editorial_acceptance",
+            "Acceptance score distribution produced by the editorial harness.",
+            registry=registry,
+            buckets=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
         ),
     )
 

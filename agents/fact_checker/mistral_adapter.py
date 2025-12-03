@@ -49,6 +49,7 @@ class FactCheckerMistralAdapter:
 
     def __init__(self) -> None:
         self.enabled = os.environ.get(DISABLE_ENV, "0").lower() not in {"1", "true", "yes", "on"}
+        self._dry_run = os.environ.get("MODEL_STORE_DRY_RUN") == "1" or os.environ.get("DRY_RUN") == "1"
         self.max_chars = int(os.environ.get("FACT_CHECKER_MISTRAL_MAX_CHARS", "4096"))
         self.max_input_tokens = int(os.environ.get("FACT_CHECKER_MISTRAL_MAX_INPUT_TOKENS", "2048"))
         self.max_new_tokens = int(os.environ.get("FACT_CHECKER_MISTRAL_MAX_NEW_TOKENS", "320"))
@@ -62,6 +63,10 @@ class FactCheckerMistralAdapter:
     def evaluate_claim(self, claim: str, context: str | None = None) -> ClaimAssessment | None:
         if not self.enabled or not claim.strip():
             return None
+
+        if self._dry_run:
+            return self._simulate_assessment(claim, context)
+
         payload = self._run_inference(claim, context)
         if not payload:
             return None
@@ -207,3 +212,32 @@ class FactCheckerMistralAdapter:
         except Exception as exc:
             logger.warning("Failed to normalize fact-checker adapter output: %s", exc)
             return None
+
+    def _simulate_assessment(self, claim: str, context: str | None) -> ClaimAssessment:
+        """Generate a deterministic dry-run ClaimAssessment."""
+
+        fingerprint = abs(hash((claim, context))) % 100
+        bucket = fingerprint % 3
+        if bucket == 0:
+            verdict = "verified"
+            score = 0.82
+        elif bucket == 1:
+            verdict = "refuted"
+            score = 0.35
+        else:
+            verdict = "unclear"
+            score = 0.55
+
+        confidence = min(0.99, 0.65 + (fingerprint % 7) * 0.035)
+        rationale = (
+            "Dry-run verdict generated deterministically — run without MODEL_STORE_DRY_RUN=1 "
+            "to obtain live fact-checking output."
+        )
+        evidence_needed = verdict != "verified"
+        return ClaimAssessment(
+            verdict=verdict,
+            confidence=confidence,
+            score=score,
+            rationale=rationale,
+            evidence_needed=evidence_needed,
+        )

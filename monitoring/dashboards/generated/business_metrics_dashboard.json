@@ -1,151 +1,253 @@
 {
-  "dashboard": {
-    "id": null,
-    "title": "Business Metrics Dashboard",
-    "description": "Key business performance indicators and KPIs",
-    "tags": [
-      "business",
-      "kpi",
-      "metrics"
-    ],
-    "timezone": "UTC",
-    "refresh": "5m",
-    "time": {
-      "from": "now-7d",
-      "to": "now"
-    },
-    "timepicker": {},
-    "templating": {
-      "list": []
-    },
-    "annotations": {
-      "list": []
-    },
-    "panels": [
-      {
-        "id": null,
-        "title": "Daily Active Users",
-        "type": "graph",
-        "description": "Daily active user count",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 0
-        },
-        "targets": [
-          {
-            "expr": "daily_active_users",
-            "legendFormat": "DAU"
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Content Engagement",
-        "type": "graph",
-        "description": "Content engagement metrics",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 0
-        },
-        "targets": [
-          {
-            "expr": "content_engagement_score",
-            "legendFormat": "Engagement"
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Revenue Metrics",
-        "type": "stat",
-        "description": "Total revenue generated",
-        "gridPos": {
-          "h": 4,
-          "w": 8,
-          "x": 0,
-          "y": 8
-        },
-        "targets": [
-          {
-            "expr": "revenue_total",
-            "legendFormat": "Total Revenue"
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Customer Satisfaction",
-        "type": "gauge",
-        "description": "Customer satisfaction score",
-        "gridPos": {
-          "h": 6,
-          "w": 8,
-          "x": 8,
-          "y": 8
-        },
-        "targets": [
-          {
-            "expr": "customer_satisfaction_score",
-            "legendFormat": "CSAT"
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Market Share",
-        "type": "bargauge",
-        "description": "Market share by segment",
-        "gridPos": {
-          "h": 8,
-          "w": 16,
-          "x": 0,
-          "y": 14
-        },
-        "targets": [
-          {
-            "expr": "market_share_percentage",
-            "legendFormat": "{{segment}}"
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      }
-    ],
-    "version": 1,
-    "schemaVersion": 36,
-    "style": "dark"
+  "id": null,
+  "uid": "af5zdqbqc8xkwf",
+  "title": "Business Metrics Dashboard",
+  "description": "Key business performance indicators and KPIs",
+  "tags": [
+    "business",
+    "kpi",
+    "metrics"
+  ],
+  "timezone": "UTC",
+  "refresh": "5m",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
   },
-  "overwrite": false
+  "timepicker": {},
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Stage 1 Extraction Outcomes (6h)",
+      "type": "timeseries",
+      "description": "Rolling 6h sum of extraction results from the Stage B pipeline",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(justnews_stage_b_extraction_articles_total[6h])) by (result)",
+          "legendFormat": "{{result}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "title": "Stage 2 Ingestion Outcomes (6h)",
+      "type": "timeseries",
+      "description": "Success vs error counts for Stage B ingestion",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(justnews_stage_b_ingestion_articles_total[6h])) by (status)",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "title": "Embedding Status (6h)",
+      "type": "timeseries",
+      "description": "Embedding generation outcomes grouped by status",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(justnews_stage_b_embedding_total[6h])) by (status)",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "title": "Extraction Fallback Outcomes (24h)",
+      "type": "bargauge",
+      "description": "Count of fallback extractor usage outcomes during the past day",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(justnews_stage_b_extraction_fallback_total[24h])) by (fallback, outcome)",
+          "legendFormat": "{{fallback}} \u2192 {{outcome}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Editorial Acceptance Ratio (24h)",
+      "type": "stat",
+      "description": "Acceptance vs total decisions over the previous day",
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(justnews_stage_b_editorial_harness_total{result=\"accepted\"}[24h])) / clamp_min(sum(increase(justnews_stage_b_editorial_harness_total[24h])), 1e-9)",
+          "legendFormat": "ratio"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Harness Runs (24h)",
+      "type": "stat",
+      "description": "Total editorial harness executions in the last 24 hours",
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(justnews_stage_b_editorial_harness_total[24h]))",
+          "legendFormat": "runs"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Adaptive Sufficiency Rate (6h)",
+      "type": "stat",
+      "description": "Portion of adaptive Crawl4AI articles that met sufficiency thresholds",
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "100 * sum(increase(justnews_crawler_scheduler_adaptive_articles_sufficient_total[6h])) / clamp_min(sum(increase(justnews_crawler_scheduler_adaptive_articles_total[6h])), 1)",
+          "legendFormat": "sufficient %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    }
+  ],
+  "version": 1,
+  "schemaVersion": 36,
+  "style": "dark"
 }

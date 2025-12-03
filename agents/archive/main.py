@@ -14,7 +14,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from agents.archive.archive_engine import get_archive_engine
-from common.metrics import JustNewsMetrics
+from agents.archive.metrics_registry import metrics
 from common.observability import get_logger
 
 logger = get_logger(__name__)
@@ -71,6 +71,7 @@ async def lifespan(app: FastAPI):
                 "search_archive",
                 "get_archive_stats",
                 "store_single_article",
+                "queue_article",
                 "get_article_entities",
                 "search_knowledge_graph",
                 "link_entities"
@@ -93,9 +94,6 @@ app = FastAPI(
     description="Comprehensive article archiving with knowledge graph integration",
     lifespan=lifespan
 )
-
-# Initialize metrics
-metrics = JustNewsMetrics("archive")
 
 # Register common endpoints
 try:
@@ -255,6 +253,35 @@ async def store_single_article_endpoint(call: ToolCall):
     except Exception as e:
         logger.error(f"Error in store_single_article endpoint: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.post("/queue_article")
+def queue_article_endpoint(call: ToolCall):
+    """Persist a cleaned HITL article into Stage B storage."""
+    try:
+        from agents.archive.tools import queue_article
+
+        payload: Any | None = None
+        if call.args:
+            payload = call.args[0]
+        elif "job_payload" in call.kwargs:
+            payload = call.kwargs.get("job_payload")
+        elif call.kwargs:
+            payload = call.kwargs
+
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=400, detail="ingest payload must be provided")
+
+        result = queue_article(payload)
+        return {"status": "success", "data": result}
+
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error(f"Error in queue_article endpoint: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.post("/get_article_entities")

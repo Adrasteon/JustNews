@@ -1,0 +1,118 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "#000000",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Editorial harness outcomes per second",
+      "id": 1,
+      "datasource": "Prometheus",
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+      "targets": [
+        {
+          "expr": "sum(rate(justnews_stage_b_editorial_harness_total{result=\"accepted\"}[5m]))",
+          "legendFormat": "accepted",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(justnews_stage_b_editorial_harness_total{result=\"needs_followup\"}[5m]))",
+          "legendFormat": "needs_followup",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(justnews_stage_b_editorial_harness_total{result=\"error\"}[5m]))",
+          "legendFormat": "error",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom"}}
+    },
+    {
+      "type": "stat",
+      "title": "Acceptance ratio (5m rolling)",
+      "id": 2,
+      "datasource": "Prometheus",
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 4},
+      "targets": [
+        {
+          "expr": "sum(rate(justnews_stage_b_editorial_harness_total{result=\"accepted\"}[5m])) / clamp_min(sum(rate(justnews_stage_b_editorial_harness_total[5m])), 1e-9)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "percentunit"}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": ""}, "orientation": "horizontal"}
+    },
+    {
+      "type": "timeseries",
+      "title": "Acceptance score distribution",
+      "id": 3,
+      "datasource": "Prometheus",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 4},
+      "targets": [
+        {
+          "expr": "sum(rate(justnews_stage_b_editorial_acceptance_bucket[5m])) by (le)",
+          "legendFormat": "<= {{le}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "right"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "Average acceptance score",
+      "id": 4,
+      "datasource": "Prometheus",
+      "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+      "targets": [
+        {
+          "expr": "sum(rate(justnews_stage_b_editorial_acceptance_sum[5m])) / clamp_min(sum(rate(justnews_stage_b_editorial_acceptance_count[5m])), 1e-9)",
+          "legendFormat": "avg score",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "none"}, "overrides": []},
+      "options": {"legend": {"displayMode": "table", "placement": "bottom"}}
+    },
+    {
+      "type": "stat",
+      "title": "Harness runs (24h)",
+      "id": 5,
+      "datasource": "Prometheus",
+      "gridPos": {"x": 12, "y": 8, "w": 12, "h": 4},
+      "targets": [
+        {
+          "expr": "sum(increase(justnews_stage_b_editorial_harness_total[24h]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": ""}, "orientation": "horizontal"}
+    }
+  ],
+  "schemaVersion": 30,
+  "style": "dark",
+  "tags": ["stage-b", "editorial", "harness"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timepicker": {"refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "1h", "6h"]},
+  "timezone": "browser",
+  "title": "JustNews — Editorial Harness",
+  "uid": "justnews-editorial-harness"
+}

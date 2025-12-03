@@ -1,817 +1,489 @@
 {
-  "dashboard": {
-    "id": null,
-    "title": "JustNews Operations Dashboard",
-    "description": "Comprehensive dashboard for JustNews content processing operations and metrics",
-    "tags": [
-      "justnews",
-      "operations",
-      "content",
-      "monitoring"
-    ],
-    "timezone": "UTC",
-    "refresh": "30s",
-    "time": {
-      "from": "now-1h",
-      "to": "now"
-    },
-    "timepicker": {},
-    "templating": {
-      "list": []
-    },
-    "annotations": {
-      "list": []
-    },
-    "panels": [
-      {
-        "id": null,
-        "title": "Domains Crawled",
-        "type": "stat",
-        "description": "Total number of domains crawled by the scheduler",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 0,
-          "y": 0
-        },
-        "targets": [
-          {
-            "expr": "justnews_crawler_scheduler_domains_crawled_total",
-            "legendFormat": "Domains Crawled",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Articles Accepted",
-        "type": "stat",
-        "description": "Total number of articles accepted during scheduler windows",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 6,
-          "y": 0
-        },
-        "targets": [
-          {
-            "expr": "justnews_crawler_scheduler_articles_accepted_total",
-            "legendFormat": "Articles Accepted",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Adaptive Articles",
-        "type": "stat",
-        "description": "Total number of articles produced via adaptive Crawl4AI pipeline",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 12,
-          "y": 0
-        },
-        "targets": [
-          {
-            "expr": "justnews_crawler_scheduler_adaptive_articles_total",
-            "legendFormat": "Adaptive Articles",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Scheduler Lag",
-        "type": "stat",
-        "description": "Lag between scheduled and actual crawl start time",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 18,
-          "y": 0
-        },
-        "targets": [
-          {
-            "expr": "justnews_crawler_scheduler_lag_seconds",
-            "legendFormat": "Lag (seconds)",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Crawler Requests",
-        "type": "timeseries",
-        "description": "Rate of crawler requests over time",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 4
-        },
-        "targets": [
-          {
-            "expr": "rate(justnews_requests_total{agent=\"crawler\"}[5m])",
-            "legendFormat": "Requests/min",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {
-          "tooltip": {
-            "mode": "single"
-          },
-          "legend": {
-            "displayMode": "list",
-            "placement": "bottom"
-          }
-        },
-        "fieldConfig": {
-          "defaults": {
-            "custom": {
-              "drawStyle": "line",
-              "lineInterpolation": "linear",
-              "barAlignment": 0,
-              "lineWidth": 1,
-              "fillOpacity": 10,
-              "gradientMode": "none",
-              "spanNulls": false,
-              "showPoints": "never",
-              "pointSize": 5,
-              "stacking": {
-                "mode": "none",
-                "group": "A"
-              },
-              "axisPlacement": "auto",
-              "axisLabel": "",
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "hideFrom": {
-                "vis": false,
-                "tooltip": false,
-                "legend": false
-              }
-            },
-            "color": {
-              "mode": "palette-classic"
-            },
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "red",
-                  "value": 80
-                }
-              ]
-            }
-          },
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Active Connections",
-        "type": "stat",
-        "description": "Current number of active connections",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 12,
-          "y": 4
-        },
-        "targets": [
-          {
-            "expr": "justnews_active_connections",
-            "legendFormat": "Active Connections",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Total Errors",
-        "type": "stat",
-        "description": "Total number of errors encountered",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 18,
-          "y": 4
-        },
-        "targets": [
-          {
-            "expr": "justnews_errors_total",
-            "legendFormat": "Total Errors",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "CPU Usage",
-        "type": "gauge",
-        "description": "Current CPU utilization percentage",
-        "gridPos": {
-          "h": 6,
-          "w": 6,
-          "x": 0,
-          "y": 12
-        },
-        "targets": [
-          {
-            "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
-            "legendFormat": "CPU Usage %",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {
-          "orientation": "auto",
-          "textMode": "auto",
-          "colorMode": "value",
-          "graphMode": "area",
-          "justifyMode": "auto"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "min": 0,
-            "max": 100,
-            "unit": "percent"
-          },
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Memory Usage",
-        "type": "gauge",
-        "description": "Current memory utilization percentage",
-        "gridPos": {
-          "h": 6,
-          "w": 6,
-          "x": 6,
-          "y": 12
-        },
-        "targets": [
-          {
-            "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100",
-            "legendFormat": "Memory Usage %",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {
-          "orientation": "auto",
-          "textMode": "auto",
-          "colorMode": "value",
-          "graphMode": "area",
-          "justifyMode": "auto"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "min": 0,
-            "max": 100,
-            "unit": "percent"
-          },
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "System Load (1m)",
-        "type": "stat",
-        "description": "1-minute system load average",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 12,
-          "y": 8
-        },
-        "targets": [
-          {
-            "expr": "node_load1",
-            "legendFormat": "Load Average (1m)",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {
-            "unit": "none"
-          },
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Avg Request Duration",
-        "type": "stat",
-        "description": "Average request duration in seconds",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 18,
-          "y": 8
-        },
-        "targets": [
-          {
-            "expr": "avg(justnews_request_duration_seconds_sum / justnews_request_duration_seconds_count)",
-            "legendFormat": "Avg Duration (s)",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {
-            "unit": "s"
-          },
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Disk Usage",
-        "type": "gauge",
-        "description": "Root filesystem disk usage percentage",
-        "gridPos": {
-          "h": 6,
-          "w": 6,
-          "x": 12,
-          "y": 12
-        },
-        "targets": [
-          {
-            "expr": "(1 - node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"}) * 100",
-            "legendFormat": "Disk Usage %",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {
-          "orientation": "auto",
-          "textMode": "auto",
-          "colorMode": "value",
-          "graphMode": "area",
-          "justifyMode": "auto"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "min": 0,
-            "max": 100,
-            "unit": "percent"
-          },
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Network I/O",
-        "type": "timeseries",
-        "description": "Network traffic in bytes per second",
-        "gridPos": {
-          "h": 6,
-          "w": 6,
-          "x": 18,
-          "y": 12
-        },
-        "targets": [
-          {
-            "expr": "rate(node_network_receive_bytes_total[5m])",
-            "legendFormat": "Receive (bytes/s)",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          },
-          {
-            "expr": "rate(node_network_transmit_bytes_total[5m])",
-            "legendFormat": "Transmit (bytes/s)",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {
-          "tooltip": {
-            "mode": "single"
-          },
-          "legend": {
-            "displayMode": "list",
-            "placement": "bottom"
-          }
-        },
-        "fieldConfig": {
-          "defaults": {
-            "custom": {
-              "drawStyle": "line",
-              "lineInterpolation": "linear",
-              "barAlignment": 0,
-              "lineWidth": 1,
-              "fillOpacity": 10,
-              "gradientMode": "none",
-              "spanNulls": false,
-              "showPoints": "never",
-              "pointSize": 5,
-              "stacking": {
-                "mode": "none",
-                "group": "A"
-              },
-              "axisPlacement": "auto",
-              "axisLabel": "",
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "hideFrom": {
-                "vis": false,
-                "tooltip": false,
-                "legend": false
-              }
-            },
-            "color": {
-              "mode": "palette-classic"
-            },
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "red",
-                  "value": 80
-                }
-              ]
-            },
-            "unit": "Bps"
-          },
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "GPU Utilization",
-        "type": "gauge",
-        "description": "Current GPU utilization percentage",
-        "gridPos": {
-          "h": 6,
-          "w": 6,
-          "x": 0,
-          "y": 18
-        },
-        "targets": [
-          {
-            "expr": "nvidia_gpu_utilization_ratio * 100",
-            "legendFormat": "GPU Utilization %",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {
-          "orientation": "auto",
-          "textMode": "auto",
-          "colorMode": "value",
-          "graphMode": "area",
-          "justifyMode": "auto"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "min": 0,
-            "max": 100,
-            "unit": "percent"
-          },
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "GPU Memory Usage",
-        "type": "gauge",
-        "description": "GPU memory utilization percentage",
-        "gridPos": {
-          "h": 6,
-          "w": 6,
-          "x": 6,
-          "y": 18
-        },
-        "targets": [
-          {
-            "expr": "nvidia_gpu_memory_utilization_ratio * 100",
-            "legendFormat": "GPU Memory %",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {
-          "orientation": "auto",
-          "textMode": "auto",
-          "colorMode": "value",
-          "graphMode": "area",
-          "justifyMode": "auto"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "min": 0,
-            "max": 100,
-            "unit": "percent"
-          },
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "GPU Temperature",
-        "type": "stat",
-        "description": "GPU temperature in Celsius",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 12,
-          "y": 16
-        },
-        "targets": [
-          {
-            "expr": "nvidia_gpu_temperature_celsius",
-            "legendFormat": "GPU Temperature (°C)",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {
-            "unit": "celsius"
-          },
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "GPU Power Draw",
-        "type": "stat",
-        "description": "GPU power consumption in watts",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 18,
-          "y": 16
-        },
-        "targets": [
-          {
-            "expr": "nvidia_gpu_power_draw_watts",
-            "legendFormat": "Power Draw (W)",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {
-            "unit": "watt"
-          },
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "GPU Memory Details",
-        "type": "table",
-        "description": "Detailed GPU memory information",
-        "gridPos": {
-          "h": 6,
-          "w": 12,
-          "x": 12,
-          "y": 18
-        },
-        "targets": [
-          {
-            "expr": "nvidia_gpu_memory_total_bytes / (1024*1024*1024)",
-            "legendFormat": "Total Memory (GB)",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          },
-          {
-            "expr": "nvidia_gpu_memory_used_bytes / (1024*1024*1024)",
-            "legendFormat": "Used Memory (GB)",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          },
-          {
-            "expr": "nvidia_gpu_memory_free_bytes / (1024*1024*1024)",
-            "legendFormat": "Free Memory (GB)",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {
-          "showHeader": true
-        },
-        "fieldConfig": {
-          "defaults": {
-            "custom": {
-              "align": "auto",
-              "displayMode": "auto"
-            },
-            "unit": "deckbytes"
-          },
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "GPU Utilization Over Time",
-        "type": "timeseries",
-        "description": "GPU utilization and memory usage over time",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 24
-        },
-        "targets": [
-          {
-            "expr": "nvidia_gpu_utilization_ratio * 100",
-            "legendFormat": "GPU Utilization %",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          },
-          {
-            "expr": "nvidia_gpu_memory_utilization_ratio * 100",
-            "legendFormat": "Memory Utilization %",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "PBFA97CFB590B2093"
-            }
-          }
-        ],
-        "options": {
-          "tooltip": {
-            "mode": "single"
-          },
-          "legend": {
-            "displayMode": "list",
-            "placement": "bottom"
-          }
-        },
-        "fieldConfig": {
-          "defaults": {
-            "custom": {
-              "drawStyle": "line",
-              "lineInterpolation": "linear",
-              "barAlignment": 0,
-              "lineWidth": 1,
-              "fillOpacity": 10,
-              "gradientMode": "none",
-              "spanNulls": false,
-              "showPoints": "never",
-              "pointSize": 5,
-              "stacking": {
-                "mode": "none",
-                "group": "A"
-              },
-              "axisPlacement": "auto",
-              "axisLabel": "",
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "hideFrom": {
-                "vis": false,
-                "tooltip": false,
-                "legend": false
-              }
-            },
-            "color": {
-              "mode": "palette-classic"
-            },
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "red",
-                  "value": 80
-                }
-              ]
-            },
-            "unit": "percent"
-          },
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      }
-    ],
-    "version": 1,
-    "schemaVersion": 36,
-    "style": "dark"
+  "id": null,
+  "uid": "ef37elu2756o0e",
+  "title": "JustNews Operations Dashboard",
+  "description": "Content pipeline operations view covering scheduler, crawler, and Stage B throughput",
+  "tags": [
+    "operations",
+    "pipeline",
+    "stage-b"
+  ],
+  "timezone": "UTC",
+  "refresh": "2m",
+  "time": {
+    "from": "now-12h",
+    "to": "now"
   },
-  "overwrite": true
+  "timepicker": {},
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Domains Crawled (6h)",
+      "type": "stat",
+      "description": "Domains processed by the scheduler over the last 6h",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(justnews_crawler_scheduler_domains_crawled_total[6h]))",
+          "legendFormat": "Domains Crawled (6h)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Articles Accepted (6h)",
+      "type": "stat",
+      "description": "Accepted articles emitted by the scheduler over the last 6h",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(justnews_crawler_scheduler_articles_accepted_total[6h]))",
+          "legendFormat": "Articles Accepted (6h)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Adaptive Articles (6h)",
+      "type": "stat",
+      "description": "Adaptive Crawl4AI output volume (6h)",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(justnews_crawler_scheduler_adaptive_articles_total[6h]))",
+          "legendFormat": "Adaptive Articles (6h)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Editorial Acceptance (24h)",
+      "type": "stat",
+      "description": "Acceptance ratio delivered by the editorial harness",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(justnews_stage_b_editorial_harness_total{result=\"accepted\"}[24h])) / clamp_min(sum(increase(justnews_stage_b_editorial_harness_total[24h])), 1)",
+          "legendFormat": "Editorial Acceptance (24h)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Scheduler Lag (p95)",
+      "type": "timeseries",
+      "description": "P95 lag between scheduled and actual crawl start times",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "expr": "quantile_over_time(0.95, justnews_crawler_scheduler_lag_seconds[5m])",
+          "legendFormat": "lag p95"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "title": "Crawler Throughput (req/s)",
+      "type": "timeseries",
+      "description": "Rolling request throughput for crawler agents",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(justnews_requests_total{agent=\"crawler\"}[5m]))",
+          "legendFormat": "crawler req/s"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "req/s"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "title": "Stage B Extraction Outcomes (15m)",
+      "type": "timeseries",
+      "description": "Extraction outcomes split by result",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(justnews_stage_b_extraction_articles_total[15m])) by (result)",
+          "legendFormat": "{{result}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "title": "Stage B Ingestion Outcomes (15m)",
+      "type": "timeseries",
+      "description": "Ingestion success vs error flow",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(justnews_stage_b_ingestion_articles_total[15m])) by (status)",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "title": "Stage B Embedding Outcomes (15m)",
+      "type": "timeseries",
+      "description": "Embedding successes/failures",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(justnews_stage_b_embedding_total[15m])) by (status)",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "title": "Fallback Usage (24h)",
+      "type": "bargauge",
+      "description": "Fallback extractor utilisation grouped by outcome",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(justnews_stage_b_extraction_fallback_total[24h])) by (fallback, outcome)",
+          "legendFormat": "{{fallback}} \u2192 {{outcome}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal"
+      }
+    },
+    {
+      "id": 11,
+      "title": "Adaptive Sufficiency (6h)",
+      "type": "stat",
+      "description": "Share of adaptive articles that met sufficiency thresholds",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 28
+      },
+      "targets": [
+        {
+          "expr": "100 * sum(increase(justnews_crawler_scheduler_adaptive_articles_sufficient_total[6h])) / clamp_min(sum(increase(justnews_crawler_scheduler_adaptive_articles_total[6h])), 1)",
+          "legendFormat": "Adaptive Sufficiency (6h)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Adaptive Stop Reasons (24h)",
+      "type": "bargauge",
+      "description": "Stop reasons observed by adaptive scheduler windows",
+      "gridPos": {
+        "h": 8,
+        "w": 18,
+        "x": 6,
+        "y": 28
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(justnews_crawler_scheduler_adaptive_stop_reasons_total[24h])) by (reason)",
+          "legendFormat": "{{reason}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal"
+      }
+    },
+    {
+      "id": 13,
+      "title": "Editorial Harness Outcomes (15m)",
+      "type": "timeseries",
+      "description": "Harness disposition counts for operator triage",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 36
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(justnews_stage_b_editorial_harness_total{result=\"accepted\"}[15m]))",
+          "legendFormat": "accepted"
+        },
+        {
+          "expr": "sum(rate(justnews_stage_b_editorial_harness_total{result=\"needs_followup\"}[15m]))",
+          "legendFormat": "needs_followup"
+        },
+        {
+          "expr": "sum(rate(justnews_stage_b_editorial_harness_total{result=\"error\"}[15m]))",
+          "legendFormat": "error"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 14,
+      "title": "Pipeline Error Rate (15m)",
+      "type": "timeseries",
+      "description": "Aggregate error percentage across crawler/ingestion tiers",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 36
+      },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(justnews_errors_total{agent=~\"crawler|ingestion|embedding\"}[15m])) / clamp_min(sum(rate(justnews_requests_total{agent=~\"crawler|ingestion|embedding\"}[15m])), 1)",
+          "legendFormat": "error %"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    }
+  ],
+  "version": 1,
+  "schemaVersion": 36,
+  "style": "dark"
 }

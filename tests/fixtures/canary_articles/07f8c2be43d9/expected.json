@@ -1,0 +1,11 @@
+{
+  "id": "07f8c2be43d9",
+  "url": "https://httpbin.org/html",
+  "title": "Herman Melville - Moby-Dick",
+  "word_count": 601,
+  "needs_review": false,
+  "canonical_url": null,
+  "extraction_used": "trafilatura",
+  "text_hash": "336b128e83163516a5da437a53c3e8b95ac565fa9a79fb2e721e1bb4a3c1bb2a",
+  "text_preview": "Availing himself of the mild, summer-cool weather that now reigned in these latitudes, and in preparation for the peculiarly active pursuits shortly to be"
+}

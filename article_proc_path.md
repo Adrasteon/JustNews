@@ -35,20 +35,20 @@ Based on the tests and workflow verified on 2025-11-14.
    - Builds `training_payload` for ML system
    - Optionally samples for QA queue (~10% rate)
 8. **HITL Service** dispatches asynchronously:
-   - **Ingest Forward** (if `HITL_FORWARD_AGENT`/`_TOOL` set):
-     - Calls MCP Bus: `POST /call` → `{agent: "archive", tool: "store_article", payload: ingest_payload}`
-     - Retries 3x with exponential backoff on failure
-     - Updates `ingestion_status`: `pending` → `enqueued` (success) or `error` (failure)
+    - **Ingest Forward** (if `HITL_FORWARD_AGENT`/`_TOOL` set):
+       - Calls MCP Bus: `POST /call` → `{agent: "archive", tool: "queue_article", payload: ingest_payload}`
+       - Retries 3x with exponential backoff on failure
+       - Updates `ingestion_status`: `pending` → `enqueued` (success) or `error` (failure)
    - **Training Forward** (if `HITL_TRAINING_FORWARD_AGENT`/`_TOOL` set):
      - Calls MCP Bus → training system
      - Payload includes label + candidate for model retraining
    - Both forwards happen in parallel via `asyncio.create_task()`
-9. **Archive Agent** (when implemented):
-   - Receives `ingest_payload` via MCP Bus
-   - Stores article metadata in MariaDB
-   - Generates embeddings and stores in ChromaDB (port 3307)
-   - Archives raw HTML to `archive_storage/raw_html/`
-   - Returns success/failure to HITL service
+9. **Archive Agent**:
+   - Receives `ingest_payload` via MCP Bus using the `queue_article` tool
+   - Normalizes metadata (url hashing, canonicalization, annotator context)
+   - Verifies / copies `raw_html_ref` artefacts into `archive_storage/raw_html` and emits `raw_html_*` counters
+   - Stores article + embeddings via `agents.memory.tools.save_article` (MariaDB + ChromaDB)
+   - Emits `ingest_success_total` / `ingest_latency_seconds` metrics and reports duplicates (dashboard wiring next)
 
 ### Path 3: Training Feedback Loop
 1. **HITL Service** sends `training_payload` to **Training System**
@@ -101,5 +101,5 @@ Based on the tests and workflow verified on 2025-11-14.
 - ✅ Stats tracking
 - ✅ Payload construction (ingest + training)
 - ✅ MCP Bus dispatch attempt
-- ⏸️ Archive/Chief Editor tools (awaiting implementation)
+- ✅ Archive ingest wiring (`archive.queue_article`, Stage B tests)
 - ⏸️ Training system integration (awaiting implementation)

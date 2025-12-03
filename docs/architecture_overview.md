@@ -28,7 +28,7 @@
  - HITL service
    - `agents/hitl_service/` — FastAPI-based staging service, SQLite staging DB, label lifecycle and forwarding logic.
  - Agents Bus & Ingestion
-   - MCP Bus (`agents/mcp_bus`) — RPC-style bus for agent-to-agent calls (e.g., `memory.ingest_article`, `archive.store_article`).
+   - MCP Bus (`agents/mcp_bus`) — RPC-style bus for agent-to-agent calls (e.g., `memory.ingest_article`, `archive.queue_article`).
  - Memory & Archive
    - `agents/memory/` — ingestion APIs, embedding store integration. Uses dual-db strategies in `database/`.
    - `archive/` and `archive_storage/raw_html/` — raw HTML and archival storage.
@@ -71,7 +71,7 @@
 
  - Archive Agent — `agents/archive/` and `archive_storage/raw_html/` — Partial
    - Intent: store raw HTML/artefacts and provide retrieval for auditing and reprocessing.
-   - Status: File-based archival in place; retention and backfill tools are present in scripts.
+   - Status: MCP tool `queue_article` now normalizes HITL ingest payloads, snapshots raw HTML via `raw_html_*` helpers, and writes to Stage B storage (MariaDB + Chroma); Grafana wiring + long-term backfill tooling remain.
 
  - Fact Checker, Synthesizer, Chief Editor, Journalist Agents — `agents/fact_checker/`, `agents/synthesizer/`, `agents/chief_editor/`, `agents/journalist/` — Partial
    - Intent: downstream processing — fact validation, summarization/synthesis, editorial suggestion, article drafting.

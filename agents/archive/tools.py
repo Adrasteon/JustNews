@@ -8,12 +8,23 @@ via the MCP protocol. Provides clean interfaces to archive functionality.
 from typing import Any
 
 from agents.archive.archive_engine import get_archive_engine
+from agents.archive import ingest_pipeline
 from common.observability import get_logger
 
 logger = get_logger(__name__)
 
 # Get archive engine instance
 archive_engine = get_archive_engine()
+
+
+def queue_article(job_payload: dict[str, Any]) -> dict[str, Any]:
+    """Expose the Stage 2 ingest helper via the archive tool surface."""
+
+    try:
+        return ingest_pipeline.queue_article(job_payload)
+    except Exception as exc:
+        logger.error(f"Error queueing article via archive tools: {exc}")
+        raise
 
 
 async def archive_articles(

@@ -25,14 +25,19 @@ This file summarizes key API endpoints, MCP call signatures, and payload shapes 
     - `extraction_metadata` (dict), `source_html_path` (str, optional),
     - `ingest_meta` (dict: `run_id`, `source`, `submitted_by`)
   - Return: `{ "article_id": <int|string>, "status": "ok" }`
+- `archive.queue_article`
+  - Payload (JSON): `ingest_payload` produced by HITL service (`candidate`, `cleaned_text`, `label_*` fields)
+  - Normalizes URLs, hashes, authors, tags, and forwards to Stage B storage
+  - Return: `{ "status": "success|duplicate", "article_id": <int>, "job_id": "..." }`
 
 3) Crawl4AI adapter expectations
 - `crawl_site_with_crawl4ai(site_config, profile, max_articles)` returns `list[dict]` where each dict contains:
   - `url`, `cleaned_html` / `markdown` or `html`, `metadata`, `links` (internal/external), `score`
 
 4) Archive / Storage agent
-- `archive.store_article`
-  - Payload: `{ "article_id": ..., "raw_html_path": "/path/to/file", "archive_meta": {...} }`
+- `archive.queue_article`
+  - Payload: `{ "candidate": {...}, "cleaned_text": "...", "label_id": "..." }`
+  - Persists canonical metadata via `memory.save_article`, emits Stage B ingest metrics, returns duplicates when detected
 
 Notes on versioning and backward compatibility
 - Keep payloads additive. New fields should be optional; consumers should fallback gracefully when fields missing.

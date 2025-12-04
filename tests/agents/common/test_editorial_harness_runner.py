@@ -86,3 +86,50 @@ def test_runner_persists_and_records_metrics(tmp_path):
     written = next(tmp_path.iterdir())
     assert written.name == "1.json"
     assert harness.calls == 1
+
+
+def test_runner_publishes_on_accept(monkeypatch, tmp_path):
+    article = NormalizedArticle(
+        article_id="2",
+        url="https://example.org",
+        title="Publish Me",
+        text="Content" * 100,
+        metadata={},
+    )
+    candidate = ArticleCandidate(row={"id": 2, "url": article.url}, article=article)
+    result = AgentChainResult(
+        article_id="2",
+        story_brief={"summary": "brief"},
+        fact_checks=[],
+        draft={"summary": "draft"},
+        acceptance_score=0.95,
+        needs_followup=False,
+    )
+
+    class _PublishSpy:
+        called = False
+
+        @staticmethod
+        def publish_normalized_article(a, **_):
+            _PublishSpy.called = True
+
+    repository = _StubRepository([candidate])
+    harness = _StubHarness(result)
+    persistence = _StubPersistence()
+    metrics = _StubMetrics(recorded=[], acceptance=[])
+
+    # Monkeypatch the publishing helper
+    monkeypatch.setattr('agents.common.publisher_integration.publish_normalized_article', _PublishSpy.publish_normalized_article)
+
+    runner = AgentChainRunner(
+        repository=repository,
+        harness=harness,
+        persistence=persistence,
+        metrics=metrics,
+        artifact_writer=ArtifactWriter(tmp_path),
+        publish_on_accept=True,
+    )
+
+    outputs = runner.run(limit=1)
+    assert outputs == [result]
+    assert _PublishSpy.called is True

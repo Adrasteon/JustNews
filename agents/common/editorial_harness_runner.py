@@ -96,12 +96,14 @@ class AgentChainRunner:
         metrics: StageBMetrics | None = None,
         artifact_writer: ArtifactWriter | None = None,
         write_artifacts: bool = True,
+        publish_on_accept: bool = False,
     ) -> None:
         self.repository = repository or NormalizedArticleRepository()
         self.harness = harness or AgentChainHarness()
         self.persistence = persistence or HarnessResultPersistence(self.repository.db_service)
         self.metrics = metrics or get_stage_b_metrics()
         self.artifacts = (artifact_writer or ArtifactWriter()) if write_artifacts else None
+        self.publish_on_accept = publish_on_accept
 
     def run(self, *, limit: int = 5, article_ids: Sequence[int | str] | None = None) -> list[AgentChainResult]:
         candidates = self.repository.fetch_candidates(limit=limit, article_ids=article_ids)
@@ -115,6 +117,14 @@ class AgentChainRunner:
             try:
                 result = self.harness.run_article(candidate.article)
                 self.persistence.save(candidate.row, result)
+                # optionally publish accepted drafts
+                if self.publish_on_accept and not result.needs_followup and result.acceptance_score and result.acceptance_score >= 0.5:
+                    try:
+                        from agents.common.publisher_integration import publish_normalized_article
+
+                        publish_normalized_article(candidate.article, author=candidate.row.get('authors') or 'Editorial Harness')
+                    except Exception:
+                        logger.exception('Failed to publish article %s', article_id)
                 if self.artifacts:
                     self.artifacts.write(article_id, result, candidate.row)
                 self._record_metrics(result)

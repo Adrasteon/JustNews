@@ -16,10 +16,10 @@
     "retry_delay_seconds": 1.0
   },
   "database": {
-    "host": "localhost",
+    "host": "127.0.0.1",
     "port": 3306,
     "database": "justnews",
-    "user": "justnews_user",
+    "user": "justnews",
     "password": "password123",
     "connection_pool": {
       "min_connections": 2,

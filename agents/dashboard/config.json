@@ -215,8 +215,8 @@
   },
   "external_services": {
     "news_sources": {
-      "verification_required": true,
-      "max_age_days": 30,
+      "verification_required": false,
+      "max_age_days": 365,
       "auto_discovery": false
     },
     "apis": {

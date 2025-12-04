@@ -478,7 +478,7 @@ class DashboardEngine:
             raise HTTPException(status_code=500, detail=str(e)) from e
 
     def get_crawl_scheduler_snapshot(self, include_runs: bool = True) -> dict[str, Any]:
-        """Return the most recent crawl scheduler state with adaptive metrics."""
+        """Return the most recent crawl scheduler state with adaptive metrics, and direct sources from DB."""
 
         snapshot: dict[str, Any] = {
             "state_available": False,
@@ -486,7 +486,18 @@ class DashboardEngine:
             "timestamp": time.time(),
             "adaptive_summary": {},
             "adaptive_metrics": {},
+            "sources": [],
         }
+
+        # Always fetch sources directly from MariaDB
+        try:
+            from agents.crawler.crawler_utils import get_active_sources
+            # Fetch up to 100 sources, not paywalled
+            sources = get_active_sources(limit=100, include_paywalled=False)
+            snapshot["sources"] = sources
+        except Exception as exc:
+            logger.warning(f"Failed to fetch sources from DB: {exc}")
+            snapshot["sources_error"] = str(exc)
 
         if include_runs:
             snapshot["runs"] = []

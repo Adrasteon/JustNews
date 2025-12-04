@@ -1,16 +1,17 @@
 {
   "mariadb": {
-    "articles": 2358,
-    "sources": 12564,
+    "articles": 3626,
+    "sources": 19727,
     "mappings": 0
   },
   "chromadb": {
-    "vectors": 2358,
+    "vectors": 1101,
     "collections": [
+      "articles__all-MiniLM-L6-v2__384",
       "articles"
     ]
   },
-  "total_articles": 2358,
-  "total_sources": 12564,
-  "total_vectors": 2358
+  "total_articles": 3626,
+  "total_sources": 19727,
+  "total_vectors": 1101
 }

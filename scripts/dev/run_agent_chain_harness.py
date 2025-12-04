@@ -34,13 +34,22 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Override the artifact directory (default: output/agent_chain_runs)",
     )
+    parser.add_argument(
+        "--publish-on-accept",
+        action="store_true",
+        help="When set, accepted harness outputs (high acceptance score) will be published to the lightweight publisher DB",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     writer = None if args.no_artifacts else ArtifactWriter(args.artifact_dir)
-    runner = AgentChainRunner(artifact_writer=writer, write_artifacts=not args.no_artifacts)
+    runner = AgentChainRunner(
+        artifact_writer=writer,
+        write_artifacts=not args.no_artifacts,
+        publish_on_accept=args.publish_on_accept,
+    )
     results = runner.run(limit=args.limit, article_ids=args.article_ids)
 
     summary = {

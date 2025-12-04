@@ -121,10 +121,20 @@ class AgentChainRunner:
                 if self.publish_on_accept and not result.needs_followup and result.acceptance_score and result.acceptance_score >= 0.5:
                     try:
                         from agents.common.publisher_integration import publish_normalized_article
-
-                        publish_normalized_article(candidate.article, author=candidate.row.get('authors') or 'Editorial Harness')
+                        start = __import__('time').time()
+                        ok = publish_normalized_article(candidate.article, author=candidate.row.get('authors') or 'Editorial Harness')
+                        elapsed = __import__('time').time() - start
+                        try:
+                            self.metrics.record_publish_result('success' if ok else 'failure')
+                            self.metrics.observe_publish_latency(elapsed)
+                        except Exception:
+                            logger.debug('Failed to record publish metrics')
                     except Exception:
                         logger.exception('Failed to publish article %s', article_id)
+                        try:
+                            self.metrics.record_publish_result('failure')
+                        except Exception:
+                            pass
                 if self.artifacts:
                     self.artifacts.write(article_id, result, candidate.row)
                 self._record_metrics(result)

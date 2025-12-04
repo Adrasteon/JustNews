@@ -71,8 +71,14 @@ Stages and success criteria:
 
 1. **Automate parsing validation (initial suite done):** Deterministic fixtures now live under `tests/fixtures/canary_articles/` and are exercised via `tests/parsing/test_canary_articles.py`; extend coverage (authors/publish dates) and wire a nightly refresh job for new canaries.
 2. **Operationalize the editorial harness outputs:** With normalized rows flowing through `agents/common/normalized_article_repository.py` and the nightly workflow (`.github/workflows/editorial-harness.yml`) exercising the chain end-to-end, focus on plumbing the Stage B acceptance metrics into Grafana (`docs/grafana/editorial-harness-wiring.md` + `docs/grafana/editorial-harness-dashboard.json`), capturing the stored drafts for the publisher checklist (`docs/editorial_harness_runbook.md`), and documenting operational controls (`infrastructure/systemd/scripts/enable_all.sh`) so operators can recycle the service fleet safely.
-3. **Stand up publishing + observability loops:** The repo now contains a publisher app enabling local publish testing — next steps are to wire it into the editorial harness, add automated end-to-end tests that validate the rendered article endpoint and publishing KPIs, and extend Grafana dashboards to surface publishing success/failure and latency.
-4. **Wire Grafana/alerting for Stage 1–2 metrics:** Expose the new `ingest_*` / `raw_html_*` counters via dashboards + alerts and gate CI on a canary ingestion that exercises MariaDB + Chroma with raw HTML coverage.
+3. **Stand up publishing + observability loops:** The repo now contains a publisher app enabling local publish testing. Implementations completed in this update:
+
+- The editorial harness can now optionally publish accepted outputs back into the lightweight publisher DB using `--publish-on-accept` in `scripts/dev/run_agent_chain_harness.py` (opt-in to avoid accidental publishing in CI/production).
+- Stage‑B publishing metrics were added to `common/stage_b_metrics.py` (`justnews_stage_b_publishing_total` and `justnews_stage_b_publishing_latency_seconds`) and are recorded when the harness publishes accepted drafts.
+- A helper `agents/common/publisher_integration.py` lets the harness write normalized articles into the publisher DB in a safe manner.
+- A dedicated GitHub Actions workflow `/.github/workflows/e2e-publisher.yml` was added to run the publisher e2e test (`tests/e2e/test_publisher_publish_flow.py`) on branch pushes and manual dispatch.
+- Grafana dashboard fragment `docs/grafana/publisher-dashboard.json` was added to show publish success/failure and latency.
+4. **Wire Grafana/alerting for Stage 1–2 metrics and publishing:** Expose the new `ingest_*` / `raw_html_*` counters and the `justnews_stage_b_publishing_*` metrics via dashboards + alerts. Add CI gating on canary ingestion/publish metrics to prevent regressions.
 
 Recent repo activities performed on branch `dev/live-run-tests`:
 

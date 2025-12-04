@@ -1,0 +1,58 @@
+name: Editorial Harness - Publish Sandbox
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ dev/live-run-tests ]
+
+jobs:
+  publish-sandbox:
+    runs-on: ubuntu-latest
+    env:
+      MODEL_STORE_DRY_RUN: '1'
+    services:
+      mariadb:
+        image: mariadb:10.6
+        ports: ['3306:3306']
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: justnews
+          MYSQL_USER: justnews
+          MYSQL_PASSWORD: justnews
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent" --health-interval=5s --health-timeout=5s --health-retries=10
+      chroma:
+        image: chromadb/chromadb:0.4.24
+        ports: ['8000:8000']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt sentence-transformers==3.0.1 chromadb==0.4.24 mysql-connector-python==9.0.0
+
+      - name: Wait for services
+        run: |
+          until mysqladmin ping -h 127.0.0.1 -uroot -proot --silent; do sleep 1; done
+          until curl -sS http://127.0.0.1:8000/ >/dev/null; do sleep 1; done
+
+      - name: Bootstrap editorial harness schema
+        run: python scripts/dev/bootstrap_editorial_harness_db.py
+
+      - name: Create publish approval token
+        run: |
+          mkdir -p deploy
+          echo "super-secret-token" > deploy/publish.token
+
+      - name: Run editorial harness with publish enabled (sandbox)
+        env:
+          PUBLISH_APPROVAL_TOKEN: super-secret-token
+        run: |
+          python scripts/dev/run_agent_chain_harness.py --limit 1 --no-artifacts --publish-on-accept --publish-token super-secret-token

@@ -54,3 +54,36 @@ def publish_normalized_article(article: NormalizedArticle, *, author: Optional[s
         raise
     finally:
         conn.close()
+
+
+def verify_publish_token(token: str | None) -> bool:
+    """Return True when the given token matches an approved publish token.
+
+    Token resolution precedence:
+    1. Environment variable PUBLISH_APPROVAL_TOKEN (recommended for CI)
+    2. File at <repo_root>/deploy/publish.token (recommended for operator manual approval)
+    """
+    if not token:
+        return False
+
+    # Check environment variable override
+    env_token = os.environ.get('PUBLISH_APPROVAL_TOKEN')
+    if env_token and token == env_token:
+        return True
+
+    # Optionally read the token file path from environment for testability / CI
+    token_file_path = os.environ.get('PUBLISH_APPROVAL_TOKEN_FILE')
+    if token_file_path:
+        token_file = Path(token_file_path)
+    else:
+        # Fall back to checking a local file under repo deploy/ (safe operator signal)
+        repo_root = Path(__file__).resolve().parents[3]
+        token_file = repo_root / 'deploy' / 'publish.token'
+    if token_file.exists():
+        try:
+            content = token_file.read_text(encoding='utf-8').strip()
+            return content == token
+        except Exception:
+            return False
+
+    return False

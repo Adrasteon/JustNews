@@ -133,3 +133,51 @@ def test_runner_publishes_on_accept(monkeypatch, tmp_path):
     outputs = runner.run(limit=1)
     assert outputs == [result]
     assert _PublishSpy.called is True
+
+
+def test_runner_publishes_with_valid_token(monkeypatch, tmp_path):
+    article = NormalizedArticle(
+        article_id="3",
+        url="https://example.org",
+        title="Publish With Token",
+        text="Content" * 100,
+        metadata={},
+    )
+    candidate = ArticleCandidate(row={"id": 3, "url": article.url}, article=article)
+    result = AgentChainResult(
+        article_id="3",
+        story_brief={"summary": "brief"},
+        fact_checks=[],
+        draft={"summary": "draft"},
+        acceptance_score=0.95,
+        needs_followup=False,
+    )
+
+    repository = _StubRepository([candidate])
+    harness = _StubHarness(result)
+    persistence = _StubPersistence()
+    metrics = _StubMetrics(recorded=[], acceptance=[])
+
+    # Monkeypatch publish function and token verification
+    called = {"ok": False}
+
+    def fake_publish(a, **_):
+        called["ok"] = True
+        return True
+
+    monkeypatch.setattr('agents.common.publisher_integration.publish_normalized_article', fake_publish)
+    monkeypatch.setattr('agents.common.publisher_integration.verify_publish_token', lambda t: True)
+
+    runner = AgentChainRunner(
+        repository=repository,
+        harness=harness,
+        persistence=persistence,
+        metrics=metrics,
+        artifact_writer=ArtifactWriter(tmp_path),
+        publish_on_accept=True,
+        publish_token='valid',
+    )
+
+    outputs = runner.run(limit=1)
+    assert outputs == [result]
+    assert called["ok"] is True

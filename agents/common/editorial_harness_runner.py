@@ -97,6 +97,7 @@ class AgentChainRunner:
         artifact_writer: ArtifactWriter | None = None,
         write_artifacts: bool = True,
         publish_on_accept: bool = False,
+        publish_token: str | None = None,
     ) -> None:
         self.repository = repository or NormalizedArticleRepository()
         self.harness = harness or AgentChainHarness()
@@ -104,6 +105,7 @@ class AgentChainRunner:
         self.metrics = metrics or get_stage_b_metrics()
         self.artifacts = (artifact_writer or ArtifactWriter()) if write_artifacts else None
         self.publish_on_accept = publish_on_accept
+        self.publish_token = publish_token
 
     def run(self, *, limit: int = 5, article_ids: Sequence[int | str] | None = None) -> list[AgentChainResult]:
         candidates = self.repository.fetch_candidates(limit=limit, article_ids=article_ids)
@@ -120,7 +122,15 @@ class AgentChainRunner:
                 # optionally publish accepted drafts
                 if self.publish_on_accept and not result.needs_followup and result.acceptance_score and result.acceptance_score >= 0.5:
                     try:
-                        from agents.common.publisher_integration import publish_normalized_article
+                        from agents.common.publisher_integration import publish_normalized_article, verify_publish_token
+                        # Verify approval token before publishing
+                        if not verify_publish_token(self.publish_token):
+                            logger.info("Publish skipped for article %s: approval token invalid or missing", article_id)
+                            try:
+                                self.metrics.record_publish_result('skipped')
+                            except Exception:
+                                pass
+                            raise RuntimeError('publish approval token invalid')
                         start = __import__('time').time()
                         ok = publish_normalized_article(candidate.article, author=candidate.row.get('authors') or 'Editorial Harness')
                         elapsed = __import__('time').time() - start

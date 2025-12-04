@@ -39,6 +39,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="When set, accepted harness outputs (high acceptance score) will be published to the lightweight publisher DB",
     )
+    parser.add_argument(
+        "--publish-token",
+        type=str,
+        default=None,
+        help="Approval token required to allow automated publishing (must match deploy/publish.token or PUBLISH_APPROVAL_TOKEN env var)",
+    )
     return parser.parse_args()
 
 
@@ -49,6 +55,7 @@ def main() -> None:
         artifact_writer=writer,
         write_artifacts=not args.no_artifacts,
         publish_on_accept=args.publish_on_accept,
+        publish_token=args.publish_token,
     )
     results = runner.run(limit=args.limit, article_ids=args.article_ids)
 

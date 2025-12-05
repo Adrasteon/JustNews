@@ -43,6 +43,12 @@ jobs:
         run: |
           docker-compose -f infrastructure/monitoring/dev-docker-compose.yaml logs --tail=200 demo-emitter | sed -n '1,200p'
 
+      - name: Assert traces exported by collector
+        run: |
+          set -euo pipefail
+          echo "Checking collector exported spans via metrics"
+          ./infrastructure/monitoring/scripts/check_otel_spans.sh "http://localhost:${NODE_METRICS_PORT:-18889}/metrics" "otelcol_exporter_sent_spans" 60 5
+
       - name: Tear down stack
         if: always()
         run: |

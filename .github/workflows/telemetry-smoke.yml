@@ -1,0 +1,49 @@
+name: Dev telemetry smoke test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ dev/live-run-tests, main ]
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure docker-compose is present
+        run: |
+          docker-compose --version
+
+      - name: Start dev telemetry stack
+        run: |
+          pushd infrastructure/monitoring
+          docker-compose -f dev-docker-compose.yaml up -d --build --remove-orphans
+          popd
+
+      - name: Wait for services to be up
+        run: |
+          set -euo pipefail
+          # wait up to 60s for each service endpoint
+          for i in {1..12}; do
+            sleep 5
+            echo "checking endpoints (attempt $i)"
+            if curl -sSf "http://localhost:${LOKI_PORT:-13100}/loki/api/v1/labels" >/dev/null 2>&1 && curl -sSf "http://localhost:${NODE_METRICS_PORT:-18889}/metrics" >/dev/null 2>&1 && curl -sSf "http://localhost:${DEMO_PORT:-18080}/" >/dev/null 2>&1; then
+              echo "All endpoints responded"
+              exit 0
+            fi
+          done
+          echo "Endpoints failed to respond in time"
+          docker ps -a || true
+          docker-compose -f infrastructure/monitoring/dev-docker-compose.yaml logs --tail=200 || true
+          exit 1
+
+      - name: Verify demo-emitter logs (trace + Loki push)
+        run: |
+          docker-compose -f infrastructure/monitoring/dev-docker-compose.yaml logs --tail=200 demo-emitter | sed -n '1,200p'
+
+      - name: Tear down stack
+        if: always()
+        run: |
+          docker-compose -f infrastructure/monitoring/dev-docker-compose.yaml down --volumes --remove-orphans || true

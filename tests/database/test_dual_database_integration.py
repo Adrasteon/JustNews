@@ -44,9 +44,9 @@ class TestDualDatabaseIntegration:
                     'user': 'test_user',
                     'password': 'test_password'
                 },
-                'chromadb': {
-                    'host': 'localhost',
-                    'port': 8000,
+                    'chromadb': {
+                        'host': 'localhost',
+                        'port': 3307,
                     'collection': 'integration_articles'
                 },
                 'embedding': {

@@ -1,0 +1,18 @@
+[Unit]
+Description=JustNews development telemetry stack (Loki+Tempo+OTel node via docker-compose)
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=%h/JustNews
+# By default the dev telemetry stack uses canonical telemetry ports (4317/4318/8889/3100/14268/9411).
+# On developer hosts those ports may already be used by a host OTLP collector. The service
+# wrapper respects port conflicts and will skip starting the stack unless you explicitly
+# override with ENABLE_DEV_TELEMETRY_FORCE=1 in the machine environment.
+ExecStart=%h/JustNews/infrastructure/systemd/scripts/dev-telemetry-manager.sh up
+ExecStop=%h/JustNews/infrastructure/systemd/scripts/dev-telemetry-manager.sh down
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

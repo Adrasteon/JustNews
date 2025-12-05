@@ -48,7 +48,7 @@ class TestGetDBConfig:
                 },
                 "chromadb": {
                     "host": "vector.example.com",
-                    "port": 8000,
+                        "port": 3307,
                     "collection": "news_articles"
                 },
                 "embedding": {
@@ -143,7 +143,7 @@ class TestCreateDatabaseService:
             },
             'chromadb': {
                 'host': 'localhost',
-                'port': 8000,
+                    'port': 3307,
                 'collection': 'test_collection'
             },
             'embedding': {

@@ -42,7 +42,7 @@ class TestDualDatabasePerformance:
                 },
                 'chromadb': {
                     'host': 'localhost',
-                    'port': 8000,
+                    'port': 3307,
                     'collection': 'perf_articles'
                 },
                 'embedding': {

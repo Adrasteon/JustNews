@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Optional
 
 from agents.common.agent_chain_harness import NormalizedArticle
+import os
+import requests
 
 
 def _slugify(title: str) -> str:
@@ -27,14 +29,44 @@ def publish_normalized_article(article: NormalizedArticle, *, author: Optional[s
 
     Returns True on insertion or update, False on failure.
     """
+    # If an external PUBLISHER_URL is set we POST the payload instead of using the
+    # local SQLite DB. This is used in CI/staging to publish into a running staging
+    # publisher instance that accepts API-key authenticated POSTs.
+    publisher_url = os.environ.get('PUBLISHER_URL')
+    api_key = os.environ.get('PUBLISHER_API_KEY')
+    payload = {
+        'article_id': article.article_id,
+        'title': article.title,
+        'slug': _slugify(article.title or article.article_id or 'article'),
+        'summary': (article.text or '')[:400],
+        'body': article.text or '',
+        'author': author or 'Editorial Harness',
+        'score': float(score),
+        'evidence': evidence,
+        'is_featured': 1 if is_featured else 0,
+        'category': category,
+    }
+
+    if publisher_url:
+        # Try HTTP publish
+        try:
+            headers = {}
+            if api_key:
+                headers['X-API-KEY'] = api_key
+            resp = requests.post(publisher_url.rstrip('/') + '/api/publish/', json=payload, headers=headers, timeout=10)
+            return resp.status_code == 200 and resp.json().get('result') == 'ok'
+        except Exception:
+            raise
+
+    # Fallback to local SQLite DB for dev / tests
     db_path = _publisher_db_path()
     if not db_path.exists():
         raise FileNotFoundError(f"Publisher DB not found at {db_path}")
 
-    slug = _slugify(article.title or article.article_id or 'article')
-    summary = (article.text or '')[:400]
-    body = article.text or ''
-    author = author or 'Editorial Harness'
+    slug = payload['slug']
+    summary = payload['summary']
+    body = payload['body']
+    author = payload['author']
 
     conn = sqlite3.connect(str(db_path))
     try:

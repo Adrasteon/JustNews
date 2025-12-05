@@ -36,6 +36,12 @@ import pytest_asyncio
 # Keep GPU orchestrator imports lightweight during pytest runs to avoid
 # instantiating heavy services (MariaDB, Chroma, embedding models) during module import.
 os.environ.setdefault('GPU_ORCHESTRATOR_SKIP_BOOTSTRAP', '1')
+# Disable GPU-marked tests by default for safety (prevents accidental real GPU usage
+# when running the full suite in a development environment). Developers who want
+# to exercise real GPU behavior should explicitly opt in by setting
+# TEST_GPU_AVAILABLE=true in their shell or CI job.
+os.environ.setdefault('TEST_GPU_AVAILABLE', 'false')
+os.environ.setdefault('TEST_GPU_COUNT', '1')
 
 # Add the repository root to sys.path so project packages import cleanly regardless
 # of how pytest is launched (e.g. via `conda run`). The previous logic walked one
@@ -159,6 +165,44 @@ def create_mock_torch() -> types.ModuleType:
 
             def elapsed_time(self, other):
                 return 0.001
+
+        # Additional minimal GPU helper methods used by tests
+        @staticmethod
+        def set_device(device_id: int) -> None:
+            # No-op for tests
+            return None
+
+        @staticmethod
+        def empty_cache() -> None:
+            # No-op for tests
+            return None
+
+        @staticmethod
+        def mem_get_info(device_id: int) -> tuple[int, int]:
+            # Return (free, total) in bytes — default to 8GB free, 12GB total
+            return (8 * 1024 * 1024 * 1024, 12 * 1024 * 1024 * 1024)
+
+        @staticmethod
+        def memory_allocated(device_id: int = 0) -> int:
+            return 1024 * 1024 * 1024  # 1GB
+
+        @staticmethod
+        def memory_reserved(device_id: int = 0) -> int:
+            return 2 * 1024 * 1024 * 1024  # 2GB
+
+        @staticmethod
+        def memory_summary(*args, **kwargs) -> str:
+            return "Mock memory summary"
+
+        @staticmethod
+        def synchronize(device_id: int = 0) -> None:
+            # No-op in mock
+            return None
+
+        @staticmethod
+        def device(spec):
+            # Allow patching "torch.cuda.device" target used in tests
+            return MockDevice(spec)
 
     fake_torch = types.ModuleType('torch')
 

@@ -8,7 +8,12 @@ from agents.gpu_orchestrator.gpu_orchestrator_engine import GPUOrchestratorEngin
 from agents.gpu_orchestrator.worker import Worker
 
 
-requires_real_e2e = pytest.mark.skipif(False, reason='Real E2E tests disabled')
+import os
+
+# These tests require real Redis + MariaDB running locally (used by CI). Skip by
+# default for developer runs unless the caller explicitly opts in by setting
+# RUN_REAL_E2E=1 in the environment.
+requires_real_e2e = pytest.mark.skipif(os.environ.get('RUN_REAL_E2E', '') != '1', reason='Real E2E tests require RUN_REAL_E2E=1')
 
 
 def test_e2e_job_submission_and_processing():

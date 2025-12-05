@@ -16,7 +16,7 @@ jobs:
       MARIADB_USER: justnews
       MARIADB_PASSWORD: justnews
       CHROMADB_HOST: 127.0.0.1
-      CHROMADB_PORT: 8000
+      CHROMADB_PORT: 3307
       MODEL_STORE_DRY_RUN: '1'
       FACT_CHECKER_DISABLE_MISTRAL: '0'
     services:
@@ -34,7 +34,7 @@ jobs:
       chroma:
         image: chromadb/chromadb:0.4.24
         ports:
-          - 8000:8000
+          - 3307:3307
 
     steps:
       - uses: actions/checkout@v4
@@ -52,9 +52,28 @@ jobs:
       - name: Wait for services
         run: |
           echo "Waiting for MariaDB..."
-          until mysqladmin ping -h 127.0.0.1 -uroot -proot --silent; do sleep 1; done
-          echo "Waiting for Chroma..."
-          until curl -sS http://127.0.0.1:8000/ >/dev/null; do sleep 1; done
+        - name: Wait for services (bounded)
+          run: |
+            ATTEMPTS=60
+            i=0
+            until mysqladmin ping -h 127.0.0.1 -uroot -proot --silent; do
+              i=$((i+1))
+              if [ "$i" -ge "$ATTEMPTS" ]; then
+                echo "MariaDB did not become ready after ${ATTEMPTS}s" >&2
+                exit 1
+              fi
+              sleep 1
+            done
+            ATTEMPTS=60
+            i=0
+            until curl -sS http://127.0.0.1:3307/ >/dev/null; do
+              i=$((i+1))
+              if [ "$i" -ge "$ATTEMPTS" ]; then
+                echo "Chroma did not become ready after ${ATTEMPTS}s" >&2
+                exit 1
+              fi
+              sleep 1
+            done
 
       - name: Bootstrap editorial harness schema
         run: python scripts/dev/bootstrap_editorial_harness_db.py

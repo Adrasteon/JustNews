@@ -33,7 +33,11 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from common.metrics import JustNewsMetrics
-from common.observability import get_logger
+from common.observability import get_logger, bootstrap_observability
+import logging
+
+# Initialize observability (logging + optional OTEL + optional Sentry)
+bootstrap_observability("mcp_bus", level=logging.INFO)
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:

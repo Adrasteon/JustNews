@@ -95,4 +95,15 @@ def test_publisher_ingest_and_render():
             server_proc.wait(timeout=5)
         except Exception:
             server_proc.kill()
+        # Close pipes to avoid unraisable ResourceWarnings in some environments
+        try:
+            if getattr(server_proc, 'stdout', None):
+                server_proc.stdout.close()
+        except Exception:
+            pass
+        try:
+            if getattr(server_proc, 'stderr', None):
+                server_proc.stderr.close()
+        except Exception:
+            pass
 

@@ -176,7 +176,8 @@ JUSTNEWS_USER="justnews"
 JUSTNEWS_PASSWORD="justnews_password"
 MAIN_DB="justnews"
 MARIADB_VERSION="10.11"
-CHROMA_PORT="8000"
+# Use the canonical Chroma port by default to avoid conflict with MCP bus (port 8000)
+CHROMA_PORT="${CHROMADB_PORT:-3307}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -410,9 +411,12 @@ test_databases() {
         return 1
     fi
 
-    # Test ChromaDB connectivity
-    if curl -f http://localhost:$CHROMA_PORT/api/v1/heartbeat >/dev/null 2>&1; then
+    # Test ChromaDB connectivity: prefer /api/v2/auth/identity, fall back to
+    # /api/v1/health and root when available
+    if curl -fsS "http://localhost:${CHROMA_PORT}/api/v2/auth/identity" >/dev/null 2>&1; then
         log_success "ChromaDB connection successful"
+    elif curl -fsS "http://localhost:${CHROMA_PORT}/api/v1/health" >/dev/null 2>&1 || curl -fsS "http://localhost:${CHROMA_PORT}/" >/dev/null 2>&1; then
+        log_success "ChromaDB connection successful (alternate endpoint)"
     else
         log_warning "ChromaDB not responding (may still be starting)"
     fi
@@ -443,7 +447,7 @@ DESCRIPTION:
 
 DATABASES CREATED:
     - justnews: Main application database (MariaDB)
-    - ChromaDB: Vector embeddings and semantic search (port 8000)
+    - ChromaDB: Vector embeddings and semantic search (port 3307)
 
 EXAMPLES:
     $0                          # Full setup with defaults

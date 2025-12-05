@@ -645,8 +645,15 @@ class MigratedDatabaseService:
             if not self.collection:
                 logger.warning("ChromaDB collection not initialized - semantic search unavailable")
                 return []
-            # Embed the query
-            query_embedding = self.embedding_model.encode(query).tolist()
+            # Embed the query. Some embedding providers return numpy-like arrays
+            # with a `.tolist()` method; others (mocks/tests) may return a plain
+            # Python list. Handle both possibilities.
+            emb = self.embedding_model.encode(query)
+            if hasattr(emb, 'tolist'):
+                query_embedding = emb.tolist()
+            else:
+                # Ensure it's a plain list copy so downstream code can index it
+                query_embedding = list(emb)
 
             # Search ChromaDB for similar articles
             results = self.collection.query(

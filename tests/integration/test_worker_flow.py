@@ -49,6 +49,21 @@ def create_sqlite_service():
     ''')
     conn.commit()
 
+    # ensure leases table exists for DB-backed paths exercised in integration tests
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS orchestrator_leases (
+            token TEXT PRIMARY KEY,
+            agent_name TEXT,
+            gpu_index INTEGER NULL,
+            mode TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP NULL,
+            last_heartbeat TIMESTAMP NULL,
+            metadata TEXT NULL
+        )
+    ''')
+    conn.commit()
+
     class CursorWrapper:
         def __init__(self, conn):
             self._conn = conn
@@ -70,6 +85,13 @@ def create_sqlite_service():
 
         def close(self):
             return None
+
+        @property
+        def rowcount(self):
+            try:
+                return self._cur.rowcount if self._cur is not None else -1
+            except Exception:
+                return -1
 
     class MBConn:
         def __init__(self, conn):

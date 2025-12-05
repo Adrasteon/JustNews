@@ -152,9 +152,21 @@ class MistralAdapter(BaseAdapter):
         return [self.infer(p, **kwargs) for p in prompts]
 
     def __getattr__(self, name: str):
-        # Delegate unknown attribute access to per-agent implementation if present
-        if self._agent_impl is not None:
-            attr = getattr(self._agent_impl, name, None)
+        # Delegate unknown attribute access to per-agent implementation if present.
+        # Use object.__getattribute__ to avoid triggering this __getattr__ again
+        # when internal attributes like `_agent_impl` are missing and thereby
+        # prevent infinite recursion.
+        try:
+            agent_impl = object.__getattribute__(self, "_agent_impl")
+        except AttributeError:
+            agent_impl = None
+
+        if agent_impl is not None:
+            # Guard against accidentally delegating to the same object instance
+            # to avoid self-referential loops.
+            if agent_impl is self:
+                raise AttributeError(name)
+            attr = getattr(agent_impl, name, None)
             if attr is not None:
                 return attr
         raise AttributeError(name)

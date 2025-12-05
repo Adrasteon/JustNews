@@ -106,12 +106,20 @@ else
     exit 1
 fi
 
-# Test ChromaDB connectivity
-if curl -f http://localhost:8000/api/v1/heartbeat >/dev/null 2>&1; then
+# Test ChromaDB connectivity (prefer the auth/identity endpoint which is
+# present on modern Chroma builds; fall back to /api/v1/health or root.)
+CHROMA_HOST=${CHROMADB_HOST:-localhost}
+# Default to the canonical Chroma port (3307) if not explicitly set
+CHROMA_PORT_VAL=${CHROMADB_PORT:-${CHROMA_PORT:-3307}}
+if curl -fsS "http://${CHROMA_HOST}:${CHROMA_PORT_VAL}/api/v2/auth/identity" >/dev/null 2>&1; then
     echo -e "${GREEN}✅ ChromaDB accessible${NC}"
 else
-    echo -e "${RED}❌ Cannot access ChromaDB${NC}"
-    exit 1
+    if curl -fsS "http://${CHROMA_HOST}:${CHROMA_PORT_VAL}/api/v1/health" >/dev/null 2>&1 || curl -fsS "http://${CHROMA_HOST}:${CHROMA_PORT_VAL}/" >/dev/null 2>&1; then
+        echo -e "${GREEN}✅ ChromaDB accessible (alternate endpoint)${NC}"
+    else
+        echo -e "${RED}❌ Cannot access ChromaDB${NC}"
+        exit 1
+    fi
 fi
 
 # Update environment files
@@ -180,8 +188,11 @@ echo "Database Status:"
 echo "  justnews: $(mysql -u justnews -pjustnews_password -D justnews -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'justnews';" -B -N 2>/dev/null || echo "0") tables"
 
 echo "ChromaDB Status:"
-if curl -s http://localhost:8000/api/v1/heartbeat >/dev/null 2>&1; then
-    echo "  ChromaDB: ✅ Running"
+# Prefer the modern identity endpoint, fall back to v1/health or root
+if curl -fsS "http://${CHROMA_HOST}:${CHROMA_PORT_VAL}/api/v2/auth/identity" >/dev/null 2>&1; then
+    echo "  ChromaDB: ✅ Running (identity endpoint)"
+elif curl -fsS "http://${CHROMA_HOST}:${CHROMA_PORT_VAL}/api/v1/health" >/dev/null 2>&1 || curl -fsS "http://${CHROMA_HOST}:${CHROMA_PORT_VAL}/" >/dev/null 2>&1; then
+    echo "  ChromaDB: ✅ Running (alternate endpoint)"
 else
     echo "  ChromaDB: ❌ Not responding"
 fi

@@ -11,8 +11,14 @@ def test_protobuf_version_meets_requirement():
     """
     py = os.environ.get('PYTHON_BIN')
     if not py or not os.path.exists(py):
-        if shutil.which('conda') is not None:
-            cmd = ['conda', 'run', '-n', os.environ.get('CANONICAL_ENV', 'justnews-py312'), 'python']
+        # Be defensive: some environments or docs include shell-style templated
+        # values (eg. '${CANONICAL_ENV:-justnews-py312}') which are not valid
+        # conda environment names. If the CANONICAL_ENV value looks like a
+        # template or contains invalid characters, fall back to the current
+        # Python executable to avoid invoking conda with a malformed name.
+        env_name = os.environ.get('CANONICAL_ENV', 'justnews-py312')
+        if shutil.which('conda') is not None and not any(c in env_name for c in ('$', '{', '}', ':', '/', ' ')):
+            cmd = ['conda', 'run', '-n', env_name, 'python']
         else:
             cmd = [sys.executable]
     else:

@@ -32,6 +32,12 @@ from .tools import (
     set_policy,
 )
 
+from common.observability import bootstrap_observability
+import logging
+
+# Configure observability for the GPU Orchestrator service
+bootstrap_observability("gpu_orchestrator", level=logging.INFO)
+
 
 def _require_admin(request: Request):
     """Admin guard used by orchestration endpoints.

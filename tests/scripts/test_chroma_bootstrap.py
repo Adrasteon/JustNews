@@ -27,7 +27,8 @@ def test_chroma_bootstrap_requires_canonical(monkeypatch):
         return {'ok': False}
 
     monkeypatch.setattr('database.utils.chromadb_utils.validate_chroma_is_canonical', fake_validate_chroma_is_canonical)
-    code = run_script_main(monkeypatch, CHROMADB_HOST='localhost', CHROMADB_PORT='8000', CHROMADB_CANONICAL_HOST='localhost', CHROMADB_CANONICAL_PORT='3307')
+    # Use a non-canonical port (not 8000) to simulate mismatch detection
+    code = run_script_main(monkeypatch, CHROMADB_HOST='localhost', CHROMADB_PORT='3310', CHROMADB_CANONICAL_HOST='localhost', CHROMADB_CANONICAL_PORT='3307')
     assert code == 2
 
 

@@ -48,8 +48,8 @@ def test_db_job_store_create_set_get(monkeypatch):
     fake_cursor = FakeCursor()
     fake_conn = FakeConn(fake_cursor)
 
-    # Patch _get_conn in agents.crawler.crawler_utils
-    monkeypatch.setattr('agents.crawler.crawler_utils._get_conn', lambda: fake_conn)
+    # Patch _get_conn used by synthesizer.job_store (imported at module-level)
+    monkeypatch.setattr('agents.synthesizer.job_store._get_conn', lambda: fake_conn)
 
     # Create job (DB available)
     job_store.create_job('job-1')

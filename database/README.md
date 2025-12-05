@@ -206,7 +206,7 @@ MYSQL_PASSWORD=your_password
 
 # ChromaDB Connection
 CHROMA_HOST=localhost
-CHROMA_PORT=8000
+CHROMA_PORT=3307
 
 # Connection Pool
 DB_MIN_CONNECTIONS=1

@@ -64,11 +64,15 @@ def get_db_config() -> dict[str, Any]:
             logger.info(f"Loading environment variables from {env_file_path}")
             try:
                 with open(env_file_path, encoding='utf-8') as f:
-                    for line in f:
-                        line = line.strip()
-                        if line and not line.startswith('#') and '=' in line:
-                            key, value = line.split('=', 1)
-                            os.environ[key.strip()] = value.strip()
+                        for line in f:
+                            line = line.strip()
+                            if line and not line.startswith('#') and '=' in line:
+                                key, value = line.split('=', 1)
+                                # Do not overwrite process environment variables that may
+                                # be set by tests or higher-priority runtime configuration.
+                                k = key.strip()
+                                if os.environ.get(k) is None:
+                                    os.environ[k] = value.strip()
                 break  # Load from first available file
             except Exception:
                 # If global.env exists but fails to read, continue with defaults/env
@@ -236,6 +240,30 @@ def create_database_service(config: dict[str, Any] | None = None) -> MigratedDat
     except Exception:
         # If comparing configs fails for any reason, ignore and recreate service
         pass
+
+    # If canonical enforcement is enabled, validate the configured chroma host/port
+    # against the canonical host/port and fail early when they don't match.
+    try:
+        require_canonical = os.environ.get('CHROMADB_REQUIRE_CANONICAL', '0') == '1'
+        if require_canonical:
+            canonical = config.get('chromadb_canonical', {}) if config else {}
+            canon_host = canonical.get('host')
+            canon_port = canonical.get('port')
+            # Only attempt strict validation when canonical host/port are provided
+            if canon_host and canon_port:
+                from database.utils.chromadb_utils import validate_chroma_is_canonical
+
+                # raise_on_fail=True will raise ChromaCanonicalValidationError on mismatch
+                validate_chroma_is_canonical(
+                    config['chromadb'].get('host'),
+                    config['chromadb'].get('port'),
+                    canon_host,
+                    int(canon_port),
+                    raise_on_fail=True,
+                )
+    except Exception:
+        # Let the caller handle any validation error (tests expect a raised exception)
+        raise
 
     # Create a full config dict for the service
     full_config = {'database': config}

@@ -452,9 +452,9 @@ class TestMigratedDatabaseService:
                     'password': 'testpass',
                     'database': 'testdb'
                 },
-                'chromadb': {
-                    'host': 'localhost',
-                    'port': 8000,
+                    'chromadb': {
+                        'host': 'localhost',
+                        'port': 3307,
                     'collection': 'articles'
                 },
                 'embedding': {

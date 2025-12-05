@@ -538,7 +538,8 @@ class GPUOrchestratorEngine:
         try:
             cursor = conn.cursor()
             # begin transaction
-            cursor.execute('START TRANSACTION')
+            # Use a portable BEGIN TRANSACTION which works for MySQL and SQLite
+            cursor.execute('BEGIN')
 
             try:
                 # Try SELECT ... FOR UPDATE first — this is the preferred, transactional
@@ -592,9 +593,13 @@ class GPUOrchestratorEngine:
             }
 
             # persist lease row (co-located in same transaction)
+            # Compute created_at / expires_at in Python for DB portability (works on MySQL & SQLite)
+            from datetime import datetime, timezone, timedelta
+            created_at = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+            expires_at = (datetime.now(timezone.utc) + timedelta(seconds=ttl)).strftime('%Y-%m-%d %H:%M:%S')
             cursor.execute(
-                "INSERT INTO orchestrator_leases (token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata) VALUES (%s,%s,%s,%s,NOW(),DATE_ADD(NOW(), INTERVAL %s SECOND),NOW(),%s)",
-                (token, agent, gpu_index if success else None, 'gpu' if success else 'cpu', ttl, json.dumps(allocation))
+                "INSERT INTO orchestrator_leases (token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
+                (token, agent, gpu_index if success else None, 'gpu' if success else 'cpu', created_at, expires_at, created_at, json.dumps(allocation))
             )
 
             # commit transaction

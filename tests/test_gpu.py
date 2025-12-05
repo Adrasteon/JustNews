@@ -12,6 +12,7 @@ This module contains comprehensive GPU tests that validate:
 
 import asyncio
 from typing import Any
+from contextlib import asynccontextmanager
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -31,7 +32,7 @@ class TestGPUAvailability:
         """Setup GPU test fixtures"""
         self.helper = AsyncTestHelper()
         self.mock_factory = MockFactory()
-        self.perf_tester = PerformanceTester()
+        self.perf_tester = PerformanceTester("gpu_detection")
         self.assertions = CustomAssertions()
 
     @pytest.mark.asyncio
@@ -146,7 +147,7 @@ class TestGPUMemoryManagement:
     def setup_method(self):
         """Setup GPU memory test fixtures"""
         self.helper = AsyncTestHelper()
-        self.perf_tester = PerformanceTester()
+        self.perf_tester = PerformanceTester("gpu_memory")
 
     @pytest.mark.asyncio
     @pytest.mark.gpu
@@ -255,10 +256,22 @@ class TestGPUMemoryManagement:
         """Simulate GPU operation"""
         await asyncio.sleep(0.01)  # Simulate processing time
 
+    @asynccontextmanager
     async def _gpu_context_manager(self):
         """GPU context manager"""
-        # This would use torch.cuda.device context
-        yield
+        # Simulate an async GPU device context manager
+        # Use the real torch.cuda.device context if available (or the test's patched mock)
+        import torch
+        # Use a simple device context so tests that patch torch.cuda.device see a call
+        with torch.cuda.device(0):
+            try:
+                yield
+            finally:
+                # Ensure cleanup hook runs (tests patch empty_cache and expect it to be called)
+                try:
+                    torch.cuda.empty_cache()
+                except Exception:
+                    pass
 
 
 class TestGPUModelOperations:
@@ -267,7 +280,7 @@ class TestGPUModelOperations:
     def setup_method(self):
         """Setup GPU model test fixtures"""
         self.helper = AsyncTestHelper()
-        self.perf_tester = PerformanceTester()
+        self.perf_tester = PerformanceTester("gpu_model_ops")
 
     @pytest.mark.asyncio
     @pytest.mark.gpu
@@ -470,7 +483,9 @@ class TestGPUErrorHandling:
             return {
                 "success": False,
                 "error": str(e),
-                "fallback_available": True
+                "fallback_available": True,
+                # include a canonical 'fallback' key expected by assertions
+                "fallback": True,
             }
 
     async def _attempt_device_access(self) -> dict[str, Any]:

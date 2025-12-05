@@ -115,21 +115,10 @@ class TestDatabaseUtils:
         assert 'tables' in stats
         assert stats['tables']['test_table']['live_rows'] == 100
 
-    def test_vacuum_analyze_table(self, mock_pool):
-        """Test VACUUM ANALYZE operation"""
-        pytest.skip("VACUUM ANALYZE is Postgres-specific and was removed after Postgres deprecation")
-
-    def test_reindex_table(self, mock_pool):
-        """Test REINDEX operation"""
-        pytest.skip("REINDEX TABLE is Postgres-specific and was removed after Postgres deprecation")
-
-    def test_get_slow_queries(self, mock_pool):
-        """Test getting slow queries"""
-        pytest.skip("pg_stat queries are Postgres-specific and were removed after Postgres deprecation")
-
-    def test_kill_query(self, mock_pool):
-        """Test killing a query"""
-        pytest.skip("pg_terminate_backend used by kill_query is Postgres-specific and was removed after Postgres deprecation")
+    # Deprecated Postgres-specific tests removed after Postgres deprecation.
+    # VACUUM ANALYZE, REINDEX, pg_stat queries and pg_terminate_backend logic
+    # are no longer supported in this codebase and have been deleted to keep
+    # the test suite focused on the currently-supported MariaDB backend.
 
     def test_check_connection_success(self, mock_pool):
         """Test successful connection check"""

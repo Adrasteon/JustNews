@@ -248,25 +248,57 @@ wait_for_dependencies() {
 # This is called from start_agent to produce clearer errors when venvs are misconfigured.
 check_python_deps_and_exit_if_missing() {
     local agent="$1"
-    # Prefer developer conda env when available (so checks match developer setup)
+    # Resolve the python interpreter to use for dependency checks and startup.
+    # Selection order (best-effort):
+    # 1) explicit PYTHON_BIN from agent/global env
+    # 2) explicit CANONICAL_PYTHON_PATH (if set and executable)
+    # 3) default canonical env python path (/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python)
+    # 4) if conda is present and env exists -> 'conda run -n <env> python'
+    # 5) fallback to python3/python from PATH
     local py_cmd=""
     local conda_env_to_try="${CONDA_ENV:-${CANONICAL_ENV:-justnews-py312}}"
-    if command -v conda >/dev/null 2>&1; then
+
+    # 1) explicit override
+    if [[ -n "${PYTHON_BIN:-}" && -x "${PYTHON_BIN}" ]]; then
+        py_cmd="${PYTHON_BIN}"
+    fi
+
+    # 2) explicit canonical path variable
+    if [[ -z "$py_cmd" && -n "${CANONICAL_PYTHON_PATH:-}" ]]; then
+        if [[ -x "${CANONICAL_PYTHON_PATH}" ]]; then
+            py_cmd="${CANONICAL_PYTHON_PATH}"
+        else
+            log_warning "CANONICAL_PYTHON_PATH='${CANONICAL_PYTHON_PATH}' is not executable; ignoring"
+        fi
+    fi
+
+    # 3) try the default canonical env path
+    if [[ -z "$py_cmd" ]]; then
+        local default_canonical_path="/home/adra/miniconda3/envs/${conda_env_to_try}/bin/python"
+        if [[ -x "$default_canonical_path" ]]; then
+            py_cmd="$default_canonical_path"
+        fi
+    fi
+
+    # 4) fallback to conda run if conda exists and env is present
+    if [[ -z "$py_cmd" ]] && command -v conda >/dev/null 2>&1; then
         if conda env list 2>/dev/null | awk '{print $1}' | grep -xq "$conda_env_to_try"; then
             py_cmd="conda run -n $conda_env_to_try python"
         fi
     fi
+
+    # 5) last-resort PATH python
     if [[ -z "$py_cmd" ]]; then
-    # Prefer PYTHON_BIN from env or default to canonical conda interpreter.
-    local py="${PYTHON_BIN:-/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python}"
-        if [[ ! -x "$py" ]]; then
-            py="$(command -v python3 || command -v python || true)"
+        if command -v python3 >/dev/null 2>&1; then
+            py_cmd="$(command -v python3)"
+        elif command -v python >/dev/null 2>&1; then
+            py_cmd="$(command -v python)"
         fi
-        if [[ -z "$py" ]]; then
-            log_warning "No python interpreter available to validate modules; continuing"
-            return 0
-        fi
-        py_cmd="$py"
+    fi
+
+    if [[ -z "$py_cmd" ]]; then
+        log_warning "No usable python interpreter found; dependency validation will be skipped"
+        return 0
     fi
 
     # Modules per agent (keep minimal to avoid import side-effects)
@@ -359,11 +391,28 @@ PYCODE
 # warn about it to make debugging easier (does not change behavior).
 check_python_interpreter_is_conda() {
     local cmd="${SELECTED_PY_CMD:-${PYTHON_BIN:-}}"
-    # If we have an explicit interpreter path and it isn't the conda env python,
-    # warn the operator so they can verify their environment.
-    if [[ -n "$cmd" && "$cmd" != *"${CANONICAL_ENV:-justnews-py312}" ]]; then
-        log_warning "Selected python ($cmd) does not appear to be the developer conda env '${CANONICAL_ENV:-justnews-py312}'"
-        log_warning "If you intended to use the conda environment, set PYTHON_BIN in /etc/justnews/global.env or enable PATH to include conda's bin"
+    local canonical_env="${CANONICAL_ENV:-justnews-py312}"
+    local canonical_path="${CANONICAL_PYTHON_PATH:-/home/adra/miniconda3/envs/${canonical_env}/bin/python}"
+
+    if [[ -z "$cmd" ]]; then
+        return 0
+    fi
+
+    # Consider the interpreter canonical if:
+    # - it contains the conda env path (/envs/<env>/bin) OR
+    # - it matches the canonical path explicitly OR
+    # - it is a 'conda run -n <env> python' invocation
+    if [[ "$cmd" == *"/envs/${canonical_env}/bin"* || "$cmd" == "$canonical_path" || "$cmd" == conda*"-n ${canonical_env}"* ]]; then
+        return 0
+    fi
+
+    # Not canonical — warn the operator; optionally fail if strict enforcement is enabled
+    log_warning "Selected python ($cmd) does not appear to be the developer conda env '${canonical_env}'"
+    log_warning "If you intended to use the conda environment, set PYTHON_BIN or CANONICAL_PYTHON_PATH in /etc/justnews/global.env or enable PATH to include the conda env's bin"
+
+    if [[ "${ENFORCE_CANONICAL_PYTHON:-0}" == "1" ]]; then
+        log_error "ENFORCE_CANONICAL_PYTHON=1: refusing to continue with non-canonical interpreter: $cmd"
+        exit 1
     fi
 }
 
@@ -479,6 +528,9 @@ ENVIRONMENT:
     AGENT_ARGS      Additional arguments to pass to the agent
     USE_GPU         Enable GPU mode (default: false)
     CUDA_VISIBLE_DEVICES  GPU device selection
+    PYTHON_BIN      Explicit interpreter to use for this agent (overrides selection)
+    CANONICAL_PYTHON_PATH  Optional explicit canonical interpreter path to prefer
+    ENFORCE_CANONICAL_PYTHON If set to 1, startup will fail unless interpreter resolves to the canonical env
 
 EXIT CODES:
     0 - Success

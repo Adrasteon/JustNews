@@ -144,6 +144,78 @@ sudo systemctl restart justnews-prometheus.service justnews-grafana.service
 sudo journalctl -u justnews-grafana.service -e -n 200
 ```
 
+Dev telemetry (optional)
+-------------------------
+
+For developer hosts you can opt-in to automatically start the local dev telemetry
+stack (Loki + Tempo + an OpenTelemetry node collector using the repository's
+`infrastructure/monitoring/dev-docker-compose.yaml`) during the canonical startup
+flow by setting this in `/etc/justnews/global.env`:
+
+```
+ENABLE_DEV_TELEMETRY=true
+```
+
+When enabled, `canonical_system_startup.sh` will launch the repository dev telemetry
+docker-compose when starting the system and will tear it down during the coordinated
+shutdown path (`canonical_system_startup.sh stop`). This is strictly opt-in so
+operator systems are unaffected unless explicitly chosen.
+
+Important — dev telemetry default host ports
+-----------------------------------------
+
+The dev telemetry stack uses canonical container ports but, to avoid colliding
+with a system-level OpenTelemetry collector on developer machines, the compose
+file maps container ports to an alternate set of default host ports by
+default. These host port defaults reduce the chance of a bind failure when a
+host collector is already running.
+
+Default dev host port mapping (host -> container):
+
+- ${LOKI_PORT:-13100} -> 3100 (Loki)
+- ${TEMPO_HTTP_PORT:-24268} -> 14268 (Tempo HTTP)
+- ${TEMPO_JAEGER_PORT:-19411} -> 9411 (Tempo/Jaeger)
+- ${OTEL_GRPC_PORT:-24317} -> 4317 (OTLP gRPC)
+- ${OTEL_HTTP_PORT:-24318} -> 4318 (OTLP HTTP)
+- ${NODE_METRICS_PORT:-18889} -> 8889 (node collector metrics)
+- ${DEMO_PORT:-18080} -> 8080 (demo emitter)
+
+```bash
+# Force-start dev telemetry even if canonical ports are already in use
+ENABLE_DEV_TELEMETRY_FORCE=1 ENABLE_DEV_TELEMETRY=true \ 
+	/path/to/infrastructure/systemd/scripts/dev-telemetry-manager.sh up
+```
+
+If you need to use canonical host ports instead (e.g. to mirror production
+networking exactly) you can override individual host ports by exporting the
+appropriate environment variable when starting the stack. Example:
+
+```bash
+# Launch dev telemetry but map Loki to canonical 3100 and OTLP gRPC to 4317
+LOKI_PORT=3100 OTEL_GRPC_PORT=4317 ENABLE_DEV_TELEMETRY=true \ 
+	/path/to/infrastructure/systemd/scripts/dev-telemetry-manager.sh up
+```
+
+To avoid surprises canonical_system_startup.sh will still detect port conflicts
+on the configured host ports and will skip starting the stack unless you set
+`ENABLE_DEV_TELEMETRY_FORCE=1`.
+
+If you'd prefer the dev telemetry stack to be managed directly by systemd, you can
+install the provided unit file and enable it using the helper script:
+
+```bash
+sudo ./infrastructure/systemd/scripts/install_dev_telemetry_unit.sh
+sudo systemctl enable --now justnews-dev-telemetry.service
+```
+
+This will let operators control the dev telemetry stack with `systemctl start|stop`.
+
+Operator playbook, automation & checks
+-------------------------------------
+
+We included a detailed operator playbook at `infrastructure/systemd/operators/dev-telemetry-playbook.md`, an example Ansible playbook at `infrastructure/ansible/playbooks/enable_dev_telemetry.yml`, and a host check script at `scripts/ops/check_dev_telemetry_status.sh` to help run a consistent enable/verify workflow across many hosts.
+
+
 Grafana defaults to `http://localhost:3000/` with `admin / change_me`. Update credentials via the UI after first login.
 
 ## Optional preflight checks (DB / Vector store / SQLite)

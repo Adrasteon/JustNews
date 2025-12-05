@@ -320,6 +320,7 @@ class TestAgentPerformance(BaseAgentTest):
 
     @pytest.mark.performance
     @pytest.mark.gpu
+    @pytest.mark.asyncio
     async def test_gpu_accelerated_performance(self):
         """Test GPU-accelerated agent performance"""
         if not TestConfig.is_gpu_available():

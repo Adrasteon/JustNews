@@ -23,6 +23,21 @@ def make_sqlite_service():
     ''')
     conn.commit()
 
+    # Ensure leases table exists for DB-backed paths exercised in the engine
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS orchestrator_leases (
+            token TEXT PRIMARY KEY,
+            agent_name TEXT,
+            gpu_index INTEGER NULL,
+            mode TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP NULL,
+            last_heartbeat TIMESTAMP NULL,
+            metadata TEXT NULL
+        )
+    ''')
+    conn.commit()
+
     class CursorWrapper:
         def __init__(self, conn):
             self._conn = conn
@@ -36,6 +51,14 @@ def make_sqlite_service():
             else:
                 self._cur = self._conn.execute(sql2, params)
             return self._cur
+
+        @property
+        def rowcount(self):
+            # expose underlying sqlite3.Cursor.rowcount if present
+            try:
+                return self._cur.rowcount if self._cur is not None else -1
+            except Exception:
+                return -1
 
         def fetchone(self):
             return self._cur.fetchone() if self._cur is not None else None

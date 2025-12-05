@@ -52,7 +52,8 @@ def create_sqlite_service():
             attempts INTEGER NOT NULL DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP NULL,
-            last_error TEXT NULL
+                last_error TEXT NULL,
+                timeout_seconds INTEGER NULL
         )
     ''')
     conn.commit()
@@ -95,6 +96,21 @@ def create_sqlite_service():
         def rollback(self):
             return self._conn.rollback()
 
+    # ensure leases table exists for DB-backed paths exercised in integration tests
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS orchestrator_leases (
+            token TEXT PRIMARY KEY,
+            agent_name TEXT,
+            gpu_index INTEGER NULL,
+            mode TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP NULL,
+            last_heartbeat TIMESTAMP NULL,
+            metadata TEXT NULL
+        )
+    ''')
+    conn.commit()
+
     # Return a minimal 'service' with mb_conn attribute used by engine
     return SimpleNamespace(mb_conn=MBConnWrapper(conn))
 
@@ -128,7 +144,6 @@ def test_submit_job_persistence_and_redis_write():
         assert len(entries) == 1
         _, fields = entries[0]
         assert ('payload' in fields) or (b'payload' in fields)
-
 
 def test_reclaimer_integration_requeues_and_dlq():
     svc = create_sqlite_service()

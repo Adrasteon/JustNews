@@ -107,3 +107,10 @@ def bootstrap_observability(service_name: str, *, level: int = logging.INFO, ena
             logging.getLogger(__name__).debug("OpenTelemetry not initialized (missing SDK or disabled)")
     except Exception as exc:  # pragma: no cover - defensive
         logging.getLogger(__name__).warning("Failed to initialize OpenTelemetry: %s", exc)
+    # Initialize optional Sentry integration when configured (opt-in via SENTRY_DSN)
+    try:
+        from common import sentry_integration
+
+        sentry_integration.init_sentry(service_name, logger=logging.getLogger(__name__))
+    except Exception as exc:  # pragma: no cover - defensive
+        logging.getLogger(__name__).warning("Failed to initialize Sentry integration: %s", exc)

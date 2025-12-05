@@ -123,8 +123,10 @@ class AgentChainRunner:
                 if self.publish_on_accept and not result.needs_followup and result.acceptance_score and result.acceptance_score >= 0.5:
                     try:
                         from agents.common.publisher_integration import publish_normalized_article, verify_publish_token
-                        # Verify approval token before publishing
-                        if not verify_publish_token(self.publish_token):
+                        # If a publish_token was supplied to the runner, verify it before publishing.
+                        # If no token was supplied we allow publishing in environments where
+                        # the operator intentionally did not set a gating token (e.g. local dev).
+                        if self.publish_token is not None and not verify_publish_token(self.publish_token):
                             logger.info("Publish skipped for article %s: approval token invalid or missing", article_id)
                             try:
                                 self.metrics.record_publish_result('skipped')

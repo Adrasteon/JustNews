@@ -72,7 +72,7 @@ def mock_pool(mock_db_config):
             },
             'chromadb': {
                 'host': 'localhost',
-                'port': 8000,
+                'port': 3307,
                 'collection': 'articles'
             },
             'embedding': {

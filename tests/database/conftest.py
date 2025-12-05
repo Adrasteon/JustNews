@@ -43,7 +43,7 @@ def test_config() -> dict[str, Any]:
             },
             'chromadb': {
                 'host': 'localhost',
-                'port': 8000,
+                'port': 3307,
                 'collection': 'test_articles',
                 'settings': {
                     'anonymized_telemetry': False
@@ -333,7 +333,7 @@ def parametrize_database_configs():
             'config': {
                 'database': {
                     'mariadb': {'host': 'localhost', 'port': 3306},
-                    'chromadb': {'host': 'localhost', 'port': 8000},
+                    'chromadb': {'host': 'localhost', 'port': 3307},
                     'embedding': {'model': 'all-MiniLM-L6-v2'}
                 }
             }
@@ -344,7 +344,7 @@ def parametrize_database_configs():
             'config': {
                 'database': {
                     'mariadb': {'host': 'db-cluster', 'port': 3306, 'pool_size': 10},
-                    'chromadb': {'host': 'chroma-cluster', 'port': 8000},
+                    'chromadb': {'host': 'chroma-cluster', 'port': 3307},
                     'embedding': {'model': 'all-mpnet-base-v2', 'device': 'cuda'}
                 }
             }
@@ -355,7 +355,7 @@ def parametrize_database_configs():
             'config': {
                 'database': {
                     'mariadb': {'host': 'localhost', 'port': 3306},
-                    'chromadb': {'host': 'localhost', 'port': 8000},
+                    'chromadb': {'host': 'localhost', 'port': 3307},
                     'embedding': {'model': 'paraphrase-MiniLM-L3-v2'}
                 }
             }

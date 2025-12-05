@@ -9,7 +9,8 @@ def test_save_article_fails_when_chroma_required(monkeypatch):
     monkeypatch.setenv('CHROMADB_CANONICAL_PORT', '3307')
     # Set host to something that is not the canonical Chroma (force a mismatch)
     monkeypatch.setenv('CHROMADB_HOST', 'localhost')
-    monkeypatch.setenv('CHROMADB_PORT', '8000')
+    # Use a non-canonical port to simulate a mismatch (do not use 8000)
+    monkeypatch.setenv('CHROMADB_PORT', '3310')
 
     # Patch to return a fake DB service with no Chroma collection to trigger the error
     from unittest.mock import MagicMock

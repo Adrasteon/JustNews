@@ -13,12 +13,18 @@ if command -v conda >/dev/null 2>&1; then
     fi
 fi
 
-if command -v pytest >/dev/null 2>&1; then
-    echo "Conda env $CANONICAL_ENV not found — falling back to system pytest"
-    pytest "$@"
-    exit $?
+# If we reach here no canonical conda env was found. Require it by default
+# unless user explicitly allows any pytest environment via ALLOW_ANY_PYTEST_ENV.
+if [[ "${ALLOW_ANY_PYTEST_ENV:-}" == "1" ]]; then
+    if command -v pytest >/dev/null 2>&1; then
+        echo "ALLOW_ANY_PYTEST_ENV=1 set; falling back to system pytest"
+        pytest "$@"
+        exit $?
+    fi
+    echo "ERROR: ALLOW_ANY_PYTEST_ENV=1 but pytest is not installed on this system."
+    exit 2
 fi
 
-echo "ERROR: pytest not found and conda env '${CANONICAL_ENV}' is not available."
-echo "Please create the conda environment from environment.yml or install pytest locally."
+echo "ERROR: conda env '$CANONICAL_ENV' not found. Tests must run inside the canonical conda env by default."
+echo "Create it (environment.yml) or set ALLOW_ANY_PYTEST_ENV=1 to override (not recommended)."
 exit 2

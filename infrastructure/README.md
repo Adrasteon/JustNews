@@ -20,7 +20,7 @@ deploy/refactor/
 │   └── timers/               # Timer units
 ├── systemd/                  # Systemd service files (legacy)
 │   ├── services/             # Service unit files
-│   └── timers/               # Timer units
+    curl http://localhost:8000/api/v2/auth/identity
 ├── scripts/                  # Deployment automation
 │   ├── deploy.sh             # Unified deployment script
 │   ├── health-check.sh       # Service health validation
@@ -100,7 +100,7 @@ nano config/environments/production.env
 | Service | Type | Ports | Description |
 |---------|------|-------|-------------|
 | **mariadb** | Database | 3306 | Primary relational data storage |
-| **chromadb** | Vector DB | 8000 | Vector embeddings and semantic search |
+| **chromadb** | Vector DB | 3307 | Vector embeddings and semantic search |
 | **redis** | Cache | 6379 | Session and cache storage |
 | **grafana** | Monitoring | 3000 | Dashboard and visualization |
 | **prometheus** | Monitoring | 9090 | Metrics collection |
@@ -153,7 +153,7 @@ MYSQL_PASSWORD=secure_password
 
 # Vector Database Configuration
 CHROMA_HOST=localhost
-CHROMA_PORT=8000
+CHROMA_PORT=3307
 
 # Redis Configuration
 REDIS_HOST=localhost
@@ -198,7 +198,7 @@ MYSQL_USER=justnews
 MYSQL_PASSWORD=secure_password
 
 CHROMA_HOST=localhost
-CHROMA_PORT=8000
+CHROMA_PORT=3307
 ```
 
 ## Service Dependencies
@@ -208,7 +208,7 @@ mcp-bus (8000) ←─┐
                    ├── scout (8002)
                    ├── analyst (8004)
 mariadb (3306) ←──┼── synthesizer (8005)
-chromadb (8000) ←─┼── fact-checker (8003)
+chromadb (3307) ←─┼── fact-checker (8003)
 redis (6379) ←────┼── memory (8007)
                    ├── chief-editor (8001)
                    ├── reasoning (8008)
@@ -354,8 +354,8 @@ sudo systemctl restart justnews-scout || true
    # Test MariaDB connection
    mysql -h localhost -u justnews -p justnews -e "SELECT 1;"
 
-   # Test ChromaDB connection
-   curl http://localhost:8000/api/v1/heartbeat
+   # Test ChromaDB connection (prefer /api/v2/auth/identity; fall back to /api/v1/health or /)
+   curl http://localhost:8000/api/v2/auth/identity
 
    # Check service status
    sudo systemctl status mariadb

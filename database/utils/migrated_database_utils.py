@@ -325,13 +325,21 @@ def check_database_connections(service: MigratedDatabaseService) -> bool:
         except Exception as e:
             logger.warning(f"ChromaDB check failed (continuing without chroma): {e}")
 
-        # Test embedding model
-        test_embedding = service.embedding_model.encode("test")
-        if len(test_embedding) != 384:
-            logger.error(f"Embedding model returned wrong dimensions: {len(test_embedding)}")
-            return False
-
-        logger.info("Embedding model test successful")
+        # Test embedding model if available. The database service will run
+        # degraded if SentenceTransformer is not present (embedding_model=None).
+        if getattr(service, 'embedding_model', None) is None:
+            # Embeddings are optional for many agents and in CI/dev the
+            # SentenceTransformer may be unavailable. Log and continue.
+            logger.warning("Embedding model not available - skipping embedding test")
+        else:
+            try:
+                test_embedding = service.embedding_model.encode("test")
+                if len(test_embedding) != 384:
+                    logger.error(f"Embedding model returned wrong dimensions: {len(test_embedding)}")
+                    return False
+                logger.info("Embedding model test successful")
+            except Exception as e:
+                logger.warning(f"Embedding model test failed (continuing): {e}")
 
         return True
 

@@ -49,6 +49,12 @@ jobs:
           echo "Checking collector exported spans via metrics"
           ./infrastructure/monitoring/scripts/check_otel_spans.sh "http://localhost:${NODE_METRICS_PORT:-18889}/metrics" "otelcol_exporter_sent_spans" 60 5
 
+      - name: Assert traces ingested into Tempo
+        run: |
+          set -euo pipefail
+          echo "Querying Tempo for demo-emitter traces"
+          ./infrastructure/monitoring/scripts/check_tempo_traces.sh "http://localhost:${TEMPO_HTTP_PORT:-24268}" "justnews-demo-emitter" 60 5
+
       - name: Tear down stack
         if: always()
         run: |

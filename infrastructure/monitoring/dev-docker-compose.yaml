@@ -47,7 +47,8 @@ services:
       # Path is relative to this compose file (infrastructure/monitoring)
       - ./otel/node-collector-config.yaml:/etc/otel/config.yaml:ro
     environment:
-      OTEL_UPSTREAM_ENDPOINT: "tempo:9095"
+      # Tempo accepts OTLP/gRPC on 4317 (tempo's distributor OTLP receiver). Point the collector there.
+      OTEL_UPSTREAM_ENDPOINT: "tempo:4317"
       OTEL_UPSTREAM_INSECURE: "true"
       OTEL_SERVICE_NAME: "dev-otel-node"
       DEPLOYMENT_ENVIRONMENT: "dev"

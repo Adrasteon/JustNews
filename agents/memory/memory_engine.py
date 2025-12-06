@@ -40,6 +40,46 @@ class MemoryEngine:
         self.db_service = None
         self.embedding_model = None
 
+    def _acquire_cursor(self, *, per_call: bool = True, dictionary: bool = False, buffered: bool = True):
+        """Helper to obtain a cursor + optional per-call connection.
+
+        Returns (cursor, conn) where conn is None when using the shared
+        mb_conn cursor. This allows tests which mock mb_conn.cursor to continue
+        working without needing to provide get_safe_cursor.
+        """
+        if not self.db_service:
+            return None, None
+        # Prefer the safe helper if available
+        getter = getattr(self.db_service, 'get_safe_cursor', None)
+        if callable(getter):
+            try:
+                result = getter(per_call=per_call, dictionary=dictionary, buffered=buffered)
+                # Accept only explicit (cursor, conn) sequences — fall back otherwise
+                if isinstance(result, (list, tuple)) and len(result) == 2:
+                    return result[0], result[1]
+                # Try iterating into a tuple and validate length
+                try:
+                    rtuple = tuple(result)
+                    if len(rtuple) == 2:
+                        return rtuple[0], rtuple[1]
+                except Exception:
+                    pass
+            except Exception:
+                # Fall back to shared connection
+                pass
+
+        # Fallback: use the shared connection's cursor for tests/compat
+        conn = getattr(self.db_service, 'mb_conn', None)
+        if conn is None:
+            return None, None
+        # mysql.connector supports dictionary & buffered arguments
+        try:
+            cur = conn.cursor(dictionary=dictionary, buffered=buffered)
+        except TypeError:
+            # Some fake cursors in tests may not accept args
+            cur = conn.cursor()
+        return cur, None
+
     async def initialize(self):
         """Initialize the memory engine"""
         try:
@@ -112,10 +152,19 @@ class MemoryEngine:
             except Exception as e:
                 logger.error(f"DB connection unavailable when retrieving article: {e}")
                 return None
-            cursor = self.db_service.mb_conn.cursor(dictionary=True)
-            cursor.execute("SELECT id, content, metadata FROM articles WHERE id = %s", (article_id,))
-            article = cursor.fetchone()
-            cursor.close()
+            cursor, conn = self._acquire_cursor(per_call=True, dictionary=True, buffered=True)
+            try:
+                cursor.execute("SELECT id, content, metadata FROM articles WHERE id = %s", (article_id,))
+                article = cursor.fetchone()
+            finally:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
             if article:
                 # Parse metadata JSON if it's a string
@@ -141,10 +190,19 @@ class MemoryEngine:
             except Exception as e:
                 logger.error(f"DB connection unavailable when retrieving all article ids: {e}")
                 return {"article_ids": []}
-            cursor = self.db_service.mb_conn.cursor(dictionary=True)
-            cursor.execute("SELECT id FROM articles")
-            rows = cursor.fetchall()
-            cursor.close()
+            cursor, conn = self._acquire_cursor(per_call=True, dictionary=True, buffered=True)
+            try:
+                cursor.execute("SELECT id FROM articles")
+                rows = cursor.fetchall()
+            finally:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
             if rows:
                 article_ids = [row['id'] for row in rows]
@@ -167,13 +225,22 @@ class MemoryEngine:
             except Exception as e:
                 logger.error(f"DB connection unavailable when retrieving recent articles: {e}")
                 return []
-            cursor = self.db_service.mb_conn.cursor(dictionary=True)
-            cursor.execute(
-                "SELECT id, content, metadata FROM articles ORDER BY id DESC LIMIT %s",
-                (limit,)
-            )
-            rows = cursor.fetchall()
-            cursor.close()
+            cursor, conn = self._acquire_cursor(per_call=True, dictionary=True, buffered=True)
+            try:
+                cursor.execute(
+                    "SELECT id, content, metadata FROM articles ORDER BY id DESC LIMIT %s",
+                    (limit,)
+                )
+                rows = cursor.fetchall()
+            finally:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
             # Ensure JSON-serializable metadata
             for r in rows:
@@ -200,13 +267,31 @@ class MemoryEngine:
                 logger.error(f"DB connection unavailable when logging training example: {e}")
                 return {"error": "database_not_available"}
             # Insert training example
-            cursor = self.db_service.mb_conn.cursor()
-            cursor.execute(
-                "INSERT INTO training_examples (task, input, output, critique) VALUES (%s, %s, %s, %s)",
-                (task, json.dumps(input_data), json.dumps(output_data), critique)
-            )
-            self.db_service.mb_conn.commit()
-            cursor.close()
+            cursor, conn = self._acquire_cursor(per_call=True, buffered=True)
+            try:
+                cursor.execute(
+                    "INSERT INTO training_examples (task, input, output, critique) VALUES (%s, %s, %s, %s)",
+                    (task, json.dumps(input_data), json.dumps(output_data), critique)
+                )
+                # If a per-call connection was returned, commit on it; otherwise
+                # fall back to the shared mb_conn provided by the service.
+                if conn is not None:
+                    conn.commit()
+                else:
+                    try:
+                        getattr(self.db_service, 'mb_conn', None).commit()
+                    except Exception:
+                        pass
+            finally:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+                try:
+                    if conn is not None:
+                        conn.close()
+                except Exception:
+                    pass
 
             log_feedback("log_training_example", {
                 "task": task,
@@ -259,8 +344,23 @@ class MemoryEngine:
 
             # Execute statements transactionally
             chosen_source_id = None
+            # For transactional series of statements we need a dedicated
+            # per-call connection (`tx_conn`) so we can run multiple statements
+            # and commit/rollback atomically without interfering with other
+            # concurrent callers. Fall back if a per-call connection cannot be
+            # created.
+            tx_conn = None
             try:
-                self.db_service.ensure_conn()
+                # Obtain a per-call transaction connection when possible. Some
+                # tests provide only a fake `mb_conn` so fallback to that.
+                conn_getter = getattr(self.db_service, 'get_connection', None)
+                if callable(conn_getter):
+                    try:
+                        tx_conn = conn_getter()
+                    except Exception:
+                        tx_conn = getattr(self.db_service, 'mb_conn', None)
+                else:
+                    tx_conn = getattr(self.db_service, 'mb_conn', None)
             except Exception as e:
                 logger.error(f"DB connection unavailable during ingest_article: {e}")
                 return {"status": "error", "error": "database_not_available"}
@@ -274,8 +374,12 @@ class MemoryEngine:
 
             def _clear_pending_results():
                 try:
-                    tmp_cursor = self.db_service.mb_conn.cursor()
-                    while tmp_cursor.nextset():
+                    tmp_cursor = tx_conn.cursor(buffered=True)
+                    # some DB drivers return a strict boolean from nextset(); tests
+                    # using MagicMock return a MagicMock which is truthy and would
+                    # create an infinite loop. Ensure we only loop while nextset()
+                    # returns the boolean True value.
+                    while getattr(tmp_cursor, 'nextset', lambda: False)() is True:
                         pass
                     tmp_cursor.close()
                 except Exception:
@@ -290,7 +394,7 @@ class MemoryEngine:
                         params_tuple = tuple(params) if params is not None else ()
 
                         if "RETURNING" in sql_upper:
-                            cursor = self.db_service.mb_conn.cursor(dictionary=True, buffered=True)
+                            cursor = tx_conn.cursor(dictionary=True, buffered=True)
                             cursor.execute(sql, params_tuple)
                             pending_commit = True
 
@@ -299,25 +403,25 @@ class MemoryEngine:
                                 chosen_source_id = result['id']
 
                             try:
-                                while cursor.nextset():
+                                while getattr(cursor, 'nextset', lambda: False)() is True:
                                     cursor.fetchall()
                             except Exception:
                                 pass
                         else:
-                            cursor = self.db_service.mb_conn.cursor(buffered=True)
+                            cursor = tx_conn.cursor(buffered=True)
                             cursor.execute(sql, params_tuple)
                             pending_commit = True
 
                     except Exception as stmt_e:
                         try:
                             if cursor is not None:
-                                while cursor.nextset():
+                                while getattr(cursor, 'nextset', lambda: False)() is True:
                                     cursor.fetchall()
                         except Exception:
                             pass
 
                         try:
-                            self.db_service.mb_conn.rollback()
+                            tx_conn.rollback()
                         except Exception:
                             pass
 
@@ -332,7 +436,7 @@ class MemoryEngine:
                                 if domain:
                                     lookup_cursor = None
                                     try:
-                                        lookup_cursor = self.db_service.mb_conn.cursor(dictionary=True, buffered=True)
+                                        lookup_cursor = tx_conn.cursor(dictionary=True, buffered=True)
                                         lookup_cursor.execute("SELECT id FROM sources WHERE domain = %s", (domain,))
                                         existing_source = lookup_cursor.fetchone()
                                         if existing_source:
@@ -358,7 +462,7 @@ class MemoryEngine:
 
                 if pending_commit:
                     try:
-                        self.db_service.mb_conn.commit()
+                        tx_conn.commit()
                     except Exception as commit_error:
                         logger.error(f"Failed to commit transaction: {commit_error}")
                         _clear_pending_results()
@@ -367,7 +471,21 @@ class MemoryEngine:
             except Exception as e:
                 logger.error(f"Database transaction failed: {e}")
                 _clear_pending_results()
+                try:
+                    tx_conn.rollback()
+                except Exception:
+                    pass
+                try:
+                    tx_conn.close()
+                except Exception:
+                    pass
                 return {"status": "error", "error": str(e)}
+            finally:
+                try:
+                    if tx_conn is not None:
+                        tx_conn.close()
+                except Exception:
+                    pass
 
             # Now save the article content
             try:
@@ -446,20 +564,38 @@ class MemoryEngine:
             except Exception as e:
                 logger.error(f"DB connection unavailable when getting article count: {e}")
                 return 0
-            cursor = self.db_service.mb_conn.cursor(dictionary=True)
-            cursor.execute("SELECT COUNT(*) as count FROM articles")
-            result = cursor.fetchone()
-            cursor.close()
+            cursor, conn = self._acquire_cursor(per_call=True, dictionary=True, buffered=True)
+            try:
+                cursor.execute("SELECT COUNT(*) as count FROM articles")
+                result = cursor.fetchone()
+            finally:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
             return result.get("count", 0) if result else 0
         except Exception as e:
             logger.error(f"Error getting article count: {e}")
             # Try to clear any unread results
             try:
-                cursor = self.db_service.mb_conn.cursor()
-                while cursor.nextset():
-                    pass
-                cursor.close()
+                _tmp_cur, _tmp_conn = self._acquire_cursor(per_call=True, buffered=True)
+                try:
+                    while _tmp_cur.nextset():
+                        pass
+                finally:
+                    try:
+                        _tmp_cur.close()
+                    except Exception:
+                        pass
+                    try:
+                        _tmp_conn.close()
+                    except Exception:
+                        pass
             except Exception:
                 pass
             return 0
@@ -474,13 +610,22 @@ class MemoryEngine:
             except Exception as e:
                 logger.error(f"DB connection unavailable when getting sources: {e}")
                 return []
-            cursor = self.db_service.mb_conn.cursor(dictionary=True)
-            cursor.execute(
-                "SELECT id, url, domain, name, description, country, language FROM sources ORDER BY id LIMIT %s",
-                (limit,)
-            )
-            sources = cursor.fetchall()
-            cursor.close()
+            cursor, conn = self._acquire_cursor(per_call=True, dictionary=True, buffered=True)
+            try:
+                cursor.execute(
+                    "SELECT id, url, domain, name, description, country, language FROM sources ORDER BY id LIMIT %s",
+                    (limit,)
+                )
+                sources = cursor.fetchall()
+            finally:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
             return sources or []
         except Exception as e:

@@ -590,6 +590,59 @@ class MigratedDatabaseService:
                 logger.warning(f"Failed to ensure MariaDB connection: {e}")
                 raise
 
+    def get_connection(self):
+        """Create a fresh MariaDB connection using the service's configuration.
+
+        This is intended for short-lived / per-request DB usage where a single
+        shared connection object would otherwise be shared across concurrent
+        callers and can surface 'Unread result found' errors. Callers that use
+        get_connection() must close the returned connection when done.
+        """
+        mb_cfg = getattr(self, '_mariadb_config', None) or self.config['database'].get('mariadb', {})
+        params = {
+            'host': mb_cfg.get('host'),
+            'port': int(mb_cfg.get('port')) if mb_cfg.get('port') else None,
+            'user': mb_cfg.get('user'),
+            'database': mb_cfg.get('database'),
+            'autocommit': False,
+            'use_pure': True,
+        }
+        if mb_cfg.get('password'):
+            params['password'] = mb_cfg.get('password')
+        params = {k: v for k, v in params.items() if v is not None}
+        logger.debug("MigratedDatabaseService.get_connection: creating new per-call MariaDB connection")
+        return mysql.connector.connect(**params)
+
+    def get_safe_cursor(self, *, per_call: bool = False, dictionary: bool = False, buffered: bool = True):
+        """
+        Helper to obtain a 'safe' cursor for use by callers.
+
+        - If per_call is True this will create a fresh connection (via get_connection()),
+          and return (cursor, connection) where the caller is responsible for closing
+          both cursor and connection.
+        - If per_call is False we fall back to the shared `self.mb_conn` connection and
+          return (cursor, None). The returned cursor will respect the `buffered` and
+          `dictionary` flags.
+
+        This should reduce risk of 'Unread result found' by encouraging per-call
+        connections for high-concurrency call sites while still supporting
+        backward-compatible usage.
+        """
+        try:
+            if per_call:
+                conn = self.get_connection()
+                cursor = conn.cursor(buffered=buffered, dictionary=dictionary)
+                logger.debug("get_safe_cursor: using per-call connection %s (id=%s)", conn, id(conn))
+                return cursor, conn
+            # fallback to shared connection
+            self.ensure_conn()
+            cursor = self.mb_conn.cursor(buffered=buffered, dictionary=dictionary)
+            logger.debug("get_safe_cursor: using shared connection %s (id=%s)", self.mb_conn, id(self.mb_conn))
+            return cursor, None
+        except Exception as e:
+            logger.warning(f"Failed to obtain safe cursor: {e}")
+            raise
+
     def get_article_by_id(self, article_id: Union[int, str]) -> Optional[Article]:
         """Get article by ID from MariaDB"""
         try:

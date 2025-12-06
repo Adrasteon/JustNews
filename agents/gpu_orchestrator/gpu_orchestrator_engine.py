@@ -427,11 +427,20 @@ class GPUOrchestratorEngine:
 
         # Also purge expired leases from persistent DB (best-effort)
         try:
-            if self.db_service:
-                cursor = self.db_service.mb_conn.cursor()
-                cursor.execute("DELETE FROM orchestrator_leases WHERE expires_at IS NOT NULL AND expires_at < NOW()")
-                self.db_service.mb_conn.commit()
-                cursor.close()
+                if self.db_service:
+                    cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                    try:
+                        cursor.execute("DELETE FROM orchestrator_leases WHERE expires_at IS NOT NULL AND expires_at < NOW()")
+                        conn.commit()
+                    finally:
+                        try:
+                            cursor.close()
+                        except Exception:
+                            pass
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
         except Exception:
             # Non-fatal - leave in-memory cleanup as primary
             self.logger.debug("Failed to purge expired leases from DB (continuing)")
@@ -483,14 +492,23 @@ class GPUOrchestratorEngine:
         try:
             if self.db_service:
                 ttl = int(os.environ.get('GPU_ORCHESTRATOR_LEASE_TTL', '3600'))
-                cursor = self.db_service.mb_conn.cursor()
+                cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
                 # Use FROM_UNIXTIME for created_at handling where helpful, but simple NOW()/DATE_ADD is fine
-                cursor.execute(
-                    "INSERT INTO orchestrator_leases (token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata) VALUES (%s,%s,%s,%s,NOW(),DATE_ADD(NOW(), INTERVAL %s SECOND),NOW(),%s)",
-                    (token, agent, gpu_index if success else None, 'gpu' if success else 'cpu', ttl, json.dumps(allocation))
-                )
-                self.db_service.mb_conn.commit()
-                cursor.close()
+                try:
+                    cursor.execute(
+                        "INSERT INTO orchestrator_leases (token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata) VALUES (%s,%s,%s,%s,NOW(),DATE_ADD(NOW(), INTERVAL %s SECOND),NOW(),%s)",
+                        (token, agent, gpu_index if success else None, 'gpu' if success else 'cpu', ttl, json.dumps(allocation)),
+                    )
+                    conn.commit()
+                finally:
+                    try:
+                        cursor.close()
+                    except Exception:
+                        pass
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
         except Exception as e:
             self.logger.debug(f"Failed to persist lease to DB (non-fatal): {e}")
         return {"granted": True, **allocation}
@@ -512,18 +530,37 @@ class GPUOrchestratorEngine:
             try:
                 cursor = None
                 if self.db_service:
-                    cursor = self.db_service.mb_conn.cursor()
-                    cursor.execute('SELECT status FROM orchestrator_jobs WHERE job_id=%s', (job_id,))
-                    r = cursor.fetchone()
-                    cursor.close()
+                    cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                    try:
+                        cursor.execute('SELECT status FROM orchestrator_jobs WHERE job_id=%s', (job_id,))
+                        r = cursor.fetchone()
+                    finally:
+                        try:
+                            cursor.close()
+                        except Exception:
+                            pass
+                        try:
+                            if conn:
+                                conn.close()
+                        except Exception:
+                            pass
                     if not r or r[0] != 'pending':
                         return {"claimed": False, "reason": "not_pending_or_missing", "status": (r[0] if r else None)}
                 # Proceed with updating and leasing best-effort
                 if self.db_service:
-                    cursor = self.db_service.mb_conn.cursor()
-                    cursor.execute('UPDATE orchestrator_jobs SET status=%s, updated_at=NOW() WHERE job_id=%s', ('claimed', job_id))
-                    self.db_service.mb_conn.commit()
-                    cursor.close()
+                    cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                    try:
+                        cursor.execute('UPDATE orchestrator_jobs SET status=%s, updated_at=NOW() WHERE job_id=%s', ('claimed', job_id))
+                        conn.commit()
+                    finally:
+                        try:
+                            cursor.close()
+                        except Exception:
+                            pass
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
             except Exception:
                 # Best effort — continue to attempt a lease and return accordingly
                 pass
@@ -534,7 +571,8 @@ class GPUOrchestratorEngine:
             return {"claimed": False, "reason": "lease_failed"}
 
         # DB backed path: do SELECT FOR UPDATE and perform update + insert within a single transaction
-        conn = self.db_service.mb_conn
+        # use a dedicated per-call connection for the transactional path
+        conn = self.db_service.get_connection()
         try:
             cursor = conn.cursor()
             # begin transaction
@@ -605,6 +643,10 @@ class GPUOrchestratorEngine:
             # commit transaction
             conn.commit()
             cursor.close()
+            try:
+                conn.close()
+            except Exception:
+                pass
 
             # update in-memory allocations
             ALLOCATIONS[token] = allocation
@@ -631,10 +673,19 @@ class GPUOrchestratorEngine:
         # Also remove persistent lease row (best-effort)
         try:
             if self.db_service:
-                cursor = self.db_service.mb_conn.cursor()
-                cursor.execute("DELETE FROM orchestrator_leases WHERE token = %s", (token,))
-                self.db_service.mb_conn.commit()
-                cursor.close()
+                cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                try:
+                    cursor.execute("DELETE FROM orchestrator_leases WHERE token = %s", (token,))
+                    conn.commit()
+                finally:
+                    try:
+                        cursor.close()
+                    except Exception:
+                        pass
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
         except Exception:
             self.logger.debug("Failed to remove lease row from DB (non-fatal)")
         return {"released": True, "token": token}
@@ -646,10 +697,19 @@ class GPUOrchestratorEngine:
             if token in ALLOCATIONS:
                 ALLOCATIONS[token]['timestamp'] = time.time()
             if self.db_service:
-                cursor = self.db_service.mb_conn.cursor()
-                cursor.execute("UPDATE orchestrator_leases SET last_heartbeat = NOW() WHERE token = %s", (token,))
-                self.db_service.mb_conn.commit()
-                cursor.close()
+                cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                try:
+                    cursor.execute("UPDATE orchestrator_leases SET last_heartbeat = NOW() WHERE token = %s", (token,))
+                    conn.commit()
+                finally:
+                    try:
+                        cursor.close()
+                    except Exception:
+                        pass
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
             return True
         except Exception as e:
             self.logger.debug(f"Failed to heartbeat lease in DB: {e}")
@@ -857,10 +917,19 @@ class GPUOrchestratorEngine:
         try:
             if timeout is None:
                 timeout = self._leader_try_timeout
-            cursor = self.db_service.mb_conn.cursor()
-            cursor.execute("SELECT GET_LOCK(%s,%s)", (self._leader_lock_name, int(timeout)))
-            res = cursor.fetchone()
-            cursor.close()
+            cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+            try:
+                cursor.execute("SELECT GET_LOCK(%s,%s)", (self._leader_lock_name, int(timeout)))
+                res = cursor.fetchone()
+            finally:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+                try:
+                    conn.close()
+                except Exception:
+                    pass
             locked = bool(res and int(res[0]) == 1)
             if locked:
                 self.is_leader = True
@@ -878,10 +947,19 @@ class GPUOrchestratorEngine:
         if not self.db_service:
             return False
         try:
-            cursor = self.db_service.mb_conn.cursor()
-            cursor.execute("SELECT RELEASE_LOCK(%s)", (self._leader_lock_name,))
-            res = cursor.fetchone()
-            cursor.close()
+            cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+            try:
+                cursor.execute("SELECT RELEASE_LOCK(%s)", (self._leader_lock_name,))
+                res = cursor.fetchone()
+            finally:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+                try:
+                    conn.close()
+                except Exception:
+                    pass
             released = bool(res and res[0] == 1)
             if released:
                 self.is_leader = False
@@ -919,10 +997,19 @@ class GPUOrchestratorEngine:
                     # we are leader; verify connection still healthy (best-effort)
                     try:
                         # a simple no-op query to detect dead connection
-                        cursor = self.db_service.mb_conn.cursor()
-                        cursor.execute('SELECT 1')
-                        cursor.fetchone()
-                        cursor.close()
+                        cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                        try:
+                            cursor.execute('SELECT 1')
+                            cursor.fetchone()
+                        finally:
+                            try:
+                                cursor.close()
+                            except Exception:
+                                pass
+                            try:
+                                conn.close()
+                            except Exception:
+                                pass
                     except Exception:
                         # lost DB connection -> lose leadership
                         self.logger.warning('Leader DB connection lost, relinquishing leadership')
@@ -1365,13 +1452,22 @@ class GPUOrchestratorEngine:
         # Persist worker pool row to DB (best-effort)
         try:
             if self.db_service:
-                cursor = self.db_service.mb_conn.cursor()
-                cursor.execute(
+                cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                try:
+                    cursor.execute(
                     "INSERT INTO worker_pools (pool_id, agent_name, model_id, adapter, desired_workers, spawned_workers, started_at, status, hold_seconds, metadata) VALUES (%s,%s,%s,%s,%s,%s,NOW(),%s,%s,%s)",
-                    (pool_id, requestor.get('user') if requestor else None, model_id, adapter, num_workers, num_workers, 'running', hold_seconds, json.dumps({'variant': variant}))
-                )
-                self.db_service.mb_conn.commit()
-                cursor.close()
+                        (pool_id, requestor.get('user') if requestor else None, model_id, adapter, num_workers, num_workers, 'running', hold_seconds, json.dumps({'variant': variant}))
+                    )
+                    conn.commit()
+                finally:
+                        try:
+                            cursor.close()
+                        except Exception:
+                            pass
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
         except Exception:
             self.logger.debug('Failed to persist worker_pool to DB (non-fatal)')
         return {'pool_id': pool_id, 'num_workers': num_workers, 'status': 'started', 'variant': variant}
@@ -1400,10 +1496,19 @@ class GPUOrchestratorEngine:
         # Mark persistent pool as stopped (best-effort)
         try:
             if self.db_service:
-                cursor = self.db_service.mb_conn.cursor()
-                cursor.execute("UPDATE worker_pools SET status=%s, spawned_workers=0 WHERE pool_id=%s", ('stopped', pool_id))
-                self.db_service.mb_conn.commit()
-                cursor.close()
+                cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                try:
+                    cursor.execute("UPDATE worker_pools SET status=%s, spawned_workers=0 WHERE pool_id=%s", ('stopped', pool_id))
+                    conn.commit()
+                finally:
+                    try:
+                        cursor.close()
+                    except Exception:
+                        pass
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
         except Exception:
             self.logger.debug('Failed to update worker_pool status in DB (non-fatal)')
         return {'pool_id': pool_id, 'status': 'stopped'}
@@ -1529,10 +1634,20 @@ class GPUOrchestratorEngine:
         can represent existing pools and reconcile them later.
         """
         try:
-            cursor = self.db_service.mb_conn.cursor(dictionary=True)
-            cursor.execute("SELECT pool_id, agent_name, model_id, adapter, desired_workers, spawned_workers, started_at, status, hold_seconds, metadata FROM worker_pools WHERE status IN ('starting','running','draining')")
-            rows = cursor.fetchall()
-            cursor.close()
+            cursor, conn = self.db_service.get_safe_cursor(per_call=True, dictionary=True, buffered=True)
+            try:
+                cursor.execute("SELECT pool_id, agent_name, model_id, adapter, desired_workers, spawned_workers, started_at, status, hold_seconds, metadata FROM worker_pools WHERE status IN ('starting','running','draining')")
+                rows = cursor.fetchall()
+            finally:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+                try:
+                    if conn:
+                        conn.close()
+                except Exception:
+                    pass
 
             for r in rows:
                 pid = r.get('pool_id')
@@ -1616,13 +1731,22 @@ class GPUOrchestratorEngine:
         try:
             # Persist job to DB if available
             if self.db_service:
-                cursor = self.db_service.mb_conn.cursor()
-                cursor.execute(
+                cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                try:
+                    cursor.execute(
                     "INSERT INTO orchestrator_jobs (job_id, type, payload, status, attempts, created_at, timeout_seconds) VALUES (%s,%s,%s,%s,%s,NOW(),%s)",
-                    (job_id, job_type, json.dumps(payload), 'pending', 0, timeout_seconds)
-                )
-                self.db_service.mb_conn.commit()
-                cursor.close()
+                        (job_id, job_type, json.dumps(payload), 'pending', 0, timeout_seconds)
+                    )
+                    conn.commit()
+                finally:
+                    try:
+                        cursor.close()
+                    except Exception:
+                        pass
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
 
             # Try to push to Redis stream if available
             if self.redis_client:
@@ -1647,10 +1771,19 @@ class GPUOrchestratorEngine:
         """Retrieve job record from DB if available, else return from in-memory cache if present."""
         try:
             if self.db_service:
-                cursor = self.db_service.mb_conn.cursor(dictionary=True)
-                cursor.execute("SELECT job_id, type, payload, status, attempts, created_at, updated_at, last_error, timeout_seconds FROM orchestrator_jobs WHERE job_id=%s", (job_id,))
-                row = cursor.fetchone()
-                cursor.close()
+                cursor, conn = self.db_service.get_safe_cursor(per_call=True, dictionary=True, buffered=True)
+                try:
+                    cursor.execute("SELECT job_id, type, payload, status, attempts, created_at, updated_at, last_error, timeout_seconds FROM orchestrator_jobs WHERE job_id=%s", (job_id,))
+                    row = cursor.fetchone()
+                finally:
+                    try:
+                        cursor.close()
+                    except Exception:
+                        pass
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
                 if row:
                     # parse payload JSON
                     try:
@@ -1759,12 +1892,22 @@ class GPUOrchestratorEngine:
                             attempts = 0
                             if job_id and self.db_service:
                                 try:
-                                    cursor = self.db_service.mb_conn.cursor()
-                                    cursor.execute('SELECT attempts FROM orchestrator_jobs WHERE job_id=%s', (job_id,))
-                                    r = cursor.fetchone()
-                                    cursor.close()
-                                    if r:
-                                        attempts = int(r[0])
+                                    cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                                    try:
+                                        cursor.execute('SELECT attempts FROM orchestrator_jobs WHERE job_id=%s', (job_id,))
+                                        r = cursor.fetchone()
+                                        if r:
+                                            attempts = int(r[0])
+                                    finally:
+                                        try:
+                                            cursor.close()
+                                        except Exception:
+                                            pass
+                                        try:
+                                            if conn:
+                                                conn.close()
+                                        except Exception:
+                                            pass
                                 except Exception:
                                     attempts = 0
 
@@ -1773,10 +1916,21 @@ class GPUOrchestratorEngine:
                             # Update attempts in DB
                             if job_id and self.db_service:
                                 try:
-                                    cursor = self.db_service.mb_conn.cursor()
-                                    cursor.execute('UPDATE orchestrator_jobs SET attempts=%s, updated_at=NOW() WHERE job_id=%s', (attempts, job_id))
-                                    self.db_service.mb_conn.commit()
-                                    cursor.close()
+                                    cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                                    try:
+                                        cursor.execute('UPDATE orchestrator_jobs SET attempts=%s, updated_at=NOW() WHERE job_id=%s', (attempts, job_id))
+                                        conn.commit()
+                                    finally:
+                                        try:
+                                            cursor.close()
+                                        except Exception:
+                                            pass
+                                        try:
+                                            conn.close()
+                                        except Exception:
+                                            pass
+                                except Exception:
+                                    pass
                                 except Exception:
                                     pass
 
@@ -1791,14 +1945,23 @@ class GPUOrchestratorEngine:
                                 except Exception:
                                     pass
                                 # Mark job dead-lettered in DB
-                                if job_id and self.db_service:
-                                    try:
-                                        cursor = self.db_service.mb_conn.cursor()
-                                        cursor.execute('UPDATE orchestrator_jobs SET status=%s, last_error=%s, updated_at=NOW() WHERE job_id=%s', ('dead_letter', 'max_attempts_exceeded', job_id))
-                                        self.db_service.mb_conn.commit()
-                                        cursor.close()
-                                    except Exception:
-                                        pass
+                                    if job_id and self.db_service:
+                                        try:
+                                            cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                                            try:
+                                                cursor.execute('UPDATE orchestrator_jobs SET status=%s, last_error=%s, updated_at=NOW() WHERE job_id=%s', ('dead_letter', 'max_attempts_exceeded', job_id))
+                                                conn.commit()
+                                            finally:
+                                                try:
+                                                    cursor.close()
+                                                except Exception:
+                                                    pass
+                                                try:
+                                                    conn.close()
+                                                except Exception:
+                                                    pass
+                                        except Exception:
+                                            pass
                                 # ACK the claimed message
                                 try:
                                     self.redis_client.xack(s, 'cg:inference', msg_id)
@@ -1899,12 +2062,21 @@ class GPUOrchestratorEngine:
                     attempts = 0
                     if job_id and self.db_service:
                         try:
-                            cursor = self.db_service.mb_conn.cursor()
-                            cursor.execute('SELECT attempts FROM orchestrator_jobs WHERE job_id=%s', (job_id,))
-                            r = cursor.fetchone()
-                            cursor.close()
-                            if r:
-                                attempts = int(r[0])
+                            cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                            try:
+                                cursor.execute('SELECT attempts FROM orchestrator_jobs WHERE job_id=%s', (job_id,))
+                                r = cursor.fetchone()
+                                if r:
+                                    attempts = int(r[0])
+                            finally:
+                                try:
+                                    cursor.close()
+                                except Exception:
+                                    pass
+                                try:
+                                    conn.close()
+                                except Exception:
+                                    pass
                         except Exception:
                             attempts = 0
 
@@ -1912,10 +2084,19 @@ class GPUOrchestratorEngine:
 
                     if job_id and self.db_service:
                         try:
-                            cursor = self.db_service.mb_conn.cursor()
-                            cursor.execute('UPDATE orchestrator_jobs SET attempts=%s, updated_at=NOW() WHERE job_id=%s', (attempts, job_id))
-                            self.db_service.mb_conn.commit()
-                            cursor.close()
+                            cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                            try:
+                                cursor.execute('UPDATE orchestrator_jobs SET attempts=%s, updated_at=NOW() WHERE job_id=%s', (attempts, job_id))
+                                conn.commit()
+                            finally:
+                                try:
+                                    cursor.close()
+                                except Exception:
+                                    pass
+                                try:
+                                    conn.close()
+                                except Exception:
+                                    pass
                         except Exception:
                             pass
 
@@ -1930,10 +2111,19 @@ class GPUOrchestratorEngine:
                             pass
                         if job_id and self.db_service:
                             try:
-                                cursor = self.db_service.mb_conn.cursor()
-                                cursor.execute('UPDATE orchestrator_jobs SET status=%s, last_error=%s, updated_at=NOW() WHERE job_id=%s', ('dead_letter', 'max_attempts_exceeded', job_id))
-                                self.db_service.mb_conn.commit()
-                                cursor.close()
+                                cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                                try:
+                                    cursor.execute('UPDATE orchestrator_jobs SET status=%s, last_error=%s, updated_at=NOW() WHERE job_id=%s', ('dead_letter', 'max_attempts_exceeded', job_id))
+                                    conn.commit()
+                                finally:
+                                    try:
+                                        cursor.close()
+                                    except Exception:
+                                        pass
+                                    try:
+                                        conn.close()
+                                    except Exception:
+                                        pass
                             except Exception:
                                 pass
                         try:

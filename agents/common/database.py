@@ -115,21 +115,26 @@ def get_db_cursor(commit: bool = False, dictionary: bool = True):
         dictionary: return rows as dicts when supported
     """
     service = initialize_database_service()
-    # mysql.connector supports dictionary=True to return dict rows
-    cursor = service.mb_conn.cursor(dictionary=dictionary)
+    # Prefer a per-call connection + cursor to avoid sharing resultsets across
+    # concurrent callers which may lead to 'Unread result found' in mysql-connector.
+    cursor, conn = service.get_safe_cursor(per_call=True, dictionary=dictionary, buffered=True)
     try:
-        yield service.mb_conn, cursor
+        yield conn, cursor
         if commit:
-            service.mb_conn.commit()
+            conn.commit()
     except Exception:
         try:
-            service.mb_conn.rollback()
+            conn.rollback()
         except Exception:
             pass
         raise
     finally:
         try:
             cursor.close()
+        except Exception:
+            pass
+        try:
+            conn.close()
         except Exception:
             pass
 
@@ -158,10 +163,19 @@ def health_check() -> bool:
     """Perform a basic MariaDB health check using the migrated service."""
     try:
         service = initialize_database_service()
-        cursor = service.mb_conn.cursor()
-        cursor.execute("SELECT 1")
-        result = cursor.fetchone()
-        cursor.close()
+        cursor, conn = service.get_safe_cursor(per_call=True, buffered=True)
+        try:
+            cursor.execute("SELECT 1")
+            result = cursor.fetchone()
+        finally:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+            try:
+                conn.close()
+            except Exception:
+                pass
         return bool(result and result[0] == 1)
     except Exception as e:
         logger.error(f"Database health check failed: {e}")

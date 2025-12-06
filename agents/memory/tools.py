@@ -208,20 +208,49 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
             hash_value = hash_candidate or None
 
             if hash_value:
-                # Check for duplicates in MariaDB
-                cursor = db_service.mb_conn.cursor()
-                cursor.execute("SELECT id FROM articles WHERE url_hash = %s", (hash_value,))
-                duplicate = cursor.fetchone()
-                cursor.close()
+                # Use a short-lived connection for the duplicate checks + insert to
+                # avoid sharing a single connection across concurrent callers
+                using_temp_conn = False
+                conn = getattr(db_service, 'mb_conn', None)
+                try:
+                    if getattr(db_service, 'get_connection', None):
+                        conn = db_service.get_connection()
+                        using_temp_conn = True
+
+                    # Check for duplicates in MariaDB (buffered cursor to avoid "Unread result found")
+                    cursor = conn.cursor(buffered=True)
+                    cursor.execute("SELECT id FROM articles WHERE url_hash = %s", (hash_value,))
+                    duplicate = cursor.fetchone()
+                    cursor.close()
+                finally:
+                    # Close any per-call connection we opened
+                    if using_temp_conn:
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
 
                 if duplicate:
                     duplicate_lookup_id = duplicate[0]
             if normalized_url and duplicate_lookup_id is None:
-                # Check for duplicates by normalized URL
-                cursor = db_service.mb_conn.cursor()
-                cursor.execute("SELECT id FROM articles WHERE normalized_url = %s", (normalized_url,))
-                duplicate = cursor.fetchone()
-                cursor.close()
+                using_temp_conn = False
+                conn = getattr(db_service, 'mb_conn', None)
+                try:
+                    if getattr(db_service, 'get_connection', None):
+                        conn = db_service.get_connection()
+                        using_temp_conn = True
+
+                    # Check for duplicates by normalized URL (buffered)
+                    cursor = conn.cursor(buffered=True)
+                    cursor.execute("SELECT id FROM articles WHERE normalized_url = %s", (normalized_url,))
+                    duplicate = cursor.fetchone()
+                    cursor.close()
+                finally:
+                    if using_temp_conn:
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
 
                 if duplicate:
                     duplicate_lookup_id = duplicate[0]
@@ -292,72 +321,101 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
         review_reasons_json = json.dumps(metadata.get("review_reasons") or [])
 
         # Insert into MariaDB (without embedding column)
-        cursor = db_service.mb_conn.cursor()
-        insertion_params = (
-            raw_url,
-            metadata.get("title"),
-            content,
-            metadata.get("summary"),
-            bool(metadata.get("analyzed", False)),
-            metadata.get("source_id"),
-            normalized_url,
-            hash_value,
-            hash_algorithm,
-            metadata.get("language"),
-            metadata.get("section"),
-            json.dumps(tags) if tags else None,
-            json.dumps(authors) if authors else None,
-            metadata.get("raw_html_ref"),
-            float(metadata.get("confidence", 0.0)) if metadata.get("confidence") is not None else None,
-            bool(metadata.get("needs_review", False)),
-            review_reasons_json,
-            json.dumps(metadata.get("extraction_metadata") or {}),
-            json.dumps(metadata.get("structured_metadata") or {}),
-            publication_dt,
-            metadata_payload,
-            collection_dt,
-        )
+        # Use a per-request connection to perform the insert and subsequent
+        # read of LAST_INSERT_ID() — this avoids interfering with other
+        # concurrent operations using a shared connection.
+        using_temp_conn = False
+        conn = getattr(db_service, 'mb_conn', None)
+        try:
+            if getattr(db_service, 'get_connection', None):
+                conn = db_service.get_connection()
+                using_temp_conn = True
 
-        insert_query = """
-        INSERT INTO articles (
-            url,
-            title,
-            content,
-            summary,
-            analyzed,
-            source_id,
-            normalized_url,
-            url_hash,
-            url_hash_algo,
-            language,
-            section,
-            tags,
-            authors,
-            raw_html_ref,
-            extraction_confidence,
-            needs_review,
-            review_reasons,
-            extraction_metadata,
-            structured_metadata,
-            publication_date,
-            metadata,
-            collection_timestamp,
-            created_at,
-            updated_at
-        )
-        VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW()
-        )
-        """
+            cursor = conn.cursor(buffered=True)
 
-        cursor.execute(insert_query, insertion_params)
-        db_service.mb_conn.commit()
+            insertion_params = (
+                raw_url,
+                metadata.get("title"),
+                content,
+                metadata.get("summary"),
+                bool(metadata.get("analyzed", False)),
+                metadata.get("source_id"),
+                normalized_url,
+                hash_value,
+                hash_algorithm,
+                metadata.get("language"),
+                metadata.get("section"),
+                json.dumps(tags) if tags else None,
+                json.dumps(authors) if authors else None,
+                metadata.get("raw_html_ref"),
+                float(metadata.get("confidence", 0.0)) if metadata.get("confidence") is not None else None,
+                bool(metadata.get("needs_review", False)),
+                review_reasons_json,
+                json.dumps(metadata.get("extraction_metadata") or {}),
+                json.dumps(metadata.get("structured_metadata") or {}),
+                publication_dt,
+                metadata_payload,
+                collection_dt,
+            )
 
-        # Get the inserted article ID
-        cursor.execute("SELECT LAST_INSERT_ID()")
-        last = cursor.fetchone()
-        next_id = last[0] if last and len(last) > 0 else None
-        cursor.close()
+            insert_query = """
+            INSERT INTO articles (
+                url,
+                title,
+                content,
+                summary,
+                analyzed,
+                source_id,
+                normalized_url,
+                url_hash,
+                url_hash_algo,
+                language,
+                section,
+                tags,
+                authors,
+                raw_html_ref,
+                extraction_confidence,
+                needs_review,
+                review_reasons,
+                extraction_metadata,
+                structured_metadata,
+                publication_date,
+                metadata,
+                collection_timestamp,
+                created_at,
+                updated_at
+            )
+            VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW()
+            )
+            """
+
+            cursor.execute(insert_query, insertion_params)
+
+            # commit on the same connection we used for insert
+            try:
+                conn.commit()
+            except Exception:
+                # If conn is the shared service connection, let higher-level
+                # logic handle commit/rollback as before
+                try:
+                    if not using_temp_conn and getattr(db_service, 'mb_conn', None):
+                        db_service.mb_conn.commit()
+                except Exception:
+                    pass
+
+            # Get the inserted article ID
+            cursor.execute("SELECT LAST_INSERT_ID()")
+            last = cursor.fetchone()
+            next_id = last[0] if last and len(last) > 0 else None
+            cursor.close()
+        finally:
+            # Close any per-call connection
+            if using_temp_conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
         if next_id is None:
             logger.error('Could not determine inserted article id; aborting save operation')

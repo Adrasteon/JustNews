@@ -49,31 +49,29 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt sentence-transformers==3.0.1 chromadb==0.4.24 mysql-connector-python==9.0.0
 
-      - name: Wait for services
+      - name: Wait for services (bounded)
         run: |
           echo "Waiting for MariaDB..."
-        - name: Wait for services (bounded)
-          run: |
-            ATTEMPTS=60
-            i=0
-            until mysqladmin ping -h 127.0.0.1 -uroot -proot --silent; do
-              i=$((i+1))
-              if [ "$i" -ge "$ATTEMPTS" ]; then
-                echo "MariaDB did not become ready after ${ATTEMPTS}s" >&2
-                exit 1
-              fi
-              sleep 1
-            done
-            ATTEMPTS=60
-            i=0
-            until curl -sS http://127.0.0.1:3307/ >/dev/null; do
-              i=$((i+1))
-              if [ "$i" -ge "$ATTEMPTS" ]; then
-                echo "Chroma did not become ready after ${ATTEMPTS}s" >&2
-                exit 1
-              fi
-              sleep 1
-            done
+          ATTEMPTS=60
+          i=0
+          until mysqladmin ping -h 127.0.0.1 -uroot -proot --silent; do
+            i=$((i+1))
+            if [ "$i" -ge "$ATTEMPTS" ]; then
+              echo "MariaDB did not become ready after ${ATTEMPTS}s" >&2
+              exit 1
+            fi
+            sleep 1
+          done
+          ATTEMPTS=60
+          i=0
+          until curl -sS http://127.0.0.1:3307/ >/dev/null; do
+            i=$((i+1))
+            if [ "$i" -ge "$ATTEMPTS" ]; then
+              echo "Chroma did not become ready after ${ATTEMPTS}s" >&2
+              exit 1
+            fi
+            sleep 1
+          done
 
       - name: Bootstrap editorial harness schema
         run: python scripts/dev/bootstrap_editorial_harness_db.py

@@ -111,13 +111,23 @@ class DatabaseConnectionPool:
         """Perform health check on the database connection"""
         try:
             if self.service:
-                conn = self.service.mb_conn
-                cursor = conn.cursor()
+                # Use a per-call cursor to avoid interfering with other callers
+                cursor, conn = self.service.get_safe_cursor(per_call=True, buffered=True)
             else:
                 raise Exception("No database service configured")
-            cursor.execute("SELECT 1")
-            cursor.fetchone()
-            cursor.close()
+            try:
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+            finally:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+                try:
+                    if conn:
+                        conn.close()
+                except Exception:
+                    pass
             return True
         except Exception as e:
             logger.warning(f"Health check failed: {e}")
@@ -239,10 +249,15 @@ class DatabaseConnectionPool:
     def _health_check(self, connection) -> bool:
         """Perform health check on a specific connection"""
         try:
-            cursor = connection.cursor()
-            cursor.execute("SELECT 1")
-            cursor.fetchone()
-            cursor.close()
+            try:
+                cursor = connection.cursor()
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+            finally:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
             return True
         except Exception as e:
             logger.warning(f"Health check failed: {e}")

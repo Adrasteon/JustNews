@@ -12,6 +12,7 @@ DEV_COMPOSE = "infrastructure/monitoring/dev-docker-compose.yaml"
 def docker_available():
     try:
         subprocess.run(["docker", "ps"], capture_output=True, check=True)
+        subprocess.run(["docker", "compose", "version"], capture_output=True, check=True)
         return True
     except Exception:
         return False

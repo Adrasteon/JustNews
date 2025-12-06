@@ -152,6 +152,33 @@ class TestMemoryEngineArticleOperations:
             assert result["status"] == "ok"
             assert result["url"] == "http://example.com"
 
+    @pytest.mark.asyncio
+    async def test_ingest_handles_nonboolean_nextset_no_loop(self, memory_engine, mock_db_service):
+        """Ensure ingest_article won't spin if cursor.nextset() returns a non-boolean (e.g. MagicMock).
+
+        Previously cursor.nextset() could return a non-bool MagicMock in tests and cause
+        an infinite loop. This regression test simulates that condition and verifies the
+        call completes.
+        """
+        # Prepare a fake tx connection/cursor where nextset returns a MagicMock
+        fake_cursor = MagicMock()
+        fake_cursor.fetchone.return_value = {"id": 123}
+        fake_cursor.nextset.return_value = MagicMock()  # non-boolean truthy
+
+        fake_conn = MagicMock()
+        fake_conn.cursor.return_value = fake_cursor
+
+        # Ensure the db service will provide a per-call connection
+        mock_db_service.get_connection = MagicMock(return_value=fake_conn)
+
+        # No statements that actually modify DB; use a RETURNING-like statement to hit that code path
+        statements = [("INSERT INTO sources (id,domain) VALUES (%s,%s) RETURNING id", (1, 'example.com'))]
+
+        with patch('agents.memory.memory_engine.save_article') as mock_save:
+            mock_save.return_value = {"status": "saved", "article_id": 1}
+            result = memory_engine.ingest_article({"content": "ok", "url": "http://example.com"}, statements)
+            assert result["status"] in ("ok", "error")  # ensure it returns without hanging
+
 
 class TestMemoryEngineTrainingOperations:
     """Test MemoryEngine training operations."""

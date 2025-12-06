@@ -132,7 +132,8 @@ def ingest_article_db(article_payload: dict[str, Any], dsn: str) -> dict[str, An
     asm_sql, asm_params = build_article_source_map_insert(article_payload.get('article_id', 1), article_payload)
 
     try:
-        cursor = service.mb_conn.cursor()
+        conn = service.get_connection()
+        cursor = conn.cursor()
         try:
             # Run source upsert
             cursor.execute(source_sql, source_params)
@@ -141,7 +142,8 @@ def ingest_article_db(article_payload: dict[str, Any], dsn: str) -> dict[str, An
             if not source_id:
                 # Try to lookup by url_hash
                 try:
-                    lookup_cur = service.mb_conn.cursor(dictionary=True)
+                    # Use a buffered dictionary cursor on the same per-call connection
+                    lookup_cur = conn.cursor(dictionary=True, buffered=True)
                     lookup_cur.execute("SELECT id FROM sources WHERE url_hash = %s", (article_payload.get('url_hash'),))
                     row = lookup_cur.fetchone()
                     lookup_cur.close()
@@ -153,7 +155,7 @@ def ingest_article_db(article_payload: dict[str, Any], dsn: str) -> dict[str, An
             cursor.execute(asm_sql, asm_params)
 
             # Commit transaction
-            service.mb_conn.commit()
+            conn.commit()
 
             # Build candidate and canonical rule
             candidate = {
@@ -176,9 +178,13 @@ def ingest_article_db(article_payload: dict[str, Any], dsn: str) -> dict[str, An
                 cursor.close()
             except Exception:
                 pass
+            try:
+                conn.close()
+            except Exception:
+                pass
     except Exception:
         try:
-            service.mb_conn.rollback()
+            conn.rollback()
         except Exception:
             pass
         raise

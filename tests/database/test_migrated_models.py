@@ -521,7 +521,7 @@ class TestMigratedDatabaseService:
                     # Verify connections were made with correct params
                     mock_mb_connect.assert_called_once()
                     mock_chroma_client.assert_called_once_with(
-                        host='localhost', port=8000
+                        host='localhost', port=3307
                     )
                     expected_collection = 'articles__all-MiniLM-L6-v2__384'
                     mock_client.get_collection.assert_called_once_with(expected_collection)

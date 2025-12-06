@@ -300,11 +300,22 @@ def check_database_connections(service: MigratedDatabaseService) -> bool:
         True if all connections successful
     """
     try:
-        # Test MariaDB connection
-        cursor = service.mb_conn.cursor()
-        cursor.execute("SELECT 1 as test")
-        result = cursor.fetchone()
-        cursor.close()
+        # Test MariaDB connection using a safe per-call cursor so health checks
+        # don't compete with live queries on the shared connection.
+        cursor, conn = service.get_safe_cursor(per_call=True, buffered=True)
+        try:
+            cursor.execute("SELECT 1 as test")
+            result = cursor.fetchone()
+        finally:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+            try:
+                if conn:
+                    conn.close()
+            except Exception:
+                pass
 
         if not result or result[0] != 1:
             logger.error("MariaDB connection test failed - unexpected result")
@@ -391,23 +402,31 @@ def execute_mariadb_query(
         Query results or empty list
     """
     try:
-        # Ensure DB connection is available; reconnect if needed
+        # Use a per-call connection for queries to avoid sharing resultsets
+        # across concurrent callers which can produce 'Unread result found'.
+        conn = None
+        cursor = None
         try:
-            service.ensure_conn()
-        except Exception:
-            # Ensure_conn may fail; proceed and let the query attempt fail with a clear log
-            logger.warning("Unable to ensure DB connection before query; continuing")
-        cursor = service.mb_conn.cursor()
-        cursor.execute(query, params or ())
-
-        if fetch:
-            results = cursor.fetchall()
-        else:
-            results = []
-            service.mb_conn.commit()
-
-        cursor.close()
-        return results
+            # create per-call connection+cursor
+            cursor, conn = service.get_safe_cursor(per_call=True, buffered=True, dictionary=False)
+            cursor.execute(query, params or ())
+            if fetch:
+                results = cursor.fetchall()
+            else:
+                results = []
+                conn.commit()
+            return results
+        finally:
+            try:
+                if cursor:
+                    cursor.close()
+            except Exception:
+                pass
+            try:
+                if conn:
+                    conn.close()
+            except Exception:
+                pass
 
     except Exception as e:
         logger.error(f"MariaDB query failed: {e}")
@@ -438,16 +457,27 @@ def execute_transaction(
         raise ValueError("queries and params_list must have the same length")
 
     try:
-        cursor = service.mb_conn.cursor()
+        # For transactions we must use a single per-call connection so the
+        # statements are executed on the same connection and can be committed
+        # together.
+        conn = service.get_connection()
+        cursor = conn.cursor()
+        try:
+            for query, params in zip(queries, params_list, strict=True):
+                cursor.execute(query, params or ())
 
-        for query, params in zip(queries, params_list, strict=True):
-            cursor.execute(query, params or ())
-
-        service.mb_conn.commit()
-        cursor.close()
-
-        logger.info(f"Transaction executed successfully with {len(queries)} queries")
-        return True
+            conn.commit()
+            logger.info(f"Transaction executed successfully with {len(queries)} queries")
+            return True
+        finally:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+            try:
+                conn.close()
+            except Exception:
+                pass
 
     except Exception as e:
         logger.error(f"Transaction failed: {e}")
@@ -474,24 +504,33 @@ def get_database_stats(service: MigratedDatabaseService) -> dict[str, Any]:
     }
 
     try:
-        # MariaDB stats
-        cursor = service.mb_conn.cursor()
+        # Use per-call connection for stats so we don't interfere with live
+        # queries on the shared connection.
+        cursor, conn = service.get_safe_cursor(per_call=True, buffered=True)
+        try:
+            # Article count
+            cursor.execute("SELECT COUNT(*) FROM articles")
+            stats['mariadb']['articles'] = cursor.fetchone()[0]
+            stats['total_articles'] = stats['mariadb']['articles']
 
-        # Article count
-        cursor.execute("SELECT COUNT(*) FROM articles")
-        stats['mariadb']['articles'] = cursor.fetchone()[0]
-        stats['total_articles'] = stats['mariadb']['articles']
+            # Source count
+            cursor.execute("SELECT COUNT(*) FROM sources")
+            stats['mariadb']['sources'] = cursor.fetchone()[0]
+            stats['total_sources'] = stats['mariadb']['sources']
 
-        # Source count
-        cursor.execute("SELECT COUNT(*) FROM sources")
-        stats['mariadb']['sources'] = cursor.fetchone()[0]
-        stats['total_sources'] = stats['mariadb']['sources']
-
-        # Article-source mappings
-        cursor.execute("SELECT COUNT(*) FROM article_source_map")
-        stats['mariadb']['mappings'] = cursor.fetchone()[0]
-
-        cursor.close()
+            # Article-source mappings
+            cursor.execute("SELECT COUNT(*) FROM article_source_map")
+            stats['mariadb']['mappings'] = cursor.fetchone()[0]
+        finally:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+            try:
+                if conn:
+                    conn.close()
+            except Exception:
+                pass
 
         # ChromaDB stats
         if getattr(service, 'collection', None):

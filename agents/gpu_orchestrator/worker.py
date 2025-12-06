@@ -153,11 +153,20 @@ class Worker:
             # mark running -> done
             if job_id and getattr(self.engine, 'db_service', None):
                 try:
-                    cursor = self.engine.db_service.mb_conn.cursor()
-                    print(f"DEBUG: marking done for job_id={job_id}")
-                    cursor.execute('UPDATE orchestrator_jobs SET status=%s, updated_at=CURRENT_TIMESTAMP WHERE job_id=%s', ('done', job_id))
-                    self.engine.db_service.mb_conn.commit()
-                    cursor.close()
+                    cursor, conn = self.engine.db_service.get_safe_cursor(per_call=True, buffered=True)
+                    try:
+                        print(f"DEBUG: marking done for job_id={job_id}")
+                        cursor.execute('UPDATE orchestrator_jobs SET status=%s, updated_at=CURRENT_TIMESTAMP WHERE job_id=%s', ('done', job_id))
+                        conn.commit()
+                    finally:
+                        try:
+                            cursor.close()
+                        except Exception:
+                            pass
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
                     try:
                         self.engine.logger.debug(f"Worker finished job_id={job_id}, updated DB to done")
                     except Exception:
@@ -174,10 +183,19 @@ class Worker:
             # mark failed
             if job_id and getattr(self.engine, 'db_service', None):
                 try:
-                    cursor = self.engine.db_service.mb_conn.cursor()
-                    cursor.execute('UPDATE orchestrator_jobs SET status=%s, last_error=%s, updated_at=CURRENT_TIMESTAMP WHERE job_id=%s', ('failed', str(e), job_id))
-                    self.engine.db_service.mb_conn.commit()
-                    cursor.close()
+                    cursor, conn = self.engine.db_service.get_safe_cursor(per_call=True, buffered=True)
+                    try:
+                        cursor.execute('UPDATE orchestrator_jobs SET status=%s, last_error=%s, updated_at=CURRENT_TIMESTAMP WHERE job_id=%s', ('failed', str(e), job_id))
+                        conn.commit()
+                    finally:
+                        try:
+                            cursor.close()
+                        except Exception:
+                            pass
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
                 except Exception:
                     pass
             # ensure lease released if one held

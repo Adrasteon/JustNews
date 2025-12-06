@@ -38,8 +38,15 @@ class NormalizedArticleRepository:
         if limit <= 0:
             return []
 
-        self.db_service.ensure_conn()
-        cursor = self.db_service.mb_conn.cursor(dictionary=True)
+        # Use a per-call buffered dictionary cursor to avoid sharing resultsets
+        # across concurrent fetches which can cause 'Unread result found'.
+        # We keep ensure_conn for backward compatibility, but prefer per-call connections.
+        try:
+            self.db_service.ensure_conn()
+        except Exception:
+            # ensure_conn is best-effort; proceed to per-call connection
+            pass
+        cursor, conn = self.db_service.get_safe_cursor(per_call=True, dictionary=True, buffered=True)
         params: list = [min_chars]
         filters: list[str] = [
             "(content IS NOT NULL AND CHAR_LENGTH(content) >= %s)",
@@ -78,7 +85,14 @@ class NormalizedArticleRepository:
             cursor.execute(query, tuple(params))
             rows = cursor.fetchall() or []
         finally:
-            cursor.close()
+            try:
+                cursor.close()
+            except Exception:
+                pass
+            try:
+                conn.close()
+            except Exception:
+                pass
 
         candidates: list[ArticleCandidate] = []
         for row in rows:

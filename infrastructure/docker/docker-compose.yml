@@ -40,9 +40,7 @@ services:
       - CHROMA_SERVER_HOST=0.0.0.0
   # Docker Compose is deprecated; use systemd scaling instead:
   # for i in 1 2 3 4 5; do sudo systemctl enable --now justnews-scout@${i}; done
-      interval: 30s
-      timeout: 10s
-      retries: 3
+
 
   redis:
     image: redis:7-alpine

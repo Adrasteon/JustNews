@@ -72,7 +72,7 @@ capture ERROR-level events unless you explicitly increase sample rate for a targ
 Open the repo in VS Code, then in the Run panel choose one of the `Attach` configurations (listed in `.vscode/launch.json`). If starting the service manually, use the sample command below to run the service with debugpy listening on port 5678 and waiting for the client:
 
 ```bash
-conda activate justnews-py312
+conda activate ${CANONICAL_ENV:-justnews-py312}
 python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m agents.gpu_orchestrator.main
 ```
 

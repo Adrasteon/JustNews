@@ -107,11 +107,12 @@ jobs:
           done
           # assert success count >= 1
           python - <<'PY'
-import sys, json, urllib.request
-u='http://127.0.0.1:8001/api/metrics/'
-data=json.loads(urllib.request.urlopen(u).read().decode())
-if data.get('success',0) < 1:
-    print('Publish metric success count < 1:', data)
-    sys.exit(2)
-print('Publish KPI OK:', data)
-PY
+          import sys, json, urllib.request
+
+          u = 'http://127.0.0.1:8001/api/metrics/'
+          data = json.loads(urllib.request.urlopen(u).read().decode())
+          if data.get('success', 0) < 1:
+              print('Publish metric success count < 1:', data)
+              sys.exit(2)
+          print('Publish KPI OK:', data)
+          PY

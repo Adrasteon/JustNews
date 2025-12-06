@@ -1,11 +1,20 @@
+# actionlint: allowlist secrets.SENTRY_DSN
 name: Sentry sandbox demo
 
 on:
   workflow_dispatch:
+    inputs:
+      sentry_dsn:
+        description: "Sentry DSN"
+        required: true
+        type: string
 
 jobs:
   sentry-demo:
     runs-on: ubuntu-latest
+    env:
+      SENTRY_DSN: ${{ inputs.sentry_dsn }}
+      SENTRY_TRACES_SAMPLE_RATE: '0.0'
     steps:
       - uses: actions/checkout@v4
 
@@ -20,8 +29,6 @@ jobs:
           pip install sentry-sdk
 
       - name: Run Sentry demo event
-        env:
-          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          SENTRY_TRACES_SAMPLE_RATE: '0.0'
+        if: ${{ env.SENTRY_DSN != '' }}
         run: |
           python tests/ci/run_sentry_demo.py

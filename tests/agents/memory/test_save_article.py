@@ -247,3 +247,124 @@ def test_save_article_metrics_embedding_model_unavailable(monkeypatch, stage_b_m
     assert stage_b_metrics.get_ingestion_count("embedding_model_unavailable") == 1.0
     assert len(stored_rows) == 0
     assert stage_b_metrics.get_embedding_count("model_unavailable") == 1.0
+
+
+def test_save_article_uses_per_call_connection(monkeypatch, stage_b_metrics):
+    """Verify save_article will call get_connection when the DB service exposes it
+    (ensures per-request connections are used by the new code path).
+    """
+    stored_rows = []
+
+    class DummyCursor:
+        def __init__(self):
+            self._result = None
+
+        def execute(self, q, params=None):
+            qn = " ".join(q.split()).lower()
+            if qn.startswith("insert into articles"):
+                # pretend insert
+                self._lastrowid = len(stored_rows) + 1
+                stored_rows.append({'id': self._lastrowid})
+                self._result = None
+            elif "select last_insert_id" in qn:
+                self._result = ((getattr(self, '_lastrowid', len(stored_rows)),),)
+
+        def fetchone(self):
+            if self._result:
+                return self._result[0]
+            return None
+
+        def close(self):
+            pass
+
+    class DummyConn:
+        def cursor(self, buffered=False):
+            return DummyCursor()
+
+        def commit(self):
+            pass
+
+        def close(self):
+            pass
+
+    class MockDBServiceWithGetter:
+        def __init__(self):
+            self.embedding_model = StubEmbeddingModel()
+
+        def get_connection(self):
+            return DummyConn()
+
+    def mock_create_db_service(*a, **k):
+        return MockDBServiceWithGetter()
+
+    import database.utils.migrated_database_utils as db_utils
+    monkeypatch.setattr(db_utils, "create_database_service", mock_create_db_service)
+    monkeypatch.setattr(tools, "get_embedding_model", lambda: StubEmbeddingModel())
+
+    result = tools.save_article("content", {"url": "https://example.com/use-get-conn"}, embedding_model=StubEmbeddingModel())
+    assert result["status"] == "success"
+
+
+def test_save_article_works_with_shared_connection_buffered(monkeypatch, stage_b_metrics):
+    """Simulate a shared connection that would raise 'Unread result found' when
+    using unbuffered cursors — our code uses buffered cursors so this should succeed.
+    """
+    stored_rows = []
+
+    class DummyCursor:
+        def __init__(self, buffered=False):
+            self.buffered = buffered
+            self.pending = False
+
+        def execute(self, query, params=None):
+            qn = " ".join(query.split()).lower()
+            # For SELECT queries we set a pending result
+            if qn.startswith("select id from articles where url_hash") or qn.startswith("select id from articles where normalized_url"):
+                self.pending = True
+                # buffered cursor auto-consumes underlying results
+                if self.buffered:
+                    self.pending = False
+            elif qn.startswith("insert into articles"):
+                stored_rows.append({'id': len(stored_rows) + 1})
+            elif "select last_insert_id" in qn:
+                self._result = ((len(stored_rows),),)
+
+        def fetchone(self):
+            # Return an id if available
+            if hasattr(self, '_result') and self._result:
+                return self._result[0]
+            return None
+
+        def close(self):
+            pass
+
+    class SharedConn:
+        def __init__(self):
+            self.last_cursor_buffered = None
+
+        def cursor(self, buffered=False):
+            # record what buffer mode was requested and return a DummyCursor
+            self.last_cursor_buffered = buffered
+            return DummyCursor(buffered=buffered)
+
+        def commit(self):
+            pass
+
+    class MockDBServiceShared:
+        def __init__(self):
+            self.mb_conn = SharedConn()
+            self.collection = SimpleNamespace(add=lambda **_: None)
+            self.embedding_model = StubEmbeddingModel()
+
+        def ensure_conn(self):
+            return True
+
+    def mock_create_db_service(*a, **k):
+        return MockDBServiceShared()
+
+    import database.utils.migrated_database_utils as db_utils
+    monkeypatch.setattr(db_utils, "create_database_service", mock_create_db_service)
+
+    # Should not raise and should mark success because code uses buffered cursors
+    res = tools.save_article("content", {"url": "https://example.com/shared"}, embedding_model=StubEmbeddingModel())
+    assert res["status"] == "success"

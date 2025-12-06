@@ -44,7 +44,8 @@ def save_synthesized_draft(
     db_service = None
     try:
         db_service = db_utils.create_database_service()
-        cursor = db_service.mb_conn.cursor()
+        conn = db_service.get_connection()
+        cursor = conn.cursor()
 
         if persistence_mode == 'extend':
             # Create a new article row as a synthesized article
@@ -54,7 +55,7 @@ def save_synthesized_draft(
             )
             metadata_payload = json.dumps(synth_metadata or {})
             cursor.execute(insert_query, (title, body, summary, True, metadata_payload))
-            db_service.mb_conn.commit()
+            conn.commit()
             last_id = cursor.lastrowid
             # Add to Chroma if embedding provided
             try:
@@ -92,7 +93,7 @@ def save_synthesized_draft(
                     False,
                 ),
             )
-            db_service.mb_conn.commit()
+            conn.commit()
             last_id = cursor.lastrowid
 
             try:
@@ -115,6 +116,11 @@ def save_synthesized_draft(
         try:
             if cursor:
                 cursor.close()
+        except Exception:
+            pass
+        try:
+            if conn:
+                conn.close()
         except Exception:
             pass
         try:

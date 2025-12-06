@@ -590,7 +590,14 @@ class CrawlerEngine:
             return await self._crawl_generic_mode(site_config, effective_limit)
 
         try:
-            return await crawl_site_with_crawl4ai(site_config, profile, effective_limit)
+            # Respect profile-level 'follow_external' override (or let the adapter
+            # consult environment variables when None).
+            return await crawl_site_with_crawl4ai(
+                site_config,
+                profile,
+                effective_limit,
+                follow_external=profile.get("follow_external", None),
+            )
         except Exception as exc:  # noqa: BLE001 - resilience over strict typing
             logger.error("Crawl4AI profiled crawl failed for %s: %s", site_config.name, exc)
             return []

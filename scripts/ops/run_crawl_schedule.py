@@ -129,6 +129,12 @@ def _parse_args() -> argparse.Namespace:
         default=Path("config/crawl_profiles"),
         help="Path to Crawl4AI profile configuration directory or YAML file (default: config/crawl_profiles)",
     )
+    parser.add_argument(
+        "--NoFollow",
+        choices=("true", "false"),
+        default=None,
+        help="If true, do not follow external links when crawling (overrides profile/env)",
+    )
     return parser.parse_args()
 
 
@@ -405,6 +411,17 @@ def main() -> int:
         profile_overrides = (
             profile_registry.build_overrides(run.domains) if profile_registry else {}
         )
+
+        # Apply CLI-level NoFollow override to profile_overrides when provided
+        if args.NoFollow is not None:
+            # convert NoFollow CLI value to boolean: 'true' -> disable following external
+            no_follow_bool = str(args.NoFollow).lower() in ("1", "true", "yes")
+            # follow_external is the inverse of NoFollow
+            follow_external_value = not no_follow_bool
+            for dom in run.domains:
+                cur = profile_overrides.get(dom) or {}
+                cur["follow_external"] = follow_external_value
+                profile_overrides[dom] = cur
 
         payload = _build_payload(
             run,

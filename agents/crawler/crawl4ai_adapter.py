@@ -9,6 +9,7 @@ remains unchanged.
 from __future__ import annotations
 
 import asyncio
+import os
 import importlib
 import re
 from collections.abc import Mapping, Sequence
@@ -93,6 +94,11 @@ class CrawlContext:
     max_articles: int
     follow_internal_links: bool
     page_budget: int
+    # If True the crawler is allowed to follow links outside the configured
+    # site domain(s). When False we explicitly prevent following links whose
+    # network location (netloc) does not match the site's domain or its
+    # configured alternate domains.
+    follow_external: bool = False
 
 
 def _ensure_absolute(url: str, base: str) -> str:
@@ -293,6 +299,16 @@ def _select_link_candidates(
             allowed_domains.update(str(item).lower() for item in extra_domains if item)
 
     filtered: list[tuple[float, str]] = []
+    def _is_allowed_domain(netloc: str) -> bool:
+        if not netloc:
+            return False
+        nl = netloc.lower()
+        for domain in allowed_domains:
+            d = domain.lower()
+            if nl == d or nl.endswith('.' + d):
+                return True
+        return False
+
     for item in links:
         href = item.get("href")
         if not href:
@@ -302,8 +318,18 @@ def _select_link_candidates(
             continue
         parsed = urlparse(absolute)
         netloc = parsed.netloc.lower()
-        if allowed_domains and netloc and not any(domain in netloc for domain in allowed_domains if domain):
-            continue
+        # If caller asked to avoid following external links, only allow
+        # candidates whose netloc clearly matches one of the allowed domains
+        # (supporting exact match and subdomains). If allowed_domains is empty
+        # fall back to the site's start_url host if present.
+        if not context.follow_external:
+            if allowed_domains:
+                if netloc and not _is_allowed_domain(netloc):
+                    continue
+            else:
+                base_netloc = urlparse(context.site_config.start_url or '').netloc.lower()
+                if netloc and base_netloc and netloc != base_netloc and not netloc.endswith('.' + base_netloc):
+                    continue
         if include_patterns and not any(pattern in absolute for pattern in include_patterns):
             continue
         if exclude_patterns and any(pattern in absolute for pattern in exclude_patterns):
@@ -573,6 +599,8 @@ async def crawl_site_with_crawl4ai(
     site_config: SiteConfig,
     profile: dict[str, Any],
     max_articles: int,
+    *,
+    follow_external: bool | None = None,
 ) -> list[dict[str, Any]]:
     """Execute a Crawl4AI-backed crawl using the provided profile."""
     if crawl4ai is None:  # pragma: no cover - handled by caller fallback
@@ -605,6 +633,16 @@ async def crawl_site_with_crawl4ai(
         return []
 
     follow_internal_links = bool(profile.get("follow_internal_links", True))
+    # Determine whether we are allowed to follow links outside the target
+    # domain(s). Priority order:
+    # 1. explicit function parameter `follow_external` if not None
+    # 2. profile-level override `profile['follow_external']` if present
+    # 3. environment variable CRAWL4AI_FOLLOW_EXTERNAL (default: false)
+    if follow_external is None:
+        if "follow_external" in profile:
+            follow_external = bool(profile.get("follow_external"))
+        else:
+            follow_external = os.getenv("CRAWL4AI_FOLLOW_EXTERNAL", "false").lower() in ("1", "true", "yes")
     page_budget = int(profile.get("max_pages") or article_limit or len(unique_urls))
     page_budget = max(page_budget, len(unique_urls))
     seed_urls = set(unique_urls)
@@ -617,6 +655,7 @@ async def crawl_site_with_crawl4ai(
         max_articles=article_limit,
         follow_internal_links=follow_internal_links,
         page_budget=page_budget,
+        follow_external=bool(follow_external),
     )
 
     builder = GenericSiteCrawler(site_config, enable_http_fetch=False)

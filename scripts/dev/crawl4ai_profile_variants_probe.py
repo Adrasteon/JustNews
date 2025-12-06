@@ -73,9 +73,15 @@ async def _run_variant(
     profile: dict[str, Any],
     site_config: SiteConfig,
     max_articles: int,
+    follow_external: bool | None = None,
 ) -> dict[str, Any]:
     try:
-        articles = await crawl_site_with_crawl4ai(site_config, profile, max_articles=max_articles)
+        articles = await crawl_site_with_crawl4ai(
+            site_config,
+            profile,
+            max_articles=max_articles,
+            follow_external=follow_external,
+        )
     except Exception as exc:  # noqa: BLE001 - keep probe resilient
         return {"error": str(exc)}
 
@@ -105,9 +111,15 @@ async def _run_probe(args: argparse.Namespace) -> dict[str, Any]:
     )
 
     results: dict[str, Any] = {}
+    # Interpret CLI NoFollow (string 'true'/'false') into follow_external boolean
+    if args.NoFollow is None:
+        follow_external_override = None
+    else:
+        follow_external_override = not (str(args.NoFollow).lower() in ("1", "true", "yes"))
+
     for name, profile in variants:
         print(f"Running variant {name}...")
-        result = await _run_variant(name, profile, site_config, args.max_articles)
+        result = await _run_variant(name, profile, site_config, args.max_articles, follow_external=follow_external_override)
         print(f"Variant {name} result: {result}\n")
         results[name] = result
 
@@ -134,6 +146,12 @@ def main() -> None:
         type=Path,
         default=None,
         help="Optional path to write the JSON summary",
+    )
+    parser.add_argument(
+        "--NoFollow",
+        choices=("true", "false"),
+        default=None,
+        help="Explicitly disable following external links for the probe variants (true|false). If omitted then profile/env defaults apply",
     )
     args = parser.parse_args()
 

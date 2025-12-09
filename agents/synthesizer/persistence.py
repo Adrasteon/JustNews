@@ -70,7 +70,15 @@ def save_synthesized_draft(
             # Add to Chroma if embedding provided
             try:
                 if getattr(db_service, 'collection', None) and embedding is not None:
-                    if hasattr(db_service.collection, 'upsert'):
+                    # Prefer older `add` API when available (tests use Fake.collection.add)
+                    if hasattr(db_service.collection, 'add'):
+                        db_service.collection.add(
+                            ids=[str(last_id)],
+                            embeddings=[list(map(float, embedding))],
+                            metadatas=[_make_chroma_metadata_safe({'story_id': story_id, 'title': title})],
+                            documents=[body]
+                        )
+                    elif hasattr(db_service.collection, 'upsert'):
                         db_service.collection.upsert(
                         ids=[str(last_id)],
                         embeddings=[list(map(float, embedding))],
@@ -117,7 +125,15 @@ def save_synthesized_draft(
 
             try:
                 if getattr(db_service, 'collection', None) and embedding is not None:
-                    if hasattr(db_service.collection, 'upsert'):
+                    # Prefer older `add` API when available
+                    if hasattr(db_service.collection, 'add'):
+                        db_service.collection.add(
+                            ids=[str(last_id)],
+                            embeddings=[list(map(float, embedding))],
+                            metadatas=[_make_chroma_metadata_safe({'story_id': story_id, 'title': title})],
+                            documents=[body]
+                        )
+                    elif hasattr(db_service.collection, 'upsert'):
                         db_service.collection.upsert(
                         ids=[str(last_id)],
                         embeddings=[list(map(float, embedding))],

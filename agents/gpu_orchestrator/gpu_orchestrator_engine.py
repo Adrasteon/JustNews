@@ -134,12 +134,21 @@ class GPUOrchestratorEngine:
                         self.embedding_model = getattr(source, 'embedding_model', None)
 
                     def get_safe_cursor(self, *, per_call: bool = False, dictionary: bool = False, buffered: bool = True):
-                        # If per_call requested and original provides get_connection, use it
+                        # Prefer an explicit mb_conn attribute when available (common in test fakes)
+                        conn = getattr(self._src, 'mb_conn', None)
+                        if per_call and conn is not None:
+                            # Use the underlying mb_conn for per-call transaction semantics where possible
+                            try:
+                                cur = conn.cursor(buffered=buffered, dictionary=dictionary)
+                            except TypeError:
+                                cur = conn.cursor()
+                            return cur, conn
+                        # If no explicit mb_conn or per_call not requested, try get_connection if provided
                         if per_call and hasattr(self._src, 'get_connection'):
                             conn = self._src.get_connection()
                             cur = conn.cursor(buffered=buffered, dictionary=dictionary)
                             return cur, conn
-                        # Fall back to mb_conn if present
+                        # Fall back to whatever mb_conn we have (non-per-call)
                         conn = getattr(self._src, 'mb_conn', None)
                         if conn is None:
                             # mimic previous behavior: raise for clarity

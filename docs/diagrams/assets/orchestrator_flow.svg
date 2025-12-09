@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="420" viewBox="0 0 1000 420">
+  <style>
+    .box { fill: #fff7ed; stroke: #b45309; stroke-width: 2; rx: 8; }
+    .box2 { fill: #eefbf6; stroke: #0f766e; stroke-width: 2; rx: 8; }
+    .title { font: 13px/1.2 'Segoe UI Semibold', Roboto, Arial; fill: #7c2d12; font-weight: 700; }
+    .small { font: 12px 'Segoe UI', Roboto, Arial; fill: #1a202c; }
+    .arrow { stroke: #1a202c; stroke-width: 2; fill: none; marker-end: url(#a); }
+  </style>
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1a202c" />
+    </marker>
+  </defs>
+
+  <!-- Client / Agent -->
+  <rect x="40" y="40" width="160" height="60" class="box" />
+  <text x="120" y="60" text-anchor="middle" class="title">Agent / Harness</text>
+  <text x="120" y="80" text-anchor="middle" class="small">policy check or job submit</text>
+
+  <!-- Orchestrator Engine -->
+  <rect x="260" y="25" width="300" height="120" class="box2" />
+  <text x="410" y="45" text-anchor="middle" class="title">GPU Orchestrator Engine</text>
+  <text x="410" y="68" text-anchor="middle" class="small">leader, DB persistence, reclaimer</text>
+  <text x="410" y="88" text-anchor="middle" class="small">leases, worker pools, job store</text>
+
+  <!-- Redis Streams -->
+  <rect x="590" y="25" width="150" height="60" class="box" />
+  <text x="665" y="45" text-anchor="middle" class="title">Redis Streams</text>
+  <text x="665" y="65" text-anchor="middle" class="small">inference_jobs / dlq</text>
+
+  <!-- Worker Pools -->
+  <rect x="590" y="120" width="150" height="60" class="box2" />
+  <text x="665" y="140" text-anchor="middle" class="title">Worker Pools</text>
+  <text x="665" y="160" text-anchor="middle" class="small">acquire lease → run → release</text>
+
+  <!-- arrows -->
+  <path d="M200,70 L260,70" class="arrow" />
+  <path d="M560,70 L590,70" class="arrow" />
+  <path d="M665,85 L665,120" class="arrow" />
+
+  <!-- DB persistence -->
+  <rect x="260" y="165" width="160" height="70" class="box" />
+  <text x="340" y="190" text-anchor="middle" class="title">MariaDB</text>
+  <text x="340" y="208" text-anchor="middle" class="small">orchestrator_leases / orchestrator_jobs / pools</text>
+
+  <path d="M410,110 L410,165" class="arrow" />
+
+  <!-- DLQ arrow annotation -->
+  <path d="M740,85 L880,85" class="arrow" />
+  <rect x="880" y="60" width="90" height="50" class="box" />
+  <text x="925" y="85" text-anchor="middle" class="title">DLQ</text>
+
+  <!-- legend / notes -->
+  <text x="40" y="260" class="small">Flow: 1. Check policy / submit job  2. Persist job + push to Redis stream 3. Worker claims message, requests lease 4. Worker executes &amp; ACKs or DLQ</text>
+  <text x="40" y="280" class="small">See `docs/workflow_management.md` for runbook and `tests/e2e/test_orchestrator_real_e2e.py` for tests.</text>
+
+</svg>

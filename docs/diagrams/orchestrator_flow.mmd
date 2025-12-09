@@ -1,0 +1,16 @@
+flowchart TD
+  Agent["Agent / Harness\n(policy check or job submit)"]
+  Engine["GPU Orchestrator Engine\n(leader, DB persistence, reclaimer)"]
+  DB[("MariaDB\n(orchestrator_leases, orchestrator_jobs, worker_pools)")]
+  Stream["Redis Streams\n(stream:orchestrator:inference_jobs)"]
+  Worker["Worker / Pool\n(acquire lease → run → release)"]
+  DLQ["DLQ\n(stream:orchestrator:inference_jobs:dlq)"]
+
+  Agent -->|submit job| Engine
+  Engine -->|persist job| DB
+  Engine -->|push to stream| Stream
+  Stream -->|claim| Worker
+  Worker -->|request lease| Engine
+  Worker -->|update status| DB
+  Stream -->|move to| DLQ
+  Engine -->|reclaimer / reclaim| Stream

@@ -1,0 +1,33 @@
+flowchart LR
+  subgraph CRAWL
+    Crawler["Crawler\n(fetch + raw_html)"]
+  end
+
+  subgraph ARCHIVE_INGEST
+    Archive["Archive\n(raw_html snapshot)"]
+    Ingest["Ingest\n(normalize → canonical rows)"]
+  end
+
+  subgraph PARSING
+    Parser["Parser\n(extract title, authors, body)"]
+  end
+
+  subgraph EDITORIAL
+    Harness["Editorial Harness\n(agent chain, acceptance)"]
+  end
+
+  subgraph PUBLISH
+    Publisher["Publisher\n(store, audit, render)"]
+    Website["Website / APIs\n(user-facing)"]
+  end
+
+  subgraph CONTROL
+    MCP["MCP Bus\n(agent comms)"]
+    Orchestrator["GPU Orchestrator\n(leases, queues)"]
+  end
+
+  Crawler --> Archive --> Ingest --> Parser --> Harness --> Publisher --> Website
+  Crawler -->|label UI| Harness
+  Harness -.->|policy/leases| Orchestrator
+  Orchestrator -.->|policy/events| MCP
+  Publisher -->|metrics| MCP

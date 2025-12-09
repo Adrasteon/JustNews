@@ -121,7 +121,21 @@ class GPUOrchestratorEngine:
         # wrap it with a tiny adapter so the rest of the engine can call the
         # expected API without requiring tests to provide a full MigratedDatabaseService.
         try:
-            if self.db_service and not hasattr(self.db_service, 'get_safe_cursor') and hasattr(self.db_service, 'mb_conn'):
+            # If the provided db_service is a simple fake (MagicMock) it may
+            # advertise attributes like get_safe_cursor/get_connection. Prefer
+            # to create a compatibility shim when the object exposes a raw
+            # `mb_conn` connection object (common in tests) and either lacks
+            # a real get_safe_cursor implementation, or that attribute is a
+            # unittest.mock object (a test fake).
+            import unittest.mock as _umock
+
+            should_wrap = False
+            if self.db_service and hasattr(self.db_service, 'mb_conn'):
+                gs = getattr(self.db_service, 'get_safe_cursor', None)
+                if not gs or isinstance(gs, _umock.Mock):
+                    should_wrap = True
+
+            if should_wrap:
                 _orig = self.db_service
 
                 class _DBCompatShim:

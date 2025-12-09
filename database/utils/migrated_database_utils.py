@@ -239,7 +239,9 @@ def create_database_service(config: dict[str, Any] | None = None) -> MigratedDat
             # service that was created with a different collection scoping behaviour
             # (model-scoped vs canonical) which would result in embeddings being
             # written to a different Chroma collection than expected.
-            current_scoped = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION', '0')
+            # default to '1' (enable model-scoped collections) to ensure tests
+            # and default runtime behaviour use model+dim-scoped Chroma collections
+            current_scoped = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION', '1')
             cached_scoped = getattr(_cached_service, '_chroma_scoped_env', None)
             if config and getattr(_cached_service, 'config', None) == {'database': config} and cached_scoped == current_scoped:
                 return _cached_service
@@ -278,7 +280,7 @@ def create_database_service(config: dict[str, Any] | None = None) -> MigratedDat
     # Record the CHROMADB_MODEL_SCOPED_COLLECTION env value that led to this
     # service initialization so subsequent calls can validate compatibility
     try:
-        service._chroma_scoped_env = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION', '0')
+        service._chroma_scoped_env = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION', '1')
     except Exception:
         service._chroma_scoped_env = '0'
 
@@ -314,7 +316,24 @@ def check_database_connections(service: MigratedDatabaseService) -> bool:
     try:
         # Test MariaDB connection using a safe per-call cursor so health checks
         # don't compete with live queries on the shared connection.
-        cursor, conn = service.get_safe_cursor(per_call=True, buffered=True)
+        try:
+            _res = service.get_safe_cursor(per_call=True, buffered=True, dictionary=False)
+            # Some test doubles (MagicMock) may provide the attribute but
+            # return a non-iterable. Accept only a pair (cursor, conn).
+            if not _res or not hasattr(_res, '__iter__'):
+                raise AttributeError
+            if isinstance(_res, tuple) and len(_res) == 2:
+                cursor, conn = _res
+            else:
+                raise AttributeError
+        except AttributeError:
+                # Backwards-compatible fallback for legacy/mocked service objects
+                # that expose an `mb_conn` connection only.
+                conn = getattr(service, 'mb_conn', None)
+                if conn is None:
+                    logger.error("No connection available on service for DB checks")
+                    return False
+                cursor = conn.cursor()
         try:
             cursor.execute("SELECT 1 as test")
             result = cursor.fetchone()
@@ -420,7 +439,20 @@ def execute_mariadb_query(
         cursor = None
         try:
             # create per-call connection+cursor
-            cursor, conn = service.get_safe_cursor(per_call=True, buffered=True, dictionary=False)
+            try:
+                _res = service.get_safe_cursor(per_call=True, buffered=True, dictionary=False)
+                if not _res or not hasattr(_res, '__iter__'):
+                    raise AttributeError
+                if isinstance(_res, tuple) and len(_res) == 2:
+                    cursor, conn = _res
+                else:
+                    raise AttributeError
+            except AttributeError:
+                # fallback to raw mb_conn when helper is missing
+                conn = getattr(service, 'mb_conn', None)
+                if conn is None:
+                    raise
+                cursor = conn.cursor()
             cursor.execute(query, params or ())
             if fetch:
                 results = cursor.fetchall()
@@ -472,7 +504,12 @@ def execute_transaction(
         # For transactions we must use a single per-call connection so the
         # statements are executed on the same connection and can be committed
         # together.
-        conn = service.get_connection()
+        try:
+            conn = service.get_connection()
+        except AttributeError:
+            conn = getattr(service, 'mb_conn', None)
+            if conn is None:
+                raise
         cursor = conn.cursor()
         try:
             for query, params in zip(queries, params_list, strict=True):

@@ -176,10 +176,15 @@ class GPUOrchestratorEngine:
                         return cur, conn
 
                     def get_connection(self):
-                        # Prefer src.get_connection if available
-                        if hasattr(self._src, 'get_connection'):
+                        # Prefer an explicit mb_conn (tests commonly set this). If not
+                        # present, fall back to calling src.get_connection() if it
+                        # exists and is callable.
+                        mb = getattr(self._src, 'mb_conn', None)
+                        if mb is not None:
+                            return mb
+                        if hasattr(self._src, 'get_connection') and callable(getattr(self._src, 'get_connection')):
                             return self._src.get_connection()
-                        return getattr(self._src, 'mb_conn', None)
+                        return None
 
                     def close(self):
                         try:

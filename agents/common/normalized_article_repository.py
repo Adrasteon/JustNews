@@ -46,7 +46,21 @@ class NormalizedArticleRepository:
         except Exception:
             # ensure_conn is best-effort; proceed to per-call connection
             pass
-        cursor, conn = self.db_service.get_safe_cursor(per_call=True, dictionary=True, buffered=True)
+        # Prefer helper get_safe_cursor when provided; fall back to legacy
+        # mb_conn.cursor() for simple stub services used in tests.
+        cursor = None
+        conn = None
+        try:
+            _res = self.db_service.get_safe_cursor(per_call=True, dictionary=True, buffered=True)
+            if isinstance(_res, tuple) and len(_res) == 2:
+                cursor, conn = _res
+            else:
+                raise ValueError("get_safe_cursor did not return (cursor, conn)")
+        except Exception:
+            conn = getattr(self.db_service, 'mb_conn', None)
+            if conn is None:
+                raise
+            cursor = conn.cursor()
         params: list = [min_chars]
         filters: list[str] = [
             "(content IS NOT NULL AND CHAR_LENGTH(content) >= %s)",

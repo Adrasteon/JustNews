@@ -115,6 +115,66 @@ class GPUOrchestratorEngine:
         except Exception:
             self.db_service = None
 
+        # Compatibility shim for tests and legacy stubs: if the injected
+        # db_service doesn't expose the newer helper methods (get_safe_cursor,
+        # get_connection) but does provide a raw `mb_conn` connection object,
+        # wrap it with a tiny adapter so the rest of the engine can call the
+        # expected API without requiring tests to provide a full MigratedDatabaseService.
+        try:
+            if self.db_service and not hasattr(self.db_service, 'get_safe_cursor') and hasattr(self.db_service, 'mb_conn'):
+                _orig = self.db_service
+
+                class _DBCompatShim:
+                    def __init__(self, source):
+                        self._src = source
+                        # keep a reference to underlying attributes used elsewhere
+                        self.mb_conn = getattr(source, 'mb_conn', None)
+                        self.chroma_client = getattr(source, 'chroma_client', None)
+                        self.collection = getattr(source, 'collection', None)
+                        self.embedding_model = getattr(source, 'embedding_model', None)
+
+                    def get_safe_cursor(self, *, per_call: bool = False, dictionary: bool = False, buffered: bool = True):
+                        # If per_call requested and original provides get_connection, use it
+                        if per_call and hasattr(self._src, 'get_connection'):
+                            conn = self._src.get_connection()
+                            cur = conn.cursor(buffered=buffered, dictionary=dictionary)
+                            return cur, conn
+                        # Fall back to mb_conn if present
+                        conn = getattr(self._src, 'mb_conn', None)
+                        if conn is None:
+                            # mimic previous behavior: raise for clarity
+                            raise RuntimeError('no underlying mb_conn available for get_safe_cursor')
+                        try:
+                            cur = conn.cursor(buffered=buffered, dictionary=dictionary)
+                        except TypeError:
+                            # Some test sqlite wrappers don't accept extra kwargs on cursor()
+                            cur = conn.cursor()
+                        # Return the actual connection so callers can commit/rollback
+                        return cur, conn
+
+                    def get_connection(self):
+                        # Prefer src.get_connection if available
+                        if hasattr(self._src, 'get_connection'):
+                            return self._src.get_connection()
+                        return getattr(self._src, 'mb_conn', None)
+
+                    def close(self):
+                        try:
+                            if hasattr(self._src, 'close'):
+                                return self._src.close()
+                            if getattr(self, 'mb_conn', None):
+                                try:
+                                    self.mb_conn.close()
+                                except Exception:
+                                    pass
+                        except Exception:
+                            pass
+
+                self.db_service = _DBCompatShim(_orig)
+        except Exception:
+            # If we can't make a compatibility shim, keep behavior as-is
+            pass
+
         # Optional Redis client for streams
         try:
             import redis

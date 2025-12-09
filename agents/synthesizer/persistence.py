@@ -44,7 +44,17 @@ def save_synthesized_draft(
     db_service = None
     try:
         db_service = db_utils.create_database_service()
-        conn = db_service.get_connection()
+        # Support both new-style get_connection() and legacy mb_conn attribute
+        conn = None
+        cursor = None
+        conn = getattr(db_service, 'mb_conn', None)
+        if conn is None:
+            try:
+                conn = db_service.get_connection()
+            except Exception:
+                conn = getattr(db_service, 'mb_conn', None)
+                if conn is None:
+                    raise
         cursor = conn.cursor()
 
         if persistence_mode == 'extend':

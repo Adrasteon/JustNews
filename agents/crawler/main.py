@@ -209,7 +209,12 @@ async def unified_production_crawl_endpoint(call: ToolCall, background_tasks: Ba
     global_target = call.kwargs.get("global_target_total")
 
     # Enqueue background task by creating an asyncio.Task so it can be cancelled later
-    task = asyncio.create_task(run_crawl_background(job_id, domains, max_articles, concurrent, profile_overrides, global_target))
+    # Call run_crawl_background with the minimal argument set expected by
+    # test fakes - only include the optional global_target when present.
+    if global_target is None:
+        task = asyncio.create_task(run_crawl_background(job_id, domains, max_articles, concurrent, profile_overrides))
+    else:
+        task = asyncio.create_task(run_crawl_background(job_id, domains, max_articles, concurrent, profile_overrides, global_target))
     crawl_task_map[job_id] = task
     # When the background task completes, remove it from the task map
     def _on_task_done(t: asyncio.Task, jid: str = job_id):

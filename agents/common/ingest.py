@@ -24,12 +24,23 @@ def build_source_upsert(payload: dict[str, Any]) -> tuple[str, tuple]:
         " ON DUPLICATE KEY UPDATE canonical=VALUES(canonical), metadata=VALUES(metadata), updated_at=NOW();"
     )
 
+    # Merge relevant source-level metadata.
+    # Source upserts normally carry publisher_meta; include modal_handler from
+    # extraction_metadata when present so source-level signals can persist.
+    publisher_meta = dict(payload.get('publisher_meta', {}) or {})
+    extraction_meta = payload.get('extraction_metadata') or {}
+    modal = extraction_meta.get('modal_handler') if isinstance(extraction_meta, dict) else None
+    if modal is not None:
+        # Prefer preserving any existing keys, but set or override modal_handler
+        publisher_meta = dict(publisher_meta)
+        publisher_meta['modal_handler'] = modal
+
     params = (
         payload.get('url'),
         payload.get('url_hash'),
         payload.get('domain'),
         payload.get('canonical'),
-        json.dumps(payload.get('publisher_meta', {})),
+        json.dumps(publisher_meta),
     )
 
     return sql, params
@@ -135,10 +146,44 @@ def ingest_article_db(article_payload: dict[str, Any], dsn: str) -> dict[str, An
         conn = service.get_connection()
         cursor = conn.cursor()
         try:
-            # Run source upsert
-            cursor.execute(source_sql, source_params)
-            # Obtain inserted/updated id: prefer lastrowid, fallback to select
-            source_id = cursor.lastrowid if hasattr(cursor, 'lastrowid') else None
+            # Prefer canonical upsert by domain: try UPDATE by domain first so
+            # we avoid creating many duplicate rows for the same publisher.
+            domain = article_payload.get('domain')
+            source_id = None
+
+            if domain:
+                # Merge the provided metadata into any existing metadata JSON using
+                # JSON_MERGE_PATCH for a safe, non-destructive merge.
+                # Note: if the UPDATE affected 0 rows we fall back to inserting.
+                try:
+                    # Build merged metadata param using same publisher_meta logic
+                    # as build_source_upsert to ensure modal_handler is included.
+                    merged_meta = source_params[4]
+                    update_sql = (
+                        "UPDATE sources SET canonical = %s, metadata = JSON_MERGE_PATCH(COALESCE(metadata, JSON_OBJECT()), %s), updated_at = NOW() WHERE domain = %s"
+                    )
+                    update_params = (article_payload.get('canonical'), merged_meta, domain)
+                    cursor.execute(update_sql, update_params)
+                    if getattr(cursor, 'rowcount', 0) > 0:
+                        # Get the id we updated
+                        lookup_cur = conn.cursor(dictionary=True, buffered=True)
+                        lookup_cur.execute("SELECT id FROM sources WHERE domain = %s LIMIT 1", (domain,))
+                        row = lookup_cur.fetchone()
+                        try:
+                            lookup_cur.close()
+                        except Exception:
+                            pass
+                        source_id = row.get('id') if row else None
+                except Exception:
+                    # If the domain-based UPDATE failed for any reason, fall through
+                    # to an INSERT below so ingestion continues.
+                    source_id = None
+
+            # If we did not update an existing row by domain, insert a new source
+            if not source_id:
+                cursor.execute(source_sql, source_params)
+                # Obtain inserted id: prefer lastrowid
+                source_id = cursor.lastrowid if hasattr(cursor, 'lastrowid') else None
             if not source_id:
                 # Try to lookup by url_hash
                 try:

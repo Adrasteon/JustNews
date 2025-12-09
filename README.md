@@ -192,6 +192,7 @@ conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/your_script.py
 - [API Documentation](./docs/api/)
 - [User Guides](./docs/user-guides/)
 - [Operations Guide](./docs/operations/)
+- [System Architecture (canonical)](./docs/TECHNICAL_ARCHITECTURE.md)
  - [Systemd (Native) Operations](/infrastructure/systemd/README.md)
 - [Developer Documentation](./docs/developer/)
 
@@ -244,6 +245,45 @@ PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma
 ```
 
 See `docs/chroma_setup.md` for advanced guidance and troubleshooting.
+
+## 🔔 Modal detection persistence — audit & backfill (operators)
+
+The system now persists crawler-detected modal handling signals into `sources.metadata.modal_handler` and ships two small operator scripts to inspect and (safely) backfill this data from historical article-level observations.
+
+- Why: earlier the crawler recorded modal detection at the article-level only. We now copy that signal into each `source`'s `metadata` so downstream agents and monitoring dashboards can act on persistent source-level signals (modal vs non-modal behavior).
+
+- New scripts (found in `scripts/dev/`):
+  - `run_sources_audit.py` — read-only audit that examines `sources` and `article_source_map` for paywall/modal metadata. Useful to quickly verify how much modal/paywall metadata exists and to inspect sample records.
+  - `backfill_sources_modal.py` — idempotent backfill that aggregates article-level `modal_handler` rows and sets `sources.metadata.modal_handler` for matching sources (by `source_id` or `source_url_hash`).
+  - `consolidate_sources_by_domain.py` — consolidation tool to identify duplicate `sources` rows by `domain` and choose a canonical row per domain (preview + apply). See `docs/operations/consolidate_sources.md` for details.
+
+Usage (recommended):
+
+1. Inspect first (read-only, safe):
+
+```bash
+# ensure your environment contains DB credentials (repo copy or /etc/justnews/global.env)
+source global.env
+# run audit via the project's conda environment
+PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/dev/run_sources_audit.py
+```
+
+2. Backfill (write operation — be careful):
+
+```bash
+source global.env
+# Run the backfill (this will perform updates in-place).
+PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/dev/backfill_sources_modal.py
+```
+
+Notes & operator guidance:
+- The backfill script is written to be idempotent, but it is a write operation — review audit output and take a DB backup or snapshot if required before applying to production.
+- The backfill currently aggregates counts and sets `modal_count`, `total_samples`, and `last_detected_at` on `sources.metadata.modal_handler`.
+- Future improvements (recommended): add a dry-run flag, add thresholding for noisy datasets, and include an integration test harness to validate updates against a test DB fixture.
+
+Developer / test notes:
+- Ingestion has been updated so new source upserts include `extraction_metadata.modal_handler` in the `publisher_meta`/`sources.metadata` merge. See `agents/common/ingest.py` and unit test `tests/database/test_ingest_modal_handler.py` for details.
+
 
 ## MariaDB startup probe (operators)
 

@@ -482,7 +482,13 @@ class MigratedDatabaseService:
         # Controlled by CHROMADB_MODEL_SCOPED_COLLECTION (default enabled).
         collection_name = base_collection_name
         try:
-            enable_scoped = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION', '1') == '1'
+            # Keep this default aligned with the global.env default so processes
+            # that don't explicitly set the env var behave consistently. The
+            # global.env has CHROMADB_MODEL_SCOPED_COLLECTION defaulting to 0
+            # (canonical collection), so default here should be '0'. Using the
+            # environment allows overriding in runtime when model-scoped
+            # collections are desired.
+            enable_scoped = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION', '0') == '1'
             if enable_scoped and base_collection_name:
                 emb_model = self.config['database']['embedding'].get('model', '')
                 emb_dims = str(self.config['database']['embedding'].get('dimensions', ''))

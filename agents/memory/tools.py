@@ -69,7 +69,12 @@ def get_embedding_model():
         device = None
         if torch is not None:
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        return get_shared_embedding_model(EMBEDDING_MODEL_NAME, cache_folder=DEFAULT_MODEL_CACHE, device=device)
+            model = get_shared_embedding_model(EMBEDDING_MODEL_NAME, cache_folder=DEFAULT_MODEL_CACHE, device=device)
+            try:
+                logger.info("Loaded shared embedding model '%s' (device=%s)", EMBEDDING_MODEL_NAME, getattr(device, 'type', device))
+            except Exception:
+                logger.debug("Loaded shared embedding model '%s'", EMBEDDING_MODEL_NAME)
+            return model
     except Exception:
         # Fallback: use agent-local models directory
         try:
@@ -217,9 +222,31 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
                         conn = db_service.get_connection()
                         using_temp_conn = True
 
-                    # Check for duplicates in MariaDB (buffered cursor to avoid "Unread result found")
+                    # Check for duplicates in MariaDB (buffered cursor to avoid "Unread result found").
+                    # Only consider duplicates coming from the same site. Prefer an explicit source_id
+                    # when present; otherwise fall back to matching by hostname derived from the URL.
+                    source_id = metadata.get("source_id")
+                    duplicate_query = "SELECT id FROM articles WHERE url_hash = %s"
+                    params = [hash_value]
+                    if source_id:
+                        duplicate_query += " AND source_id = %s"
+                        params.append(source_id)
+                    else:
+                        # fallback: try to compare hostname portion of normalized_url
+                        try:
+                            from urllib.parse import urlparse
+
+                            hostname = urlparse(normalized_url or canonical_url or raw_url or "").hostname
+                        except Exception:
+                            hostname = None
+                        if hostname:
+                            duplicate_query += " AND (source_id = %s OR normalized_url LIKE %s)"
+                            params.append(hostname)
+                            # Use pattern match to detect same-host entries where source_id isn't set
+                            params.append(f"%://{hostname}/%")
+
                     cursor = conn.cursor(buffered=True)
-                    cursor.execute("SELECT id FROM articles WHERE url_hash = %s", (hash_value,))
+                    cursor.execute(duplicate_query, tuple(params))
                     duplicate = cursor.fetchone()
                     cursor.close()
                 finally:
@@ -232,28 +259,55 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
 
                 if duplicate:
                     duplicate_lookup_id = duplicate[0]
-            if normalized_url and duplicate_lookup_id is None:
-                using_temp_conn = False
-                conn = getattr(db_service, 'mb_conn', None)
-                try:
-                    if getattr(db_service, 'get_connection', None):
-                        conn = db_service.get_connection()
-                        using_temp_conn = True
+                if normalized_url and duplicate_lookup_id is None:
+                    using_temp_conn = False
+                    conn = getattr(db_service, 'mb_conn', None)
+                    try:
+                        if getattr(db_service, 'get_connection', None):
+                            conn = db_service.get_connection()
+                            using_temp_conn = True
 
-                    # Check for duplicates by normalized URL (buffered)
-                    cursor = conn.cursor(buffered=True)
-                    cursor.execute("SELECT id FROM articles WHERE normalized_url = %s", (normalized_url,))
-                    duplicate = cursor.fetchone()
-                    cursor.close()
-                finally:
-                    if using_temp_conn:
-                        try:
-                            conn.close()
-                        except Exception:
-                            pass
+                        # Check for duplicates by normalized URL (buffered).
+                        # Only consider duplicates from the same site (see hash check above).
+                        source_id = metadata.get("source_id")
+                        if source_id:
+                            cursor = conn.cursor(buffered=True)
+                            cursor.execute(
+                                "SELECT id FROM articles WHERE normalized_url = %s AND source_id = %s",
+                                (normalized_url, source_id),
+                            )
+                        else:
+                            # If no source_id supplied, match on normalized_url only when hostname matches —
+                            # we try to avoid blocking different sites that happen to share paths.
+                            try:
+                                from urllib.parse import urlparse
 
-                if duplicate:
-                    duplicate_lookup_id = duplicate[0]
+                                hostname = urlparse(normalized_url or canonical_url or raw_url or "").hostname
+                            except Exception:
+                                hostname = None
+
+                            if hostname:
+                                cursor = conn.cursor(buffered=True)
+                                # match rows with same normalized_url AND either matching source_id OR same hostname
+                                cursor.execute(
+                                    "SELECT id FROM articles WHERE normalized_url = %s AND (source_id = %s OR normalized_url LIKE %s)",
+                                    (normalized_url, hostname, f"%://{hostname}/%"),
+                                )
+                            else:
+                                cursor = conn.cursor(buffered=True)
+                                cursor.execute("SELECT id FROM articles WHERE normalized_url = %s", (normalized_url,))
+
+                        duplicate = cursor.fetchone()
+                        cursor.close()
+                    finally:
+                        if using_temp_conn:
+                            try:
+                                conn.close()
+                            except Exception:
+                                pass
+
+                    if duplicate:
+                        duplicate_lookup_id = duplicate[0]
 
             if duplicate_lookup_id is not None:
                     logger.info(
@@ -291,6 +345,10 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
             encode_duration = perf_counter() - encode_start
             metrics.observe_embedding_latency(cache_label, encode_duration)
             metrics.record_embedding("success")
+            try:
+                logger.info("Embedding generated (cache=%s, duration=%.3fs, len=%s) for url=%s", cache_label, encode_duration, getattr(embedding, '__len__', 'unknown'), raw_url)
+            except Exception:
+                logger.debug("Embedding generated (cache=%s) for url=%s", cache_label, raw_url)
         except Exception as encoding_error:
             encode_duration = perf_counter() - encode_start
             metrics.observe_embedding_latency(cache_label, encode_duration)
@@ -428,17 +486,26 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
             if getattr(db_service, 'collection', None):
                 embedding_list = list(map(float, embedding))
                 chroma_metadata = _make_chroma_metadata_safe(_ensure_embedding_metadata(metadata))
-                db_service.collection.add(
+                db_service.collection.upsert(
                     ids=[str(next_id)],
                     embeddings=[embedding_list],
                     metadatas=[chroma_metadata],
                     documents=[content]
                 )
                 logger.debug(f"Added embedding to ChromaDB for article {next_id}")
+                logger.info("Embedding persisted to ChromaDB for article %s (ids=%s)", next_id, [str(next_id)])
             else:
                 logger.warning("Skipping embedding add to ChromaDB as no collection is configured")
+                try:
+                    metrics.record_embedding("collection_unavailable")
+                except Exception:
+                    pass
         except Exception as chroma_error:
             logger.warning(f"Failed to add embedding to ChromaDB: {chroma_error}")
+            try:
+                metrics.record_embedding("failed")
+            except Exception:
+                pass
             # Don't fail the whole operation if ChromaDB fails
 
         log_feedback("save_article", {"status": "success", "article_id": next_id})

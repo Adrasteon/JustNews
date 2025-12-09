@@ -231,11 +231,17 @@ def create_database_service(config: dict[str, Any] | None = None) -> MigratedDat
     if config is None:
         config = get_db_config()
 
-    # Return cached instance if the config is identical or if no explicit config was provided
+    # Return cached instance if the config and relevant env flags are identical
     try:
         if _cached_service is not None:
-            # Return cached if the full configuration matches the cached service config
-            if config and getattr(_cached_service, 'config', None) == {'database': config}:
+            # Compare the cached configuration and the CHROMADB_MODEL_SCOPED_COLLECTION
+            # flag used when the service was created. This prevents reusing a cached
+            # service that was created with a different collection scoping behaviour
+            # (model-scoped vs canonical) which would result in embeddings being
+            # written to a different Chroma collection than expected.
+            current_scoped = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION', '0')
+            cached_scoped = getattr(_cached_service, '_chroma_scoped_env', None)
+            if config and getattr(_cached_service, 'config', None) == {'database': config} and cached_scoped == current_scoped:
                 return _cached_service
     except Exception:
         # If comparing configs fails for any reason, ignore and recreate service
@@ -269,6 +275,12 @@ def create_database_service(config: dict[str, Any] | None = None) -> MigratedDat
     full_config = {'database': config}
 
     service = MigratedDatabaseService(full_config)
+    # Record the CHROMADB_MODEL_SCOPED_COLLECTION env value that led to this
+    # service initialization so subsequent calls can validate compatibility
+    try:
+        service._chroma_scoped_env = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION', '0')
+    except Exception:
+        service._chroma_scoped_env = '0'
 
     # Test connections
     check_database_connections(service)

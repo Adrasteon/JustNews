@@ -1,0 +1,39 @@
+{
+  "title": "Archive & Ingest: Raw HTML / Ingest Metrics",
+  "tags": ["stage-b","archive","ingest"],
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Ingest success / failure / duplicates (rate)",
+      "targets": [
+        { "expr": "sum(rate(ingest_success_total[5m]))", "legendFormat": "success" },
+        { "expr": "sum(rate(ingest_failure_total[5m]))", "legendFormat": "failure" },
+        { "expr": "sum(rate(ingest_duplicate_total[5m]))", "legendFormat": "duplicate" }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Ingest latency (seconds)",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(ingest_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p95" },
+        { "expr": "histogram_quantile(0.50, sum(rate(ingest_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p50" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Raw HTML verification / missing / copied count (per 5m)",
+      "targets": [
+        { "expr": "sum(rate(raw_html_verified_total[5m]))", "legendFormat": "verified" },
+        { "expr": "sum(rate(raw_html_missing_total[5m]))", "legendFormat": "missing" },
+        { "expr": "sum(rate(raw_html_copied_total[5m]))", "legendFormat": "copied" }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Raw HTML check latency (s)",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(raw_html_check_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p95" }
+      ]
+    }
+  ]
+}

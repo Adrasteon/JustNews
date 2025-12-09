@@ -31,6 +31,8 @@ The goal: make the orchestration system durable and leader-aware, prevent GPU/ho
 - MariaDB — persistent authoritative store for leases, worker pools, jobs, and metadata/audit logs.
 - Redis Streams — primary job/event bus for durable, reliable messaging with consumer groups and DLQ.
 - GPU Orchestrator (agent) — orchestrates leases, worker pools, preloads; leader responsible for reconciliation and admission control.
+
+See also: `docs/live-run-plan.md` and `docs/editorial-orchestrator-crosswalk.md` for the end-to-end Crawl → Editorial → Publish plan and a short crosswalk showing where editorial flows should consult the GPU Orchestrator.
 - Workers (pool processes) — stateless consumers that claim jobs from streams and claim leases before GPU-bound work.
 - Metrics & Tracing — Prometheus metrics and OTLP/OTEL traces to provide real-time insights.
 - Admission controller — runtime policy module that decides whether to accept or throttle incoming work.

@@ -279,19 +279,19 @@ class TestEndToEndNewsProcessingPipeline:
 
         # Test embedding generation and storage
         with patch.object(mock_db, 'collection') as mock_collection:
-            mock_collection.add.return_value = None
+            mock_collection.upsert.return_value = None
 
             # Simulate adding embeddings to ChromaDB
             embeddings = [[0.1, 0.2, 0.3]]  # Mock embeddings
             metadata = [{"article_id": 456, "title": test_article["title"]}]
 
-            mock_collection.add(
+            mock_collection.upsert(
                 embeddings=embeddings,
                 metadatas=metadata,
                 ids=["456"]
             )
 
-            mock_collection.add.assert_called_once()
+            mock_collection.upsert.assert_called_once()
 
         # Test semantic search retrieval
         with patch.object(mock_db, 'collection') as mock_collection:

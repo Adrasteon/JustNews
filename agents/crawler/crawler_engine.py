@@ -638,6 +638,7 @@ class CrawlerEngine:
         max_articles_per_site: int = 25,
         concurrent_sites: int = 3,
         *,
+        global_target_total: int | None = None,
         profile_overrides: dict[str, dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """
@@ -689,6 +690,7 @@ class CrawlerEngine:
             site_configs,
             max_articles_per_site,
             concurrent_sites,
+            global_target_total=global_target_total,
             profile_overrides=profile_overrides,
         )
 
@@ -698,6 +700,7 @@ class CrawlerEngine:
         max_articles_per_site: int = 25,
         concurrent_sites: int = 3,
         *,
+        global_target_total: int | None = None,
         profile_overrides: dict[str, dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Crawl multiple sites concurrently using optimal strategies."""
@@ -733,9 +736,16 @@ class CrawlerEngine:
 
         semaphore = asyncio.Semaphore(max(1, concurrent_sites))
         aggregation_lock = asyncio.Lock()
+        # Separate lock for coordinating updates to the global remaining counter
+        global_lock = asyncio.Lock()
+
+        # keep an immutable copy of requested global target and use
+        # the passed-in variable as the mutable remaining counter
+        initial_global_target = int(global_target_total) if global_target_total is not None else None
+        global_remaining: int | None = initial_global_target
 
         async def crawl_site_with_limit(site_config: SiteConfig):
-            nonlocal total_successful, total_candidates
+            nonlocal total_successful, total_candidates, global_remaining
             async with semaphore:
                 domain_key = site_config.domain or site_config.name or "unknown"
                 site_candidates = 0
@@ -779,6 +789,16 @@ class CrawlerEngine:
                     return remaining, len(paywall_skips)
 
                 try:
+                    # If a global target was requested and we've already reached it,
+                    # skip this site early. Using a lock so concurrent tasks see a
+                    # consistent value.
+                    if global_remaining is not None:
+                        async with global_lock:
+                            if global_remaining <= 0:
+                                # No capacity at the moment - allow this site to still
+                                # attempt to gather candidates. Reservation logic below
+                                # will re-check and either reserve or retry.
+                                pass
                     if profile_override and profile_override.get("engine", "crawl4ai") != "generic":
                         budget_hint = remaining_budget if remaining_budget is not None else max_articles_per_site
                         raw_batch = await self._crawl_with_profile(
@@ -798,6 +818,23 @@ class CrawlerEngine:
                             filtered_batch.append(article)
 
                         if filtered_batch:
+                            # Apply a global cap if requested so we never attempt to ingest
+                            # more than the overall remaining target. We only slice here
+                            # — the global counter is updated after successful ingests.
+                            # Reserve any global budget we need for this batch up front
+                            reservation = 0
+                            if global_remaining is not None and filtered_batch:
+                                async with global_lock:
+                                    if global_remaining <= 0:
+                                        reservation = 0
+                                    else:
+                                        reservation = min(global_remaining, len(filtered_batch))
+                                        global_remaining -= reservation
+                                if reservation <= 0:
+                                    # nothing left to do here
+                                    filtered_batch = []
+                                elif reservation < len(filtered_batch):
+                                    filtered_batch = filtered_batch[:reservation]
                             filtered_batch, paywall_skipped = _filter_paywall_skips(filtered_batch)
 
                             if not filtered_batch:
@@ -812,7 +849,17 @@ class CrawlerEngine:
                                     filtered_batch = filtered_batch[:take]
 
                                 site_candidates += len(filtered_batch)
+                                # Track how many we reserved so we can restore any
+                                # unused allowance if some items turn out to be
+                                # duplicates/errors (ingestion_result['new_articles'] may be smaller)
+                                pre_reserved = reservation
                                 ingestion_result = await self._ingest_articles(filtered_batch)
+                                # If fewer new articles were actually ingested than reserved,
+                                # restore the unused allowance back to the global counter
+                                if global_remaining is not None and pre_reserved and ingestion_result['new_articles'] < pre_reserved:
+                                    delta = pre_reserved - ingestion_result['new_articles']
+                                    async with global_lock:
+                                        global_remaining += delta
                                 site_articles_local.extend(filtered_batch)
                                 site_details.extend(ingestion_result.get('details', []))
                                 site_ingested += ingestion_result['new_articles']
@@ -822,9 +869,35 @@ class CrawlerEngine:
                                 if remaining_budget is not None:
                                     remaining_budget = max(remaining_budget - ingestion_result['new_articles'], 0)
 
+                                # If we didn't reserve (global_remaining was None) we still
+                                # honor normal behaviour; local logic above already
+                                # reserved/decremented. If the ingestion produced more
+                                # new_articles than expected (shouldn't happen) we don't
+                                # over-allocate here: any overflow is treated as normal.
+                                if global_remaining is not None and ingestion_result['new_articles']:
+                                    # If pre_reserved might be 0 (no reservation) we don't need
+                                    # to adjust - otherwise we've already updated the remaining
+                                    # counter at reservation time and only restored shortfall above
+                                    if pre_reserved <= 0:
+                                        # No reservation took place, ensure a decrement
+                                        async with global_lock:
+                                            global_remaining = max(global_remaining - ingestion_result['new_articles'], 0)
+                                            if global_remaining <= 0:
+                                                exhaustion_reason = exhaustion_reason or "global_target_reached"
+
                         exhaustion_reason = exhaustion_reason or "profile_completed"
                     else:
                         while True:
+                            # If global target reached, don't immediately abort —
+                            # allow the site loop to continue for a limited number of batches
+                            # so that restored allowance (e.g. from duplicates) can be
+                            # used by other concurrent tasks.
+                            if global_remaining is not None:
+                                async with global_lock:
+                                    if global_remaining <= 0:
+                                        # no capacity right now; continue to fetch further
+                                        # candidates and attempt reservation below
+                                        pass
                             if remaining_budget is not None and remaining_budget <= 0:
                                 exhaustion_reason = "limit_reached"
                                 break
@@ -838,6 +911,13 @@ class CrawlerEngine:
                                 else max_articles_per_site
                             )
                             request_cap = request_cap or max_articles_per_site or 25
+                            # Respect global remaining if set
+                            if global_remaining is not None:
+                                async with global_lock:
+                                    # If no capacity right now, fall through to reserve logic
+                                    # below which will retry on the next iteration.
+                                    request_cap = min(request_cap, global_remaining)
+
                             request_cap = max(1, request_cap)
 
                             raw_batch = await self.crawl_site(site_config, request_cap)
@@ -869,10 +949,32 @@ class CrawlerEngine:
                             if remaining_budget is not None:
                                 filtered_batch = filtered_batch[:remaining_budget]
 
+                            # Reserve global budget atomically for this batch
+                            reservation = 0
+                            if global_remaining is not None and filtered_batch:
+                                async with global_lock:
+                                    if global_remaining <= 0:
+                                        reservation = 0
+                                    else:
+                                        reservation = min(global_remaining, len(filtered_batch))
+                                        global_remaining -= reservation
+                                if reservation <= 0:
+                                    # No global allowance at the moment - retry next batch
+                                    # (other concurrent tasks may restore allowance).
+                                    continue
+                                elif reservation < len(filtered_batch):
+                                    filtered_batch = filtered_batch[:reservation]
+
                             await self._submit_hitl_candidates(filtered_batch, site_config)
                             site_candidates += len(filtered_batch)
 
+                            pre_reserved = reservation
                             ingestion_result = await self._ingest_articles(filtered_batch)
+                            # If we reserved more than were actually ingested, restore the difference
+                            if global_remaining is not None and pre_reserved and ingestion_result['new_articles'] < pre_reserved:
+                                delta = pre_reserved - ingestion_result['new_articles']
+                                async with global_lock:
+                                    global_remaining += delta
                             site_articles_local.extend(filtered_batch)
                             site_details.extend(ingestion_result.get('details', []))
                             site_ingested += ingestion_result['new_articles']
@@ -885,6 +987,16 @@ class CrawlerEngine:
                             if ingestion_result['new_articles'] == 0:
                                 exhaustion_reason = "ingestion_stalled"
                                 break
+
+                            # If we didn't reserve (pre_reserved == 0) decrement the
+                            # global counter now; otherwise we already deducted at
+                            # reservation time and restored any shortfall above.
+                            if global_remaining is not None and ingestion_result['new_articles']:
+                                if pre_reserved <= 0:
+                                    async with global_lock:
+                                        global_remaining = max(global_remaining - ingestion_result['new_articles'], 0)
+                                        if global_remaining <= 0:
+                                            exhaustion_reason = exhaustion_reason or "global_target_reached"
 
                         if exhaustion_reason is None and site_ingested == 0 and site_paywalls > 0:
                             exhaustion_reason = "paywalls_only"
@@ -1002,6 +1114,11 @@ class CrawlerEngine:
                 if metrics["details"]
             },
             "articles": all_articles,
+            # Report the requested global target and whether it was reached
+            "global_target_total": initial_global_target,
+            "global_target_reached": (
+                initial_global_target is not None and ingestion_totals["new_articles"] >= (initial_global_target or 0)
+            ),
         }
 
         adaptive_summary = summarise_adaptive_articles(all_articles)

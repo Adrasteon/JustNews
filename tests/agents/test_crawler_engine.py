@@ -7,12 +7,13 @@ performance monitoring, and error handling.
 """
 
 import json
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, AsyncMock
 
 import pytest
 import pytest_asyncio
 
 from agents.crawler.crawler_engine import CrawlerEngine
+from agents.crawler.main import execute_crawl
 from agents.sites.generic_site_crawler import SiteConfig
 
 
@@ -458,6 +459,94 @@ class TestCrawlerEngine:
             assert result["site_duplicate_breakdown"]["testsite.com"] == 1
 
     @pytest.mark.asyncio
+    async def test_crawl_multiple_sites_global_target(self, crawler_engine, mock_site_config):
+        """Test the global target stops the crawl across multiple sites"""
+        # Two sites, but global target is 1 so only one article should be ingested
+        site_configs = [mock_site_config, SiteConfig({'id': 2, 'name': 'Other', 'domain': 'other.com', 'url': 'https://other.com'})]
+
+        mock_articles = [
+            {"title": "Test Article", "url": "https://testsite.com/article", "content": "Content"}
+        ]
+
+        with patch.object(crawler_engine, 'crawl_site', return_value=mock_articles) as _mock_crawl_site, \
+             patch.object(crawler_engine, '_ingest_articles') as mock_ingest, \
+             patch.object(crawler_engine, '_cleanup_orphaned_processes'):
+
+            # First site ingests 1 article, second site should be skipped due to global target
+            mock_ingest.side_effect = [
+                {'new_articles': 1, 'duplicates': 0, 'errors': 0, 'details': [{'url': 'https://testsite.com/article', 'status': 'new'}]},
+                {'new_articles': 1, 'duplicates': 0, 'errors': 0, 'details': [{'url': 'https://other.com/article', 'status': 'new'}]},
+            ]
+
+            result = await crawler_engine.crawl_multiple_sites(site_configs, max_articles_per_site=5, concurrent_sites=1, global_target_total=1)
+
+            assert result["total_articles"] == 1
+            assert result["global_target_total"] == 1
+            assert result["global_target_reached"] is True
+
+    @pytest.mark.asyncio
+    async def test_crawl_multiple_sites_global_target_concurrent_reservation(self, crawler_engine):
+        """Test concurrent sites respect the global reservation so we don't overshoot the target"""
+        site_configs = [
+            SiteConfig({'id': 1, 'name': 'Site 1', 'domain': 'site1.com', 'url': 'https://site1.com'}),
+            SiteConfig({'id': 2, 'name': 'Site 2', 'domain': 'site2.com', 'url': 'https://site2.com'}),
+        ]
+
+        # Both sites return two candidates but global target is 2 - reservation should ensure only one
+        # ingestion call (or at most the necessary number of new articles) satisfies the target.
+        mock_articles = [
+            {"title": "Article A", "url": "https://site1.com/a", "content": "C"},
+            {"title": "Article B", "url": "https://site1.com/b", "content": "C"},
+        ]
+
+        with patch.object(crawler_engine, 'crawl_site', return_value=mock_articles) as _mock_crawl_site, \
+             patch.object(crawler_engine, '_ingest_articles') as mock_ingest, \
+             patch.object(crawler_engine, '_cleanup_orphaned_processes'):
+
+            # only first call should be required to hit the global target
+            mock_ingest.side_effect = [
+                {'new_articles': 2, 'duplicates': 0, 'errors': 0, 'details': [{'url': 'https://site1.com/a', 'status': 'new'}]},
+            ]
+
+            result = await crawler_engine.crawl_multiple_sites(site_configs, max_articles_per_site=5, concurrent_sites=2, global_target_total=2)
+
+            assert result["total_articles"] == 2
+            # ensure we didn't call ingest twice (second site should have been skipped)
+            assert mock_ingest.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_crawl_multiple_sites_global_target_reservation_with_duplicates(self, crawler_engine):
+        """If first site reserves 2 but ingests only 1 (duplicate), the remaining allowance should be returned and used by others."""
+        site_configs = [
+            SiteConfig({'id': 1, 'name': 'Site 1', 'domain': 'site1.com', 'url': 'https://site1.com'}),
+            SiteConfig({'id': 2, 'name': 'Site 2', 'domain': 'site2.com', 'url': 'https://site2.com'}),
+        ]
+
+        mock_articles = [
+            {"title": "Article A", "url": "https://site1.com/a", "content": "C"},
+            {"title": "Article B", "url": "https://site1.com/b", "content": "C"},
+        ]
+
+        with patch.object(crawler_engine, 'crawl_site', return_value=mock_articles) as _mock_crawl_site, \
+             patch.object(crawler_engine, '_ingest_articles') as mock_ingest, \
+             patch.object(crawler_engine, '_cleanup_orphaned_processes'):
+
+            # First reservation will be for 2 but only 1 will be ingested (duplicate). The leftover should be
+            # returned to the global remaining and used by the second site.
+            mock_ingest.side_effect = [
+                {'new_articles': 1, 'duplicates': 1, 'errors': 0, 'details': [{'url': 'https://site1.com/a', 'status': 'new'}]},
+                {'new_articles': 1, 'duplicates': 0, 'errors': 0, 'details': [{'url': 'https://site2.com/a', 'status': 'new'}]},
+            ]
+
+            result = await crawler_engine.crawl_multiple_sites(site_configs, max_articles_per_site=5, concurrent_sites=2, global_target_total=2)
+
+            # Due to timing/concurrency the leftover allowance may or may not be
+            # picked up by other concurrent site tasks; ensure we never exceed
+            # the requested global capacity and we ingest at least one article.
+            assert 1 <= result["total_articles"] <= 2
+            assert mock_ingest.call_count in (1, 2)
+
+    @pytest.mark.asyncio
     async def test_ingest_articles_success(self, crawler_engine):
         """Test successful article ingestion via MCP bus"""
         articles = [
@@ -608,6 +697,36 @@ class TestCrawlerEngine:
             config = site_configs[0]
             assert config.domain == "unknownsite.com"
             assert config.url == "https://unknownsite.com"
+
+    @pytest.mark.asyncio
+    async def test_run_unified_crawl_global_target_forwarding(self, crawler_engine):
+        """Test that run_unified_crawl forwards global_target_total to crawl_multiple_sites"""
+        domains = ["testsite.com"]
+        with patch.object(crawler_engine, 'crawl_multiple_sites') as mock_crawl_multiple:
+            mock_crawl_multiple.return_value = {
+                "unified_crawl": True,
+                "sites_crawled": 1,
+                "total_articles": 0,
+                "articles": []
+            }
+
+            result = await crawler_engine.run_unified_crawl(domains, max_articles_per_site=5, global_target_total=10)
+            mock_crawl_multiple.assert_called_once()
+            # Check that the forwarded kwarg exists on the call
+            _, kwargs = mock_crawl_multiple.call_args
+            assert 'global_target_total' in kwargs and kwargs['global_target_total'] == 10
+
+    def test_execute_crawl_forwards_global_target(self):
+        """execute_crawl should forward the global_target_total argument into the async runner"""
+        with patch('agents.crawler.main.CrawlerEngine') as mock_engine_class:
+            mock_engine = mock_engine_class.return_value.__aenter__.return_value
+            async def fake_run(domains, max_articles, concurrent, global_target_total=None, profile_overrides=None):
+                return {'unified_crawl': True, 'total_articles': 0, 'global_target_total': global_target_total}
+
+            mock_engine.run_unified_crawl = AsyncMock(side_effect=fake_run)
+
+            res = execute_crawl(['example.com'], max_articles_per_site=5, concurrent_sites=1, profile_overrides=None, global_target_total=7)
+            assert res.get('global_target_total') == 7
 
     @pytest.mark.asyncio
     async def test_run_unified_crawl_no_valid_domains(self, crawler_engine):

@@ -56,7 +56,7 @@ def test_chromadb_embedding_round_trip():
             'kind': 'embedding-round-trip',
         }
 
-        collection.add(
+        collection.upsert(
             ids=[doc_id],
             embeddings=[embedding],
             documents=[body],
@@ -119,7 +119,7 @@ def test_chromadb_entry_records_mistral_metadata(monkeypatch):
             'is_synthesized': True,
         }
 
-        collection.add(
+        collection.upsert(
             ids=[doc_id],
             embeddings=[embedding],
             documents=[summary],

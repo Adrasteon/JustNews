@@ -42,7 +42,8 @@ def _install_db_stubs(monkeypatch):
     stored_rows: list[dict] = []
 
     class MockCursor:
-        def __init__(self):
+        def __init__(self, buffered=False):
+            self.buffered = buffered
             self.query = None
             self.params = None
             self._result = None
@@ -82,6 +83,7 @@ def _install_db_stubs(monkeypatch):
                     {
                         "id": new_id,
                         "source_url": self.params[0],
+                        "source_id": self.params[5] if len(self.params) > 5 else None,
                         "normalized_url": self.params[6],
                         "url_hash": self.params[7],
                         "url_hash_algo": self.params[8],
@@ -110,8 +112,8 @@ def _install_db_stubs(monkeypatch):
             pass
 
     class MockDBConnection:
-        def cursor(self):
-            return MockCursor()
+        def cursor(self, buffered=False):
+            return MockCursor(buffered=buffered)
 
         def commit(self):
             pass
@@ -139,7 +141,11 @@ def _install_db_stubs(monkeypatch):
                             break
 
             self.collection = SimpleNamespace(
-                add=mock_collection_add
+                add=mock_collection_add,
+                # Tests (and some older code paths) expect either `add` or
+                # `upsert` to be present. Provide an alias so upsert calls
+                # in production code route to the same test helper.
+                upsert=mock_collection_add,
             )
             self.embedding_model = StubEmbeddingModel()
 
@@ -228,6 +234,35 @@ def test_save_article_normalizes_on_duplicate_variants(monkeypatch, stage_b_metr
     assert second["status"] == "duplicate"
     assert len(stored_rows) == 1
     assert stored_rows[0]["normalized_url"] == "https://example.com/world/story"
+
+    def test_save_article_allows_same_path_different_source(monkeypatch, stage_b_metrics):
+        """If two sites publish the same normalized path, but from different source_id values
+        we should allow both to be saved (we only dedupe within a single site)."""
+        stored_rows = _install_db_stubs(monkeypatch)
+
+        meta_a = {"url": "https://example.com/world/story", "source_id": "site-A"}
+        meta_b = {"url": "https://example.com/world/story", "source_id": "site-B"}
+
+        a = tools.save_article("content A", meta_a, embedding_model=StubEmbeddingModel())
+        b = tools.save_article("content B", meta_b, embedding_model=StubEmbeddingModel())
+
+        assert a["status"] == "success"
+        assert b["status"] == "success"
+        assert len(stored_rows) == 2
+
+
+    def test_save_article_duplicate_with_same_source_id(monkeypatch, stage_b_metrics):
+        """When a source_id is supplied and matches an existing article, the second should be duplicate."""
+        stored_rows = _install_db_stubs(monkeypatch)
+
+        meta = {"url": "https://example.com/news/1", "source_id": "source-42"}
+
+        first = tools.save_article("first", meta, embedding_model=StubEmbeddingModel())
+        second = tools.save_article("second", meta, embedding_model=StubEmbeddingModel())
+
+        assert first["status"] == "success"
+        assert second["status"] == "duplicate"
+        assert len(stored_rows) == 1
     assert stage_b_metrics.get_ingestion_count("success") == 1.0
     assert stage_b_metrics.get_ingestion_count("duplicate") == 1.0
     assert stage_b_metrics.get_embedding_count("success") == 1.0
@@ -290,6 +325,15 @@ def test_save_article_uses_per_call_connection(monkeypatch, stage_b_metrics):
     class MockDBServiceWithGetter:
         def __init__(self):
             self.embedding_model = StubEmbeddingModel()
+            # Provide a Chroma collection stub so save_article doesn't fail when CHROMADB_REQUIRE_CANONICAL is enabled
+            self.collection = SimpleNamespace(add=lambda **kwargs: None)
+
+        def ensure_conn(self):
+            # present to satisfy callers that call ensure_conn()
+            return True
+
+        def close(self):
+            pass
 
         def get_connection(self):
             return DummyConn()
@@ -303,6 +347,69 @@ def test_save_article_uses_per_call_connection(monkeypatch, stage_b_metrics):
 
     result = tools.save_article("content", {"url": "https://example.com/use-get-conn"}, embedding_model=StubEmbeddingModel())
     assert result["status"] == "success"
+
+
+def test_save_article_no_chroma_collection_records_metric(monkeypatch, stage_b_metrics):
+    """If the migrated DB service doesn't expose a Chroma collection the article
+    should still be saved to MariaDB and we should record an embedding metric
+    to make missing vector writes visible to monitoring.
+    """
+    stored_rows = []
+
+    class DummyCursor:
+        def __init__(self):
+            self._result = None
+
+        def execute(self, q, params=None):
+            qn = " ".join(q.split()).lower()
+            if qn.startswith("insert into articles"):
+                stored_rows.append({'id': len(stored_rows) + 1})
+            elif "select last_insert_id" in qn:
+                self._result = ((len(stored_rows),),)
+
+        def fetchone(self):
+            if self._result:
+                return self._result[0]
+            return None
+
+        def close(self):
+            pass
+
+    class DummyConn:
+        def cursor(self, buffered=False):
+            return DummyCursor()
+
+        def commit(self):
+            pass
+
+        def close(self):
+            pass
+
+    class MockDBServiceNoCollection:
+        def __init__(self):
+            self.embedding_model = StubEmbeddingModel()
+            self.mb_conn = DummyConn()
+            # intentionally omit `collection` attribute to simulate no Chroma
+
+        def ensure_conn(self):
+            return True
+
+        def close(self):
+            pass
+
+        def get_connection(self):
+            return DummyConn()
+
+    # Ensure we don't enforce canonical Chroma collection presence for this test
+    monkeypatch.setenv('CHROMADB_REQUIRE_CANONICAL', '0')
+    monkeypatch.setattr("database.utils.migrated_database_utils.create_database_service", lambda *a, **k: MockDBServiceNoCollection())
+    # Provide a live embedding model so encoding works
+    monkeypatch.setattr(tools, "get_embedding_model", lambda: StubEmbeddingModel())
+
+    result = tools.save_article("content", {"url": "https://example.com/no-chroma"})
+    assert result.get("status") == "success"
+    # metric for collection unavailable should have been incremented
+    assert stage_b_metrics.get_embedding_count("collection_unavailable") >= 1.0
 
 
 def test_save_article_works_with_shared_connection_buffered(monkeypatch, stage_b_metrics):
@@ -358,6 +465,9 @@ def test_save_article_works_with_shared_connection_buffered(monkeypatch, stage_b
 
         def ensure_conn(self):
             return True
+
+        def close(self):
+            pass
 
     def mock_create_db_service(*a, **k):
         return MockDBServiceShared()

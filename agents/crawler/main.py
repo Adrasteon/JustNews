@@ -87,6 +87,7 @@ async def run_crawl_background(
     max_articles: int,
     concurrent: int,
     profile_overrides: dict[str, dict[str, Any]] | None,
+    global_target_total: int | None = None,
 ):
     """Background task to execute a crawl job."""
     try:
@@ -98,6 +99,7 @@ async def run_crawl_background(
                 domains,
                 max_articles,
                 concurrent,
+                global_target_total=global_target_total,
                 profile_overrides=profile_overrides,
             )
         # Store result in job status
@@ -203,9 +205,11 @@ async def unified_production_crawl_endpoint(call: ToolCall, background_tasks: Ba
     concurrent = call.kwargs.get("concurrent_sites", 3)
     logger.info(f"Enqueueing background crawl job {job_id} for {len(domains)} domains")
     profile_overrides = call.kwargs.get("profile_overrides")
+    # optional global target for this job (total new articles across all sites)
+    global_target = call.kwargs.get("global_target_total")
 
     # Enqueue background task by creating an asyncio.Task so it can be cancelled later
-    task = asyncio.create_task(run_crawl_background(job_id, domains, max_articles, concurrent, profile_overrides))
+    task = asyncio.create_task(run_crawl_background(job_id, domains, max_articles, concurrent, profile_overrides, global_target))
     crawl_task_map[job_id] = task
     # When the background task completes, remove it from the task map
     def _on_task_done(t: asyncio.Task, jid: str = job_id):
@@ -377,7 +381,7 @@ if __name__ == "__main__":
     )
 
 
-def execute_crawl(domains: list[str], max_articles_per_site: int = 25, concurrent_sites: int = 3, profile_overrides: dict | None = None):
+def execute_crawl(domains: list[str], max_articles_per_site: int = 25, concurrent_sites: int = 3, profile_overrides: dict | None = None, global_target_total: int | None = None):
     """Compatibility wrapper for programmatic crawling calls used in tests.
 
     Runs the unified crawl synchronously by executing the async engine via asyncio.run.
@@ -392,6 +396,7 @@ def execute_crawl(domains: list[str], max_articles_per_site: int = 25, concurren
                 domains,
                 max_articles_per_site,
                 concurrent_sites,
+                global_target_total=global_target_total,
                 profile_overrides=profile_overrides,
             )
 

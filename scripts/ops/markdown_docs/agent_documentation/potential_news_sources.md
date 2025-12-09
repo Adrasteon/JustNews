@@ -1,0 +1,115 @@
+<!--
+  Canonical seed list for JustNews sources table.
+  Generated from live_crawl_test.py (long-form test_sites). Keep this file human-editable.
+  The seeder script scripts/news_outlets.py will read this file to populate the `sources` table.
+-->
+
+# Potential news sources (canonical seed)
+
+The list below is the canonical seed of domains for JustNews. This file is used by
+the `scripts/news_outlets.py` seeder. Each line contains either a hostname (domain)
+or a full URL — the seeder normalises these into domains for insertion.
+
+- bbc.co.uk
+- nytimes.com
+- theguardian.com
+- washingtonpost.com
+- aljazeera.com
+- dw.com
+- france24.com
+- abc.net.au
+- scmp.com
+- indiatoday.in
+- theverge.com
+- wired.com
+- vice.com
+- lemonde.fr
+- corriere.it
+- asahi.com
+- globo.com
+- folha.uol.com.br
+- ledevoir.com
+- channel4.com
+- reuters.com
+- apnews.com
+- bloomberg.com
+- cnn.com
+- foxnews.com
+- nbcnews.com
+- cbsnews.com
+- npr.org
+- pbs.org
+- politico.com
+- axios.com
+- huffpost.com
+- msnbc.com
+- usatoday.com
+- latimes.com
+- chicago.suntimes.com
+- nypost.com
+- newsweek.com
+- time.com
+- forbes.com
+- wsj.com
+- ft.com
+- economist.com
+- slate.com
+- salon.com
+- motherjones.com
+- prospect.org
+- jacobinmag.com
+- thenation.com
+- newyorker.com
+- guardian.co.uk
+- telegraph.co.uk
+- independent.co.uk
+- dailymail.co.uk
+- mirror.co.uk
+- sky.com
+- itv.com
+- standard.co.uk
+- metro.co.uk
+- express.co.uk
+- sun.co.uk
+- huffingtonpost.co.uk
+- buzzfeed.com
+- businessinsider.com
+- cnbc.com
+- marketwatch.com
+- yahoo.com
+- msn.com
+- aol.com
+- drudgereport.com
+- breitbart.com
+- dailywire.com
+- theblaze.com
+- newsmax.com
+- oann.com
+- epochtimes.com
+- gatewaypundit.com
+- townhall.com
+- pjmedia.com
+- redstate.com
+- twitchy.com
+- weaselzippers.us
+- thefederalist.com
+- dailycaller.com
+- ijr.com
+- westernjournal.com
+- libertyheadlines.com
+- 100percentfedup.com
+- conservativereview.com
+- truthrevolt.org
+- allenwestrepublic.com
+- madworldnews.com
+- shoebat.com
+- christianpost.com
+- faithwire.com
+- relevantmagazine.com
+- sojourners.org
+- patheos.com
+- beliefnet.com
+- catholicnewsagency.com
+- ncronline.org
+- cruxnow.com
+- angelusnews.com

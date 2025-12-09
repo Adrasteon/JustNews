@@ -17,6 +17,8 @@ class StageBMetrics:
     editorial_acceptance: Histogram
     publishing_total: Counter
     publishing_latency_seconds: Histogram
+    parity_check_total: Counter
+    parity_repair_actions_total: Counter
 
     def record_extraction(self, result: str) -> None:
         self.extraction_total.labels(result=result).inc()
@@ -68,6 +70,17 @@ class StageBMetrics:
     def get_editorial_acceptance_sum(self) -> float:
         return self.editorial_acceptance._sum.get()
 
+    def record_parity_check(self, result: str) -> None:
+        """Record parity check outcome results such as 'ok' or 'mismatch'."""
+        self.parity_check_total.labels(result=result).inc()
+
+    def record_parity_repair(self, action: str) -> None:
+        """Record repair actions such as 'inserted', 'updated', 'deleted', 'failed', 'dry_run'."""
+        self.parity_repair_actions_total.labels(action=action).inc()
+
+    def get_parity_repair_count(self, action: str) -> float:
+        return self.parity_repair_actions_total.labels(action=action)._value.get()
+
 
 _metric_registry_map: dict[int, StageBMetrics] = {}
 _default_metrics = StageBMetrics(
@@ -117,6 +130,16 @@ _default_metrics = StageBMetrics(
         "justnews_stage_b_publishing_latency_seconds",
         "Latency of publishing operations in seconds.",
         buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0),
+    ),
+    parity_check_total=Counter(
+        "justnews_stage_b_parity_checks_total",
+        "Count of parity verification runs and their outcomes (ok/mismatch)",
+        ["result"],
+    ),
+    parity_repair_actions_total=Counter(
+        "justnews_stage_b_parity_repair_actions_total",
+        "Count of repair actions performed by parity tools",
+        ["action"],
     ),
 )
 _active_metrics: StageBMetrics = _default_metrics
@@ -179,6 +202,18 @@ def _build_metrics(registry: CollectorRegistry | None) -> StageBMetrics:
             "Latency of publishing operations in seconds.",
             registry=registry,
             buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0),
+        ),
+        parity_check_total=Counter(
+            "justnews_stage_b_parity_checks_total",
+            "Count of parity verification runs and their outcomes (ok/mismatch)",
+            ["result"],
+            registry=registry,
+        ),
+        parity_repair_actions_total=Counter(
+            "justnews_stage_b_parity_repair_actions_total",
+            "Count of repair actions performed by parity tools",
+            ["action"],
+            registry=registry,
         ),
     )
 

@@ -133,7 +133,7 @@ class TestDualDatabasePerformance:
         mock_performance_service.mb_conn.cursor.return_value = mock_cursor
 
         # Mock ChromaDB bulk operations
-        mock_performance_service.collection.add = MagicMock()
+        mock_performance_service.collection.upsert = MagicMock()
 
         # Measure bulk insertion performance
         start_time = time.time()
@@ -143,7 +143,7 @@ class TestDualDatabasePerformance:
             # Simulate MariaDB insertion
             mock_cursor.execute("INSERT INTO articles ...", ())
             # Simulate ChromaDB vector insertion
-            mock_performance_service.collection.add(
+            mock_performance_service.collection.upsert(
                 ids=[str(article.id)],
                 embeddings=[[0.1] * 384],
                 metadatas=[{"article_id": article.id}],

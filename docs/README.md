@@ -157,7 +157,7 @@ python docs/docs_navigator.py search planning
 
 ### **Getting Started Path**
 1. **[README.md](archive/release_preview/release_beta_minimal_preview/README.md)** - Project overview and setup
-2. **[Technical Architecture](markdown_docs/TECHNICAL_ARCHITECTURE.md)** - System understanding
+2. **[Technical Architecture](docs/TECHNICAL_ARCHITECTURE.md)** - System understanding
 3. **[GPU Setup Guide](docs/gpu_runner_README.md)** - Environment configuration
 4. **[Project Status](docs/PROJECT_STATUS.md)** - Current development state
 
@@ -293,7 +293,7 @@ python docs/doc_management_tools/generate_docs_index.py --write
 ### **Adding Cross-References**
 ```markdown
 <!-- In document headers -->
-See also: [Technical Architecture](markdown_docs/TECHNICAL_ARCHITECTURE.md)
+See also: [Technical Architecture](docs/TECHNICAL_ARCHITECTURE.md)
 Related: [GPU Setup](docs/gpu_runner_README.md)
 
 <!-- In JSON catalogue -->
@@ -337,7 +337,7 @@ Related: [GPU Setup](docs/gpu_runner_README.md)
 
 ### **Contact & Support**
 - **Primary Documentation**: This catalogue serves as the main entry point
-- **Technical Issues**: Check [Technical Architecture](markdown_docs/TECHNICAL_ARCHITECTURE.md)
+- **Technical Issues**: Check [Technical Architecture](docs/TECHNICAL_ARCHITECTURE.md)
 - **Development Updates**: Monitor [Project Status](docs/PROJECT_STATUS.md)
 - **System Health**: Run `python docs/docs_navigator.py status`
 

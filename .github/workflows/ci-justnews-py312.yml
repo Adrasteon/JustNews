@@ -1,0 +1,33 @@
+name: CI — tests (justnews-py312)
+
+on:
+  push:
+    branches: [ main, dev/** ]
+  pull_request:
+    branches: [ main, dev/** ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Miniconda / create environment
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: 3.12
+          environment-file: environment.yml
+          activate-environment: justnews-py312
+          auto-activate: true
+
+      - name: Ensure pip deps (fallback)
+        run: |
+          # Prefer conda but fall back to pip if needed
+          pip install -r requirements.txt || true
+
+      - name: Run pytest (canonical env)
+        run: |
+          # Always run tests using the repository canonical environment
+          pytest -q
+        env:
+          CANONICAL_ENV: justnews-py312

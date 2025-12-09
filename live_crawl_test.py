@@ -8,6 +8,7 @@ import asyncio
 import sys
 import time
 from collections import defaultdict
+import os
 from pathlib import Path
 
 # Add project root to path
@@ -153,10 +154,29 @@ async def run_crawl_test():
             print("📰 Starting unified crawl...")
             crawl_start = time.time()
 
+            # Allow overriding the global target for the whole run via env var
+            global_target_env = int(os.environ.get('LIVE_GLOBAL_TARGET', '0') or 0)
+            global_target = global_target_env if global_target_env > 0 else None
+
+            # Allow controlling concurrency and per-site limits via env vars
+            # - LIVE_MAX_PER_SITE: max articles scraped per site (default: 40)
+            # - LIVE_CONCURRENT_SITES: number of concurrent sites (default: 10)
+            # - LIVE_MAX_SITES: limit the total number of sites to run (default: all)
+            max_per_site_env = int(os.environ.get('LIVE_MAX_PER_SITE', '40') or 40)
+            concurrent_sites_env = int(os.environ.get('LIVE_CONCURRENT_SITES', '10') or 10)
+            max_sites_env = int(os.environ.get('LIVE_MAX_SITES', '0') or 0)
+
+            # If a site limit is provided (>0), slice the site list
+            if max_sites_env > 0:
+                domains = test_sites[:max_sites_env]
+            else:
+                domains = test_sites
+
             result = await crawler.run_unified_crawl(
-                domains=test_sites,
-                max_articles_per_site=40,
-                concurrent_sites=10  # Increased concurrency for extreme load testing
+                domains=domains,
+                max_articles_per_site=max_per_site_env,
+                concurrent_sites=concurrent_sites_env,
+                global_target_total=global_target
             )
 
             crawl_time = time.time() - crawl_start
@@ -311,6 +331,32 @@ async def run_crawl_test():
                 for strategy, count in strategy_breakdown.items():
                     if count > 0:
                         print(f"  {strategy}: {count} sites")
+
+            # Run parity verifier as part of the workflow if enabled
+            parity_enabled = os.environ.get('PARITY_CHECK_ON_CRAWL', '1').lower() in ('1', 'true', 'yes')
+            if parity_enabled:
+                try:
+                    # Lazy import so tests can stub out heavy dependencies
+                    from scripts.dev.verify_chroma_parity import main as parity_main
+
+                    parity_batch = os.environ.get('PARITY_BATCH', '500')
+                    repair_requested = os.environ.get('PARITY_REPAIR_ON_CRAWL', '0').lower() in ('1', 'true', 'yes')
+                    repair_confirm = os.environ.get('PARITY_REPAIR_CONFIRM_BYPASS', '0').lower() in ('1', 'true', 'yes')
+
+                    parity_args = ["--collection", os.environ.get('PARITY_COLLECTION', 'articles'), "--batch", str(parity_batch)]
+                    if repair_requested:
+                        parity_args.append("--repair")
+                        if repair_confirm:
+                            parity_args.append("--confirm")
+
+                    print("\n🔎 Running parity verification...\n")
+                    rc = parity_main(parity_args)
+                    if rc == 0:
+                        print("✅ Parity check passed (post-crawl)")
+                    else:
+                        print(f"⚠️ Parity check returned non-zero ({rc}) — review parity logs and backups")
+                except Exception as e:
+                    print(f"WARNING: parity verifier failed to run: {e}")
 
     except Exception as e:
         print(f"❌ Crawl test failed with error: {e}")

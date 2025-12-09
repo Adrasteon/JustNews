@@ -47,6 +47,25 @@ All notable changes to this project will be documented in this file.
 
 **Status**: **CRAWLER ENHANCEMENTS FULLY IMPLEMENTED** - Enterprise-grade web scraping resilience features deployed with comprehensive configuration and documentation
 
+### 🔁 **Modal persistence & backfill (new)**
+- Persist crawler-detected modal signals (consent overlays, cookie banners, sign-in modals) into the `sources.metadata.modal_handler` JSON object so downstream agents can act on source-level signals.
+- Added two helper scripts for operators:
+  - `scripts/dev/run_sources_audit.py` (read-only audit)
+  - `scripts/dev/backfill_sources_modal.py` (idempotent write operation to aggregate article-level modal signals into sources)
+- Updated ingestion to include `extraction_metadata.modal_handler` on source upserts; added unit tests `tests/database/test_ingest_modal_handler.py`.
+**Status**: Operator tools added; recommended to run audit, take backups, then run backfill when ready.
+
+### 🧩 **Sources consolidation — canonical-by-domain (new)**
+- New operator tool `scripts/dev/consolidate_sources_by_domain.py` to safely consolidate duplicate `sources` rows by `domain`.
+- Supports `--preview` (dry-run) and `--apply` modes, per-domain transactional updates, and `--limit`/`--domain` flags for phased rollouts.
+- The script annotates non-canonical rows with `canonical_source_id` and aggregates `variants` metadata into the canonical rows' `metadata.variants` JSON object, preserving historical records.
+**Status**: Tool added; recommended audit → preview → apply → validation workflow before adding unique index on `domain`.
+
+### 🔐 **Ingestion upsert: prefer canonical-by-domain**
+- The ingestion upsert was changed to prefer updating an existing `sources` row by `domain` (merging metadata via JSON_MERGE_PATCH) and fall back to INSERT when no matching domain exists.
+- This prevents new duplicate `sources` rows being created by ingestion and complements the consolidation tool that handles historical duplicates.
+**Status**: Implemented; recommended to run consolidation and validation before adding a unique/index constraint on `domain`.
+
 ### 🧪 **Comprehensive Test Coverage Analysis - 41% Coverage Achieved**
 - **✅ Test Coverage Analysis**: Complete coverage analysis with pytest-cov showing 41% overall coverage (15,626/26,520 lines)
 - **✅ Test Suite Status**: 413 tests passing, comprehensive test framework covering utilities, agents, integration, operations, monitoring, and configuration

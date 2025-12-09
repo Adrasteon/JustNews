@@ -63,6 +63,8 @@ Stages and success criteria:
    - Metrics, traces (correlation IDs), dashboards — need wiring to the new Grafana configs and exporter jobs.
    - Canary dataset for E2E automation — partially addressed via `scripts/dev/canary_urls.txt`, but no automated crawl→publish harness yet.
 
+   See also: `docs/workflow_management.md` and `docs/editorial-orchestrator-crosswalk.md` for guidance on persistent orchestration and how editorial harness jobs can interact with the GPU Orchestrator (leases, queues, streams).
+
    ### Note: GPU tests are disabled by default (safety)
 
       For safety — to avoid accidental use of real GPU hardware that can exhaust resources and crash desktop apps — GPU-marked tests are now disabled by default locally. The default test harness sets `TEST_GPU_AVAILABLE=false` and `TEST_GPU_COUNT=0` in the test environment so running the full test-suite won't attempt real GPU allocations.

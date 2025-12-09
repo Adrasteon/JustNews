@@ -391,3 +391,11 @@ The dedicated OTEL collector dashboard has been removed from the Grafana provisi
 The unified observability platform will transform JustNews monitoring from basic service health checks to comprehensive, real-time observability with advanced analytics, automated alerting, and compliance monitoring. This platform will enable proactive issue detection, faster debugging, and data-driven performance optimization while ensuring regulatory compliance.
 
 The phased implementation approach ensures minimal disruption while building a robust, scalable observability foundation for production operations.
+
+### Parity monitoring
+
+We have added dedicated parity monitoring for Chroma ↔ MariaDB article parity:
+
+- Prometheus counters: `justnews_stage_b_parity_checks_total{result=...}` and `justnews_stage_b_parity_repair_actions_total{action=...}`
+- Alert rules and runbook: `infrastructure/monitoring/alerts/parity_alerts.yml` and `docs/monitoring/parity-alerts.yml`.
+- Grafana dashboard: `monitoring/dashboards/generated/parity_dashboard.json` for visualisation of parity checks and repair actions.

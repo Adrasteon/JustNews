@@ -1,0 +1,60 @@
+{
+  "id": null,
+  "uid": "parity-dashboard-01",
+  "title": "Chroma <-> MariaDB Parity",
+  "description": "Parity verification and repair metrics for Chroma vs MariaDB articles",
+  "tags": [
+    "parity",
+    "chroma",
+    "mariadb",
+    "monitoring"
+  ],
+  "timezone": "UTC",
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Parity mismatches (last 1h)",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "targets": [
+        {"expr": "sum(increase(justnews_stage_b_parity_checks_total{result=\"mismatch\"}[1h]))", "legendFormat": "mismatches_1h"}
+      ],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "fieldOptions": {"defaults": {"unit": "short", "decimals": 0}}}
+    },
+    {
+      "id": 2,
+      "title": "Parity checks by result (rate 5m)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 6, "y": 0},
+      "targets": [
+        {"expr": "sum(rate(justnews_stage_b_parity_checks_total[5m])) by (result)", "legendFormat": "{{result}}"}
+      ],
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}}
+    },
+    {
+      "id": 3,
+      "title": "Repair actions (last 24h)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "targets": [
+        {"expr": "sum(increase(justnews_stage_b_parity_repair_actions_total[24h])) by (action)", "legendFormat": "{{action}}"}
+      ],
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}}
+    },
+    {
+      "id": 4,
+      "title": "Recent repair results (5m)",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "targets": [
+        {"expr": "sum(increase(justnews_stage_b_parity_repair_actions_total{action=~\"failed|repair_partial_failure\"}[5m]))", "legendFormat": "failures_5m"}
+      ],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "fieldOptions": {"defaults": {"unit": "short", "decimals": 0}}}
+    }
+  ]
+}

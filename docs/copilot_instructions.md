@@ -15,6 +15,15 @@ When invoking scripts or running code snippets in documentation, prefer either:
 	- `PYTHON_BIN=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python <script>`
 
 When adding examples or CI configuration, prefer using `${CANONICAL_ENV:-justnews-py312}` by default (unless a different environment is explicitly requested).
+
+Assistant-specific rule (enforced):
+---------------------------------
+When a chat assistant (Copilot, CI agent, or other automated helper) runs scripts or tests, it MUST use the canonical conda environment `${CANONICAL_ENV:-justnews-py312}` by default unless the user explicitly overrides that requirement. In other words, the assistant should always run commands using one of these forms:
+
+	- `conda run -n ${CANONICAL_ENV:-justnews-py312} python <script>`
+	- `/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python -m pytest ...`
+
+This rule avoids confusion and keeps test and runtime results reproducible across contributors and CI.
 ------------------
 - Always consult `/etc/justnews/global.env` (or the configured `SERVICE_DIR` variant) for runtime configuration such as `PYTHON_BIN` before making changes that affect runtime, startup or agent behavior.
 - If documentation or generated startup scripts introduce a new `PYTHON_BIN` path, update `global.env` (and include a human-reviewed note in the PR) — do not hardcode environment-dependent interpreter paths in unrelated source files.

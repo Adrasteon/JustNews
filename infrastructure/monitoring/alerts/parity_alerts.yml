@@ -1,0 +1,43 @@
+groups:
+  - name: justnews-parity.rules
+    rules:
+      - alert: ParityMismatchDetected
+        expr: |
+          increase(justnews_stage_b_parity_checks_total{result="mismatch"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Parity mismatches observed in the last 5m"
+          description: "The parity verifier detected one or more mismatches between MariaDB and Chroma in the last 5 minutes. Investigate repo parity and recent ingestions. See parity verification run logs and backups under scripts/dev/backups."
+
+      - alert: ParityRepairFailures
+        expr: |
+          increase(justnews_stage_b_parity_repair_actions_total{action="failed"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Parity repair failures detected"
+          description: "Parity repair actions reported failures in the last 5 minutes. This indicates that automatic repair operations could not complete and require operator attention. Check logs and Chroma/MariaDB connectivity."
+
+      - alert: ParityRepairPartialFailures
+        expr: |
+          increase(justnews_stage_b_parity_repair_actions_total{action="repair_partial_failure"}[10m]) > 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Partial parity repair failures"
+          description: "A parity repair run completed with partial failures in the last 10m (some items failed to repair). Investigate specific failed items in backups and logs. Consider rerunning repair after addressing environment issues."
+
+      - alert: ParityRepairRequired
+        expr: |
+          increase(justnews_stage_b_parity_checks_total{result="mismatch"}[30m]) > 0 and
+          increase(justnews_stage_b_parity_repair_actions_total{action=~"inserted|updated|deleted|repair_success"}[30m]) == 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Parity mismatches with no repairs observed"
+          description: "Parity verifier has detected mismatches in the last 30m but no repair actions (insert/update/delete/success) were observed in that period. Operator intervention may be required. Check parity run logs and backups under scripts/dev/backups."

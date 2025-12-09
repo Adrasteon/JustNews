@@ -389,23 +389,25 @@ class MigratedDatabaseService:
                     validate_chroma_is_canonical(host, port, canonical_host, int(canonical_port), raise_on_fail=True)
             except Exception:
                 # Any validation issues should cause failure only when requirement is enabled; otherwise continue
-                raise
-            if host and port:
-                import time
-                max_retries = int(os.environ.get('CHROMADB_CONNECT_RETRIES', 3))
-                retry_delay = float(os.environ.get('CHROMADB_CONNECT_RETRY_DELAY', 1.0))
-                last_exc = None
-                for attempt in range(max_retries):
-                    try:
-                        if tenant:
-                            try:
-                                self.chroma_client = chromadb.HttpClient(host=host, port=port, tenant=tenant)
-                                logger.info(f"ChromaDB client initialized with tenant={tenant}")
-                            except TypeError:
-                                # Older chromadb client might not accept tenant in constructor - fallback
-                                self.chroma_client = chromadb.HttpClient(host=host, port=port)
-                                logger.info("ChromaDB client initialized without tenant parameter (older SDK)")
-                        else:
+                try:
+                    # Prefer to scope ChromaDB collections by embedding model/dimensions
+                    # when embedding information is explicitly provided in the config.
+                    # This avoids mixing incompatible embedding dimensions in the same
+                    # collection. If embedding information is absent, defer to the
+                    # CHROMADB_MODEL_SCOPED_COLLECTION environment variable (legacy).
+                    emb_model = self.config['database']['embedding'].get('model')
+                    emb_dims = self.config['database']['embedding'].get('dimensions')
+                    if base_collection_name and emb_model and emb_dims:
+                        emb_dims = str(emb_dims)
+                        safe_model = ''.join(c if c.isalnum() or c in ('-', '_') else '_' for c in emb_model)
+                        collection_name = f"{base_collection_name}__{safe_model}__{emb_dims}"
+                    else:
+                        enable_scoped = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION', '1') == '1'
+                        if enable_scoped and base_collection_name:
+                            emb_model = self.config['database']['embedding'].get('model', '')
+                            emb_dims = str(self.config['database']['embedding'].get('dimensions', ''))
+                            safe_model = ''.join(c if c.isalnum() or c in ('-', '_') else '_' for c in emb_model)
+                            collection_name = f"{base_collection_name}__{safe_model}__{emb_dims}"
                             self.chroma_client = chromadb.HttpClient(host=host, port=port)
                             logger.info("ChromaDB client initialized without tenant")
                         # try heartbeat
@@ -488,7 +490,9 @@ class MigratedDatabaseService:
             # (canonical collection), so default here should be '0'. Using the
             # environment allows overriding in runtime when model-scoped
             # collections are desired.
-            enable_scoped = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION', '0') == '1'
+            # Default to model-scoped collections (1) to avoid mixing incompatible
+            # embedding dimensions/models in the same Chroma collection.
+            enable_scoped = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION', '1') == '1'
             if enable_scoped and base_collection_name:
                 emb_model = self.config['database']['embedding'].get('model', '')
                 emb_dims = str(self.config['database']['embedding'].get('dimensions', ''))

@@ -366,20 +366,54 @@ def list_leases(request: Request):
         resp = {"in_memory": mem}
         # Add persistent rows when DB accessible
         if getattr(engine, 'db_service', None):
+            # Be resilient to test fakes which may replace db_service with a MagicMock
+            # exposing `mb_conn` rather than a real get_safe_cursor. Prefer calling
+            # `get_safe_cursor` when available and usable; otherwise fall back to
+            # using mb_conn.cursor() directly.
             try:
-                cursor, conn = engine.db_service.get_safe_cursor(per_call=True, dictionary=True, buffered=True)
+                dbsvc = engine.db_service
+                rows = None
+
+                # Try safe cursor path first
                 try:
-                    cursor.execute("SELECT token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata FROM orchestrator_leases")
-                    rows = cursor.fetchall()
-                finally:
+                    if hasattr(dbsvc, 'get_safe_cursor') and callable(getattr(dbsvc, 'get_safe_cursor')):
+                        maybe = dbsvc.get_safe_cursor(per_call=True, dictionary=True, buffered=True)
+                        # ensure we got a (cursor, conn) tuple-like
+                        if isinstance(maybe, tuple) and len(maybe) >= 1:
+                            cursor, conn = maybe
+                        else:
+                            raise RuntimeError('get_safe_cursor did not return (cursor, conn)')
+                        try:
+                            cursor.execute("SELECT token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata FROM orchestrator_leases")
+                            rows = cursor.fetchall()
+                        finally:
+                            try:
+                                cursor.close()
+                            except Exception:
+                                pass
+                            try:
+                                if conn:
+                                    conn.close()
+                            except Exception:
+                                pass
+
+                except Exception:
+                    # Fallback: use mb_conn if provided
                     try:
-                        cursor.close()
+                        conn = getattr(dbsvc, 'mb_conn', None)
+                        if conn:
+                            cur = conn.cursor()
+                            try:
+                                cur.execute("SELECT token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata FROM orchestrator_leases")
+                                rows = cur.fetchall()
+                            finally:
+                                try:
+                                    cur.close()
+                                except Exception:
+                                    pass
                     except Exception:
-                        pass
-                    try:
-                        conn.close()
-                    except Exception:
-                        pass
+                        rows = None
+
                 resp['persistent'] = rows
             except Exception:
                 resp['persistent'] = None

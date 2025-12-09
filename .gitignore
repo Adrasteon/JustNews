@@ -81,6 +81,9 @@ artifacts/*.txt
 scripts/perf/results/
 scripts/perf/results/**
 
+# Local dev backups directory (large blobs shouldn't be committed)
+scripts/dev/backups/
+
 # Ignore local third-party build/cache directories which may contain large binaries
 third_party/
 third_party/**

@@ -12,7 +12,7 @@
 set -euo pipefail
 
 GLOBAL_ENV_DEFAULT="/etc/justnews/global.env"
-DATA_MOUNT_DEFAULT="/media/adra/Data"
+DATA_MOUNT_DEFAULT="${DATA_MOUNT:-/media/$(whoami)/Data}"
 RESET_SCRIPT_NAME="reset_and_start.sh"
 HEALTH_SCRIPT_NAME="health_check.sh"
 MONITORING_INSTALL_RELATIVE_PATH="scripts/install_monitoring_stack.sh"
@@ -132,7 +132,7 @@ resolve_repo_root() {
   # the output to a variable) do not receive the warning text as part of the
   # repo root value.
   log_warn "Falling back to repository default path." >&2
-  echo "${SERVICE_DIR:-/home/adra/JustNews}"
+  echo "${SERVICE_DIR:-$HOME/JustNews}"
 }
 
 load_environment() {

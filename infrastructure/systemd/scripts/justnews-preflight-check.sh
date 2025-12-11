@@ -45,7 +45,7 @@ check_agent_python_deps() {
         fi
     fi
     if [[ -z "$py_cmd" ]]; then
-    local py="${PYTHON_BIN:-/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python}"
+    local py="${PYTHON_BIN:-$HOME/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python}"
         if [[ ! -x "$py" ]]; then
             py="$(command -v python3 || command -v python || true)"
         fi

@@ -6,7 +6,7 @@
 #   ./stress_test_harness.sh stub 4 40    # Fast stub test
 #   ./stress_test_harness.sh real 2 10    # Real model test (slow)
 #
-# Tests are logged to /home/adra/justnews_gpu_logs/
+# Tests are logged to ${LOG_DIR:-$HOME/justnews_gpu_logs}/
 
 set -e
 
@@ -14,9 +14,9 @@ TEST_MODE="${1:-stub}"
 WORKERS="${2:-4}"
 REQUESTS="${3:-40}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-LOG_DIR="/home/adra/justnews_gpu_logs"
-CONDA_ENV="/home/adra/miniconda3/envs/justnews-py312"
-CONDA_CMD="/home/adra/miniconda3/bin/conda run -p $CONDA_ENV --no-capture-output"
+LOG_DIR="${LOG_DIR:-$HOME/justnews_gpu_logs}"
+CONDA_ENV="${CONDA_ENV:-$HOME/miniconda3/envs/justnews-py312}"
+CONDA_CMD="${CONDA_CMD:-$(dirname $CONDA_ENV)/../bin/conda run -p $CONDA_ENV --no-capture-output}"
 
 # Create log directory
 mkdir -p "$LOG_DIR"

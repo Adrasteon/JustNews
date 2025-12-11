@@ -6,7 +6,7 @@ SCRIPT_NAME=$(basename "$0")
 
 DRY_RUN=false
 CREATE_SYMLINK=false
-NEW_ROOT="/home/adra/JustNews"
+NEW_ROOT="${SERVICE_DIR:-$HOME/JustNews}"
 GLOBAL_ENV_FILE="/etc/justnews/global.env"
 
 while [[ $# -gt 0 ]]; do
@@ -54,7 +54,7 @@ fi
 
 # 2) Optionally create an old-folder symlink if some on-disk references still use it
 if [[ "$CREATE_SYMLINK" == "true" ]]; then
-    ORIG_SYMLINK="/home/adra/JustNewsAgent-Clean"
+    ORIG_SYMLINK="${OLD_SERVICE_DIR:-$HOME/JustNewsAgent-Clean}"
     if [[ -e "$ORIG_SYMLINK" ]]; then
         echo "[INFO] $ORIG_SYMLINK already exists; skipping symlink creation"
     else

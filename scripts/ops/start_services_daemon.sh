@@ -141,10 +141,11 @@ done
 
 # Ensure MODEL_STORE_ROOT and per-agent caches point to the central data directory.
 # Be resilient to the mountpoint case (Data vs data) or missing external drive after reboots.
-if [ -d "/media/adra/Data" ]; then
-  DEFAULT_BASE_MODELS_DIR="/media/adra/Data/justnews"
-elif [ -d "/media/adra/data" ]; then
-  DEFAULT_BASE_MODELS_DIR="/media/adra/data/justnews"
+DATA_MOUNT="${DATA_MOUNT:-/media/$(whoami)/Data}"
+if [ -d "$DATA_MOUNT" ]; then
+  DEFAULT_BASE_MODELS_DIR="$DATA_MOUNT/justnews"
+elif [ -d "${DATA_MOUNT,,}" ]; then
+  DEFAULT_BASE_MODELS_DIR="${DATA_MOUNT,,}/justnews"
 else
   # Fallback to a directory inside the user's home to avoid failures on systems
   # where the external data volume is not mounted. Operators can override via

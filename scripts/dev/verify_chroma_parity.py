@@ -21,7 +21,7 @@ import argparse
 import sys
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict
 
 
@@ -247,7 +247,8 @@ def main(argv: list[str] | None = None) -> int:
                             "embedding": embs_f[idx] if idx < len(embs_f) else None,
                         })
 
-                    stamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+                    # Use timezone-aware timestamps to avoid deprecation warnings
+                    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
                     filename = os.path.join(backup_dir, f"verify_chroma_parity_backup_{args.collection}_{stamp}.json")
                     with open(filename, "w", encoding="utf-8") as fh:
                         json.dump({"collection": args.collection, "backup_at": stamp, "docs": docs}, fh, indent=2)

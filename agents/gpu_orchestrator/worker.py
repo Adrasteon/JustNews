@@ -15,6 +15,12 @@ import json
 import os
 import time
 from typing import Any
+from agents.mcp_bus.tools import call_agent_tool as mcp_call_agent_tool
+from common.observability import get_logger
+logger = get_logger(__name__)
+from agents.common import gpu_metrics
+import threading
+from threading import Event
 
 
 class Worker:
@@ -48,6 +54,7 @@ class Worker:
 
         # read one message (best-effort—xreadgroup may not be available in tests)
         entries = []
+        event_id = None
         try:
             # Prefer xreadgroup if available
             if hasattr(self.redis, 'xreadgroup'):
@@ -68,6 +75,13 @@ class Worker:
             return False
 
         msg_id, fields = entries[0]
+        try:
+            if getattr(self.engine, 'logger', None):
+                self.engine.logger.debug(f"Worker received msg fields: {fields}")
+            else:
+                logger.debug(f"Worker received msg fields: {fields}")
+        except Exception:
+            pass
 
         # decode fields
         job_id = None
@@ -96,6 +110,21 @@ class Worker:
             t = fields.get(b'type') or fields.get('type')
             if t is not None:
                 t = self._decode_field(t)
+                # normalize JSON-encoded quoted strings (e.g. '"analysis"' -> 'analysis')
+                try:
+                    if isinstance(t, str) and t.startswith('"') and t.endswith('"'):
+                        t2 = json.loads(t)
+                        if isinstance(t2, str):
+                            t = t2
+                except Exception:
+                    pass
+            try:
+                if getattr(self.engine, 'logger', None):
+                    self.engine.logger.debug(f"Worker parsed job type={t} payload_type={type(payload)} payload={payload}")
+                else:
+                    logger.debug(f"Worker parsed job type={t} payload_type={type(payload)} payload={payload}")
+            except Exception:
+                pass
 
         # Attempt to claim the job and obtain a lease atomically if DB-backed engine
         try:
@@ -135,15 +164,84 @@ class Worker:
         except Exception:
             lease_token = None
 
-        # run handler
+        # run handler (with background GPU memory sampler while job runs)
         try:
             start_time = time.time()
+            # Start GPU/perf event for this job
+            try:
+                event_id = gpu_metrics.start_event(agent=self.agent_name, operation='worker_job', job_id=job_id, job_type=t)
+            except Exception:
+                event_id = None
+            # Start a sampling thread that emits periodic gpu memory instants
+            sampler_stop = Event()
+            sampler_thread = None
+            try:
+                def _sample_loop(stop_event: Event, agent_name: str, job_id: str | None):
+                    while not stop_event.is_set():
+                        try:
+                            gpu_metrics.emit_instant(agent=agent_name, operation='job_memory_sample', job_id=job_id)
+                        except Exception:
+                            pass
+                        # sample at 0.25s resolution
+                        stop_event.wait(0.25)
+
+                sampler_thread = threading.Thread(target=_sample_loop, args=(sampler_stop, self.agent_name, job_id), daemon=True)
+                sampler_thread.start()
+            except Exception:
+                sampler_thread = None
+
             if handler:
                 handler(payload)
+            elif isinstance(t, str) and t == 'analysis':
+                # analysis job type - call the analyst via MCP Bus
+                article_id = None
+                if isinstance(payload, dict):
+                    article_id = payload.get('article_id') or payload.get('id')
+                # nothing to analyze - treat as no-op if no article_id
+                if article_id is None:
+                    pass
+                else:
+                    try:
+                        # Use MCP bus to trigger Analyst; synchronous call
+                        # Emit an instant GPU snapshot before calling (useful for debugging memory spikes)
+                        # Emit pre-call memory snapshot
+                        try:
+                            gpu_metrics.emit_instant(agent=self.agent_name, operation='call_analyst:pre', job_id=job_id, article_id=article_id)
+                        except Exception:
+                            pass
+                        try:
+                            if getattr(self.engine, 'logger', None):
+                                self.engine.logger.debug(f"Worker about to call mcp_call_agent_tool for article_id={article_id}")
+                            else:
+                                logger.debug(f"Worker about to call mcp_call_agent_tool for article_id={article_id}")
+                            mcp_call_agent_tool('analyst', 'analyze_article', args=[], kwargs={'article_id': article_id})
+                        finally:
+                            # Emit post-call memory snapshot
+                            try:
+                                gpu_metrics.emit_instant(agent=self.agent_name, operation='call_analyst:post', job_id=job_id, article_id=article_id)
+                            except Exception:
+                                pass
+                        # done
+                    except Exception as exc:
+                        # Re-raise to trigger the existing failure logic which will mark job as failed
+                        raise
             else:
                 # light simulation of doing the work
                 time.sleep(0.01)
             duration = time.time() - start_time
+            # Stop the sampler thread if running
+            if sampler_thread:
+                try:
+                    sampler_stop.set()
+                    sampler_thread.join(timeout=1.0)
+                except Exception:
+                    pass
+            # Close the GPU/perf event with success
+            try:
+                if event_id:
+                    gpu_metrics.end_event(event_id, success=True, duration_s=duration)
+            except Exception:
+                pass
 
             # Record processing duration
             if hasattr(self.engine, 'job_processing_duration_histogram'):
@@ -204,6 +302,22 @@ class Worker:
                     self.engine.release_gpu_lease(lease_token)
                 except Exception:
                     pass
+            # Attempt to free CUDA memory (best effort) to reduce fragmentation before next job
+            try:
+                import torch
+                if hasattr(torch, 'cuda') and torch.cuda.is_available():
+                    try:
+                        torch.cuda.empty_cache()
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            # Record error in GPU/perf metrics
+            try:
+                if event_id:
+                    gpu_metrics.end_event(event_id, success=False, error=str(e))
+            except Exception:
+                pass
             return True
 
         # done: release lease if acquired

@@ -292,7 +292,7 @@ Exit criteria for Stage D:
   - [ ] NVIDIA MPS daemon running and reported enabled by Orchestrator
 - Ingestion pipeline
   - [ ] Scheduler delivers hourly top-X crawl with success metrics
-  - [ ] Trafilatura-first extractor returns clean article bodies; fallbacks logged <5%
+  - [ ] Trafilatura extractor (fallback) returns clean article bodies; fallbacks logged <5%
   - [ ] Metadata fields (publication_date, authors, language, section, url_hash, normalized_url) populated for >90% of articles
   - [ ] URL hash dedupe prevents same-source re-ingestion; embeddings stored with clustering metrics exposed
   - [ ] Governance dashboards active; human QA sampling program operational

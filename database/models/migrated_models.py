@@ -542,6 +542,61 @@ class MigratedDatabaseService:
         else:
             logger.warning("ChromaDB not available - embeddings support disabled")
 
+        # If we don't have a Chroma collection yet, start a background thread to
+        # keep attempting to ensure the collection exists. This helps when the
+        # service starts before Chroma; the background task will auto-create or
+        # obtain the collection once Chroma is available.
+        try:
+            if self.chroma_client and self.collection is None:
+                try:
+                    import threading
+
+                    def _chroma_reconnect_loop(svc: 'MigratedDatabaseService'):
+                        interval = float(os.environ.get('CHROMADB_RECONNECT_INTERVAL', 5.0))
+                        max_attempts = int(os.environ.get('CHROMADB_RECONNECT_MAX_ATTEMPTS', 0))
+                        attempt = 0
+                        base_name = collection_name
+                        # continue attempting until collection available or max_attempts reached (0 = infinite)
+                        while not getattr(svc, 'collection', None):
+                            attempt += 1
+                            try:
+                                logger.info("Chroma reconnect attempt %s for collection %s", attempt, base_name)
+                                # Try to fetch existing collection first
+                                try:
+                                    svc.collection = svc.chroma_client.get_collection(base_name)
+                                    logger.info("ChromaDB collection available during reconnect: %s", base_name)
+                                    break
+                                except Exception:
+                                    # Attempt to create the collection if fetching failed
+                                    try:
+                                        svc.collection = svc.chroma_client.create_collection(name=base_name, metadata={"description": "Article embeddings for semantic search"})
+                                        logger.info("ChromaDB collection created during reconnect: %s", base_name)
+                                        break
+                                    except Exception as ce:
+                                        logger.debug("ChromaDB create collection failed during reconnect: %s", ce)
+                                        svc.collection = None
+                            except Exception as e:
+                                logger.debug("Error in Chroma reconnect loop: %s", e)
+                                svc.collection = None
+                            # stop if we've exceeded attempts
+                            if max_attempts and attempt >= max_attempts:
+                                logger.warning("Chroma reconnect max attempts reached (%s), stopping reconnect attempts", max_attempts)
+                                break
+                            try:
+                                import time
+
+                                time.sleep(interval)
+                            except Exception:
+                                pass
+
+                    thread = threading.Thread(target=_chroma_reconnect_loop, args=(self,), daemon=True)
+                    thread.start()
+                except Exception as e:
+                    logger.debug(f"Failed to start chroma reconnect thread: {e}")
+        except Exception:
+            # If we can't import threading or run the loop for any reason, don't raise.
+            pass
+
         # Embedding model: import sentence-transformers at runtime (best-effort)
         embedding_config = self.config['database']['embedding']
         try:

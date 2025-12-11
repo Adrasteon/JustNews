@@ -1,0 +1,45 @@
+name: CI — render diagrams
+
+on:
+  push:
+    branches: [ main, dev/** ]
+  pull_request:
+    branches: [ main, dev/** ]
+
+jobs:
+  render-diagrams:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node (for optional mermaid-cli)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install mermaid-cli (optional)
+        run: |
+          # Install the mermaid CLI so the render helper can use it when available
+          npm install -g @mermaid-js/mermaid-cli || true
+
+      - name: Setup Miniconda / create environment
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: 3.12
+          environment-file: environment.yml
+          activate-environment: justnews-py312
+
+      - name: Ensure system rasterizers (librsvg / ImageMagick) available
+        run: |
+          conda install -y -c conda-forge librsvg imagemagick || true
+
+      - name: Run diagram renderer
+        run: |
+          set -eo pipefail
+          ./scripts/dev/render_diagrams.sh
+
+      - name: Upload rendered assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-diagrams
+          path: docs/diagrams/assets

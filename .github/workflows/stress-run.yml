@@ -1,0 +1,42 @@
+name: Stress run — self-hosted GPU runner (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: 'Duration in seconds (default 600)'
+        required: false
+        default: '600'
+      concurrency:
+        description: 'Number of parallel canary processes (default 3)'
+        required: false
+        default: '3'
+      crawl_concurrency:
+        description: 'Number of concurrent crawlers (default 2)'
+        required: false
+        default: '2'
+
+jobs:
+  stress-run:
+    # IMPORTANT: run only on dedicated self-hosted runners with GPU, do not use github hosted runners
+    runs-on: [self-hosted, gpu, dedicated]
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure environment (operator will provision)
+        run: |
+          echo "This workflow requires a dedicated self-hosted runner with the canonical Conda environment and GPUs."
+          echo "Please ensure the runner's environment has CONDA set up and browsers installed."
+
+      - name: Start stress harness
+        run: |
+          mkdir -p output/stress_run
+          chmod +x scripts/dev/stress_full_e2e.sh
+          ./scripts/dev/stress_full_e2e.sh ${{ github.event.inputs.duration }} ${{ github.event.inputs.concurrency }} ${{ github.event.inputs.crawl_concurrency }}
+
+      - name: Upload stress artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: stress-run-artifacts
+          path: output/stress_run/**

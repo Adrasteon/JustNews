@@ -139,6 +139,14 @@ os.environ.setdefault('CHROMADB_REQUIRE_CANONICAL', '0')
 # our stricter 'no warnings' CI policy can detect and fail on them.
 os.environ.setdefault('EMBEDDING_SUPPRESS_WARNINGS', '0')
 
+# Prevent heavy model weights being loaded during unit tests by default.
+# Tests that need live model behavior should explicitly opt-in by setting
+# MODEL_STORE_DRY_RUN=0 or disabling the feature flags in their own scopes.
+os.environ.setdefault('MODEL_STORE_DRY_RUN', '1')
+os.environ.setdefault('FACT_CHECKER_DISABLE_MISTRAL', '1')
+os.environ.setdefault('JOURNALIST_DISABLE_MISTRAL', '1')
+os.environ.setdefault('SYNTHESIZER_DISABLE_MISTRAL', '1')
+
 # Prevent tests from opening real MySQL connections during unit tests.
 # Tests that intentionally need a live connector can patch it explicitly.
 try:

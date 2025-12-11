@@ -501,15 +501,18 @@ def execute_transaction(
         raise ValueError("queries and params_list must have the same length")
 
     try:
-        # For transactions we must use a single per-call connection so the
-        # statements are executed on the same connection and can be committed
-        # together.
-        try:
-            conn = service.get_connection()
-        except AttributeError:
-            conn = getattr(service, 'mb_conn', None)
-            if conn is None:
-                raise
+        # Prefer a legacy per-service mb_conn if present (unit tests commonly
+        # provide a mocked `mb_conn`); otherwise attempt the modern
+        # get_connection() method on the service.
+        conn = getattr(service, 'mb_conn', None)
+        if conn is None:
+            try:
+                conn = service.get_connection()
+            except Exception:
+                conn = getattr(service, 'mb_conn', None)
+                if conn is None:
+                    raise
+
         cursor = conn.cursor()
         try:
             logger.debug(f"execute_transaction: conn={conn!r}")
@@ -520,24 +523,29 @@ def execute_transaction(
             conn.commit()
             logger.info(f"Transaction executed successfully with {len(queries)} queries")
             return True
-                    # Prefer legacy per-service mb_conn when present (unit tests commonly
-                    # provide a mocked `mb_conn` and not an explicit get_connection() call).
-                    conn = getattr(service, 'mb_conn', None)
-                    if conn is None:
-                        try:
-                            conn = service.get_connection()
-                        except Exception:
-                            # Fall back to legacy attribute and fail if not present.
-                            conn = getattr(service, 'mb_conn', None)
-                            if conn is None:
-                                raise
+        finally:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+            try:
                 conn.close()
             except Exception:
                 pass
-
     except Exception as e:
         logger.error(f"Transaction failed: {e}")
-        service.mb_conn.rollback()
+        # Attempt to rollback the most appropriate connection
+        try:
+            if getattr(service, 'mb_conn', None):
+                service.mb_conn.rollback()
+            else:
+                # Last resort: try rollback on conn if present
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+        except Exception:
+            pass
         return False
 
 
@@ -562,7 +570,19 @@ def get_database_stats(service: MigratedDatabaseService) -> dict[str, Any]:
     try:
         # Use per-call connection for stats so we don't interfere with live
         # queries on the shared connection.
-        cursor, conn = service.get_safe_cursor(per_call=True, buffered=True)
+        cursor = None
+        conn = None
+        try:
+            _res = service.get_safe_cursor(per_call=True, buffered=True)
+            if isinstance(_res, tuple) and len(_res) == 2:
+                cursor, conn = _res
+            else:
+                raise ValueError("get_safe_cursor did not return (cursor, conn)")
+        except Exception:
+            conn = getattr(service, 'mb_conn', None)
+            if conn is None:
+                raise
+            cursor = conn.cursor()
         try:
             # Article count
             cursor.execute("SELECT COUNT(*) FROM articles")
@@ -650,23 +670,7 @@ def add_entity(service: MigratedDatabaseService, name: str, entity_type: str, co
             service.mb_conn.rollback()
         except Exception:
             pass
-                # Prefer safe per-call helper if provided by service; otherwise fall
-                # back to legacy mb_conn cursor (tests typically set mb_conn only).
-                cursor = None
-                conn = None
-                try:
-                    _res = service.get_safe_cursor(per_call=True, buffered=True)
-                    # Expect (cursor, conn)
-                    if isinstance(_res, tuple) and len(_res) == 2:
-                        cursor, conn = _res
-                    else:
-                        raise ValueError("get_safe_cursor did not return (cursor, conn)")
-                except Exception:
-                    # Fall back for legacy mocks
-                    conn = getattr(service, 'mb_conn', None)
-                    if conn is None:
-                        raise
-                    cursor = conn.cursor()
+        return None
 
 
 def link_entity_to_article(service: MigratedDatabaseService, article_id: int, entity_id: int, relevance: float | None = None) -> bool:

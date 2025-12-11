@@ -20,6 +20,8 @@ All functions include robust error handling, validation, and fallbacks.
 import json
 import os
 import time
+import requests
+from typing import Any
 from typing import Any
 
 from common.observability import get_logger
@@ -200,6 +202,56 @@ def make_editorial_decision(content: str, metadata: dict[str, Any] | None = None
         "metadata": decision.metadata,
         "decision_timestamp": time.time()
     }
+
+
+def dispatch_agent_tool(
+    agent_name: str,
+    tool_name: str,
+    kwargs: dict[str, Any] | None = None,
+    use_gpu_orchestrator: bool | None = None,
+) -> dict[str, Any]:
+    """
+    Dispatch an agent tool either via MCP Bus or GPU Orchestrator.
+
+    Strategy:
+    - Default: try MCP Bus (MCP_BUS_URL env), fall back to GPU Orchestrator.
+    - If `use_gpu_orchestrator` True, always submit as orchestrator job.
+    - If `use_gpu_orchestrator` False, always use MCP Bus.
+    """
+    try:
+        mcp_url = os.environ.get("MCP_BUS_URL", "http://localhost:8000").rstrip("/")
+        gpu_orch = os.environ.get("GPU_ORCH_URL", "http://localhost:8008").rstrip("/")
+
+        if use_gpu_orchestrator is None:
+            # Default to MCP Bus; allow feature flag to force orchestrator
+            use_gpu_orchestrator = os.environ.get("CHIEF_EDITOR_USE_ORCH", "false").lower() == "true"
+
+        payload = {
+            "agent": agent_name,
+            "tool": tool_name,
+            "args": [],
+            "kwargs": kwargs or {},
+        }
+
+        if not use_gpu_orchestrator:
+            try:
+                # Try MCP Bus call first
+                resp = requests.post(f"{mcp_url}/call", json=payload, timeout=(2, 10))
+                resp.raise_for_status()
+                return resp.json()
+            except Exception:
+                # fall back to orchestrator submission
+                pass
+
+        # Orchestrator fallback: submit a job that will trigger agent chain
+        job_payload = {"article_id": (kwargs or {}).get("article_id"), "call_tool": payload}
+        submit_payload = {"type": "analysis", "payload": job_payload}
+        resp = requests.post(f"{gpu_orch}/jobs/submit", json=submit_payload, timeout=(2, 10))
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as e:
+        # Return a simple error structure rather than raise so callers can log
+        return {"status": "error", "error": str(e)}
 
 def request_story_brief(topic: str, scope: str) -> dict[str, Any]:
     """

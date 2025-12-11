@@ -23,6 +23,10 @@ from agents.common.model_loader import load_transformers_model, load_transformer
 
 logger = get_logger(__name__)
 
+# Simple in-process cache to avoid repeatedly loading large model artifacts
+# when many adapters request the same base/adapter set during stress runs.
+_MODEL_CACHE: dict[tuple[str | None, str | None], tuple[Any, Any]] = {}
+
 DEFAULT_BASE_MODEL_ID = os.getenv("MISTRAL_BASE_MODEL_ID", "mistralai/Mistral-7B-Instruct-v0.3")
 
 
@@ -47,6 +51,13 @@ def load_mistral_adapter_or_base(
     if tokenizer_kwargs:
         tok_kwargs.update(tokenizer_kwargs)
 
+    # Reuse previously loaded model/tokenizer when possible to avoid repeated
+    # expensive loads during concurrent or repeated stress runs.
+    cache_key = (agent, adapter_name)
+    if cache_key in _MODEL_CACHE:
+        logger.info("Reusing cached model/tokenizer for agent=%s adapter=%s", agent, adapter_name)
+        return _MODEL_CACHE[cache_key]
+
     # Attempt to load the adapter first
     try:
         model, tokenizer = load_transformers_with_adapter(
@@ -55,6 +66,7 @@ def load_mistral_adapter_or_base(
             model_kwargs=base_model_kwargs,
             tokenizer_kwargs=tok_kwargs,
         )
+        _MODEL_CACHE[cache_key] = (model, tokenizer)
         return model, tokenizer
     except Exception as exc:  # pragma: no cover - adapter availability depends on env
         adapter_errors.append(str(exc))
@@ -82,6 +94,7 @@ def load_mistral_adapter_or_base(
             agent,
             adapter_name,
         )
+        _MODEL_CACHE[cache_key] = (model, tokenizer)
         return model, tokenizer
     except Exception as exc:  # pragma: no cover - depends on runtime env
         adapter_errors.append(str(exc))

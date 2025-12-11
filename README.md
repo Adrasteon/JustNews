@@ -54,9 +54,9 @@ make start
 - **Training System**: Continuous learning with MCP integration
 - **Monitoring**: Centralized logging, metrics, and distributed tracing
 
-### Key Features
 - **GPU Acceleration**: TensorRT-optimized models for performance
-- **High-Precision Extraction**: Trafilatura-first crawler cascade with readability/jusText fallbacks, structured metadata, raw HTML archival, and quality heuristics
+### Key Features
+ - **High-Precision Extraction**: Crawl4AI-first, profile-driven extraction where applicable (adaptive and JS-handling); Trafilatura is retained as the robust generic fallback and parity target (readability/jusText fallbacks) for evaluation
 - **Enterprise Security**: JWT authentication, RBAC, GDPR compliance
 - **Multi-Platform Deployment**: systemd (Kubernetes and Docker Compose deprecated)
 - **Comprehensive Testing**: 41% test coverage with pytest-cov, comprehensive unit tests for utilities, agents, integration, operations, monitoring, and configuration
@@ -151,6 +151,13 @@ export GIT_STRICT_TEST_HOOK=1
 ```
 
 CI note: GitHub Actions workflows were updated to create and use the `${CANONICAL_ENV:-justnews-py312}` conda environment during CI test runs (uses Miniconda). This keeps CI consistent with local dev.
+
+New CI workflows:
+
+- `.github/workflows/diagrams-ci.yml` — renders repository diagrams via `./scripts/dev/render_diagrams.sh` (Mermaid CLI when available; conda-first raster fallback). Outputs `docs/diagrams/assets/` as an artifact on PRs and pushes so reviewers can inspect rendered assets.
+- `.github/workflows/canary-refresh.yml` — scheduled nightly canary-run that exercises crawl → normalize → parse → editorial → publish, validates canary KPIs in `output/metrics/canary_metrics.json`, and uploads canary artifacts for triage.
+
+Monitoring note: The repository now includes an ingest/archive dashboard (`monitoring/dashboards/generated/ingest_archive_dashboard.json`) which surfaces Stage 1/2 ingest and raw_html counters and is picked up by production provisioning.
 
 Self-hosted E2E tests: The repo now includes a self-hosted workflow (systemd-nspawn) for high-fidelity E2E tests that run MariaDB + Redis inside a systemd-nspawn container. See `.github/workflows/e2e-systemd-nspawn.yml` and `docs/dev/self-hosted-runners.md` for required runner configuration and security notes.
 

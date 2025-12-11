@@ -1,0 +1,37 @@
+name: Canary — PR smoke checks
+
+on:
+  pull_request:
+    branches: [ main, dev/** ]
+
+jobs:
+  canary-smoke:
+    runs-on: ubuntu-latest
+    env:
+      CANONICAL_ENV: justnews-py312
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Miniconda / create environment
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: 3.12
+          environment-file: environment.yml
+          activate-environment: justnews-py312
+          auto-activate: true
+
+      - name: Install (fallback pip)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || true
+
+      - name: Run canary parsing fixtures
+        run: |
+          # Run focused parsing tests that use deterministic fixtures (no network)
+          pytest -q tests/parsing/test_canary_articles.py
+
+      - name: Upload parsing fixtures results
+        uses: actions/upload-artifact@v4
+        with:
+          name: canary-pr-parsing-results
+          path: tests/parsing/test_canary_articles.py

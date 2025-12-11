@@ -45,4 +45,42 @@ If the script reports that the root endpoint appears to be another service (for 
 - Our code now respects `CHROMADB_TENANT` and will optionally try to auto-create a default tenant and `articles` collection if `CHROMADB_AUTO_CREATE_TENANT` is set to 1.
 - If you use `system_config.json` and want to override, set environment variables: `CHROMADB_HOST` and `CHROMADB_PORT`. Environment variables will take precedence over `system_config.json` values.
 
+- New environment variables (operational):
+    - `CHROMADB_UPSERT_MAX_RETRIES` – number of retry attempts when upserting embeddings to ChromaDB (default: 3)
+    - `CHROMADB_UPSERT_BASE_BACKOFF` – base backoff (seconds) used to exponentially increase retry delays (default: 0.5)
+    - `CHROMADB_UPSERT_STRICT` – if `1`, the memory agent will abort article storage when Chroma upsert fails after retries (default: 0)
+    - `CHROMADB_RECONNECT_INTERVAL` – seconds between reconnect attempts when Chroma collection is missing (default: 5.0)
+    - `CHROMADB_RECONNECT_MAX_ATTEMPTS` – max reconnect attempts; `0` means infinite (default: 0)
+    - `PARITY_CHECK_INTERVAL` - interval (seconds) between periodic parity checks (default: 300)
+    - `PARITY_CHECK_REPAIR_ON_MISMATCH` - if `1`, the parity check daemon will attempt to repair any detected mismatches (default: 0)
+    - `ENABLE_PARITY_CHECK_DAEMON` - set to `1` to enable a background parity-check process in dev/staging (default: 0)
+
+Parity check daemon - run and enable
+-------------------------------
+
+You can run the parity check daemon manually for staging workloads:
+
+        PARITY_CHECK_INTERVAL=300 PARITY_CHECK_REPAIR_ON_MISMATCH=1 python scripts/dev/parity_check_daemon.py
+
+When enabling this on a host or in a container, prefer to wrap it as a supervised process (systemd unit or container service) and ensure it's run under a non-root service account with proper permissions.
+
+Example: simple systemd service (dev only)
+
+    [Unit]
+    Description=JustNews Parity Check Daemon (dev)
+    After=network.target
+
+    [Service]
+    Type=simple
+    User=justnews
+    WorkingDirectory=/home/justnews/JustNews
+    Environment=PARITY_CHECK_INTERVAL=300
+    Environment=PARITY_CHECK_REPAIR_ON_MISMATCH=1
+    ExecStart=/usr/bin/python3 /home/justnews/JustNews/scripts/dev/parity_check_daemon.py
+
+    [Install]
+    WantedBy=multi-user.target
+
+Only start this for development/staging; in production use appropriate RBAC and operational approvals.
+
 If you still face issues after following these steps, share the outputs of `python scripts/chroma_diagnose.py --autocreate` and the memory agent logs for further debugging.

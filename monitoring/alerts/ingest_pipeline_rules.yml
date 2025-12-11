@@ -1,0 +1,47 @@
+groups:
+  - name: ingest_pipeline
+    rules:
+      - alert: IngestPipelineFailures
+        expr: increase(ingest_failure_total[5m]) > 0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Ingest pipeline failures detected"
+          description: "One or more ingest failures were observed in the last 5 minutes. Check memory/ingest logs and DB connectivity."
+
+      - alert: IngestDuplicateBurst
+        expr: increase(ingest_duplicate_total[5m]) > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High duplicate ingestion rate"
+          description: "A spike in duplicate ingests may indicate duplicate upstream payloads or ingest logic regressions. Investigate recent crawler/hitl changes."
+
+      - alert: RawHtmlMissingSpike
+        expr: increase(raw_html_missing_total[5m]) > 25
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Raw HTML missing spike"
+          description: "Significant number of raw_html missing events detected. This may indicate archive storage failures or permissions issues."
+
+      - alert: RawHtmlVerificationDrop
+        expr: sum(rate(raw_html_verified_total[5m])) < 0.01 and sum(rate(raw_html_missing_total[5m])) > 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low raw_html verification rate with missing events present"
+          description: "Raw HTML verification rate has dropped while missing counts are present. Check archive agent, storage backends and ingest replays."
+
+      - alert: IngestSuccessRateLow
+        expr: sum(rate(ingest_success_total[5m])) < 0.1 and increase(ingest_failure_total[5m]) > 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low ingest success rate"
+          description: "Ingest success rate is low while failures were observed. Investigate DB connectivity, Chroma availability, and embedding model issues."

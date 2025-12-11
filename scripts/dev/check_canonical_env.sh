@@ -31,6 +31,10 @@ EXCLUDES=(
 # Also ignore this script file (it contains the patterns for detection)
 IGNORED_FILES=(
   ':!scripts/dev/check_canonical_env.sh'
+  # allow CI workflow file using the canonical env name (intentional)
+  ':!.github/workflows/ci-justnews-py312.yml'
+  # tests can reference the workflow file by name for verification
+  ':!tests/test_ci_justnews_py312_workflow.py'
 )
 
 failures=0

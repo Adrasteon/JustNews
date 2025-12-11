@@ -17,6 +17,7 @@ All functions include robust error handling and comprehensive logging.
 import time
 
 from common.observability import get_logger
+from agents.common import gpu_metrics
 
 logger = get_logger(__name__)
 
@@ -135,6 +136,18 @@ class GPUAcceleratedAnalyst:
             # Set CUDA device
             torch.cuda.set_device(self.gpu_device)
             torch.cuda.empty_cache()
+            # Instrument model loads using gpu_metrics
+            load_event_id = None
+            try:
+                load_event_id = gpu_metrics.start_event(agent='analyst', operation='gpu_model_load', model='sentiment')
+            except Exception:
+                load_event_id = None
+
+            # Emit instant before load (reserved/allocated)
+            try:
+                gpu_metrics.emit_instant(agent='analyst', operation='before_model_load', model='sentiment')
+            except Exception:
+                pass
 
             # Load sentiment analyzer
             self.sentiment_analyzer = pipeline(
@@ -146,6 +159,19 @@ class GPUAcceleratedAnalyst:
                 top_k=None
             )
 
+            # Emit instant after load
+            try:
+                gpu_metrics.emit_instant(agent='analyst', operation='after_model_load', model='sentiment')
+            except Exception:
+                pass
+
+            # End model load event
+            try:
+                if load_event_id:
+                    gpu_metrics.end_event(load_event_id, success=True)
+            except Exception:
+                pass
+
             # Load bias detector
             self.bias_detector = pipeline(
                 "text-classification",
@@ -155,12 +181,45 @@ class GPUAcceleratedAnalyst:
                 truncation=True,
                 top_k=None
             )
+            # Instrument bias model load similar to sentiment model
+            bias_event_id = None
+            try:
+                bias_event_id = gpu_metrics.start_event(agent='analyst', operation='gpu_model_load', model='bias')
+            except Exception:
+                bias_event_id = None
+
+            try:
+                gpu_metrics.emit_instant(agent='analyst', operation='before_model_load', model='bias')
+            except Exception:
+                pass
+
+            try:
+                gpu_metrics.emit_instant(agent='analyst', operation='after_model_load', model='bias')
+            except Exception:
+                pass
+
+            try:
+                if bias_event_id:
+                    gpu_metrics.end_event(bias_event_id, success=True)
+            except Exception:
+                pass
 
             self.models_loaded = True
             logger.info("✅ GPU models loaded successfully")
 
         except Exception as e:
             logger.error(f"❌ GPU model initialization failed: {e}")
+            # Emit memory summary and a gpu_metrics end event for failure
+            try:
+                import torch
+                if hasattr(torch, 'cuda') and torch.cuda.is_available():
+                    try:
+                        # Add memory summary as an instant snapshot
+                        gpu_metrics.emit_instant(agent='analyst', operation='gpu_model_init_failed', details={'error': str(e), 'memory_summary': torch.cuda.memory_summary()})
+                    except Exception:
+                        pass
+            except Exception:
+                pass
 
     def _check_memory_circuit_breaker(self) -> bool:
         """Check GPU memory and update circuit breaker."""
@@ -227,6 +286,12 @@ class GPUAcceleratedAnalyst:
             logger.error(f"❌ GPU sentiment failed: {e}")
             if TORCH_AVAILABLE:
                 torch.cuda.empty_cache()
+            try:
+                # emit a memory summary snapshot for debugging
+                if TORCH_AVAILABLE and torch.cuda.is_available():
+                    gpu_metrics.emit_instant(agent='analyst', operation='gpu_sentiment_failed', error=str(e))
+            except Exception:
+                pass
             return None
 
     def score_bias_gpu(self, text: str) -> float | None:
@@ -269,6 +334,11 @@ class GPUAcceleratedAnalyst:
             logger.error(f"❌ GPU bias failed: {e}")
             if TORCH_AVAILABLE:
                 torch.cuda.empty_cache()
+            try:
+                if TORCH_AVAILABLE and torch.cuda.is_available():
+                    gpu_metrics.emit_instant(agent='analyst', operation='gpu_bias_failed', error=str(e))
+            except Exception:
+                pass
             return None
 
     def cleanup(self):

@@ -21,6 +21,9 @@ Mermaid sources
 Rendering
 - Use Mermaid CLI (mmdc) to render the .mmd files to SVG. There is a helper script: `scripts/dev/render_diagrams.sh`.
 
+CI rendering
+- A GitHub Actions workflow (`.github/workflows/diagrams-ci.yml`) runs the same `scripts/dev/render_diagrams.sh` job on PRs and pushes and uploads the produced assets (`docs/diagrams/assets/`) as a build artifact so reviewers can inspect rendered images even when the runner cannot run a headless browser.
+
 Conda-friendly rendering / raster fallbacks
 - The helper script now prefers system / conda-provided tools and will attempt two phases:
   1. Render mermaid `.mmd` -> `.svg` using `mmdc` (Mermaid CLI) if available.

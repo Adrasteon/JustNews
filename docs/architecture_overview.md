@@ -7,7 +7,7 @@
  JustNews is an agent-driven news ingestion and processing platform built around a few core ideas:
 
  - Agent-oriented design: independent agents encapsulate responsibilities (crawler, hitl, memory, archive, fact-checker, synthesizer, etc.).
- - Crawl4AI-first orchestration for navigation and JS-handling, with a Trafilatura-first extraction pipeline.
+ - Crawl4AI-first orchestration for navigation and JS-handling (profile-driven), with Trafilatura retained as the robust generic fallback and parity target.
  - Human-in-the-loop (HITL) staging for labeling, QA and forwarding before ingestion.
  - Dual persistence strategy: structured metadata in MariaDB, vector embeddings in Chroma (or similar), and raw HTML archived to filesystem storage.
  - Observability and evaluation are first-class: adaptive metrics, Prometheus exporters, parity evaluations and acceptance runbooks.
@@ -24,7 +24,7 @@
    - `agents/sites/generic_site_crawler.py` — fallback requests-based crawler.
    - `agents/sites/*_crawler.py` — per-site (e.g., `bbc_crawler.py`) specialized crawlers (some stubs).
  - Extraction
-   - `agents/crawler/extraction.py` — Trafilatura-first extractor with fallbacks to readability, jusText and a plain sanitizer.
+  - `agents/crawler/extraction.py` — Trafilatura-based extractor (fallback) with fallbacks to readability, jusText and a plain sanitizer.
  - HITL service
    - `agents/hitl_service/` — FastAPI-based staging service, SQLite staging DB, label lifecycle and forwarding logic.
  - Agents Bus & Ingestion
@@ -58,7 +58,7 @@
    - Status: present as stubs. Recommendation: deprecate and migrate to Crawl4AI profiles.
 
  - Extraction Pipeline — `agents/crawler/extraction.py` — Done
-   - Intent: Trafilatura-first extraction with fallback to readability, jusText, and plain sanitiser. Archive raw HTML and annotate metadata.
+  - Intent: Trafilatura extraction cascade retained as the generic fallback with fallbacks to readability, jusText, and plain sanitiser. Archive raw HTML and annotate metadata.
    - Status: Implemented.
 
  - HITL Service — `agents/hitl_service/` — Done/Partial

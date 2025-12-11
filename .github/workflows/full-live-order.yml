@@ -1,0 +1,40 @@
+name: Run full live order — manual (dedicated runner)
+
+on:
+  workflow_dispatch:
+    inputs:
+      live:
+        description: 'Run in live mode (load models) 1/0'
+        required: false
+        default: '0'
+      duration:
+        description: 'Total timeout per stage (seconds)'
+        required: false
+        default: '1800'
+      enable_training:
+        description: 'Enable training stage (1/0)'
+        required: false
+        default: '0'
+      enable_kg:
+        description: 'Enable KG ingestion (1/0)'
+        required: false
+        default: '0'
+
+jobs:
+  run-live-order:
+    runs-on: [self-hosted, gpu, dedicated]
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run full live order (manual)
+        run: |
+          mkdir -p output/running_order
+          chmod +x scripts/dev/run_full_live_order.py
+          PYTHONPATH=$(pwd) python scripts/dev/run_full_live_order.py --output output/running_order --live ${{ github.event.inputs.live }} --timeout ${{ github.event.inputs.duration }} $(if [ "${{ github.event.inputs.enable_training }}" = "1" ]; then echo "--enable-training"; fi) $(if [ "${{ github.event.inputs.enable_kg }}" = "1" ]; then echo "--enable-kg"; fi)
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: running-order-artifacts
+          path: output/running_order/**

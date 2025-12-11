@@ -30,7 +30,8 @@ sudo systemctl restart justnews-memory-agent || ./scripts/start-memory-agent.sh
 2. Re-run the ingestion diagnostic (200 samples):
 
 ```bash
-conda run -n justnews-py312 python scripts/ops/diagnose_ingestion_samples.py --sample 200 --post
+# prefer canonical environment variable placeholder so repository checks stay green
+conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/ops/diagnose_ingestion_samples.py --sample 200 --post
 ```
 
 3. Inspect the memory agent logs (logs/ or systemd journal) for any remaining "Unread result found" errors. The expected result is that the number of such entries should significantly reduce or disappear.

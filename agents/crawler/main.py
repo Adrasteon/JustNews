@@ -5,6 +5,8 @@ Unified production crawling agent with MCP integration.
 # main.py for Crawler Agent
 
 import os
+import time
+import json
 import uuid
 from contextlib import asynccontextmanager
 from typing import Any
@@ -38,6 +40,51 @@ from .job_store import (
 )
 from .job_store import list_jobs as jobstore_list_jobs
 from .tools import get_crawler_info
+
+
+def trigger_analyst_for_articles(articles: list[dict[str, Any]] | None) -> int:
+    """Trigger the Analyst agent for a list of articles.
+
+    Defaults to using the MCP Bus /call endpoint; optional orchestrator mode available via env.
+    Returns number of attempted triggers.
+    """
+    if not articles:
+        return 0
+    count = 0
+    mcp_url = os.environ.get('MCP_BUS_URL', 'http://localhost:8000').rstrip('/')
+    orch_url = os.environ.get('GPU_ORCH_URL', 'http://localhost:8008').rstrip('/')
+    mode = os.environ.get('CRAWLER_ANALYST_MODE', 'mcp').lower()
+    rate_sleep = float(os.environ.get('CRAWLER_ANALYST_RATE_SLEEP', '0.05'))
+    for a in articles:
+        try:
+            article_id = a.get('id') or a.get('article_id')
+            if not article_id:
+                continue
+            # Skip already analyzed ones if the article payload provides flag
+            if a.get('analyzed'):
+                continue
+            if mode == 'orchestrator':
+                payload = {'job_id': f"analysis-{article_id}-{int(time.time()*1000)}", 'type': 'analysis', 'payload': {'article_id': article_id}}
+                try:
+                    resp = requests.post(f"{orch_url}/jobs/submit", json=payload, timeout=(2, 15))
+                    resp.raise_for_status()
+                except Exception as e:
+                    logger.error(f"Failed to submit analysis job for article {article_id}: {e}")
+                    continue
+            else:
+                payload = {"agent": "analyst", "tool": "analyze_article", "args": [], "kwargs": {"article_id": article_id}}
+                try:
+                    resp = requests.post(f"{mcp_url}/call", json=payload, timeout=(2, 10))
+                    resp.raise_for_status()
+                except Exception as e:
+                    logger.error(f"Failed to call analyst for article {article_id}: {e}")
+                    continue
+            count += 1
+            time.sleep(rate_sleep)
+        except Exception as exc:
+            logger.error(f"Unexpected error when triggering analyst for article: {exc}")
+            continue
+    return count
 
 # Configure logging
 logger = get_logger(__name__)
@@ -109,6 +156,14 @@ async def run_crawl_background(
             # best-effort fallback to memory for visibility
             crawl_jobs[job_id] = {"status": "completed", "result": result}
         logger.info(f"Background crawl {job_id} complete. Articles: {len(result.get('articles', []))}")
+        # Optionally trigger Analyst for each ingested article
+        try:
+            if os.environ.get('CRAWLER_TRIGGER_ANALYST_AFTER_CRAWL', 'false').lower() == 'true':
+                # articles list in result is list of dicts; pass to helper
+                n = trigger_analyst_for_articles(result.get('articles', []))
+                logger.info("Triggered analyst for %d articles after crawl %s", n, job_id)
+        except Exception as exc:
+            logger.error("Failed to trigger analyst after crawl: %s", exc)
     except Exception as e:
         try:
             set_error(job_id, str(e))

@@ -93,26 +93,31 @@ def load_model_if_available(model_id: str | None):
             # if bitsandbytes is completely missing or cannot provide a native binary, skip quantization
             print('bitsandbytes disabled or check failed; skipping 8-bit quantization and using float16/device_map when possible')
 
-        # Prefer forcing the model onto GPU to get realistic inference latency when a GPU is available.
-        # We'll try a strict placement first (all parameters to cuda:0) and on failure fall back to auto device_map.
-        # load_kwargs already prepared above depending on bitsandbytes availability
-        _tried_forced = False
+        # For large models (7B+), use device_map=auto with INT8 quantization to avoid OOM.
+        # Skip forced cuda:0 placement as it risks stalling with large models.
+        print('Loading model with device_map=auto for safe multi-GPU distribution')
         if torch.cuda.is_available():
             try:
-                _tried_forced = True
-                print('Attempting to load model directly onto gpu:0 (may OOM if not enough memory)')
-                # If we couldn't create a BitsAndBytesConfig (bnb is None) then prefer float16 dtype
-                if bnb is None:
-                    model = AutoModelForCausalLM.from_pretrained(model_id, device_map={'': 'cuda:0'}, dtype=getattr(torch, 'float16', None), **load_kwargs)
-                else:
-                    model = AutoModelForCausalLM.from_pretrained(model_id, device_map={'': 'cuda:0'}, dtype=getattr(torch, 'float16', None), **load_kwargs)
-            except Exception as e_forced:
-                print('Direct cuda:0 placement failed, falling back to device_map=auto; error:', e_forced)
-                # If bnb None, don't pass quantization_config (load as float16 if possible) to avoid bitsandbytes errors.
-                if bnb is None:
-                    model = AutoModelForCausalLM.from_pretrained(model_id, device_map='auto', dtype=getattr(torch, 'float16', None))
-                else:
-                    model = AutoModelForCausalLM.from_pretrained(model_id, device_map='auto', **load_kwargs)
+                import agents.common.gpu_metrics as gpu_metrics
+                gpu_metrics.emit_instant(agent='simulate_concurrent_inference', operation='before_model_load', model_id=model_id)
+            except Exception:
+                pass
+            
+            # Use device_map=auto which safely distributes across GPU/CPU as needed
+            if bnb is not None:
+                # INT8 quantization available - use it
+                print('Loading with INT8 quantization via device_map=auto')
+                model = AutoModelForCausalLM.from_pretrained(model_id, device_map='auto', **load_kwargs)
+            else:
+                # Fallback to float16 with device_map=auto
+                print('Loading with float16 via device_map=auto (BNB not available for quantization)')
+                model = AutoModelForCausalLM.from_pretrained(model_id, device_map='auto', torch_dtype=getattr(torch, 'float16', None))
+            
+            try:
+                import agents.common.gpu_metrics as gpu_metrics
+                gpu_metrics.emit_instant(agent='simulate_concurrent_inference', operation='after_model_load_auto', model_id=model_id)
+            except Exception:
+                pass
         else:
             model = AutoModelForCausalLM.from_pretrained(model_id, device_map='auto', **load_kwargs)
         tokenizer = AutoTokenizer.from_pretrained(model_id)
@@ -138,6 +143,11 @@ def load_model_if_available(model_id: str | None):
                 if params_on_cuda == 0:
                     print('Trying model.to("cuda") to force GPU placement...')
                     model.to('cuda')
+                    try:
+                        import agents.common.gpu_metrics as gpu_metrics
+                        gpu_metrics.emit_instant(agent='simulate_concurrent_inference', operation='after_model_to_cuda', model_id=model_id)
+                    except Exception:
+                        pass
                     params_on_cuda = sum(1 for p in model.parameters() if p.is_cuda)
                     print(f'Parameters on CUDA after model.to("cuda"): {params_on_cuda}/{total_params}')
             except Exception as e_move:

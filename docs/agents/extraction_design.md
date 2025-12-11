@@ -1,14 +1,14 @@
 # Extraction Pipeline — Design and Interfaces
 
 Overview
-- Trafilatura-first extraction pipeline with layered fallbacks (readability-lxml, jusText, plain-sanitizer). The pipeline is intended to provide high-quality cleaned article text with metadata suitable for indexing and downstream consumption.
+ - Crawl4AI-first for profile-driven crawls (adaptive + JS-handling) with Trafilatura retained as the canonical fallback and parity target (readability-lxml, jusText, plain-sanitizer). The pipeline provides high-quality cleaned article text with metadata suitable for indexing and downstream consumption.
 
 Files of interest
 - `agents/crawler/extraction.py`
 
 Pipeline stages
 1. Raw HTML normalization and quick heuristics (language detection, word-count checks).
-2. Primary extractor: Trafilatura — returns main text, title, and metadata.
+2. Primary extractor (generic fallback): Trafilatura — returns main text, title, and metadata. For Crawl4AI-profiled runs the adapter may optionally consume Crawl4AI's markdown/cleaned output directly or feed it through the Trafilatura cascade per profile flags.
 3. Secondary extractor: Readability/JusText for cases where primary fails.
 4. Plain sanitizer fallback: strip tags, basic heuristics to create a usable text.
 

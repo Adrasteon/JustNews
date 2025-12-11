@@ -459,6 +459,146 @@ def get_article_count_endpoint():
         raise HTTPException(status_code=500, detail=f"Error retrieving article count: {str(e)}") from e
 
 
+@app.post("/reindex_articles")
+def reindex_articles_endpoint(request: dict):
+    """Reindex articles to ChromaDB that are missing embeddings.
+    
+    Args:
+        article_ids: List of article IDs to reindex (optional, if not provided will check all)
+        batch_size: Number of articles to process at once (default: 100)
+    """
+    try:
+        # Handle MCP Bus format: {"args": [...], "kwargs": {...}}
+        if "args" in request and "kwargs" in request:
+            kwargs = request["kwargs"]
+        else:
+            # Direct call format
+            kwargs = request
+
+        article_ids = kwargs.get("article_ids", [])
+        batch_size = kwargs.get("batch_size", 100)
+        
+        logger.info(f"Reindexing request: {len(article_ids) if article_ids else 'all'} articles")
+        
+        # Get db_service from memory_engine
+        db_service = memory_engine.db_service
+        if not db_service:
+            raise HTTPException(status_code=500, detail="Database service not available")
+        
+        # Get embedding model
+        from agents.memory.tools import get_embedding_model
+        embedding_model = get_embedding_model()
+        if not embedding_model:
+            raise HTTPException(status_code=500, detail="Embedding model not available")
+        
+        # Query articles that need reindexing
+        conn = db_service.get_connection()
+        cur = conn.cursor(dictionary=True)
+        
+        if article_ids:
+            placeholders = ','.join(['%s'] * len(article_ids))
+            cur.execute(
+                f"SELECT id, content, url, title, metadata FROM articles WHERE id IN ({placeholders})",
+                tuple(article_ids)
+            )
+        else:
+            # Get all article IDs and check which are missing from ChromaDB
+            cur.execute("SELECT id, content, url, title, metadata FROM articles")
+        
+        articles = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        if not articles:
+            return {"status": "success", "reindexed": 0, "message": "No articles found to reindex"}
+        
+        # Check which articles are actually missing from ChromaDB
+        if db_service.collection:
+            existing_ids = set()
+            try:
+                # Get all IDs from ChromaDB
+                result = db_service.collection.get(ids=[str(a['id']) for a in articles])
+                existing_ids = set(result['ids'])
+                logger.info(f"Found {len(existing_ids)} articles already in ChromaDB")
+            except Exception as e:
+                logger.warning(f"Error checking existing ChromaDB entries: {e}")
+        else:
+            return {"status": "error", "error": "ChromaDB collection not available"}
+        
+        # Filter to only articles missing from ChromaDB
+        missing_articles = [a for a in articles if str(a['id']) not in existing_ids]
+        logger.info(f"Found {len(missing_articles)} articles missing from ChromaDB")
+        
+        if not missing_articles:
+            return {"status": "success", "reindexed": 0, "message": "All articles already in ChromaDB"}
+        
+        # Reindex missing articles
+        reindexed_count = 0
+        error_count = 0
+        
+        for article in missing_articles:
+            try:
+                article_id = article['id']
+                content = article.get('content', '')
+                
+                if not content:
+                    logger.warning(f"Article {article_id} has no content, skipping")
+                    continue
+                
+                # Generate embedding
+                embedding = embedding_model.encode(content)
+                embedding_list = list(map(float, embedding))
+                
+                # Prepare metadata for ChromaDB
+                import json
+                metadata_dict = {}
+                if article.get('metadata'):
+                    try:
+                        if isinstance(article['metadata'], str):
+                            metadata_dict = json.loads(article['metadata'])
+                        else:
+                            metadata_dict = article['metadata']
+                    except:
+                        pass
+                
+                metadata_dict['url'] = article.get('url', '')
+                metadata_dict['title'] = article.get('title', '')
+                
+                # Ensure metadata is ChromaDB-safe
+                from agents.memory.tools import _make_chroma_metadata_safe, _ensure_embedding_metadata
+                chroma_metadata = _make_chroma_metadata_safe(_ensure_embedding_metadata(metadata_dict))
+                
+                # Add to ChromaDB
+                db_service.collection.upsert(
+                    ids=[str(article_id)],
+                    embeddings=[embedding_list],
+                    metadatas=[chroma_metadata],
+                    documents=[content]
+                )
+                
+                reindexed_count += 1
+                if reindexed_count % 10 == 0:
+                    logger.info(f"Reindexed {reindexed_count}/{len(missing_articles)} articles...")
+                    
+            except Exception as e:
+                logger.error(f"Error reindexing article {article.get('id')}: {e}")
+                error_count += 1
+        
+        logger.info(f"Reindexing complete: {reindexed_count} success, {error_count} errors")
+        
+        return {
+            "status": "success",
+            "reindexed": reindexed_count,
+            "errors": error_count,
+            "total_checked": len(articles),
+            "missing_count": len(missing_articles)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in reindex operation: {e}")
+        raise HTTPException(status_code=500, detail=f"Reindex failed: {str(e)}") from e
+
+
 @app.post("/get_sources")
 def get_sources_endpoint(request: dict):
     """Get list of sources from the database."""

@@ -42,7 +42,7 @@ Sequence: Crawl → HITL → Ingest (summary)
 
 Testing & acceptance
 - Smoke tests: import `crawl4ai` and run a short adaptive digest using a benign profile.
-- Extraction parity: run `evaluation/run_evaluation.py` on stored samples to validate Trafilatura-first extraction parity.
+- Extraction parity: run `evaluation/run_evaluation.py` on stored samples to validate extraction parity — compare Crawl4AI-profiled outputs with the Trafilatura cascade (fallback) and measure any delta in coverage/quality.
 
 Extensibility notes
 - Script registry: new `js_code` should be referenced by slug; implement `agents/crawler/scripts_registry.py` to resolve script content.

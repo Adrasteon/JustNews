@@ -52,6 +52,8 @@ def _install_db_stubs(monkeypatch):
         def execute(self, query: str, params=None):
             self.query = query
             self.params = params or ()
+            print('DEBUG MockCursor execute called, query:', query)
+            print('DEBUG MockCursor params:', self.params)
             normalized_q = " ".join(query.split()).lower()
 
             # Store for fetchone
@@ -59,15 +61,38 @@ def _install_db_stubs(monkeypatch):
                 target = self.params[0]
                 for row in stored_rows:
                     if row.get("url_hash") == target:
-                        self._result = ((row["id"],),)
-                        return
+                        # Query may include a second param which is either a source_id
+                        # or a hostname for normalized_url LIKE matching. Handle both.
+                        if len(self.params) > 1:
+                            second_param = self.params[1]
+                            if isinstance(second_param, str) and '.' in second_param:
+                                # hostname case: params are (hash, hostname, like_pattern)
+                                # match by hostname contained in the normalized URL
+                                like_pattern = self.params[2] if len(self.params) > 2 else None
+                                if row.get("source_id") == second_param or (second_param and second_param in (row.get("normalized_url") or '')):
+                                    self._result = ((row["id"],),)
+                                    return
+                            else:
+                                # it's a source_id filter
+                                if row.get("source_id") == second_param:
+                                    self._result = ((row["id"],),)
+                                    return
+                        else:
+                            self._result = ((row["id"],),)
+                            return
                 self._result = None
             elif "from articles where normalized_url" in normalized_q:
                 target = self.params[0]
+                src_id = self.params[1] if len(self.params) > 1 else None
                 for row in stored_rows:
                     if row.get("normalized_url") == target:
-                        self._result = ((row["id"],),)
-                        return
+                        if src_id:
+                            if row.get("source_id") == src_id:
+                                self._result = ((row["id"],),)
+                                return
+                        else:
+                            self._result = ((row["id"],),)
+                            return
                 self._result = None
             elif "select last_insert_id()" in normalized_q:
                 # Return the last inserted ID
@@ -211,6 +236,7 @@ def test_save_article_detects_duplicates(monkeypatch, stage_b_metrics):
     }
 
     first = tools.save_article("primary", metadata, embedding_model=StubEmbeddingModel())
+    print('DEBUG stored_rows after first:', stored_rows)
     second = tools.save_article("secondary", metadata, embedding_model=StubEmbeddingModel())
 
     assert first["status"] == "success"
@@ -235,34 +261,125 @@ def test_save_article_normalizes_on_duplicate_variants(monkeypatch, stage_b_metr
     assert len(stored_rows) == 1
     assert stored_rows[0]["normalized_url"] == "https://example.com/world/story"
 
-    def test_save_article_allows_same_path_different_source(monkeypatch, stage_b_metrics):
-        """If two sites publish the same normalized path, but from different source_id values
-        we should allow both to be saved (we only dedupe within a single site)."""
-        stored_rows = _install_db_stubs(monkeypatch)
 
-        meta_a = {"url": "https://example.com/world/story", "source_id": "site-A"}
-        meta_b = {"url": "https://example.com/world/story", "source_id": "site-B"}
+def test_save_article_chroma_upsert_retries(monkeypatch, stage_b_metrics):
+    stored_rows = _install_db_stubs(monkeypatch)
 
-        a = tools.save_article("content A", meta_a, embedding_model=StubEmbeddingModel())
-        b = tools.save_article("content B", meta_b, embedding_model=StubEmbeddingModel())
+    # Create a collection that fails the first two upserts then succeeds
+    call_state = {"attempts": 0}
 
-        assert a["status"] == "success"
-        assert b["status"] == "success"
-        assert len(stored_rows) == 2
+    def failing_then_success_upsert(**kwargs):
+        call_state["attempts"] += 1
+        if call_state["attempts"] < 3:
+            # simulate a transient Chroma failure
+            raise Exception("Transient Chroma failure")
+        # On third attempt, act as a normal upsert
+        if 'embeddings' in kwargs and kwargs['embeddings']:
+            embedding = kwargs['embeddings'][0]
+            article_id = int(kwargs['ids'][0]) if kwargs.get('ids') else len(stored_rows)
+            for row in stored_rows:
+                if row['id'] == article_id:
+                    row['embedding'] = embedding
+                    break
+
+    # Patch the db service to use our custom upsert
+    import database.utils.migrated_database_utils as db_utils
+    original_factory = db_utils.create_database_service
+    def make_db_service_with_failing_upsert(*args, **kwargs):
+        svc = original_factory()
+        svc.collection = SimpleNamespace(upsert=failing_then_success_upsert)
+        return svc
+
+    monkeypatch.setattr(db_utils, "create_database_service", make_db_service_with_failing_upsert)
+
+    metadata = {"url": "https://example.com/unstable-upsert"}
+    result = tools.save_article("Retry content", metadata, embedding_model=StubEmbeddingModel())
+
+    assert result["status"] == "success"
+    assert stored_rows[0]["embedding"] == pytest.approx([0.1, 0.2, 0.3])
+    # Ensure retries recorded
+    assert stage_b_metrics.get_embedding_count("success") >= 1.0
+    # validate chroma upsert counters: at least one success and some retries
+    assert stage_b_metrics.chroma_upsert_total.labels(status="success")._value.get() == 1.0
+    assert stage_b_metrics.chroma_upsert_total.labels(status="retry")._value.get() >= 1.0
 
 
-    def test_save_article_duplicate_with_same_source_id(monkeypatch, stage_b_metrics):
-        """When a source_id is supplied and matches an existing article, the second should be duplicate."""
-        stored_rows = _install_db_stubs(monkeypatch)
+def test_parity_check_daemon_invokes_verify(monkeypatch):
+    """Ensure parity_check_daemon invokes the verify script; mock subprocess to avoid heavy operations."""
+    import scripts.dev.parity_check_daemon as daemon
+    calls = {}
 
-        meta = {"url": "https://example.com/news/1", "source_id": "source-42"}
+    def fake_popen(cmd, stdout=None, stderr=None, text=None):
+        class P:
+            def __init__(self):
+                self.returncode = 0
+                self._stdout = 'OK'
+                self._stderr = ''
 
-        first = tools.save_article("first", meta, embedding_model=StubEmbeddingModel())
-        second = tools.save_article("second", meta, embedding_model=StubEmbeddingModel())
+            def communicate(self):
+                return (self._stdout, self._stderr)
 
-        assert first["status"] == "success"
-        assert second["status"] == "duplicate"
-        assert len(stored_rows) == 1
+        calls['cmd'] = cmd
+        return P()
+
+    monkeypatch.setattr('subprocess.Popen', fake_popen)
+    # Run only one iteration by calling run_once directly
+    ok = daemon.run_once()
+    assert ok is True
+    assert any('verify_chroma_parity.py' in str(e) for e in calls['cmd'])
+
+
+def test_save_article_chroma_upsert_strict_mode_errors(monkeypatch, stage_b_metrics):
+    stored_rows = _install_db_stubs(monkeypatch)
+
+    # Create a collection that always fails upsert
+    def always_fail_upsert(**kwargs):
+        raise Exception("Chroma permanent failure")
+
+    import database.utils.migrated_database_utils as db_utils
+    original_factory = db_utils.create_database_service
+    def make_db_service_with_failing_upsert(*args, **kwargs):
+        svc = original_factory()
+        svc.collection = SimpleNamespace(upsert=always_fail_upsert)
+        return svc
+
+    monkeypatch.setenv('CHROMADB_UPSERT_STRICT', '1')
+    monkeypatch.setattr(db_utils, "create_database_service", make_db_service_with_failing_upsert)
+
+    metadata = {"url": "https://example.com/strict-upsert"}
+    result = tools.save_article("Content to fail", metadata, embedding_model=StubEmbeddingModel())
+
+    assert result.get("error") == "chroma_upsert_failed"
+    assert stage_b_metrics.chroma_upsert_total.labels(status="failed")._value.get() == 1.0
+
+def test_save_article_allows_same_path_different_source(monkeypatch, stage_b_metrics):
+    """If two sites publish the same normalized path, but from different source_id values
+    we should allow both to be saved (we only dedupe within a single site)."""
+    stored_rows = _install_db_stubs(monkeypatch)
+
+    meta_a = {"url": "https://example.com/world/story", "source_id": "site-A"}
+    meta_b = {"url": "https://example.com/world/story", "source_id": "site-B"}
+
+    a = tools.save_article("content A", meta_a, embedding_model=StubEmbeddingModel())
+    b = tools.save_article("content B", meta_b, embedding_model=StubEmbeddingModel())
+
+    assert a["status"] == "success"
+    assert b["status"] == "success"
+    assert len(stored_rows) == 2
+
+
+def test_save_article_duplicate_with_same_source_id(monkeypatch, stage_b_metrics):
+    """When a source_id is supplied and matches an existing article, the second should be duplicate."""
+    stored_rows = _install_db_stubs(monkeypatch)
+
+    meta = {"url": "https://example.com/news/1", "source_id": "source-42"}
+
+    first = tools.save_article("first", meta, embedding_model=StubEmbeddingModel())
+    second = tools.save_article("second", meta, embedding_model=StubEmbeddingModel())
+
+    assert first["status"] == "success"
+    assert second["status"] == "duplicate"
+    assert len(stored_rows) == 1
     assert stage_b_metrics.get_ingestion_count("success") == 1.0
     assert stage_b_metrics.get_ingestion_count("duplicate") == 1.0
     assert stage_b_metrics.get_embedding_count("success") == 1.0

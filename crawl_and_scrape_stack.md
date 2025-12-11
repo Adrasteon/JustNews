@@ -5,11 +5,11 @@
 - **Retain lightweight fallbacks.** Keep a minimal `requests`-based ping path for health checks or static sites; everything else funnels through `AsyncWebCrawler.arun` / `arun_many` or `AdaptiveCrawler`.
 - **Drive behavior from per-site profiles.** Configuration files specify mode (landing, section, deep), link filters, scripts, and extraction strategy—no separate bespoke code per source.
 
-## 2. Keep Trafilatura as the First-Pass Extractor
-- **Extraction pipeline stays modular.** Continue passing HTML from Crawl4AI into our Stage B pipeline. Trafilatura remains tier‑1 for text/metadata; readability, jusText, and plain sanitiser remain safety nets.
-- **Measure before reinvention.** If Trafilatura success stays high, no need to embed Crawl4AI’s markdown output directly. Where Trafilatura underperforms, we can toggle a profile flag to consume Crawl4AI’s generated markdown or layer an LLM extraction strategy for that site.
+## 2. Prefer Crawl4AI for profile-driven extraction; keep Trafilatura as the robust fallback
+- **Extraction pipeline stays modular.** For profile-driven crawls we prefer consuming Crawl4AI's cleaned HTML/markdown as the primary extraction input; Trafilatura remains the canonical generic fallback for text/metadata with readability, jusText, and the plain sanitiser as safety nets.
+- **Measure before switching outputs.** If Trafilatura continues to perform well for a given site there's no need to change the profile. Where Trafilatura underperforms we can toggle a profile flag to consume Crawl4AI’s generated markdown directly or layer an LLM extraction strategy for that site.
 
-## 3. Avoid Over-Engineering Scripts
+## 3.  Avoid Over-Engineering Scripts
 - **Favor config over code.** Use C4A-Script only when a site needs interaction (login, popups). Store scripts alongside profiles, keep them short, and reuse via `PROC` blocks.
 - **Guard dependency sprawl.** Stick to Crawl4AI + existing extractors; avoid bolting on multiple scraping frameworks. Trafilatura/readability/justext already cover extraction fallbacks.
 - **Leverage built-in strategies sparingly.** Invoke `RegexExtractionStrategy`, `LLMExtractionStrategy`, or `CosineStrategy` only when a site clearly benefits. Default to our current article body extraction unless proven insufficient.
@@ -17,7 +17,7 @@
 ## 4. Implementation Snapshot (Oct 2025)
 - **Scheduler-aware profiles:** `scripts/ops/run_crawl_schedule.py` now accepts `--profiles` (defaults to `config/crawl_profiles`) and inlines the resolved payload into each crawl job as `profile_overrides`.
 - **Profile registry:** `agents/crawler_control/crawl_profiles.py` loads YAML profiles, expands `{domain}` placeholders, and maps `www.`/bare hostnames so operators only touch configuration.
-- **Crawler adapter:** `agents/crawler/crawl4ai_adapter.py` translates profile dictionaries into Crawl4AI `BrowserConfig`/`CrawlerRunConfig` objects, follows scored internal links within the declared `max_pages`, and still feeds the Trafilatura pipeline.
+- **Crawler adapter:** `agents/crawler/crawl4ai_adapter.py` translates profile dictionaries into Crawl4AI `BrowserConfig`/`CrawlerRunConfig` objects, follows scored internal links within the declared `max_pages`, and can either feed the Trafilatura pipeline for parity or emit Crawl4AI's cleaned markdown directly depending on per-profile settings.
 
 ### Adaptive crawling & telemetry (Oct–Nov 2025)
 
@@ -41,7 +41,7 @@
 4. **Clean-up legacy paths:** Once Crawl4AI covers all production sites, retire unused playwright/browser helpers to reduce maintenance.
 
 ## 6. Guiding Principles
-- **Simplicity first:** One orchestrator (Crawl4AI), one extraction pipeline (Trafilatura-first), declarative configs for per-site behavior.
+- **Simplicity first:** One orchestrator (Crawl4AI) for navigation and profile-driven runs; Trafilatura retained as a robust extraction fallback and parity target. Declarative configs drive per-site behavior.
 - **Flexibility through profiles:** Operators can dial crawl depth, link filters, or scripts without editing Python.
 - **Observability baked in:** Continue Stage B metrics, plus log Crawl4AI `CrawlResult` stats to inform profile tuning.
 

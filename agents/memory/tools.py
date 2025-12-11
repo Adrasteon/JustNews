@@ -28,6 +28,7 @@ import requests
 from common.json_utils import make_json_safe
 from common.observability import get_logger
 from common.stage_b_metrics import get_stage_b_metrics
+from agents.common.tracing import trace_span, add_span_tag, add_span_metadata
 
 try:
     import torch
@@ -483,17 +484,85 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
 
         # Add embedding to ChromaDB
         try:
+            # Attempt to upsert embedding into ChromaDB with retry/backoff.
             if getattr(db_service, 'collection', None):
                 embedding_list = list(map(float, embedding))
                 chroma_metadata = _make_chroma_metadata_safe(_ensure_embedding_metadata(metadata))
-                db_service.collection.upsert(
-                    ids=[str(next_id)],
-                    embeddings=[embedding_list],
-                    metadatas=[chroma_metadata],
-                    documents=[content]
-                )
-                logger.debug(f"Added embedding to ChromaDB for article {next_id}")
-                logger.info("Embedding persisted to ChromaDB for article %s (ids=%s)", next_id, [str(next_id)])
+                # env-driven upsert retry/backoff
+                max_retries = int(os.environ.get('CHROMADB_UPSERT_MAX_RETRIES', 3))
+                base_backoff = float(os.environ.get('CHROMADB_UPSERT_BASE_BACKOFF', 0.5))
+                upsert_success = False
+                last_exc = None
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        # start a child span for the upsert attempt to capture timing/trace
+                        with trace_span("memory.chroma_upsert"):
+                            add_span_tag("article_id", str(next_id))
+                            add_span_tag("url", raw_url or canonical_url)
+                            add_span_tag("attempt", attempt)
+                            add_span_metadata("cache", cache_label)
+                        db_service.collection.upsert(
+                            ids=[str(next_id)],
+                            embeddings=[embedding_list],
+                            metadatas=[chroma_metadata],
+                            documents=[content]
+                        )
+                        upsert_success = True
+                        logger.debug(f"Added embedding to ChromaDB for article {next_id} (attempt {attempt})")
+                        logger.info("Embedding persisted to ChromaDB for article %s (ids=%s)", next_id, [str(next_id)])
+                        try:
+                            metrics.record_chroma_upsert('success')
+                        except Exception:
+                            pass
+                        break
+                    except Exception as chroma_error:
+                        last_exc = chroma_error
+                        # record retry event metrics
+                        try:
+                            metrics.record_chroma_upsert('retry')
+                        except Exception:
+                            pass
+                        logger.warning(
+                            "ChromaDB upsert attempt %s/%s failed for article %s: %s",
+                            attempt,
+                            max_retries,
+                            next_id,
+                            chroma_error,
+                        )
+                        try:
+                            add_span_tag("attempt_result", "retry")
+                            add_span_metadata("exception_message", str(chroma_error))
+                        except Exception:
+                            pass
+                        # Exponential backoff before next attempt
+                        try:
+                            import time
+
+                            time.sleep(base_backoff * (2 ** (attempt - 1)))
+                        except Exception:
+                            pass
+                if not upsert_success:
+                    logger.error("ChromaDB upsert failed after %s attempts for article %s: %s", max_retries, next_id, last_exc)
+                    try:
+                        metrics.record_chroma_upsert('failed')
+                    except Exception:
+                        pass
+                    try:
+                        add_span_tag("attempt_result", "failed")
+                        add_span_metadata("exception_message", str(last_exc))
+                    except Exception:
+                        pass
+                    # Optionally, abort and treat this as an ingestion error if configured.
+                    strict_upsert = os.environ.get('CHROMADB_UPSERT_STRICT', '0') == '1'
+                    if strict_upsert:
+                        logger.error("CHROMADB_UPSERT_STRICT enabled; aborting save_article and marking ingestion failed for article %s", next_id)
+                        try:
+                            metrics.record_ingestion('chroma_upsert_failed')
+                        except Exception:
+                            pass
+                        if created_local_db_service:
+                            db_service.close()
+                        return {"error": "chroma_upsert_failed", "processing_time": perf_counter() - start_time}
             else:
                 logger.warning("Skipping embedding add to ChromaDB as no collection is configured")
                 try:
@@ -501,7 +570,7 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
                 except Exception:
                     pass
         except Exception as chroma_error:
-            logger.warning(f"Failed to add embedding to ChromaDB: {chroma_error}")
+            logger.error(f"Failed to add embedding to ChromaDB: {chroma_error}")
             try:
                 metrics.record_embedding("failed")
             except Exception:

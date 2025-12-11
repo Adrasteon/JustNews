@@ -1,5 +1,6 @@
-from datetime import timezone
 #!/usr/bin/env python3
+from __future__ import annotations
+from datetime import timezone
 """NVML dropout watchdog.
 
 This utility uses the nvidia-ml-py (pynvml) bindings to continuously sample GPU
@@ -24,9 +25,6 @@ Log entries are newline-delimited JSON and can be filtered with jq, e.g.:
 
     jq 'select(.event == "nvml_exception")' /var/log/justnews-perf/nvml_watchdog.jsonl
 """
-
-from __future__ import annotations
-
 import argparse
 import collections
 import datetime as _dt
@@ -235,6 +233,21 @@ class NvmlDropoutWatchdog:
         }
         if self.capture_dmesg:
             payload["dmesg_tail"] = self._capture_dmesg()
+        # Try to capture nvidia-smi verbose XML snapshot for debugging
+        try:
+            smi_xml = subprocess.run(["nvidia-smi", "-q", "-x"], capture_output=True, text=True, timeout=5)
+            if smi_xml.returncode == 0 and smi_xml.stdout:
+                smi_path = str(self.log_file) + f".nvidia_smi.{int(time.time())}.xml"
+                try:
+                    with open(smi_path, 'w', encoding='utf-8') as _sf:
+                        _sf.write(smi_xml.stdout)
+                    payload['nvidia_smi_xml'] = smi_path
+                except Exception:
+                    payload['nvidia_smi_xml_error'] = 'failed_to_write'
+            else:
+                payload['nvidia_smi_xml_error'] = 'smi_failed'
+        except Exception:
+            payload['nvidia_smi_xml_error'] = 'smi_exception'
         self._write_log(payload)
 
     def _capture_dmesg(self) -> str | None:

@@ -61,6 +61,7 @@ from .tools import (
     request_story_brief,
     review_evidence,
     validate_editorial_result,
+    dispatch_agent_tool,
 )
 
 # MCP Bus integration
@@ -473,6 +474,28 @@ async def make_editorial_decision_endpoint(request: EditorialDecisionRequest):
         if request.format_output != "json":
             formatted_result = format_editorial_output(result, request.format_output)
             result = {"formatted_output": formatted_result}
+
+        # Dispatch to analyst if requested via next_actions
+        try:
+            next_actions = result.get('next_actions', []) if isinstance(result, dict) else []
+            if isinstance(next_actions, list) and 'route_to_analyst' in next_actions:
+                # Find article_id from metadata if available
+                article_id = None
+                try:
+                    if request.metadata and isinstance(request.metadata, dict):
+                        article_id = request.metadata.get('article_id') or request.metadata.get('id')
+                except Exception:
+                    article_id = None
+
+                if article_id is not None:
+                    # Try to dispatch via MCP Bus, fall back to GPU orchestrator if configured
+                    use_orch = os.environ.get('CHIEF_EDITOR_USE_ORCH', 'false').lower() == 'true'
+                    dispatch_response = dispatch_agent_tool('analyst', 'analyze_article', kwargs={'article_id': article_id}, use_gpu_orchestrator=use_orch)
+                    logger.info('Chief Editor dispatched analyst for article %s: %s', article_id, dispatch_response)
+                else:
+                    logger.info('Chief Editor decision requested route_to_analyst but article_id was missing in metadata; no action taken')
+        except Exception as e:
+            logger.exception('Failed to dispatch to analyst after editorial decision: %s', e)
 
         processing_time = time.time() - start_time
 

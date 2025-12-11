@@ -19,6 +19,7 @@ class StageBMetrics:
     publishing_latency_seconds: Histogram
     parity_check_total: Counter
     parity_repair_actions_total: Counter
+    chroma_upsert_total: Counter
 
     def record_extraction(self, result: str) -> None:
         self.extraction_total.labels(result=result).inc()
@@ -77,6 +78,10 @@ class StageBMetrics:
     def record_parity_repair(self, action: str) -> None:
         """Record repair actions such as 'inserted', 'updated', 'deleted', 'failed', 'dry_run'."""
         self.parity_repair_actions_total.labels(action=action).inc()
+
+    def record_chroma_upsert(self, status: str) -> None:
+        """Record ChromaDB upsert outcomes (success/retry/failed)."""
+        self.chroma_upsert_total.labels(status=status).inc()
 
     def get_parity_repair_count(self, action: str) -> float:
         return self.parity_repair_actions_total.labels(action=action)._value.get()
@@ -140,6 +145,11 @@ _default_metrics = StageBMetrics(
         "justnews_stage_b_parity_repair_actions_total",
         "Count of repair actions performed by parity tools",
         ["action"],
+    ),
+    chroma_upsert_total=Counter(
+        "justnews_stage_b_chroma_upsert_total",
+        "Count of ChromaDB upsert outcomes (success/retry/failed) during Stage B ingestion.",
+        ["status"],
     ),
 )
 _active_metrics: StageBMetrics = _default_metrics
@@ -213,6 +223,12 @@ def _build_metrics(registry: CollectorRegistry | None) -> StageBMetrics:
             "justnews_stage_b_parity_repair_actions_total",
             "Count of repair actions performed by parity tools",
             ["action"],
+            registry=registry,
+        ),
+        chroma_upsert_total=Counter(
+            "justnews_stage_b_chroma_upsert_total",
+            "Count of ChromaDB upsert outcomes (success/retry/failed) during Stage B ingestion.",
+            ["status"],
             registry=registry,
         ),
     )

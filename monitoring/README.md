@@ -10,6 +10,7 @@ This document outlines the design for a comprehensive observability platform tha
 - **Basic Prometheus/Grafana Stack**: Systemd-based deployment patterns for Prometheus, AlertManager, Grafana, Node Exporter, DCGM Exporter. Kubernetes manifests and Docker Compose assets are deprecated and archived under `infrastructure/archives/`; use systemd artifacts under `infrastructure/systemd/` for active deployments.
 - **Metrics Collection**: Basic Prometheus client integration in `common/metrics.py` with HTTP request metrics, system resources, and GPU monitoring
 - **Alert Rules**: Comprehensive alerting rules for service health, performance, and business metrics
+    - New: Stage 1/2 ingest & raw_html alerting rules are defined at `monitoring/alerts/ingest_pipeline_rules.yml` (covers ingest failures, duplicate spikes, raw_html missing spikes and low verification rates). These should be included in your Prometheus/AlertManager provisioning to enforce early detection of Stage 1/2 regressions.
 - **Dashboards**: Three basic Grafana dashboards (system overview, content pipeline, GPU monitoring)
 - **Configuration**: Static IP-based service discovery in Prometheus configuration
 - **✅ Centralized Logging**: **COMPLETED** - Full centralized logging system with structured logging, aggregation, storage, and analysis

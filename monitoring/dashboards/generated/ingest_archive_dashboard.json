@@ -1,0 +1,49 @@
+{
+  "id": null,
+  "uid": "ingest_archive_01",
+  "title": "Ingest & Archive — Raw HTML / Ingest Metrics",
+  "description": "Stage 1–2 ingest pipeline success/failure and raw_html verification counters",
+  "tags": ["stage-b","ingest","archive"],
+  "timezone": "UTC",
+  "refresh": "5m",
+  "time": {"from": "now-6h","to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Ingest success / failure / duplicates (rate)",
+      "targets": [
+        { "expr": "sum(rate(ingest_success_total[5m]))", "legendFormat": "success" },
+        { "expr": "sum(rate(ingest_failure_total[5m]))", "legendFormat": "failure" },
+        { "expr": "sum(rate(ingest_duplicate_total[5m]))", "legendFormat": "duplicate" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "graph",
+      "title": "Ingest latency (seconds)",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(ingest_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p95" },
+        { "expr": "histogram_quantile(0.50, sum(rate(ingest_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p50" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Raw HTML verification / missing / copied count (per 5m)",
+      "targets": [
+        { "expr": "sum(rate(raw_html_verified_total[5m]))", "legendFormat": "verified" },
+        { "expr": "sum(rate(raw_html_missing_total[5m]))", "legendFormat": "missing" },
+        { "expr": "sum(rate(raw_html_copied_total[5m]))", "legendFormat": "copied" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "graph",
+      "title": "Raw HTML check latency (s)",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(raw_html_check_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p95" }
+      ]
+    }
+  ]
+}

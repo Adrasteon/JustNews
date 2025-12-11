@@ -35,6 +35,7 @@ from prometheus_client import Counter, Gauge, Histogram
 
 from common.metrics import JustNewsMetrics
 from database.utils.migrated_database_utils import create_database_service
+from agents.common import gpu_metrics
 
 # Constants
 GPU_ORCHESTRATOR_PORT = int(os.environ.get("GPU_ORCHESTRATOR_PORT", "8008"))
@@ -49,7 +50,8 @@ READINESS = False
 POLICY = {
     "max_memory_per_agent_mb": 4096,
     "allow_fractional_shares": False,
-    "kill_on_oom": False,
+    # Enable kill_on_oom by default as a safety policy to avoid system-wide OOMs under heavy loads
+    "kill_on_oom": True,
 }
 ALLOCATIONS: dict[str, dict[str, Any]] = {}
 _MODEL_PRELOAD_STATE = {
@@ -537,6 +539,10 @@ class GPUOrchestratorEngine:
         """Validate lease request parameters."""
         if req.get("min_memory_mb") is not None and req["min_memory_mb"] < 0:
             return "min_memory_mb must be >= 0"
+        # Enforce a per-agent maximum allocated memory if policy set
+        max_mb = POLICY.get('max_memory_per_agent_mb')
+        if max_mb and req.get('min_memory_mb') and req['min_memory_mb'] > max_mb:
+            return f"min_memory_mb exceeds configured per-agent policy max of {max_mb} MB"
         return None
 
     def _allocate_gpu(self, req: dict[str, Any]) -> tuple[bool, int | None]:
@@ -575,6 +581,11 @@ class GPUOrchestratorEngine:
             "token": token,
             "timestamp": time.time(),
         }
+        # Emit allocation snapshot to aid incident diagnosis
+        try:
+            gpu_metrics.emit_instant(agent='gpu_orchestrator', operation='lease_granted', allocation=allocation)
+        except Exception:
+            pass
         ALLOCATIONS[token] = allocation
         # Persist lease to DB (best-effort) with a default TTL (1h)
         try:
@@ -1112,6 +1123,33 @@ class GPUOrchestratorEngine:
         """Get current policy."""
         return POLICY
 
+    def set_policy(self, new_policy: dict[str, Any], requestor: dict | None = None) -> dict[str, Any]:
+        """Update the running policy values. Only keys present in the `new_policy` dict are updated.
+
+        This function performs minimal validation and audits changes.
+        """
+        allowed = {'max_memory_per_agent_mb', 'allow_fractional_shares', 'kill_on_oom'}
+        changes = {}
+        for k, v in new_policy.items():
+            if k not in allowed:
+                raise ValueError(f'unsupported_policy_key: {k}')
+            # Basic type validation for a few keys
+            if k == 'max_memory_per_agent_mb':
+                if not isinstance(v, int) or v <= 0:
+                    raise ValueError('max_memory_per_agent_mb must be a positive integer')
+            if k == 'allow_fractional_shares':
+                if not isinstance(v, bool):
+                    raise ValueError('allow_fractional_shares must be bool')
+            if k == 'kill_on_oom':
+                if not isinstance(v, bool):
+                    raise ValueError('kill_on_oom must be bool')
+            old = POLICY.get(k)
+            POLICY[k] = v
+            changes[k] = {'old': old, 'new': v}
+
+        self._audit_policy_event('policy_update', {'changes': changes}, requestor=requestor)
+        return {**POLICY}
+
     # Model preloading functionality
     def _project_root(self) -> str:
         """Get project root directory."""
@@ -1522,6 +1560,11 @@ class GPUOrchestratorEngine:
         for _ in range(num_workers):
             p = mp.Process(target=self._spawn_pool_worker, args=(model_id, adapter, hold_seconds, variant), daemon=True)
             p.start()
+            # Emit instant event for this worker for debugging/diagnostic
+            try:
+                gpu_metrics.emit_instant(agent='gpu_orchestrator', operation='pool_worker_started', pool_id=pool_id, model=model_id, adapter=adapter, pid=p.pid)
+            except Exception:
+                pass
             procs.append(p)
             time.sleep(0.2)
 

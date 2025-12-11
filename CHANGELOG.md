@@ -134,7 +134,7 @@ All notable changes to this project will be documented in this file.
 ## [0.9.1] - 2025-10-26 - **STAGE B2 HIGH-PRECISION EXTRACTION PIPELINE**
 
 ### 📰 **Crawler Extraction Cascade**
-- **Trafilatura-First Pipeline**: New `agents/crawler/extraction.py` delivers a Trafilatura-first article extractor with readability-lxml, jusText, and plain sanitiser fallbacks.
+ - **Trafilatura-based fallback pipeline**: New `agents/crawler/extraction.py` provides a Trafilatura-based extractor intended as the robust generic fallback with readability-lxml, jusText, and plain sanitiser fallbacks.
 - **Quality Heuristics**: Word-count and text-to-HTML ratio thresholds gate automatic review flags, with configurable environment overrides.
 - **Raw HTML Preservation**: Every crawl stores forensic HTML artefacts under `archive_storage/raw_html/` (path override via `JUSTNEWS_RAW_HTML_DIR`).
 

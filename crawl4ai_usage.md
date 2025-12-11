@@ -98,7 +98,7 @@
 ## Internal Integration (JustNews)
 - Scheduler submits crawl runs with per-domain overrides from the files in `config/crawl_profiles`; the path is configurable via `--profiles` or the `CRAWL_PROFILE_PATH` environment variable (directory or single YAML file).
 - `agents/crawler_control/crawl_profiles.py` normalises hostnames and expands `{domain}` tokens before handing payloads to the crawler agent.
-- `agents/crawler/crawl4ai_adapter.py` instantiates `BrowserConfig` and `CrawlerRunConfig` based on those payloads, follows scored internal links when requested, and feeds cleaned HTML back into the Trafilatura-first extraction pipeline.
+  - `agents/crawler/crawl4ai_adapter.py` instantiates `BrowserConfig` and `CrawlerRunConfig` based on those payloads, follows scored internal links when requested, and feeds cleaned HTML back into the Trafilatura-based fallback extraction pipeline.
 
 ### Recent integration notes (Oct–Nov 2025)
 

@@ -4,6 +4,7 @@ Main file for the Analyst Agent.
 
 import os
 import time
+import json
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -33,6 +34,7 @@ from .tools import (
     identify_entities,
     log_feedback,
 )
+from agents.common import gpu_metrics
 
 # Import security utilities
 try:
@@ -421,12 +423,18 @@ def log_feedback_endpoint(call: ToolCall):
 @app.post("/analyze_article")
 def analyze_article_endpoint(call: ToolCall):
     """Analyze an article and update its analyzed status."""
+    event_id = None
     try:
         logger.debug("Received analyze_article request with payload: %s", call.kwargs)
 
         # Security validation
         if call.kwargs and 'article_id' in call.kwargs:
             article_id = call.kwargs['article_id']
+            # Start a GPU metrics event so we capture snapshots before/after analysis
+            try:
+                event_id = gpu_metrics.start_event(agent='analyst', operation='analyze_article', article_id=article_id)
+            except Exception:
+                event_id = None
             logger.debug("Processing article_id: %s", article_id)
 
             # Fetch article from database
@@ -450,6 +458,13 @@ def analyze_article_endpoint(call: ToolCall):
             logger.debug("Updating article %s as analyzed.", article_id)
             update_article_status(article_id, analyzed=True)
 
+            # End GPU event and include the analysis result
+            try:
+                if event_id:
+                    gpu_metrics.end_event(event_id, success=True, analysis_result=analysis_result)
+            except Exception:
+                pass
+
             logger.info("Successfully analyzed and updated article %s.", article_id)
             return {"status": "success", "analysis_result": analysis_result}
 
@@ -459,6 +474,12 @@ def analyze_article_endpoint(call: ToolCall):
 
     except Exception as e:
         logger.error("An error occurred in analyze_article: %s", e)
+        # If we started an event, write error info to metrics
+        try:
+            if event_id:
+                gpu_metrics.end_event(event_id, success=False, error=str(e))
+        except Exception:
+            pass
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 def fetch_article_from_db(article_id: int) -> dict:
@@ -486,15 +507,32 @@ def fetch_article_from_db(article_id: int) -> dict:
         logger.error(f"Failed to fetch article {article_id} from database: {e}")
         return {}
 
-def update_article_status(article_id: int, analyzed: bool):
+def update_article_status(article_id: int, analyzed: bool, analysis_result: dict | None = None, analysis_status: str | None = None, last_error: str | None = None):
     """Update the analyzed status of an article in the database."""
     try:
         db_service = create_database_service()
         cursor = db_service.mb_conn.cursor()
-        cursor.execute(
-            "UPDATE articles SET analyzed = %s WHERE id = %s",
-            (analyzed, article_id)
-        )
+        if analysis_result is not None or analysis_status is not None or last_error is not None:
+            # Build a dynamic update to set provided fields along with analyzed flag
+            updates = ["analyzed = %s"]
+            params = [analyzed]
+            if analysis_result is not None:
+                updates.append("analysis_result = %s")
+                params.append(json.dumps(analysis_result))
+            if analysis_status is not None:
+                updates.append("analysis_status = %s")
+                params.append(analysis_status)
+            if last_error is not None:
+                updates.append("analysis_last_error = %s")
+                params.append(last_error)
+            params.append(article_id)
+            sql = f"UPDATE articles SET {', '.join(updates)} WHERE id = %s"
+            cursor.execute(sql, tuple(params))
+        else:
+            cursor.execute(
+                "UPDATE articles SET analyzed = %s WHERE id = %s",
+                (analyzed, article_id)
+            )
         db_service.mb_conn.commit()
         cursor.close()
         db_service.close()

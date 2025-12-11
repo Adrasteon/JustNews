@@ -141,6 +141,138 @@ def test_worker_claims_lease_runs_and_updates_db():
         assert st[0] == 'done'
 
 
+    def test_worker_analysis_job_calls_analyst(monkeypatch):
+        svc = create_sqlite_service()
+        r = InMemoryRedisSimple()
+
+        # add analysis job in DB and stream
+        cur = svc.mb_conn._conn = svc.mb_conn._conn
+        cur.execute("INSERT INTO orchestrator_jobs (job_id, type, payload, status, attempts) VALUES (?,?,?,?,?)", ('analysis-1','analysis', json.dumps({'article_id': 123}), 'pending', 0))
+        svc._conn = svc.mb_conn._conn
+        svc.mb_conn.commit()
+
+        _mid = r.xadd('stream:orchestrator:inference_jobs', {'job_id': 'analysis-1', 'payload': json.dumps({'article_id': 123}), 'type': 'analysis'})
+
+        with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=svc):
+            engine = GPUOrchestratorEngine(bootstrap_external_services=True)
+            engine.redis_client = r
+
+            # make allocate deterministic
+            engine._allocate_gpu = lambda req: (True, 0)
+
+            called = {}
+            def fake_call(agent_name, tool_name, args, kwargs):
+                called['agent'] = agent_name
+                called['tool'] = tool_name
+                called['kwargs'] = kwargs
+                return {'status': 'success', 'data': {}}
+
+            monkeypatch.setattr('agents.gpu_orchestrator.worker.mcp_call_agent_tool', fake_call)
+            # monkeypatch gpu_metrics start/end to verify instrumentation
+            gpu_calls = {}
+            def fake_start_event(**meta):
+                gpu_calls['start'] = meta
+                return 'evt-1'
+            def fake_end_event(eid, **outcome):
+                gpu_calls['end'] = {'id': eid, **outcome}
+                return {}
+            monkeypatch.setattr('agents.gpu_orchestrator.worker.gpu_metrics.start_event', fake_start_event)
+            monkeypatch.setattr('agents.gpu_orchestrator.worker.gpu_metrics.end_event', fake_end_event)
+
+            worker = Worker(engine, redis_client=r, agent_name='test_worker')
+
+            processed = worker.run_once()
+            assert processed is True
+
+            # verify DB updated to done
+            cur = svc.mb_conn._conn.cursor()
+            cur.execute('SELECT status FROM orchestrator_jobs WHERE job_id=?', ('analysis-1',))
+            st = cur.fetchone()
+            assert st is not None
+            assert st[0] == 'done'
+            # and analyze call executed
+            assert called.get('agent') == 'analyst'
+            assert called.get('tool') == 'analyze_article'
+            # ensure GPU instrumentation was invoked
+            assert gpu_calls.get('start') is not None
+            assert gpu_calls.get('end') is not None
+
+
+def test_worker_sampling_thread_emits_instants(monkeypatch):
+    svc = create_sqlite_service()
+    r = InMemoryRedisSimple()
+
+    # add job in DB and stream
+    cur = svc.mb_conn._conn = svc.mb_conn._conn
+    cur.execute("INSERT INTO orchestrator_jobs (job_id, type, payload, status, attempts) VALUES (?,?,?,?,?)", ('sampling-job','inference_jobs', json.dumps({'foo': 'bar'}), 'pending', 0))
+    svc.mb_conn.commit()
+    r.xadd('stream:orchestrator:inference_jobs', {'job_id': 'sampling-job', 'payload': json.dumps({'foo': 'bar'})})
+
+    with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=svc):
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
+        engine.redis_client = r
+        engine._allocate_gpu = lambda req: (True, 0)
+
+        emitted = {'calls': 0}
+        def fake_emit_instant(**event):
+            emitted['calls'] += 1
+            return {}
+
+        monkeypatch.setattr('agents.gpu_orchestrator.worker.gpu_metrics.emit_instant', fake_emit_instant)
+
+        # handler will sleep for a short duration so sampler runs
+        def slow_handler(_payload):
+            import time
+            time.sleep(0.8)
+
+        worker = Worker(engine, redis_client=r, agent_name='test_worker')
+        processed = worker.run_once(handler=slow_handler)
+        assert processed is True
+        # sampler should have emitted at least a couple of times
+        assert emitted['calls'] >= 2
+
+
+def test_call_analyst_pre_post_emit(monkeypatch):
+    svc = create_sqlite_service()
+    r = InMemoryRedisSimple()
+
+    # add analysis job in DB and stream
+    cur = svc.mb_conn._conn = svc.mb_conn._conn
+    cur.execute("INSERT INTO orchestrator_jobs (job_id, type, payload, status, attempts) VALUES (?,?,?,?,?)", ('analysis-2','analysis', json.dumps({'article_id': 222}), 'pending', 0))
+    svc.mb_conn.commit()
+    r.xadd('stream:orchestrator:inference_jobs', {'job_id': 'analysis-2', 'payload': {'article_id': 222}, 'type': 'analysis'})
+
+    with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=svc):
+        engine = GPUOrchestratorEngine(bootstrap_external_services=True)
+        engine.redis_client = r
+        engine._allocate_gpu = lambda req: (True, 0)
+
+        called = {}
+        def fake_call(agent_name, tool_name, args, kwargs):
+            called['agent'] = agent_name
+            called['tool'] = tool_name
+            called['kwargs'] = kwargs
+            import time
+            time.sleep(0.2)
+            return {'status': 'success', 'data': {}}
+
+        monkeypatch.setattr('agents.gpu_orchestrator.worker.mcp_call_agent_tool', fake_call)
+        emitted_ops = []
+        def fake_emit_instant(**event):
+            emitted_ops.append(event.get('operation'))
+            return {}
+        monkeypatch.setattr('agents.gpu_orchestrator.worker.gpu_metrics.emit_instant', fake_emit_instant)
+
+        worker = Worker(engine, redis_client=r, agent_name='test_worker')
+        processed = worker.run_once()
+        assert processed is True
+        # verify the mcp call executed
+        assert called.get('agent') == 'analyst'
+        # We expect the sampler and pre/post call instants - the pre/post may fire very quickly
+        assert 'job_memory_sample' in emitted_ops
+        assert ('call_analyst:pre' in emitted_ops) or ('call_analyst:post' in emitted_ops)
+
+
 def test_worker_handler_failure_marks_failed_and_sets_last_error():
     svc = create_sqlite_service()
     r = InMemoryRedisSimple()

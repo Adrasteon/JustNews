@@ -1,0 +1,58 @@
+name: Canary refresh — nightly smoke-run
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || true
+
+      - name: Run full canary pipeline
+        run: |
+          set -euo pipefail
+          python scripts/dev/run_full_canary.py
+
+      - name: Validate canary metrics
+        run: |
+          python - <<'PY'
+              import json,sys
+              from pathlib import Path
+              f=Path('output/metrics/canary_metrics.json')
+              if not f.exists():
+                print('metrics file missing')
+                sys.exit(2)
+              metrics=json.loads(f.read_text())
+              print('metrics:', metrics)
+              if metrics.get('fetch_success', 0) < 1:
+                print('fetch_success < 1 - failing canary')
+                sys.exit(3)
+              if metrics.get('parse_success', 0) < 1:
+                print('parse_success < 1 - failing canary')
+                sys.exit(4)
+          PY
+
+      - name: Upload canary artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: canary-output
+          path: |
+            output/canary_raw
+            output/canary_parsed
+            output/canary_drafts
+            output/canary_published
+            output/metrics/canary_metrics.json

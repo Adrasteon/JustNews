@@ -11,6 +11,25 @@ last_updated: 2025-11-01
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2025-12-11 - **DEPENDENCY UPGRADES & PYTHON 3.14 COMPATIBILITY**
+
+### 🔧 **Dependency Updates**
+- **✅ Protobuf Upgrade**: Upgraded from 4.25.8 to 6.33.2 to resolve Python 3.14 deprecation warnings
+- **✅ OpenTelemetry Stack**: Updated entire OpenTelemetry ecosystem to 1.39.x series
+  - opentelemetry-api: 1.21.0 → 1.39.1
+  - opentelemetry-sdk: 1.21.0 → 1.39.1
+  - opentelemetry-proto: 1.21.0 → 1.39.1
+  - opentelemetry-exporter-otlp: 1.21.0 → 1.39.1
+  - opentelemetry-instrumentation packages: 0.41b0 → 0.60b1
+- **✅ Google APIs**: Updated googleapis-common-protos from 1.59.1 to 1.72.0
+- **⚠️ Breaking Change**: Removed opentelemetry-exporter-jaeger due to incompatible dependencies with protobuf 6.x
+  - Migration: Use OTLP exporter instead for trace export
+
+### 🧪 **Testing Improvements**
+- Resolved SystemError from deprecated PyType_Spec usage in google._upb._message
+- Test collection now succeeds for all 929 tests (previously had 6 collection errors)
+- Current pass rate: 899/929 tests passing (96.8%)
+
 ## [Unreleased] - 2025-11-06 - **CRAWLER ENHANCEMENTS IMPLEMENTATION COMPLETE**
 
 ### 🕷️ **Advanced Crawler Resilience Features - PRODUCTION READY**

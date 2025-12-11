@@ -12,8 +12,9 @@ runtime deprecation warning on Python 3.12 and later.
 - The installed module `google/rpc/__init__.py` is rewritten to use the
   standard-library `pkgutil.extend_path` helper. This avoids importing
   `pkg_resources` entirely and eliminates the warning during startup.
-- `googleapis-common-protos>=1.59.1` is pinned in `requirements.txt` and
-  `environment.yml` to keep the dependency explicit.
+- `googleapis-common-protos>=1.72.0` is pinned in `requirements.txt` and
+  `environment.yml` to keep the dependency explicit and ensure compatibility
+  with protobuf 6.x and opentelemetry 1.39+.
 - A helper script `scripts/vendor_patches/apply_google_rpc_namespace_patch.py`
   automates rewriting the installed file.
 

@@ -59,18 +59,15 @@ dependencies:
   - tf-playwright-stealth=1.2.0
   - openai=2.6.1
   - django=5.2.8
-  # These packages are installed via pip instead of conda to avoid channel
-  # resolution conflicts (they are not published as first-class conda packages
-  # on the configured channels at the moment).
 
   # Observability and utilities
   - prometheus_client>=0.19
-  - opentelemetry-api>=1.20
-  - opentelemetry-sdk>=1.20
-  - opentelemetry-instrumentation>=0.41b0
-  - opentelemetry-instrumentation-fastapi>=0.41b0
-  - opentelemetry-instrumentation-requests>=0.41b0
-  - protobuf=5.29.3
+  - opentelemetry-api>=1.39
+  - opentelemetry-sdk>=1.39
+  - opentelemetry-instrumentation>=0.60b0
+  - opentelemetry-instrumentation-fastapi>=0.60b0
+  - opentelemetry-instrumentation-requests>=0.60b0
+  - protobuf>=6.33
   - thrift>=0.22
   - wrapt>=1.14
   - psutil>=5.9
@@ -105,12 +102,17 @@ dependencies:
   - mypy>=1.7
   - ruff>=0.1.6
 
+  # These packages are installed via pip instead of conda to avoid channel
+  # resolution conflicts (they are not published as first-class conda packages
+  # on the configured channels at the moment).
+
   - pip:
     - chromadb>=1.3.3
     - crawl4ai>=0.7.4
     - litellm>=1.79.0
-    - googleapis-common-protos>=1.59.1
+    - googleapis-common-protos>=1.72.0
     - websockets==14.0.0
     - patchright==1.55.2
-    - opentelemetry-exporter-otlp==1.21.0
-    - opentelemetry-exporter-jaeger==1.21.0
+    - opentelemetry-exporter-otlp>=1.39.0
+    # Note: opentelemetry-exporter-jaeger removed due to incompatible dependencies
+    # with newer protobuf/googleapis-common-protos versions. Use OTLP exporter instead.

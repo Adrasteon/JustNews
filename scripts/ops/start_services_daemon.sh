@@ -6,6 +6,16 @@
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+# Source canonical agents manifest so the ports/module map is centralized
+# Allow overriding the manifest for test/integration: set MANIFEST_OVERRIDE to a path
+MANIFEST_FILE="${MANIFEST_OVERRIDE:-$REPO_ROOT/infrastructure/agents_manifest.sh}"
+if [ -f "$MANIFEST_FILE" ]; then
+  # shellcheck disable=SC1090
+  . "$MANIFEST_FILE"
+else
+  echo "WARNING: agents manifest not found at $MANIFEST_FILE; falling back to local AGENTS list"
+fi
 LOG_DIR="$SCRIPT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
@@ -15,28 +25,30 @@ CONDA_ENV="${CANONICAL_ENV:-justnews-py312}"
 # Default timeout for healthchecks (seconds)
 HEALTH_TIMEOUT=10
 
-# Agent definitions: name|python_module:app|port
-# Keep this list in sync with agents/*/main.py and the dashboard mapping
-AGENTS=(
-  "mcp_bus|agents.mcp_bus.main:app|8000"
-  "chief_editor|agents.chief_editor.main:app|8001"
-  "scout|agents.scout.main:app|8002"
-  "fact_checker|agents.fact_checker.main:app|8003"
-  "analyst|agents.analyst.main:app|8004"
-  "synthesizer|agents.synthesizer.main:app|8005"
-  "critic|agents.critic.main:app|8006"
-  "memory|agents.memory.main:app|8007"
-  "reasoning|agents.reasoning.main:app|8008"
-  "newsreader|agents.newsreader.main:app|8009"
-  "db_worker|agents.db_worker.worker:app|8010"
-  "dashboard|agents.dashboard.main:app|8011"
-  "analytics|agents.analytics.dashboard:analytics_app|8012"
-  # Balancer removed - responsibilities moved to critic/analytics/gpu_orchestrator
-  # Newly added GPU orchestrator service (was missing previously)
-  "gpu_orchestrator|agents.gpu_orchestrator.main:app|8014"
-  "archive_graphql|agents.archive.archive_graphql:app|8020"
-  "archive_api|agents.archive.archive_api:app|8021"
-)
+if [ -z "${AGENTS_MANIFEST:+x}" ]; then
+  # Fallback hard-coded list when manifest not loaded
+  AGENTS_MANIFEST=(
+    "mcp_bus|agents.mcp_bus.main:app|8000"
+    "chief_editor|agents.chief_editor.main:app|8001"
+    "scout|agents.scout.main:app|8002"
+    "fact_checker|agents.fact_checker.main:app|8003"
+    "analyst|agents.analyst.main:app|8004"
+    "synthesizer|agents.synthesizer.main:app|8005"
+    "critic|agents.critic.main:app|8006"
+    "memory|agents.memory.main:app|8007"
+    "reasoning|agents.reasoning.main:app|8008"
+    "newsreader|agents.newsreader.main:app|8009"
+    "db_worker|agents.db_worker.worker:app|8010"
+    "analytics|agents.analytics.main:app|8011"
+    "archive|agents.archive.main:app|8012"
+    "dashboard|agents.dashboard.main:app|8013"
+    "gpu_orchestrator|agents.gpu_orchestrator.main:app|8014"
+    "crawler|agents.crawler.main:app|8015"
+    "crawler_control|agents.crawler_control.main:app|8016"
+    "archive_graphql|agents.archive.archive_graphql:app|8020"
+    "archive_api|agents.archive.archive_api:app|8021"
+  )
+fi
 
 PIDS=()
 
@@ -176,6 +188,48 @@ export JUSTNEWS_DB_NAME="${JUSTNEWS_DB_NAME:-${MARIADB_DB:-${POSTGRES_DB:-justne
 export JUSTNEWS_DB_USER="${JUSTNEWS_DB_USER:-${MARIADB_USER:-${POSTGRES_USER:-justnews_user}}}"
 export JUSTNEWS_DB_PASSWORD="${JUSTNEWS_DB_PASSWORD:-${MARIADB_PASSWORD:-${POSTGRES_PASSWORD:-password123}}}"
 
+# If the manifest declared a bus and infra entries, derive environment variables
+# so agent defaults (which use os.environ.get()) are resolved consistently.
+if [ -n "${AGENTS_MANIFEST:+x}" ]; then
+  for e in "${AGENTS_MANIFEST[@]}"; do
+    IFS='|' read -r name module port <<< "$e"
+    case "$name" in
+      mcp_bus)
+        export MCP_BUS_URL="http://localhost:$port"
+        ;;
+    esac
+  done
+fi
+
+if [ -n "${INFRA_MANIFEST:+x}" ]; then
+  for e in "${INFRA_MANIFEST[@]}"; do
+    IFS='|' read -r name desc port <<< "$e"
+    case "$name" in
+      mariadb)
+        export MARIADB_PORT="$port"
+        ;;
+      chromadb)
+        export CHROMADB_PORT="$port"
+        ;;
+      crawl4ai)
+        export CRAWL4AI_PORT="$port"
+        ;;
+      grafana)
+        export GRAFANA_PORT="$port"
+        ;;
+      prometheus)
+        export PROMETHEUS_PORT="$port"
+        ;;
+      node_exporter)
+        export NODE_EXPORTER_PORT="$port"
+        ;;
+      dcgm_exporter)
+        export DCGM_EXPORTER_PORT="$port"
+        ;;
+    esac
+  done
+fi
+
 # Per-agent cache envs (only set if not already set)
 export SYNTHESIZER_MODEL_CACHE="${SYNTHESIZER_MODEL_CACHE:-"$DEFAULT_BASE_MODELS_DIR/agents/synthesizer/models"}"
 export MEMORY_MODEL_CACHE="${MEMORY_MODEL_CACHE:-"$DEFAULT_BASE_MODELS_DIR/agents/memory/models"}"
@@ -197,8 +251,9 @@ for d in "$BASE_MODEL_DIR" "$SYNTHESIZER_MODEL_CACHE" "$MEMORY_MODEL_CACHE" "$CH
   fi
 done
 
-echo "Checking ports 8000..8021 for running agents..."
-for port in $(seq 8000 8021); do
+echo "Checking ports defined in manifest for running agents..."
+for entry in "${AGENTS_MANIFEST[@]}"; do
+  IFS='|' read -r name module port <<< "$entry"
   if is_port_in_use "$port"; then
     echo "Port $port is currently in use. Attempting graceful shutdown..."
     if attempt_shutdown_port "$port"; then
@@ -263,9 +318,6 @@ if [ "${AUTO_SEED_SOURCES:-0}" = "1" ]; then
         echo "[startup] WARNING: scripts/news_outlets.py not found – cannot seed sources"
       fi
     fi
-  else
-    echo "[startup] WARNING: psql not installed – cannot auto-seed sources"
-  fi
 fi
 
 start_agent() {
@@ -321,7 +373,7 @@ else
 fi
 
 echo "Starting agents using conda env: $CONDA_ENV"
-for entry in "${AGENTS[@]}"; do
+for entry in "${AGENTS_MANIFEST[@]}"; do
   IFS='|' read -r name module port <<< "$entry"
   start_agent "$name" "$module" "$port"
 done
@@ -331,7 +383,7 @@ echo "Waiting 3 seconds for services to initialize..."
 sleep 3
 
 ALL_OK=0
-for entry in "${AGENTS[@]}"; do
+for entry in "${AGENTS_MANIFEST[@]}"; do
   IFS='|' read -r name module port <<< "$entry"
   if ! wait_for_health "$name" "$port"; then
     ALL_OK=1

@@ -10,7 +10,8 @@ User=justnews
 Group=justnews
 Environment=DCGM_EXPORTER_BIN=/usr/local/bin/dcgm-exporter
 Environment=DCGM_EXPORTER_LISTEN_ADDRESS=0.0.0.0
-Environment=DCGM_EXPORTER_PORT=9400
+EnvironmentFile=-/etc/justnews/global.env
+Environment=DCGM_EXPORTER_PORT=${DCGM_EXPORTER_PORT}
 Environment=DCGM_EXPORTER_METRICS_FILE=/etc/justnews/monitoring/dcgm/metrics_default.csv
 Environment=DCGM_EXPORTER_LOG_DIR=/var/log/justnews/dcgm-exporter
 EnvironmentFile=-/etc/justnews/dcgm-exporter.env

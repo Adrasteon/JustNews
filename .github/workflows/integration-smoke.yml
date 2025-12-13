@@ -1,0 +1,51 @@
+name: Integration Smoke Test
+
+on:
+  push:
+    branches: [main, full-live-run]
+  pull_request:
+    branches: [main]
+
+jobs:
+  integration-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/ops/integration_smoke_test.sh || true
+
+      - name: Run integration smoke test
+        run: |
+          # The integration harness uses a temporary conda shim.
+          ./scripts/ops/integration_smoke_test.sh
+        timeout-minutes: 5
+  docs-port-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run docs port scan (dry-run)
+        run: |
+          chmod +x scripts/ops/replace_ports_in_docs.sh
+          scripts/ops/replace_ports_in_docs.sh
+        timeout-minutes: 2
+  manifest-gen-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run manifest -> global.env generator to temp file
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/tmp
+          ./infrastructure/systemd/generate_global_env_from_manifest.sh $GITHUB_WORKSPACE/tmp/test_global.env --no-backup
+          grep -q 'MCP_BUS_URL' $GITHUB_WORKSPACE/tmp/test_global.env
+          grep -q 'GRAFANA_PORT' $GITHUB_WORKSPACE/tmp/test_global.env
+        timeout-minutes: 2

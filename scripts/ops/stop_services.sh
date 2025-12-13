@@ -1,11 +1,62 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+MANIFEST_FILE="${MANIFEST_OVERRIDE:-$REPO_ROOT/infrastructure/agents_manifest.sh}"
+if [ -f "$MANIFEST_FILE" ]; then
+  # shellcheck disable=SC1090
+  . "$MANIFEST_FILE"
+else
+  echo "WARNING: could not find agents manifest at $MANIFEST_FILE; falling back to static AGENT_PORTS"
+fi
 LOG_DIR="$SCRIPT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
-# Ports and agent mapping must match start_services_daemon.sh
-AGENT_PORTS=(8000 8001 8002 8003 8004 8005 8006 8007 8008 8009 8010 8011 8012 8013 8014)
+AGENT_PORTS=()
+for e in "${AGENTS_MANIFEST[@]:-}"; do
+  IFS='|' read -r _name _module port <<< "$e"
+  AGENT_PORTS+=("$port")
+done
+
+# Export helpful env vars derived from manifests to be consistent with start script
+if [ -n "${AGENTS_MANIFEST:+x}" ]; then
+  for e in "${AGENTS_MANIFEST[@]}"; do
+    IFS='|' read -r name module port <<< "$e"
+    case "$name" in
+      mcp_bus)
+        export MCP_BUS_URL="http://localhost:$port"
+        ;;
+    esac
+  done
+fi
+if [ -n "${INFRA_MANIFEST:+x}" ]; then
+  for e in "${INFRA_MANIFEST[@]}"; do
+    IFS='|' read -r name desc port <<< "$e"
+    case "$name" in
+      mariadb)
+        export MARIADB_PORT="$port"
+        ;;
+      chromadb)
+        export CHROMADB_PORT="$port"
+        ;;
+      crawl4ai)
+        export CRAWL4AI_PORT="$port"
+        ;;
+      grafana)
+        export GRAFANA_PORT="$port"
+        ;;
+      prometheus)
+        export PROMETHEUS_PORT="$port"
+        ;;
+      node_exporter)
+        export NODE_EXPORTER_PORT="$port"
+        ;;
+      dcgm_exporter)
+        export DCGM_EXPORTER_PORT="$port"
+        ;;
+    esac
+  done
+fi
 
 is_port_in_use() {
   local port="$1"

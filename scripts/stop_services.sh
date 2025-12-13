@@ -7,9 +7,11 @@ log() { printf "%s [%s] %s\n" "$(timestamp)" "$1" "$2"; }
 info() { log INFO "$*"; }
 warn() { log WARN "$*"; }
 
-if [ -f "$SCRIPT_DIR/deploy/agents_manifest.sh" ]; then
+REPO_ROOT="${SCRIPT_DIR}"
+MANIFEST_FILE="$REPO_ROOT/infrastructure/agents_manifest.sh"
+if [ -f "$MANIFEST_FILE" ]; then
   # shellcheck disable=SC1090
-  . "$SCRIPT_DIR/deploy/agents_manifest.sh"
+  . "$MANIFEST_FILE"
 else
   info "No manifest found — nothing to stop"
   exit 0

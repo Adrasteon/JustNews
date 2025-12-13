@@ -8,11 +8,11 @@ repo_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(repo_root))
 
 # Set correct MariaDB environment variables
-os.environ['MARIADB_HOST'] = '127.0.0.1'
-os.environ['MARIADB_USER'] = 'justnews'
-os.environ['MARIADB_PASSWORD'] = 'migration_password_2024'
-os.environ['MARIADB_DB'] = 'justnews'
-os.environ['MARIADB_PORT'] = '3306'
+os.environ.setdefault('MARIADB_HOST', '127.0.0.1')
+os.environ.setdefault('MARIADB_USER', 'justnews')
+os.environ.setdefault('MARIADB_PASSWORD', 'migration_password_2024')
+os.environ.setdefault('MARIADB_DB', 'justnews')
+os.environ.setdefault('MARIADB_PORT', '3306')
 
 try:
     from database.utils.migrated_database_utils import create_database_service

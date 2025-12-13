@@ -44,7 +44,10 @@ def backup_chromadb_data(backup_dir: Path):
     """Backup ChromaDB articles collection"""
     print("📦 Backing up ChromaDB articles collection...")
 
-    client = chromadb.HttpClient(host='localhost', port=3307)
+    import os
+    chroma_host = os.environ.get("CHROMADB_HOST", "localhost")
+    chroma_port = int(os.environ.get("CHROMADB_PORT", "3307"))
+    client = chromadb.HttpClient(host=chroma_host, port=chroma_port)
     collection = client.get_collection('articles')
 
     # Get all data

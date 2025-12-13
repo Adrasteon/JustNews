@@ -17,14 +17,42 @@ AGENTS_MANIFEST=(
   "reasoning|agents.reasoning.main:app|8008"
   "newsreader|agents.newsreader.main:app|8009"
   "db_worker|agents.db_worker.worker:app|8010"
-  "dashboard|agents.dashboard.main:app|8011"
-  "analytics|agents.analytics.dashboard:analytics_app|8012"
-  # balancer removed - keep this entry deleted to avoid starting the agent
+  "analytics|agents.analytics.main:app|8011"
+  "archive|agents.archive.main:app|8012"
+  "dashboard|agents.dashboard.main:app|8013"
   "gpu_orchestrator|agents.gpu_orchestrator.main:app|8014"
+  "crawler|agents.crawler.main:app|8015"
+  "crawler_control|agents.crawler_control.main:app|8016"
   "archive_graphql|agents.archive.archive_graphql:app|8020"
   "archive_api|agents.archive.archive_api:app|8021"
-  "crawler|agents.crawler.main:app|8022"
-  "crawler_control|agents.crawler_control.main:app|8016"
+
 )
 
 export AGENTS_MANIFEST
+
+## Infrastructure ports (single source of truth for infra services)
+# Format per-entry: name|service_description|port
+# This is intentionally an independent list so tooling can read infra services
+# from the same place as the agents, and scripts can source this manifest for
+# extra checks without impacting agent functionality.
+INFRA_MANIFEST=(
+  "grafana|Grafana UI|3000"
+  "prometheus|Prometheus|9090"
+  "node_exporter|Node Exporter|9100"
+  "dcgm_exporter|DCGM Exporter|9400"
+  "mariadb|MariaDB|3306"
+  "chromadb|ChromaDB|3307"
+  "crawl4ai|Crawl4AI|3308"
+)
+
+# Also export single variables for convenience in scripts that prefer env vars
+GRAFANA_PORT=3000
+PROMETHEUS_PORT=9090
+NODE_EXPORTER_PORT=9100
+DCGM_EXPORTER_PORT=9400
+MARIADB_PORT=3306
+CHROMADB_PORT=3307
+CRAWL4AI_PORT=3308
+
+export INFRA_MANIFEST
+export GRAFANA_PORT PROMETHEUS_PORT NODE_EXPORTER_PORT DCGM_EXPORTER_PORT MARIADB_PORT CHROMADB_PORT CRAWL4AI_PORT

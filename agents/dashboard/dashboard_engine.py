@@ -33,13 +33,24 @@ def _load_config() -> dict:
         try:
             import json
             with open(config_path) as f:
-                return json.load(f)
+                data = json.load(f)
+                # Replace environment-style placeholders in config values
+                def expand_env_in_obj(obj):
+                    if isinstance(obj, str):
+                        return os.path.expandvars(obj)
+                    if isinstance(obj, dict):
+                        return {k: expand_env_in_obj(v) for k, v in obj.items()}
+                    if isinstance(obj, list):
+                        return [expand_env_in_obj(x) for x in obj]
+                    return obj
+
+                return expand_env_in_obj(data)
         except Exception as e:
             logger.warning(f"Failed to load config: {e}")
     return {}
 
 _config = _load_config()
-MCP_BUS_URL = _config.get("mcp_bus_url", "http://localhost:8000")
+MCP_BUS_URL = _config.get("mcp_bus", {}).get("url", os.environ.get("MCP_BUS_URL", "http://localhost:8000"))
 
 
 class ToolCall(BaseModel):
@@ -209,16 +220,36 @@ class EnhancedGPUMonitor:
                 system_status = self.gpu_manager.get_system_status()
                 allocations = system_status.get('active_allocations', 0)
 
-                # Get per-agent allocation details
-                agent_ports = {
-                    'scout': 8002,
-                    'fact_checker': 8003,
-                    'analyst': 8004,
-                    'synthesizer': 8005,
-                    'critic': 8006,
-                    'memory': 8007,
-                    'newsreader': 8009
-                }
+                # Derive agent ports from MCP Bus when available so we follow
+                # the canonical manifest/registration rather than hard-coded values.
+                agent_ports = {}
+                try:
+                    resp = requests.get(f"{MCP_BUS_URL}/agents", timeout=2)
+                    resp.raise_for_status()
+                    agents_map = resp.json()
+                    from urllib.parse import urlparse
+                    gpu_agent_names = {'scout', 'fact_checker', 'analyst', 'synthesizer', 'critic', 'memory', 'newsreader'}
+                    for name in gpu_agent_names:
+                        addr = agents_map.get(name)
+                        if not addr:
+                            continue
+                        try:
+                            p = urlparse(addr).port
+                            if p:
+                                agent_ports[name] = p
+                        except Exception:
+                            continue
+                except Exception:
+                    # Fallback to hard-coded ports when bus is unreachable
+                    agent_ports = {
+                        'scout': 8002,
+                        'fact_checker': 8003,
+                        'analyst': 8004,
+                        'synthesizer': 8005,
+                        'critic': 8006,
+                        'memory': 8007,
+                        'newsreader': 8009
+                    }
 
                 agent_usage = {}
                 total_memory_used = 0
@@ -433,8 +464,8 @@ class DashboardEngine:
     def get_gpu_config(self) -> dict:
         """Get current GPU configuration from the GPU manager."""
         try:
-            # Try to get config from GPU manager
-            response = requests.get("http://localhost:8000/gpu/config", timeout=5)
+            # Try to get config from GPU manager via MCP Bus
+            response = requests.get(f"{MCP_BUS_URL}/gpu/config", timeout=5)
             if response.status_code == 200:
                 return response.json()
             else:
@@ -457,7 +488,8 @@ class DashboardEngine:
         """Update GPU configuration."""
         try:
             # Try to update via GPU manager
-            response = requests.post("http://localhost:8000/gpu/config", json=new_config, timeout=5)
+            # Try to update via GPU manager via MCP Bus
+            response = requests.post(f"{MCP_BUS_URL}/gpu/config", json=new_config, timeout=5)
             if response.status_code == 200:
                 return response.json()
             else:
@@ -909,7 +941,7 @@ class DashboardEngine:
     def _fetch_orchestrator_policy(self) -> dict:
         """Fetch policy from orchestrator (fast timeout)."""
         try:
-            response = requests.get("http://localhost:8000/policy", timeout=(1.5, 3.0))
+            response = requests.get(f"{MCP_BUS_URL}/policy", timeout=(1.5, 3.0))
             if response.status_code == 200:
                 return response.json()
             return {"safe_mode_read_only": True, "error": f"unexpected_status:{response.status_code}"}

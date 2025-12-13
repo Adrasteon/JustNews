@@ -12,9 +12,9 @@ EnvironmentFile=/opt/justnews/global.env
 WorkingDirectory=$SERVICE_DIR
 Environment=DEPLOY_ENV=production
 Environment=LOG_LEVEL=INFO
-Environment=MARIADB_HOST=localhost
-Environment=MARIADB_PORT=3306
-Environment=MARIADB_DB=justnews
+Environment=MARIADB_HOST=${MARIADB_HOST}
+Environment=MARIADB_PORT=${MARIADB_PORT}
+Environment=MARIADB_DB=${MARIADB_DB}
 Environment=MARIADB_USER=justnews
 Environment=MARIADB_PASSWORD_FILE=/etc/justnews/secrets/mariadb_password
 Environment=REDIS_HOST=localhost

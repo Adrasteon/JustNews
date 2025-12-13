@@ -89,6 +89,20 @@ parse_args() {
   done
 }
 
+maybe_generate_global_env_from_manifest() {
+  if [[ "${WRITE_GLOBAL_ENV_FROM_MANIFEST:-0}" == "1" ]]; then
+    script="$REPO_ROOT/infrastructure/systemd/generate_global_env_from_manifest.sh"
+    if [[ -x "$script" ]]; then
+      log_info "Generating global.env from manifest (WRITE_GLOBAL_ENV_FROM_MANIFEST=1)"
+      "$script" "/etc/justnews/global.env"
+      log_info "global.env generated from manifest"
+    else
+      log_error "generate_global_env_from_manifest script not found or not executable at $script"
+      exit 1
+    fi
+  fi
+}
+
 require_root() {
   if [[ $EUID -ne 0 ]]; then
     # Allow non-root for dry-run checks to enable operator validation without
@@ -737,6 +751,7 @@ main() {
 
   require_command mountpoint
   require_command mount
+  maybe_generate_global_env_from_manifest
   load_environment
   # Ensure a PYTHON_BIN is present in the system global env so downstream
   # scripts, systemd and service templates consistently have a runtime set.

@@ -18,6 +18,7 @@ import json
 import multiprocessing as mp
 import os
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -147,6 +148,19 @@ class GPUOrchestratorEngine:
             t.start()
         except Exception:
             self.logger.debug('Failed to start leader election loop')
+
+        # VLLM server management
+        self._vllm_process = None
+        self._vllm_enabled = os.environ.get('VLLM_ENABLED', 'false').lower() == 'true'
+        if self._vllm_enabled and not SAFE_MODE:
+            try:
+                self._start_vllm_server()
+            except Exception as e:
+                self.logger.error(f'Failed to start VLLM server: {e}')
+        
+        # Register cleanup on exit
+        import atexit
+        atexit.register(self.cleanup)
 
     def _setup_logging(self):
         """Set up logging for the GPU orchestrator."""
@@ -288,6 +302,194 @@ class GPUOrchestratorEngine:
     def get_nvml_handle(self, index: int) -> Any | None:
         """Get NVML handle for a GPU index."""
         return _NVML_HANDLE_CACHE.get(index)
+
+    def _start_vllm_server(self) -> None:
+        """Start VLLM inference server for Mistral-7B with LoRA adapter support."""
+        if self._vllm_process is not None:
+            self.logger.warning('VLLM server already running')
+            return
+
+        # Check for existing VLLM processes
+        try:
+            result = subprocess.run(
+                ['pgrep', '-f', 'vllm.entrypoints.openai.api_server'],
+                capture_output=True,
+                text=True
+            )
+            if result.returncode == 0:
+                existing_pids = result.stdout.strip().split('\n')
+                self.logger.warning(f'Found existing VLLM processes: {existing_pids}')
+                self.logger.info('Killing existing VLLM processes before starting new one')
+                for pid in existing_pids:
+                    try:
+                        subprocess.run(['kill', '-9', pid], check=False)
+                        self.logger.info(f'Killed VLLM process {pid}')
+                    except Exception as e:
+                        self.logger.warning(f'Failed to kill process {pid}: {e}')
+                # Wait for processes to die
+                time.sleep(3)
+        except Exception as e:
+            self.logger.warning(f'Error checking for existing VLLM processes: {e}')
+
+        vllm_model = os.environ.get('VLLM_MODEL', 'mistralai/Mistral-7B-Instruct-v0.3')
+        vllm_port = int(os.environ.get('VLLM_PORT', '7060'))
+        vllm_host = os.environ.get('VLLM_HOST', '127.0.0.1')
+        vllm_max_len = int(os.environ.get('VLLM_MAX_MODEL_LEN', '4096'))
+        vllm_gpu_util = float(os.environ.get('VLLM_GPU_MEMORY_UTIL', '0.75'))
+        vllm_enable_lora = os.environ.get('VLLM_ENABLE_LORA', 'true').lower() == 'true'
+
+        # Build LoRA module list from MODEL_STORE_ROOT
+        lora_modules = []
+        if vllm_enable_lora:
+            model_store = Path(os.environ.get('MODEL_STORE_ROOT', '/home/adra/JustNews/model_store'))
+            adapter_dirs = [
+                'journalist/adapters/mistral_journalist_v1',
+                'chief_editor/adapters/mistral_chief_editor_v1',
+                'reasoning/adapters/mistral_reasoning_v1',
+                'analyst/adapters/mistral_analyst_v1',
+                'synthesizer/adapters/mistral_synth_v1',
+                'fact_checker/adapters/mistral_fact_checker_v1',
+                'critic/adapters/mistral_critic_v1',
+            ]
+            for adapter_dir in adapter_dirs:
+                adapter_path = model_store / adapter_dir
+                if adapter_path.exists():
+                    adapter_name = adapter_dir.split('/')[-1]  # e.g., mistral_journalist_v1
+                    lora_modules.append(f"{adapter_name}={adapter_path}")
+
+        # Use the same Python that's running this service
+        python_bin = os.environ.get('PYTHON_BIN', sys.executable)
+        
+        cmd = [
+            python_bin, '-m', 'vllm.entrypoints.openai.api_server',
+            '--model', vllm_model,
+            '--host', vllm_host,
+            '--port', str(vllm_port),
+            '--max-model-len', str(vllm_max_len),
+            '--gpu-memory-utilization', str(vllm_gpu_util),
+            '--disable-log-requests',
+            '--trust-remote-code',
+        ]
+
+        if vllm_enable_lora and lora_modules:
+            cmd.extend(['--enable-lora'])
+            for lora_module in lora_modules:
+                cmd.extend(['--lora-modules', lora_module])
+
+        self.logger.info(f'Starting VLLM server: {vllm_model} on {vllm_host}:{vllm_port}')
+        self.logger.info(f'LoRA adapters: {len(lora_modules)} modules')
+
+        # Start VLLM as subprocess
+        log_dir = Path(os.environ.get('JUSTNEWS_ROOT', '/home/adra/JustNews')) / 'run'
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_file = log_dir / 'vllm_mistral_7b.log'
+
+        with open(log_file, 'w') as f:
+            self._vllm_process = subprocess.Popen(
+                cmd,
+                stdout=f,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+
+        self.logger.info(f'VLLM server started with PID {self._vllm_process.pid}, log: {log_file}')
+
+        # Wait a bit for server to start
+        time.sleep(5)
+
+        # Check if process is still running
+        if self._vllm_process.poll() is not None:
+            raise RuntimeError(f'VLLM server failed to start, check {log_file}')
+
+    def _stop_vllm_server(self) -> None:
+        """Stop VLLM inference server."""
+        if self._vllm_process is None:
+            self.logger.info('No VLLM process tracked, checking for orphaned processes')
+            # Still check for orphaned VLLM processes
+            try:
+                result = subprocess.run(
+                    ['pgrep', '-f', 'vllm.entrypoints.openai.api_server'],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    orphaned_pids = result.stdout.strip().split('\n')
+                    self.logger.warning(f'Found orphaned VLLM processes: {orphaned_pids}')
+                    for pid in orphaned_pids:
+                        try:
+                            subprocess.run(['kill', '-15', pid], check=False)
+                            self.logger.info(f'Sent SIGTERM to orphaned VLLM process {pid}')
+                        except Exception as e:
+                            self.logger.warning(f'Failed to kill orphaned process {pid}: {e}')
+                    time.sleep(2)
+                    # Force kill if still alive
+                    result = subprocess.run(
+                        ['pgrep', '-f', 'vllm.entrypoints.openai.api_server'],
+                        capture_output=True,
+                        text=True
+                    )
+                    if result.returncode == 0:
+                        remaining_pids = result.stdout.strip().split('\n')
+                        for pid in remaining_pids:
+                            try:
+                                subprocess.run(['kill', '-9', pid], check=False)
+                                self.logger.info(f'Force killed VLLM process {pid}')
+                            except Exception as e:
+                                self.logger.warning(f'Failed to force kill process {pid}: {e}')
+            except Exception as e:
+                self.logger.warning(f'Error checking for orphaned VLLM processes: {e}')
+            return
+
+        self.logger.info(f'Stopping VLLM server (PID {self._vllm_process.pid})')
+        try:
+            self._vllm_process.terminate()
+            self._vllm_process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            self.logger.warning('VLLM server did not terminate, killing')
+            self._vllm_process.kill()
+            self._vllm_process.wait()
+        except Exception as e:
+            self.logger.error(f'Error stopping VLLM server: {e}')
+        finally:
+            self._vllm_process = None
+
+        self.logger.info('VLLM server stopped')
+
+    def cleanup(self) -> None:
+        """Cleanup method called on shutdown to ensure VLLM is stopped."""
+        if self._vllm_enabled:
+            try:
+                self.logger.info('GPU Orchestrator cleanup: stopping VLLM server')
+                self._stop_vllm_server()
+            except Exception as e:
+                self.logger.error(f'Error during cleanup: {e}')
+
+    def get_vllm_status(self) -> dict[str, Any]:
+        """Get VLLM server status."""
+        if not self._vllm_enabled:
+            return {'enabled': False, 'running': False}
+
+        running = self._vllm_process is not None and self._vllm_process.poll() is None
+        pid = self._vllm_process.pid if self._vllm_process else None
+
+        # Try to check endpoint health
+        vllm_url = os.environ.get('VLLM_BASE_URL', 'http://127.0.0.1:7060/v1')
+        healthy = False
+        if running:
+            try:
+                import requests
+                response = requests.get(f"{vllm_url.replace('/v1', '')}/health", timeout=2)
+                healthy = response.status_code == 200
+            except Exception:
+                pass
+
+        return {
+            'enabled': self._vllm_enabled,
+            'running': running,
+            'healthy': healthy,
+            'pid': pid,
+            'endpoint': vllm_url,
+        }
 
     def _run_nvidia_smi(self) -> str | None:
         """Run nvidia-smi and return CSV output."""
@@ -1089,6 +1291,33 @@ class GPUOrchestratorEngine:
     def _validate_and_load_model(self, agent: str, spec: dict[str, Any], strict: bool) -> tuple[bool, str | None]:
         """Validate and load a model entry for an agent."""
         try:
+            # If VLLM is enabled and this is an adapter-based model, just verify adapter exists
+            if self._vllm_enabled and spec.get("base_ref"):
+                adapter_name = spec.get("adapter_name")
+                adapter_path_str = spec.get("adapter_model_store_path")
+                
+                if adapter_path_str:
+                    model_store = Path(os.environ.get('MODEL_STORE_ROOT', '/home/adra/JustNews/model_store'))
+                    adapter_path = model_store / adapter_path_str
+                    
+                    if adapter_path.exists():
+                        self.logger.info(
+                            "VLLM mode: Verified adapter exists for agent %s (adapter=%s)",
+                            agent,
+                            adapter_name,
+                        )
+                        return True, None
+                    else:
+                        if strict:
+                            raise FileNotFoundError(f"Adapter not found at {adapter_path}")
+                        else:
+                            self.logger.warning(f"Adapter not found at {adapter_path}, continuing in non-strict mode")
+                            return True, None
+                
+                # Fallback: just mark as valid since VLLM will handle it
+                self.logger.info(f"VLLM mode: Skipping full model load for agent {agent}")
+                return True, None
+
             if spec.get("base_ref"):
                 from agents.common.model_loader import load_transformers_with_adapter
 

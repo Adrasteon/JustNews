@@ -478,6 +478,12 @@ def models_status_endpoint():
     return models_status()
 
 
+@app.get("/vllm/status")
+def vllm_status_endpoint():
+    """Return VLLM server status."""
+    return engine.get_vllm_status()
+
+
 @app.post('/jobs/submit')
 def jobs_submit(request: Request, payload: dict):
     """Submit a job to the orchestrator: persists and optionally pushes to job stream."""

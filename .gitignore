@@ -28,6 +28,7 @@ agents/hitl_service/*.db
 .vscode/
 .env
 global.env
+secrets.env
 model_store
 
 # Ignore any local model caches in agents/ directories
@@ -97,3 +98,4 @@ model_store/**
 # Training artifacts
 output/
 
+global.env

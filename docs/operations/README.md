@@ -1,5 +1,16 @@
 # JustNews Operations Guide
 
+## Quick Links
+
+**Getting Started**:
+- [Setup Guide](./SETUP_GUIDE.md) — Complete end-to-end installation (Python, Vault, MariaDB, ChromaDB, systemd)
+- [Environment Configuration](./ENVIRONMENT_CONFIG.md) — Global configuration, environment variables, secrets management
+- [Troubleshooting](./TROUBLESHOOTING.md) — Diagnostics and recovery procedures
+
+**Infrastructure**:
+- [Vault Setup & Administration](./VAULT_SETUP.md) — Secrets management, AppRole, key rotation
+- [Systemd Operations](../infrastructure/systemd/README.md) — Service management and deployment
+
 ## Deployment Procedures
 
 This guide covers production deployment, scaling, and operational procedures for JustNews.

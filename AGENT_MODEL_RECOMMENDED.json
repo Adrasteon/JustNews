@@ -1,42 +1,66 @@
 {
-  "scout": {
-    "default": "sentence-transformers/all-MiniLM-L6-v2",
-    "fallbacks": ["sentence-transformers/all-mpnet-base-v2"],
-    "notes": "Prefer MiniLM for real-time; use mpnet in batch/recall paths"
+    "_comment": "Set VLLM_ENABLED=true to use Qwen2.5-32B-Instruct-AWQ (pre-quantized) via vLLM; otherwise defaults to Mistral-7B+adapters",
+  "synthesizer": {
+    "default": "mistralai/Mistral-7B-Instruct-v0.3",
+    "vllm_default": "Qwen/Qwen2.5-32B-Instruct",
+    "fallbacks": [],
+    "notes": "Uses ModelStore adapter mistral_synth_v1 (or qwen2_synth_v1 if VLLM_ENABLED=true)"
+  },
+  "re_ranker": {
+    "default": "mistralai/Mistral-7B-Instruct-v0.3",
+    "vllm_default": "Qwen/Qwen2-32B-Instruct-AWQ",
+    "fallbacks": [],
+    "notes": "Uses ModelStore adapter mistral_re_ranker_v1 (or qwen2_re_ranker_v1 if VLLM_ENABLED=true)"
   },
   "fact_checker": {
-    "default": "sentence-transformers/all-mpnet-base-v2",
-    "fallbacks": ["sentence-transformers/all-MiniLM-L6-v2", "google/flan-t5-small"],
-    "notes": "Use mpnet for retrieval; use flan-t5-small (quantized) for evidence summarization and claim checking"
+    "default": "mistralai/Mistral-7B-Instruct-v0.3",
+    "vllm_default": "Qwen/Qwen2-32B-Instruct-AWQ",
+    "fallbacks": [],
+    "notes": "Uses ModelStore adapter mistral_fact_checker_v1 (or qwen2_fact_checker_v1 if VLLM_ENABLED=true)"
+  },
+  "critic": {
+    "default": "mistralai/Mistral-7B-Instruct-v0.3",
+    "vllm_default": "Qwen/Qwen2-32B-Instruct-AWQ",
+    "fallbacks": [],
+    "notes": "Uses ModelStore adapter mistral_critic_v1 (or qwen2_critic_v1 if VLLM_ENABLED=true)"
+  },
+  "journalist": {
+    "default": "mistralai/Mistral-7B-Instruct-v0.3",
+    "vllm_default": "Qwen/Qwen2-32B-Instruct-AWQ",
+    "fallbacks": [],
+    "notes": "Uses ModelStore adapter mistral_journalist_v1 (or qwen2_journalist_v1 if VLLM_ENABLED=true)"
+  },
+  "chief_editor": {
+    "default": "mistralai/Mistral-7B-Instruct-v0.3",
+    "vllm_default": "Qwen/Qwen2-32B-Instruct-AWQ",
+    "fallbacks": [],
+    "notes": "Uses ModelStore adapter mistral_chief_editor_v1 (or qwen2_chief_editor_v1 if VLLM_ENABLED=true)"
+  },
+  "reasoning": {
+    "default": "mistralai/Mistral-7B-Instruct-v0.3",
+    "vllm_default": "Qwen/Qwen2-32B-Instruct-AWQ",
+    "fallbacks": [],
+    "notes": "Uses ModelStore adapter mistral_reasoning_v1 (or qwen2_reasoning_v1 if VLLM_ENABLED=true)"
+  },
+  "analyst": {
+    "default": "mistralai/Mistral-7B-Instruct-v0.3",
+    "vllm_default": "Qwen/Qwen2-32B-Instruct-AWQ",
+    "fallbacks": [],
+    "notes": "Uses ModelStore adapter mistral_analyst_v1 (or qwen2_analyst_v1 if VLLM_ENABLED=true)"
+  },
+  "scout": {
+    "default": "sentence-transformers/all-MiniLM-L6-v2",
+    "fallbacks": [],
+    "notes": "Embeddings-only agent; unchanged"
   },
   "memory": {
     "default": "sentence-transformers/all-MiniLM-L6-v2",
     "fallbacks": [],
-    "notes": "Keep small for storage and embedding compute" 
-  },
-  "synthesizer": {
-    "default": "google/flan-t5-small",
-    "fallbacks": ["distilgpt2", "google/flan-t5-base"],
-    "notes": "Default small T5 for live; base/large only with quantization and orchestrator lease"
-  },
-  "critic": {
-    "default": "sentence-transformers/all-distilroberta-v1",
-    "fallbacks": ["msmarco-distilroberta-base-v2"],
-    "notes": "DistilRoBERTa for fast quality checks"
-  },
-  "analyst": {
-    "default": "cardiffnlp/twitter-roberta-base-sentiment-latest",
-    "fallbacks": ["distilroberta-base", "unitary/toxic-bert"],
-    "notes": "Prefer distil or quantized sentiment model for GPU memory constraints"
+    "notes": "Embeddings-only agent; unchanged"
   },
   "newsreader": {
     "default": "sentence-transformers/all-MiniLM-L6-v2",
     "fallbacks": [],
-    "notes": "Lightweight embedding model for recall and quick analysis"
-  },
-  "chief_editor": {
-    "default": "sentence-transformers/all-distilroberta-v1",
-    "fallbacks": ["distilbert-base-uncased"],
-    "notes": "Smallish model for editorial judgement tasks"
+    "notes": "Embeddings/multimodal agent; unchanged"
   }
 }

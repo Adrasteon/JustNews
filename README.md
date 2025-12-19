@@ -35,14 +35,19 @@ mamba install -c conda-forge --file requirements.txt
 conda install -c conda-forge --file requirements.txt
 ```
 
-4. Set up the database:
+4. Initialize the database:
 ```bash
-make setup-db
+# Activate environment first
+conda activate ${CANONICAL_ENV:-justnews-py312}
+
+# Initialize DB schema
+./scripts/run_with_env.sh python scripts/init_database.py
 ```
 
 5. Start the system:
 ```bash
-make start
+# Must run as root for systemd service management
+sudo infrastructure/systemd/canonical_system_startup.sh
 ```
 
 ## 📋 System Architecture
@@ -192,7 +197,13 @@ conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/your_script.py
 - [API Documentation](./docs/api/)
 - [User Guides](./docs/user-guides/)
 - [Operations Guide](./docs/operations/)
- - [Systemd (Native) Operations](/infrastructure/systemd/README.md)
+  - [Systemd (Native) Operations](/infrastructure/systemd/README.md)
+  - [Setup Guide](./docs/operations/SETUP_GUIDE.md)
+  - [Vault Administration](./docs/operations/VAULT_SETUP.md)
+  - [Environment Configuration](./docs/operations/ENVIRONMENT_CONFIG.md)
+  - [Monitoring Quick Deploy](./docs/operations/MONITORING_QUICK_DEPLOY.md) — **One-command deployment**
+  - [Monitoring Infrastructure](./docs/operations/MONITORING_INFRASTRUCTURE.md)
+  - [Troubleshooting](./docs/operations/TROUBLESHOOTING.md)
 - [Developer Documentation](./docs/developer/)
 
 ## 🤝 Contributing
@@ -254,3 +265,129 @@ The repository's `infrastructure/systemd/canonical_system_startup.sh` includes a
 - `MARIADB_CHECK_REQUIRED=true` — if set, startup will abort when the probe fails (recommended for production)
 
 The check prefers the `mysql` client and falls back to a small `PYTHON_BIN` + `pymysql` probe. Operators should ensure `mysql-client` or `pymysql` is available to get deterministic preflight checks.
+
+## 🔐 Secrets Management with HashiCorp Vault
+
+This repository uses **Vault OSS (open-source)** for local secrets management in development and test environments.
+
+### Setup Overview
+
+1. **Vault Instance**: Single-node Vault with Raft storage (persistent, local)
+2. **AppRole Auth**: Service role for programmatic secret access
+3. **Secret Storage**: KV v2 at `secret/justnews` with database and API credentials
+4. **Fetch Script**: `scripts/fetch_secrets_to_env.sh` retrieves secrets → `/run/justnews/secrets.env`
+5. **Environment Overlay**: `scripts/run_with_env.sh` layers secrets atop global.env for any command
+
+### Quick Start
+
+```bash
+# 1. Vault is auto-started via systemd (enabled during setup)
+sudo systemctl status vault
+
+# 2. Fetch secrets to runtime environment
+bash scripts/fetch_secrets_to_env.sh
+
+# 3. Run commands with secrets overlay
+bash scripts/run_with_env.sh python check_databases.py
+```
+
+### Configuration Files
+
+- **System-wide**: `/etc/justnews/global.env` (non-secret defaults)
+- **Secrets**: `/run/justnews/secrets.env` (ephemeral, mode 0640, fetched from Vault)
+- **AppRole IDs**: `/etc/justnews/approle_role_id` and `approle_secret_id` (mode 0640)
+- **Vault Init**: `/etc/justnews/vault-init.json` (mode 0600, contains root token & unseal key)
+
+### Managing Secrets
+
+```bash
+# View all secrets
+export VAULT_TOKEN="$(cat /etc/justnews/vault-init.json | jq -r .root_token)"
+vault kv get secret/justnews
+
+# Add/update a secret
+vault kv patch secret/justnews NEW_SECRET="new_value"
+
+# Refresh runtime environment
+bash scripts/fetch_secrets_to_env.sh
+```
+
+See `docs/operations/VAULT_SETUP.md` for detailed Vault administration and troubleshooting.
+
+## 📊 Database Architecture
+
+### MariaDB (Relational Database)
+
+- **Purpose**: Primary storage for articles, entities, metadata, and system state
+- **Version**: 10.11+ (Ubuntu packages)
+- **Port**: 3306
+- **Status**: Systemd service (auto-start enabled)
+- **Databases**: 
+  - `justnews`: Main application database
+  - `justnews_analytics`: Analytics and aggregated data
+
+**Tables**:
+- `articles` — Article content, metadata, sentiment scores
+- `entities` — Named entities (persons, organizations, locations)
+- `article_entities` — Article-entity relationships with relevance scores
+- `sentiment_analysis` — Detailed sentiment analysis results
+- `training_examples` — ML training data
+- `model_metrics` — Model performance tracking
+- `bias_analysis` — Content bias detection results
+
+**Setup**:
+```bash
+# Verify status
+sudo systemctl status mariadb
+
+# Test connection
+mysql -h 127.0.0.1 -u justnews -p -e "SELECT 1;"
+
+# View schema
+mysql -u justnews -p -D justnews -e "SHOW TABLES;"
+```
+
+### ChromaDB (Vector Database)
+
+- **Purpose**: Vector embeddings and semantic search
+- **Version**: 1.3.7+ (Python package)
+- **Port**: 3307
+- **Status**: Systemd service (auto-start enabled)
+- **Collection**: `articles` (article embeddings, auto-created)
+
+**Setup**:
+```bash
+# Verify status
+sudo systemctl status chromadb
+
+# Test connectivity
+curl http://localhost:3307/api/v2/heartbeat
+
+# Check collections
+python -c "
+import chromadb
+client = chromadb.HttpClient(host='localhost', port=3307)
+print(f'Collections: {[c.name for c in client.list_collections()]}')
+"
+```
+
+### Environment Variables
+
+```bash
+# MariaDB
+MARIADB_HOST=127.0.0.1
+MARIADB_PORT=3306
+MARIADB_DB=justnews
+MARIADB_USER=justnews
+MARIADB_PASSWORD=<from-vault>
+
+# ChromaDB
+CHROMADB_HOST=localhost
+CHROMADB_PORT=3307
+CHROMADB_COLLECTION=articles
+CHROMADB_REQUIRE_CANONICAL=1
+CHROMADB_CANONICAL_HOST=localhost
+CHROMADB_CANONICAL_PORT=3307
+```
+
+See `docs/operations/SETUP_GUIDE.md` for complete installation instructions.

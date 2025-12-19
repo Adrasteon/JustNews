@@ -172,27 +172,7 @@ check_python_runtime() {
 }
 
 check_data_mount() {
-  local mount_point="${JUSTNEWS_DATA_MOUNT:-$DATA_MOUNT_DEFAULT}"
-  if [[ ! -d "$mount_point" ]]; then
-    log_error "Data mount point $mount_point does not exist"
-    exit 1
-  fi
-  if mountpoint -q "$mount_point"; then
-    log_success "Data mount $mount_point is mounted"
-  else
-    if grep -E "^[^#].+\s+$mount_point\s" /etc/fstab >/dev/null 2>&1; then
-      log_warn "Data mount $mount_point is not active; attempting to mount via /etc/fstab entry"
-      if mount "$mount_point" >/dev/null 2>&1; then
-        log_success "Mounted $mount_point successfully"
-      else
-        log_error "Failed to mount $mount_point automatically. Run 'mount $mount_point' after checking the device."
-        exit 1
-      fi
-    else
-      log_error "Data mount $mount_point is not mounted and has no matching /etc/fstab entry"
-      exit 1
-    fi
-  fi
+  # Ensure required model/cache directories exist (no mount check required)
   if [[ -n "${MODEL_STORE_ROOT:-}" ]]; then
     mkdir -p "$MODEL_STORE_ROOT"
     log_info "Ensured MODEL_STORE_ROOT directory $MODEL_STORE_ROOT exists"
@@ -773,9 +753,10 @@ main() {
 
     # Safety: if this appears to be an interactive desktop session (DISPLAY/XDG set)
     # and the developer opted into dev telemetry, we proactively enable SAFE_MODE
-    # unless the caller explicitly provided a --safe-mode argument. This prevents
-    # accidental GPU-heavy work (model loading / OOMs) which can crash desktop
-    # processes such as VS Code.
+    # unless the caller explicitly provided a --safe-mode argument OR the user has
+    # explicitly set SAFE_MODE=false in global.env. This prevents accidental
+    # GPU-heavy work (model loading / OOMs) which can crash desktop processes such
+    # as VS Code, while still respecting explicit user configuration.
     if [[ -n "${DISPLAY:-}" || -n "${XDG_SESSION_TYPE:-}" ]] && [[ "${ENABLE_DEV_TELEMETRY:-false}" == "true" ]]; then
       # check if --safe-mode already provided in forwarded args
       safe_mode_present=false
@@ -787,8 +768,14 @@ main() {
       done
 
       if [[ "$safe_mode_present" == false ]]; then
-        log_info "Interactive desktop detected + ENABLE_DEV_TELEMETRY=true; adding --safe-mode on to startup to avoid GPU usage"
-        FORWARDED_ARGS+=("--safe-mode" "on")
+        # Check if user has explicitly disabled SAFE_MODE in global.env
+        current_safe_mode="${SAFE_MODE:-}"
+        if [[ "$current_safe_mode" == "false" ]]; then
+          log_info "Interactive desktop detected but SAFE_MODE=false in global.env; respecting user configuration (GPU usage enabled)"
+        else
+          log_info "Interactive desktop detected + ENABLE_DEV_TELEMETRY=true; adding --safe-mode on to startup to avoid GPU usage"
+          FORWARDED_ARGS+=("--safe-mode" "on")
+        fi
       else
         log_info "--safe-mode already present in args; leaving unchanged"
       fi

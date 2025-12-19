@@ -1,0 +1,4 @@
+Component,Recommendation,Reason
+Model Size,32 Billion Parameters,"This is the largest, most capable dense model that can reliably fit into the 24GB VRAM of the RTX 3090. This size provides a massive boost in reasoning and accuracy over 7B/8B models."
+Quantization,AWQ INT4 or NF4 (via QLoRA),This is the critical component. Using an optimized 4-bit quantization (like AWQ for inference or NF4 for fine-tuning) shrinks the model size from ≈64 GB (FP16) to ≈16 GB. This leaves enough VRAM buffer for the KV cache and fine-tuning operations.
+Inference Engine,vLLM,"Essential for fast inference. While speed is secondary, vLLM ensures that the tokens you do generate come out as quickly as possible, even with a large model, thanks to PagedAttention."

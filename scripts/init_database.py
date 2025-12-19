@@ -26,9 +26,19 @@ logger = get_logger(__name__)
 
 def create_initial_admin_user():
     """Create an initial admin user for testing"""
-    from agents.common.auth_models import UserCreate, UserRole, create_user
+    from agents.common.auth_models import (
+        UserCreate,
+        UserRole,
+        create_user,
+        get_user_by_username_or_email,
+    )
 
     try:
+        existing = get_user_by_username_or_email("admin@justnews.com")
+        if existing:
+            logger.info("Admin user already exists; skipping creation")
+            return
+
         admin_user = UserCreate(
             email="admin@justnews.com",
             username="admin",
@@ -51,107 +61,120 @@ def create_initial_admin_user():
         logger.error(f"❌ Error creating initial admin user: {e}")
 
 def create_knowledge_graph_tables():
-    """Create tables for knowledge graph data if they don't exist"""
-    queries = [
-        """
-        CREATE TABLE IF NOT EXISTS articles (
-            article_id VARCHAR(255) PRIMARY KEY,
-            url TEXT NOT NULL,
-            title TEXT,
-            domain VARCHAR(255),
-            published_date TIMESTAMP,
-            content TEXT,
-            news_score DECIMAL(3,2),
-            extraction_method VARCHAR(100),
-            publisher VARCHAR(255),
-            canonical_url TEXT,
-            entities JSONB,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS entities (
-            entity_id VARCHAR(255) PRIMARY KEY,
-            name TEXT NOT NULL,
-            entity_type VARCHAR(100),
-            mention_count INTEGER DEFAULT 0,
-            first_seen TIMESTAMP,
-            last_seen TIMESTAMP,
-            aliases JSONB,
-            cluster_size INTEGER DEFAULT 1,
-            confidence_score DECIMAL(3,2),
-            properties JSONB,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS relationships (
-            relationship_id SERIAL PRIMARY KEY,
-            source_entity_id VARCHAR(255) REFERENCES entities(entity_id),
-            target_entity_id VARCHAR(255) REFERENCES entities(entity_id),
-            relationship_type VARCHAR(100) NOT NULL,
-            strength DECIMAL(5,4),
-            confidence DECIMAL(5,4),
-            context TEXT,
-            timestamp TIMESTAMP,
-            co_occurrence_count INTEGER DEFAULT 0,
-            proximity_score DECIMAL(5,4),
-            properties JSONB,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        """,
-        """
-        CREATE INDEX IF NOT EXISTS idx_articles_domain ON articles(domain)
-        """,
-        """
-        CREATE INDEX IF NOT EXISTS idx_articles_published_date ON articles(published_date)
-        """,
-        """
-        CREATE INDEX IF NOT EXISTS idx_entities_type ON entities(entity_type)
-        """,
-        """
-        CREATE INDEX IF NOT EXISTS idx_entities_name ON entities(name)
-        """,
-        """
-        CREATE INDEX IF NOT EXISTS idx_relationships_type ON relationships(relationship_type)
-        """,
-        """
-        CREATE INDEX IF NOT EXISTS idx_relationships_source ON relationships(source_entity_id)
-        """,
-        """
-        CREATE INDEX IF NOT EXISTS idx_relationships_target ON relationships(target_entity_id)
-        """
-    ]
+    """Create/align knowledge graph and supporting tables for MariaDB."""
 
-    import re
-    def adapt_sql_for_mariadb(sql: str) -> str:
-        """Make lightweight, best-effort conversions to MariaDB-syntax from
-        Postgres-specific SQL fragments used in legacy migrations.
+    def table_exists(name: str) -> bool:
+        rows = execute_query("SHOW TABLES LIKE %s", (name,)) or []
+        return len(rows) > 0
 
-        This is intentionally conservative — complex Postgres-only constructs
-        (e.g., arrays, JSONB typed arrays, pgvector, partial indexes) should be
-        handled via proper migration scripts, not via naive replacements.
-        """
-        s = sql
-        s = s.replace('JSONB', 'JSON')
-        s = re.sub(r"\bSERIAL\b", 'INT AUTO_INCREMENT', s)
-        # Replace PostgreSQL TIMESTAMPTZ with TIMESTAMP (MySQL/MariaDB compatible)
-        s = s.replace('TIMESTAMPTZ', 'TIMESTAMP')
-        # Replace TEXT[]/ARRAY types with JSON as a simple substitute
-        s = re.sub(r"\bTEXT\[\]|\bTEXT\s*\[\s*\]", 'JSON', s)
-        return s
+    def column_exists(table: str, column: str) -> bool:
+        rows = execute_query(f"SHOW COLUMNS FROM {table} LIKE %s", (column,)) or []
+        return len(rows) > 0
 
-    for i, query in enumerate(queries, 1):
+    def run_ddl(sql: str, label: str):
         try:
-            # Adapt query for MariaDB where possible before execution
-            adapted_query = adapt_sql_for_mariadb(query)
-            execute_query(adapted_query, fetch=False)
-            logger.info(f"✅ Created knowledge graph table {i}/{len(queries)}")
+            execute_query(sql, fetch=False)
+            logger.info(f"✅ {label}")
         except Exception as e:
-            logger.error(f"❌ Error creating knowledge graph table {i}: {e}")
+            logger.error(f"❌ {label}: {e}")
             raise
+
+    # Entities baseline table (aligns with migrations 007/008)
+    if not table_exists("entities"):
+        run_ddl(
+            """
+            CREATE TABLE IF NOT EXISTS entities (
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                entity_type VARCHAR(50) NOT NULL,
+                confidence_score DECIMAL(5,3) NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                canonical_name VARCHAR(255) DEFAULT NULL,
+                detection_source VARCHAR(128) DEFAULT NULL,
+                UNIQUE KEY unique_entity (name, entity_type)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """,
+            "entities table ready"
+        )
+    else:
+        if not column_exists("entities", "canonical_name"):
+            run_ddl("ALTER TABLE entities ADD COLUMN canonical_name VARCHAR(255) DEFAULT NULL", "entities.canonical_name added")
+        if not column_exists("entities", "detection_source"):
+            run_ddl("ALTER TABLE entities ADD COLUMN detection_source VARCHAR(128) DEFAULT NULL", "entities.detection_source added")
+
+    # Junction table linking articles to entities
+    if not table_exists("article_entities"):
+        run_ddl(
+            """
+            CREATE TABLE IF NOT EXISTS article_entities (
+                id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                article_id BIGINT UNSIGNED NOT NULL,
+                entity_id BIGINT NOT NULL,
+                relevance_score DECIMAL(5,3) NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_article_entity (article_id, entity_id),
+                CONSTRAINT fk_article_fk FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
+                CONSTRAINT fk_entity_fk FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """,
+            "article_entities table ready"
+        )
+
+    # KG audit log
+    if not table_exists("kg_audit"):
+        run_ddl(
+            """
+            CREATE TABLE IF NOT EXISTS kg_audit (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                operation VARCHAR(50) NOT NULL,
+                actor VARCHAR(255) DEFAULT NULL,
+                target_type VARCHAR(50) DEFAULT NULL,
+                target_id BIGINT DEFAULT NULL,
+                details JSON DEFAULT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """,
+            "kg_audit table ready"
+        )
+
+    # Training examples + model metrics for downstream ML tasks
+    if not table_exists("training_examples"):
+        run_ddl(
+            """
+            CREATE TABLE IF NOT EXISTS training_examples (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                article_id BIGINT UNSIGNED NULL,
+                task VARCHAR(255) NULL,
+                input LONGTEXT NULL,
+                input_text LONGTEXT NULL,
+                output LONGTEXT NULL,
+                output_label VARCHAR(100) NULL,
+                model_version VARCHAR(50) NULL,
+                confidence_score DECIMAL(5,3) NULL,
+                critique TEXT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_training_article FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """,
+            "training_examples table ready"
+        )
+
+    if not table_exists("model_metrics"):
+        run_ddl(
+            """
+            CREATE TABLE IF NOT EXISTS model_metrics (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                model_name VARCHAR(100) NOT NULL,
+                model_version VARCHAR(50) NOT NULL,
+                metric_name VARCHAR(100) NOT NULL,
+                metric_value DECIMAL(10,4),
+                dataset_size INT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_metric (model_name, model_version, metric_name, created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """,
+            "model_metrics table ready"
+        )
 
     # Create orchestrator_leases table for GPU orchestrator durable leases
     lease_query = """

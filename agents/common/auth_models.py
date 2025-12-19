@@ -344,16 +344,16 @@ def create_user_tables():
         )
         """,
         """
-        CREATE INDEX idx_users_email ON users(email)
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)
         """,
         """
-        CREATE INDEX idx_users_username ON users(username)
+        CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)
         """,
         """
-        CREATE INDEX idx_user_sessions_user_id ON user_sessions(user_id)
+        CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id)
         """,
         """
-        CREATE INDEX idx_user_sessions_refresh_token ON user_sessions(refresh_token_hash)
+        CREATE INDEX IF NOT EXISTS idx_user_sessions_refresh_token ON user_sessions(refresh_token_hash)
         """
     ]
 

@@ -257,7 +257,7 @@ Torch compile cache: ~/.cache/vllm/torch_compile_cache/
 ## Files Created/Modified
 
 ### Configuration Files
-- **`scripts/launch_vllm_qwen2_32b_optimized.sh`**: Production-ready launch script with all optimizations
+- **`scripts/launch_vllm_mistral_7b_optimized.sh`**: Production-ready launch script with all optimizations (renamed to reflect Mistral fallback)
   - CUDA library path configuration
   - FP8 KV cache enabled
   - Chunked prefill tuning (8192 max tokens)

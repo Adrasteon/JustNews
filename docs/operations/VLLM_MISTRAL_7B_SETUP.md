@@ -37,7 +37,7 @@ The script reads `global.env` for `HF_TOKEN` and launches vLLM with:
 
 ```bash
 conda activate justnews-py312
-python tests/integration/test_vllm_qwen2_smoke.py
+python tests/integration/test_vllm_mistral_7b_smoke.py
 ```
 
 Expected output:

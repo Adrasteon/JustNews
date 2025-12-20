@@ -16,7 +16,10 @@ def test_pages_dropdown_navigation_localhost():
     except Exception:
         pytest.skip('Local dashboard not running on http://127.0.0.1:8013')
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        try:
+            browser = p.chromium.launch(headless=True)
+        except Exception:
+            pytest.skip('Playwright browser binaries not available or cannot be launched')
         page = browser.new_page()
         page.goto('http://127.0.0.1:8013')
         # Open the dropdown and click GPU Dashboard

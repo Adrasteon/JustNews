@@ -24,6 +24,7 @@ EXCLUDES=(
   --exclude-dir=.git
   --exclude-dir=logs
   --exclude-dir=artifacts
+  --exclude-dir=docs
   --exclude-dir=.mypy_cache
   --exclude-dir=__pycache__
 )

@@ -116,6 +116,36 @@ class GPUOrchestratorEngine:
         except Exception:
             self.db_service = None
 
+        # Backwards-compatibility shim: some tests patch create_database_service to
+        # return a simple object with `mb_conn` rather than a full
+        # `MigratedDatabaseService`. Provide `get_safe_cursor` and
+        # `get_connection` wrappers when these are absent so tests (and legacy
+        # callers) can operate against simple fakes without requiring the full
+        # service API.
+        try:
+            if self.db_service is not None:
+                if not hasattr(self.db_service, 'get_safe_cursor') and hasattr(self.db_service, 'mb_conn'):
+                    def _get_safe_cursor(per_call: bool = False, dictionary: bool | None = None, buffered: bool = False):
+                        conn = getattr(self.db_service, 'mb_conn')
+                        # prefer dictionary cursors when caller requests it
+                        try:
+                            if dictionary is None:
+                                cursor = conn.cursor()
+                            else:
+                                cursor = conn.cursor(dictionary=bool(dictionary))
+                        except TypeError:
+                            # Some fake connections don't accept keyword args
+                            cursor = conn.cursor()
+                        return cursor, conn
+                    setattr(self.db_service, 'get_safe_cursor', _get_safe_cursor)
+                if not hasattr(self.db_service, 'get_connection') and hasattr(self.db_service, 'mb_conn'):
+                    def _get_connection():
+                        return getattr(self.db_service, 'mb_conn')
+                    setattr(self.db_service, 'get_connection', _get_connection)
+        except Exception:
+            # Defensive: do not fail init if we cannot patch the fake service
+            self.logger.debug('Failed to install db_service compatibility shims')
+
         # Optional Redis client for streams
         try:
             import redis
@@ -305,6 +335,14 @@ class GPUOrchestratorEngine:
 
     def _start_vllm_server(self) -> None:
         """Start VLLM inference server for Mistral-7B with LoRA adapter support."""
+        # Allow tests and local dev to skip starting an external VLLM server by
+        # setting VLLM_SKIP_START=1 in the environment. This avoids launching
+        # subprocesses during unit tests and prevents permission/startup errors
+        # on machines where vLLM isn't installed.
+        if os.environ.get('VLLM_SKIP_START', '0') == '1':
+            self.logger.info('Skipping VLLM server start because VLLM_SKIP_START=1')
+            return
+
         if self._vllm_process is not None:
             self.logger.warning('VLLM server already running')
             return
@@ -978,6 +1016,13 @@ class GPUOrchestratorEngine:
             self._enforce_pool_policy_once()
         except Exception:
             pass
+
+        # Audit policy change immediately so tests and operators can inspect
+        # policy updates even when the API route isn't used.
+        try:
+            self._audit_policy_event('policy_update', policy)
+        except Exception:
+            self.logger.debug('Failed to audit pool policy update')
 
         return self._POOL_POLICY
 

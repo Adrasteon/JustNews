@@ -1,4 +1,6 @@
-# Qwen2-32B vLLM Integration Guide
+# Mistral‑7B vLLM Integration Guide
+
+> **Note:** Qwen2 experiments are retired; this guide now documents using the Mistral‑7B fallback as the default vLLM model. Historical Qwen2 notes are preserved further below for reference.
 
 ## Overview
 
@@ -104,7 +106,7 @@ VLLM_PORT=7060
 
 ### QLoRA Training on 24GB 3090
 
-Use `scripts/train_qwen2_qlora.py` to train adapters:
+Use `scripts/train_qwen2_qlora.py` (historical Qwen2 adapters) or your own adapter training scripts for Mistral adapters. If you have Mistral adapter training scripts, prefer those and set `--model_name_or_path mistralai/Mistral-7B-Instruct-v0.3`.
 
 ```bash
 conda activate justnews-py312

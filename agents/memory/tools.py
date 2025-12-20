@@ -176,6 +176,12 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
         created_local_db_service = False
         if db_service is None:
             db_service = create_database_service()
+            # Ensure the db_service exposes a minimal compatible API for test fakes
+            try:
+                from database.utils.migrated_database_utils import ensure_service_compat
+                db_service = ensure_service_compat(db_service)
+            except Exception:
+                pass
             created_local_db_service = True
 
         # Ensure DB connection is available before doing any cursor operations

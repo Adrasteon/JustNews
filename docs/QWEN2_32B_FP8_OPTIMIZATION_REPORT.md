@@ -1,4 +1,6 @@
-# Qwen2.5-32B-Instruct-AWQ FP8 KV Cache Optimization Attempt - Report
+# (Historical) Qwen2.5-32B-Instruct-AWQ FP8 KV Cache Optimization Attempt - Report
+
+> **Note:** This report documents historical efforts to optimize Qwen2.5 deployment. The project now uses **Mistral‑7B** as the default vLLM model; the notes below are retained for reference.
 
 **Date**: December 16, 2025  
 **Objective**: Deploy Qwen2.5-32B-Instruct-AWQ with FP8 KV cache quantization on RTX 3090 24GB VRAM  

@@ -44,6 +44,7 @@ def save_synthesized_draft(
     db_service = None
     try:
         db_service = db_utils.create_database_service()
+        db_service = db_utils.ensure_service_compat(db_service)
         conn = db_service.get_connection()
         cursor = conn.cursor()
 

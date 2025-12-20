@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch vLLM server for Qwen2-32B-Instruct AWQ with ALL optimizations
+# Launch vLLM server for Mistral-7B-Instruct (fallback) - optimized launcher (historical Qwen2 launcher retained)
 # Port: 7060 (separate from agent services 8000-8030)
 set -euo pipefail
 
@@ -14,7 +14,7 @@ if [[ -f "$REPO_ROOT/global.env" ]]; then
 fi
 
 # vLLM configuration with optimizations
-VLLM_MODEL="${VLLM_MODEL:-Qwen/Qwen2.5-14B-Instruct-AWQ}"
+VLLM_MODEL="${VLLM_MODEL:-mistralai/Mistral-7B-Instruct-v0.3}"
 VLLM_PORT="${VLLM_PORT:-7060}"
 VLLM_HOST="${VLLM_HOST:-127.0.0.1}"
 VLLM_MAX_MODEL_LEN="${VLLM_MAX_MODEL_LEN:-4096}"  # Safe for 14B on 24GB

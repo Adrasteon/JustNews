@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Smoke test for vLLM Qwen2-32B endpoint.
+Smoke test for vLLM Mistral-7B endpoint (replaces Qwen2 smoke test).
 Validates OpenAI-compatible API, basic chat completion, and optional adapter routing.
 """
 import os
@@ -11,7 +11,7 @@ import requests
 import yaml
 
 
-def load_vllm_config(config_path: str = "config/vllm_qwen2_32b.yaml") -> dict:
+def load_vllm_config(config_path: str = "config/vllm_mistral_7b.yaml") -> dict:
     """Load vLLM config."""
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
@@ -40,7 +40,7 @@ def test_chat_completion(base_url: str, api_key: str = "dummy"):
     print(f"Testing chat completion: {base_url}/v1/chat/completions")
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
-        "model": "Qwen/Qwen2-32B-Instruct-AWQ",
+        "model": "mistralai/Mistral-7B-Instruct-v0.3",
         "messages": [
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": "What is 2+2? Answer in one word."},

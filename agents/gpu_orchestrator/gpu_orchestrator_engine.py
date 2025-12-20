@@ -116,32 +116,12 @@ class GPUOrchestratorEngine:
         except Exception:
             self.db_service = None
 
-        # Backwards-compatibility shim: some tests patch create_database_service to
-        # return a simple object with `mb_conn` rather than a full
-        # `MigratedDatabaseService`. Provide `get_safe_cursor` and
-        # `get_connection` wrappers when these are absent so tests (and legacy
-        # callers) can operate against simple fakes without requiring the full
-        # service API.
+        # Backwards-compatibility shim: ensure the db_service exposes a minimal
+        # API that unit tests which patch create_database_service may rely on.
         try:
+            from database.utils.migrated_database_utils import ensure_service_compat
             if self.db_service is not None:
-                if not hasattr(self.db_service, 'get_safe_cursor') and hasattr(self.db_service, 'mb_conn'):
-                    def _get_safe_cursor(per_call: bool = False, dictionary: bool | None = None, buffered: bool = False):
-                        conn = getattr(self.db_service, 'mb_conn')
-                        # prefer dictionary cursors when caller requests it
-                        try:
-                            if dictionary is None:
-                                cursor = conn.cursor()
-                            else:
-                                cursor = conn.cursor(dictionary=bool(dictionary))
-                        except TypeError:
-                            # Some fake connections don't accept keyword args
-                            cursor = conn.cursor()
-                        return cursor, conn
-                    setattr(self.db_service, 'get_safe_cursor', _get_safe_cursor)
-                if not hasattr(self.db_service, 'get_connection') and hasattr(self.db_service, 'mb_conn'):
-                    def _get_connection():
-                        return getattr(self.db_service, 'mb_conn')
-                    setattr(self.db_service, 'get_connection', _get_connection)
+                self.db_service = ensure_service_compat(self.db_service)
         except Exception:
             # Defensive: do not fail init if we cannot patch the fake service
             self.logger.debug('Failed to install db_service compatibility shims')

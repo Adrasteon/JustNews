@@ -24,7 +24,13 @@ class NormalizedArticleRepository:
     """Retrieve normalized article rows that are ready for the agent chain harness."""
 
     def __init__(self, db_service: MigratedDatabaseService | None = None) -> None:
-        self.db_service = db_service or create_database_service()
+        svc = db_service or create_database_service()
+        try:
+            from database.utils.migrated_database_utils import ensure_service_compat
+            svc = ensure_service_compat(svc)
+        except Exception:
+            pass
+        self.db_service = svc
 
     def fetch_candidates(
         self,

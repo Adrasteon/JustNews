@@ -68,7 +68,7 @@ def test_no_new_deprecations():
         current_set = {f"{m['path']}:{m['line']}" for m in matches}
 
         # New occurrences are current_set - base_set
-        new = sorted(list(current_set - base_set))
+        new = sorted(current_set - base_set)
         if new:
             new_issues[pat] = {
                 "suggestion": PATTERNS[pat],

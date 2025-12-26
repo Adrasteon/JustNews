@@ -14,12 +14,12 @@ from common.observability import bootstrap_observability
 
 # Initialize observability for the Journalist agent
 bootstrap_observability("journalist", level=logging.INFO)
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager  # noqa: E402
 
-from fastapi import FastAPI
+from fastapi import FastAPI  # noqa: E402
 
-from .journalist_engine import JournalistEngine
-from .tools import health_check
+from .journalist_engine import JournalistEngine  # noqa: E402
+from .tools import health_check  # noqa: E402
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:

@@ -91,7 +91,7 @@ def apply_replacements(root: Path) -> list[Path]:
         assigned_vars = {m.group("var") for m in ASSIGN_PATTERN.finditer(text)}
         if assigned_vars:
 
-            def _sub_var(match: re.Match) -> str:
+            def _sub_var(match: re.Match, assigned_vars=assigned_vars) -> str:
                 var = match.group("var")
                 inner = match.group(2)
                 if var in assigned_vars:

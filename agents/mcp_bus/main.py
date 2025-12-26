@@ -54,7 +54,7 @@ from .tools import (
     health_check,
     notify_gpu_orchestrator,
 )
-from .tools import register_agent as register_agent_tool
+from .tools import register_agent as register_agent_tool  # noqa: E402
 
 logger = get_logger(__name__)
 

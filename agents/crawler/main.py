@@ -9,6 +9,7 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 
+import asyncio
 import requests
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -47,8 +48,6 @@ ready = False
 crawl_jobs: dict[str, Any] = {}
 
 # Map job_id -> asyncio.Task for running background crawl jobs so they can be cancelled
-import asyncio
-
 crawl_task_map: dict[str, asyncio.Task] = {}
 
 # Environment variables

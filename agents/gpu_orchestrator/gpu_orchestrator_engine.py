@@ -2613,25 +2613,7 @@ class GPUOrchestratorEngine:
                                             pass
                                 except Exception:
                                     pass
-                                except Exception:
-                                    pass
 
-                            if attempts >= self._job_retry_max:
-                                # Move to DLQ
-                                dlq = s + ":dlq"
-                                try:
-                                    dlq_fields = {
-                                        "job_id": job_id or "",
-                                        "payload": json.dumps(payload)
-                                        if payload is not None
-                                        else "",
-                                    }
-                                    if timeout_seconds is not None:
-                                        dlq_fields["timeout_seconds"] = str(
-                                            timeout_seconds
-                                        )
-                                    self.redis_client.xadd(dlq, dlq_fields)
-                                except Exception:
                                     pass
                                     # Mark job dead-lettered in DB
                                     if job_id and self.db_service:

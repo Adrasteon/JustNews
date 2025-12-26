@@ -12,7 +12,7 @@ spec.loader.exec_module(models_mod)
 
 # Inject a lightweight security package into sys.modules so relative imports inside
 # the monitoring service resolve to the models module without running package __init__
-import sys as _sys
+import sys as _sys  # noqa: E402
 
 security_pkg = _types.ModuleType("security")
 security_pkg.models = models_mod

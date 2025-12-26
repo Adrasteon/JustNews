@@ -164,7 +164,7 @@ def test_detect_bottleneck_cpu_and_memory():
     )
 
 
-def test_get_performance_report_no_data():
+def test_get_performance_report_no_data_dup():
     m = create_monitor()
     report = m.get_performance_report(hours=1)
     assert report["status"] == "no_data"

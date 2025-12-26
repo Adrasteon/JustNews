@@ -67,7 +67,7 @@ def test_register_user_conflict(monkeypatch):
     assert exc.value.status_code == auth_api.status.HTTP_400_BAD_REQUEST
 
 
-def test_login_user_success(monkeypatch):
+def test_login_user_success_sync(monkeypatch):
     # Prepare fake user and monkeypatch dependencies
     fake_user = {
         "user_id": 10,

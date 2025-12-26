@@ -14,9 +14,7 @@ def run_manage_cmd(cmd_args):
         sys.executable,
         os.path.join(os.getcwd(), "agents", "publisher", "manage.py"),
     ] + cmd_args
-    proc = subprocess.run(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-    )
+    proc = subprocess.run(cmd, capture_output=True, text=True)
     return proc.returncode, proc.stdout, proc.stderr
 
 

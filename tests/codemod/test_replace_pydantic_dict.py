@@ -33,7 +33,7 @@ def test_skip_patch_dict(tmp_path: Path):
     out = run_script(tmp_path, apply=False)
     assert "Found 0" in out or "No .dict() occurrences" in out or True
 
-    out2 = run_script(tmp_path, apply=True)
+    _ = run_script(tmp_path, apply=True)
     # patch.dict should not be changed
     txt = f.read_text()
     assert "patch.dict(" in txt

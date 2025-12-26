@@ -16,7 +16,7 @@ sys.modules.setdefault(
     "monitoring.common.metrics", importlib.import_module("common.metrics")
 )
 
-from monitoring.core.trace_processor import TraceData, TraceProcessor, TraceSpan
+from monitoring.core.trace_processor import TraceData, TraceProcessor, TraceSpan  # noqa: E402
 
 
 def make_span(sid, parent=None, duration=10, service="svc", op="op", status="ok"):

@@ -22,8 +22,8 @@ enc_mod = importlib.util.module_from_spec(spec2)
 # security package module into sys.modules which exposes the already-loaded models
 # module. This allows the relative imports inside the encryption service module to
 # resolve (e.g. `from ..models import ...`) without triggering side-effects.
-import sys as _sys
-import types as _types
+import sys as _sys  # noqa: E402
+import types as _types  # noqa: E402
 
 security_pkg = _types.ModuleType("security")
 security_pkg.models = models_mod

@@ -78,7 +78,7 @@ def test_publish_skipped_when_token_invalid(monkeypatch):
         publish_token="badtoken",
     )
 
-    outputs = runner.run(limit=1)
+    _ = runner.run(limit=1)
 
     # publishing should be attempted but skipped and metrics recorded as 'skipped'
     assert "skipped" in metrics.recorded

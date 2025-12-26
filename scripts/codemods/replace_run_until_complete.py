@@ -61,7 +61,7 @@ def find_matches(root: Path) -> list[tuple[Path, int, str]]:
 
         # Identify assignment to loop variables (e.g. "loop = asyncio.new_event_loop()" or
         # "loop = asyncio.get_event_loop()") so we can safely replace var.run_until_complete
-        assigned_vars = {m.group("var") for m in ASSIGN_PATTERN.finditer(text)}
+        # NOTE: assigned_vars is computed in apply_replacements where it is actually used
 
         for i, line in enumerate(text.splitlines(), start=1):
             if GET_LOOP_PATTERN.search(line) or LOOP_RUN_PATTERN.search(line):

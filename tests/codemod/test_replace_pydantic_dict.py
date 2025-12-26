@@ -17,7 +17,7 @@ def test_replace_model_dict(tmp_path: Path):
     out = run_script(tmp_path, apply=False)
     assert "Found 1 .dict() occurrences" in out
 
-    _ = run_script(tmp_path, apply=True)
+    out2 = run_script(tmp_path, apply=True)
     assert "Applied replacements to" in out2
 
     txt = f.read_text()

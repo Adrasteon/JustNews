@@ -18,7 +18,7 @@ class FakeHealthMonitor:
 
 def test_request_allocation_already_allocated():
     mgr = MultiAgentGPUManager(max_memory_per_agent_gb=8.0)
-    mgr._allocations["a1"] = types = type(
+    mgr._allocations["a1"] = type(
         "T",
         (),
         {

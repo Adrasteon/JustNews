@@ -24,7 +24,7 @@ class MockAdapter(BaseAdapter):
         super().__init__(name=name, dry_run=True)
         self._default_text_template = default_text
         self._responses = dict(responses or {})
-        self._failure_prompts = {p for p in (failure_prompts or [])}
+        self._failure_prompts = set(failure_prompts or [])
         self._latency_seconds = max(0.0, float(latency_seconds))
         self._token_counter = token_counter or (
             lambda prompt: max(1, len(prompt.split()))

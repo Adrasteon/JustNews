@@ -134,4 +134,3 @@ def test_assess_credibility_domain_and_content(monkeypatch):
 
     assert "credibility_score" in res
     assert res["domain"] == "www.bbc.com"
-

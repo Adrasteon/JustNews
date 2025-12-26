@@ -4,12 +4,12 @@ Unified production crawling agent with MCP integration.
 """
 # main.py for Crawler Agent
 
+import asyncio
 import os
 import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 
-import asyncio
 import requests
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware

@@ -42,7 +42,10 @@ class _StubPersistence:
         pass
 
 
-from agents.common.agent_chain_harness import AgentChainResult, NormalizedArticle  # noqa: E402
+from agents.common.agent_chain_harness import (  # noqa: E402
+    AgentChainResult,
+    NormalizedArticle,
+)
 
 
 def test_publish_skipped_when_token_invalid(monkeypatch):

@@ -18,10 +18,10 @@ Author: JustNews Development Team
 Date: October 22, 2025
 """
 
-import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any
+import logging  # noqa: E402
+from dataclasses import dataclass, field  # noqa: E402
+from datetime import datetime, timedelta  # noqa: E402
+from typing import Any  # noqa: E402
 
 try:
     from opentelemetry import trace
@@ -53,8 +53,8 @@ except Exception:
     TraceContextTextMapPropagator = None
     _OTEL_AVAILABLE = False
 
-from ..common.config import get_config
-from ..common.metrics import JustNewsMetrics
+from ..common.config import get_config  # noqa: E402
+from ..common.metrics import JustNewsMetrics  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

@@ -46,7 +46,7 @@ try:
     )
 except Exception:
     create_database_service = None
-from .tools import (
+from .tools import (  # noqa: E402
     call_agent_tool,
     get_bus_stats,
     get_circuit_breaker_status,

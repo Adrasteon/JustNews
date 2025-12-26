@@ -18,7 +18,11 @@ sys.modules.setdefault(
     "monitoring.common.metrics", importlib.import_module("common.metrics")
 )
 
-from monitoring.core.trace_collector import TraceCollector, TraceData, TraceSpan  # noqa: E402
+from monitoring.core.trace_collector import (  # noqa: E402
+    TraceCollector,
+    TraceData,
+    TraceSpan,
+)
 
 
 def test_trace_span_and_data_to_dict():

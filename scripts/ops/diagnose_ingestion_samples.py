@@ -18,13 +18,14 @@ This is a read-first diagnostic; use care running `--post` on live systems.
 """
 
 import argparse
+import json
 import os
 import re
 import sys
-import json
-import requests
 from datetime import datetime
 from pathlib import Path
+
+import requests
 
 # Ensure top-level imports from repo work
 REPO_ROOT = Path(__file__).resolve().parents[2]

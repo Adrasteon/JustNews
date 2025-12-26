@@ -8,17 +8,15 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List
 
 from agents.crawler.extraction import extract_article_content
 from scripts.dev.canary_metrics import incr
-
 
 RAW_DIR = Path.cwd() / "output" / "canary_raw"
 OUT_DIR = Path.cwd() / "output" / "canary_parsed"
 
 
-def find_raw_files() -> List[Path]:
+def find_raw_files() -> list[Path]:
     return sorted(RAW_DIR.glob("*.json")) if RAW_DIR.exists() else []
 
 

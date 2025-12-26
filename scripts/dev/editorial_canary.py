@@ -10,15 +10,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List
-from scripts.dev.canary_metrics import incr
 
+from scripts.dev.canary_metrics import incr
 
 PARSED_DIR = Path.cwd() / "output" / "canary_parsed"
 OUT_DIR = Path.cwd() / "output" / "canary_drafts"
 
 
-def find_parsed_files() -> List[Path]:
+def find_parsed_files() -> list[Path]:
     return sorted(PARSED_DIR.glob("*.json")) if PARSED_DIR.exists() else []
 
 
@@ -53,7 +52,7 @@ def create_draft(parsed_path: Path) -> Path:
     return out_path
 
 
-def main() -> List[str]:
+def main() -> list[str]:
     files = find_parsed_files()
     return [str(create_draft(p)) for p in files]
 

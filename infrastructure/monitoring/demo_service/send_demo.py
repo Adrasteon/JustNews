@@ -4,18 +4,16 @@ This script sends one span and a log event to the configured OTLP endpoint
 and then starts a minimal HTTP server so CI can probe it.
 """
 import os
-import time
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+import time
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
+import requests
 from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-
-import requests
-
 
 OTLP_ENDPOINT = os.environ.get("OTLP_ENDPOINT", "http://otel-node:4318/v1/traces")
 

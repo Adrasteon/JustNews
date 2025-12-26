@@ -1,9 +1,7 @@
-import pytest
-from datetime import datetime
 
 from agents.common.gpu_manager_production import (
-    MultiAgentGPUManager,
     GPUStatus,
+    MultiAgentGPUManager,
 )
 
 

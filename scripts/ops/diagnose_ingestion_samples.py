@@ -20,15 +20,15 @@ import argparse
 import os
 import re
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 # Ensure top-level imports from repo work
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 try:
-    from common.url_normalization import normalize_article_url, hash_article_url
+    from common.url_normalization import hash_article_url, normalize_article_url
 except Exception as exc:
     print("Could not import normalization helpers from the repository:", exc)
     print("You may need to run this from the workspace root with PYTHONPATH=.")
@@ -41,6 +41,7 @@ except Exception:
     mysql = None
     _MYSQL_AVAILABLE = False
 import json
+
 import requests
 
 HREF_RE = re.compile(r'href=["\'](https?://[^"\']+)["\']', re.I)

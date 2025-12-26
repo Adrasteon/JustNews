@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from agents.common.agent_chain_harness import AgentChainHarness, NormalizedArticle
 import agents.crawler.extraction as extraction
+from agents.common.agent_chain_harness import AgentChainHarness, NormalizedArticle
 
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures" / "canary_articles"
 CANARY_IDS = sorted(p.name for p in FIXTURE_ROOT.iterdir() if p.is_dir())

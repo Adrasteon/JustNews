@@ -1,7 +1,7 @@
 """Shared Mistral adapter helper for high-accuracy synthesis."""
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 from agents.common.base_mistral_json_adapter import BaseMistralJSONAdapter
 
@@ -22,7 +22,7 @@ class SynthesizerMistralAdapter(BaseMistralJSONAdapter):
             defaults={"max_chars": 10000, "max_new_tokens": 512, "temperature": 0.3, "top_p": 0.9},
         )
 
-    def summarize_cluster(self, articles: List[str], context: str | None = None) -> Dict[str, Any] | None:
+    def summarize_cluster(self, articles: list[str], context: str | None = None) -> dict[str, Any] | None:
         snippets = [self._truncate_content(a) for a in articles if a]
         if not snippets:
             return None

@@ -1,8 +1,8 @@
 import os
+
 import pytest
 
 from agents.common.openai_adapter import OpenAIAdapter
-
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("OPENAI_API_KEY") or os.environ.get("RUN_PROVIDER_TESTS") != "1",

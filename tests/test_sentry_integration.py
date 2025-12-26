@@ -1,8 +1,5 @@
 import importlib
-import os
 import sys
-
-import pytest
 
 
 def test_init_sentry_no_dsn(monkeypatch):

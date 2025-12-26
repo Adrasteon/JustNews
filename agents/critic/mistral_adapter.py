@@ -6,7 +6,7 @@ import os
 import re
 import textwrap
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any
 
 from common.observability import get_logger
 
@@ -46,7 +46,7 @@ class CriticAssessment:
     originality: float
     overall: float
     assessment: str
-    recommendations: List[str]
+    recommendations: list[str]
 
 
 class CriticMistralAdapter:
@@ -124,7 +124,7 @@ class CriticMistralAdapter:
             logger.warning("Failed to load Critic Mistral weights: %s", exc)
             return False
 
-    def _run_inference(self, content: str, url: str | None) -> Dict[str, Any] | None:
+    def _run_inference(self, content: str, url: str | None) -> dict[str, Any] | None:
         if not self._ensure_loaded() or not TORCH_AVAILABLE or self.model is None or self.tokenizer is None:
             return None
 
@@ -145,7 +145,7 @@ class CriticMistralAdapter:
 
         device = None
         if hasattr(self.model, "device"):
-            device = getattr(self.model, "device")
+            device = self.model.device
         elif hasattr(self.model, "hf_device_map"):
             device = None
 
@@ -182,7 +182,7 @@ class CriticMistralAdapter:
                 pass
         return f"<s>[INST] {SYSTEM_PROMPT}\nArticle:\n'''{content}'''{url_line} [/INST]"
 
-    def _parse_completion(self, completion: str) -> Dict[str, Any] | None:
+    def _parse_completion(self, completion: str) -> dict[str, Any] | None:
         snippet = completion.strip()
         fenced = re.search(r"```(?:json)?(.*?)```", snippet, flags=re.DOTALL)
         if fenced:
@@ -204,7 +204,7 @@ class CriticMistralAdapter:
                 logger.debug("Failed to parse Critic adapter JSON: %s", snippet)
                 return None
 
-    def _normalize(self, payload: Dict[str, Any]) -> CriticAssessment | None:
+    def _normalize(self, payload: dict[str, Any]) -> CriticAssessment | None:
         try:
             def clamp(value: float) -> float:
                 return max(0.0, min(float(value), 1.0))

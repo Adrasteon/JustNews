@@ -2,7 +2,6 @@ import asyncio
 from types import SimpleNamespace
 
 import pytest
-
 from fastapi.security import HTTPAuthorizationCredentials
 
 import agents.common.auth_api as auth_api
@@ -78,12 +77,10 @@ def test_login_user_success(monkeypatch):
 
     assert res.access_token == 'ATOKEN'
     assert res.refresh_token == 'RTOKEN'
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException
 
-import agents.common.auth_api as auth_api
 from agents.common.auth_models import UserCreate, UserLogin, UserStatus
 
 
@@ -119,7 +116,7 @@ async def test_login_user_invalid_user(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_login_user_locked(monkeypatch):
-    future = datetime.now(timezone.utc) + timedelta(minutes=5)
+    future = datetime.now(UTC) + timedelta(minutes=5)
     user = {
         'user_id': 1, 'username': 'bob', 'email': 'bob@ex', 'salt': 's', 'hashed_password': 'h',
         'status': UserStatus.ACTIVE.value, 'locked_until': future
@@ -132,7 +129,7 @@ async def test_login_user_locked(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_login_user_success(monkeypatch):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     user = {
         'user_id': 2,
         'username': 'alice',

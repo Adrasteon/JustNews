@@ -236,7 +236,7 @@ async def stop_job(job_id: str):
         try:
             # Allow a short grace period for cleanup
             await asyncio.wait_for(task, timeout=5)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.debug(f"Timed out waiting for job {job_id} to cancel; task may still be cleaning up")
         except asyncio.CancelledError:
             logger.debug(f"Task for job {job_id} cancelled")

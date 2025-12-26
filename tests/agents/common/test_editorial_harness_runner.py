@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 
 from agents.common.agent_chain_harness import AgentChainResult, NormalizedArticle
 from agents.common.editorial_harness_runner import AgentChainRunner, ArtifactWriter

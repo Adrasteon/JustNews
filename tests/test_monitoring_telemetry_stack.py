@@ -1,10 +1,8 @@
-import os
-import time
 import subprocess
-import requests
+import time
 
 import pytest
-
+import requests
 
 DEV_COMPOSE = "infrastructure/monitoring/dev-docker-compose.yaml"
 

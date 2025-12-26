@@ -1,7 +1,7 @@
-import os
-import uuid
 import json
+import os
 import time
+import uuid
 
 import pytest
 
@@ -9,8 +9,8 @@ import pytest
 # the package isn't installed in the canonical test environment.
 pytest.importorskip('pymysql')
 import pymysql
-import redis
 import pytest
+import redis
 
 
 def get_db_conn():

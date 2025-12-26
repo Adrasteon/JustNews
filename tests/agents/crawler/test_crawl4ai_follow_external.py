@@ -49,7 +49,7 @@ def test_select_link_candidates_respects_follow_external(monkeypatch):
     fake_crawl4ai = make_fake_crawl4ai_with_links()
     monkeypatch.setitem(sys.modules, "crawl4ai", fake_crawl4ai)
 
-    from agents.crawler.crawl4ai_adapter import _select_link_candidates, CrawlContext
+    from agents.crawler.crawl4ai_adapter import CrawlContext, _select_link_candidates
 
     # Target site domain
     site_config = SiteConfig({"domain": "example.com", "start_url": "https://example.com/"})

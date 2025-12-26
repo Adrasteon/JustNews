@@ -1,8 +1,16 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from prometheus_client import CollectorRegistry
 
+from monitoring.core.custom_metrics import (
+    ContentMetrics,
+    ContentType,
+    CustomMetrics,
+    ProcessingStage,
+    QualityMetric,
+    SentimentType,
+)
 from monitoring.core.metrics_collector import EnhancedMetricsCollector
-from monitoring.core.custom_metrics import CustomMetrics, ContentMetrics, ContentType, QualityMetric, ProcessingStage, SentimentType
 
 
 def test_record_content_ingestion_and_stage():
@@ -25,7 +33,7 @@ def test_record_complete_content_metrics_and_stats():
     collector = EnhancedMetricsCollector("cm-agent2", registry=registry)
     cm = CustomMetrics("cm-agent2", collector)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     metrics = ContentMetrics(
         content_id="abc",
         content_type=ContentType.ARTICLE,

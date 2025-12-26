@@ -6,18 +6,17 @@ to `output/canary_published/` including the final public URL (simulated).
 """
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 from pathlib import Path
-from typing import List
-from scripts.dev.canary_metrics import incr
 
+from scripts.dev.canary_metrics import incr
 
 DRAFT_DIR = Path.cwd() / "output" / "canary_drafts"
 OUT_DIR = Path.cwd() / "output" / "canary_published"
 
 
-def find_drafts() -> List[Path]:
+def find_drafts() -> list[Path]:
     return sorted(DRAFT_DIR.glob("*.json")) if DRAFT_DIR.exists() else []
 
 
@@ -41,7 +40,7 @@ def publish_draft(path: Path) -> Path:
     return out_path
 
 
-def main() -> List[str]:
+def main() -> list[str]:
     items = []
     for p in find_drafts():
         items.append(str(publish_draft(p)))

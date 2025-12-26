@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import math
 import os
 import time
@@ -10,8 +11,6 @@ from common.metrics import get_metrics
 
 from .adapter_base import AdapterError, BaseAdapter
 from .model_loader import load_transformers_model
-
-import logging
 
 logger = logging.getLogger(__name__)
 

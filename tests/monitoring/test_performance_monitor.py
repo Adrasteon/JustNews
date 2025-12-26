@@ -1,13 +1,13 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from prometheus_client import CollectorRegistry
 
 from monitoring.core.metrics_collector import EnhancedMetricsCollector
 from monitoring.core.performance_monitor import (
-    PerformanceMonitor,
-    PerformanceSnapshot,
     BottleneckType,
     PerformanceMetric,
+    PerformanceMonitor,
+    PerformanceSnapshot,
     PerformanceThreshold,
 )
 
@@ -19,7 +19,7 @@ def test_calculate_performance_score_various():
 
     # CPU very high, memory medium -> significant score reduction
     snap = PerformanceSnapshot(
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         cpu_percent=95.0,
         memory_percent=60.0,
         disk_read_bytes=0,
@@ -33,7 +33,7 @@ def test_calculate_performance_score_various():
 
     # Low usage should give full score
     snap_low = PerformanceSnapshot(
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         cpu_percent=10.0,
         memory_percent=10.0,
         disk_read_bytes=0,
@@ -50,7 +50,7 @@ def test_detect_bottleneck_from_snapshots_cpu():
     collector = EnhancedMetricsCollector("pm-agent2", registry=reg)
     pm = PerformanceMonitor("pm-agent2", collector)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Create several snapshots with high CPU to trigger CPU bottleneck
     snaps = [
@@ -80,7 +80,7 @@ def test_get_recommendations_unique_and_limited():
     pm = PerformanceMonitor("pm-agent4", collector)
 
     # Populate bottleneck history with duplicates
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     snap = PerformanceSnapshot(timestamp=now, cpu_percent=95.0, memory_percent=96.0, disk_read_bytes=0,
                                disk_write_bytes=0, network_sent_bytes=0, network_recv_bytes=0)
@@ -96,12 +96,9 @@ def test_get_recommendations_unique_and_limited():
     assert isinstance(recs, list)
     # Should be at most 5 and no duplicates (unique set)
     assert len(recs) <= 5
-import pytest
 import asyncio
-from datetime import datetime, timedelta, timezone
 
-from monitoring.core.performance_monitor import PerformanceMonitor, PerformanceSnapshot, BottleneckType, PerformanceMetric, PerformanceThreshold
-from monitoring.core.metrics_collector import EnhancedMetricsCollector, AlertSeverity
+import pytest
 
 
 def create_monitor():
@@ -111,7 +108,7 @@ def create_monitor():
 
 def test_calculate_performance_score_cpu_and_memory():
     m = create_monitor()
-    snap = PerformanceSnapshot(timestamp=datetime.now(timezone.utc), cpu_percent=95, memory_percent=96, disk_read_bytes=0, disk_write_bytes=0, network_sent_bytes=0, network_recv_bytes=0)
+    snap = PerformanceSnapshot(timestamp=datetime.now(UTC), cpu_percent=95, memory_percent=96, disk_read_bytes=0, disk_write_bytes=0, network_sent_bytes=0, network_recv_bytes=0)
     score = m._calculate_performance_score(snap)
     assert score < 100
 
@@ -119,7 +116,7 @@ def test_calculate_performance_score_cpu_and_memory():
 def test_detect_bottleneck_cpu_and_memory():
     m = create_monitor()
     # create snapshots with high cpu and memory
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     snaps = [PerformanceSnapshot(timestamp=now - timedelta(minutes=5-i), cpu_percent=90, memory_percent=92, disk_read_bytes=0, disk_write_bytes=0, network_sent_bytes=0, network_recv_bytes=0) for i in range(5)]
     # run detection
     bottleneck = asyncio.run(m._detect_bottleneck(snaps))
@@ -135,7 +132,7 @@ def test_get_performance_report_no_data():
 
 def test_get_performance_report_with_data_and_bottlenecks():
     m = create_monitor()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     # populate snapshots
     for i in range(6):
         m._snapshots.append(PerformanceSnapshot(timestamp=now - timedelta(minutes=5-i), cpu_percent=90, memory_percent=85, disk_read_bytes=0, disk_write_bytes=0, network_sent_bytes=0, network_recv_bytes=0))
@@ -153,7 +150,7 @@ def test_get_performance_report_with_data_and_bottlenecks():
 async def test_check_thresholds_triggers_alert(monkeypatch):
     m = create_monitor()
     # create a snapshot with high cpu
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     snap = PerformanceSnapshot(timestamp=now, cpu_percent=95, memory_percent=30, disk_read_bytes=0, disk_write_bytes=0, network_sent_bytes=0, network_recv_bytes=0)
     m._snapshots.append(snap)
 

@@ -9,8 +9,6 @@ caused the editor to crash when running the full suite with GPUs enabled).
 
 import os
 
-import pytest
-
 
 def test_gpu_env_default_is_off():
     """Ensure TEST_GPU_AVAILABLE is disabled by default"""
@@ -28,5 +26,5 @@ def test_torch_is_mocked_when_not_using_real_ml_libs():
 
     # If tests are not opted into real ML libs, the mock's cuda.is_available
     # will reflect the TEST_GPU_AVAILABLE flag (default off => False).
-    assert callable(getattr(torch.cuda, 'is_available'))
+    assert callable(torch.cuda.is_available)
     assert torch.cuda.is_available() in (False, True)

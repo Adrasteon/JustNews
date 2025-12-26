@@ -1,7 +1,7 @@
 """LLM helper for the Journalist agent backed by the shared Mistral adapter."""
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from agents.common.base_mistral_json_adapter import BaseMistralJSONAdapter
 
@@ -23,7 +23,7 @@ class JournalistMistralAdapter(BaseMistralJSONAdapter):
             defaults={"max_chars": 9000, "max_new_tokens": 400, "temperature": 0.25, "top_p": 0.92},
         )
 
-    def generate_story_brief(self, markdown: str | None, html: str | None = None, *, url: str | None = None, title: str | None = None) -> Dict[str, Any] | None:
+    def generate_story_brief(self, markdown: str | None, html: str | None = None, *, url: str | None = None, title: str | None = None) -> dict[str, Any] | None:
         content = markdown or html or ""
         trimmed = self._truncate_content(content)
         if not trimmed:

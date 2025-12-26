@@ -1,4 +1,3 @@
-import os
 
 from agents.journalist.journalist_engine import JournalistEngine
 

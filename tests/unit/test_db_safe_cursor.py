@@ -1,7 +1,4 @@
-import threading
-import time
 
-import pytest
 
 from database.models.migrated_models import MigratedDatabaseService
 from database.utils.migrated_database_utils import execute_mariadb_query

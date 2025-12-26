@@ -1,14 +1,11 @@
+import json
 import os
 import time
-import json
 
 import pytest
 
 from agents.gpu_orchestrator.gpu_orchestrator_engine import GPUOrchestratorEngine
 from agents.gpu_orchestrator.worker import Worker
-
-
-import os
 
 # These tests require real Redis + MariaDB running locally (used by CI). Skip by
 # default for developer runs unless the caller explicitly opts in by setting

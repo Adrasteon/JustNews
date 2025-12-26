@@ -1,11 +1,7 @@
-import sys
-import types
-import time
-import pytest
 
-from common.metrics import get_metrics
-from agents.common.openai_adapter import OpenAIAdapter
 from agents.common.hf_adapter import HFAdapter
+from agents.common.openai_adapter import OpenAIAdapter
+from common.metrics import get_metrics
 
 
 def test_openai_dryrun_emits_metrics(monkeypatch):

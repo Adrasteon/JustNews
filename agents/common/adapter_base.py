@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, List, Sequence
-
+from typing import Any
 
 _TRUTHY = {"1", "true", "yes", "on"}
 
@@ -114,7 +114,7 @@ class BaseAdapter:
     def infer(self, prompt: str, **kwargs: Any) -> dict:
         raise NotImplementedError()
 
-    def batch_infer(self, prompts: Sequence[str], **kwargs: Any) -> List[dict]:
+    def batch_infer(self, prompts: Sequence[str], **kwargs: Any) -> list[dict]:
         return [self.infer(prompt, **kwargs) for prompt in prompts]
 
     def health_check(self) -> dict:

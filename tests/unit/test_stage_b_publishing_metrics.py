@@ -1,4 +1,4 @@
-from common.stage_b_metrics import use_default_stage_b_metrics, get_stage_b_metrics
+from common.stage_b_metrics import use_default_stage_b_metrics
 
 
 def test_record_publish_metrics():

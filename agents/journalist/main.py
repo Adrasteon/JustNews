@@ -8,6 +8,7 @@ for local testing.
 from __future__ import annotations
 
 import logging
+
 from common.observability import bootstrap_observability
 
 # Initialize observability for the Journalist agent

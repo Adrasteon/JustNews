@@ -1,6 +1,5 @@
-import os
 
-from agents.reasoning.reasoning_engine import ReasoningEngine, ReasoningConfig
+from agents.reasoning.reasoning_engine import ReasoningConfig, ReasoningEngine
 
 
 def test_reasoning_engine_mistral_dry_run(monkeypatch):

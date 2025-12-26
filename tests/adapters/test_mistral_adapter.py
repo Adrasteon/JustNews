@@ -1,4 +1,3 @@
-import os
 import pathlib
 
 from agents.common.mistral_adapter import MistralAdapter

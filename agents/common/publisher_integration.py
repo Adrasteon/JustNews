@@ -4,11 +4,10 @@ import os
 import re
 import sqlite3
 from pathlib import Path
-from typing import Optional
+
+import requests
 
 from agents.common.agent_chain_harness import NormalizedArticle
-import os
-import requests
 
 
 def _slugify(title: str) -> str:
@@ -24,7 +23,7 @@ def _publisher_db_path() -> Path:
     return repo_root / 'agents' / 'publisher' / 'db.sqlite3'
 
 
-def publish_normalized_article(article: NormalizedArticle, *, author: Optional[str] = None, score: float = 0.0, evidence: str = "", is_featured: bool = False, category: str = 'world') -> bool:
+def publish_normalized_article(article: NormalizedArticle, *, author: str | None = None, score: float = 0.0, evidence: str = "", is_featured: bool = False, category: str = 'world') -> bool:
     """Publish a normalized article into the lightweight publisher DB.
 
     Returns True on insertion or update, False on failure.

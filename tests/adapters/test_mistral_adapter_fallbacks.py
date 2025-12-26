@@ -1,6 +1,4 @@
-import os
 import pathlib
-from types import SimpleNamespace
 
 from agents.common.mistral_adapter import MistralAdapter
 

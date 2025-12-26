@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import json
-import logging
 import os
+from collections.abc import Iterable
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 from common.observability import get_logger
 
@@ -14,10 +14,14 @@ logger = get_logger(__name__)
 
 try:  # Optional dependency: we only configure OpenTelemetry when installed.
     from opentelemetry import trace
-    from opentelemetry.sdk.resources import DEPLOYMENT_ENVIRONMENT, SERVICE_NAME, Resource
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.resources import (
+        DEPLOYMENT_ENVIRONMENT,
+        SERVICE_NAME,
+        Resource,
+    )
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
-    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 except ImportError:  # pragma: no cover - optional dependency
     trace = None  # type: ignore
     Resource = None  # type: ignore

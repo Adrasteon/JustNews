@@ -1,6 +1,5 @@
-import os
 
-from agents.critic.critic_engine import CriticEngine, CriticConfig
+from agents.critic.critic_engine import CriticConfig, CriticEngine
 
 
 def test_critic_engine_mistral_dry_run(monkeypatch):

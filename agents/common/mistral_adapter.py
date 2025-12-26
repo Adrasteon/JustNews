@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import time
 import os
-from typing import Any, Dict, List
+import time
+from typing import Any
 
-from .adapter_base import BaseAdapter, AdapterError
+from .adapter_base import AdapterError, BaseAdapter
 from .base_mistral_json_adapter import BaseMistralJSONAdapter
-from .mistral_loader import load_mistral_adapter_or_base
 
 
 class MistralAdapter(BaseAdapter):
@@ -27,7 +26,7 @@ class MistralAdapter(BaseAdapter):
         # Try to eager-populate a per-agent implementation if available.
         try:
             # Candidate module names to try for agent-specific helpers
-            candidates = [f"agents.{self.agent}.mistral_adapter", f"agents.tools.mistral_{self.agent}_adapter", f"agents.tools.mistral_re_ranker_adapter"]
+            candidates = [f"agents.{self.agent}.mistral_adapter", f"agents.tools.mistral_{self.agent}_adapter", "agents.tools.mistral_re_ranker_adapter"]
             for module_name in candidates:
                 try:
                     mod = __import__(module_name, fromlist=['*'])
@@ -148,7 +147,7 @@ class MistralAdapter(BaseAdapter):
 
         return self._base._chat_json(messages)
 
-    def batch_infer(self, prompts: List[str], **kwargs: Any) -> List[dict]:
+    def batch_infer(self, prompts: list[str], **kwargs: Any) -> list[dict]:
         return [self.infer(p, **kwargs) for p in prompts]
 
     def __getattr__(self, name: str):
@@ -315,7 +314,7 @@ class MistralAdapter(BaseAdapter):
         # delegate to per-agent implementation if available
         if getattr(self, '_agent_impl', None) and hasattr(self._agent_impl, 'review_content'):
             try:
-                val = getattr(self._agent_impl, 'review_content')(content, metadata)
+                val = self._agent_impl.review_content(content, metadata)
                 if val is not None:
                     return val
             except Exception:

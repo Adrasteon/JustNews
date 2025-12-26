@@ -17,6 +17,7 @@ def test_chroma_canonical_enforcement(tmp_path, monkeypatch):
     # 'mysql.connector.connect' replacement that raises by default. The test
     # only needs a minimal connection to reach the Chroma validation logic.
     from unittest.mock import MagicMock, patch
+
     # ensure any cached service instance is cleared so create_database_service runs fresh
     from database.utils.migrated_database_utils import close_cached_service
     close_cached_service()

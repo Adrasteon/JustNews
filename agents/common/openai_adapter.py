@@ -5,7 +5,7 @@ import math
 import os
 import time
 from contextlib import suppress
-from typing import Any, Sequence
+from typing import Any
 
 from common.metrics import get_metrics
 

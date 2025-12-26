@@ -8,19 +8,17 @@ JSON record to `output/canary_normalized/`.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import List
-from datetime import datetime, UTC
 
 from common.url_normalization import normalize_article_url
 from scripts.dev.canary_metrics import incr
-
 
 RAW_DIR = Path.cwd() / "output" / "canary_raw"
 OUT_DIR = Path.cwd() / "output" / "canary_normalized"
 
 
-def find_raw_files() -> List[Path]:
+def find_raw_files() -> list[Path]:
     return sorted(RAW_DIR.glob("*.json")) if RAW_DIR.exists() else []
 
 

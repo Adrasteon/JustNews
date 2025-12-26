@@ -1,6 +1,5 @@
 import asyncio
 import json
-import os
 from datetime import datetime
 
 import pytest
@@ -159,13 +158,10 @@ def test_data_minimization_admin_status(monkeypatch):
     res = asyncio.run(auth_api.get_data_minimization_status(credentials=type('C', (), {'credentials': 't'})()))
     assert res['status'] == 'success'
 import types
-import asyncio
-from datetime import datetime, UTC
 
-import pytest
+from fastapi import HTTPException
 
 from agents.common import auth_api as api
-from fastapi import HTTPException
 
 
 def test_get_current_user_invalid_token(monkeypatch):

@@ -19,8 +19,6 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional
-
 
 _initialized = False
 
@@ -51,7 +49,7 @@ def _scrub_payload(event, hint):
     return event
 
 
-def init_sentry(service_name: str, *, logger: Optional[logging.Logger] = None) -> bool:
+def init_sentry(service_name: str, *, logger: logging.Logger | None = None) -> bool:
     """Initialize Sentry if SENTRY_DSN is provided.
 
     Returns True if Sentry was initialized and False otherwise. Initialization

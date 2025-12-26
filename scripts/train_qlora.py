@@ -37,11 +37,10 @@ import argparse
 import json
 import os
 import shutil
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable, Sequence
-
 
 DEFAULT_PROMPT_TEMPLATE = "<s>[INST] {prompt} [/INST]\n{response}</s>"
 
@@ -288,7 +287,7 @@ def _publish_adapter(args, summary: TrainingSummary) -> None:
     root = args.model_store_root or os.environ.get("MODEL_STORE_ROOT")
     if not root:
         raise SystemExit("Publishing requested but MODEL_STORE_ROOT is not set. Pass --model-store-root or export env.")
-    version = args.adapter_version or f"v{datetime.now(timezone.utc):%Y%m%d-%H%M}"
+    version = args.adapter_version or f"v{datetime.now(UTC):%Y%m%d-%H%M}"
     from models.model_store import ModelStore
 
     store = ModelStore(Path(root))
@@ -316,7 +315,7 @@ def _dry_run(args) -> TrainingSummary:
     output_dir.mkdir(parents=True, exist_ok=True)
     marker = output_dir / "DRY_RUN.txt"
     marker.write_text("Dry-run placeholder. No actual adapter weights produced.\n", encoding="utf-8")
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
     summary = TrainingSummary(
         base_model=args.model_name_or_path,
         agent=args.agent,
@@ -369,7 +368,7 @@ def main(argv: list[str] | None = None):
         dataset_name=args.dataset_name,
         train_files=args.train_files,
         num_samples=sample_count,
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         dry_run=False,
     )
     _write_training_summary(output_dir, summary)

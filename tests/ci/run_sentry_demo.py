@@ -1,6 +1,7 @@
 import os
 import time
 
+
 def main():
     dsn = os.environ.get('SENTRY_DSN', '')
     if not dsn:
@@ -9,8 +10,9 @@ def main():
 
     print('Initializing Sentry with DSN (will send a single demo event)')
     try:
-        from common.sentry_integration import init_sentry
         import sentry_sdk
+
+        from common.sentry_integration import init_sentry
 
         ok = init_sentry('ci-demo', logger=None)
         if not ok:

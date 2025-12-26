@@ -2,7 +2,10 @@ import json
 import time
 from unittest.mock import MagicMock, patch
 
-from agents.gpu_orchestrator.gpu_orchestrator_engine import GPUOrchestratorEngine, ALLOCATIONS
+from agents.gpu_orchestrator.gpu_orchestrator_engine import (
+    ALLOCATIONS,
+    GPUOrchestratorEngine,
+)
 
 
 def make_fake_db_cursor():

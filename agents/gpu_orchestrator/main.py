@@ -9,6 +9,7 @@ This module provides the REST API endpoints for GPU orchestration including:
 - MCP Bus integration for inter-agent communication
 """
 
+import logging
 import os
 import threading
 import time
@@ -17,6 +18,8 @@ from contextlib import asynccontextmanager
 from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field
+
+from common.observability import bootstrap_observability
 
 from .gpu_orchestrator_engine import engine
 from .tools import (
@@ -31,9 +34,6 @@ from .tools import (
     release_gpu_lease,
     set_policy,
 )
-
-from common.observability import bootstrap_observability
-import logging
 
 # Configure observability for the GPU Orchestrator service
 bootstrap_observability("gpu_orchestrator", level=logging.INFO)

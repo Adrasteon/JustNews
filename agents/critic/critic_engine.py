@@ -30,6 +30,7 @@ from datetime import datetime
 from typing import Any
 
 import torch
+
 try:
     # Prefer a top-level common package if present (CI may install one); otherwise
     # fall back to agents.common.gpu_config_manager which is bundled with the repo.
@@ -64,10 +65,13 @@ from common.observability import get_logger
 
 try:
     from agents.common.mistral_adapter import MistralAdapter
+
     from .mistral_adapter import (
-        CriticAssessment,
         MODEL_ADAPTER_NAME as CRITIC_ADAPTER_NAME,
+    )
+    from .mistral_adapter import (
         SYSTEM_PROMPT,
+        CriticAssessment,
     )
 except Exception:  # pragma: no cover - optional dependency wiring
     CriticAssessment = None  # type: ignore

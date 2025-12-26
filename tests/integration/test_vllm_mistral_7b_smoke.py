@@ -5,7 +5,6 @@ Validates OpenAI-compatible API, basic chat completion, and optional adapter rou
 """
 import os
 import sys
-from pathlib import Path
 
 import requests
 import yaml
@@ -18,7 +17,7 @@ def load_vllm_config(config_path: str = "config/vllm_mistral_7b.yaml") -> dict:
     and the current Mistral config which places endpoint under `base_models.mistral-7b.endpoint`.
     It prefers `VLLM_BASE_URL` / `VLLM_API_KEY` from the environment if present.
     """
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         cfg = yaml.safe_load(f)
 
     # Prefer env vars if set (useful for CI/local overrides)

@@ -1,7 +1,10 @@
-from django.core.management.base import BaseCommand
-from news.models import Article
 import json
 import os
+
+from django.core.management.base import BaseCommand
+
+from news.models import Article
+
 
 class Command(BaseCommand):
     help = 'Ingest articles released by Chief Editor from a JSON file.'
@@ -14,7 +17,7 @@ class Command(BaseCommand):
         if not os.path.exists(json_path):
             self.stdout.write(self.style.ERROR(f'File not found: {json_path}'))
             return
-        with open(json_path, 'r') as f:
+        with open(json_path) as f:
             articles = json.load(f)
         count = 0
         for data in articles:

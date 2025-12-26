@@ -1,8 +1,7 @@
 import os
-import sys
-import subprocess
 import sqlite3
-import json
+import subprocess
+import sys
 import time
 
 import django

@@ -1,7 +1,7 @@
 """High-accuracy editorial assessor for the Chief Editor agent."""
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from agents.common.base_mistral_json_adapter import BaseMistralJSONAdapter
 
@@ -23,7 +23,7 @@ class ChiefEditorMistralAdapter(BaseMistralJSONAdapter):
             defaults={"max_chars": 7000, "max_new_tokens": 380, "temperature": 0.15, "top_p": 0.85},
         )
 
-    def review_content(self, content: str, metadata: dict[str, Any] | None = None) -> Dict[str, Any] | None:
+    def review_content(self, content: str, metadata: dict[str, Any] | None = None) -> dict[str, Any] | None:
         text = self._truncate_content(content or "")
         if not text:
             return None

@@ -1,4 +1,3 @@
-import os
 
 from agents.analyst.analyst_engine import AnalystEngine
 

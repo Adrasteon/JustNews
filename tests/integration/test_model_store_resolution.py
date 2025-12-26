@@ -1,5 +1,9 @@
 import os
-from agents.common.model_loader import load_transformers_with_adapter, get_agent_model_metadata
+
+from agents.common.model_loader import (
+    get_agent_model_metadata,
+    load_transformers_with_adapter,
+)
 
 
 def test_model_store_dry_run_resolves_agent_paths(monkeypatch):

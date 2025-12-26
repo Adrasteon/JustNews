@@ -1,8 +1,8 @@
 import os
+
 import pytest
 
 from agents.common.hf_adapter import HFAdapter
-
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("RUN_PROVIDER_TESTS") != "1",

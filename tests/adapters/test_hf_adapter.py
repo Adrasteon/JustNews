@@ -1,4 +1,3 @@
-import os
 
 from agents.common.hf_adapter import HFAdapter
 

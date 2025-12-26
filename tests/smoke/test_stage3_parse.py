@@ -1,7 +1,7 @@
+import json
 import pathlib
 import shutil
 import time
-import json
 
 from scripts.dev.crawl_canary import main as crawl_main
 from scripts.dev.normalize_canary import main as normalize_main

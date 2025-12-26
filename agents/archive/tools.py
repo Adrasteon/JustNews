@@ -7,8 +7,8 @@ via the MCP protocol. Provides clean interfaces to archive functionality.
 
 from typing import Any
 
-from agents.archive.archive_engine import get_archive_engine
 from agents.archive import ingest_pipeline
+from agents.archive.archive_engine import get_archive_engine
 from common.observability import get_logger
 
 logger = get_logger(__name__)

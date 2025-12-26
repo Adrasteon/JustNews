@@ -27,6 +27,7 @@ from typing import Any
 
 import requests
 import torch
+
 try:
     # transformers is an optional heavy dependency; import pipeline lazily and
     # degrade to None if unavailable so test collection doesn't fail.

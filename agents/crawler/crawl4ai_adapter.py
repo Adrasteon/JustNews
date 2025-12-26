@@ -9,8 +9,8 @@ remains unchanged.
 from __future__ import annotations
 
 import asyncio
-import os
 import importlib
+import os
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass

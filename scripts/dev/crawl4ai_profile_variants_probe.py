@@ -115,7 +115,7 @@ async def _run_probe(args: argparse.Namespace) -> dict[str, Any]:
     if args.NoFollow is None:
         follow_external_override = None
     else:
-        follow_external_override = not (str(args.NoFollow).lower() in ("1", "true", "yes"))
+        follow_external_override = str(args.NoFollow).lower() not in ("1", "true", "yes")
 
     for name, profile in variants:
         print(f"Running variant {name}...")

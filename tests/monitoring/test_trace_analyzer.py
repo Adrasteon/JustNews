@@ -1,14 +1,16 @@
+import importlib
+import sys
+import types
 from datetime import datetime, timedelta
 
-import importlib, sys, types
 cfg_mod = types.ModuleType("monitoring.common.config")
 cfg_mod.get_config = lambda: {"tracing": {"jaeger_enabled": False, "otlp_enabled": False, "file_export_enabled": False}}
 sys.modules.setdefault('monitoring.common.config', cfg_mod)
 sys.modules.setdefault('monitoring.common.metrics', importlib.import_module('common.metrics'))
 
-from monitoring.core.trace_analyzer import TraceAnalyzer, AnomalyType
-from monitoring.core.trace_processor import TraceAnalysis, PerformanceBottleneck
+from monitoring.core.trace_analyzer import AnomalyType, TraceAnalyzer
 from monitoring.core.trace_collector import TraceData, TraceSpan
+from monitoring.core.trace_processor import TraceAnalysis
 
 
 def make_span(id, service="svc", op="op", duration=100, status="ok"):

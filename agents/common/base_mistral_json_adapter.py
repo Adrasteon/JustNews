@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 from common.observability import get_logger
 
@@ -96,7 +96,7 @@ class BaseMistralJSONAdapter:
             return text
         return text[: self.max_chars].rsplit(" ", 1)[0]
 
-    def _format_prompt(self, messages: List[Dict[str, str]]) -> str:
+    def _format_prompt(self, messages: list[dict[str, str]]) -> str:
         if self.tokenizer and hasattr(self.tokenizer, "apply_chat_template"):
             try:
                 return self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
@@ -114,7 +114,7 @@ class BaseMistralJSONAdapter:
                 parts.append(content)
         return "\n".join(parts)
 
-    def _chat(self, messages: List[Dict[str, str]]) -> str | None:
+    def _chat(self, messages: list[dict[str, str]]) -> str | None:
         if not self._ensure_loaded() or not TORCH_AVAILABLE:
             return None
         prompt = self._format_prompt(messages)
@@ -131,7 +131,7 @@ class BaseMistralJSONAdapter:
 
         device = None
         if hasattr(self.model, "device"):
-            device = getattr(self.model, "device")
+            device = self.model.device
         if device is not None:
             try:
                 inputs = {k: v.to(device) for k, v in inputs.items()}
@@ -186,7 +186,7 @@ class BaseMistralJSONAdapter:
                 logger.debug("JSON parse failed for agent=%s payload=%s", self.agent_name, snippet[:200])
                 return None
 
-    def _chat_json(self, messages: List[Dict[str, str]]) -> dict[str, Any] | None:
+    def _chat_json(self, messages: list[dict[str, str]]) -> dict[str, Any] | None:
         completion = self._chat(messages)
         if not completion:
             return None

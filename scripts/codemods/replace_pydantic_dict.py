@@ -13,15 +13,14 @@ import argparse
 import json
 import re
 from pathlib import Path
-from typing import List, Tuple
 
 ROOT_IGNORE = {".git", "node_modules", "third_party", "__pycache__", "tests/deprecation", "tests/codemod", "deprecations", "codemods"}
 
 PATTERN = re.compile(r"\.dict\(")
 
 
-def _find_files(root: Path) -> List[Path]:
-    results: List[Path] = []
+def _find_files(root: Path) -> list[Path]:
+    results: list[Path] = []
     for p in root.rglob("*.py"):
         if any(ignore in str(p) for ignore in ROOT_IGNORE):
             continue
@@ -44,8 +43,8 @@ def _should_skip(line: str, start: int) -> bool:
     return False
 
 
-def find_matches(root: Path) -> List[Tuple[Path, int, str]]:
-    matches: List[Tuple[Path, int, str]] = []
+def find_matches(root: Path) -> list[tuple[Path, int, str]]:
+    matches: list[tuple[Path, int, str]] = []
     for p in _find_files(root):
         try:
             text = p.read_text()
@@ -60,15 +59,15 @@ def find_matches(root: Path) -> List[Tuple[Path, int, str]]:
     return matches
 
 
-def apply_replacements(root: Path) -> List[Path]:
-    changed: List[Path] = []
+def apply_replacements(root: Path) -> list[Path]:
+    changed: list[Path] = []
     for p in _find_files(root):
         try:
             text = p.read_text()
         except Exception:
             continue
 
-        new_lines: List[str] = []
+        new_lines: list[str] = []
         changed_file = False
         for line in text.splitlines():
             newline = line
@@ -86,7 +85,7 @@ def apply_replacements(root: Path) -> List[Path]:
     return changed
 
 
-def main(argv: List[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", default='.', help="Root dir to scan")
     parser.add_argument("--apply", action='store_true', help="Apply in-place")

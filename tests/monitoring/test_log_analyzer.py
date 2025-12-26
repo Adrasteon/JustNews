@@ -1,9 +1,9 @@
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from monitoring.core.log_storage import LogStorage
+from monitoring.core.log_analyzer import AnalysisType, LogAnalyzer
 from monitoring.core.log_collector import LogEntry, LogLevel
-from monitoring.core.log_analyzer import LogAnalyzer, AnalysisType
+from monitoring.core.log_storage import LogStorage
 
 
 def create_entry(ts, level=LogLevel.INFO, agent_name="svc", message="ok", endpoint="/x", duration_ms=None):
@@ -14,7 +14,7 @@ def test_analyze_error_rates(tmp_path):
     cfg = {"storage_path": str(tmp_path), "index_enabled": False, "compression_enabled": False, "cache_ttl_seconds": 1, "index_fields": [], "retention_days": 90}
     storage = LogStorage(cfg)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # create entries: 3 total, 2 errors for svcA (error rate 66%)
     entries = [
@@ -49,7 +49,7 @@ def test_detect_anomalies_new_error_pattern(tmp_path):
     cfg = {"storage_path": str(tmp_path), "index_enabled": False, "compression_enabled": False, "cache_ttl_seconds": 1, "index_fields": [], "retention_days": 90}
     storage = LogStorage(cfg)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     entries = []
     # create various error messages with numbers and uuids to exercise pattern extraction

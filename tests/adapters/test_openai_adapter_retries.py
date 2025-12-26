@@ -1,6 +1,5 @@
 import sys
 import types
-import time
 
 import pytest
 

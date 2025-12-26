@@ -82,7 +82,9 @@ class SemanticSearchService:
             st_cls = SentenceTransformer
         else:
             try:
-                from sentence_transformers import SentenceTransformer as _ST  # type: ignore
+                from sentence_transformers import (
+                    SentenceTransformer as _ST,  # type: ignore
+                )
             except Exception:
                 _ST = None
             st_cls = _ST

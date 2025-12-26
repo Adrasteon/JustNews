@@ -1,4 +1,3 @@
-import builtins
 import inspect
 import types
 
@@ -9,7 +8,7 @@ from agents.common import embedding as emb
 
 def test_detect_caller_agent_with_fake_stack(monkeypatch):
     # Create fake frame objects with filenames that include agents/<agent>/
-    fake_frame = types.SimpleNamespace(filename=f"/project/agents/memory/somefile.py")
+    fake_frame = types.SimpleNamespace(filename="/project/agents/memory/somefile.py")
     monkeypatch.setattr(inspect, 'stack', lambda: [fake_frame])
 
     agent = emb._detect_caller_agent()

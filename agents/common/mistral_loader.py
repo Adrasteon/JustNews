@@ -9,7 +9,7 @@ training catches up.
 from __future__ import annotations
 
 import os
-from typing import Any, Tuple
+from typing import Any
 
 from common.observability import get_logger
 
@@ -19,7 +19,10 @@ except Exception:  # pragma: no cover
     AutoModelForCausalLM = None  # type: ignore
     AutoTokenizer = None  # type: ignore
 
-from agents.common.model_loader import load_transformers_model, load_transformers_with_adapter
+from agents.common.model_loader import (
+    load_transformers_model,
+    load_transformers_with_adapter,
+)
 
 logger = get_logger(__name__)
 
@@ -32,7 +35,7 @@ def load_mistral_adapter_or_base(
     *,
     model_kwargs: dict | None = None,
     tokenizer_kwargs: dict | None = None,
-) -> Tuple[Any | None, Any | None]:
+) -> tuple[Any | None, Any | None]:
     """Load an agent's Mistral base + adapter, falling back to the base model.
 
     Returns a ``(model, tokenizer)`` tuple or ``(None, None)`` when loading fails.

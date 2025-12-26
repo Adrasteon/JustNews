@@ -1,12 +1,12 @@
+import json
 import pathlib
 import shutil
 import time
-import json
 
 from scripts.dev.crawl_canary import main as crawl_main
+from scripts.dev.editorial_canary import main as editorial_main
 from scripts.dev.normalize_canary import main as normalize_main
 from scripts.dev.parse_canary import main as parse_main
-from scripts.dev.editorial_canary import main as editorial_main
 
 
 def test_editorial_pipeline(tmp_path):

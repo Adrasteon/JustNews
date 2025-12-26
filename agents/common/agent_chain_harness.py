@@ -8,15 +8,16 @@ agents while still covering the data contracts between stages.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable, List
+from typing import Any
 
-from agents.journalist.mistral_adapter import JournalistMistralAdapter
-from agents.synthesizer.mistral_adapter import SynthesizerMistralAdapter
 from agents.fact_checker.mistral_adapter import (
     ClaimAssessment,
     FactCheckerMistralAdapter,
 )
+from agents.journalist.mistral_adapter import JournalistMistralAdapter
+from agents.synthesizer.mistral_adapter import SynthesizerMistralAdapter
 from common.observability import get_logger
 
 logger = get_logger(__name__)
@@ -35,7 +36,7 @@ class NormalizedArticle:
 class AgentChainResult:
     article_id: str
     story_brief: dict[str, Any] | None
-    fact_checks: List[dict[str, Any]]
+    fact_checks: list[dict[str, Any]]
     draft: dict[str, Any] | None
     acceptance_score: float
     needs_followup: bool
@@ -86,8 +87,8 @@ class AgentChainHarness:
             fallback["summary"] = summary.get("text", "")
             return fallback
 
-    def _run_fact_checks(self, article: NormalizedArticle) -> List[dict[str, Any]]:
-        checks: List[dict[str, Any]] = []
+    def _run_fact_checks(self, article: NormalizedArticle) -> list[dict[str, Any]]:
+        checks: list[dict[str, Any]] = []
         method = getattr(self.fact_checker_adapter, "evaluate_claim", None)
         claims = list(_extract_claims(article.text))
         if not method:
@@ -138,7 +139,7 @@ class AgentChainHarness:
 
 def _extract_claims(text: str, *, max_claims: int = 3, min_words: int = 8) -> Iterable[str]:
     sentences = re.split(r"(?<=[.!?])\s+", text.strip()) if text else []
-    claims: List[str] = []
+    claims: list[str] = []
     for sentence in sentences:
         if len(sentence.split()) < min_words:
             continue

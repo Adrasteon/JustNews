@@ -2,17 +2,13 @@ import json
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import pytest
-
 from config.legacy import (
     LegacyConfigFile,
     LegacyConfigurationMigrator,
     MigrationPlan,
-    discover_and_migrate_configs,
     create_legacy_compatibility_layer,
 )
 from config.schemas import JustNewsConfig
-from config.validation import ValidationResult
 
 
 def test_legacyfile_is_active_true_and_false():

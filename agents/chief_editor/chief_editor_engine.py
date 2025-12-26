@@ -19,9 +19,9 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
-from common.observability import get_logger
 from agents.chief_editor.mistral_adapter import SYSTEM_PROMPT
 from agents.common.mistral_adapter import MistralAdapter
+from common.observability import get_logger
 
 # Core ML Libraries with fallbacks
 try:

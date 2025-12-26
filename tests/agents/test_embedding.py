@@ -1,6 +1,3 @@
-import os
-import tempfile
-import threading
 
 import agents.common.embedding as embedding
 

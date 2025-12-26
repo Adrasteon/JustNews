@@ -1,7 +1,7 @@
-import os
-import sys
-import subprocess
 import json
+import os
+import subprocess
+import sys
 import time
 
 import django

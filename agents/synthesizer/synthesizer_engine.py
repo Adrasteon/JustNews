@@ -30,9 +30,9 @@ from typing import Any
 
 import torch
 
-from common.observability import get_logger
 from agents.common.mistral_adapter import MistralAdapter
 from agents.synthesizer.mistral_adapter import SYSTEM_PROMPT
+from common.observability import get_logger
 
 # Core ML libraries with fallbacks
 try:

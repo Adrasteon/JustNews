@@ -6,7 +6,7 @@ import os
 import re
 import textwrap
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 from common.observability import get_logger
 
@@ -113,7 +113,7 @@ class FactCheckerMistralAdapter:
             logger.warning("Failed to load Fact Checker Mistral weights: %s", exc)
             return False
 
-    def _run_inference(self, claim: str, context: str | None) -> Dict[str, Any] | None:
+    def _run_inference(self, claim: str, context: str | None) -> dict[str, Any] | None:
         if not self._ensure_loaded() or not TORCH_AVAILABLE or self.model is None or self.tokenizer is None:
             return None
 
@@ -134,7 +134,7 @@ class FactCheckerMistralAdapter:
 
         device = None
         if hasattr(self.model, "device"):
-            device = getattr(self.model, "device")
+            device = self.model.device
         elif hasattr(self.model, "hf_device_map"):
             device = None
 
@@ -171,7 +171,7 @@ class FactCheckerMistralAdapter:
                 pass
         return f"<s>[INST] {SYSTEM_PROMPT}\nClaim:\n'''{claim}'''{context_block} [/INST]"
 
-    def _parse_completion(self, completion: str) -> Dict[str, Any] | None:
+    def _parse_completion(self, completion: str) -> dict[str, Any] | None:
         snippet = completion.strip()
         fenced = re.search(r"```(?:json)?(.*?)```", snippet, flags=re.DOTALL)
         if fenced:
@@ -193,7 +193,7 @@ class FactCheckerMistralAdapter:
                 logger.debug("Failed to parse fact-checker adapter JSON: %s", snippet)
                 return None
 
-    def _normalize(self, payload: Dict[str, Any]) -> ClaimAssessment | None:
+    def _normalize(self, payload: dict[str, Any]) -> ClaimAssessment | None:
         try:
             verdict = str(payload.get("verdict", "unclear")).lower()
             if verdict not in {"verified", "refuted", "unclear"}:

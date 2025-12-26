@@ -53,11 +53,11 @@ class StageBMetrics:
 
     def get_editorial_count(self, result: str) -> float:
         return self.editorial_total.labels(result=result)._value.get()
-    
+
     def record_publish_result(self, result: str) -> None:
         """Record a publish outcome (success/failure)."""
         self.publishing_total.labels(result=result).inc()
-    
+
     def observe_publish_latency(self, seconds: float) -> None:
         """Observe publish latency in seconds."""
         self.publishing_latency_seconds.observe(max(0.0, float(seconds)))

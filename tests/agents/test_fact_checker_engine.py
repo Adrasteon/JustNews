@@ -1,5 +1,6 @@
-import pytest
 import types
+
+import pytest
 
 from agents.fact_checker.fact_checker_engine import FactCheckerConfig, FactCheckerEngine
 
@@ -127,9 +128,6 @@ def test_assess_credibility_domain_and_content(monkeypatch):
     assert 'credibility_score' in res
     assert res['domain'] == 'www.bbc.com'
 import pytest
-import types
-
-from agents.fact_checker.fact_checker_engine import FactCheckerConfig, FactCheckerEngine
 
 
 @pytest.mark.parametrize('text,expected', [

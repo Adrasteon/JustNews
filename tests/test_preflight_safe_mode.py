@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: MIT
 import os
+import socket
 import subprocess
 import threading
-import socket
-import time
-
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 

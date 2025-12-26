@@ -1,9 +1,8 @@
 import asyncio
-from datetime import datetime, timezone
-
-import pytest
 import importlib.util
 import os
+
+import pytest
 
 # Import security.models without executing package-level initialization which can
 # import other components that are not under test. Load the module directly from file.
@@ -23,6 +22,7 @@ enc_mod = importlib.util.module_from_spec(spec2)
 # resolve (e.g. `from ..models import ...`) without triggering side-effects.
 import sys as _sys
 import types as _types
+
 security_pkg = _types.ModuleType('security')
 security_pkg.models = models_mod
 _sys.modules['security'] = security_pkg

@@ -22,6 +22,7 @@ Endpoints:
 - GET /metrics: Prometheus metrics endpoint
 """
 
+import logging
 import os
 import time
 from contextlib import asynccontextmanager
@@ -33,8 +34,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from common.metrics import JustNewsMetrics
-from common.observability import get_logger, bootstrap_observability
-import logging
+from common.observability import bootstrap_observability, get_logger
 
 # Initialize observability (logging + optional OTEL + optional Sentry)
 bootstrap_observability("mcp_bus", level=logging.INFO)

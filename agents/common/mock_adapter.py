@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Callable, Dict, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
+from typing import Any
 
 from .adapter_base import AdapterError, BaseAdapter
 
@@ -18,7 +19,7 @@ class MockAdapter(BaseAdapter):
         failure_prompts: Iterable[str] | None = None,
         latency_seconds: float = 0.0,
         token_counter: Callable[[str], int] | None = None,
-        metadata: Dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(name=name, dry_run=True)
         self._default_text_template = default_text

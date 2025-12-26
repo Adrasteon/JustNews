@@ -1,8 +1,12 @@
-import sqlite3
 import json
+import sqlite3
 from types import SimpleNamespace
-from agents.gpu_orchestrator.gpu_orchestrator_engine import GPUOrchestratorEngine, ALLOCATIONS
 from unittest.mock import patch
+
+from agents.gpu_orchestrator.gpu_orchestrator_engine import (
+    ALLOCATIONS,
+    GPUOrchestratorEngine,
+)
 
 
 def make_sqlite_service():

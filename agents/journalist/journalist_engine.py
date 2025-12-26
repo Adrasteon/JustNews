@@ -11,11 +11,11 @@ from __future__ import annotations
 import asyncio
 import os
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 from agents.c4ai.bridge import crawl_via_local_server
-from agents.journalist.mistral_adapter import SYSTEM_PROMPT
 from agents.common.mistral_adapter import MistralAdapter
+from agents.journalist.mistral_adapter import SYSTEM_PROMPT
 from common.observability import get_logger
 
 logger = get_logger(__name__)
@@ -63,7 +63,7 @@ class JournalistEngine:
         await asyncio.sleep(0)
 
     # Internal helpers -----------------------------------------------------
-    def _generate_llm_brief(self, payload: dict[str, Any]) -> Dict[str, Any] | None:
+    def _generate_llm_brief(self, payload: dict[str, Any]) -> dict[str, Any] | None:
         if not payload or not getattr(self, "_mistral_adapter", None):
             return None
         try:

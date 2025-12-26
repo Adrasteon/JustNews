@@ -1,6 +1,8 @@
+import importlib
+import sys
+import types
 from datetime import datetime, timedelta
 
-import importlib, sys, types
 # Provide a minimal monitoring.common.config module so imports succeed in tests
 cfg_mod = types.ModuleType("monitoring.common.config")
 cfg_mod.get_config = lambda: {"tracing": {"jaeger_enabled": False, "otlp_enabled": False, "file_export_enabled": False}}
@@ -8,7 +10,7 @@ sys.modules.setdefault('monitoring.common.config', cfg_mod)
 # Also make monitoring.common.metrics available by mapping to top-level common.metrics
 sys.modules.setdefault('monitoring.common.metrics', importlib.import_module('common.metrics'))
 
-from monitoring.core.trace_collector import TraceSpan, TraceData, TraceCollector
+from monitoring.core.trace_collector import TraceCollector, TraceData, TraceSpan
 
 
 def test_trace_span_and_data_to_dict():

@@ -1,4 +1,3 @@
-import os
 
 from agents.common.openai_adapter import OpenAIAdapter
 

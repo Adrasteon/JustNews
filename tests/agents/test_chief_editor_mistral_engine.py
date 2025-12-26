@@ -1,6 +1,5 @@
-import os
 
-from agents.chief_editor.chief_editor_engine import ChiefEditorEngine, ChiefEditorConfig
+from agents.chief_editor.chief_editor_engine import ChiefEditorConfig, ChiefEditorEngine
 
 
 def test_chief_editor_engine_mistral_dry_run(monkeypatch):

@@ -1,6 +1,5 @@
 import asyncio
-import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from monitoring.core.log_aggregator import LogAggregator, StorageBackend
 from monitoring.core.log_collector import LogEntry, LogLevel
@@ -8,7 +7,7 @@ from monitoring.core.log_collector import LogEntry, LogLevel
 
 def make_entry():
     return LogEntry(
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         level=LogLevel.INFO,
         logger_name="logger",
         message="test",

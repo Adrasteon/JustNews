@@ -1,13 +1,13 @@
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from prometheus_client import CollectorRegistry
 
 from monitoring.core.metrics_collector import (
-    EnhancedMetricsCollector,
     Alert,
-    AlertSeverity,
     AlertRule,
+    AlertSeverity,
+    EnhancedMetricsCollector,
     MetricThreshold,
 )
 
@@ -83,7 +83,7 @@ def test_alert_rules_and_handlers_and_resolution():
             message="fail",
             value=1.0,
             threshold=0.5,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
         await c._handle_alert(alert)
@@ -100,7 +100,7 @@ def test_alert_rules_and_handlers_and_resolution():
         message="",
         value=0.0,
         threshold=1.0,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
     )
 
     assert len(c.get_active_alerts()) == 1
@@ -112,8 +112,8 @@ def test_cleanup_old_data_prunes_history_and_resolved_alerts():
     reg = CollectorRegistry()
     c = EnhancedMetricsCollector("cleanup-agent", registry=reg)
 
-    old_ts = datetime.now(timezone.utc) - timedelta(days=2)
-    new_ts = datetime.now(timezone.utc)
+    old_ts = datetime.now(UTC) - timedelta(days=2)
+    new_ts = datetime.now(UTC)
 
     c._metric_history["m1"] = [(old_ts, 1.0), (new_ts, 2.0)]
 
@@ -152,12 +152,13 @@ def test_cleanup_old_data_prunes_history_and_resolved_alerts():
     assert "old_key" not in c._active_alerts
     assert "new_key" in c._active_alerts
 
-import asyncio
-from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from monitoring.core.metrics_collector import EnhancedMetricsCollector, AlertRule, MetricThreshold, AlertSeverity, get_enhanced_metrics_collector, _enhanced_metrics_instances
+from monitoring.core.metrics_collector import (
+    _enhanced_metrics_instances,
+    get_enhanced_metrics_collector,
+)
 
 
 def test_record_business_metric_history_and_prometheus_counter():
@@ -204,8 +205,8 @@ async def test_alert_rule_evaluation_triggers_handler(monkeypatch):
 
 def test_cleanup_old_data_removes_old_entries():
     c = EnhancedMetricsCollector('cleanupagent')
-    old_ts = datetime.now(timezone.utc) - timedelta(hours=48)
-    new_ts = datetime.now(timezone.utc)
+    old_ts = datetime.now(UTC) - timedelta(hours=48)
+    new_ts = datetime.now(UTC)
     c._metric_history['m'] = [(old_ts, 1.0), (new_ts, 2.0)]
     # add resolved alert older than cutoff
     alert_key = 'r1'

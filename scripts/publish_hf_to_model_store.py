@@ -19,7 +19,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -96,7 +96,7 @@ def main() -> None:
         raise SystemExit("MODEL_STORE_ROOT is not set and --model-store was not provided.")
 
     agent = args.agent.strip()
-    version = args.version or f"v{datetime.now(timezone.utc):%Y%m%d-%H%M}"
+    version = args.version or f"v{datetime.now(UTC):%Y%m%d-%H%M}"
     token = args.token or os.environ.get("HF_TOKEN") or os.environ.get("HF_HUB_TOKEN")
 
     store = ModelStore(Path(model_store_root))

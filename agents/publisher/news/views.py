@@ -1,10 +1,13 @@
-from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse, HttpResponseForbidden
-from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
-from .models import Article, PublishAudit
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 import json
+
+from django.conf import settings
+from django.http import HttpResponseForbidden, JsonResponse
+from django.shortcuts import get_object_or_404, render
+from django.views.decorators.csrf import csrf_exempt
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
+
+from .models import Article, PublishAudit
+
 
 def home(request):
 	featured = Article.objects.filter(is_featured=True).order_by('-published_at')[:5]

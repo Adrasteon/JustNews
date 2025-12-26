@@ -1,6 +1,6 @@
 import json
-from unittest.mock import patch, MagicMock
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from agents.gpu_orchestrator.gpu_orchestrator_engine import GPUOrchestratorEngine
 from agents.gpu_orchestrator.worker import Worker

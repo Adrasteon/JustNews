@@ -6,8 +6,8 @@ fall back to per-agent cache_dir behavior otherwise.
 """
 from __future__ import annotations
 
-import os
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any

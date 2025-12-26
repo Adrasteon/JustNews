@@ -499,7 +499,7 @@ class DashboardGenerator:
                         "legendFormat": "{{instance}} → {{exporter}}"
                     }],
                     grid_pos={"h": 8, "w": 8, "x": 8, "y": 8},
-                    description="Current exporter queue depth per collector/exporter" 
+                    description="Current exporter queue depth per collector/exporter"
                 ),
                 PanelConfig(
                     title="Exporter Send Failures",

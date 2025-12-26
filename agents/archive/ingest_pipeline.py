@@ -15,10 +15,10 @@ from typing import Any
 from urllib.parse import urlparse
 
 from agents.archive.metrics_registry import metrics as archive_metrics
+from agents.archive.raw_html_snapshot import ensure_raw_html_artifact
 from agents.memory.tools import save_article
 from common.observability import get_logger
 from common.url_normalization import hash_article_url, normalize_article_url
-from agents.archive.raw_html_snapshot import ensure_raw_html_artifact
 
 logger = get_logger(__name__)
 

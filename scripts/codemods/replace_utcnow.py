@@ -18,18 +18,17 @@ Notes:
 from __future__ import annotations
 
 import argparse
+import json
 import re
 from pathlib import Path
-from typing import List, Tuple
-import json
 
 ROOT_IGNORE = {".git", "node_modules", "third_party", "__pycache__", "tests/deprecation", "tests/codemod", "deprecations", "codemods"}
 
 PATTERN = re.compile(r"(?P<prefix>\b[\w\.]*datetime)\.utcnow\(\s*\)")
 
 
-def find_matches(root: Path) -> List[Tuple[Path, int, str]]:
-    results: List[Tuple[Path, int, str]] = []
+def find_matches(root: Path) -> list[tuple[Path, int, str]]:
+    results: list[tuple[Path, int, str]] = []
     for p in root.rglob("*.py"):
         # Exclude if any identifier in ROOT_IGNORE appears in the absolute path
         if any(ignore in str(p) for ignore in ROOT_IGNORE):
@@ -77,8 +76,8 @@ def _ensure_timezone_import(text: str) -> str:
     return "\n".join(lines)
 
 
-def apply_replacements(root: Path) -> List[Path]:
-    changed_files: List[Path] = []
+def apply_replacements(root: Path) -> list[Path]:
+    changed_files: list[Path] = []
     for p in root.rglob("*.py"):
         if any(part in ROOT_IGNORE for part in p.parts):
             continue
@@ -103,7 +102,7 @@ def apply_replacements(root: Path) -> List[Path]:
     return changed_files
 
 
-def main(argv: List[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true", help="Apply replacements in-place")
     parser.add_argument("--root", default='.', help="Root directory to scan")

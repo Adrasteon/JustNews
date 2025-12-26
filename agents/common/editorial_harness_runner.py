@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable, Sequence
 
 from agents.common.agent_chain_harness import AgentChainHarness, AgentChainResult
-from agents.common.normalized_article_repository import ArticleCandidate, NormalizedArticleRepository
+from agents.common.normalized_article_repository import (
+    NormalizedArticleRepository,
+)
 from common.observability import get_logger
 from common.stage_b_metrics import StageBMetrics, get_stage_b_metrics
 
@@ -23,7 +25,7 @@ class HarnessResultPersistence:
     def save(self, article_row: dict, result: AgentChainResult) -> None:
         self.db_service.ensure_conn()
         cursor = self.db_service.mb_conn.cursor()
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(UTC).isoformat()
         fact_check_payload = {
             "timestamp": timestamp,
             "claims": result.fact_checks,
@@ -122,7 +124,10 @@ class AgentChainRunner:
                 # optionally publish accepted drafts
                 if self.publish_on_accept and not result.needs_followup and result.acceptance_score and result.acceptance_score >= 0.5:
                     try:
-                        from agents.common.publisher_integration import publish_normalized_article, verify_publish_token
+                        from agents.common.publisher_integration import (
+                            publish_normalized_article,
+                            verify_publish_token,
+                        )
                         # If a publish_token was supplied to the runner, verify it before publishing.
                         # If no token was supplied we allow publishing in environments where
                         # the operator intentionally did not set a gating token (e.g. local dev).

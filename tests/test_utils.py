@@ -514,7 +514,6 @@ class PerformanceTester:
 
     async def stop_monitoring(self) -> dict:
         """Stop monitoring and return a simple metrics summary."""
-        import time
         # If we don't have any recorded times, provide conservative dummy metrics
         exec_times = getattr(self.metrics, 'execution_times', [])
         if not exec_times:

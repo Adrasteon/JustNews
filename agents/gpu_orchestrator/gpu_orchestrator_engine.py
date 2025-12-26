@@ -31,6 +31,8 @@ try:  # NVML bindings became optional once we moved to the conda-provided nvidia
 except ModuleNotFoundError:  # pragma: no cover - exercised implicitly when NVML bindings are absent
     pynvml = None  # type: ignore
     _HAS_PYNVML = False
+from datetime import UTC
+
 from fastapi import HTTPException
 from prometheus_client import Counter, Gauge, Histogram
 
@@ -167,7 +169,7 @@ class GPUOrchestratorEngine:
                 self._start_vllm_server()
             except Exception as e:
                 self.logger.error(f'Failed to start VLLM server: {e}')
-        
+
         # Register cleanup on exit
         import atexit
         atexit.register(self.cleanup)
@@ -377,7 +379,7 @@ class GPUOrchestratorEngine:
 
         # Use the same Python that's running this service
         python_bin = os.environ.get('PYTHON_BIN', sys.executable)
-        
+
         cmd = [
             python_bin, '-m', 'vllm.entrypoints.openai.api_server',
             '--model', vllm_model,
@@ -852,9 +854,9 @@ class GPUOrchestratorEngine:
 
             # persist lease row (co-located in same transaction)
             # Compute created_at / expires_at in Python for DB portability (works on MySQL & SQLite)
-            from datetime import datetime, timezone, timedelta
-            created_at = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-            expires_at = (datetime.now(timezone.utc) + timedelta(seconds=ttl)).strftime('%Y-%m-%d %H:%M:%S')
+            from datetime import datetime, timedelta
+            created_at = datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S')
+            expires_at = (datetime.now(UTC) + timedelta(seconds=ttl)).strftime('%Y-%m-%d %H:%M:%S')
             cursor.execute(
                 "INSERT INTO orchestrator_leases (token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
                 (token, agent, gpu_index if success else None, 'gpu' if success else 'cpu', created_at, expires_at, created_at, json.dumps(allocation))
@@ -1320,11 +1322,11 @@ class GPUOrchestratorEngine:
             if self._vllm_enabled and spec.get("base_ref"):
                 adapter_name = spec.get("adapter_name")
                 adapter_path_str = spec.get("adapter_model_store_path")
-                
+
                 if adapter_path_str:
                     model_store = Path(os.environ.get('MODEL_STORE_ROOT', '/home/adra/JustNews/model_store'))
                     adapter_path = model_store / adapter_path_str
-                    
+
                     if adapter_path.exists():
                         self.logger.info(
                             "VLLM mode: Verified adapter exists for agent %s (adapter=%s)",
@@ -1338,7 +1340,7 @@ class GPUOrchestratorEngine:
                         else:
                             self.logger.warning(f"Adapter not found at {adapter_path}, continuing in non-strict mode")
                             return True, None
-                
+
                 # Fallback: just mark as valid since VLLM will handle it
                 self.logger.info(f"VLLM mode: Skipping full model load for agent {agent}")
                 return True, None
@@ -1399,7 +1401,9 @@ class GPUOrchestratorEngine:
                 for spec in specs:
                     if spec.get("base_ref"):
                         try:
-                            from agents.common.model_loader import get_agent_model_metadata
+                            from agents.common.model_loader import (
+                                get_agent_model_metadata,
+                            )
 
                             meta = get_agent_model_metadata(agent, spec.get("adapter_name"))
                             if meta:

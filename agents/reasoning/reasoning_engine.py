@@ -20,13 +20,13 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 import networkx as nx
 
-from common.observability import get_logger
-from agents.reasoning.mistral_adapter import SYSTEM_PROMPT
 from agents.common.mistral_adapter import MistralAdapter
+from agents.reasoning.mistral_adapter import SYSTEM_PROMPT
+from common.observability import get_logger
 
 # Configure logging
 logger = get_logger(__name__)

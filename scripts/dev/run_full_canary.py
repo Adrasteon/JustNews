@@ -6,11 +6,11 @@ and prints a short summary of metrics found in `output/metrics/canary_metrics.js
 """
 from __future__ import annotations
 
-from scripts.dev.canary_metrics import reset, read_metrics
+from scripts.dev.canary_metrics import read_metrics, reset
 from scripts.dev.crawl_canary import main as crawl_main
+from scripts.dev.editorial_canary import main as editorial_main
 from scripts.dev.normalize_canary import main as normalize_main
 from scripts.dev.parse_canary import main as parse_main
-from scripts.dev.editorial_canary import main as editorial_main
 from scripts.dev.publish_canary import main as publish_main
 
 

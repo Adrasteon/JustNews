@@ -8,7 +8,11 @@ so it will respect `/etc/justnews/global.env` or repo `global.env` configuration
 """
 
 import argparse
-from database.utils.migrated_database_utils import create_database_service, execute_mariadb_query
+
+from database.utils.migrated_database_utils import (
+    create_database_service,
+    execute_mariadb_query,
+)
 
 
 def main():

@@ -32,7 +32,9 @@ try:
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
     from opentelemetry.semconv.resource import ResourceAttributes
     from opentelemetry.trace import SpanKind, Status, StatusCode
-    from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+    from opentelemetry.trace.propagation.tracecontext import (
+        TraceContextTextMapPropagator,
+    )
     _OTEL_AVAILABLE = True
 except Exception:
     # OpenTelemetry or dependencies may be missing or incompatible in CI/dev envs.
@@ -68,7 +70,7 @@ class TraceContext:
     baggage: dict[str, str] = field(default_factory=dict)
 
     @classmethod
-    def from_opentelemetry(cls, span_context: 'trace.SpanContext') -> 'TraceContext':
+    def from_opentelemetry(cls, span_context: trace.SpanContext) -> TraceContext:
         """Create TraceContext from OpenTelemetry SpanContext"""
         return cls(
             trace_id=hex(span_context.trace_id)[2:],  # Remove 0x prefix

@@ -1,6 +1,5 @@
-import os
 
-from agents.fact_checker.fact_checker_engine import FactCheckerEngine, FactCheckerConfig
+from agents.fact_checker.fact_checker_engine import FactCheckerConfig, FactCheckerEngine
 
 
 def test_fact_checker_engine_mistral_dry_run(monkeypatch):

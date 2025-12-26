@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Iterable, Sequence
 
 from agents.common.agent_chain_harness import NormalizedArticle
 from common.observability import get_logger

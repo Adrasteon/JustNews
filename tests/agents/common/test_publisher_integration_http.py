@@ -1,4 +1,3 @@
-import os
 
 from agents.common.publisher_integration import publish_normalized_article
 

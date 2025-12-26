@@ -34,8 +34,8 @@ def JustNewsMetrics():
 metrics_mod.JustNewsMetrics = JustNewsMetrics
 sys.modules['monitoring.common.metrics'] = metrics_mod
 
+from monitoring.core.trace_collector import TraceData, TraceSpan
 from monitoring.core.trace_storage import FileTraceStorage, TraceQuery
-from monitoring.core.trace_collector import TraceSpan, TraceData
 
 
 def make_span(span_id: str, trace_id: str, service: str = 'svc') -> TraceSpan:
@@ -111,18 +111,17 @@ def test_query_and_cleanup(tmp_path):
     # Cleanup with retention 1 day should remove the old trace
     deleted_count = asyncio.run(storage.cleanup(retention_days=1))
     assert deleted_count >= 1
-import asyncio
-import json
-from datetime import datetime, timezone, timedelta
+import importlib
+import sys
+import types
+from datetime import UTC
 
-import importlib, sys, types
 cfg_mod = types.ModuleType('monitoring.common.config')
 cfg_mod.get_config = lambda: {}
 sys.modules.setdefault('monitoring.common.config', cfg_mod)
 sys.modules.setdefault('monitoring.common.metrics', importlib.import_module('common.metrics'))
 
-from monitoring.core.trace_storage import FileTraceStorage, TraceQuery
-from monitoring.core.trace_collector import TraceSpan, TraceData
+from monitoring.core.trace_collector import TraceSpan
 
 
 def make_span(sid, duration=20, service="svc", op="op", status="ok"):
@@ -132,8 +131,8 @@ def make_span(sid, duration=20, service="svc", op="op", status="ok"):
         parent_span_id=None,
         name=op,
         kind="internal",
-        start_time=datetime.now(timezone.utc),
-        end_time=datetime.now(timezone.utc),
+        start_time=datetime.now(UTC),
+        end_time=datetime.now(UTC),
         duration_ms=duration,
         status=status,
         attributes={},
@@ -150,7 +149,7 @@ def test_file_trace_storage_store_get_delete_and_stats(tmp_path):
     s1 = make_span('s1', duration=10)
     s2 = make_span('s2', duration=5)
 
-    td = TraceData(trace_id='trace1', root_span_id='s1', spans=[s1, s2], start_time=datetime.now(timezone.utc), end_time=datetime.now(timezone.utc), duration_ms=15.0, service_count=1, total_spans=2, error_count=0)
+    td = TraceData(trace_id='trace1', root_span_id='s1', spans=[s1, s2], start_time=datetime.now(UTC), end_time=datetime.now(UTC), duration_ms=15.0, service_count=1, total_spans=2, error_count=0)
 
     ok = asyncio.run(fs.store_trace(td))
     assert ok is True

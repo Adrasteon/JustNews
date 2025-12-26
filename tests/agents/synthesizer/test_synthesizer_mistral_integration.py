@@ -1,4 +1,3 @@
-import os
 
 from agents.synthesizer.synthesizer_engine import SynthesizerEngine
 

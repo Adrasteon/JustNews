@@ -77,7 +77,7 @@ def get_db_config() -> dict[str, Any]:
             except Exception:
                 # If global.env exists but fails to read, continue with defaults/env
                 logger.warning(f"Failed to read env file at {env_file_path}")
-    
+
     # Prefer an explicit system_config.json when available (tests mock this path).
     system_config = {}
     if os.path.exists(config_path):
@@ -251,11 +251,11 @@ def ensure_service_compat(service: Any | None) -> Any:
                 except Exception:
                     pass
             if hasattr(service, 'mb_conn'):
-                return getattr(service, 'mb_conn')
+                return service.mb_conn
             # As a fallback, return the service object itself (it may act like a connection)
             return service
         try:
-            setattr(service, 'get_connection', _get_connection)
+            service.get_connection = _get_connection
         except Exception:
             # Best-effort: don't fail if we cannot attach attribute
             pass
@@ -305,7 +305,7 @@ def ensure_service_compat(service: Any | None) -> Any:
             except Exception:
                 return False
         try:
-            setattr(service, 'ensure_conn', _ensure_conn)
+            service.ensure_conn = _ensure_conn
         except Exception:
             pass
 
@@ -356,7 +356,7 @@ def ensure_service_compat(service: Any | None) -> Any:
                 except Exception:
                     return c
             try:
-                setattr(service, 'get_connection', _get_conn_wrapped)
+                service.get_connection = _get_conn_wrapped
             except Exception:
                 pass
 
@@ -397,7 +397,7 @@ def ensure_service_compat(service: Any | None) -> Any:
                 conn = None
 
             if conn is None and hasattr(service, 'mb_conn'):
-                conn = getattr(service, 'mb_conn')
+                conn = service.mb_conn
 
             if conn is None:
                 conn = service
@@ -425,7 +425,7 @@ def ensure_service_compat(service: Any | None) -> Any:
             return cursor, conn
 
         try:
-            setattr(service, 'get_safe_cursor', _get_safe_cursor)
+            service.get_safe_cursor = _get_safe_cursor
         except Exception:
             pass
 
@@ -433,7 +433,7 @@ def ensure_service_compat(service: Any | None) -> Any:
     if not hasattr(service, 'close'):
         def _close():
             try:
-                if hasattr(service, 'mb_conn') and getattr(service, 'mb_conn') is not None:
+                if hasattr(service, 'mb_conn') and service.mb_conn is not None:
                     try:
                         service.mb_conn.close()
                     except Exception:
@@ -447,7 +447,7 @@ def ensure_service_compat(service: Any | None) -> Any:
             except Exception:
                 pass
         try:
-            setattr(service, 'close', _close)
+            service.close = _close
         except Exception:
             pass
 
@@ -728,7 +728,7 @@ def execute_mariadb_query(
     except Exception as e:
         logger.error(f"MariaDB query failed: {e}")
         try:
-            if hasattr(service, 'mb_conn') and getattr(service, 'mb_conn') is not None:
+            if hasattr(service, 'mb_conn') and service.mb_conn is not None:
                 service.mb_conn.rollback()
         except Exception:
             pass
@@ -821,7 +821,7 @@ def execute_transaction(
                                     # If the test mock raises (side_effect), propagate as a transaction failure
                                     logger.error(f"Transaction mirrored to mock failed: {e}")
                                     try:
-                                        if hasattr(service, 'mb_conn') and getattr(service, 'mb_conn') is not None:
+                                        if hasattr(service, 'mb_conn') and service.mb_conn is not None:
                                             service.mb_conn.rollback()
                                     except Exception:
                                         pass
@@ -853,7 +853,7 @@ def execute_transaction(
     except Exception as e:
         logger.error(f"Transaction failed: {e}")
         try:
-            if hasattr(service, 'mb_conn') and getattr(service, 'mb_conn') is not None:
+            if hasattr(service, 'mb_conn') and service.mb_conn is not None:
                 service.mb_conn.rollback()
         except Exception:
             pass

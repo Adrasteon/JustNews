@@ -1,8 +1,9 @@
 """Shared JSON adapter helper for the Mistral-powered re-ranker."""
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Protocol, Sequence
+from typing import Protocol
 
 from agents.common.base_mistral_json_adapter import BaseMistralJSONAdapter
 from common.observability import get_logger

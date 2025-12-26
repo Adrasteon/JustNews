@@ -8,18 +8,15 @@ Designed for smoke testing only (non-production).
 """
 import hashlib
 import json
-import os
 from pathlib import Path
-from typing import List
 
 import requests
-
 
 CANARY_FILE = Path(__file__).parent / "canary_urls.txt"
 OUT_DIR = Path.cwd() / "output" / "canary_raw"
 
 
-def read_canary_urls() -> List[str]:
+def read_canary_urls() -> list[str]:
     text = CANARY_FILE.read_text(encoding="utf-8")
     lines = [l.strip() for l in text.splitlines() if l.strip()]
     return lines

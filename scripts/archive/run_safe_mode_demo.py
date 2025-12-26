@@ -24,7 +24,7 @@ import os
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -42,7 +42,7 @@ def run_cycle_inprocess(safe_mode: bool) -> dict[str, Any]:
     """Original in-process cycle (kept for reference / debugging)."""
     os.environ["SAFE_MODE"] = "true" if safe_mode else "false"
     app = _load_app()
-    record: dict[str, Any] = {"safe_mode": safe_mode, "timestamp": datetime.now(timezone.utc).isoformat(), "mode": "inprocess"}
+    record: dict[str, Any] = {"safe_mode": safe_mode, "timestamp": datetime.now(UTC).isoformat(), "mode": "inprocess"}
     with TestClient(app) as client:
         for ep in ("health", "ready", "policy"):
             r = client.get(f"/{ep}")

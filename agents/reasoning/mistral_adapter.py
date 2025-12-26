@@ -1,7 +1,7 @@
 """LLM-backed chain-of-thought helper for the Reasoning agent."""
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 from agents.common.base_mistral_json_adapter import BaseMistralJSONAdapter
 
@@ -22,7 +22,7 @@ class ReasoningMistralAdapter(BaseMistralJSONAdapter):
             defaults={"max_chars": 8000, "max_new_tokens": 420, "temperature": 0.2, "top_p": 0.9},
         )
 
-    def analyze(self, query: str, context_facts: List[str] | None = None) -> Dict[str, Any] | None:
+    def analyze(self, query: str, context_facts: list[str] | None = None) -> dict[str, Any] | None:
         facts_block = "\n".join(context_facts or [])
         user_block = f"Question: {query}\nFacts:\n{facts_block or 'None provided'}"
         messages = [

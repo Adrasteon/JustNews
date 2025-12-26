@@ -23,7 +23,8 @@ from common.observability import get_logger
 
 try:
     from agents.common.mistral_adapter import MistralAdapter
-    from .mistral_adapter import ClaimAssessment, SYSTEM_PROMPT, MODEL_ADAPTER_NAME
+
+    from .mistral_adapter import MODEL_ADAPTER_NAME, SYSTEM_PROMPT, ClaimAssessment
 except Exception:  # pragma: no cover - optional dependency wiring
     ClaimAssessment = None  # type: ignore
     MistralAdapter = None  # type: ignore

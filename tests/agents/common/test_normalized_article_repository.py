@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from agents.common.agent_chain_harness import NormalizedArticle
-from agents.common.normalized_article_repository import ArticleCandidate, NormalizedArticleRepository
+from agents.common.normalized_article_repository import (
+    ArticleCandidate,
+    NormalizedArticleRepository,
+)
 
 
 class _StubCursor:

@@ -1,12 +1,7 @@
-import threading
-import types
-import time
 
-import pytest
 
 from training_system.core.training_coordinator import (
     OnTheFlyTrainingCoordinator,
-    TrainingExample,
 )
 
 

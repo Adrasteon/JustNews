@@ -33,6 +33,7 @@ from common.observability import get_logger
 
 try:
     from agents.common.mistral_adapter import MistralAdapter
+
     from .mistral_adapter import SYSTEM_PROMPT, AdapterResult
 except Exception:  # pragma: no cover - optional dependency wiring
     MistralAdapter = None  # type: ignore

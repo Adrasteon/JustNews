@@ -1,13 +1,12 @@
 import pathlib
 import shutil
-import json
 
+from scripts.dev.canary_metrics import read_metrics, reset
 from scripts.dev.crawl_canary import main as crawl_main
+from scripts.dev.editorial_canary import main as editorial_main
 from scripts.dev.normalize_canary import main as normalize_main
 from scripts.dev.parse_canary import main as parse_main
-from scripts.dev.editorial_canary import main as editorial_main
 from scripts.dev.publish_canary import main as publish_main
-from scripts.dev.canary_metrics import reset, read_metrics
 
 
 def test_metrics_emitted(tmp_path):

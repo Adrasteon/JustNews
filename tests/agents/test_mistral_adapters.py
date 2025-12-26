@@ -1,7 +1,7 @@
 """CI-safe smoke tests for the shared Mistral adapters."""
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 from agents.analyst.mistral_adapter import AnalystMistralAdapter
 from agents.chief_editor.mistral_adapter import ChiefEditorMistralAdapter
@@ -12,10 +12,10 @@ from agents.tools.mistral_re_ranker_adapter import ReRankerMistralAdapter
 from agents.tools.re_ranker_7b import ReRankCandidate
 
 
-def _stub_chat(adapter: Any, return_value: Dict[str, Any]):
-    captured: Dict[str, Any] = {}
+def _stub_chat(adapter: Any, return_value: dict[str, Any]):
+    captured: dict[str, Any] = {}
 
-    def fake(messages: List[Dict[str, str]]):
+    def fake(messages: list[dict[str, str]]):
         captured["messages"] = messages
         return return_value
 

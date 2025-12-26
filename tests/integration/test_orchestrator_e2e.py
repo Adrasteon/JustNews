@@ -1,5 +1,5 @@
-import sqlite3
 import json
+import sqlite3
 from types import SimpleNamespace
 from unittest.mock import patch
 

@@ -13,8 +13,8 @@ import uuid
 
 import pytest
 
-from database.utils.migrated_database_utils import create_database_service
 from agents.synthesizer.mistral_adapter import SynthesizerMistralAdapter
+from database.utils.migrated_database_utils import create_database_service
 
 requires_live_chroma = pytest.mark.skipif(
     os.environ.get('ENABLE_CHROMADB_LIVE_TESTS') != '1',

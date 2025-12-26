@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Create the minimal articles schema and seed a sample row for the editorial harness."""
+
 from __future__ import annotations
 
 import json
@@ -52,8 +53,12 @@ def build_connection() -> mysql.connector.MySQLConnection:
     port = int(os.environ.get("MARIADB_PORT", "3306"))
     user = os.environ.get("MARIADB_USER", "root")
     password = os.environ.get("MARIADB_PASSWORD", "")
-    database = os.environ.get("MARIADB_DB") or os.environ.get("MARIADB_DATABASE") or "justnews"
-    return mysql.connector.connect(host=host, port=port, user=user, password=password, database=database)
+    database = (
+        os.environ.get("MARIADB_DB") or os.environ.get("MARIADB_DATABASE") or "justnews"
+    )
+    return mysql.connector.connect(
+        host=host, port=port, user=user, password=password, database=database
+    )
 
 
 def ensure_schema(conn) -> None:

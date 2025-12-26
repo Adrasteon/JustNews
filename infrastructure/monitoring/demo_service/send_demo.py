@@ -3,6 +3,7 @@
 This script sends one span and a log event to the configured OTLP endpoint
 and then starts a minimal HTTP server so CI can probe it.
 """
+
 import os
 import threading
 import time
@@ -25,7 +26,10 @@ def configure_tracer():
     # Use OTLP_GRPC_INSECURE env var to opt-in (true/1/yes).
     insecure_val = os.environ.get("OTLP_GRPC_INSECURE", "false").lower()
     insecure = insecure_val in ("1", "true", "yes")
-    exporter = OTLPSpanExporter(endpoint=os.environ.get("OTLP_GRPC_ENDPOINT", "otel-node:4317"), insecure=insecure)
+    exporter = OTLPSpanExporter(
+        endpoint=os.environ.get("OTLP_GRPC_ENDPOINT", "otel-node:4317"),
+        insecure=insecure,
+    )
     processor = BatchSpanProcessor(exporter)
     provider.add_span_processor(processor)
     trace.set_tracer_provider(provider)
@@ -55,7 +59,19 @@ def main():
     log_endpoint = os.environ.get("LOKI_PUSH", "")
     if log_endpoint:
         print("Posting sample log to Loki push endpoint...", flush=True)
-        payload = {"streams": [{"labels": "{job=\"justnews-demo\"}", "entries": [{"ts": "2025-01-01T00:00:00Z", "line": "demo-log: hello from demo emitter"}]}]}
+        payload = {
+            "streams": [
+                {
+                    "labels": '{job="justnews-demo"}',
+                    "entries": [
+                        {
+                            "ts": "2025-01-01T00:00:00Z",
+                            "line": "demo-log: hello from demo emitter",
+                        }
+                    ],
+                }
+            ]
+        }
         try:
             requests.post(log_endpoint, json=payload, timeout=5)
         except Exception as e:

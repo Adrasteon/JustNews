@@ -12,8 +12,6 @@ Features:
 - Configurable consent enforcement levels
 """
 
-
-
 from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
@@ -46,22 +44,18 @@ class ConsentValidationMiddleware:
             "/auth/me": [ConsentType.DATA_PROCESSING],
             "/auth/password-reset": [],
             "/auth/password-reset/confirm": [],
-
             # Data processing endpoints
             "/api/articles": [ConsentType.DATA_PROCESSING],
             "/api/search": [ConsentType.DATA_PROCESSING],
             "/api/analytics": [ConsentType.ANALYTICS],
             "/api/export": [ConsentType.DATA_PROCESSING],
             "/api/profile": [ConsentType.DATA_PROCESSING, ConsentType.PROFILE_ANALYSIS],
-
             # External integrations
             "/api/external/*": [ConsentType.EXTERNAL_LINKING],
             "/api/sharing": [ConsentType.DATA_SHARING],
-
             # Marketing endpoints
             "/api/marketing/*": [ConsentType.MARKETING],
             "/api/newsletter": [ConsentType.MARKETING],
-
             # Admin endpoints (may have different requirements)
             "/admin/*": [],  # Admin operations may not require user consent
         }
@@ -121,7 +115,7 @@ class ConsentValidationMiddleware:
             "/openapi.json",
             "/favicon.ico",
             "/static/",
-            "/public/"
+            "/public/",
         ]
 
         if request.method == "OPTIONS":
@@ -157,7 +151,7 @@ class ConsentValidationMiddleware:
                 # For endpoints requiring consent, user must be authenticated
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Authentication required for this operation"
+                    detail="Authentication required for this operation",
                 )
 
             # Check each required consent
@@ -187,10 +181,10 @@ class ConsentValidationMiddleware:
                         "missing_consents": missing_consents,
                         "expired_consents": expired_consents,
                         "required_consents": [c.value for c in required_consents],
-                        "http_method": request.method
+                        "http_method": request.method,
                     },
                     compliance_relevant=True,
-                    gdpr_article="6"
+                    gdpr_article="6",
                 )
 
                 # Return appropriate error response
@@ -200,8 +194,8 @@ class ConsentValidationMiddleware:
                         detail={
                             "error": "Missing required consents",
                             "missing_consents": missing_consents,
-                            "message": "Please grant the required consents to access this feature"
-                        }
+                            "message": "Please grant the required consents to access this feature",
+                        },
                     )
                 else:
                     raise HTTPException(
@@ -209,8 +203,8 @@ class ConsentValidationMiddleware:
                         detail={
                             "error": "Expired consents",
                             "expired_consents": expired_consents,
-                            "message": "Some of your consents have expired. Please review and renew them."
-                        }
+                            "message": "Some of your consents have expired. Please review and renew them.",
+                        },
                     )
 
             # Log successful validation
@@ -224,9 +218,9 @@ class ConsentValidationMiddleware:
                 action="consent_validated",
                 details={
                     "required_consents": [c.value for c in required_consents],
-                    "http_method": request.method
+                    "http_method": request.method,
                 },
-                compliance_relevant=True
+                compliance_relevant=True,
             )
 
             return True
@@ -248,8 +242,8 @@ class ConsentValidationMiddleware:
                 details={
                     "error": str(e),
                     "endpoint": request.url.path,
-                    "method": request.method
-                }
+                    "method": request.method,
+                },
             )
 
             # Allow request to proceed on validation errors to avoid blocking legitimate access
@@ -269,12 +263,16 @@ class ConsentValidationMiddleware:
             return real_ip
 
         # Fall back to direct client IP
-        return getattr(request.client, 'host', 'unknown') if request.client else 'unknown'
+        return (
+            getattr(request.client, "host", "unknown") if request.client else "unknown"
+        )
 
     def add_consent_requirement(self, path: str, consents: list[ConsentType]):
         """Add consent requirements for a specific endpoint"""
         self.consent_requirements[path] = consents
-        logger.info(f"Added consent requirements for {path}: {[c.value for c in consents]}")
+        logger.info(
+            f"Added consent requirements for {path}: {[c.value for c in consents]}"
+        )
 
     def remove_consent_requirement(self, path: str):
         """Remove consent requirements for a specific endpoint"""
@@ -319,25 +317,19 @@ async def consent_validation_middleware(request: Request, call_next):
                     "status": "error",
                     "error": e.detail.get("error", "Consent validation failed"),
                     "message": e.detail.get("message", str(e)),
-                    "details": e.detail
-                }
+                    "details": e.detail,
+                },
             )
         else:
             return JSONResponse(
                 status_code=e.status_code,
-                content={
-                    "status": "error",
-                    "message": str(e)
-                }
+                content={"status": "error", "message": str(e)},
             )
     except Exception as e:
         logger.error(f"Middleware error: {e}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={
-                "status": "error",
-                "message": "Internal server error"
-            }
+            content={"status": "error", "message": "Internal server error"},
         )
 
 
@@ -356,7 +348,9 @@ async def demo_consent_middleware():
 
     print("\n✅ Adding Custom Consent Requirement:")
     print("-" * 40)
-    middleware.add_consent_requirement("/api/custom", [ConsentType.ANALYTICS, ConsentType.MARKETING])
+    middleware.add_consent_requirement(
+        "/api/custom", [ConsentType.ANALYTICS, ConsentType.MARKETING]
+    )
     print("Added requirement for /api/custom: ['analytics', 'marketing']")
 
     print("\n📊 Updated Requirements:")
@@ -383,4 +377,5 @@ async def demo_consent_middleware():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(demo_consent_middleware())

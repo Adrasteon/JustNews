@@ -11,10 +11,10 @@ class FakeCursor:
         self.last_query = query
 
     def fetchone(self):
-        q = (self.last_query or '').upper()
-        if 'GET_LOCK' in q:
+        q = (self.last_query or "").upper()
+        if "GET_LOCK" in q:
             return (1,)
-        if 'RELEASE_LOCK' in q:
+        if "RELEASE_LOCK" in q:
             return (1,)
         # default
         return (1,)
@@ -31,7 +31,10 @@ def test_try_acquire_and_release_leader(monkeypatch):
     fake_service = MagicMock()
     fake_service.mb_conn = fake_conn
 
-    with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=fake_service):
+    with patch(
+        "agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service",
+        return_value=fake_service,
+    ):
         engine = GPUOrchestratorEngine(bootstrap_external_services=True)
         ok = engine.try_acquire_leader_lock(timeout=1)
         assert ok is True

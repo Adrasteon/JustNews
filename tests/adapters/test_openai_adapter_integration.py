@@ -12,7 +12,17 @@ pytestmark = pytest.mark.skipif(
 
 def test_openai_adapter_integration_real_call():
     api_key = os.environ.get("OPENAI_API_KEY")
-    a = OpenAIAdapter(api_key=api_key, name="openai-int", model=os.environ.get("OPENAI_MODEL", "gpt-3.5-turbo"), timeout=20.0, max_retries=2)
+    a = OpenAIAdapter(
+        api_key=api_key,
+        name="openai-int",
+        model=os.environ.get("OPENAI_MODEL", "gpt-3.5-turbo"),
+        timeout=20.0,
+        max_retries=2,
+    )
     a.load(None)
     out = a.infer("Hello from integration test — short ping")
-    assert isinstance(out, dict) and isinstance(out.get("text"), str) and len(out.get("text")) > 0
+    assert (
+        isinstance(out, dict)
+        and isinstance(out.get("text"), str)
+        and len(out.get("text")) > 0
+    )

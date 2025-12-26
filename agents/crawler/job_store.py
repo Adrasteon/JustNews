@@ -4,6 +4,7 @@ Provides a thin wrapper around MariaDB storage for crawl job lifecycle
 information while also falling back to an in-memory store when the database
 is unavailable (e.g. in development or test envs).
 """
+
 from __future__ import annotations
 
 import json
@@ -179,7 +180,9 @@ def get_job(job_id: str) -> dict[str, Any] | None:
         with _get_conn() as conn:
             cursor = conn.cursor(dictionary=True)
             try:
-                cursor.execute("SELECT * FROM crawler_jobs WHERE job_id = %s LIMIT 1", (job_id,))
+                cursor.execute(
+                    "SELECT * FROM crawler_jobs WHERE job_id = %s LIMIT 1", (job_id,)
+                )
                 row = cursor.fetchone()
                 if not row:
                     return None
@@ -187,7 +190,11 @@ def get_job(job_id: str) -> dict[str, Any] | None:
                 # Deserialize result
                 if row.get("result"):
                     try:
-                        row["result"] = json.loads(row["result"]) if isinstance(row["result"], str) else row["result"]
+                        row["result"] = (
+                            json.loads(row["result"])
+                            if isinstance(row["result"], str)
+                            else row["result"]
+                        )
                     except Exception:
                         pass
                 return row
@@ -205,7 +212,9 @@ def list_jobs() -> dict[str, str]:
         with _get_conn() as conn:
             cursor = conn.cursor(dictionary=True)
             try:
-                cursor.execute("SELECT job_id, status FROM crawler_jobs ORDER BY updated_at DESC")
+                cursor.execute(
+                    "SELECT job_id, status FROM crawler_jobs ORDER BY updated_at DESC"
+                )
                 rows = cursor.fetchall()
                 return {row["job_id"]: row["status"] for row in rows}
             finally:
@@ -232,7 +241,9 @@ def recover_running_jobs(markdown_reason: str = "service restart") -> int:
         with _get_conn() as conn:
             cursor = conn.cursor()
             try:
-                cursor.execute("SELECT job_id FROM crawler_jobs WHERE status = %s", ("running",))
+                cursor.execute(
+                    "SELECT job_id FROM crawler_jobs WHERE status = %s", ("running",)
+                )
                 rows = cursor.fetchall()
                 for (job_id,) in rows:
                     cursor.execute(

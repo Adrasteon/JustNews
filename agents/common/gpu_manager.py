@@ -4,6 +4,7 @@ GPU Manager - Production Implementation Wrapper
 This module now serves as a wrapper around the production MultiAgentGPUManager,
 maintaining backward compatibility while providing production-ready features.
 """
+
 from __future__ import annotations
 
 import threading
@@ -18,6 +19,7 @@ try:
     from agents.common.gpu_manager_production import (
         request_agent_gpu as _request_agent_gpu,
     )
+
     PRODUCTION_AVAILABLE = True
 except ImportError:
     PRODUCTION_AVAILABLE = False
@@ -28,6 +30,7 @@ if not PRODUCTION_AVAILABLE:
 
     class GPUModelManager:
         """Lightweight in-process GPU model registry (fallback)"""
+
         def __init__(self) -> None:
             self._lock = Lock()
             self._registry: dict[str, Any] = {}
@@ -80,10 +83,12 @@ class GPUModelManager:
             from agents.common.gpu_manager_production import (
                 get_gpu_manager as get_production_gpu_manager,
             )
+
             self._manager = get_production_gpu_manager()
         else:
             # Fallback to simple registry
             import threading
+
             self._lock = threading.Lock()
             self._registry: dict[str, Any] = {}
 
@@ -91,7 +96,9 @@ class GPUModelManager:
         """Register a model object under a name."""
         if PRODUCTION_AVAILABLE:
             # Use production manager's model registry if available
-            self._manager._model_registry = getattr(self._manager, '_model_registry', {})
+            self._manager._model_registry = getattr(
+                self._manager, "_model_registry", {}
+            )
             self._manager._model_registry[name] = model
         else:
             with self._lock:
@@ -100,7 +107,7 @@ class GPUModelManager:
     def get(self, name: str) -> Any | None:
         """Return a registered model or None if not present."""
         if PRODUCTION_AVAILABLE:
-            registry = getattr(self._manager, '_model_registry', {})
+            registry = getattr(self._manager, "_model_registry", {})
             return registry.get(name)
         else:
             with self._lock:
@@ -136,11 +143,11 @@ def request_agent_gpu(agent_name: str, memory_gb: float = 2.0) -> int | None:
     if PRODUCTION_AVAILABLE:
         result = _request_agent_gpu(agent_name, memory_gb)
         if isinstance(result, dict):
-            device = result.get('gpu_device', 0)
+            device = result.get("gpu_device", 0)
             # Convert device ID to int for backward compatibility
-            if isinstance(device, str) and device.startswith('cuda:'):
-                return int(device.split(':')[1])
-            elif device == 'mps':
+            if isinstance(device, str) and device.startswith("cuda:"):
+                return int(device.split(":")[1])
+            elif device == "mps":
                 return -1  # MPS not supported in old API
             return device if isinstance(device, int) else 0
         return result

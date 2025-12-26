@@ -12,7 +12,9 @@ from common.stage_b_metrics import (
 )
 
 
-def configure_thresholds(monkeypatch, *, min_words: int, min_ratio: float, raw_dir: Path) -> None:
+def configure_thresholds(
+    monkeypatch, *, min_words: int, min_ratio: float, raw_dir: Path
+) -> None:
     monkeypatch.setattr(extraction, "_MIN_WORDS", min_words)
     monkeypatch.setattr(extraction, "_MIN_TEXT_HTML_RATIO", min_ratio)
     monkeypatch.setattr(extraction, "_DEFAULT_RAW_DIR", raw_dir)
@@ -73,11 +75,18 @@ def test_extract_article_content_marks_low_quality(tmp_path, monkeypatch):
     outcome = extraction.extract_article_content(html, "https://example.com/brief")
 
     assert outcome.needs_review is True
-    assert any(reason.startswith("word_count_below_threshold") for reason in outcome.review_reasons)
-    assert any(reason.startswith("low_text_html_ratio") for reason in outcome.review_reasons)
+    assert any(
+        reason.startswith("word_count_below_threshold")
+        for reason in outcome.review_reasons
+    )
+    assert any(
+        reason.startswith("low_text_html_ratio") for reason in outcome.review_reasons
+    )
 
 
-def test_extract_article_records_primary_metrics(tmp_path, monkeypatch, stage_b_metrics):
+def test_extract_article_records_primary_metrics(
+    tmp_path, monkeypatch, stage_b_metrics
+):
     configure_thresholds(monkeypatch, min_words=5, min_ratio=0.001, raw_dir=tmp_path)
 
     def fake_trafilatura(html: str, url: str):
@@ -104,7 +113,9 @@ def test_extract_article_records_primary_metrics(tmp_path, monkeypatch, stage_b_
     assert stage_b_metrics.get_fallback_count("readability", "success") == 0.0
 
 
-def test_extract_article_records_fallback_metrics(tmp_path, monkeypatch, stage_b_metrics):
+def test_extract_article_records_fallback_metrics(
+    tmp_path, monkeypatch, stage_b_metrics
+):
     configure_thresholds(monkeypatch, min_words=10, min_ratio=0.001, raw_dir=tmp_path)
 
     monkeypatch.setattr(extraction, "_extract_with_trafilatura", lambda *_: None)

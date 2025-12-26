@@ -23,11 +23,13 @@ def _load_canary_cases() -> list[dict[str, object]]:
     for manifest_path in sorted(FIXTURE_ROOT.glob("*/expected.json")):
         expected = json.loads(manifest_path.read_text())
         html = (manifest_path.parent / "raw.html").read_text()
-        cases.append({
-            "id": expected.get("id", manifest_path.parent.name),
-            "html": html,
-            "expected": expected,
-        })
+        cases.append(
+            {
+                "id": expected.get("id", manifest_path.parent.name),
+                "html": html,
+                "expected": expected,
+            }
+        )
     return cases
 
 

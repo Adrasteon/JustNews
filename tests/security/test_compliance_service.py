@@ -8,12 +8,15 @@ from pathlib import Path
 # Create a minimal 'security.models' module in sys.modules to satisfy the relative import
 models_mod = types.ModuleType("security.models")
 
+
 class _ComplianceError(Exception):
     pass
+
 
 class _SecurityConfig:
     def __init__(self):
         self.jwt_secret = "X" * 32
+
 
 models_mod.ComplianceError = _ComplianceError
 models_mod.SecurityConfig = _SecurityConfig
@@ -24,7 +27,7 @@ sys.modules["security.models"] = models_mod
 # Import module directly from file to avoid package __init__ side-effects
 spec = importlib.util.spec_from_file_location(
     "security.compliance.service",
-    str(Path(__file__).resolve().parents[2] / "security" / "compliance" / "service.py")
+    str(Path(__file__).resolve().parents[2] / "security" / "compliance" / "service.py"),
 )
 svc_mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(svc_mod)  # type: ignore
@@ -53,7 +56,9 @@ def test_record_and_check_consent_and_export():
     svc._save_compliance_data = _noop
 
     # Record consent
-    consent_id = asyncio.run(svc.record_consent(1, "analytics", "text", status=ConsentStatus.GRANTED))
+    consent_id = asyncio.run(
+        svc.record_consent(1, "analytics", "text", status=ConsentStatus.GRANTED)
+    )
     assert consent_id.startswith("consent_")
 
     # Check consent reflects granted state
@@ -77,7 +82,7 @@ def test_submit_and_process_data_request_and_delete_user():
     svc._save_compliance_data = _noop
 
     # Submit a data request
-    req_id = asyncio.run(svc.submit_data_request(2, "access", details={"info":"x"}))
+    req_id = asyncio.run(svc.submit_data_request(2, "access", details={"info": "x"}))
     assert req_id.startswith("dsr_")
 
     # Process request - complete

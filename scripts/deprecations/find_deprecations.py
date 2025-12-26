@@ -7,6 +7,7 @@ This is a conservative helper that finds textual occurrences of patterns we want
 monitor over time (e.g., datetime.utcnow(), asyncio.get_event_loop().run_until_complete,
 and .dict()), and prints a JSON report which can be used as a baseline for QA.
 """
+
 import json
 import re
 import sys
@@ -20,7 +21,14 @@ PATTERNS = {
     r"\.dict\(\)": "Pydantic v2: prefer model_dump() instead of dict() where appropriate",
 }
 
-EXCLUDE_DIRS = {".git", "node_modules", "third_party", ".mypy_cache", "__pycache__", "deprecations"}
+EXCLUDE_DIRS = {
+    ".git",
+    "node_modules",
+    "third_party",
+    ".mypy_cache",
+    "__pycache__",
+    "deprecations",
+}
 
 
 def scan(path: Path):
@@ -38,7 +46,9 @@ def scan(path: Path):
         for pat in PATTERNS:
             for i, line in enumerate(text.splitlines(), start=1):
                 if re.search(pat, line):
-                    results[pat].append({"path": str(p), "line": i, "content": line.strip()})
+                    results[pat].append(
+                        {"path": str(p), "line": i, "content": line.strip()}
+                    )
 
     return results
 

@@ -77,7 +77,9 @@ def init_sentry(service_name: str, *, logger: logging.Logger | None = None) -> b
     sentry_logging = LoggingIntegration(level=None, event_level="ERROR")
 
     traces_sample_rate = float(os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.0"))
-    environment = os.environ.get("SENTRY_ENV", os.environ.get("DEPLOYMENT_ENVIRONMENT", "local"))
+    environment = os.environ.get(
+        "SENTRY_ENV", os.environ.get("DEPLOYMENT_ENVIRONMENT", "local")
+    )
 
     try:
         sentry_sdk.init(
@@ -93,7 +95,12 @@ def init_sentry(service_name: str, *, logger: logging.Logger | None = None) -> b
 
         _initialized = True
         if logger:
-            logger.info("Sentry initialized for %s (env=%s, sample_rate=%s)", service_name, environment, traces_sample_rate)
+            logger.info(
+                "Sentry initialized for %s (env=%s, sample_rate=%s)",
+                service_name,
+                environment,
+                traces_sample_rate,
+            )
         return True
 
     except Exception as exc:  # pragma: no cover - runtime

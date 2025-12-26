@@ -54,7 +54,11 @@ crawl_task_map: dict[str, asyncio.Task] = {}
 # Environment variables
 CRAWLER_AGENT_PORT = int(os.environ.get("CRAWLER_AGENT_PORT", 8015))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
-def require_api_token(authorization: str | None = Header(None), x_api_token: str | None = Header(None)):
+
+
+def require_api_token(
+    authorization: str | None = Header(None), x_api_token: str | None = Header(None)
+):
     """Require an API token if `CRAWLER_API_TOKEN` is set; accept Authorization Bearer or X-Api-Token.
 
     If the env var is not set, no auth is required (backwards compatible).
@@ -76,9 +80,12 @@ def require_api_token(authorization: str | None = Header(None), x_api_token: str
         raise HTTPException(status_code=403, detail="Invalid API token")
     return None
 
+
 # Security configuration
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:8000").split(",")
+CORS_ORIGINS = os.environ.get(
+    "CORS_ORIGINS", "http://localhost:3000,http://localhost:8000"
+).split(",")
 
 
 async def run_crawl_background(
@@ -106,7 +113,9 @@ async def run_crawl_background(
         except Exception:
             # best-effort fallback to memory for visibility
             crawl_jobs[job_id] = {"status": "completed", "result": result}
-        logger.info(f"Background crawl {job_id} complete. Articles: {len(result.get('articles', []))}")
+        logger.info(
+            f"Background crawl {job_id} complete. Articles: {len(result.get('articles', []))}"
+        )
     except Exception as e:
         try:
             set_error(job_id, str(e))
@@ -114,7 +123,9 @@ async def run_crawl_background(
             crawl_jobs[job_id] = {"status": "failed", "error": str(e)}
         logger.error(f"Background crawl {job_id} failed: {e}")
         import traceback
+
         logger.error(f"Traceback: {traceback.format_exc()}")
+
 
 class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL):
@@ -126,12 +137,15 @@ class MCPBusClient:
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(1, 2))
+            response = requests.post(
+                f"{self.base_url}/register", json=registration_data, timeout=(1, 2)
+            )
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
             raise
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -144,7 +158,7 @@ async def lifespan(app: FastAPI):
             tools=[
                 "unified_production_crawl",
                 "get_crawler_info",
-                "get_performance_metrics"
+                "get_performance_metrics",
             ],
         )
         logger.info("Registered tools with MCP Bus.")
@@ -155,14 +169,21 @@ async def lifespan(app: FastAPI):
     try:
         recovered = recover_running_jobs("service restart")
         if recovered > 0:
-            logger.info("Recovered %s interrupted running jobs during startup", recovered)
+            logger.info(
+                "Recovered %s interrupted running jobs during startup", recovered
+            )
     except Exception as e:
         logger.debug("Job recovery step failed: %s", e)
     ready = True
     yield
     logger.info("Crawler agent is shutting down.")
 
-app = FastAPI(lifespan=lifespan, title="Crawler Agent", description="Unified production crawling agent")
+
+app = FastAPI(
+    lifespan=lifespan,
+    title="Crawler Agent",
+    description="Unified production crawling agent",
+)
 
 # Initialize metrics
 metrics = JustNewsMetrics("crawler")
@@ -180,12 +201,18 @@ app.add_middleware(
 # Metrics middleware (must be added after CORS middleware)
 app.middleware("http")(metrics.request_middleware)
 
+
 class ToolCall(BaseModel):
     args: list[Any]
     kwargs: dict[str, Any]
 
+
 @app.post("/unified_production_crawl")
-async def unified_production_crawl_endpoint(call: ToolCall, background_tasks: BackgroundTasks, token_ok: None = Depends(require_api_token)):
+async def unified_production_crawl_endpoint(
+    call: ToolCall,
+    background_tasks: BackgroundTasks,
+    token_ok: None = Depends(require_api_token),
+):
     """
     Enqueue a background unified production crawl job and return immediately with a job ID.
     """
@@ -205,8 +232,13 @@ async def unified_production_crawl_endpoint(call: ToolCall, background_tasks: Ba
     profile_overrides = call.kwargs.get("profile_overrides")
 
     # Enqueue background task by creating an asyncio.Task so it can be cancelled later
-    task = asyncio.create_task(run_crawl_background(job_id, domains, max_articles, concurrent, profile_overrides))
+    task = asyncio.create_task(
+        run_crawl_background(
+            job_id, domains, max_articles, concurrent, profile_overrides
+        )
+    )
     crawl_task_map[job_id] = task
+
     # When the background task completes, remove it from the task map
     def _on_task_done(t: asyncio.Task, jid: str = job_id):
         try:
@@ -219,7 +251,9 @@ async def unified_production_crawl_endpoint(call: ToolCall, background_tasks: Ba
     task.add_done_callback(_on_task_done)
 
     # Return accepted status with job ID
-    return JSONResponse(status_code=202, content={"status": "accepted", "job_id": job_id})
+    return JSONResponse(
+        status_code=202, content={"status": "accepted", "job_id": job_id}
+    )
 
 
 @app.post("/stop_job/{job_id}")
@@ -237,7 +271,9 @@ async def stop_job(job_id: str):
             # Allow a short grace period for cleanup
             await asyncio.wait_for(task, timeout=5)
         except TimeoutError:
-            logger.debug(f"Timed out waiting for job {job_id} to cancel; task may still be cleaning up")
+            logger.debug(
+                f"Timed out waiting for job {job_id} to cancel; task may still be cleaning up"
+            )
         except asyncio.CancelledError:
             logger.debug(f"Task for job {job_id} cancelled")
 
@@ -276,6 +312,7 @@ async def stop_job(job_id: str):
 
     raise HTTPException(status_code=404, detail=f"Job not found: {job_id}")
 
+
 @app.get("/job_status/{job_id}")
 def job_status(job_id: str, token_ok: None = Depends(require_api_token)):
     """Retrieve status and result (if completed) for a crawl job."""
@@ -290,6 +327,7 @@ def job_status(job_id: str, token_ok: None = Depends(require_api_token)):
         raise HTTPException(status_code=404, detail=f"Job not found: {job_id}")
     return crawl_jobs[job_id]
 
+
 @app.get("/jobs")
 def list_jobs(token_ok: None = Depends(require_api_token)):
     """List all current crawl job IDs with their status (without full results)."""
@@ -298,6 +336,7 @@ def list_jobs(token_ok: None = Depends(require_api_token)):
         return jobstore_list_jobs()  # use job_store list_jobs
     except Exception:
         return {job_id: info.get("status") for job_id, info in crawl_jobs.items()}
+
 
 @app.post("/clear_jobs")
 def clear_jobs(token_ok: None = Depends(require_api_token)):
@@ -311,6 +350,7 @@ def clear_jobs(token_ok: None = Depends(require_api_token)):
         crawl_jobs.clear()
     return {"cleared_jobs": [], "message": f"Cleared {removed} jobs"}
 
+
 @app.post("/reset_crawler")
 def reset_crawler(token_ok: None = Depends(require_api_token)):
     """Completely reset the crawler state - clear all jobs and reset performance metrics."""
@@ -323,61 +363,79 @@ def reset_crawler(token_ok: None = Depends(require_api_token)):
     # Reset performance metrics if they exist
     try:
         from .tools import reset_performance_metrics
+
         reset_performance_metrics()
     except ImportError:
         pass  # Performance monitoring might not be available
 
     return {
         "cleared_jobs": cleared_jobs,
-        "message": f"Completely reset crawler: cleared {len(cleared_jobs)} jobs and reset metrics"
+        "message": f"Completely reset crawler: cleared {len(cleared_jobs)} jobs and reset metrics",
     }
+
 
 @app.post("/get_crawler_info")
 def get_crawler_info_endpoint(call: ToolCall):
     try:
-        logger.info(f"Calling get_crawler_info with args: {call.args} and kwargs: {call.kwargs}")
+        logger.info(
+            f"Calling get_crawler_info with args: {call.args} and kwargs: {call.kwargs}"
+        )
         return get_crawler_info(*call.args, **call.kwargs)
     except Exception as e:
         logger.error(f"An error occurred in get_crawler_info: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @app.post("/get_performance_metrics")
 def get_performance_metrics_endpoint(call: ToolCall):
     try:
         from .tools import get_performance_monitor
+
         monitor = get_performance_monitor()
-        logger.info(f"Calling get_performance_metrics with args: {call.args} and kwargs: {call.kwargs}")
+        logger.info(
+            f"Calling get_performance_metrics with args: {call.args} and kwargs: {call.kwargs}"
+        )
         return monitor.get_current_metrics()
     except Exception as e:
         logger.error(f"An error occurred in get_performance_metrics: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
+
 @app.get("/ready")
 def ready_endpoint():
     return {"ready": ready}
+
 
 @app.get("/metrics")
 def metrics_endpoint():
     """Prometheus metrics endpoint"""
     return Response(metrics.get_metrics(), media_type="text/plain; charset=utf-8")
 
+
 if __name__ == "__main__":
     import uvicorn
+
     logger.info(f"Starting Crawler Agent on port {CRAWLER_AGENT_PORT}")
     uvicorn.run(
         "agents.crawler.main:app",
         host="0.0.0.0",
         port=CRAWLER_AGENT_PORT,
         reload=False,
-        log_level="info"
+        log_level="info",
     )
 
 
-def execute_crawl(domains: list[str], max_articles_per_site: int = 25, concurrent_sites: int = 3, profile_overrides: dict | None = None):
+def execute_crawl(
+    domains: list[str],
+    max_articles_per_site: int = 25,
+    concurrent_sites: int = 3,
+    profile_overrides: dict | None = None,
+):
     """Compatibility wrapper for programmatic crawling calls used in tests.
 
     Runs the unified crawl synchronously by executing the async engine via asyncio.run.

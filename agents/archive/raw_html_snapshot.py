@@ -16,12 +16,16 @@ logger = get_logger(__name__)
 
 
 def _default_service_dir() -> Path:
-    return Path(os.environ.get("SERVICE_DIR", Path(__file__).resolve().parents[2])).resolve()
+    return Path(
+        os.environ.get("SERVICE_DIR", Path(__file__).resolve().parents[2])
+    ).resolve()
 
 
 def _default_raw_dir(service_dir: Path) -> Path:
     candidate = os.environ.get("JUSTNEWS_RAW_HTML_DIR")
-    return (Path(candidate) if candidate else service_dir / "archive_storage" / "raw_html").resolve()
+    return (
+        Path(candidate) if candidate else service_dir / "archive_storage" / "raw_html"
+    ).resolve()
 
 
 def _ensure_relative(path: Path, base: Path) -> str:
@@ -82,11 +86,13 @@ def ensure_raw_html_artifact(
     if candidate.is_relative_to(canonical_root):
         archive_metrics.increment("raw_html_verified_total")
         archive_metrics.timing("raw_html_check_latency_seconds", perf_counter() - start)
-        response.update({
-            "status": "verified",
-            "raw_html_ref": _ensure_relative(candidate, service_dir),
-            "destination_path": str(candidate),
-        })
+        response.update(
+            {
+                "status": "verified",
+                "raw_html_ref": _ensure_relative(candidate, service_dir),
+                "destination_path": str(candidate),
+            }
+        )
         return response
 
     dest_dir = canonical_root / datetime.now(UTC).strftime("%Y/%m/%d")
@@ -102,11 +108,13 @@ def ensure_raw_html_artifact(
         shutil.copy2(candidate, dest_path)
         archive_metrics.increment("raw_html_copied_total")
         archive_metrics.timing("raw_html_check_latency_seconds", perf_counter() - start)
-        response.update({
-            "status": "copied",
-            "destination_path": str(dest_path),
-            "raw_html_ref": _ensure_relative(dest_path, service_dir),
-        })
+        response.update(
+            {
+                "status": "copied",
+                "destination_path": str(dest_path),
+                "raw_html_ref": _ensure_relative(dest_path, service_dir),
+            }
+        )
         logger.debug("Copied raw HTML artefact %s -> %s", candidate, dest_path)
         return response
     except Exception as exc:  # noqa: BLE001

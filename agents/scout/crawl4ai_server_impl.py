@@ -4,6 +4,7 @@ This module used to contain a standalone implementation. The canonical
 bridge lives at `agents.c4ai.server`. Keep this shim for compatibility
 only; it warns on import and re-exports the canonical API when possible.
 """
+
 import os as _os
 from warnings import warn
 
@@ -18,6 +19,7 @@ if _os.environ.get("PYTEST_RUNNING", "0") != "1":
 
 try:
     from agents.c4ai.server import CrawlRequest, app, crawl, health  # type: ignore
+
     __all__ = ["app", "CrawlRequest", "crawl", "health"]
 except Exception:  # pragma: no cover - fallback
     from fastapi import FastAPI

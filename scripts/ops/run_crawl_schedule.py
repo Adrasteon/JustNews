@@ -8,6 +8,7 @@ budgets. It is designed to execute from a systemd timer (hourly cadence by
 default) but also supports ad-hoc invocations for QA using the `--dry-run`
 flag.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -219,10 +220,14 @@ def _await_job(base_url: str, job_id: str, timeout_seconds: int) -> dict[str, An
             payload = response.json()
         except requests.Timeout as exc:
             if time.time() >= deadline:
-                raise TimeoutError(f"Job {job_id} exceeded timeout {timeout_seconds}s") from exc
+                raise TimeoutError(
+                    f"Job {job_id} exceeded timeout {timeout_seconds}s"
+                ) from exc
             continue
         except requests.RequestException as exc:
-            raise RuntimeError(f"Failed to fetch job status for {job_id}: {exc}") from exc
+            raise RuntimeError(
+                f"Failed to fetch job status for {job_id}: {exc}"
+            ) from exc
 
         status = payload.get("status")
         if status in {"completed", "failed"}:
@@ -309,7 +314,7 @@ def _init_metrics() -> tuple[CollectorRegistry, dict[str, Gauge]]:
 def main() -> int:
     args = _parse_args()
     # Backwards-compatibility guard: ensure attributes tests expect exist
-    if not hasattr(args, 'profiles'):
+    if not hasattr(args, "profiles"):
         args.profiles = None
 
     try:
@@ -321,7 +326,9 @@ def main() -> int:
     schedule: CrawlSchedule = base_schedule
 
     if args.testrun:
-        print("[scheduler] test run flag enabled; using static schedule", file=sys.stderr)
+        print(
+            "[scheduler] test run flag enabled; using static schedule", file=sys.stderr
+        )
     else:
         sources = get_active_sources(limit=args.db_limit)
         if sources:
@@ -344,17 +351,29 @@ def main() -> int:
                 )
                 print("[scheduler] using database-backed source list", file=sys.stderr)
             except CrawlScheduleError as exc:
-                print(f"[scheduler] database schedule build failed: {exc}; falling back to static configuration", file=sys.stderr)
+                print(
+                    f"[scheduler] database schedule build failed: {exc}; falling back to static configuration",
+                    file=sys.stderr,
+                )
         else:
-            print("[scheduler] no database sources returned; falling back to static schedule", file=sys.stderr)
+            print(
+                "[scheduler] no database sources returned; falling back to static schedule",
+                file=sys.stderr,
+            )
 
     profile_registry: CrawlProfileRegistry | None = None
     if args.profiles:
         try:
             profile_registry = load_crawl_profiles(args.profiles)
-            print(f"[scheduler] loaded crawl profiles from {args.profiles}", file=sys.stderr)
+            print(
+                f"[scheduler] loaded crawl profiles from {args.profiles}",
+                file=sys.stderr,
+            )
         except FileNotFoundError:
-            print(f"[scheduler] crawl profile file not found: {args.profiles}", file=sys.stderr)
+            print(
+                f"[scheduler] crawl profile file not found: {args.profiles}",
+                file=sys.stderr,
+            )
         except CrawlProfileError as exc:
             print(f"[scheduler] failed to load crawl profiles: {exc}", file=sys.stderr)
 
@@ -446,13 +465,17 @@ def main() -> int:
         else:
             try:
                 submit_url = f"{args.crawler_url.rstrip('/')}/unified_production_crawl"
-                response = requests.post(submit_url, json=payload, timeout=timeout_seconds)
+                response = requests.post(
+                    submit_url, json=payload, timeout=timeout_seconds
+                )
                 response.raise_for_status()
                 submission = response.json()
                 job_id = submission.get("job_id")
                 if not job_id:
                     raise RuntimeError("Crawler response missing job_id")
-                job_payload = _await_job(args.crawler_url.rstrip('/'), job_id, timeout_seconds)
+                job_payload = _await_job(
+                    args.crawler_url.rstrip("/"), job_id, timeout_seconds
+                )
                 result = job_payload.get("result") or {}
                 status = job_payload.get("status", "unknown")
                 if status != "completed":
@@ -472,7 +495,9 @@ def main() -> int:
 
         domains_count = len(run.domains)
         if status == "completed":
-            articles_value = result.get("articles_ingested", result.get("total_articles", 0))
+            articles_value = result.get(
+                "articles_ingested", result.get("total_articles", 0)
+            )
             try:
                 articles_count = int(articles_value)
             except (TypeError, ValueError):
@@ -522,7 +547,9 @@ def main() -> int:
 
     gauges["adaptive_articles"].set(adaptive_total)
     gauges["adaptive_sufficient"].set(adaptive_sufficient)
-    gauges["adaptive_confidence"].set(float(confidence_avg) if confidence_avg is not None else 0.0)
+    gauges["adaptive_confidence"].set(
+        float(confidence_avg) if confidence_avg is not None else 0.0
+    )
     gauges["adaptive_pages"].set(float(pages_avg) if pages_avg is not None else 0.0)
 
     stop_reasons = adaptive_summary.get("stop_reasons", {}) if adaptive_summary else {}
@@ -563,7 +590,9 @@ def main() -> int:
                 {
                     "name": run["name"],
                     "domains": run["domains"],
-                    "articles": run["result"].get("articles_ingested") if isinstance(run.get("result"), dict) else None,
+                    "articles": run["result"].get("articles_ingested")
+                    if isinstance(run.get("result"), dict)
+                    else None,
                 }
                 for run in successful
             ],

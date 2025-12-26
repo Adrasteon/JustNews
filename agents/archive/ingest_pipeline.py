@@ -75,11 +75,16 @@ def _build_metadata(payload: dict[str, Any]) -> dict[str, Any]:
     canonical = candidate.get("canonical") or features.get("canonical_url") or url
     normalized_url = normalize_article_url(url, canonical)
 
-    hash_algorithm = (payload.get("hash_algorithm") or os.environ.get("ARTICLE_URL_HASH_ALGO", "sha256")).lower()
+    hash_algorithm = (
+        payload.get("hash_algorithm")
+        or os.environ.get("ARTICLE_URL_HASH_ALGO", "sha256")
+    ).lower()
     hash_input = normalized_url or canonical or url
     url_hash = hash_article_url(hash_input, algorithm=hash_algorithm)
 
-    content_summary = (payload.get("cleaned_text") or candidate.get("extracted_text") or "").strip()
+    content_summary = (
+        payload.get("cleaned_text") or candidate.get("extracted_text") or ""
+    ).strip()
     summary = content_summary[:500]
 
     publisher_meta = {
@@ -120,14 +125,18 @@ def _build_metadata(payload: dict[str, Any]) -> dict[str, Any]:
         "extraction_metadata": extraction_metadata,
         "structured_metadata": features.get("structured_metadata") or {},
         "timestamp": _iso_timestamp(payload.get("created_at")),
-        "collection_timestamp": _iso_timestamp(candidate.get("candidate_ts") or payload.get("created_at")),
+        "collection_timestamp": _iso_timestamp(
+            candidate.get("candidate_ts") or payload.get("created_at")
+        ),
         "language": features.get("language"),
         "authors": _ensure_list(features.get("authors")),
         "section": features.get("section"),
         "tags": _ensure_list(features.get("tags")),
         "publication_date": features.get("publication_date"),
         "raw_html_ref": candidate.get("raw_html_ref"),
-        "needs_review": bool(payload.get("needs_cleanup") or features.get("needs_review")),
+        "needs_review": bool(
+            payload.get("needs_cleanup") or features.get("needs_review")
+        ),
         "review_reasons": _ensure_list(features.get("review_reasons")),
         "source_id": _coerce_source_id(candidate.get("site_id")),
         "url_hash": url_hash or None,
@@ -152,7 +161,9 @@ def queue_article(job_payload: dict[str, Any]) -> dict[str, Any]:
         archive_metrics.timing("ingest_latency_seconds", perf_counter() - start_time)
         raise ValueError("ingest payload missing candidate data")
 
-    content = (job_payload.get("cleaned_text") or candidate.get("extracted_text") or "").strip()
+    content = (
+        job_payload.get("cleaned_text") or candidate.get("extracted_text") or ""
+    ).strip()
     if not content:
         archive_metrics.increment("ingest_failure_total")
         archive_metrics.timing("ingest_latency_seconds", perf_counter() - start_time)

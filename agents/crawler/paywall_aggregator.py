@@ -11,6 +11,7 @@ Usage:
 
 The DB path can be overridden with the env var `CRAWL4AI_PAYWALL_AGG_DB`.
 """
+
 from __future__ import annotations
 
 import os
@@ -62,7 +63,9 @@ def increment_and_check(domain: str, threshold: int = 3) -> tuple[int, bool]:
         conn = sqlite3.connect(path, timeout=5)
         try:
             _ensure_db(conn)
-            cur = conn.execute("SELECT count FROM paywall_counts WHERE domain = ?", (domain,))
+            cur = conn.execute(
+                "SELECT count FROM paywall_counts WHERE domain = ?", (domain,)
+            )
             row = cur.fetchone()
             if row is None:
                 count = 1

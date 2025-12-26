@@ -40,8 +40,8 @@ class TestGPUAvailability:
     async def test_gpu_detection(self):
         """Test GPU detection and availability"""
         # Test GPU detection logic
-        with patch('torch.cuda.is_available') as mock_cuda_available:
-            with patch('torch.cuda.device_count') as mock_device_count:
+        with patch("torch.cuda.is_available") as mock_cuda_available:
+            with patch("torch.cuda.device_count") as mock_device_count:
                 # Test with GPU available
                 mock_cuda_available.return_value = True
                 mock_device_count.return_value = 2
@@ -65,8 +65,8 @@ class TestGPUAvailability:
     @pytest.mark.gpu
     async def test_gpu_initialization(self):
         """Test GPU initialization and setup"""
-        with patch('torch.cuda.set_device') as mock_set_device:
-            with patch('torch.cuda.empty_cache') as mock_empty_cache:
+        with patch("torch.cuda.set_device") as mock_set_device:
+            with patch("torch.cuda.empty_cache") as mock_empty_cache:
                 # Test GPU initialization
                 result = await self._initialize_gpu(device_id=0)
 
@@ -79,8 +79,11 @@ class TestGPUAvailability:
     @pytest.mark.gpu
     async def test_gpu_memory_info(self):
         """Test GPU memory information retrieval"""
-        with patch('torch.cuda.mem_get_info') as mock_mem_info:
-            mock_mem_info.return_value = (8 * 1024 * 1024 * 1024, 12 * 1024 * 1024 * 1024)  # 8GB free, 12GB total
+        with patch("torch.cuda.mem_get_info") as mock_mem_info:
+            mock_mem_info.return_value = (
+                8 * 1024 * 1024 * 1024,
+                12 * 1024 * 1024 * 1024,
+            )  # 8GB free, 12GB total
 
             memory_info = await self._get_gpu_memory_info(0)
 
@@ -93,23 +96,16 @@ class TestGPUAvailability:
         """Detect GPU availability"""
         try:
             import torch
+
             available = torch.cuda.is_available()
             count = torch.cuda.device_count() if available else 0
 
             devices = []
             if available:
                 for i in range(count):
-                    devices.append({
-                        "id": i,
-                        "name": f"GPU_{i}",
-                        "memory": "8GB"
-                    })
+                    devices.append({"id": i, "name": f"GPU_{i}", "memory": "8GB"})
 
-            return {
-                "available": available,
-                "count": count,
-                "devices": devices
-            }
+            return {"available": available, "count": count, "devices": devices}
         except ImportError:
             return {"available": False, "count": 0, "devices": []}
 
@@ -117,6 +113,7 @@ class TestGPUAvailability:
         """Initialize GPU device"""
         try:
             import torch
+
             torch.cuda.set_device(device_id)
             torch.cuda.empty_cache()
             return {"success": True, "device_id": device_id}
@@ -127,6 +124,7 @@ class TestGPUAvailability:
         """Get GPU memory information"""
         try:
             import torch
+
             free, total = torch.cuda.mem_get_info(device_id)
             used = total - free
             utilization = (used / total) * 100 if total > 0 else 0
@@ -135,7 +133,7 @@ class TestGPUAvailability:
                 "free": free,
                 "total": total,
                 "used": used,
-                "utilization": utilization
+                "utilization": utilization,
             }
         except Exception as e:
             return {"error": str(e)}
@@ -153,8 +151,8 @@ class TestGPUMemoryManagement:
     @pytest.mark.gpu
     async def test_memory_allocation(self):
         """Test GPU memory allocation"""
-        with patch('torch.cuda.memory_allocated') as mock_allocated:
-            with patch('torch.cuda.memory_reserved') as mock_reserved:
+        with patch("torch.cuda.memory_allocated") as mock_allocated:
+            with patch("torch.cuda.memory_reserved") as mock_reserved:
                 mock_allocated.return_value = 1024 * 1024 * 1024  # 1GB
                 mock_reserved.return_value = 2 * 1024 * 1024 * 1024  # 2GB
 
@@ -167,8 +165,8 @@ class TestGPUMemoryManagement:
     @pytest.mark.gpu
     async def test_memory_cleanup(self):
         """Test GPU memory cleanup"""
-        with patch('torch.cuda.empty_cache') as mock_empty_cache:
-            with patch('torch.cuda.memory_summary') as mock_summary:
+        with patch("torch.cuda.empty_cache") as mock_empty_cache:
+            with patch("torch.cuda.memory_summary") as mock_summary:
                 mock_summary.return_value = "Memory cleanup successful"
 
                 # Perform cleanup
@@ -184,13 +182,14 @@ class TestGPUMemoryManagement:
         # Simulate memory usage over time
         initial_memory = 512 * 1024 * 1024  # 512MB
 
-        with patch('torch.cuda.memory_allocated') as mock_allocated:
+        with patch("torch.cuda.memory_allocated") as mock_allocated:
             # Simulate increasing memory usage
             memory_readings = [
                 initial_memory,
                 initial_memory + 100 * 1024 * 1024,  # +100MB
                 initial_memory + 200 * 1024 * 1024,  # +200MB
-                initial_memory + 50 * 1024 * 1024,   # +50MB (should be stable or decreasing)
+                initial_memory
+                + 50 * 1024 * 1024,  # +50MB (should be stable or decreasing)
             ]
 
             mock_allocated.side_effect = memory_readings
@@ -203,18 +202,20 @@ class TestGPUMemoryManagement:
                 if i > 0:
                     memory_growth = current_memory - initial_memory
                     # Allow some growth but detect significant leaks
-                    assert memory_growth < 1024 * 1024 * 1024, f"Memory leak detected: {memory_growth} bytes"
+                    assert memory_growth < 1024 * 1024 * 1024, (
+                        f"Memory leak detected: {memory_growth} bytes"
+                    )
 
     @pytest.mark.asyncio
     @pytest.mark.gpu
     async def test_context_manager_memory(self):
         """Test GPU memory management with context managers"""
-        with patch('torch.cuda.device') as mock_device:
+        with patch("torch.cuda.device") as mock_device:
             mock_context = MagicMock()
             mock_device.return_value.__enter__ = MagicMock(return_value=mock_context)
             mock_device.return_value.__exit__ = MagicMock(return_value=None)
 
-            with patch('torch.cuda.empty_cache') as mock_empty_cache:
+            with patch("torch.cuda.empty_cache") as mock_empty_cache:
                 # Use GPU context manager
                 async with self._gpu_context_manager():
                     # Simulate GPU operations
@@ -228,9 +229,10 @@ class TestGPUMemoryManagement:
         """Get GPU memory statistics"""
         try:
             import torch
+
             return {
                 "allocated": torch.cuda.memory_allocated(),
-                "reserved": torch.cuda.memory_reserved()
+                "reserved": torch.cuda.memory_reserved(),
             }
         except Exception as e:
             return {"error": str(e)}
@@ -239,6 +241,7 @@ class TestGPUMemoryManagement:
         """Cleanup GPU memory"""
         try:
             import torch
+
             torch.cuda.empty_cache()
             return {"success": True}
         except Exception as e:
@@ -248,6 +251,7 @@ class TestGPUMemoryManagement:
         """Get current GPU memory usage"""
         try:
             import torch
+
             return torch.cuda.memory_allocated()
         except Exception:
             return 0
@@ -262,6 +266,7 @@ class TestGPUMemoryManagement:
         # Simulate an async GPU device context manager
         # Use the real torch.cuda.device context if available (or the test's patched mock)
         import torch
+
         # Use a simple device context so tests that patch torch.cuda.device see a call
         with torch.cuda.device(0):
             try:
@@ -286,8 +291,10 @@ class TestGPUModelOperations:
     @pytest.mark.gpu
     async def test_model_loading(self):
         """Test model loading on GPU"""
-        with patch('transformers.AutoModelForSequenceClassification.from_pretrained') as mock_model:
-            with patch('transformers.AutoTokenizer.from_pretrained') as _mock_tokenizer:
+        with patch(
+            "transformers.AutoModelForSequenceClassification.from_pretrained"
+        ) as mock_model:
+            with patch("transformers.AutoTokenizer.from_pretrained") as _mock_tokenizer:
                 mock_model_instance = MagicMock()
                 mock_model.return_value = mock_model_instance
                 mock_model_instance.to.return_value = mock_model_instance
@@ -306,7 +313,7 @@ class TestGPUModelOperations:
         # Setup performance monitoring
         await self.perf_tester.start_monitoring()
 
-        with patch('torch.cuda.synchronize') as _mock_sync:
+        with patch("torch.cuda.synchronize") as _mock_sync:
             # Run inference operations
             inference_times = []
             for _i in range(10):
@@ -337,7 +344,7 @@ class TestGPUModelOperations:
         batch_sizes = [1, 4, 8, 16, 32]
 
         for batch_size in batch_sizes:
-            with patch('torch.cuda.memory_summary') as mock_memory:
+            with patch("torch.cuda.memory_summary") as mock_memory:
                 mock_memory.return_value = f"Batch size {batch_size} OK"
 
                 # Process batch
@@ -349,16 +356,18 @@ class TestGPUModelOperations:
 
                 # Verify memory efficiency
                 memory_mb = result["memory_usage"] / (1024 * 1024)
-                assert memory_mb < 1024, f"Memory usage too high for batch {batch_size}: {memory_mb:.1f}MB"
+                assert memory_mb < 1024, (
+                    f"Memory usage too high for batch {batch_size}: {memory_mb:.1f}MB"
+                )
 
     @pytest.mark.asyncio
     @pytest.mark.gpu
     async def test_multi_gpu_support(self):
         """Test multi-GPU support"""
-        with patch('torch.cuda.device_count') as mock_count:
+        with patch("torch.cuda.device_count") as mock_count:
             mock_count.return_value = 2
 
-            with patch('torch.cuda.set_device') as mock_set_device:
+            with patch("torch.cuda.set_device") as mock_set_device:
                 # Test multi-GPU operations
                 results = await self._run_multi_gpu_operations()
 
@@ -396,13 +405,11 @@ class TestGPUModelOperations:
         """Process batch of data"""
         # Simulate batch processing
         memory_usage = batch_size * 10 * 1024 * 1024  # 10MB per item
-        await asyncio.sleep(0.01 * batch_size)  # Processing time proportional to batch size
+        await asyncio.sleep(
+            0.01 * batch_size
+        )  # Processing time proportional to batch size
 
-        return {
-            "success": True,
-            "batch_size": batch_size,
-            "memory_usage": memory_usage
-        }
+        return {"success": True, "batch_size": batch_size, "memory_usage": memory_usage}
 
     async def _run_multi_gpu_operations(self) -> list[dict[str, Any]]:
         """Run operations across multiple GPUs"""
@@ -433,7 +440,7 @@ class TestGPUErrorHandling:
     @pytest.mark.gpu
     async def test_out_of_memory_handling(self):
         """Test out of memory error handling"""
-        with patch('torch.cuda.memory_summary') as mock_memory:
+        with patch("torch.cuda.memory_summary") as mock_memory:
             mock_memory.side_effect = RuntimeError("CUDA out of memory")
 
             # Attempt GPU operation that fails
@@ -448,7 +455,7 @@ class TestGPUErrorHandling:
     @pytest.mark.gpu
     async def test_device_unavailable_handling(self):
         """Test device unavailable error handling"""
-        with patch('torch.cuda.set_device') as mock_set_device:
+        with patch("torch.cuda.set_device") as mock_set_device:
             mock_set_device.side_effect = RuntimeError("Device unavailable")
 
             # Attempt to use unavailable device
@@ -463,7 +470,7 @@ class TestGPUErrorHandling:
     async def test_graceful_degradation(self):
         """Test graceful degradation to CPU"""
         # Setup GPU failure scenario
-        with patch('torch.cuda.is_available') as mock_available:
+        with patch("torch.cuda.is_available") as mock_available:
             mock_available.return_value = False
 
             # Run operation that should fallback to CPU
@@ -494,10 +501,7 @@ class TestGPUErrorHandling:
             # This would normally try to set device and fail
             raise RuntimeError("Device unavailable")
         except RuntimeError as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     async def _run_with_graceful_degradation(self) -> dict[str, Any]:
         """Run operation with graceful degradation"""
@@ -506,5 +510,5 @@ class TestGPUErrorHandling:
             "success": True,
             "device": "cpu",
             "fallback": True,
-            "performance_impact": "moderate"
+            "performance_impact": "moderate",
         }

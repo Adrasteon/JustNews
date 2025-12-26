@@ -5,6 +5,7 @@ exercise the journalist, fact_checker, and synthesizer adapters in dry-run
 mode using deterministic fixtures. It avoids spinning up the heavy FastAPI
 agents while still covering the data contracts between stages.
 """
+
 from __future__ import annotations
 
 import re
@@ -57,7 +58,9 @@ class AgentChainHarness:
 
         verified = sum(1 for fc in fact_checks if fc.get("verdict") == "verified")
         acceptance_score = verified / max(len(fact_checks), 1) if fact_checks else 0.0
-        needs_followup = acceptance_score < 0.6 or any(fc.get("verdict") == "refuted" for fc in fact_checks)
+        needs_followup = acceptance_score < 0.6 or any(
+            fc.get("verdict") == "refuted" for fc in fact_checks
+        )
 
         return AgentChainResult(
             article_id=article.article_id,
@@ -71,7 +74,11 @@ class AgentChainHarness:
     # Internal helpers -------------------------------------------------
 
     def _build_story_brief(self, article: NormalizedArticle) -> dict[str, Any] | None:
-        fallback = {"headline": article.title, "summary": article.text[:240], "key_points": []}
+        fallback = {
+            "headline": article.title,
+            "summary": article.text[:240],
+            "key_points": [],
+        }
         try:
             brief = self.journalist_adapter.generate_story_brief(
                 markdown=article.text,
@@ -80,7 +87,9 @@ class AgentChainHarness:
             )
             return brief or fallback
         except AttributeError:
-            logger.warning("Journalist adapter missing generate_story_brief; falling back to infer().")
+            logger.warning(
+                "Journalist adapter missing generate_story_brief; falling back to infer()."
+            )
             summary = self.journalist_adapter.infer(
                 f"Summarize the following content in two sentences and list bullet points:\n{article.text[:2000]}"
             )
@@ -92,7 +101,9 @@ class AgentChainHarness:
         method = getattr(self.fact_checker_adapter, "evaluate_claim", None)
         claims = list(_extract_claims(article.text))
         if not method:
-            logger.warning("Fact-checker adapter missing evaluate_claim; skipping claim analysis.")
+            logger.warning(
+                "Fact-checker adapter missing evaluate_claim; skipping claim analysis."
+            )
             return checks
 
         for claim in claims:
@@ -123,13 +134,19 @@ class AgentChainHarness:
             "cautions": [],
         }
         try:
-            draft = self.synthesizer_adapter.summarize_cluster(snippets, context=article.title)
+            draft = self.synthesizer_adapter.summarize_cluster(
+                snippets, context=article.title
+            )
             if draft:
                 return draft
-            logger.warning("Synthesizer adapter returned no draft; using fallback text.")
+            logger.warning(
+                "Synthesizer adapter returned no draft; using fallback text."
+            )
             return fallback
         except AttributeError:
-            logger.warning("Synthesizer adapter missing summarize_cluster; falling back to infer().")
+            logger.warning(
+                "Synthesizer adapter missing summarize_cluster; falling back to infer()."
+            )
             completion = self.synthesizer_adapter.infer(
                 f"Produce a neutral news draft for:\nTitle: {article.title}\nContent: {article.text[:2500]}"
             )
@@ -137,7 +154,9 @@ class AgentChainHarness:
             return fallback
 
 
-def _extract_claims(text: str, *, max_claims: int = 3, min_words: int = 8) -> Iterable[str]:
+def _extract_claims(
+    text: str, *, max_claims: int = 3, min_words: int = 8
+) -> Iterable[str]:
     sentences = re.split(r"(?<=[.!?])\s+", text.strip()) if text else []
     claims: list[str] = []
     for sentence in sentences:

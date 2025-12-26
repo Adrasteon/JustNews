@@ -1,4 +1,5 @@
 """Shared helpers for adapters that prompt Mistral-7B and expect JSON output."""
+
 from __future__ import annotations
 
 import json
@@ -10,6 +11,7 @@ from common.observability import get_logger
 
 try:  # pragma: no cover - optional heavy dependency
     import torch
+
     TORCH_AVAILABLE = True
 except Exception:  # pragma: no cover
     torch = None  # type: ignore
@@ -36,12 +38,31 @@ class BaseMistralJSONAdapter:
         self.disable_env = disable_env
         cfg = defaults or {}
         prefix = agent_name.upper()
-        self.max_chars = int(os.environ.get(f"{prefix}_MISTRAL_MAX_CHARS", cfg.get("max_chars", 6000)))
-        self.max_input_tokens = int(os.environ.get(f"{prefix}_MISTRAL_MAX_INPUT_TOKENS", cfg.get("max_input_tokens", 2048)))
-        self.max_new_tokens = int(os.environ.get(f"{prefix}_MISTRAL_MAX_NEW_TOKENS", cfg.get("max_new_tokens", 320)))
-        self.temperature = float(os.environ.get(f"{prefix}_MISTRAL_TEMPERATURE", cfg.get("temperature", 0.2)))
-        self.top_p = float(os.environ.get(f"{prefix}_MISTRAL_TOP_P", cfg.get("top_p", 0.9)))
-        self.enabled = os.environ.get(disable_env, "0").lower() not in {"1", "true", "yes", "on"}
+        self.max_chars = int(
+            os.environ.get(f"{prefix}_MISTRAL_MAX_CHARS", cfg.get("max_chars", 6000))
+        )
+        self.max_input_tokens = int(
+            os.environ.get(
+                f"{prefix}_MISTRAL_MAX_INPUT_TOKENS", cfg.get("max_input_tokens", 2048)
+            )
+        )
+        self.max_new_tokens = int(
+            os.environ.get(
+                f"{prefix}_MISTRAL_MAX_NEW_TOKENS", cfg.get("max_new_tokens", 320)
+            )
+        )
+        self.temperature = float(
+            os.environ.get(f"{prefix}_MISTRAL_TEMPERATURE", cfg.get("temperature", 0.2))
+        )
+        self.top_p = float(
+            os.environ.get(f"{prefix}_MISTRAL_TOP_P", cfg.get("top_p", 0.9))
+        )
+        self.enabled = os.environ.get(disable_env, "0").lower() not in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
         self.model = None
         self.tokenizer = None
         self._load_attempted = False
@@ -65,18 +86,26 @@ class BaseMistralJSONAdapter:
             from agents.common.mistral_loader import load_mistral_adapter_or_base
         except Exception as exc:  # pragma: no cover
             self._load_error = str(exc)
-            logger.warning("Shared loader import failed for agent=%s: %s", self.agent_name, exc)
+            logger.warning(
+                "Shared loader import failed for agent=%s: %s", self.agent_name, exc
+            )
             return False
 
         model, tokenizer = load_mistral_adapter_or_base(
             self.agent_name,
             adapter_name=self.adapter_name,
-            model_kwargs={"device_map": "auto", "low_cpu_mem_usage": True, "trust_remote_code": True},
+            model_kwargs={
+                "device_map": "auto",
+                "low_cpu_mem_usage": True,
+                "trust_remote_code": True,
+            },
             tokenizer_kwargs={"use_fast": True},
         )
         if model is None or tokenizer is None:
             self._load_error = "adapter-or-base-load-failed"
-            logger.warning("Adapter load returned empty handles for agent=%s", self.agent_name)
+            logger.warning(
+                "Adapter load returned empty handles for agent=%s", self.agent_name
+            )
             return False
         try:
             model.eval()
@@ -84,7 +113,9 @@ class BaseMistralJSONAdapter:
             pass
         self.model = model
         self.tokenizer = tokenizer
-        logger.info("Loaded %s Mistral weights (adapter=%s)", self.agent_name, self.adapter_name)
+        logger.info(
+            "Loaded %s Mistral weights (adapter=%s)", self.agent_name, self.adapter_name
+        )
         return True
 
     # Core inference helpers ---------------------------------------------------
@@ -99,7 +130,9 @@ class BaseMistralJSONAdapter:
     def _format_prompt(self, messages: list[dict[str, str]]) -> str:
         if self.tokenizer and hasattr(self.tokenizer, "apply_chat_template"):
             try:
-                return self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+                return self.tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True
+                )
             except Exception:
                 pass
         parts = []
@@ -153,11 +186,13 @@ class BaseMistralJSONAdapter:
             return None
 
         try:
-            generated = output_ids[:, inputs["input_ids"].shape[-1]:]
+            generated = output_ids[:, inputs["input_ids"].shape[-1] :]
         except Exception:
             generated = output_ids
         try:
-            completion = self.tokenizer.decode(generated[0], skip_special_tokens=True).strip()
+            completion = self.tokenizer.decode(
+                generated[0], skip_special_tokens=True
+            ).strip()
         except Exception:
             completion = ""
         return completion or None
@@ -183,7 +218,11 @@ class BaseMistralJSONAdapter:
                 sanitized = re.sub(r",\s*\}", "}", sanitized)
                 return json.loads(sanitized)
             except Exception:
-                logger.debug("JSON parse failed for agent=%s payload=%s", self.agent_name, snippet[:200])
+                logger.debug(
+                    "JSON parse failed for agent=%s payload=%s",
+                    self.agent_name,
+                    snippet[:200],
+                )
                 return None
 
     def _chat_json(self, messages: list[dict[str, str]]) -> dict[str, Any] | None:
@@ -195,4 +234,9 @@ class BaseMistralJSONAdapter:
     # Public helpers -----------------------------------------------------------
     @property
     def is_available(self) -> bool:
-        return self.enabled and self.model is not None and self.tokenizer is not None and TORCH_AVAILABLE
+        return (
+            self.enabled
+            and self.model is not None
+            and self.tokenizer is not None
+            and TORCH_AVAILABLE
+        )

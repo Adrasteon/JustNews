@@ -43,22 +43,25 @@ try:
         T5Tokenizer,
         pipeline,
     )
+
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
 
 try:
     from bertopic import BERTopic
+
     BERTOPIC_AVAILABLE = True
 except ImportError:
     BERTOPIC_AVAILABLE = False
 
 # Ensure module-level symbols exist so test-suite can patch them safely.
-BERTopic = locals().get('BERTopic', None)
-pipeline = locals().get('pipeline', None)
+BERTopic = locals().get("BERTopic", None)
+pipeline = locals().get("pipeline", None)
 
 try:
     from sklearn.cluster import KMeans
+
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
@@ -66,6 +69,7 @@ except ImportError:
 try:
     # Avoid importing numpy at module-level if unused; prefer checking availability
     import importlib.util as _importlib_util
+
     NUMPY_AVAILABLE = _importlib_util.find_spec("numpy") is not None
 except Exception:
     NUMPY_AVAILABLE = False
@@ -73,6 +77,7 @@ except Exception:
 # GPU manager integration
 try:
     from agents.common.gpu_manager import release_agent_gpu, request_agent_gpu
+
     GPU_MANAGER_AVAILABLE = True
 except ImportError:
     GPU_MANAGER_AVAILABLE = False
@@ -97,6 +102,7 @@ except Exception:
 
 try:
     from sklearn.cluster import KMeans as SKLearnKMeans
+
     KMeans = SKLearnKMeans
 except Exception:
     KMeans = None
@@ -109,6 +115,7 @@ class GPUManager:
     Tests patch `agents.synthesizer.synthesizer_engine.GPUManager` to return
     a stub/mock. Providing this symbol avoids ImportError during tests.
     """
+
     def __init__(self, *args, **kwargs):
         self.is_available = False
         self.device = None
@@ -118,6 +125,7 @@ class GPUManager:
 
     def get_available_memory(self):
         return 0
+
 
 @dataclass
 class SynthesizerConfig:
@@ -163,7 +171,7 @@ class SynthesisResult:
         processing_time: float = 0.0,
         model_used: str = "",
         confidence: float = 0.0,
-        metadata: dict[str, Any] | None = None
+        metadata: dict[str, Any] | None = None,
     ):
         self.success = success
         self.content = content
@@ -209,21 +217,29 @@ class SynthesizerEngine:
         # Use the common MistralAdapter wrapper for the synthesizer agent so
         # the engine benefits from the shared adapter contract and dry-run
         # semantics while keeping the per-agent system prompt.
-        self.mistral_adapter = MistralAdapter(agent="synthesizer", adapter_name="mistral_synth_v1", system_prompt=SYSTEM_PROMPT)
+        self.mistral_adapter = MistralAdapter(
+            agent="synthesizer",
+            adapter_name="mistral_synth_v1",
+            system_prompt=SYSTEM_PROMPT,
+        )
 
         # Performance tracking
         self.performance_stats = {
-            'total_processed': 0,
-            'gpu_processed': 0,
-            'cpu_processed': 0,
-            'avg_processing_time': 0.0,
-            'gpu_memory_usage_gb': 0.0,
-            'last_performance_check': datetime.now()
+            "total_processed": 0,
+            "gpu_processed": 0,
+            "cpu_processed": 0,
+            "avg_processing_time": 0.0,
+            "gpu_memory_usage_gb": 0.0,
+            "last_performance_check": datetime.now(),
         }
 
-        logger.info("🔧 SynthesizerEngine created (lazy init). Call `await initialize()` to load models.")
+        logger.info(
+            "🔧 SynthesizerEngine created (lazy init). Call `await initialize()` to load models."
+        )
 
-    def choose_model_for_task(self, task: str | None = None, *, prefer_high_accuracy: bool | None = None) -> str:
+    def choose_model_for_task(
+        self, task: str | None = None, *, prefer_high_accuracy: bool | None = None
+    ) -> str:
         """Select which generation path to use for a task."""
         mode = os.getenv("SYNTHESIZER_MODEL_CHOICE", "auto").lower()
         if mode in {"mistral", "adapter"}:
@@ -252,28 +268,40 @@ class SynthesizerEngine:
         await asyncio.to_thread(self._initialize_engine)
 
         # expose friendly attributes expected by legacy code/tests
-        self.bart_model = self.models.get('bart')
-        self.bart_tokenizer = self.tokenizers.get('bart')
+        self.bart_model = self.models.get("bart")
+        self.bart_tokenizer = self.tokenizers.get("bart")
         # prefer explicitly set attribute if tests/mock set it
-        if not getattr(self, 'bertopic_model', None):
+        if not getattr(self, "bertopic_model", None):
             # If BERTopic was patched in tests, try to instantiate a default
             # instance so tests that patch its methods can operate.
             try:
-                self.bertopic_model = self.models.get('bertopic') or (BERTopic() if BERTopic else None)
+                self.bertopic_model = self.models.get("bertopic") or (
+                    BERTopic() if BERTopic else None
+                )
             except Exception:
-                self.bertopic_model = self.models.get('bertopic')
+                self.bertopic_model = self.models.get("bertopic")
 
-        self.neutralization_pipeline = self.pipelines.get('flan_t5_generation') or getattr(self, 'neutralization_pipeline', None)
+        self.neutralization_pipeline = self.pipelines.get(
+            "flan_t5_generation"
+        ) or getattr(self, "neutralization_pipeline", None)
         # Ensure models report a sensible device attribute for tests and callers.
         try:
-            if getattr(self, 'bart_model', None) is not None and getattr(self, 'gpu_manager', None):
+            if getattr(self, "bart_model", None) is not None and getattr(
+                self, "gpu_manager", None
+            ):
                 try:
-                    dev = self.gpu_manager.get_device() if hasattr(self.gpu_manager, 'get_device') else self.gpu_device
+                    dev = (
+                        self.gpu_manager.get_device()
+                        if hasattr(self.gpu_manager, "get_device")
+                        else self.gpu_device
+                    )
                 except Exception:
                     dev = self.gpu_device
 
                 try:
-                    if not hasattr(self.bart_model, 'device') or not isinstance(getattr(self.bart_model, 'device', None), (str, int)):
+                    if not hasattr(self.bart_model, "device") or not isinstance(
+                        getattr(self.bart_model, "device", None), (str, int)
+                    ):
                         self.bart_model.device = dev
                 except Exception:
                     pass
@@ -281,7 +309,9 @@ class SynthesizerEngine:
             pass
 
         # Finalized: if transformers are available but critical pieces are missing, raise
-        if TRANSFORMERS_AVAILABLE and (self.models.get('bart') is None or self.tokenizers.get('bart') is None):
+        if TRANSFORMERS_AVAILABLE and (
+            self.models.get("bart") is None or self.tokenizers.get("bart") is None
+        ):
             self.is_initialized = False
             raise RuntimeError("Model load failed")
 
@@ -307,7 +337,9 @@ class SynthesizerEngine:
         self._load_bertopic_model()
 
         # If GPU manager explicitly reports unavailability, surface it
-        if getattr(self, 'gpu_manager', None) and hasattr(self.gpu_manager, 'is_available'):
+        if getattr(self, "gpu_manager", None) and hasattr(
+            self.gpu_manager, "is_available"
+        ):
             if not self.gpu_manager.is_available:
                 raise RuntimeError("GPU unavailable")
 
@@ -324,10 +356,12 @@ class SynthesizerEngine:
                 # Always attach the manager instance so later checks can decide
                 # whether GPU was intentionally reported as unavailable.
                 self.gpu_manager = gm
-                if getattr(gm, 'is_available', False):
-                    self.gpu_device = getattr(gm, 'get_device', lambda: 0)()
+                if getattr(gm, "is_available", False):
+                    self.gpu_device = getattr(gm, "get_device", lambda: 0)()
                     self.gpu_allocated = True
-                    logger.info(f"🎯 GPU manager provided device (mocked): {self.gpu_device}")
+                    logger.info(
+                        f"🎯 GPU manager provided device (mocked): {self.gpu_device}"
+                    )
                     return
             except Exception:
                 pass
@@ -341,20 +375,22 @@ class SynthesizerEngine:
             except Exception:
                 self.gpu_manager = None
 
-            if getattr(self, 'gpu_manager', None):
+            if getattr(self, "gpu_manager", None):
                 # If a manager object is present, use its reported device
-                dev = getattr(self.gpu_manager, 'get_device', lambda: None)()
+                dev = getattr(self.gpu_manager, "get_device", lambda: None)()
                 if dev is not None:
                     self.gpu_device = dev
-                    self.gpu_allocated = getattr(self.gpu_manager, 'is_available', True)
+                    self.gpu_allocated = getattr(self.gpu_manager, "is_available", True)
                     logger.info(f"🎯 GPU manager provided device: {self.gpu_device}")
                     return
 
             # Fallback to project-level GPU manager helpers if available
             if GPU_MANAGER_AVAILABLE:
-                gpu_info = request_agent_gpu("synthesizer", memory_gb=self.config.gpu_memory_limit_gb)
+                gpu_info = request_agent_gpu(
+                    "synthesizer", memory_gb=self.config.gpu_memory_limit_gb
+                )
                 if gpu_info:
-                    self.gpu_device = gpu_info.get('device_id', 0)
+                    self.gpu_device = gpu_info.get("device_id", 0)
                     self.gpu_allocated = True
                     logger.info(f"🎯 GPU allocated: device {self.gpu_device}")
                     return
@@ -372,11 +408,13 @@ class SynthesizerEngine:
         try:
             from agents.common.embedding import get_shared_embedding_model
 
-            agent_cache = os.environ.get('SYNTHESIZER_MODEL_CACHE') or str(Path('./agents/synthesizer/models').resolve())
+            agent_cache = os.environ.get("SYNTHESIZER_MODEL_CACHE") or str(
+                Path("./agents/synthesizer/models").resolve()
+            )
             self.embedding_model = get_shared_embedding_model(
                 self.config.embedding_model,
                 cache_folder=agent_cache,
-                device=self.device
+                device=self.device,
             )
             logger.info("✅ Embedding model loaded")
 
@@ -390,8 +428,10 @@ class SynthesizerEngine:
         # `AutoTokenizer` and `AutoModelForSeq2SeqLM` at module-level to simulate
         # transformers functionality even when `TRANSFORMERS_AVAILABLE` is False.
         # resolve loader symbols safely (they may not be defined if transformers isn't installed)
-        model_loader = AutoModelForSeq2SeqLM or globals().get('BartForConditionalGeneration')
-        tokenizer_loader = AutoTokenizer or globals().get('BartTokenizer')
+        model_loader = AutoModelForSeq2SeqLM or globals().get(
+            "BartForConditionalGeneration"
+        )
+        tokenizer_loader = AutoTokenizer or globals().get("BartTokenizer")
 
         # If both model and tokenizer loaders are missing we cannot attempt a load.
         # However if either loader is present (for example tests patch only the tokenizer
@@ -415,7 +455,11 @@ class SynthesizerEngine:
             # to make test expectations deterministic.
             try:
                 # Ensure mock tokenizers with side_effect still trigger in tests.
-                if tokenizer_loader_local is not None and hasattr(tokenizer_loader_local, 'side_effect') and callable(tokenizer_loader_local):
+                if (
+                    tokenizer_loader_local is not None
+                    and hasattr(tokenizer_loader_local, "side_effect")
+                    and callable(tokenizer_loader_local)
+                ):
                     tokenizer_loader_local()
             except Exception:
                 # propagate so initialize() can fail when tokenizer mock is set to raise
@@ -425,23 +469,28 @@ class SynthesizerEngine:
                 # will already have been thrown; otherwise, surface a clear error.
                 raise RuntimeError("BART model loader not available")
 
-            self.models['bart'] = model_loader_local.from_pretrained(
+            self.models["bart"] = model_loader_local.from_pretrained(
                 self.config.bart_model,
                 cache_dir=self.config.cache_dir,
-                dtype=torch.float16 if (hasattr(target_device, 'type') and getattr(target_device, 'type', None) == 'cuda') or (isinstance(target_device, str) and 'cuda' in str(target_device)) else torch.float32
+                dtype=torch.float16
+                if (
+                    hasattr(target_device, "type")
+                    and getattr(target_device, "type", None) == "cuda"
+                )
+                or (isinstance(target_device, str) and "cuda" in str(target_device))
+                else torch.float32,
             ).to(target_device)
 
-            self.tokenizers['bart'] = tokenizer_loader_local.from_pretrained(
-                self.config.bart_model,
-                cache_dir=self.config.cache_dir
+            self.tokenizers["bart"] = tokenizer_loader_local.from_pretrained(
+                self.config.bart_model, cache_dir=self.config.cache_dir
             )
 
-            self.pipelines['bart_summarization'] = pipeline(
+            self.pipelines["bart_summarization"] = pipeline(
                 "summarization",
-                model=self.models['bart'],
-                tokenizer=self.tokenizers['bart'],
+                model=self.models["bart"],
+                tokenizer=self.tokenizers["bart"],
                 device=self.gpu_device if self.gpu_allocated else -1,
-                batch_size=self.config.batch_size
+                batch_size=self.config.batch_size,
             )
 
             logger.info("✅ BART summarization model loaded")
@@ -454,33 +503,36 @@ class SynthesizerEngine:
     def _load_flan_t5_model(self):
         """Load FLAN-T5 generation model."""
         # Allow tests to patch T5 loader/pipeline even when TRANSFORMERS_AVAILABLE False
-        t5_model_loader = globals().get('T5ForConditionalGeneration')
-        t5_tokenizer_loader = globals().get('T5Tokenizer')
+        t5_model_loader = globals().get("T5ForConditionalGeneration")
+        t5_tokenizer_loader = globals().get("T5Tokenizer")
         # If neither a T5 loader nor the transformers `pipeline` is available, skip
-        if (t5_model_loader is None and t5_tokenizer_loader is None) and pipeline is None:
+        if (
+            t5_model_loader is None and t5_tokenizer_loader is None
+        ) and pipeline is None:
             logger.warning("⚠️ Transformers/T5 not available, skipping FLAN-T5")
             return
 
         try:
             target_device = self.gpu_device if self.gpu_allocated else self.device
-            self.models['flan_t5'] = T5ForConditionalGeneration.from_pretrained(
+            self.models["flan_t5"] = T5ForConditionalGeneration.from_pretrained(
                 self.config.flan_t5_model,
                 cache_dir=self.config.cache_dir,
-                dtype=torch.float16 if (hasattr(target_device, 'type') and target_device.type == 'cuda') or (isinstance(target_device, str) and 'cuda' in str(target_device)) else torch.float32
+                dtype=torch.float16
+                if (hasattr(target_device, "type") and target_device.type == "cuda")
+                or (isinstance(target_device, str) and "cuda" in str(target_device))
+                else torch.float32,
             ).to(target_device)
 
-            self.tokenizers['flan_t5'] = T5Tokenizer.from_pretrained(
-                self.config.flan_t5_model,
-                cache_dir=self.config.cache_dir,
-                legacy=False
+            self.tokenizers["flan_t5"] = T5Tokenizer.from_pretrained(
+                self.config.flan_t5_model, cache_dir=self.config.cache_dir, legacy=False
             )
 
-            self.pipelines['flan_t5_generation'] = pipeline(
+            self.pipelines["flan_t5_generation"] = pipeline(
                 "text2text-generation",
-                model=self.models['flan_t5'],
-                tokenizer=self.tokenizers['flan_t5'],
+                model=self.models["flan_t5"],
+                tokenizer=self.tokenizers["flan_t5"],
                 device=self.gpu_device if self.gpu_allocated else -1,
-                batch_size=self.config.batch_size
+                batch_size=self.config.batch_size,
             )
 
             logger.info("✅ FLAN-T5 generation model loaded")
@@ -502,24 +554,24 @@ class SynthesizerEngine:
                 n_neighbors=5,
                 n_components=2,
                 min_dist=0.0,
-                metric='cosine',
-                random_state=42
+                metric="cosine",
+                random_state=42,
             )
 
             hdbscan_model = HDBSCAN(
                 min_cluster_size=self.config.min_cluster_size,
                 min_samples=self.config.min_samples,
-                metric='euclidean',
-                cluster_selection_method='eom'
+                metric="euclidean",
+                cluster_selection_method="eom",
             )
 
-            self.models['bertopic'] = BERTopic(
+            self.models["bertopic"] = BERTopic(
                 embedding_model=self.embedding_model,
                 umap_model=umap_model,
                 hdbscan_model=hdbscan_model,
                 min_topic_size=self.config.min_cluster_size,
                 verbose=False,
-                calculate_probabilities=False
+                calculate_probabilities=False,
             )
 
             logger.info("✅ BERTopic clustering model loaded")
@@ -544,7 +596,9 @@ class SynthesizerEngine:
             texts = []
             for a in articles:
                 if isinstance(a, dict):
-                    texts.append(a.get('content', '') if a.get('content') is not None else '')
+                    texts.append(
+                        a.get("content", "") if a.get("content") is not None else ""
+                    )
                 else:
                     texts.append(str(a))
 
@@ -552,7 +606,9 @@ class SynthesizerEngine:
                 return {"status": "success", "clusters": [], "topic_info": []}
 
             # Use explicit attribute if tests set it; fall back to loaded model
-            bertopic = getattr(self, 'bertopic_model', None) or self.models.get('bertopic')
+            bertopic = getattr(self, "bertopic_model", None) or self.models.get(
+                "bertopic"
+            )
             if bertopic:
                 try:
                     topics, probs = bertopic.fit_transform(texts)
@@ -563,23 +619,43 @@ class SynthesizerEngine:
             if not bertopic:
                 # Fallback only when an explicit kmeans_model has been injected.
                 try:
-                    if getattr(self, 'kmeans_model', None) is not None:
+                    if getattr(self, "kmeans_model", None) is not None:
                         kmeans = self.kmeans_model
-                        embeddings = self.embedding_model.encode(texts) if self.embedding_model else [[0]] * len(texts)
+                        embeddings = (
+                            self.embedding_model.encode(texts)
+                            if self.embedding_model
+                            else [[0]] * len(texts)
+                        )
                         labels = kmeans.fit_predict(embeddings)
                         clusters = []
                         for i in range(max(1, max(labels) + 1)):
-                            cluster_indices = [idx for idx, lab in enumerate(labels) if lab == i]
+                            cluster_indices = [
+                                idx for idx, lab in enumerate(labels) if lab == i
+                            ]
                             if cluster_indices:
                                 clusters.append(cluster_indices)
                         topic_info = []
-                        return {"status": "success", "clusters": clusters, "topic_info": topic_info}
+                        return {
+                            "status": "success",
+                            "clusters": clusters,
+                            "topic_info": topic_info,
+                        }
 
-                    logger.error("No clustering methods available (BERTopic unavailable, KMeans not configured)")
-                    return {"status": "error", "error": "clustering_failed", "details": "no clustering methods available"}
+                    logger.error(
+                        "No clustering methods available (BERTopic unavailable, KMeans not configured)"
+                    )
+                    return {
+                        "status": "error",
+                        "error": "clustering_failed",
+                        "details": "no clustering methods available",
+                    }
                 except Exception as e:
                     logger.error(f"KMeans fallback failed: {e}")
-                    return {"status": "error", "error": "clustering_failed", "details": str(e)}
+                    return {
+                        "status": "error",
+                        "error": "clustering_failed",
+                        "details": str(e),
+                    }
 
             # Build clusters from topic ids
             topics_list = list(topics)
@@ -587,13 +663,15 @@ class SynthesizerEngine:
             unique_topics = set(topics_list)
             for topic_id in unique_topics:
                 if topic_id != -1:
-                    cluster_indices = [i for i, t in enumerate(topics_list) if t == topic_id]
+                    cluster_indices = [
+                        i for i, t in enumerate(topics_list) if t == topic_id
+                    ]
                     if cluster_indices:
                         clusters.append(cluster_indices)
 
             # topic_info if available
             topic_info = []
-            if hasattr(bertopic, 'get_topic_info'):
+            if hasattr(bertopic, "get_topic_info"):
                 try:
                     topic_info = bertopic.get_topic_info()
                 except Exception:
@@ -606,10 +684,7 @@ class SynthesizerEngine:
             return {"status": "error", "error": "clustering_failed", "details": str(e)}
 
     async def _cluster_articles_kmeans(
-        self,
-        article_texts: list[str],
-        n_clusters: int,
-        start_time: float
+        self, article_texts: list[str], n_clusters: int, start_time: float
     ) -> SynthesisResult:
         """Fallback KMeans clustering."""
         try:
@@ -624,7 +699,9 @@ class SynthesizerEngine:
 
             clusters = []
             for i in range(n_clusters):
-                cluster_indices = [idx for idx, label in enumerate(labels) if label == i]
+                cluster_indices = [
+                    idx for idx, label in enumerate(labels) if label == i
+                ]
                 if cluster_indices:
                     clusters.append(cluster_indices)
 
@@ -638,8 +715,8 @@ class SynthesizerEngine:
                 metadata={
                     "clusters": clusters,
                     "n_clusters": len(clusters),
-                    "articles_processed": len(article_texts)
-                }
+                    "articles_processed": len(article_texts),
+                },
             )
 
         except Exception as e:
@@ -656,8 +733,8 @@ class SynthesizerEngine:
                     "clusters": clusters,
                     "n_clusters": 1,
                     "articles_processed": len(article_texts),
-                    "error": str(e)
-                }
+                    "error": str(e),
+                },
             )
 
     async def neutralize_text(self, text: str) -> SynthesisResult:
@@ -674,34 +751,57 @@ class SynthesizerEngine:
                 return {"status": "success", "neutralized_text": ""}
 
             # Tests prefer setting `neutralization_pipeline` directly; prefer that
-            pipeline_callable = getattr(self, 'neutralization_pipeline', None) or self.pipelines.get('flan_t5_generation')
+            pipeline_callable = getattr(
+                self, "neutralization_pipeline", None
+            ) or self.pipelines.get("flan_t5_generation")
             if not pipeline_callable:
                 # fallback simple neutralization
                 res = await self._neutralize_text_fallback(text, start_time)
-                return {"status": "success" if res.success else "error", "neutralized_text": res.content, "error": res.metadata.get('error') if not res.success else None}
+                return {
+                    "status": "success" if res.success else "error",
+                    "neutralized_text": res.content,
+                    "error": res.metadata.get("error") if not res.success else None,
+                }
 
             try:
                 # pipeline may be sync callable
-                result = pipeline_callable(text) if not asyncio.iscoroutinefunction(pipeline_callable) else await pipeline_callable(text)
-                neutralized = result[0].get('generated_text') if result else text
+                result = (
+                    pipeline_callable(text)
+                    if not asyncio.iscoroutinefunction(pipeline_callable)
+                    else await pipeline_callable(text)
+                )
+                neutralized = result[0].get("generated_text") if result else text
                 return {"status": "success", "neutralized_text": neutralized}
             except Exception as e:
                 logger.warning(f"neutralization pipeline failed: {e}")
                 # Tests expect an explicit error shape when pipeline fails
-                return {"status": "error", "error": "neutralization_failed", "details": str(e)}
+                return {
+                    "status": "error",
+                    "error": "neutralization_failed",
+                    "details": str(e),
+                }
 
         except Exception as e:
             logger.error(f"neutralize_text failed: {e}")
             return {"status": "error", "error": str(e)}
 
-    async def _neutralize_text_fallback(self, text: str, start_time: float) -> SynthesisResult:
+    async def _neutralize_text_fallback(
+        self, text: str, start_time: float
+    ) -> SynthesisResult:
         """Fallback neutralization using simple text processing."""
         try:
             # Simple bias word replacement
-            bias_words = ['amazing', 'terrible', 'awful', 'fantastic', 'horrible', 'incredible']
+            bias_words = [
+                "amazing",
+                "terrible",
+                "awful",
+                "fantastic",
+                "horrible",
+                "incredible",
+            ]
             neutralized = text
             for word in bias_words:
-                neutralized = neutralized.replace(word, 'notable')
+                neutralized = neutralized.replace(word, "notable")
 
             return SynthesisResult(
                 success=True,
@@ -709,7 +809,7 @@ class SynthesizerEngine:
                 method="simple_fallback",
                 processing_time=time.time() - start_time,
                 model_used="none",
-                confidence=0.6
+                confidence=0.6,
             )
 
         except Exception as e:
@@ -720,7 +820,7 @@ class SynthesizerEngine:
                 processing_time=time.time() - start_time,
                 model_used="none",
                 confidence=0.0,
-                metadata={"error": str(e)}
+                metadata={"error": str(e)},
             )
 
     async def aggregate_cluster(self, article_texts: list[str]) -> SynthesisResult:
@@ -734,15 +834,33 @@ class SynthesizerEngine:
         _start_time = time.time()
         try:
             if not article_texts:
-                return {"status": "success", "summary": "", "key_points": [], "article_count": 0}
+                return {
+                    "status": "success",
+                    "summary": "",
+                    "key_points": [],
+                    "article_count": 0,
+                }
 
             # Accept list of dicts or raw strings
-            texts = [a.get('content') if isinstance(a, dict) else str(a) for a in article_texts]
+            texts = [
+                a.get("content") if isinstance(a, dict) else str(a)
+                for a in article_texts
+            ]
 
-            if self.choose_model_for_task("cluster", prefer_high_accuracy=len(texts) > 1) == "mistral" and self._mistral_ready():
-                mistral_doc = await asyncio.to_thread(self._run_mistral_cluster_summary, texts)
+            if (
+                self.choose_model_for_task(
+                    "cluster", prefer_high_accuracy=len(texts) > 1
+                )
+                == "mistral"
+                and self._mistral_ready()
+            ):
+                mistral_doc = await asyncio.to_thread(
+                    self._run_mistral_cluster_summary, texts
+                )
                 if mistral_doc:
-                    summary = mistral_doc.get("summary") or " ".join(mistral_doc.get("key_points", [])[:2])
+                    summary = mistral_doc.get("summary") or " ".join(
+                        mistral_doc.get("key_points", [])[:2]
+                    )
                     key_points = mistral_doc.get("key_points", [])
                     return {
                         "status": "success",
@@ -756,30 +874,61 @@ class SynthesizerEngine:
             for text in texts:
                 summary_res = await self._summarize_text(text)
                 # If summarization fails, surface an error to caller
-                if not isinstance(summary_res, SynthesisResult) or not summary_res.success:
-                    return {"status": "error", "error": "aggregation_failed", "details": getattr(summary_res, 'metadata', {}).get('error', 'summarization_failed')}
+                if (
+                    not isinstance(summary_res, SynthesisResult)
+                    or not summary_res.success
+                ):
+                    return {
+                        "status": "error",
+                        "error": "aggregation_failed",
+                        "details": getattr(summary_res, "metadata", {}).get(
+                            "error", "summarization_failed"
+                        ),
+                    }
                 summaries.append(summary_res.content)
 
             combined_text = " ".join(summaries)
 
-            pipeline_callable = getattr(self, 'neutralization_pipeline', None) or self.pipelines.get('flan_t5_generation')
+            pipeline_callable = getattr(
+                self, "neutralization_pipeline", None
+            ) or self.pipelines.get("flan_t5_generation")
             if pipeline_callable and len(combined_text) > 0:
                 try:
-                    result = pipeline_callable(combined_text) if not asyncio.iscoroutinefunction(pipeline_callable) else await pipeline_callable(combined_text)
-                    refined = result[0].get('generated_text') if result else combined_text
+                    result = (
+                        pipeline_callable(combined_text)
+                        if not asyncio.iscoroutinefunction(pipeline_callable)
+                        else await pipeline_callable(combined_text)
+                    )
+                    refined = (
+                        result[0].get("generated_text") if result else combined_text
+                    )
                 except Exception:
                     refined = combined_text
             else:
                 refined = combined_text
 
             # Simple key points extraction: first sentences
-            key_points = [s.strip() for s in combined_text.split('. ')][:3] if combined_text else []
+            key_points = (
+                [s.strip() for s in combined_text.split(". ")][:3]
+                if combined_text
+                else []
+            )
 
-            return {"status": "success", "summary": refined, "key_points": key_points, "article_count": len(article_texts)}
+            return {
+                "status": "success",
+                "summary": refined,
+                "key_points": key_points,
+                "article_count": len(article_texts),
+            }
 
         except Exception as e:
             logger.error(f"aggregate_cluster failed: {e}")
-            combined = " ".join([a.get('content', '') if isinstance(a, dict) else str(a) for a in (article_texts or [])][:3])
+            combined = " ".join(
+                [
+                    a.get("content", "") if isinstance(a, dict) else str(a)
+                    for a in (article_texts or [])
+                ][:3]
+            )
             return {"status": "error", "summary": combined, "error": str(e)}
 
     async def _summarize_text(self, text: str) -> SynthesisResult:
@@ -787,13 +936,24 @@ class SynthesizerEngine:
         _start_time = time.time()
 
         try:
-            if self.choose_model_for_task("summarization", prefer_high_accuracy=len(text) > 400) == "mistral" and self._mistral_ready():
-                mistral_res = await asyncio.to_thread(self._summarize_with_mistral, text)
+            if (
+                self.choose_model_for_task(
+                    "summarization", prefer_high_accuracy=len(text) > 400
+                )
+                == "mistral"
+                and self._mistral_ready()
+            ):
+                mistral_res = await asyncio.to_thread(
+                    self._summarize_with_mistral, text
+                )
                 if mistral_res:
                     return mistral_res
 
             # Prefer using an explicit bart_model + tokenizer when present (tests set bart_model.generate to simulate failures)
-            if getattr(self, 'bart_model', None) is not None and getattr(self, 'bart_tokenizer', None) is not None:
+            if (
+                getattr(self, "bart_model", None) is not None
+                and getattr(self, "bart_tokenizer", None) is not None
+            ):
                 try:
                     # Tokenize + generate using model.generate if available
                     tokenizer = self.bart_tokenizer
@@ -802,10 +962,14 @@ class SynthesizerEngine:
                     # model.generate may accept tensors / kwargs depending on stub; try common kwargs
                     generated = model.generate(**inputs)
                     # Attempt to decode; prefer tokenizer.batch_decode if available
-                    if hasattr(tokenizer, 'batch_decode'):
-                        decoded = tokenizer.batch_decode(generated, skip_special_tokens=True)[0]
+                    if hasattr(tokenizer, "batch_decode"):
+                        decoded = tokenizer.batch_decode(
+                            generated, skip_special_tokens=True
+                        )[0]
                     else:
-                        decoded = tokenizer.decode(generated[0], skip_special_tokens=True)
+                        decoded = tokenizer.decode(
+                            generated[0], skip_special_tokens=True
+                        )
 
                     return SynthesisResult(
                         success=True,
@@ -813,7 +977,7 @@ class SynthesizerEngine:
                         method="bart_model_generate",
                         processing_time=time.time() - _start_time,
                         model_used="bart",
-                        confidence=0.8
+                        confidence=0.8,
                     )
                 except Exception as e:
                     logger.error(f"❌ Summarization via bart_model failed: {e}")
@@ -824,21 +988,21 @@ class SynthesizerEngine:
                         processing_time=time.time() - _start_time,
                         model_used="none",
                         confidence=0.0,
-                        metadata={"error": str(e)}
+                        metadata={"error": str(e)},
                     )
 
             # If we have a transformers pipeline for bart, use it next
-            if not self.pipelines.get('bart_summarization'):
+            if not self.pipelines.get("bart_summarization"):
                 # Simple fallback summarization
-                sentences = text.split('. ')
-                summary = '. '.join(sentences[:2]) + '.' if len(sentences) > 1 else text
+                sentences = text.split(". ")
+                summary = ". ".join(sentences[:2]) + "." if len(sentences) > 1 else text
                 return SynthesisResult(
                     success=True,
                     content=summary,
                     method="simple_fallback",
                     processing_time=time.time() - _start_time,
                     model_used="none",
-                    confidence=0.6
+                    confidence=0.6,
                 )
 
             # Check text length
@@ -850,22 +1014,22 @@ class SynthesizerEngine:
                     method="too_short",
                     processing_time=time.time() - _start_time,
                     model_used="none",
-                    confidence=1.0
+                    confidence=1.0,
                 )
 
             # Summarize with BART
             target_length = max(min(len(words) // 3, 100), 20)
             min_length = max(target_length // 2, 10)
 
-            result = self.pipelines['bart_summarization'](
+            result = self.pipelines["bart_summarization"](
                 text,
                 max_length=target_length,
                 min_length=min_length,
                 do_sample=False,
-                early_stopping=True
+                early_stopping=True,
             )
 
-            summary = result[0]['summary_text'] if result else text
+            summary = result[0]["summary_text"] if result else text
 
             return SynthesisResult(
                 success=True,
@@ -873,7 +1037,7 @@ class SynthesizerEngine:
                 method="bart_summarization",
                 processing_time=time.time() - _start_time,
                 model_used="bart",
-                confidence=0.8
+                confidence=0.8,
             )
 
         except Exception as e:
@@ -885,7 +1049,7 @@ class SynthesizerEngine:
                 processing_time=time.time() - _start_time,
                 model_used="none",
                 confidence=0.0,
-                metadata={"error": str(e)}
+                metadata={"error": str(e)},
             )
 
     def _summarize_with_mistral(self, text: str) -> SynthesisResult | None:
@@ -900,7 +1064,9 @@ class SynthesizerEngine:
             return None
         if not doc:
             return None
-        summary = doc.get("summary") or " ".join(doc.get("key_points", [])[:2]) or text[:200]
+        summary = (
+            doc.get("summary") or " ".join(doc.get("key_points", [])[:2]) or text[:200]
+        )
         return SynthesisResult(
             success=True,
             content=summary,
@@ -921,7 +1087,13 @@ class SynthesizerEngine:
             logger.debug("Cluster-level Mistral summary failed: %s", exc)
             return None
 
-    async def synthesize_gpu(self, articles: list[dict[str, Any]], max_clusters: int = 5, context: str = "news analysis", options: dict[str, Any] | None = None) -> dict:
+    async def synthesize_gpu(
+        self,
+        articles: list[dict[str, Any]],
+        max_clusters: int = 5,
+        context: str = "news analysis",
+        options: dict[str, Any] | None = None,
+    ) -> dict:
         """GPU-accelerated synthesis with clustering and refinement.
 
         Compatibility: returns dict with keys `status`, `clusters`, `synthesized_content`, and `processing_stats`.
@@ -936,29 +1108,48 @@ class SynthesizerEngine:
             # If caller passes no articles, still allow cluster-driven synthesis by
             # providing an `options` dict with a `cluster_id` or `article_ids`.
             options = options or {}
-            if not articles and not (options.get('cluster_id') or options.get('article_ids')):
-                return {"status": "success", "clusters": [], "synthesized_content": "", "processing_stats": {"articles_processed": 0}}
+            if not articles and not (
+                options.get("cluster_id") or options.get("article_ids")
+            ):
+                return {
+                    "status": "success",
+                    "clusters": [],
+                    "synthesized_content": "",
+                    "processing_stats": {"articles_processed": 0},
+                }
 
             # Handle options (compatibility with tests)
             # `options` variable is already created above when considering cluster fetch
-            max_clusters = options.get('max_clusters', max_clusters)
+            max_clusters = options.get("max_clusters", max_clusters)
 
             # Extract article texts
-            article_texts = [article.get('content', '') for article in articles if isinstance(article, dict)]
+            article_texts = [
+                article.get("content", "")
+                for article in articles
+                if isinstance(article, dict)
+            ]
             article_texts = [text for text in article_texts if text.strip()]
-
 
             # If we have no article text, and the caller provided a cluster_id or article_ids,
             # try to fetch the cluster and refill `articles` / `article_texts` before bailing.
-            cluster_id = options.get('cluster_id') if isinstance(options, dict) else None
-            article_ids = options.get('article_ids') if isinstance(options, dict) else None
+            cluster_id = (
+                options.get("cluster_id") if isinstance(options, dict) else None
+            )
+            article_ids = (
+                options.get("article_ids") if isinstance(options, dict) else None
+            )
             if not article_texts and (cluster_id or article_ids):
                 try:
                     from agents.cluster_fetcher.cluster_fetcher import ClusterFetcher
+
                     fetcher = ClusterFetcher()
-                    fetched = fetcher.fetch_cluster(cluster_id=cluster_id, article_ids=article_ids)
+                    fetched = fetcher.fetch_cluster(
+                        cluster_id=cluster_id, article_ids=article_ids
+                    )
                     articles = [a.to_dict() for a in fetched]
-                    article_texts = [a.get('content', '') for a in articles if a.get('content')]
+                    article_texts = [
+                        a.get("content", "") for a in articles if a.get("content")
+                    ]
                 except Exception:
                     logger.exception("Failed to fetch cluster for synthesis")
 
@@ -966,27 +1157,52 @@ class SynthesizerEngine:
                 return {"status": "error", "error": "no_content"}
 
             # Optionally allow caller to provide a cluster_id or article_ids to fetch
-            cluster_id = options.get('cluster_id') if isinstance(options, dict) else None
-            article_ids = options.get('article_ids') if isinstance(options, dict) else None
+            cluster_id = (
+                options.get("cluster_id") if isinstance(options, dict) else None
+            )
+            article_ids = (
+                options.get("article_ids") if isinstance(options, dict) else None
+            )
 
             # If the articles were fetched from a cluster, pre-run the Analyst
             # (which triggers fact-check) and gate synthesis on percent_verified
             if cluster_id or article_ids:
                 try:
                     import agents.analyst.tools as _analyst_tools
-                    generate_analysis_report = getattr(_analyst_tools, 'generate_analysis_report', None)
+
+                    generate_analysis_report = getattr(
+                        _analyst_tools, "generate_analysis_report", None
+                    )
                 except Exception:
                     generate_analysis_report = None
 
                 if generate_analysis_report and article_texts:
                     try:
-                        report = generate_analysis_report(article_texts, article_ids=[a.get('article_id') for a in articles], cluster_id=cluster_id)
+                        report = generate_analysis_report(
+                            article_texts,
+                            article_ids=[a.get("article_id") for a in articles],
+                            cluster_id=cluster_id,
+                        )
                         if report and isinstance(report, dict):
-                            cluster_summary = report.get('cluster_fact_check_summary', {})
-                            percent_verified = cluster_summary.get('percent_verified', 0.0)
-                            if percent_verified < self.config.min_fact_check_percent_for_synthesis:
-                                logger.warning(f"Cluster {cluster_id} not verified enough ({percent_verified}%); aborting synthesis")
-                                return {"status": "error", "error": "fact_check_failed", "details": {"percent_verified": percent_verified}, "analysis_report": report}
+                            cluster_summary = report.get(
+                                "cluster_fact_check_summary", {}
+                            )
+                            percent_verified = cluster_summary.get(
+                                "percent_verified", 0.0
+                            )
+                            if (
+                                percent_verified
+                                < self.config.min_fact_check_percent_for_synthesis
+                            ):
+                                logger.warning(
+                                    f"Cluster {cluster_id} not verified enough ({percent_verified}%); aborting synthesis"
+                                )
+                                return {
+                                    "status": "error",
+                                    "error": "fact_check_failed",
+                                    "details": {"percent_verified": percent_verified},
+                                    "analysis_report": report,
+                                }
                     except Exception as e:
                         logger.exception("Analyst pre-analysis failed", exc_info=e)
 
@@ -996,42 +1212,74 @@ class SynthesizerEngine:
             # cluster_result may be dict (tests) or SynthesisResult; normalize
             clusters = None
             if isinstance(cluster_result, dict):
-                if cluster_result.get('status') != 'success':
-                    return {"status": "error", "error": "synthesis_failed", "details": cluster_result.get('error')}
-                clusters = cluster_result.get('clusters', [list(range(len(article_texts)))])
+                if cluster_result.get("status") != "success":
+                    return {
+                        "status": "error",
+                        "error": "synthesis_failed",
+                        "details": cluster_result.get("error"),
+                    }
+                clusters = cluster_result.get(
+                    "clusters", [list(range(len(article_texts)))]
+                )
             elif isinstance(cluster_result, SynthesisResult):
                 if not cluster_result.success:
-                    return {"status": "error", "error": "synthesis_failed", "details": cluster_result.metadata.get('error')}
-                clusters = cluster_result.metadata.get('clusters', [list(range(len(article_texts)))])
+                    return {
+                        "status": "error",
+                        "error": "synthesis_failed",
+                        "details": cluster_result.metadata.get("error"),
+                    }
+                clusters = cluster_result.metadata.get(
+                    "clusters", [list(range(len(article_texts)))]
+                )
             else:
                 clusters = [list(range(len(article_texts)))]
 
             # Synthesize each cluster
             cluster_syntheses = []
             for cluster_indices in clusters:
-                cluster_articles = [article_texts[i] for i in cluster_indices if i < len(article_texts)]
+                cluster_articles = [
+                    article_texts[i] for i in cluster_indices if i < len(article_texts)
+                ]
                 if cluster_articles:
                     synthesis = await self.aggregate_cluster(cluster_articles)
                     if isinstance(synthesis, dict):
-                        if synthesis.get('status') != 'success':
-                            return {"status": "error", "error": "synthesis_failed", "details": synthesis.get('error')}
-                        cluster_syntheses.append(synthesis.get('summary', ''))
+                        if synthesis.get("status") != "success":
+                            return {
+                                "status": "error",
+                                "error": "synthesis_failed",
+                                "details": synthesis.get("error"),
+                            }
+                        cluster_syntheses.append(synthesis.get("summary", ""))
                     elif isinstance(synthesis, SynthesisResult):
                         if not synthesis.success:
-                            return {"status": "error", "error": "synthesis_failed", "details": synthesis.metadata.get('error')}
+                            return {
+                                "status": "error",
+                                "error": "synthesis_failed",
+                                "details": synthesis.metadata.get("error"),
+                            }
                         cluster_syntheses.append(synthesis.content)
 
             # Combine cluster syntheses
             final_synthesis = " ".join(cluster_syntheses)
 
             # Final refinement if we have FLAN-T5
-            pipeline_callable = getattr(self, 'neutralization_pipeline', None) or self.pipelines.get('flan_t5_generation')
+            pipeline_callable = getattr(
+                self, "neutralization_pipeline", None
+            ) or self.pipelines.get("flan_t5_generation")
             if pipeline_callable and len(final_synthesis) > 100:
                 try:
-                    truncated_text = self._truncate_text(final_synthesis, "flan_t5", max_tokens=400)
-                    result = pipeline_callable(truncated_text) if not asyncio.iscoroutinefunction(pipeline_callable) else await pipeline_callable(truncated_text)
+                    truncated_text = self._truncate_text(
+                        final_synthesis, "flan_t5", max_tokens=400
+                    )
+                    result = (
+                        pipeline_callable(truncated_text)
+                        if not asyncio.iscoroutinefunction(pipeline_callable)
+                        else await pipeline_callable(truncated_text)
+                    )
                     if result:
-                        final_synthesis = result[0].get('generated_text', final_synthesis)
+                        final_synthesis = result[0].get(
+                            "generated_text", final_synthesis
+                        )
                 except Exception as e:
                     logger.warning(f"final refinement failed: {e}")
 
@@ -1041,56 +1289,83 @@ class SynthesizerEngine:
             # synthesis and return the analysis report for auditing/HITL.
             try:
                 import agents.analyst.tools as _analyst_tools
-                generate_analysis_report = getattr(_analyst_tools, 'generate_analysis_report', None)
+
+                generate_analysis_report = getattr(
+                    _analyst_tools, "generate_analysis_report", None
+                )
             except Exception:
                 generate_analysis_report = None
 
             if generate_analysis_report:
                 try:
-                    draft_report = generate_analysis_report([final_synthesis], article_ids=None, cluster_id=cluster_id)
+                    draft_report = generate_analysis_report(
+                        [final_synthesis], article_ids=None, cluster_id=cluster_id
+                    )
                     # Prefer per_article.source_fact_check; fall back to source_fact_checks
                     fact_check_status = None
                     if isinstance(draft_report, dict):
-                        per_article = draft_report.get('per_article', [])
-                        if per_article and isinstance(per_article, list) and len(per_article) > 0:
-                            sac = per_article[0].get('source_fact_check') if isinstance(per_article[0], dict) else None
+                        per_article = draft_report.get("per_article", [])
+                        if (
+                            per_article
+                            and isinstance(per_article, list)
+                            and len(per_article) > 0
+                        ):
+                            sac = (
+                                per_article[0].get("source_fact_check")
+                                if isinstance(per_article[0], dict)
+                                else None
+                            )
                             if sac and isinstance(sac, dict):
-                                fact_check_status = sac.get('fact_check_status')
+                                fact_check_status = sac.get("fact_check_status")
 
                         if not fact_check_status:
-                            sfc_list = draft_report.get('source_fact_checks', [])
+                            sfc_list = draft_report.get("source_fact_checks", [])
                             if sfc_list and isinstance(sfc_list, list):
                                 first = sfc_list[0]
                                 if isinstance(first, dict):
-                                    fact_check_status = first.get('fact_check_status')
+                                    fact_check_status = first.get("fact_check_status")
 
-                    if fact_check_status == 'failed':
+                    if fact_check_status == "failed":
                         logger.warning("Draft fact-check failed; aborting synthesis")
-                        return {"status": "error", "error": "draft_fact_check_failed", "analysis_report": draft_report}
-                    elif fact_check_status == 'needs_review':
+                        return {
+                            "status": "error",
+                            "error": "draft_fact_check_failed",
+                            "analysis_report": draft_report,
+                        }
+                    elif fact_check_status == "needs_review":
                         # Expose needs_review so controllers can route to HITL
-                        logger.info("Draft fact-check suggests HITL review; gating publish")
-                        return {"status": "error", "error": "draft_fact_check_needs_review", "analysis_report": draft_report}
+                        logger.info(
+                            "Draft fact-check suggests HITL review; gating publish"
+                        )
+                        return {
+                            "status": "error",
+                            "error": "draft_fact_check_needs_review",
+                            "analysis_report": draft_report,
+                        }
 
                 except Exception as e:
-                    logger.exception("Draft fact-check run failed; continuing with synthesis", exc_info=e)
+                    logger.exception(
+                        "Draft fact-check run failed; continuing with synthesis",
+                        exc_info=e,
+                    )
 
             # Update performance stats
-            self.performance_stats['total_processed'] += len(articles)
+            self.performance_stats["total_processed"] += len(articles)
             if self.gpu_allocated:
-                self.performance_stats['gpu_processed'] += len(articles)
+                self.performance_stats["gpu_processed"] += len(articles)
             else:
-                self.performance_stats['cpu_processed'] += len(articles)
+                self.performance_stats["cpu_processed"] += len(articles)
 
             processing_time = time.time() - start_time
             try:
-                self.performance_stats['avg_processing_time'] = (
-                    (self.performance_stats['avg_processing_time'] * (self.performance_stats['total_processed'] - len(articles)) +
-                     processing_time) / self.performance_stats['total_processed']
-                )
+                self.performance_stats["avg_processing_time"] = (
+                    self.performance_stats["avg_processing_time"]
+                    * (self.performance_stats["total_processed"] - len(articles))
+                    + processing_time
+                ) / self.performance_stats["total_processed"]
             except Exception:
                 # avoid division errors on unexpected state
-                self.performance_stats['avg_processing_time'] = processing_time
+                self.performance_stats["avg_processing_time"] = processing_time
 
             return {
                 "status": "success",
@@ -1100,21 +1375,36 @@ class SynthesizerEngine:
                     "articles_processed": len(articles),
                     "clusters_found": len(clusters),
                     "gpu_used": self.gpu_allocated,
-                    "avg_processing_time": self.performance_stats.get('avg_processing_time')
-                }
+                    "avg_processing_time": self.performance_stats.get(
+                        "avg_processing_time"
+                    ),
+                },
             }
 
         except Exception as e:
             logger.error(f"❌ GPU synthesis failed: {e}")
             # Emergency fallback: return an error dict so tests can inspect
-            combined = " ".join([article.get('content', '') for article in (articles or [])[:3] if isinstance(article, dict)])
-            return {"status": "error", "error": "synthesis_exception", "details": str(e), "synthesized_content": combined}
+            combined = " ".join(
+                [
+                    article.get("content", "")
+                    for article in (articles or [])[:3]
+                    if isinstance(article, dict)
+                ]
+            )
+            return {
+                "status": "error",
+                "error": "synthesis_exception",
+                "details": str(e),
+                "synthesized_content": combined,
+            }
 
-    def _truncate_text(self, text: str, model_name: str = "flan_t5", max_tokens: int = 400) -> str:
+    def _truncate_text(
+        self, text: str, model_name: str = "flan_t5", max_tokens: int = 400
+    ) -> str:
         """Truncate text to fit within model token limits."""
         try:
-            if model_name == "flan_t5" and self.tokenizers.get('flan_t5'):
-                tokenizer = self.tokenizers['flan_t5']
+            if model_name == "flan_t5" and self.tokenizers.get("flan_t5"):
+                tokenizer = self.tokenizers["flan_t5"]
                 tokens = tokenizer.encode(text, add_special_tokens=False)
 
                 if len(tokens) > max_tokens:
@@ -1124,7 +1414,7 @@ class SynthesizerEngine:
             # Fallback: character-based truncation
             max_chars = max_tokens * 4
             if len(text) > max_chars:
-                return text[:max_chars].rsplit(' ', 1)[0]  # Don't cut words
+                return text[:max_chars].rsplit(" ", 1)[0]  # Don't cut words
 
             return text
 
@@ -1136,15 +1426,19 @@ class SynthesizerEngine:
     def get_model_status(self) -> dict[str, Any]:
         """Get status of all loaded models."""
         return {
-            'bertopic': self.models.get('bertopic') is not None,
-            'bart': self.models.get('bart') is not None,
-            'flan_t5': self.models.get('flan_t5') is not None,
-            'embeddings': self.embedding_model is not None,
-            'gpu_allocated': self.gpu_allocated,
-            'total_models': sum([
-                1 for model in ['bertopic', 'bart', 'flan_t5']
-                if self.models.get(model) is not None
-            ]) + (1 if self.embedding_model else 0)
+            "bertopic": self.models.get("bertopic") is not None,
+            "bart": self.models.get("bart") is not None,
+            "flan_t5": self.models.get("flan_t5") is not None,
+            "embeddings": self.embedding_model is not None,
+            "gpu_allocated": self.gpu_allocated,
+            "total_models": sum(
+                [
+                    1
+                    for model in ["bertopic", "bart", "flan_t5"]
+                    if self.models.get(model) is not None
+                ]
+            )
+            + (1 if self.embedding_model else 0),
         }
 
     def get_processing_stats(self) -> dict[str, Any]:

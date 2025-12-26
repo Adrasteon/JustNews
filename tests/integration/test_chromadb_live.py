@@ -6,6 +6,7 @@ stack along with access to the canonical ModelStore. Enable them by exporting
 standard `global.env` variables (MODEL_STORE_ROOT, CHROMADB_*, etc.) are
 available to pytest.
 """
+
 from __future__ import annotations
 
 import os
@@ -17,7 +18,7 @@ from agents.synthesizer.mistral_adapter import SynthesizerMistralAdapter
 from database.utils.migrated_database_utils import create_database_service
 
 requires_live_chroma = pytest.mark.skipif(
-    os.environ.get('ENABLE_CHROMADB_LIVE_TESTS') != '1',
+    os.environ.get("ENABLE_CHROMADB_LIVE_TESTS") != "1",
     reason=(
         "Set ENABLE_CHROMADB_LIVE_TESTS=1 and invoke pytest via scripts/run_with_env.sh "
         "to run live ChromaDB integration tests"
@@ -26,7 +27,7 @@ requires_live_chroma = pytest.mark.skipif(
 
 
 def _require_model_store() -> None:
-    if not os.environ.get('MODEL_STORE_ROOT'):
+    if not os.environ.get("MODEL_STORE_ROOT"):
         pytest.skip(
             "MODEL_STORE_ROOT is not set. Run with scripts/run_with_env.sh or export the"
             " canonical model store location before executing this test."
@@ -41,19 +42,21 @@ def test_chromadb_embedding_round_trip():
     svc = create_database_service()
     doc_id = f"chromatest-{uuid.uuid4()}"
     try:
-        collection = getattr(svc, 'collection', None)
+        collection = getattr(svc, "collection", None)
         if collection is None:
-            pytest.skip('ChromaDB collection not available; check CHROMADB_* env vars.')
+            pytest.skip("ChromaDB collection not available; check CHROMADB_* env vars.")
 
-        embedder = getattr(svc, 'embedding_model', None)
+        embedder = getattr(svc, "embedding_model", None)
         if embedder is None:
-            pytest.skip('Embedding model not loaded; ensure EMBEDDING_MODEL is configured.')
+            pytest.skip(
+                "Embedding model not loaded; ensure EMBEDDING_MODEL is configured."
+            )
 
         body = "Live Chroma round-trip verification."
         embedding = embedder.encode(body).tolist()
         metadata = {
-            'source': 'pytest',
-            'kind': 'embedding-round-trip',
+            "source": "pytest",
+            "kind": "embedding-round-trip",
         }
 
         collection.add(
@@ -63,13 +66,13 @@ def test_chromadb_embedding_round_trip():
             metadatas=[metadata],
         )
 
-        fetched = collection.get(ids=[doc_id], include=['documents', 'metadatas'])
-        assert fetched['ids'], 'Chroma returned empty result set'
-        assert fetched['documents'][0] == body
-        assert fetched['metadatas'][0]['kind'] == 'embedding-round-trip'
+        fetched = collection.get(ids=[doc_id], include=["documents", "metadatas"])
+        assert fetched["ids"], "Chroma returned empty result set"
+        assert fetched["documents"][0] == body
+        assert fetched["metadatas"][0]["kind"] == "embedding-round-trip"
     finally:
         try:
-            if getattr(svc, 'collection', None):
+            if getattr(svc, "collection", None):
                 svc.collection.delete(ids=[doc_id])
         except Exception:
             pass
@@ -86,37 +89,42 @@ def test_chromadb_entry_records_mistral_metadata(monkeypatch):
     svc = create_database_service()
     doc_id = f"chromatest-mistral-{uuid.uuid4()}"
     try:
-        collection = getattr(svc, 'collection', None)
+        collection = getattr(svc, "collection", None)
         if collection is None:
-            pytest.skip('ChromaDB collection not available; check CHROMADB_* env vars.')
+            pytest.skip("ChromaDB collection not available; check CHROMADB_* env vars.")
 
-        embedder = getattr(svc, 'embedding_model', None)
+        embedder = getattr(svc, "embedding_model", None)
         if embedder is None:
-            pytest.skip('Embedding model not loaded; ensure EMBEDDING_MODEL is configured.')
+            pytest.skip(
+                "Embedding model not loaded; ensure EMBEDDING_MODEL is configured."
+            )
 
         adapter = SynthesizerMistralAdapter()
 
         def _fake_chat_json(_messages):
             return {
-                'summary': 'Adapter-driven synthesis integration sample.',
-                'narrative_voice': 'neutral',
-                'key_points': ['point-a', 'point-b'],
+                "summary": "Adapter-driven synthesis integration sample.",
+                "narrative_voice": "neutral",
+                "key_points": ["point-a", "point-b"],
             }
 
-        monkeypatch.setattr(adapter, '_chat_json', _fake_chat_json)
-        payload = adapter.summarize_cluster([
-            'Article One contents for integration coverage.',
-            'Article Two contents for integration coverage.',
-        ], context='Live Chroma smoke test')
+        monkeypatch.setattr(adapter, "_chat_json", _fake_chat_json)
+        payload = adapter.summarize_cluster(
+            [
+                "Article One contents for integration coverage.",
+                "Article Two contents for integration coverage.",
+            ],
+            context="Live Chroma smoke test",
+        )
         assert payload is not None
-        summary = payload['summary']
+        summary = payload["summary"]
 
         embedding = embedder.encode(summary).tolist()
         metadata = {
-            'source': 'pytest',
-            'adapter': adapter.adapter_name,
-            'method': 'mistral_adapter',
-            'is_synthesized': True,
+            "source": "pytest",
+            "adapter": adapter.adapter_name,
+            "method": "mistral_adapter",
+            "is_synthesized": True,
         }
 
         collection.add(
@@ -126,13 +134,13 @@ def test_chromadb_entry_records_mistral_metadata(monkeypatch):
             metadatas=[metadata],
         )
 
-        fetched = collection.get(ids=[doc_id], include=['metadatas', 'documents'])
-        assert fetched['metadatas'][0]['adapter'] == adapter.adapter_name
-        assert fetched['metadatas'][0]['is_synthesized'] is True
-        assert fetched['documents'][0] == summary
+        fetched = collection.get(ids=[doc_id], include=["metadatas", "documents"])
+        assert fetched["metadatas"][0]["adapter"] == adapter.adapter_name
+        assert fetched["metadatas"][0]["is_synthesized"] is True
+        assert fetched["documents"][0] == summary
     finally:
         try:
-            if getattr(svc, 'collection', None):
+            if getattr(svc, "collection", None):
                 svc.collection.delete(ids=[doc_id])
         except Exception:
             pass

@@ -13,10 +13,12 @@ from pathlib import Path
 repo_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(repo_root))
 
+
 def safe_gpu_cleanup():
     """Safely clean up GPU resources to prevent core dumps"""
     try:
         import torch
+
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
             torch.cuda.synchronize()
@@ -27,6 +29,7 @@ def safe_gpu_cleanup():
         print("🧹 GPU cleanup completed safely")
     except Exception as e:
         print(f"⚠️ GPU cleanup warning: {e}")
+
 
 def test_online_training_system_safe():
     """Test the complete online training system with safe cleanup"""
@@ -68,7 +71,7 @@ def test_online_training_system_safe():
             task_type="news_classification",
             input_text="Test news content",
             prediction="news",
-            confidence=0.85
+            confidence=0.85,
         )
         print("✅ Prediction collection working")
 
@@ -79,7 +82,7 @@ def test_online_training_system_safe():
             input_text="Test claim",
             incorrect_output="factual",
             correct_output="questionable",
-            priority=2
+            priority=2,
         )
         print("✅ User correction system working")
 
@@ -132,10 +135,12 @@ def test_online_training_system_safe():
     except Exception as e:
         print(f"❌ Safe test failed: {e}")
         import traceback
+
         traceback.print_exc()
     finally:
         # Ensure cleanup happens
         safe_gpu_cleanup()
+
 
 if __name__ == "__main__":
     test_online_training_system_safe()

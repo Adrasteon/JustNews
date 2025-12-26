@@ -1,4 +1,5 @@
 """Shared JSON adapter helper for the Mistral-powered re-ranker."""
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -12,8 +13,8 @@ logger = get_logger(__name__)
 
 SYSTEM_PROMPT = (
     "You are the JustNews retrieval re-ranker. Given a search query and a set"
-    " of candidate passages, return JSON in the form {\"scores\": [{\"id\":"
-    " \"candidate-id\", \"score\": 0.0-1.0}, ...]}. Include every"
+    ' of candidate passages, return JSON in the form {"scores": [{"id":'
+    ' "candidate-id", "score": 0.0-1.0}, ...]}. Include every'
     " candidate exactly once, assign higher scores to more relevant passages,"
     " and keep explanations brief if included."
 )
@@ -47,7 +48,9 @@ class ReRankerMistralAdapter(BaseMistralJSONAdapter):
             },
         )
 
-    def score_candidates(self, query: str, candidates: Sequence[CandidateLike]) -> list[float] | None:
+    def score_candidates(
+        self, query: str, candidates: Sequence[CandidateLike]
+    ) -> list[float] | None:
         if not self.enabled or not query.strip() or not candidates:
             return None
 
@@ -78,7 +81,9 @@ class ReRankerMistralAdapter(BaseMistralJSONAdapter):
             return None
         return ranking
 
-    def _parse_scores(self, payload: dict[str, object], candidate_order: list[str]) -> list[float] | None:
+    def _parse_scores(
+        self, payload: dict[str, object], candidate_order: list[str]
+    ) -> list[float] | None:
         entries = None
         for key in ("scores", "rankings", "results"):
             value = payload.get(key)
@@ -100,7 +105,9 @@ class ReRankerMistralAdapter(BaseMistralJSONAdapter):
                 if not cid:
                     continue
                 try:
-                    score_val = float(item.get("score") or item.get("relevance") or item.get("weight"))
+                    score_val = float(
+                        item.get("score") or item.get("relevance") or item.get("weight")
+                    )
                 except (TypeError, ValueError):
                     continue
                 scores[str(cid)] = max(0.0, min(score_val, 1.0))

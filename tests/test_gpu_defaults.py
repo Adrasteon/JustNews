@@ -14,7 +14,7 @@ def test_gpu_env_default_is_off():
     """Ensure TEST_GPU_AVAILABLE is disabled by default"""
     # conftest.py sets a safe default via os.environ.setdefault; tests should
     # see the default as 'false' unless explicitly opted in.
-    assert os.environ.get('TEST_GPU_AVAILABLE', 'false').lower() == 'false'
+    assert os.environ.get("TEST_GPU_AVAILABLE", "false").lower() == "false"
 
 
 def test_torch_is_mocked_when_not_using_real_ml_libs():

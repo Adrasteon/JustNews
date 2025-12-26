@@ -21,16 +21,15 @@ class _StubResponse:
 
 
 def test_transparency_gateway_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    payload = {
-        "integrity": {"status": "ok"},
-        "counts": {"facts": 1}
-    }
+    payload = {"integrity": {"status": "ok"}, "counts": {"facts": 1}}
 
     def _mock_get(url: str, timeout: float):  # pylint: disable=unused-argument
         return _StubResponse(payload)
 
     monkeypatch.setattr("agents.synthesizer.main.requests.get", _mock_get)
-    assert check_transparency_gateway(base_url="http://localhost:8013/transparency", timeout=1.0, required=True)
+    assert check_transparency_gateway(
+        base_url="http://localhost:8013/transparency", timeout=1.0, required=True
+    )
 
 
 def test_transparency_gateway_failure_required(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -40,7 +39,9 @@ def test_transparency_gateway_failure_required(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr("agents.synthesizer.main.requests.get", _mock_get)
 
     with pytest.raises(RuntimeError):
-        check_transparency_gateway(base_url="http://localhost", timeout=1.0, required=True)
+        check_transparency_gateway(
+            base_url="http://localhost", timeout=1.0, required=True
+        )
 
 
 def test_transparency_gateway_optional(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -49,4 +50,6 @@ def test_transparency_gateway_optional(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr("agents.synthesizer.main.requests.get", _mock_get)
 
-    assert not check_transparency_gateway(base_url="http://localhost", timeout=1.0, required=False)
+    assert not check_transparency_gateway(
+        base_url="http://localhost", timeout=1.0, required=False
+    )

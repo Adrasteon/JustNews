@@ -56,7 +56,11 @@ class HFAdapter(BaseAdapter):
         self._device = device or os.environ.get("HF_DEVICE", "auto")
         env_quant = os.environ.get("HF_ADAPTER_QUANTIZATION")
         self._quantization_mode = _normalize_quantization(quantization or env_quant)
-        self._trust_remote_code = bool(trust_remote_code if trust_remote_code is not None else os.environ.get("HF_TRUST_REMOTE_CODE") in {"1", "true", "yes"})
+        self._trust_remote_code = bool(
+            trust_remote_code
+            if trust_remote_code is not None
+            else os.environ.get("HF_TRUST_REMOTE_CODE") in {"1", "true", "yes"}
+        )
         self._generation_defaults: dict[str, Any] = {
             "max_new_tokens": 256,
             "temperature": 0.7,
@@ -95,7 +99,10 @@ class HFAdapter(BaseAdapter):
         target_device = (self._device or "auto").lower()
         if target_device and target_device not in {"auto", "default"}:
             with suppress(Exception):
-                encoded = {k: (v.to(target_device) if hasattr(v, "to") else v) for k, v in encoded.items()}
+                encoded = {
+                    k: (v.to(target_device) if hasattr(v, "to") else v)
+                    for k, v in encoded.items()
+                }
         return encoded
 
     # ------------------------------------------------------------------
@@ -146,7 +153,10 @@ class HFAdapter(BaseAdapter):
             raise AdapterError(f"hf-load-failed: {exc}") from exc
 
         # Ensure pad token is set for generation if missing
-        if hasattr(tokenizer, "pad_token") and getattr(tokenizer, "pad_token", None) is None:
+        if (
+            hasattr(tokenizer, "pad_token")
+            and getattr(tokenizer, "pad_token", None) is None
+        ):
             with suppress(Exception):
                 tokenizer.pad_token = tokenizer.eos_token  # type: ignore[attr-defined]
 
@@ -163,8 +173,8 @@ class HFAdapter(BaseAdapter):
             duration = time.time() - start
             if self._metrics:
                 with suppress(Exception):
-                    self._metrics.timing('hf_infer_latency_seconds', duration)
-                    self._metrics.increment('hf_infer_success')
+                    self._metrics.timing("hf_infer_latency_seconds", duration)
+                    self._metrics.increment("hf_infer_success")
             return {
                 "text": f"[DRYRUN-hf:{self._model_id}] Simulated response to: {prompt[:120]}",
                 "raw": {"simulated": True},
@@ -197,14 +207,16 @@ class HFAdapter(BaseAdapter):
                 text = self._tokenizer.decode(output[0], skip_special_tokens=True)
                 if self._metrics:
                     with suppress(Exception):
-                        self._metrics.timing('hf_infer_latency_seconds', duration)
-                        self._metrics.increment('hf_infer_success')
-                return self.build_result(text=text, tokens=len(text.split()), latency=duration, raw=output)
+                        self._metrics.timing("hf_infer_latency_seconds", duration)
+                        self._metrics.increment("hf_infer_success")
+                return self.build_result(
+                    text=text, tokens=len(text.split()), latency=duration, raw=output
+                )
             except Exception as exc:  # pragma: no cover
                 last_exc = exc
                 if self._metrics:
                     with suppress(Exception):
-                        self._metrics.increment('hf_infer_errors')
+                        self._metrics.increment("hf_infer_errors")
                 if attempt < self._max_retries:
                     backoff = self._backoff_base * math.pow(2, attempt - 1)
                     logger.warning(
@@ -216,7 +228,9 @@ class HFAdapter(BaseAdapter):
                     )
                     time.sleep(backoff)
                 else:
-                    logger.error("HF infer failed after %s attempts: %s", self._max_retries, exc)
+                    logger.error(
+                        "HF infer failed after %s attempts: %s", self._max_retries, exc
+                    )
                     raise AdapterError(f"hf-infer-failed: {exc}") from exc
 
         raise AdapterError(f"hf-infer-failed: {last_exc}")
@@ -224,12 +238,14 @@ class HFAdapter(BaseAdapter):
     # ------------------------------------------------------------------
     def health_check(self) -> dict:
         base = super().health_check()
-        base.update({
-            "model_id": self._model_id,
-            "agent": self._agent,
-            "quantization": self._quantization_mode,
-            "device": self._device,
-        })
+        base.update(
+            {
+                "model_id": self._model_id,
+                "agent": self._agent,
+                "quantization": self._quantization_mode,
+                "device": self._device,
+            }
+        )
         return base
 
     def unload(self) -> None:

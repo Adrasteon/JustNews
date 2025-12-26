@@ -40,7 +40,9 @@ class MemoryEngine:
         self.db_service = None
         self.embedding_model = None
 
-    def _acquire_cursor(self, *, per_call: bool = True, dictionary: bool = False, buffered: bool = True):
+    def _acquire_cursor(
+        self, *, per_call: bool = True, dictionary: bool = False, buffered: bool = True
+    ):
         """Helper to obtain a cursor + optional per-call connection.
 
         Returns (cursor, conn) where conn is None when using the shared
@@ -50,10 +52,12 @@ class MemoryEngine:
         if not self.db_service:
             return None, None
         # Prefer the safe helper if available
-        getter = getattr(self.db_service, 'get_safe_cursor', None)
+        getter = getattr(self.db_service, "get_safe_cursor", None)
         if callable(getter):
             try:
-                result = getter(per_call=per_call, dictionary=dictionary, buffered=buffered)
+                result = getter(
+                    per_call=per_call, dictionary=dictionary, buffered=buffered
+                )
                 # Accept only explicit (cursor, conn) sequences — fall back otherwise
                 if isinstance(result, (list, tuple)) and len(result) == 2:
                     return result[0], result[1]
@@ -69,7 +73,7 @@ class MemoryEngine:
                 pass
 
         # Fallback: use the shared connection's cursor for tests/compat
-        conn = getattr(self.db_service, 'mb_conn', None)
+        conn = getattr(self.db_service, "mb_conn", None)
         if conn is None:
             return None, None
         # mysql.connector supports dictionary & buffered arguments
@@ -90,12 +94,18 @@ class MemoryEngine:
 
             # If Chroma is required to be canonical for this deployment, ensure we actually have a collection
             try:
-                require_canonical = os.environ.get('CHROMADB_REQUIRE_CANONICAL', '1') == '1'
+                require_canonical = (
+                    os.environ.get("CHROMADB_REQUIRE_CANONICAL", "1") == "1"
+                )
                 if require_canonical:
                     # If require_canonical is true, we must have a chroma collection connected
-                    if getattr(self.db_service, 'collection', None) is None:
-                        logger.error("CHROMADB_REQUIRE_CANONICAL enabled but no Chroma collection connected; aborting startup")
-                        raise RuntimeError("ChromaDB required (CANONICAL) but not available")
+                    if getattr(self.db_service, "collection", None) is None:
+                        logger.error(
+                            "CHROMADB_REQUIRE_CANONICAL enabled but no Chroma collection connected; aborting startup"
+                        )
+                        raise RuntimeError(
+                            "ChromaDB required (CANONICAL) but not available"
+                        )
             except Exception:
                 # Propagate any fatal condition
                 raise
@@ -116,6 +126,7 @@ class MemoryEngine:
                     from database.utils.migrated_database_utils import (
                         close_cached_service,
                     )
+
                     close_cached_service()
                 except Exception:
                     # Fall back: close the service instance directly
@@ -136,7 +147,12 @@ class MemoryEngine:
         """Saves an article to the database and generates an embedding"""
         try:
             # Use the shared save_article function from tools
-            result = save_article(content, metadata, embedding_model=self.embedding_model, db_service=self.db_service)
+            result = save_article(
+                content,
+                metadata,
+                embedding_model=self.embedding_model,
+                db_service=self.db_service,
+            )
             return result
         except Exception as e:
             logger.error(f"Error saving article in memory engine: {e}")
@@ -152,9 +168,14 @@ class MemoryEngine:
             except Exception as e:
                 logger.error(f"DB connection unavailable when retrieving article: {e}")
                 return None
-            cursor, conn = self._acquire_cursor(per_call=True, dictionary=True, buffered=True)
+            cursor, conn = self._acquire_cursor(
+                per_call=True, dictionary=True, buffered=True
+            )
             try:
-                cursor.execute("SELECT id, content, metadata FROM articles WHERE id = %s", (article_id,))
+                cursor.execute(
+                    "SELECT id, content, metadata FROM articles WHERE id = %s",
+                    (article_id,),
+                )
                 article = cursor.fetchone()
             finally:
                 try:
@@ -188,9 +209,13 @@ class MemoryEngine:
             try:
                 self.db_service.ensure_conn()
             except Exception as e:
-                logger.error(f"DB connection unavailable when retrieving all article ids: {e}")
+                logger.error(
+                    f"DB connection unavailable when retrieving all article ids: {e}"
+                )
                 return {"article_ids": []}
-            cursor, conn = self._acquire_cursor(per_call=True, dictionary=True, buffered=True)
+            cursor, conn = self._acquire_cursor(
+                per_call=True, dictionary=True, buffered=True
+            )
             try:
                 cursor.execute("SELECT id FROM articles")
                 rows = cursor.fetchall()
@@ -205,7 +230,7 @@ class MemoryEngine:
                     pass
 
             if rows:
-                article_ids = [row['id'] for row in rows]
+                article_ids = [row["id"] for row in rows]
                 logger.info(f"Found {len(article_ids)} article IDs")
                 return {"article_ids": article_ids}
             else:
@@ -223,13 +248,17 @@ class MemoryEngine:
             try:
                 self.db_service.ensure_conn()
             except Exception as e:
-                logger.error(f"DB connection unavailable when retrieving recent articles: {e}")
+                logger.error(
+                    f"DB connection unavailable when retrieving recent articles: {e}"
+                )
                 return []
-            cursor, conn = self._acquire_cursor(per_call=True, dictionary=True, buffered=True)
+            cursor, conn = self._acquire_cursor(
+                per_call=True, dictionary=True, buffered=True
+            )
             try:
                 cursor.execute(
                     "SELECT id, content, metadata FROM articles ORDER BY id DESC LIMIT %s",
-                    (limit,)
+                    (limit,),
                 )
                 rows = cursor.fetchall()
             finally:
@@ -256,7 +285,9 @@ class MemoryEngine:
             logger.error(f"Error retrieving recent articles: {e}")
             return []
 
-    def log_training_example(self, task: str, input_data: dict, output_data: dict, critique: str) -> dict:
+    def log_training_example(
+        self, task: str, input_data: dict, output_data: dict, critique: str
+    ) -> dict:
         """Logs a training example to the database"""
         try:
             if not self.db_service:
@@ -264,14 +295,16 @@ class MemoryEngine:
             try:
                 self.db_service.ensure_conn()
             except Exception as e:
-                logger.error(f"DB connection unavailable when logging training example: {e}")
+                logger.error(
+                    f"DB connection unavailable when logging training example: {e}"
+                )
                 return {"error": "database_not_available"}
             # Insert training example
             cursor, conn = self._acquire_cursor(per_call=True, buffered=True)
             try:
                 cursor.execute(
                     "INSERT INTO training_examples (task, input, output, critique) VALUES (%s, %s, %s, %s)",
-                    (task, json.dumps(input_data), json.dumps(output_data), critique)
+                    (task, json.dumps(input_data), json.dumps(output_data), critique),
                 )
                 # If a per-call connection was returned, commit on it; otherwise
                 # fall back to the shared mb_conn provided by the service.
@@ -279,7 +312,7 @@ class MemoryEngine:
                     conn.commit()
                 else:
                     try:
-                        getattr(self.db_service, 'mb_conn', None).commit()
+                        getattr(self.db_service, "mb_conn", None).commit()
                     except Exception:
                         pass
             finally:
@@ -293,25 +326,29 @@ class MemoryEngine:
                 except Exception:
                     pass
 
-            log_feedback("log_training_example", {
-                "task": task,
-                "input_keys": list(input_data.keys()) if input_data else [],
-                "output_keys": list(output_data.keys()) if output_data else [],
-                "critique_length": len(critique) if critique else 0
-            })
+            log_feedback(
+                "log_training_example",
+                {
+                    "task": task,
+                    "input_keys": list(input_data.keys()) if input_data else [],
+                    "output_keys": list(output_data.keys()) if output_data else [],
+                    "critique_length": len(critique) if critique else 0,
+                },
+            )
 
             result = {"status": "logged"}
 
             # Collect prediction for training
             try:
                 from training_system import collect_prediction
+
                 collect_prediction(
                     agent_name="memory",
                     task_type="training_example_logging",
                     input_text=f"Task: {task}, Input: {str(input_data)}, Output: {str(output_data)}, Critique: {critique}",
                     prediction=result,
                     confidence=0.9,  # High confidence for successful logging
-                    source_url=""
+                    source_url="",
                 )
                 logger.debug("📊 Training data collected for training example logging")
             except ImportError:
@@ -353,14 +390,14 @@ class MemoryEngine:
             try:
                 # Obtain a per-call transaction connection when possible. Some
                 # tests provide only a fake `mb_conn` so fallback to that.
-                conn_getter = getattr(self.db_service, 'get_connection', None)
+                conn_getter = getattr(self.db_service, "get_connection", None)
                 if callable(conn_getter):
                     try:
                         tx_conn = conn_getter()
                     except Exception:
-                        tx_conn = getattr(self.db_service, 'mb_conn', None)
+                        tx_conn = getattr(self.db_service, "mb_conn", None)
                 else:
-                    tx_conn = getattr(self.db_service, 'mb_conn', None)
+                    tx_conn = getattr(self.db_service, "mb_conn", None)
             except Exception as e:
                 logger.error(f"DB connection unavailable during ingest_article: {e}")
                 return {"status": "error", "error": "database_not_available"}
@@ -379,7 +416,7 @@ class MemoryEngine:
                     # using MagicMock return a MagicMock which is truthy and would
                     # create an infinite loop. Ensure we only loop while nextset()
                     # returns the boolean True value.
-                    while getattr(tmp_cursor, 'nextset', lambda: False)() is True:
+                    while getattr(tmp_cursor, "nextset", lambda: False)() is True:
                         pass
                     tmp_cursor.close()
                 except Exception:
@@ -399,11 +436,13 @@ class MemoryEngine:
                             pending_commit = True
 
                             result = cursor.fetchone()
-                            if result and 'id' in result:
-                                chosen_source_id = result['id']
+                            if result and "id" in result:
+                                chosen_source_id = result["id"]
 
                             try:
-                                while getattr(cursor, 'nextset', lambda: False)() is True:
+                                while (
+                                    getattr(cursor, "nextset", lambda: False)() is True
+                                ):
                                     cursor.fetchall()
                             except Exception:
                                 pass
@@ -415,7 +454,9 @@ class MemoryEngine:
                     except Exception as stmt_e:
                         try:
                             if cursor is not None:
-                                while getattr(cursor, 'nextset', lambda: False)() is True:
+                                while (
+                                    getattr(cursor, "nextset", lambda: False)() is True
+                                ):
                                     cursor.fetchall()
                         except Exception:
                             pass
@@ -427,8 +468,13 @@ class MemoryEngine:
 
                         pending_commit = False
 
-                        if "unique constraint" in str(stmt_e).lower() or "duplicate key" in str(stmt_e).lower():
-                            logger.debug(f"Source already exists, skipping insert: {stmt_e}")
+                        if (
+                            "unique constraint" in str(stmt_e).lower()
+                            or "duplicate key" in str(stmt_e).lower()
+                        ):
+                            logger.debug(
+                                f"Source already exists, skipping insert: {stmt_e}"
+                            )
                             if "sources" in (sql or "") and params_tuple:
                                 domain = None
                                 if len(params_tuple) > 1:
@@ -436,14 +482,23 @@ class MemoryEngine:
                                 if domain:
                                     lookup_cursor = None
                                     try:
-                                        lookup_cursor = tx_conn.cursor(dictionary=True, buffered=True)
-                                        lookup_cursor.execute("SELECT id FROM sources WHERE domain = %s", (domain,))
+                                        lookup_cursor = tx_conn.cursor(
+                                            dictionary=True, buffered=True
+                                        )
+                                        lookup_cursor.execute(
+                                            "SELECT id FROM sources WHERE domain = %s",
+                                            (domain,),
+                                        )
                                         existing_source = lookup_cursor.fetchone()
                                         if existing_source:
-                                            chosen_source_id = existing_source['id']
-                                            logger.debug(f"Using existing source ID: {chosen_source_id}")
+                                            chosen_source_id = existing_source["id"]
+                                            logger.debug(
+                                                f"Using existing source ID: {chosen_source_id}"
+                                            )
                                     except Exception as lookup_error:
-                                        logger.debug(f"Failed to fetch existing source ID: {lookup_error}")
+                                        logger.debug(
+                                            f"Failed to fetch existing source ID: {lookup_error}"
+                                        )
                                     finally:
                                         if lookup_cursor:
                                             try:
@@ -500,8 +555,12 @@ class MemoryEngine:
                     "publisher_meta": article_payload.get("publisher_meta", {}),
                     "confidence": article_payload.get("confidence", 0.5),
                     "paywall_flag": article_payload.get("paywall_flag", False),
-                    "extraction_metadata": article_payload.get("extraction_metadata", {}),
-                    "structured_metadata": article_payload.get("structured_metadata", {}),
+                    "extraction_metadata": article_payload.get(
+                        "extraction_metadata", {}
+                    ),
+                    "structured_metadata": article_payload.get(
+                        "structured_metadata", {}
+                    ),
                     "timestamp": article_payload.get("timestamp"),
                     "url_hash": article_payload.get("url_hash"),
                     "url_hash_algorithm": article_payload.get("url_hash_algorithm"),
@@ -519,33 +578,54 @@ class MemoryEngine:
                 }
 
                 if content:  # Only save if there's actual content
-                    save_result = save_article(content, metadata, embedding_model=self.embedding_model, db_service=self.db_service)
+                    save_result = save_article(
+                        content,
+                        metadata,
+                        embedding_model=self.embedding_model,
+                        db_service=self.db_service,
+                    )
                     if save_result.get("status") == "duplicate":
-                        logger.info(f"Article already exists, skipping: {article_payload.get('url')}")
+                        logger.info(
+                            f"Article already exists, skipping: {article_payload.get('url')}"
+                        )
                         resp = {
                             "status": "ok",
-                            "url": article_payload.get('url'),
+                            "url": article_payload.get("url"),
                             "duplicate": True,
-                            "existing_id": save_result.get("article_id")
+                            "existing_id": save_result.get("article_id"),
                         }
                     else:
                         if save_result.get("error"):
-                            logger.warning(f"Failed to save article content: {save_result.get('error')}")
-                            resp = {"status": "ok", "url": article_payload.get('url'), "content_save_error": save_result.get('error')}
+                            logger.warning(
+                                f"Failed to save article content: {save_result.get('error')}"
+                            )
+                            resp = {
+                                "status": "ok",
+                                "url": article_payload.get("url"),
+                                "content_save_error": save_result.get("error"),
+                            }
                         else:
-                            logger.info(f"Article saved with ID: {save_result.get('article_id')}")
-                            resp = {"status": "ok", "url": article_payload.get('url')}
+                            logger.info(
+                                f"Article saved with ID: {save_result.get('article_id')}"
+                            )
+                            resp = {"status": "ok", "url": article_payload.get("url")}
                 else:
-                    logger.warning(f"No content to save for article: {article_payload.get('url')}")
-                    resp = {"status": "ok", "url": article_payload.get('url'), "no_content": True}
+                    logger.warning(
+                        f"No content to save for article: {article_payload.get('url')}"
+                    )
+                    resp = {
+                        "status": "ok",
+                        "url": article_payload.get("url"),
+                        "no_content": True,
+                    }
 
             except Exception as e:
                 logger.warning(f"Failed to save article content: {e}")
                 # Don't fail the whole ingestion if content saving fails
                 resp = {
                     "status": "ok",
-                    "url": article_payload.get('url'),
-                    "content_save_error": str(e)
+                    "url": article_payload.get("url"),
+                    "content_save_error": str(e),
                 }
 
             return resp
@@ -562,9 +642,13 @@ class MemoryEngine:
             try:
                 self.db_service.ensure_conn()
             except Exception as e:
-                logger.error(f"DB connection unavailable when getting article count: {e}")
+                logger.error(
+                    f"DB connection unavailable when getting article count: {e}"
+                )
                 return 0
-            cursor, conn = self._acquire_cursor(per_call=True, dictionary=True, buffered=True)
+            cursor, conn = self._acquire_cursor(
+                per_call=True, dictionary=True, buffered=True
+            )
             try:
                 cursor.execute("SELECT COUNT(*) as count FROM articles")
                 result = cursor.fetchone()
@@ -610,11 +694,13 @@ class MemoryEngine:
             except Exception as e:
                 logger.error(f"DB connection unavailable when getting sources: {e}")
                 return []
-            cursor, conn = self._acquire_cursor(per_call=True, dictionary=True, buffered=True)
+            cursor, conn = self._acquire_cursor(
+                per_call=True, dictionary=True, buffered=True
+            )
             try:
                 cursor.execute(
                     "SELECT id, url, domain, name, description, country, language FROM sources ORDER BY id LIMIT %s",
-                    (limit,)
+                    (limit,),
                 )
                 sources = cursor.fetchall()
             finally:

@@ -87,7 +87,10 @@ class OpenAIAdapter(BaseAdapter):
 
             openai.api_key = self._api_key
             if self._extra_headers:
-                openai.default_headers = {**getattr(openai, "default_headers", {}), **self._extra_headers}
+                openai.default_headers = {
+                    **getattr(openai, "default_headers", {}),
+                    **self._extra_headers,
+                }
             self._client = openai
             self.mark_loaded()
         except Exception as exc:  # pragma: no cover
@@ -102,8 +105,8 @@ class OpenAIAdapter(BaseAdapter):
             duration = time.time() - start
             if self._metrics:
                 with suppress(Exception):
-                    self._metrics.timing('openai_infer_latency_seconds', duration)
-                    self._metrics.increment('openai_infer_success')
+                    self._metrics.timing("openai_infer_latency_seconds", duration)
+                    self._metrics.increment("openai_infer_success")
             return self.build_result(
                 text=f"[DRYRUN-openai:{self._model}] Simulated response to: {prompt[:120]}",
                 raw={"simulated": True},
@@ -125,19 +128,21 @@ class OpenAIAdapter(BaseAdapter):
             try:
                 resp = self._client.ChatCompletion.create(**payload)  # type: ignore[attr-defined]
                 duration = time.time() - start
-                text = getattr(resp.choices[0].message, 'content', '') or ""
+                text = getattr(resp.choices[0].message, "content", "") or ""
                 if not text:
                     text = str(resp)
                 if self._metrics:
                     with suppress(Exception):
-                        self._metrics.timing('openai_infer_latency_seconds', duration)
-                        self._metrics.increment('openai_infer_success')
-                return self.build_result(text=text, tokens=len(text.split()), latency=duration, raw=resp)
+                        self._metrics.timing("openai_infer_latency_seconds", duration)
+                        self._metrics.increment("openai_infer_success")
+                return self.build_result(
+                    text=text, tokens=len(text.split()), latency=duration, raw=resp
+                )
             except Exception as exc:  # pragma: no cover
                 last_exc = exc
                 if self._metrics:
                     with suppress(Exception):
-                        self._metrics.increment('openai_infer_errors')
+                        self._metrics.increment("openai_infer_errors")
                 if attempt < self._max_retries:
                     backoff = self._backoff_base * math.pow(2, attempt - 1)
                     logger.warning(
@@ -149,7 +154,11 @@ class OpenAIAdapter(BaseAdapter):
                     )
                     time.sleep(backoff)
                 else:
-                    logger.error("OpenAI infer failed after %s attempts: %s", self._max_retries, exc)
+                    logger.error(
+                        "OpenAI infer failed after %s attempts: %s",
+                        self._max_retries,
+                        exc,
+                    )
                     raise AdapterError(f"openai-infer-failed: {exc}") from exc
         raise AdapterError(f"openai-infer-failed: {last_exc}")
 

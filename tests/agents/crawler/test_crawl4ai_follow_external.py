@@ -37,6 +37,7 @@ def make_fake_crawl4ai_with_links(links_internal=None):
     mod.AsyncWebCrawler = AsyncWebCrawler
     # Minimal stub for required classes used by adapter
     mod.CacheMode = types.SimpleNamespace(BYPASS=object())
+
     class CrawlerRunConfig:
         def __init__(self, **kwargs):
             pass
@@ -52,7 +53,9 @@ def test_select_link_candidates_respects_follow_external(monkeypatch):
     from agents.crawler.crawl4ai_adapter import CrawlContext, _select_link_candidates
 
     # Target site domain
-    site_config = SiteConfig({"domain": "example.com", "start_url": "https://example.com/"})
+    site_config = SiteConfig(
+        {"domain": "example.com", "start_url": "https://example.com/"}
+    )
 
     # Candidates include an internal (same domain) and an external link
     candidates = [
@@ -61,13 +64,27 @@ def test_select_link_candidates_respects_follow_external(monkeypatch):
     ]
 
     # Case: follow_external = False -> only allowed domain should be returned
-    ctx = CrawlContext(site_config=site_config, profile={}, max_articles=5, follow_internal_links=True, page_budget=10, follow_external=False)
+    ctx = CrawlContext(
+        site_config=site_config,
+        profile={},
+        max_articles=5,
+        follow_internal_links=True,
+        page_budget=10,
+        follow_external=False,
+    )
     sel = _select_link_candidates(candidates, ctx, visited=set(), remaining_budget=10)
     assert any("example.com/path1" in u for u in sel)
     assert not any("evil.com" in u for u in sel)
 
     # Case: follow_external = True -> both links may be returned (subject to budget)
-    ctx2 = CrawlContext(site_config=site_config, profile={}, max_articles=5, follow_internal_links=True, page_budget=10, follow_external=True)
+    ctx2 = CrawlContext(
+        site_config=site_config,
+        profile={},
+        max_articles=5,
+        follow_internal_links=True,
+        page_budget=10,
+        follow_external=True,
+    )
     sel2 = _select_link_candidates(candidates, ctx2, visited=set(), remaining_budget=10)
     assert any("example.com/path1" in u for u in sel2)
     assert any("evil.com/malicious" in u for u in sel2)

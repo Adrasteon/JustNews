@@ -1,10 +1,11 @@
-
 from agents.common.openai_adapter import OpenAIAdapter
 
 
 def test_openai_adapter_dry_run(monkeypatch):
     monkeypatch.setenv("DRY_RUN", "1")
-    a = OpenAIAdapter(api_key=None, model="gpt-test", name="test-openai", system_prompt="hi")
+    a = OpenAIAdapter(
+        api_key=None, model="gpt-test", name="test-openai", system_prompt="hi"
+    )
     # load should succeed in dry-run
     a.load(None)
     h = a.health_check()

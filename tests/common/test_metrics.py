@@ -77,7 +77,7 @@ class TestJustNewsMetrics:
 
         assert True
 
-    @patch('common.metrics.psutil.Process')
+    @patch("common.metrics.psutil.Process")
     def test_update_system_metrics_cpu_memory(self, mock_process_class):
         """Test updating system metrics for CPU and memory"""
         mock_process = Mock()
@@ -93,8 +93,8 @@ class TestJustNewsMetrics:
 
         assert True
 
-    @patch('common.metrics.GPUtil')
-    @patch('common.metrics.psutil.Process')
+    @patch("common.metrics.GPUtil")
+    @patch("common.metrics.psutil.Process")
     def test_update_system_metrics_with_gpu(self, mock_process_class, mock_gputil):
         """Test updating system metrics including GPU"""
         # Mock CPU/memory
@@ -117,7 +117,7 @@ class TestJustNewsMetrics:
 
         assert True
 
-    @patch('common.metrics.GPUtil')
+    @patch("common.metrics.GPUtil")
     def test_update_system_metrics_gpu_unavailable(self, mock_gputil):
         """Test system metrics update when GPU is unavailable"""
         mock_gputil.getGPUs.side_effect = Exception("No GPU available")

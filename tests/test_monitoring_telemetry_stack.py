@@ -10,7 +10,9 @@ DEV_COMPOSE = "infrastructure/monitoring/dev-docker-compose.yaml"
 def docker_available():
     try:
         subprocess.run(["docker", "ps"], capture_output=True, check=True)
-        subprocess.run(["docker", "compose", "version"], capture_output=True, check=True)
+        subprocess.run(
+            ["docker", "compose", "version"], capture_output=True, check=True
+        )
         return True
     except Exception:
         return False
@@ -18,7 +20,7 @@ def docker_available():
 
 @pytest.mark.skipif(not docker_available(), reason="docker not available")
 def test_dev_telemetry_stack_smoke():
-    """Smoke test: bring up dev telemetry stack and verify demo emitter probe. """
+    """Smoke test: bring up dev telemetry stack and verify demo emitter probe."""
     up_cmd = ["docker", "compose", "-f", DEV_COMPOSE, "up", "-d"]
     down_cmd = ["docker", "compose", "-f", DEV_COMPOSE, "down"]
 

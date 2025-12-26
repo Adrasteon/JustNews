@@ -32,6 +32,7 @@ _engine: AnalystEngine | None = None
 # Exposed hook for tests: tests may monkeypatch ClusterFetcher at module level
 ClusterFetcher = None
 
+
 def get_analyst_engine() -> AnalystEngine:
     """Get or create the global analyst engine instance."""
     global _engine
@@ -40,10 +41,9 @@ def get_analyst_engine() -> AnalystEngine:
         _engine = AnalystEngine(config)
     return _engine
 
+
 async def process_analysis_request(
-    text: str,
-    analysis_type: str,
-    **kwargs
+    text: str, analysis_type: str, **kwargs
 ) -> dict[str, Any]:
     """
     Process an analysis request using the analyst engine.
@@ -59,7 +59,9 @@ async def process_analysis_request(
     engine = get_analyst_engine()
 
     try:
-        logger.info(f"🔄 Processing {analysis_type} analysis for {len(text)} characters")
+        logger.info(
+            f"🔄 Processing {analysis_type} analysis for {len(text)} characters"
+        )
 
         if analysis_type == "entities":
             result = engine.extract_entities(text)
@@ -81,11 +83,20 @@ async def process_analysis_request(
             texts = kwargs.get("texts")
             article_ids = kwargs.get("article_ids")
             cluster_id = kwargs.get("cluster_id")
-            result = engine.generate_analysis_report(texts or [text], article_ids=article_ids, cluster_id=cluster_id)
+            result = engine.generate_analysis_report(
+                texts or [text], article_ids=article_ids, cluster_id=cluster_id
+            )
         else:
             result = {
                 "error": f"Unknown analysis type: {analysis_type}",
-                "supported_types": ["sentiment", "entities", "statistics", "metrics", "bias", "sentiment_and_bias"]
+                "supported_types": [
+                    "sentiment",
+                    "entities",
+                    "statistics",
+                    "metrics",
+                    "bias",
+                    "sentiment_and_bias",
+                ],
             }
 
         logger.info(f"✅ {analysis_type.capitalize()} analysis completed")
@@ -93,7 +104,11 @@ async def process_analysis_request(
 
     except Exception as e:
         logger.error(f"❌ {analysis_type} analysis failed: {e}")
-        return {"error": str(e), "details": f"Analysis type: {analysis_type}. Exception: {str(e)}"}
+        return {
+            "error": str(e),
+            "details": f"Analysis type: {analysis_type}. Exception: {str(e)}",
+        }
+
 
 def identify_entities(text: str) -> dict[str, Any]:
     """
@@ -117,6 +132,7 @@ def identify_entities(text: str) -> dict[str, Any]:
 
     engine = get_analyst_engine()
     return engine.extract_entities(text)
+
 
 def analyze_text_statistics(text: str) -> dict[str, Any]:
     """
@@ -143,11 +159,12 @@ def analyze_text_statistics(text: str) -> dict[str, Any]:
             "word_count": 0,
             "character_count": 0,
             "sentence_count": 0,
-            "error": "Empty text provided"
+            "error": "Empty text provided",
         }
 
     engine = get_analyst_engine()
     return engine.analyze_text_statistics(text)
+
 
 def extract_key_metrics(text: str, url: str = None) -> dict[str, Any]:
     """
@@ -173,6 +190,7 @@ def extract_key_metrics(text: str, url: str = None) -> dict[str, Any]:
     engine = get_analyst_engine()
     return engine.extract_key_metrics(text, url)
 
+
 def analyze_content_trends(texts: list[str], urls: list[str] = None) -> dict[str, Any]:
     """
     Analyze trends and patterns across multiple content pieces.
@@ -195,11 +213,12 @@ def analyze_content_trends(texts: list[str], urls: list[str] = None) -> dict[str
         return {
             "trends": [],
             "topics": [],
-            "error": "No valid texts provided for trend analysis"
+            "error": "No valid texts provided for trend analysis",
         }
 
     engine = get_analyst_engine()
     return engine.analyze_content_trends(texts, urls)
+
 
 def analyze_sentiment(text: str) -> dict[str, Any]:
     """
@@ -224,6 +243,7 @@ def analyze_sentiment(text: str) -> dict[str, Any]:
 
     engine = get_analyst_engine()
     return engine.analyze_sentiment(text)
+
 
 def detect_bias(text: str) -> dict[str, Any]:
     """
@@ -250,6 +270,7 @@ def detect_bias(text: str) -> dict[str, Any]:
 
     engine = get_analyst_engine()
     return engine.detect_bias(text)
+
 
 def analyze_sentiment_and_bias(text: str) -> dict[str, Any]:
     """
@@ -286,7 +307,11 @@ def extract_claims(text: str) -> list[dict[str, Any]]:
     return engine.extract_claims(text)
 
 
-def generate_analysis_report(texts: list[str], article_ids: list[str] | None = None, cluster_id: str | None = None) -> dict[str, Any]:
+def generate_analysis_report(
+    texts: list[str],
+    article_ids: list[str] | None = None,
+    cluster_id: str | None = None,
+) -> dict[str, Any]:
     """
     Create a cluster-level AnalysisReport for a list of texts.
     """
@@ -301,8 +326,11 @@ def generate_analysis_report(texts: list[str], article_ids: list[str] | None = N
             # Allow tests to monkeypatch a module-level ClusterFetcher attribute
             # (tests can set analyst_tools.ClusterFetcher = <fake>) so prefer the
             # attribute if it exists, otherwise import the real implementation.
-            if 'ClusterFetcher' in globals() and globals().get('ClusterFetcher') is not None:
-                ClusterFetcher = globals().get('ClusterFetcher')
+            if (
+                "ClusterFetcher" in globals()
+                and globals().get("ClusterFetcher") is not None
+            ):
+                ClusterFetcher = globals().get("ClusterFetcher")
             else:
                 from agents.cluster_fetcher.cluster_fetcher import ClusterFetcher
 
@@ -312,9 +340,14 @@ def generate_analysis_report(texts: list[str], article_ids: list[str] | None = N
                 texts = [r.content for r in records]
                 article_ids = [r.article_id for r in records]
         except Exception:
-            logger.exception("Failed to fetch cluster content for cluster_id=%s", cluster_id)
+            logger.exception(
+                "Failed to fetch cluster content for cluster_id=%s", cluster_id
+            )
 
-    return engine.generate_analysis_report(texts, article_ids=article_ids, cluster_id=cluster_id)
+    return engine.generate_analysis_report(
+        texts, article_ids=article_ids, cluster_id=cluster_id
+    )
+
 
 def score_sentiment(text: str) -> dict[str, Any]:
     """
@@ -328,6 +361,7 @@ def score_sentiment(text: str) -> dict[str, Any]:
     """
     return analyze_sentiment(text)
 
+
 def score_bias(text: str) -> dict[str, Any]:
     """
     Legacy bias scoring function for backward compatibility.
@@ -340,6 +374,7 @@ def score_bias(text: str) -> dict[str, Any]:
     """
     return detect_bias(text)
 
+
 def log_feedback(event: str, details: dict[str, Any]) -> None:
     """
     Log analysis feedback for monitoring and improvement.
@@ -351,7 +386,7 @@ def log_feedback(event: str, details: dict[str, Any]) -> None:
     try:
         engine = get_analyst_engine()
         # If the engine has a feedback method, use it; otherwise, fall back to logging
-        if hasattr(engine, 'log_feedback'):
+        if hasattr(engine, "log_feedback"):
             try:
                 engine.log_feedback(event, details)
             except Exception:
@@ -361,6 +396,7 @@ def log_feedback(event: str, details: dict[str, Any]) -> None:
         logger.info(f"Feedback logged: {event}")
     except Exception as e:
         logger.warning(f"Failed to log feedback: {e}")
+
 
 async def health_check() -> dict[str, Any]:
     """
@@ -379,16 +415,20 @@ async def health_check() -> dict[str, Any]:
                 "engine": "healthy",
                 "spacy_model": "healthy" if engine.spacy_nlp else "unhealthy",
                 "ner_pipeline": "healthy" if engine.ner_pipeline else "unhealthy",
-                "gpu_analyst": "healthy" if engine.gpu_analyst else "unhealthy"
+                "gpu_analyst": "healthy" if engine.gpu_analyst else "unhealthy",
             },
-            "processing_stats": engine.processing_stats
+            "processing_stats": engine.processing_stats,
         }
 
         # Check for any unhealthy components
-        unhealthy_components = [k for k, v in health_status["components"].items() if v == "unhealthy"]
+        unhealthy_components = [
+            k for k, v in health_status["components"].items() if v == "unhealthy"
+        ]
         if unhealthy_components:
             health_status["overall_status"] = "degraded"
-            health_status["issues"] = [f"Component {comp} is unhealthy" for comp in unhealthy_components]
+            health_status["issues"] = [
+                f"Component {comp} is unhealthy" for comp in unhealthy_components
+            ]
 
         logger.info(f"🏥 Analyst health check: {health_status['overall_status']}")
         return health_status
@@ -398,10 +438,13 @@ async def health_check() -> dict[str, Any]:
         return {
             "timestamp": time.time(),
             "overall_status": "unhealthy",
-            "error": str(e)
+            "error": str(e),
         }
 
-def validate_analysis_result(result: dict[str, Any], expected_fields: list[str] = None) -> bool:
+
+def validate_analysis_result(
+    result: dict[str, Any], expected_fields: list[str] = None
+) -> bool:
     """
     Validate analysis result structure.
 
@@ -423,6 +466,7 @@ def validate_analysis_result(result: dict[str, Any], expected_fields: list[str] 
 
     # Basic validation for common fields
     return "method" in result or "total_entities" in result or "word_count" in result
+
 
 def format_analysis_output(result: dict[str, Any], format_type: str = "json") -> str:
     """
@@ -451,13 +495,19 @@ def format_analysis_output(result: dict[str, Any], format_type: str = "json") ->
 
             if "word_count" in result:
                 lines.append(f"Word Count: {result['word_count']}")
-                lines.append(f"Readability Score: {result.get('readability_score', 'N/A')}")
+                lines.append(
+                    f"Readability Score: {result.get('readability_score', 'N/A')}"
+                )
 
             if "dominant_sentiment" in result:
-                lines.append(f"Sentiment: {result['dominant_sentiment']} ({result.get('confidence', 0):.2f})")
+                lines.append(
+                    f"Sentiment: {result['dominant_sentiment']} ({result.get('confidence', 0):.2f})"
+                )
 
             if "bias_level" in result:
-                lines.append(f"Bias Level: {result['bias_level']} ({result.get('bias_score', 0):.2f})")
+                lines.append(
+                    f"Bias Level: {result['bias_level']} ({result.get('bias_score', 0):.2f})"
+                )
 
             return "\n".join(lines)
 
@@ -497,20 +547,21 @@ def format_analysis_output(result: dict[str, Any], format_type: str = "json") ->
     except Exception as e:
         return f"Formatting error: {e}"
 
+
 # Export main functions
 __all__ = [
-    'identify_entities',
-    'analyze_text_statistics',
-    'extract_key_metrics',
-    'analyze_content_trends',
-    'analyze_sentiment',
-    'detect_bias',
-    'analyze_sentiment_and_bias',
-    'score_sentiment',
-    'score_bias',
-    'log_feedback',
-    'health_check',
-    'validate_analysis_result',
-    'format_analysis_output',
-    'get_analyst_engine'
+    "identify_entities",
+    "analyze_text_statistics",
+    "extract_key_metrics",
+    "analyze_content_trends",
+    "analyze_sentiment",
+    "detect_bias",
+    "analyze_sentiment_and_bias",
+    "score_sentiment",
+    "score_bias",
+    "log_feedback",
+    "health_check",
+    "validate_analysis_result",
+    "format_analysis_output",
+    "get_analyst_engine",
 ]

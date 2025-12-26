@@ -21,7 +21,9 @@ from common.metrics import JustNewsMetrics
 from common.observability import get_logger
 
 # Allow overriding DB path via env var so service can be started from any cwd or env
-DB_PATH = os.environ.get("HITL_DB_PATH", os.path.join(os.path.dirname(__file__), "hitl_staging.db"))
+DB_PATH = os.environ.get(
+    "HITL_DB_PATH", os.path.join(os.path.dirname(__file__), "hitl_staging.db")
+)
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000").rstrip("/")
 HITL_AGENT_NAME = os.environ.get("HITL_AGENT_NAME", "hitl_service")
 HITL_SERVICE_ADDRESS = os.environ.get(
@@ -42,7 +44,9 @@ HITL_TRAINING_FORWARD_ENABLED = bool(
     HITL_TRAINING_FORWARD_AGENT and HITL_TRAINING_FORWARD_TOOL
 )
 HITL_FORWARD_MAX_RETRIES = int(os.environ.get("HITL_FORWARD_MAX_RETRIES", "3"))
-HITL_FORWARD_RETRY_BACKOFF_SECONDS = float(os.environ.get("HITL_FORWARD_RETRY_BACKOFF_SECONDS", "1.5"))
+HITL_FORWARD_RETRY_BACKOFF_SECONDS = float(
+    os.environ.get("HITL_FORWARD_RETRY_BACKOFF_SECONDS", "1.5")
+)
 HITL_FORWARD_HEALTHCHECK_INTERVAL_SECONDS = int(
     os.environ.get("HITL_FORWARD_HEALTHCHECK_INTERVAL_SECONDS", "60")
 )
@@ -51,8 +55,12 @@ HITL_PRIORITY_SITES = {
     for item in os.environ.get("HITL_PRIORITY_SITES", "").split(",")
     if item.strip()
 }
-HITL_QA_BACKLOG_ALERT_THRESHOLD = int(os.environ.get("HITL_QA_BACKLOG_ALERT_THRESHOLD", "50"))
-HITL_QA_MONITOR_INTERVAL_SECONDS = int(os.environ.get("HITL_QA_MONITOR_INTERVAL_SECONDS", "60"))
+HITL_QA_BACKLOG_ALERT_THRESHOLD = int(
+    os.environ.get("HITL_QA_BACKLOG_ALERT_THRESHOLD", "50")
+)
+HITL_QA_MONITOR_INTERVAL_SECONDS = int(
+    os.environ.get("HITL_QA_MONITOR_INTERVAL_SECONDS", "60")
+)
 HITL_QA_FAILURE_RATE_ALERT_THRESHOLD = float(
     os.environ.get("HITL_QA_FAILURE_RATE_ALERT_THRESHOLD", "0.05")
 )
@@ -74,7 +82,9 @@ app.middleware("http")(metrics.request_middleware)
 if os.path.isdir(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 else:
-    logger.warning("Static directory %s not found; HITL UI assets unavailable", STATIC_DIR)
+    logger.warning(
+        "Static directory %s not found; HITL UI assets unavailable", STATIC_DIR
+    )
 
 
 def ensure_db():
@@ -167,7 +177,9 @@ class LabelRequest(BaseModel):
 class ToolCallRequest(BaseModel):
     tool: str = Field(..., description="Name of the tool to invoke")
     args: list[Any] = Field(default_factory=list, description="Positional arguments")
-    kwargs: dict[str, Any] = Field(default_factory=dict, description="Keyword arguments")
+    kwargs: dict[str, Any] = Field(
+        default_factory=dict, description="Keyword arguments"
+    )
 
 
 class QAReviewRequest(BaseModel):
@@ -178,7 +190,9 @@ class QAReviewRequest(BaseModel):
 
 
 class MCPBusClient:
-    def __init__(self, base_url: str = MCP_BUS_URL, timeout: tuple[float, float] = (3.0, 15.0)):
+    def __init__(
+        self, base_url: str = MCP_BUS_URL, timeout: tuple[float, float] = (3.0, 15.0)
+    ):
         self.base_url = base_url
         self.timeout = timeout
 
@@ -263,7 +277,9 @@ def _check_agent_health(agent_address: str) -> bool:
         return False
 
 
-def _extract_payload(call: ToolCallRequest, default_key: str | None = None) -> dict[str, Any]:
+def _extract_payload(
+    call: ToolCallRequest, default_key: str | None = None
+) -> dict[str, Any]:
     if call.args:
         candidate_payload = call.args[0]
     elif default_key and default_key in call.kwargs:
@@ -272,7 +288,9 @@ def _extract_payload(call: ToolCallRequest, default_key: str | None = None) -> d
         candidate_payload = call.kwargs
 
     if not isinstance(candidate_payload, dict):
-        raise HTTPException(status_code=400, detail="Tool payload must be a JSON object")
+        raise HTTPException(
+            status_code=400, detail="Tool payload must be a JSON object"
+        )
     return candidate_payload
 
 
@@ -281,7 +299,9 @@ async def tool_receive_candidate(call: ToolCallRequest) -> dict[str, Any]:
     try:
         event = CandidateEvent(**payload)
     except ValidationError as exc:
-        raise HTTPException(status_code=400, detail=f"invalid candidate payload: {exc}") from exc
+        raise HTTPException(
+            status_code=400, detail=f"invalid candidate payload: {exc}"
+        ) from exc
 
     candidate_id = insert_candidate(event)
     metrics.increment("hitl_mcp_candidate_events_total")
@@ -295,14 +315,20 @@ async def tool_submit_label(call: ToolCallRequest) -> dict[str, Any]:
     try:
         label_req = LabelRequest(**payload)
     except ValidationError as exc:
-        raise HTTPException(status_code=400, detail=f"invalid label payload: {exc}") from exc
+        raise HTTPException(
+            status_code=400, detail=f"invalid label payload: {exc}"
+        ) from exc
 
     metrics.increment("hitl_mcp_label_events_total")
     result = store_label(label_req)
     if result.get("enqueue_ingest") and result.get("ingest_payload"):
-        asyncio.create_task(dispatch_ingest(result["ingest_payload"], result["label_id"]))
+        asyncio.create_task(
+            dispatch_ingest(result["ingest_payload"], result["label_id"])
+        )
     if result.get("training_payload"):
-        asyncio.create_task(forward_training_label(result["training_payload"], result["label_id"]))
+        asyncio.create_task(
+            forward_training_label(result["training_payload"], result["label_id"])
+        )
     return result
 
 
@@ -321,6 +347,7 @@ async def startup_event():
     ensure_db()
     asyncio.create_task(register_with_mcp_bus())
     asyncio.create_task(monitor_qa_health())
+
 
 # Register startup handler via add_event_handler to avoid use of the deprecated
 # @app.on_event decorator (typing_extensions warns about deprecation). This
@@ -348,7 +375,7 @@ async def register_with_mcp_bus() -> None:
             asyncio.create_task(periodic_forward_agent_verification())
             return
         except Exception as exc:  # noqa: BLE001
-            wait_time = min(60, 2 ** attempt)
+            wait_time = min(60, 2**attempt)
             logger.warning(
                 "Failed to register with MCP Bus (attempt %s/%s): %s - retrying in %ss",
                 attempt + 1,
@@ -358,15 +385,19 @@ async def register_with_mcp_bus() -> None:
             )
             attempt += 1
             await asyncio.sleep(wait_time)
-    logger.error("Exceeded max attempts registering with MCP Bus; continuing without registration")
+    logger.error(
+        "Exceeded max attempts registering with MCP Bus; continuing without registration"
+    )
 
 
 async def periodic_forward_agent_verification() -> None:
-    if not any([
-        HITL_FORWARD_ENABLED,
-        HITL_CANDIDATE_FORWARD_ENABLED,
-        HITL_TRAINING_FORWARD_ENABLED,
-    ]):
+    if not any(
+        [
+            HITL_FORWARD_ENABLED,
+            HITL_CANDIDATE_FORWARD_ENABLED,
+            HITL_TRAINING_FORWARD_ENABLED,
+        ]
+    ):
         return
     while True:
         await asyncio.sleep(max(30, HITL_FORWARD_HEALTHCHECK_INTERVAL_SECONDS))
@@ -374,11 +405,13 @@ async def periodic_forward_agent_verification() -> None:
 
 
 async def validate_forward_targets(initial: bool = False) -> None:
-    if not any([
-        HITL_FORWARD_ENABLED,
-        HITL_CANDIDATE_FORWARD_ENABLED,
-        HITL_TRAINING_FORWARD_ENABLED,
-    ]):
+    if not any(
+        [
+            HITL_FORWARD_ENABLED,
+            HITL_CANDIDATE_FORWARD_ENABLED,
+            HITL_TRAINING_FORWARD_ENABLED,
+        ]
+    ):
         return
 
     try:
@@ -398,18 +431,38 @@ async def validate_forward_targets(initial: bool = False) -> None:
             return False
         address = agents.get(agent)
         if not address:
-            logger.warning("Forward target agent '%s' is not registered with MCP Bus", agent)
+            logger.warning(
+                "Forward target agent '%s' is not registered with MCP Bus", agent
+            )
             metrics.gauge(gauge_name, 0)
             return False
         healthy = _check_agent_health(address)
         metrics.gauge(gauge_name, 1 if healthy else 0)
         if not healthy:
-            logger.warning("Forward target agent '%s' failed health verification", agent)
+            logger.warning(
+                "Forward target agent '%s' failed health verification", agent
+            )
         return healthy
 
-    forward_ok = _check_target(HITL_FORWARD_AGENT, "hitl_forward_agent_available") if HITL_FORWARD_ENABLED else False
-    candidate_ok = _check_target(HITL_CANDIDATE_FORWARD_AGENT, "hitl_candidate_forward_agent_available") if HITL_CANDIDATE_FORWARD_ENABLED else False
-    training_ok = _check_target(HITL_TRAINING_FORWARD_AGENT, "hitl_training_forward_agent_available") if HITL_TRAINING_FORWARD_ENABLED else False
+    forward_ok = (
+        _check_target(HITL_FORWARD_AGENT, "hitl_forward_agent_available")
+        if HITL_FORWARD_ENABLED
+        else False
+    )
+    candidate_ok = (
+        _check_target(
+            HITL_CANDIDATE_FORWARD_AGENT, "hitl_candidate_forward_agent_available"
+        )
+        if HITL_CANDIDATE_FORWARD_ENABLED
+        else False
+    )
+    training_ok = (
+        _check_target(
+            HITL_TRAINING_FORWARD_AGENT, "hitl_training_forward_agent_available"
+        )
+        if HITL_TRAINING_FORWARD_ENABLED
+        else False
+    )
 
     if initial:
         logger.info(
@@ -639,7 +692,9 @@ def store_label(req: LabelRequest) -> dict[str, Any]:
         ),
     )
     # update candidate status
-    cur.execute("UPDATE hitl_candidates SET status='labeled' WHERE id=?", (req.candidate_id,))
+    cur.execute(
+        "UPDATE hitl_candidates SET status='labeled' WHERE id=?", (req.candidate_id,)
+    )
     qa_entry_id: str | None = None
     if qa_sampled_bool:
         qa_entry_id = str(uuid.uuid4())
@@ -721,7 +776,9 @@ async def dispatch_ingest(job_payload: dict[str, Any], label_id: str) -> str:
             ts = datetime.now(UTC).isoformat()
             update_ingest_status(label_id, "enqueued", ts)
             metrics.increment("hitl_ingest_dispatch_success_total")
-            metrics.timing("hitl_ingest_dispatch_duration_seconds", time.time() - start_time)
+            metrics.timing(
+                "hitl_ingest_dispatch_duration_seconds", time.time() - start_time
+            )
             update_queue_metrics()
             return "enqueued"
         except Exception as exc:  # noqa: BLE001
@@ -736,7 +793,9 @@ async def dispatch_ingest(job_payload: dict[str, Any], label_id: str) -> str:
                 backoff = HITL_FORWARD_RETRY_BACKOFF_SECONDS * (2 ** (attempt - 1))
                 await asyncio.sleep(backoff)
 
-    logger.error("Exceeded ingest dispatch retries; marking label %s as error", label_id)
+    logger.error(
+        "Exceeded ingest dispatch retries; marking label %s as error", label_id
+    )
     update_ingest_status(label_id, "error", None)
     update_queue_metrics()
     return "error"
@@ -767,7 +826,9 @@ async def forward_training_label(payload: dict[str, Any], label_id: str) -> str:
                 payload,
             )
             metrics.increment("hitl_training_forward_success_total")
-            metrics.timing("hitl_training_forward_duration_seconds", time.time() - start_time)
+            metrics.timing(
+                "hitl_training_forward_duration_seconds", time.time() - start_time
+            )
             return "sent"
         except Exception as exc:  # noqa: BLE001
             metrics.increment("hitl_training_forward_failure_total")
@@ -858,7 +919,9 @@ def get_qa_failure_metrics(window_hours: int = 24) -> dict[str, int | float]:
     return {"total": total, "failures": failures, "rate": rate}
 
 
-def fetch_qa_entries(status: str | None = "pending", limit: int = 50) -> list[dict[str, Any]]:
+def fetch_qa_entries(
+    status: str | None = "pending", limit: int = 50
+) -> list[dict[str, Any]]:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -925,7 +988,9 @@ async def api_post_label(req: LabelRequest):
     if out.get("enqueue_ingest") and out.get("ingest_payload"):
         asyncio.create_task(dispatch_ingest(out["ingest_payload"], out["label_id"]))
     if out.get("training_payload"):
-        asyncio.create_task(forward_training_label(out["training_payload"], out["label_id"]))
+        asyncio.create_task(
+            forward_training_label(out["training_payload"], out["label_id"])
+        )
     return out
 
 
@@ -936,7 +1001,10 @@ async def api_tool_router(call: ToolCallRequest):
         available = sorted(TOOL_HANDLERS.keys())
         raise HTTPException(
             status_code=400,
-            detail={"error": f"unknown tool '{call.tool}'", "available_tools": available},
+            detail={
+                "error": f"unknown tool '{call.tool}'",
+                "available_tools": available,
+            },
         )
     response = await handler(call)
     return {"status": "ok", "data": response}
@@ -1057,7 +1125,9 @@ async def api_stats():
     now = datetime.now(UTC)
     start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     last_hour = (now - timedelta(hours=1)).isoformat()
-    cur.execute("SELECT COUNT(*) FROM hitl_labels WHERE created_at >= ?", (start_of_day,))
+    cur.execute(
+        "SELECT COUNT(*) FROM hitl_labels WHERE created_at >= ?", (start_of_day,)
+    )
     labels_today = cur.fetchone()[0]
     cur.execute(
         "SELECT COUNT(*) FROM hitl_labels WHERE created_at >= ?",

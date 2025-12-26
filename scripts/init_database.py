@@ -24,6 +24,7 @@ Run this script once to set up the authentication database schema.
 # Set up logging
 logger = get_logger(__name__)
 
+
 def create_initial_admin_user():
     """Create an initial admin user for testing"""
     from agents.common.auth_models import (
@@ -40,7 +41,9 @@ def create_initial_admin_user():
             # In minimal test environments database access may be disabled; log
             # and proceed to attempt creation so tests that patch the user
             # creation helpers can exercise creation behavior without a live DB.
-            logger.warning(f"Could not check existing admin user: {e}; proceeding to create")
+            logger.warning(
+                f"Could not check existing admin user: {e}; proceeding to create"
+            )
             existing = None
         if existing:
             logger.info("Admin user already exists; skipping creation")
@@ -51,7 +54,7 @@ def create_initial_admin_user():
             username="admin",
             full_name="System Administrator",
             password="Admin123!@#",
-            role=UserRole.ADMIN
+            role=UserRole.ADMIN,
         )
 
         user_id = create_user(admin_user)
@@ -66,6 +69,7 @@ def create_initial_admin_user():
 
     except Exception as e:
         logger.error(f"❌ Error creating initial admin user: {e}")
+
 
 def create_knowledge_graph_tables():
     """Create/align knowledge graph and supporting tables for MariaDB."""
@@ -101,13 +105,19 @@ def create_knowledge_graph_tables():
                 UNIQUE KEY unique_entity (name, entity_type)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             """,
-            "entities table ready"
+            "entities table ready",
         )
     else:
         if not column_exists("entities", "canonical_name"):
-            run_ddl("ALTER TABLE entities ADD COLUMN canonical_name VARCHAR(255) DEFAULT NULL", "entities.canonical_name added")
+            run_ddl(
+                "ALTER TABLE entities ADD COLUMN canonical_name VARCHAR(255) DEFAULT NULL",
+                "entities.canonical_name added",
+            )
         if not column_exists("entities", "detection_source"):
-            run_ddl("ALTER TABLE entities ADD COLUMN detection_source VARCHAR(128) DEFAULT NULL", "entities.detection_source added")
+            run_ddl(
+                "ALTER TABLE entities ADD COLUMN detection_source VARCHAR(128) DEFAULT NULL",
+                "entities.detection_source added",
+            )
 
     # Junction table linking articles to entities
     if not table_exists("article_entities"):
@@ -124,7 +134,7 @@ def create_knowledge_graph_tables():
                 CONSTRAINT fk_entity_fk FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             """,
-            "article_entities table ready"
+            "article_entities table ready",
         )
 
     # KG audit log
@@ -141,7 +151,7 @@ def create_knowledge_graph_tables():
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             """,
-            "kg_audit table ready"
+            "kg_audit table ready",
         )
 
     # Training examples + model metrics for downstream ML tasks
@@ -163,7 +173,7 @@ def create_knowledge_graph_tables():
                 CONSTRAINT fk_training_article FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             """,
-            "training_examples table ready"
+            "training_examples table ready",
         )
 
     if not table_exists("model_metrics"):
@@ -180,7 +190,7 @@ def create_knowledge_graph_tables():
                 UNIQUE KEY unique_metric (model_name, model_version, metric_name, created_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             """,
-            "model_metrics table ready"
+            "model_metrics table ready",
         )
 
     # Create orchestrator_leases table for GPU orchestrator durable leases
@@ -267,6 +277,7 @@ def create_crawler_jobs_table():
         logger.error(f"❌ Error creating crawler_jobs table: {e}")
         raise
 
+
 def main():
     """Main initialization function"""
     logger.info("🚀 Starting JustNews Database Initialization")
@@ -274,6 +285,7 @@ def main():
 
     # Load environment variables from global.env
     from common.env_loader import load_global_env
+
     load_global_env(logger=logger)
 
     # Check environment variables
@@ -281,13 +293,17 @@ def main():
         "MARIADB_HOST",
         "MARIADB_DB",
         "MARIADB_USER",
-        "MARIADB_PASSWORD"
+        "MARIADB_PASSWORD",
     ]
 
     missing_vars = [var for var in required_env_vars if var not in os.environ]
     if missing_vars:
-        logger.error(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
-        logger.error("Please set these environment variables before running this script:")
+        logger.error(
+            f"❌ Missing required environment variables: {', '.join(missing_vars)}"
+        )
+        logger.error(
+            "Please set these environment variables before running this script:"
+        )
         for var in missing_vars:
             logger.error(f"  export {var}=<value>")
         sys.exit(1)
@@ -331,6 +347,7 @@ def main():
         logger.error(f"❌ Database initialization failed: {e}")
         logger.error("Please check your database configuration and try again.")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

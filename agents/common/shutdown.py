@@ -11,6 +11,7 @@ Usage:
 
 The endpoint is POST /shutdown and returns 202 immediately.
 """
+
 from __future__ import annotations
 
 import os
@@ -38,7 +39,9 @@ def _send_sigint_after_delay(delay: float = 0.5) -> None:
         logger.exception("shutdown_failed", error=str(e))
 
 
-def register_shutdown_endpoint(app: FastAPI, path: str = "/shutdown", delay: float = 0.5) -> None:
+def register_shutdown_endpoint(
+    app: FastAPI, path: str = "/shutdown", delay: float = 0.5
+) -> None:
     """Register a POST endpoint on `app` that triggers a graceful shutdown.
 
     If environment variable `SHUTDOWN_TOKEN` is set, the endpoint requires the
@@ -55,7 +58,9 @@ def register_shutdown_endpoint(app: FastAPI, path: str = "/shutdown", delay: flo
                 raise HTTPException(status_code=403, detail="Forbidden")
 
         # Spawn background thread to send SIGINT after a short delay
-        thread = threading.Thread(target=_send_sigint_after_delay, args=(delay,), daemon=True)
+        thread = threading.Thread(
+            target=_send_sigint_after_delay, args=(delay,), daemon=True
+        )
         thread.start()
         return {"status": "shutting_down"}
 

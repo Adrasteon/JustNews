@@ -1,4 +1,3 @@
-
 from agents.fact_checker.fact_checker_engine import FactCheckerConfig, FactCheckerEngine
 
 
@@ -7,9 +6,11 @@ def test_fact_checker_engine_mistral_dry_run(monkeypatch):
 
     engine = FactCheckerEngine(FactCheckerConfig())
 
-    assessment = engine._evaluate_with_mistral("The Eiffel Tower is in Paris.", context="geography")
+    assessment = engine._evaluate_with_mistral(
+        "The Eiffel Tower is in Paris.", context="geography"
+    )
 
     assert assessment is not None
     # Verify expected attributes on the result
-    assert hasattr(assessment, 'verdict')
-    assert hasattr(assessment, 'confidence')
+    assert hasattr(assessment, "verdict")
+    assert hasattr(assessment, "confidence")

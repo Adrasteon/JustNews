@@ -40,7 +40,9 @@ class WorkerEngine:
             return
 
         max_workers = int(os.environ.get("MEMORY_WORKER_THREADS", "4"))
-        self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="memory-worker")
+        self._executor = ThreadPoolExecutor(
+            max_workers=max_workers, thread_name_prefix="memory-worker"
+        )
         self._memory_engine = memory_engine
         self._vector_engine = vector_engine
         self._running = True
@@ -62,7 +64,10 @@ class WorkerEngine:
     def submit(self, func: Callable[..., Any], *args, **kwargs) -> None:
         """Submit a callable to run in the worker executor."""
         if not self._running or self._executor is None:
-            logger.debug("Worker engine not ready; dropping submitted task %s", getattr(func, "__name__", func))
+            logger.debug(
+                "Worker engine not ready; dropping submitted task %s",
+                getattr(func, "__name__", func),
+            )
             return
         try:
             self._executor.submit(func, *args, **kwargs)

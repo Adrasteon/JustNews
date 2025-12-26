@@ -57,6 +57,7 @@ ready = False
 FACT_CHECKER_AGENT_PORT = int(os.environ.get("FACT_CHECKER_AGENT_PORT", 8003))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
+
 class MCPBusClient:
     """MCP Bus client for inter-agent communication."""
 
@@ -68,15 +69,18 @@ class MCPBusClient:
         registration_data = {
             "name": agent_name,
             "address": f"http://localhost:{FACT_CHECKER_AGENT_PORT}",
-            "tools": tools
+            "tools": tools,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
+            response = requests.post(
+                f"{self.base_url}/register", json=registration_data, timeout=(2, 5)
+            )
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
             raise
+
 
 # Define the lifespan context manager
 @asynccontextmanager
@@ -94,8 +98,8 @@ async def lifespan(app: FastAPI):
                 "verify_claims_gpu",
                 "comprehensive_fact_check",
                 "extract_claims",
-                "assess_credibility"
-            ]
+                "assess_credibility",
+            ],
         )
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
@@ -105,12 +109,13 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Fact Checker agent is shutting down.")
 
+
 # Initialize FastAPI with the lifespan context manager
 app = FastAPI(
     title="Fact Checker Agent",
     description="AI-powered fact verification and source credibility assessment",
     version="2.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Initialize metrics lazily to allow tests to patch constructor
@@ -125,6 +130,7 @@ def get_metrics_client() -> JustNewsMetrics:
         _metrics_factory = current_factory
         _metrics_client = current_factory("fact_checker")
     return _metrics_client
+
 
 # Lightweight helpers patched in tests
 def validate_content_size(content: str | None, max_bytes: int = 1_000_000) -> bool:
@@ -144,7 +150,9 @@ def sanitize_content(content: str | None) -> str:
     return content.strip() if isinstance(content, str) else str(content)
 
 
-def verify_facts(content: str, source_url: str | None = None, context: str | None = None) -> dict[str, Any]:
+def verify_facts(
+    content: str, source_url: str | None = None, context: str | None = None
+) -> dict[str, Any]:
     from .tools import verify_facts as run_verify_facts
 
     return run_verify_facts(content, source_url, context)
@@ -193,9 +201,11 @@ def run_detect_contradictions(text_passages: list[str]) -> dict[str, Any]:
 
     return detect_tool(text_passages)
 
+
 # Register shutdown endpoint if available
 try:
     from agents.common.shutdown import register_shutdown_endpoint
+
     register_shutdown_endpoint(app)
 except Exception:
     logger.debug("shutdown endpoint not registered for fact_checker")
@@ -203,6 +213,7 @@ except Exception:
 # Register reload endpoint if available
 try:
     from agents.common.reload import register_reload_endpoint
+
     register_reload_endpoint(app)
 except Exception:
     logger.debug("reload endpoint not registered for fact_checker")
@@ -220,27 +231,34 @@ async def metrics_middleware(request, call_next):
         return await response
     return response
 
+
 # Pydantic models for request/response validation
 class ToolCall(BaseModel):
     """Standard MCP tool call format."""
+
     args: list[Any]
     kwargs: dict[str, Any]
 
+
 class FactCheckRequest(BaseModel):
     """Request model for fact checking operations."""
+
     content: str
     source_url: str | None = None
     context: str | None = None
     metadata: dict[str, Any] | None = None
 
+
 class VerificationResult(BaseModel):
     """Response model for verification results."""
+
     verification_score: float
     classification: str
     confidence: float
     details: dict[str, Any]
     processing_time: float
     timestamp: str
+
 
 @app.get("/health")
 def health():
@@ -251,15 +269,18 @@ def health():
         "timestamp": datetime.now().isoformat(),
     }
 
+
 @app.get("/ready")
 def ready_endpoint():
     """Readiness check endpoint."""
     return {"ready": ready}
 
+
 @app.get("/metrics")
 def get_metrics():
     """Prometheus metrics endpoint."""
     from fastapi.responses import Response
+
     payload = get_metrics_client().get_metrics()
     if isinstance(payload, bytes):
         content = payload
@@ -291,6 +312,7 @@ def extract_claims_endpoint(request: FactCheckRequest) -> list[str]:
         return result.get("claims", [])
     return result
 
+
 @app.post("/verify_facts")
 async def verify_facts_tool(call: ToolCall) -> dict[str, Any]:
     """
@@ -301,7 +323,9 @@ async def verify_facts_tool(call: ToolCall) -> dict[str, Any]:
     try:
         from .tools import verify_facts as run_verify_facts
 
-        logger.info(f"Calling verify_facts tool with args: {call.args} and kwargs: {call.kwargs}")
+        logger.info(
+            f"Calling verify_facts tool with args: {call.args} and kwargs: {call.kwargs}"
+        )
 
         # Extract parameters
         content = call.kwargs.get("content") or (call.args[0] if call.args else "")
@@ -313,12 +337,15 @@ async def verify_facts_tool(call: ToolCall) -> dict[str, Any]:
 
         result = run_verify_facts(content, source_url, context)
 
-        logger.info(f"Fact verification completed with score: {result.get('verification_score', 0.0)}")
+        logger.info(
+            f"Fact verification completed with score: {result.get('verification_score', 0.0)}"
+        )
         return result
 
     except Exception as e:
         logger.error(f"An error occurred in verify_facts: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @app.post("/validate_sources")
 async def validate_sources(call: ToolCall) -> dict[str, Any]:
@@ -328,16 +355,23 @@ async def validate_sources(call: ToolCall) -> dict[str, Any]:
     Evaluates the reliability and credibility of information sources.
     """
     try:
-        logger.info(f"Calling validate_sources with args: {call.args} and kwargs: {call.kwargs}")
+        logger.info(
+            f"Calling validate_sources with args: {call.args} and kwargs: {call.kwargs}"
+        )
 
         # Extract parameters
         content = call.kwargs.get("content") or (call.args[0] if call.args else "")
         source_url = call.kwargs.get("source_url", "")
         domain = call.kwargs.get("domain", "")
-        sources = call.kwargs.get("sources") or (call.args[1] if len(call.args) > 1 else None)
+        sources = call.kwargs.get("sources") or (
+            call.args[1] if len(call.args) > 1 else None
+        )
 
         if not content and not source_url:
-            raise HTTPException(status_code=400, detail="Either content or source_url parameter is required")
+            raise HTTPException(
+                status_code=400,
+                detail="Either content or source_url parameter is required",
+            )
 
         result = await asyncio.to_thread(
             run_validate_sources,
@@ -347,12 +381,15 @@ async def validate_sources(call: ToolCall) -> dict[str, Any]:
             source_url or None,
         )
 
-        logger.info(f"Source validation completed with credibility score: {result.get('credibility_score', 0.0)}")
+        logger.info(
+            f"Source validation completed with credibility score: {result.get('credibility_score', 0.0)}"
+        )
         return result
 
     except Exception as e:
         logger.error(f"An error occurred in validate_sources: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @app.post("/validate_is_news_gpu")
 async def validate_is_news_gpu(call: ToolCall) -> dict[str, Any]:
@@ -364,7 +401,9 @@ async def validate_is_news_gpu(call: ToolCall) -> dict[str, Any]:
     try:
         from .tools import validate_is_news_gpu
 
-        logger.info(f"Calling GPU validate_is_news with args: {call.args} and kwargs: {call.kwargs}")
+        logger.info(
+            f"Calling GPU validate_is_news with args: {call.args} and kwargs: {call.kwargs}"
+        )
 
         # Extract parameters
         content = call.kwargs.get("content") or (call.args[0] if call.args else "")
@@ -382,13 +421,17 @@ async def validate_is_news_gpu(call: ToolCall) -> dict[str, Any]:
         # Fallback to CPU implementation
         try:
             from .tools import validate_is_news_cpu
+
             content = call.kwargs.get("content") or (call.args[0] if call.args else "")
             result = await validate_is_news_cpu(content)
             logger.info("Fallback to CPU news validation successful")
             return result
         except Exception as fallback_error:
             logger.error(f"Fallback CPU validation also failed: {fallback_error}")
-            raise HTTPException(status_code=500, detail=f"GPU and CPU validation failed: {str(e)}") from fallback_error
+            raise HTTPException(
+                status_code=500, detail=f"GPU and CPU validation failed: {str(e)}"
+            ) from fallback_error
+
 
 @app.post("/verify_claims_gpu")
 async def verify_claims_gpu(call: ToolCall) -> dict[str, Any]:
@@ -400,11 +443,15 @@ async def verify_claims_gpu(call: ToolCall) -> dict[str, Any]:
     try:
         from .tools import verify_claims_gpu
 
-        logger.info(f"Calling GPU verify_claims with args: {call.args} and kwargs: {call.kwargs}")
+        logger.info(
+            f"Calling GPU verify_claims with args: {call.args} and kwargs: {call.kwargs}"
+        )
 
         # Extract parameters
         claims = call.kwargs.get("claims") or (call.args[0] if call.args else [])
-        sources = call.kwargs.get("sources") or (call.args[1] if len(call.args) > 1 else [])
+        sources = call.kwargs.get("sources") or (
+            call.args[1] if len(call.args) > 1 else []
+        )
 
         if not claims:
             raise HTTPException(status_code=400, detail="Claims parameter is required")
@@ -419,17 +466,25 @@ async def verify_claims_gpu(call: ToolCall) -> dict[str, Any]:
         # Fallback to CPU implementation
         try:
             from .tools import verify_claims_cpu
+
             claims = call.kwargs.get("claims") or (call.args[0] if call.args else [])
-            sources = call.kwargs.get("sources") or (call.args[1] if len(call.args) > 1 else [])
+            sources = call.kwargs.get("sources") or (
+                call.args[1] if len(call.args) > 1 else []
+            )
             result = await verify_claims_cpu(claims, sources)
             logger.info("Fallback to CPU claims verification successful")
             return result
         except Exception as fallback_error:
             logger.error(f"Fallback CPU verification also failed: {fallback_error}")
-            raise HTTPException(status_code=500, detail=f"GPU and CPU verification failed: {str(e)}") from fallback_error
+            raise HTTPException(
+                status_code=500, detail=f"GPU and CPU verification failed: {str(e)}"
+            ) from fallback_error
+
 
 @app.post("/comprehensive_fact_check")
-async def comprehensive_fact_check_endpoint(request: FactCheckRequest) -> dict[str, Any]:
+async def comprehensive_fact_check_endpoint(
+    request: FactCheckRequest,
+) -> dict[str, Any]:
     """
     Comprehensive fact-checking endpoint for full articles.
 
@@ -437,7 +492,9 @@ async def comprehensive_fact_check_endpoint(request: FactCheckRequest) -> dict[s
     evidence assessment, and source credibility evaluation.
     """
     try:
-        logger.info(f"Starting comprehensive fact check for content length: {len(request.content)}")
+        logger.info(
+            f"Starting comprehensive fact check for content length: {len(request.content)}"
+        )
 
         result = await asyncio.to_thread(
             run_comprehensive_fact_check,
@@ -447,12 +504,15 @@ async def comprehensive_fact_check_endpoint(request: FactCheckRequest) -> dict[s
             request.metadata,
         )
 
-        logger.info(f"Comprehensive fact check completed with overall score: {result.get('overall_score', 0.0)}")
+        logger.info(
+            f"Comprehensive fact check completed with overall score: {result.get('overall_score', 0.0)}"
+        )
         return result
 
     except Exception as e:
         logger.error(f"An error occurred in comprehensive_fact_check: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @app.post("/extract_claims")
 async def extract_claims_tool(call: ToolCall) -> dict[str, Any]:
@@ -462,7 +522,9 @@ async def extract_claims_tool(call: ToolCall) -> dict[str, Any]:
     Extracts verifiable claims from text content using NLP techniques.
     """
     try:
-        logger.info(f"Calling extract_claims with args: {call.args} and kwargs: {call.kwargs}")
+        logger.info(
+            f"Calling extract_claims with args: {call.args} and kwargs: {call.kwargs}"
+        )
 
         # Extract parameters
         content = call.kwargs.get("content") or (call.args[0] if call.args else "")
@@ -483,6 +545,7 @@ async def extract_claims_tool(call: ToolCall) -> dict[str, Any]:
         logger.error(f"An error occurred in extract_claims: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @app.post("/assess_credibility")
 async def assess_credibility(call: ToolCall) -> dict[str, Any]:
     """
@@ -491,7 +554,9 @@ async def assess_credibility(call: ToolCall) -> dict[str, Any]:
     Evaluates the credibility and reliability of information sources.
     """
     try:
-        logger.info(f"Calling assess_credibility with args: {call.args} and kwargs: {call.kwargs}")
+        logger.info(
+            f"Calling assess_credibility with args: {call.args} and kwargs: {call.kwargs}"
+        )
 
         # Extract parameters
         content = call.kwargs.get("content") or (call.args[0] if call.args else "")
@@ -499,7 +564,10 @@ async def assess_credibility(call: ToolCall) -> dict[str, Any]:
         source_url = call.kwargs.get("source_url", "")
 
         if not content and not domain and not source_url:
-            raise HTTPException(status_code=400, detail="At least one of content, domain, or source_url is required")
+            raise HTTPException(
+                status_code=400,
+                detail="At least one of content, domain, or source_url is required",
+            )
 
         result = await asyncio.to_thread(
             run_assess_credibility,
@@ -508,12 +576,15 @@ async def assess_credibility(call: ToolCall) -> dict[str, Any]:
             source_url or None,
         )
 
-        logger.info(f"Credibility assessment completed with score: {result.get('credibility_score', 0.0)}")
+        logger.info(
+            f"Credibility assessment completed with score: {result.get('credibility_score', 0.0)}"
+        )
         return result
 
     except Exception as e:
         logger.error(f"An error occurred in assess_credibility: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @app.post("/detect_contradictions")
 async def detect_contradictions(call: ToolCall) -> dict[str, Any]:
@@ -523,42 +594,56 @@ async def detect_contradictions(call: ToolCall) -> dict[str, Any]:
     Identifies logical contradictions and inconsistencies in text passages.
     """
     try:
-        logger.info(f"Calling detect_contradictions with args: {call.args} and kwargs: {call.kwargs}")
+        logger.info(
+            f"Calling detect_contradictions with args: {call.args} and kwargs: {call.kwargs}"
+        )
 
         # Extract parameters
-        text_passages = call.kwargs.get("text_passages") or (call.args[0] if call.args else [])
+        text_passages = call.kwargs.get("text_passages") or (
+            call.args[0] if call.args else []
+        )
 
         if not text_passages or len(text_passages) < 2:
-            raise HTTPException(status_code=400, detail="At least 2 text passages are required for contradiction detection")
+            raise HTTPException(
+                status_code=400,
+                detail="At least 2 text passages are required for contradiction detection",
+            )
 
         result = await asyncio.to_thread(run_detect_contradictions, text_passages)
 
-        logger.info(f"Contradiction detection completed: {result.get('contradictions_found', 0)} contradictions found")
+        logger.info(
+            f"Contradiction detection completed: {result.get('contradictions_found', 0)} contradictions found"
+        )
         return result
 
     except Exception as e:
         logger.error(f"An error occurred in detect_contradictions: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @app.get("/performance/stats")
 def get_performance_stats():
     """Get GPU acceleration performance statistics."""
     try:
         from .tools import get_performance_stats
+
         return get_performance_stats()
     except Exception as e:
         logger.error(f"Error getting performance stats: {e}")
         return {"error": str(e), "gpu_available": False}
+
 
 @app.get("/model/status")
 def get_model_status():
     """Get status of all fact-checking models."""
     try:
         from .tools import get_model_status
+
         return get_model_status()
     except Exception as e:
         logger.error(f"Error getting model status: {e}")
         return {"error": str(e), "models_loaded": False}
+
 
 @app.post("/log_feedback")
 def log_feedback(call: ToolCall) -> dict[str, Any]:
@@ -571,7 +656,7 @@ def log_feedback(call: ToolCall) -> dict[str, Any]:
             "operation": call.kwargs.get("operation", "unknown"),
             "feedback": call.kwargs.get("feedback"),
             "rating": call.kwargs.get("rating"),
-            "comments": call.kwargs.get("comments")
+            "comments": call.kwargs.get("comments"),
         }
 
         result = log_feedback(feedback_data)
@@ -582,6 +667,7 @@ def log_feedback(call: ToolCall) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"An error occurred while logging feedback: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @app.post("/correct_verification")
 def correct_verification(call: ToolCall) -> dict[str, Any]:
@@ -594,17 +680,20 @@ def correct_verification(call: ToolCall) -> dict[str, Any]:
             "context": call.kwargs.get("context"),
             "incorrect_classification": call.kwargs.get("incorrect_classification"),
             "correct_classification": call.kwargs.get("correct_classification"),
-            "priority": call.kwargs.get("priority", 2)
+            "priority": call.kwargs.get("priority", 2),
         }
 
         result = correct_verification(**correction_data)
 
-        logger.info(f"Verification correction submitted: {correction_data.get('claim', '')[:50]}...")
+        logger.info(
+            f"Verification correction submitted: {correction_data.get('claim', '')[:50]}..."
+        )
         return result
 
     except Exception as e:
         logger.error(f"An error occurred while submitting verification correction: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @app.post("/correct_credibility")
 def correct_credibility(call: ToolCall) -> dict[str, Any]:
@@ -617,33 +706,39 @@ def correct_credibility(call: ToolCall) -> dict[str, Any]:
             "domain": call.kwargs.get("domain"),
             "incorrect_reliability": call.kwargs.get("incorrect_reliability"),
             "correct_reliability": call.kwargs.get("correct_reliability"),
-            "priority": call.kwargs.get("priority", 2)
+            "priority": call.kwargs.get("priority", 2),
         }
 
         result = correct_credibility(**correction_data)
 
-        logger.info(f"Credibility correction submitted for domain: {correction_data.get('domain', 'unknown')}")
+        logger.info(
+            f"Credibility correction submitted for domain: {correction_data.get('domain', 'unknown')}"
+        )
         return result
 
     except Exception as e:
         logger.error(f"An error occurred while submitting credibility correction: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @app.get("/training/status")
 def get_training_status():
     """Get online training status for fact checker models."""
     try:
         from .tools import get_training_status
+
         return get_training_status()
     except Exception as e:
         logger.error(f"Error getting training status: {e}")
         return {"error": str(e), "online_training_enabled": False}
+
 
 @app.post("/force_update")
 def force_model_update() -> dict[str, Any]:
     """Force immediate model update (admin function)."""
     try:
         from .tools import force_model_update
+
         result = force_model_update()
         logger.info(f"Model update triggered: {result.get('update_triggered', False)}")
         return result
@@ -651,23 +746,29 @@ def force_model_update() -> dict[str, Any]:
         logger.error(f"An error occurred while forcing model update: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 # Legacy endpoint compatibility
 @app.post("/validate_is_news")
 def validate_is_news_legacy(call: ToolCall) -> dict[str, Any]:
     """Legacy endpoint for backward compatibility."""
     return validate_is_news_gpu(call)
 
+
 @app.post("/verify_claims")
 def verify_claims_legacy(call: ToolCall) -> dict[str, Any]:
     """Legacy endpoint for backward compatibility."""
     return verify_claims_gpu(call)
+
 
 @app.post("/validate_claims")
 def validate_claims_legacy(request: dict) -> dict[str, Any]:
     """Legacy endpoint for backward compatibility."""
     try:
         # Handle MCP Bus format
-        if not (("args" in request and len(request["args"]) > 0) or ("kwargs" in request and "content" in request["kwargs"])):
+        if not (
+            ("args" in request and len(request["args"]) > 0)
+            or ("kwargs" in request and "content" in request["kwargs"])
+        ):
             raise ValueError("Missing 'content' in request")
         else:
             raise ValueError("Missing 'content' in request")
@@ -681,6 +782,7 @@ def validate_claims_legacy(request: dict) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"An error occurred in legacy validate_claims: {e}")
         raise HTTPException(status_code=500, detail="Internal server error") from e
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -20,7 +20,10 @@ async def test_stop_job_cancels_running_job(monkeypatch):
 
                 set_result(job_id, {"articles": []})
             except Exception:
-                crawler_main.crawl_jobs[job_id] = {"status": "completed", "result": {"articles": []}}
+                crawler_main.crawl_jobs[job_id] = {
+                    "status": "completed",
+                    "result": {"articles": []},
+                }
         except asyncio.CancelledError:
             # Mark as cancelled
             try:
@@ -28,7 +31,10 @@ async def test_stop_job_cancels_running_job(monkeypatch):
 
                 set_error(job_id, "cancelled by test")
             except Exception:
-                crawler_main.crawl_jobs[job_id] = {"status": "failed", "error": "cancelled"}
+                crawler_main.crawl_jobs[job_id] = {
+                    "status": "failed",
+                    "error": "cancelled",
+                }
             raise
 
     monkeypatch.setattr(crawler_main, "run_crawl_background", fake_run)
@@ -36,11 +42,15 @@ async def test_stop_job_cancels_running_job(monkeypatch):
     # Use base_url matching the allowed hosts to avoid the TrustedHostMiddleware rejecting testserver
     with TestClient(crawler_main.app, base_url="http://localhost") as client:
         # Start a new crawl (this schedules the background task)
-        resp = client.post("/unified_production_crawl", json={"args": [["example.com"]], "kwargs": {}})
+        resp = client.post(
+            "/unified_production_crawl", json={"args": [["example.com"]], "kwargs": {}}
+        )
         # Add debug output when the endpoint fails so CI logs reveal the reason
         if resp.status_code != 202:
             # Make the failure message informative in CI logs
-            raise AssertionError(f"Expected 202 when scheduling crawl, got {resp.status_code}: {resp.text}")
+            raise AssertionError(
+                f"Expected 202 when scheduling crawl, got {resp.status_code}: {resp.text}"
+            )
         job_id = resp.json()["job_id"]
 
         # Ensure the job is tracked

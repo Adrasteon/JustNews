@@ -7,7 +7,9 @@ import os
 from logging.handlers import RotatingFileHandler
 
 # Ensure LOG_DIR is defined
-LOG_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'logs'))
+LOG_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "logs")
+)
 if not os.path.exists(LOG_DIR):
     os.makedirs(LOG_DIR)
 
@@ -25,8 +27,8 @@ def get_logger(name: str) -> logging.Logger:
     # Derive a log file name from the logger name. Use the last component
     # after any dots so callers like "test.module" map to "module.log" as
     # expected by tests.
-    log_file_name = name.split('.')[-1] if name else 'app'
-    log_file_path = os.path.join(LOG_DIR, f'{log_file_name}.log')
+    log_file_name = name.split(".")[-1] if name else "app"
+    log_file_path = os.path.join(LOG_DIR, f"{log_file_name}.log")
 
     logger = logging.getLogger(name)
 
@@ -94,7 +96,9 @@ def setup_logging(level: int = logging.INFO, format_string: str | None = None) -
         )
 
 
-def bootstrap_observability(service_name: str, *, level: int = logging.INFO, enable_otel: bool = True) -> None:
+def bootstrap_observability(
+    service_name: str, *, level: int = logging.INFO, enable_otel: bool = True
+) -> None:
     """Configure logging and optional OpenTelemetry exporters for a service."""
     setup_logging(level=level)
     if not enable_otel:
@@ -104,13 +108,19 @@ def bootstrap_observability(service_name: str, *, level: int = logging.INFO, ena
 
         initialized = otel.init_telemetry(service_name)
         if not initialized:
-            logging.getLogger(__name__).debug("OpenTelemetry not initialized (missing SDK or disabled)")
+            logging.getLogger(__name__).debug(
+                "OpenTelemetry not initialized (missing SDK or disabled)"
+            )
     except Exception as exc:  # pragma: no cover - defensive
-        logging.getLogger(__name__).warning("Failed to initialize OpenTelemetry: %s", exc)
+        logging.getLogger(__name__).warning(
+            "Failed to initialize OpenTelemetry: %s", exc
+        )
     # Initialize optional Sentry integration when configured (opt-in via SENTRY_DSN)
     try:
         from common import sentry_integration
 
         sentry_integration.init_sentry(service_name, logger=logging.getLogger(__name__))
     except Exception as exc:  # pragma: no cover - defensive
-        logging.getLogger(__name__).warning("Failed to initialize Sentry integration: %s", exc)
+        logging.getLogger(__name__).warning(
+            "Failed to initialize Sentry integration: %s", exc
+        )

@@ -17,7 +17,9 @@ class PerformanceMetrics:
     articles_processed: int = 0
     sites_crawled: int = 0
     errors: int = 0
-    mode_usage: dict[str, int] = field(default_factory=lambda: {"ultra_fast": 0, "ai_enhanced": 0, "generic": 0})
+    mode_usage: dict[str, int] = field(
+        default_factory=lambda: {"ultra_fast": 0, "ai_enhanced": 0, "generic": 0}
+    )
     start_time: float = field(default_factory=time.time)
 
     def to_dict(self) -> dict[str, Any]:
@@ -36,7 +38,9 @@ class PerformanceMonitor:
         self._lock = threading.Lock()
         self.metrics = PerformanceMetrics()
 
-    def record_site_result(self, *, articles: int, mode: str, error: bool = False) -> None:
+    def record_site_result(
+        self, *, articles: int, mode: str, error: bool = False
+    ) -> None:
         with self._lock:
             self.metrics.articles_processed += articles
             self.metrics.sites_crawled += 1
@@ -92,7 +96,9 @@ def start_performance_monitoring(interval_seconds: float = 60.0) -> None:
     if _MONITOR_THREAD and _MONITOR_THREAD.is_alive():
         return
     _MONITOR_EVENT.clear()
-    _MONITOR_THREAD = threading.Thread(target=_monitor_loop, args=(interval_seconds,), daemon=True)
+    _MONITOR_THREAD = threading.Thread(
+        target=_monitor_loop, args=(interval_seconds,), daemon=True
+    )
     _MONITOR_THREAD.start()
 
 

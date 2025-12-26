@@ -96,7 +96,7 @@ class AnalyticsEngine:
             "status": self._health_status,
             "initialized": self._initialized,
             "timestamp": asyncio.get_event_loop().time(),
-            "checks": {}
+            "checks": {},
         }
 
         try:
@@ -107,40 +107,41 @@ class AnalyticsEngine:
                     health_info["checks"]["analytics_engine"] = {
                         "status": "healthy",
                         "health_score": system_health.get("overall_health_score", 0),
-                        "status_message": system_health.get("status", "unknown")
+                        "status_message": system_health.get("status", "unknown"),
                     }
                 except Exception as e:
                     health_info["checks"]["analytics_engine"] = {
                         "status": "unhealthy",
-                        "error": str(e)
+                        "error": str(e),
                     }
                     health_info["status"] = "degraded"
             else:
                 health_info["checks"]["analytics_engine"] = {
                     "status": "unhealthy",
-                    "error": "Analytics engine not initialized"
+                    "error": "Analytics engine not initialized",
                 }
                 health_info["status"] = "error"
 
             # MCP Bus connectivity check
             try:
                 import requests
+
                 response = requests.get(f"{self._mcp_bus_url}/health", timeout=5)
                 if response.status_code == 200:
                     health_info["checks"]["mcp_bus"] = {
                         "status": "healthy",
-                        "response_time": response.elapsed.total_seconds()
+                        "response_time": response.elapsed.total_seconds(),
                     }
                 else:
                     health_info["checks"]["mcp_bus"] = {
                         "status": "unhealthy",
-                        "error": f"HTTP {response.status_code}"
+                        "error": f"HTTP {response.status_code}",
                     }
                     health_info["status"] = "degraded"
             except Exception as e:
                 health_info["checks"]["mcp_bus"] = {
                     "status": "unhealthy",
-                    "error": str(e)
+                    "error": str(e),
                 }
                 # Don't mark as error if MCP bus is down - analytics can run standalone
 
@@ -151,7 +152,10 @@ class AnalyticsEngine:
                 if check.get("status") != "unhealthy"  # Allow MCP bus to be down
             ):
                 health_info["status"] = "healthy"
-            elif any(check.get("status") == "healthy" for check in health_info["checks"].values()):
+            elif any(
+                check.get("status") == "healthy"
+                for check in health_info["checks"].values()
+            ):
                 health_info["status"] = "degraded"
             else:
                 health_info["status"] = "error"
@@ -214,7 +218,9 @@ class AnalyticsEngine:
             return {"error": "Analytics engine not initialized"}
 
         try:
-            return self._analytics_engine.get_agent_performance_profile(agent_name, hours=hours)
+            return self._analytics_engine.get_agent_performance_profile(
+                agent_name, hours=hours
+            )
         except Exception as e:
             logger.error(f"Error getting agent profile: {e}")
             return {"error": str(e)}
@@ -248,7 +254,7 @@ class AnalyticsEngine:
                     "complexity": rec.implementation_complexity,
                     "time_savings": rec.estimated_time_savings,
                     "affected_agents": rec.affected_agents,
-                    "steps": rec.implementation_steps
+                    "steps": rec.implementation_steps,
                 }
                 for rec in recommendations
             ]
@@ -276,7 +282,13 @@ class AnalyticsEngine:
             from agents.common.advanced_analytics import PerformanceMetrics
 
             # Validate required fields
-            required_fields = ["agent_name", "operation", "processing_time_s", "batch_size", "success"]
+            required_fields = [
+                "agent_name",
+                "operation",
+                "processing_time_s",
+                "batch_size",
+                "success",
+            ]
             for field in required_fields:
                 if field not in metric_data:
                     logger.error(f"Missing required field: {field}")
@@ -290,12 +302,18 @@ class AnalyticsEngine:
                 processing_time_s=float(metric_data["processing_time_s"]),
                 batch_size=int(metric_data["batch_size"]),
                 success=bool(metric_data["success"]),
-                gpu_memory_allocated_mb=float(metric_data.get("gpu_memory_allocated_mb", 0.0)),
-                gpu_memory_reserved_mb=float(metric_data.get("gpu_memory_reserved_mb", 0.0)),
+                gpu_memory_allocated_mb=float(
+                    metric_data.get("gpu_memory_allocated_mb", 0.0)
+                ),
+                gpu_memory_reserved_mb=float(
+                    metric_data.get("gpu_memory_reserved_mb", 0.0)
+                ),
                 gpu_utilization_pct=float(metric_data.get("gpu_utilization_pct", 0.0)),
                 temperature_c=float(metric_data.get("temperature_c", 0.0)),
                 power_draw_w=float(metric_data.get("power_draw_w", 0.0)),
-                throughput_items_per_s=float(metric_data.get("throughput_items_per_s", 0.0))
+                throughput_items_per_s=float(
+                    metric_data.get("throughput_items_per_s", 0.0)
+                ),
             )
 
             # Record the metric
@@ -345,7 +363,7 @@ class AnalyticsEngine:
                 "Optimization recommendations",
                 "Historical trend analysis",
                 "Interactive dashboard",
-                "Comprehensive reporting"
+                "Comprehensive reporting",
             ],
             "endpoints": [
                 "POST /get_system_health",
@@ -355,15 +373,22 @@ class AnalyticsEngine:
                 "POST /record_performance_metric",
                 "GET /health",
                 "GET /ready",
-                "GET /dashboard (web interface)"
+                "GET /dashboard (web interface)",
             ],
             "capabilities": {
                 "max_history_hours": 168,  # 1 week
                 "analysis_interval_seconds": 60,
-                "supported_agents": ["scout", "analyst", "synthesizer", "fact_checker", "newsreader", "memory"],
+                "supported_agents": [
+                    "scout",
+                    "analyst",
+                    "synthesizer",
+                    "fact_checker",
+                    "newsreader",
+                    "memory",
+                ],
                 "metrics_buffer_size": 10000,
-                "bottleneck_history_size": 100
-            }
+                "bottleneck_history_size": 100,
+            },
         }
 
 

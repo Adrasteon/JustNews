@@ -25,11 +25,12 @@ from .scout_engine import CrawlMode, ScoutEngine
 
 logger = get_logger(__name__)
 
+
 async def discover_sources_tool(
     engine: ScoutEngine,
     domains: list[str] | None = None,
     max_sources: int = 10,
-    include_social: bool = True
+    include_social: bool = True,
 ) -> dict[str, Any]:
     """
     Discover news sources using intelligent algorithms.
@@ -48,7 +49,6 @@ async def discover_sources_tool(
     # start_time is outside the try/except so we can compute elapsed on exception paths as well
     start_time = time.time()
     try:
-
         # Discover sources
         sources = await engine.discover_sources(domains, max_sources)
 
@@ -59,7 +59,7 @@ async def discover_sources_tool(
             "sources": sources,
             "total_found": len(sources),
             "processing_time": processing_time,
-            "include_social": include_social
+            "include_social": include_social,
         }
 
     except Exception as e:
@@ -69,15 +69,16 @@ async def discover_sources_tool(
             "sources": [],
             "total_found": 0,
             "error": str(e),
-            "processing_time": time.time() - start_time
+            "processing_time": time.time() - start_time,
         }
+
 
 async def crawl_url_tool(
     engine: ScoutEngine,
     url: str,
     mode: CrawlMode = CrawlMode.STANDARD,
     max_depth: int = 2,
-    follow_external: bool = False
+    follow_external: bool = False,
 ) -> dict[str, Any]:
     """
     Crawl a specific URL for content extraction.
@@ -106,23 +107,19 @@ async def crawl_url_tool(
             "title": result.title,
             "links_found": result.links,
             "processing_time": result.processing_time,
-            "metadata": result.metadata
+            "metadata": result.metadata,
         }
 
     except Exception as e:
         logger.error(f"❌ URL crawling failed: {e}")
-        return {
-            "success": False,
-            "url": url,
-            "error": str(e),
-            "processing_time": 0.0
-        }
+        return {"success": False, "url": url, "error": str(e), "processing_time": 0.0}
+
 
 async def deep_crawl_tool(
     engine: ScoutEngine,
     site_url: str,
     max_pages: int = 50,
-    concurrent_requests: int = 5
+    concurrent_requests: int = 5,
 ) -> dict[str, Any]:
     """
     Perform deep crawling of a website.
@@ -151,7 +148,7 @@ async def deep_crawl_tool(
             "site_url": site_url,
             "pages_crawled": result.get("pages_crawled", 0),
             "articles_found": result.get("articles_found", []),
-            "processing_time": processing_time
+            "processing_time": processing_time,
         }
 
     except Exception as e:
@@ -162,13 +159,12 @@ async def deep_crawl_tool(
             "pages_crawled": 0,
             "articles_found": [],
             "error": str(e),
-            "processing_time": time.time() - start_time
+            "processing_time": time.time() - start_time,
         }
 
+
 async def analyze_sentiment_tool(
-    engine: ScoutEngine,
-    text: str,
-    include_confidence: bool = True
+    engine: ScoutEngine, text: str, include_confidence: bool = True
 ) -> dict[str, Any]:
     """
     Analyze sentiment in text using AI models.
@@ -192,17 +188,19 @@ async def analyze_sentiment_tool(
             "sentiment": result.result,
             "confidence": result.confidence if include_confidence else None,
             "model_used": result.model_used,
-            "processing_time": result.processing_time
+            "processing_time": result.processing_time,
         }
 
         # Add detailed scores if available
-        if hasattr(result, 'detailed_scores'):
+        if hasattr(result, "detailed_scores"):
             response["scores"] = result.detailed_scores
         else:
             # Create basic scores structure
             response["scores"] = {
                 result.result: result.confidence,
-                "neutral": 1.0 - result.confidence if result.result != "neutral" else result.confidence
+                "neutral": 1.0 - result.confidence
+                if result.result != "neutral"
+                else result.confidence,
             }
 
         return response
@@ -213,13 +211,12 @@ async def analyze_sentiment_tool(
             "success": False,
             "sentiment": "neutral",
             "confidence": 0.0,
-            "error": str(e)
+            "error": str(e),
         }
 
+
 async def detect_bias_tool(
-    engine: ScoutEngine,
-    text: str,
-    include_explanation: bool = True
+    engine: ScoutEngine, text: str, include_explanation: bool = True
 ) -> dict[str, Any]:
     """
     Detect bias in text using AI models.
@@ -243,14 +240,13 @@ async def detect_bias_tool(
             "bias_score": result.result.get("bias_score", 0.0),
             "bias_type": result.result.get("bias_type", "unknown"),
             "model_used": result.model_used,
-            "processing_time": result.processing_time
+            "processing_time": result.processing_time,
         }
 
         # Add explanation if requested
         if include_explanation:
             response["explanation"] = generate_bias_explanation(
-                response["bias_score"],
-                response["bias_type"]
+                response["bias_score"], response["bias_type"]
             )
 
         return response
@@ -261,8 +257,9 @@ async def detect_bias_tool(
             "success": False,
             "bias_score": 0.0,
             "bias_type": "unknown",
-            "error": str(e)
+            "error": str(e),
         }
+
 
 def generate_bias_explanation(bias_score: float, bias_type: str) -> str:
     """
@@ -282,6 +279,7 @@ def generate_bias_explanation(bias_score: float, bias_type: str) -> str:
     else:
         return f"Text exhibits strong {bias_type} bias. This content may present information in a one-sided manner."
 
+
 async def health_check(engine: ScoutEngine) -> dict[str, Any]:
     """
     Perform health check on Scout components.
@@ -299,45 +297,63 @@ async def health_check(engine: ScoutEngine) -> dict[str, Any]:
             "timestamp": time.time(),
             "overall_status": "healthy",
             "components": {},
-            "issues": []
+            "issues": [],
         }
 
         # Check AI models
         model_info = engine.get_model_info()
 
         health_status["components"]["sentiment_model"] = {
-            "status": "healthy" if model_info.get('sentiment_model', {}).get('loaded', False) else "unhealthy",
-            "loaded": model_info.get('sentiment_model', {}).get('loaded', False)
+            "status": "healthy"
+            if model_info.get("sentiment_model", {}).get("loaded", False)
+            else "unhealthy",
+            "loaded": model_info.get("sentiment_model", {}).get("loaded", False),
         }
 
         health_status["components"]["bias_model"] = {
-            "status": "healthy" if model_info.get('bias_model', {}).get('loaded', False) else "unhealthy",
-            "loaded": model_info.get('bias_model', {}).get('loaded', False)
+            "status": "healthy"
+            if model_info.get("bias_model", {}).get("loaded", False)
+            else "unhealthy",
+            "loaded": model_info.get("bias_model", {}).get("loaded", False),
         }
 
         health_status["components"]["crawl4ai"] = {
-            "status": "healthy" if model_info.get('crawl4ai_available', False) else "degraded",
-            "available": model_info.get('crawl4ai_available', False)
+            "status": "healthy"
+            if model_info.get("crawl4ai_available", False)
+            else "degraded",
+            "available": model_info.get("crawl4ai_available", False),
         }
 
         # Check processing stats
         stats = engine.get_processing_stats()
         health_status["components"]["processing_stats"] = {
             "status": "healthy",
-            "total_crawled": stats.get('total_crawled', 0),
-            "total_analyzed": stats.get('total_analyzed', 0)
+            "total_crawled": stats.get("total_crawled", 0),
+            "total_analyzed": stats.get("total_analyzed", 0),
         }
 
         # Determine overall status
-        unhealthy_components = [k for k, v in health_status["components"].items() if v["status"] == "unhealthy"]
+        unhealthy_components = [
+            k
+            for k, v in health_status["components"].items()
+            if v["status"] == "unhealthy"
+        ]
         if unhealthy_components:
             health_status["overall_status"] = "unhealthy"
-            health_status["issues"] = [f"Component {comp} is unhealthy" for comp in unhealthy_components]
+            health_status["issues"] = [
+                f"Component {comp} is unhealthy" for comp in unhealthy_components
+            ]
 
-        degraded_components = [k for k, v in health_status["components"].items() if v["status"] == "degraded"]
+        degraded_components = [
+            k
+            for k, v in health_status["components"].items()
+            if v["status"] == "degraded"
+        ]
         if degraded_components and health_status["overall_status"] == "healthy":
             health_status["overall_status"] = "degraded"
-            health_status["issues"] = [f"Component {comp} is degraded" for comp in degraded_components]
+            health_status["issues"] = [
+                f"Component {comp} is degraded" for comp in degraded_components
+            ]
 
         logger.info(f"🏥 Health check completed: {health_status['overall_status']}")
         return health_status
@@ -347,8 +363,9 @@ async def health_check(engine: ScoutEngine) -> dict[str, Any]:
         return {
             "timestamp": time.time(),
             "overall_status": "unhealthy",
-            "error": str(e)
+            "error": str(e),
         }
+
 
 async def get_stats(engine: ScoutEngine) -> dict[str, Any]:
     """
@@ -364,11 +381,12 @@ async def get_stats(engine: ScoutEngine) -> dict[str, Any]:
         stats = engine.get_processing_stats()
 
         return {
-            "total_crawled": stats.get('total_crawled', 0),
+            "total_crawled": stats.get("total_crawled", 0),
             "total_discovered": 0,  # Would need to track this separately
-            "success_rate": stats.get('success_rate', 0.0),
-            "average_processing_time": stats.get('average_crawl_time', 0.0) + stats.get('average_analysis_time', 0.0),
-            "model_info": engine.get_model_info()
+            "success_rate": stats.get("success_rate", 0.0),
+            "average_processing_time": stats.get("average_crawl_time", 0.0)
+            + stats.get("average_analysis_time", 0.0),
+            "model_info": engine.get_model_info(),
         }
 
     except Exception as e:
@@ -378,8 +396,9 @@ async def get_stats(engine: ScoutEngine) -> dict[str, Any]:
             "total_discovered": 0,
             "success_rate": 0.0,
             "average_processing_time": 0.0,
-            "error": str(e)
+            "error": str(e),
         }
+
 
 def validate_crawl_request(url: str, mode: str) -> tuple[bool, str]:
     """
@@ -397,7 +416,7 @@ def validate_crawl_request(url: str, mode: str) -> tuple[bool, str]:
         if not url or not isinstance(url, str):
             return False, "URL must be a non-empty string"
 
-        if not url.startswith(('http://', 'https://')):
+        if not url.startswith(("http://", "https://")):
             return False, "URL must start with http:// or https://"
 
         # Validate mode
@@ -409,6 +428,7 @@ def validate_crawl_request(url: str, mode: str) -> tuple[bool, str]:
 
     except Exception as e:
         return False, f"Validation error: {e}"
+
 
 def validate_analysis_request(text: str) -> tuple[bool, str]:
     """
@@ -434,6 +454,7 @@ def validate_analysis_request(text: str) -> tuple[bool, str]:
 
     except Exception as e:
         return False, f"Validation error: {e}"
+
 
 def format_crawl_result(result: dict[str, Any], format_type: str = "json") -> str:
     """
@@ -462,12 +483,14 @@ def format_crawl_result(result: dict[str, Any], format_type: str = "json") -> st
                 f"Processing Time: {result.get('processing_time', 0.0):.2f}s",
                 "",
                 "Content Preview:",
-                result.get('extracted_text', 'N/A')[:500] + "..." if len(result.get('extracted_text', '')) > 500 else result.get('extracted_text', 'N/A')
+                result.get("extracted_text", "N/A")[:500] + "..."
+                if len(result.get("extracted_text", "")) > 500
+                else result.get("extracted_text", "N/A"),
             ]
             return "\n".join(lines)
 
         elif format_type == "markdown":
-            success_emoji = "✅" if result.get('success', False) else "❌"
+            success_emoji = "✅" if result.get("success", False) else "❌"
             lines = [
                 f"# Crawl Result {success_emoji}",
                 "",
@@ -479,8 +502,10 @@ def format_crawl_result(result: dict[str, Any], format_type: str = "json") -> st
                 "",
                 "## Content Preview",
                 "```",
-                result.get('extracted_text', 'N/A')[:1000] + "..." if len(result.get('extracted_text', '')) > 1000 else result.get('extracted_text', 'N/A'),
-                "```"
+                result.get("extracted_text", "N/A")[:1000] + "..."
+                if len(result.get("extracted_text", "")) > 1000
+                else result.get("extracted_text", "N/A"),
+                "```",
             ]
             return "\n".join(lines)
 
@@ -489,6 +514,7 @@ def format_crawl_result(result: dict[str, Any], format_type: str = "json") -> st
 
     except Exception as e:
         return f"Formatting error: {e}"
+
 
 def format_analysis_result(result: dict[str, Any], format_type: str = "json") -> str:
     """
@@ -513,18 +539,18 @@ def format_analysis_result(result: dict[str, Any], format_type: str = "json") ->
                 f"Result: {result.get('sentiment', result.get('bias_type', 'N/A'))}",
                 f"Confidence: {result.get('confidence', result.get('bias_score', 0.0)):.2f}",
                 f"Model: {result.get('model_used', 'N/A')}",
-                f"Processing Time: {result.get('processing_time', 0.0):.2f}s"
+                f"Processing Time: {result.get('processing_time', 0.0):.2f}s",
             ]
 
-            if 'explanation' in result:
-                lines.extend(["", "Explanation:", result['explanation']])
+            if "explanation" in result:
+                lines.extend(["", "Explanation:", result["explanation"]])
 
             return "\n".join(lines)
 
         elif format_type == "markdown":
-            success_emoji = "✅" if result.get('success', False) else "❌"
-            result_value = result.get('sentiment', result.get('bias_type', 'N/A'))
-            confidence_value = result.get('confidence', result.get('bias_score', 0.0))
+            success_emoji = "✅" if result.get("success", False) else "❌"
+            result_value = result.get("sentiment", result.get("bias_type", "N/A"))
+            confidence_value = result.get("confidence", result.get("bias_score", 0.0))
 
             lines = [
                 f"# Analysis Result {success_emoji}",
@@ -532,11 +558,11 @@ def format_analysis_result(result: dict[str, Any], format_type: str = "json") ->
                 f"**Result:** {result_value}",
                 f"**Confidence:** {confidence_value:.2f}",
                 f"**Model:** {result.get('model_used', 'N/A')}",
-                f"**Processing Time:** {result.get('processing_time', 0.0):.2f}s"
+                f"**Processing Time:** {result.get('processing_time', 0.0):.2f}s",
             ]
 
-            if 'explanation' in result:
-                lines.extend(["", "## Explanation", result['explanation']])
+            if "explanation" in result:
+                lines.extend(["", "## Explanation", result["explanation"]])
 
             return "\n".join(lines)
 
@@ -546,17 +572,18 @@ def format_analysis_result(result: dict[str, Any], format_type: str = "json") ->
     except Exception as e:
         return f"Formatting error: {e}"
 
+
 # Export main functions
 __all__ = [
-    'discover_sources_tool',
-    'crawl_url_tool',
-    'deep_crawl_tool',
-    'analyze_sentiment_tool',
-    'detect_bias_tool',
-    'health_check',
-    'get_stats',
-    'validate_crawl_request',
-    'validate_analysis_request',
-    'format_crawl_result',
-    'format_analysis_result'
+    "discover_sources_tool",
+    "crawl_url_tool",
+    "deep_crawl_tool",
+    "analyze_sentiment_tool",
+    "detect_bias_tool",
+    "health_check",
+    "get_stats",
+    "validate_crawl_request",
+    "validate_analysis_request",
+    "format_crawl_result",
+    "format_analysis_result",
 ]

@@ -128,9 +128,7 @@ class MCPBusClient:
         for attempt in range(max_retries):
             try:
                 response = requests.post(
-                    f"{self.base_url}/register",
-                    json=registration_data,
-                    timeout=(3, 10)
+                    f"{self.base_url}/register", json=registration_data, timeout=(3, 10)
                 )
                 response.raise_for_status()
                 logger.info(f"Successfully registered {agent_name} with MCP Bus.")
@@ -141,11 +139,14 @@ class MCPBusClient:
                 )
                 if attempt < max_retries - 1:
                     import time
-                    sleep_time = backoff_factor ** attempt
+
+                    sleep_time = backoff_factor**attempt
                     logger.info(f"Retrying in {sleep_time} seconds...")
                     time.sleep(sleep_time)
                 else:
-                    logger.error(f"Failed to register {agent_name} with MCP Bus after {max_retries} attempts.")
+                    logger.error(
+                        f"Failed to register {agent_name} with MCP Bus after {max_retries} attempts."
+                    )
                     raise
 
 
@@ -168,11 +169,14 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             # Provide extra guidance when canonical Chroma validation fails
             from database.utils.chromadb_utils import ChromaCanonicalValidationError
+
             if isinstance(e, ChromaCanonicalValidationError):
-                logger.error("Memory engine failed to initialize because CHROMADB canonical validation failed.\n" \
-                             "  - Confirm CHROMADB_HOST/CHROMADB_PORT match the canonical CHROMADB_CANONICAL_HOST/PORT in /etc/justnews/global.env\n" \
-                             "  - Use 'scripts/chroma_diagnose.py' and 'scripts/chroma_bootstrap.py' to diagnose and provision the tenant/collection\n" \
-                             "  - Example: PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_diagnose.py --host <host> --port <port> --autocreate")
+                logger.error(
+                    "Memory engine failed to initialize because CHROMADB canonical validation failed.\n"
+                    "  - Confirm CHROMADB_HOST/CHROMADB_PORT match the canonical CHROMADB_CANONICAL_HOST/PORT in /etc/justnews/global.env\n"
+                    "  - Use 'scripts/chroma_diagnose.py' and 'scripts/chroma_bootstrap.py' to diagnose and provision the tenant/collection\n"
+                    "  - Example: PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_diagnose.py --host <host> --port <port> --autocreate"
+                )
             raise
         await vector_engine.initialize()
         await worker_engine.initialize(memory_engine, vector_engine)
@@ -226,7 +230,11 @@ async def lifespan(app: FastAPI):
         logger.error(f"Error during memory agent shutdown: {e}")
 
 
-app = FastAPI(lifespan=lifespan, title="Memory Agent", description="AI-powered memory and storage system")
+app = FastAPI(
+    lifespan=lifespan,
+    title="Memory Agent",
+    description="AI-powered memory and storage system",
+)
 
 # Initialize metrics
 metrics = JustNewsMetrics("memory")
@@ -235,6 +243,7 @@ app.middleware("http")(metrics.request_middleware)
 # Register common shutdown endpoint
 try:
     from agents.common.shutdown import register_shutdown_endpoint
+
     register_shutdown_endpoint(app)
 except Exception:
     logger.debug("shutdown endpoint not registered for memory")
@@ -250,13 +259,14 @@ try:
             try:
                 # Trigger reload in vector engine
                 import asyncio
+
                 asyncio.create_task(vector_engine.reload_model())
                 return {"reloaded": True}
             except Exception as e:
                 return {"reloaded": False, "error": str(e)}
         return {"reloaded": False, "error": "Vector engine not available"}
 
-    register_reload_handler('embedding_model', _reload_embedding_model)
+    register_reload_handler("embedding_model", _reload_embedding_model)
     register_reload_endpoint(app)
 except Exception:
     logger.debug("reload endpoint not registered for memory")
@@ -279,6 +289,7 @@ def ready_endpoint():
 def metrics_endpoint():
     """Prometheus metrics endpoint"""
     from fastapi.responses import Response
+
     return Response(metrics.get_metrics(), media_type="text/plain; charset=utf-8")
 
 
@@ -305,7 +316,9 @@ def save_article_endpoint(request: dict):
 
     except Exception as e:
         logger.error(f"Error saving article: {e}")
-        raise HTTPException(status_code=400, detail=f"Error saving article: {str(e)}") from e
+        raise HTTPException(
+            status_code=400, detail=f"Error saving article: {str(e)}"
+        ) from e
 
 
 @app.post("/get_article")
@@ -324,7 +337,7 @@ async def get_article_endpoint(request: Request):
         if retrieval_id is None:
             raise HTTPException(
                 status_code=400,
-                detail="article_id must be provided in the 'kwargs' of the tool call payload"
+                detail="article_id must be provided in the 'kwargs' of the tool call payload",
             )
 
         # Use memory engine to retrieve article
@@ -338,7 +351,9 @@ async def get_article_endpoint(request: Request):
         raise
     except Exception as e:
         logger.error(f"Error retrieving article: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving article: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving article: {str(e)}"
+        ) from e
 
 
 @app.post("/get_all_article_ids")
@@ -347,11 +362,15 @@ async def get_all_article_ids_endpoint():
     logger.info("Received request for get_all_article_ids_endpoint")
     try:
         result = memory_engine.get_all_article_ids()
-        logger.info(f"Returning result from get_all_article_ids_endpoint: {len(result.get('article_ids', []))} IDs")
+        logger.info(
+            f"Returning result from get_all_article_ids_endpoint: {len(result.get('article_ids', []))} IDs"
+        )
         return result
     except Exception as e:
         logger.error(f"Error retrieving article IDs: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving article IDs: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving article IDs: {str(e)}"
+        ) from e
 
 
 @app.post("/vector_search_articles")
@@ -377,7 +396,9 @@ def vector_search_articles_endpoint(request: dict):
 
     except Exception as e:
         logger.error(f"Error searching articles: {e}")
-        raise HTTPException(status_code=400, detail=f"Error searching articles: {str(e)}") from e
+        raise HTTPException(
+            status_code=400, detail=f"Error searching articles: {str(e)}"
+        ) from e
 
 
 @app.post("/get_recent_articles")
@@ -402,7 +423,9 @@ def get_recent_articles_endpoint(request: dict):
 
     except Exception as e:
         logger.error(f"Error retrieving recent articles: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving recent articles: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving recent articles: {str(e)}"
+        ) from e
 
 
 @app.post("/log_training_example")
@@ -415,7 +438,9 @@ def log_training_example_endpoint(example: TrainingExample):
         return result
     except Exception as e:
         logger.error(f"Error logging training example: {e}")
-        raise HTTPException(status_code=500, detail=f"Error logging training example: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Error logging training example: {str(e)}"
+        ) from e
 
 
 @app.post("/ingest_article")
@@ -456,7 +481,9 @@ def get_article_count_endpoint():
         return {"count": count}
     except Exception as e:
         logger.error(f"Error getting article count: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving article count: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving article count: {str(e)}"
+        ) from e
 
 
 @app.post("/get_sources")
@@ -478,7 +505,9 @@ def get_sources_endpoint(request: dict):
 
     except Exception as e:
         logger.error(f"Error getting sources: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving sources: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving sources: {str(e)}"
+        ) from e
 
 
 @app.get("/stats")
@@ -500,7 +529,9 @@ def get_stats_endpoint():
 
     except Exception as e:
         logger.error(f"Error getting stats: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving stats: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving stats: {str(e)}"
+        ) from e
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@
 Uses agents.crawler.extraction.extract_article_content to produce a structured
 ExtractionOutcome; writes results to `output/canary_parsed/`.
 """
+
 from __future__ import annotations
 
 import json

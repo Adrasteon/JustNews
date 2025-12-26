@@ -26,11 +26,12 @@ def get_sources_with_limit(limit: int = None) -> list[str]:
         cursor.close()
         db_service.close()
 
-        domains = [source['domain'] for source in sources]
+        domains = [source["domain"] for source in sources]
         return domains
 
     except Exception as e:
         from common.observability import get_logger
+
         logger = get_logger(__name__)
         logger.error(f"❌ Failed to query sources from database: {e}")
         return []

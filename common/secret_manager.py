@@ -74,7 +74,7 @@ class SecretManager:
         self._load_vault()
 
     def _get_default_vault_path(self) -> str:
-        return str(Path.home() / '.justnews' / 'secrets.vault')
+        return str(Path.home() / ".justnews" / "secrets.vault")
 
     def _derive_key(self, password: str, salt: bytes) -> bytes:
         kdf = PBKDF2HMAC(
@@ -95,7 +95,7 @@ class SecretManager:
                 logger.warning("Vault file does not exist")
                 return False
 
-            with open(self.vault_path, 'rb') as f:
+            with open(self.vault_path, "rb") as f:
                 encrypted_data = f.read()
 
             if not encrypted_data or len(encrypted_data) < 16:
@@ -103,7 +103,9 @@ class SecretManager:
                 return False
             # Debug: log type/length to help diagnose decode issues in tests
             try:
-                logger.debug(f"Read encrypted_data type={type(encrypted_data)} len={len(encrypted_data)}")
+                logger.debug(
+                    f"Read encrypted_data type={type(encrypted_data)} len={len(encrypted_data)}"
+                )
             except Exception:
                 logger.debug(f"Read encrypted_data repr={repr(encrypted_data)}")
 
@@ -140,7 +142,7 @@ class SecretManager:
                 logger.info("Encrypted vault detected - use unlock_vault() to access")
 
     def get(self, key: str, default: Any = None) -> Any:
-        env_key = key.upper().replace('.', '_')
+        env_key = key.upper().replace(".", "_")
         env_value = os.environ.get(env_key)
         if env_value is not None:
             return env_value
@@ -170,14 +172,16 @@ class SecretManager:
                 fernet = crypto_fernet.Fernet(fernet_key)
                 encrypted = fernet.encrypt(vault_data)
                 salt = os.urandom(16)
-                with open(self.vault_path, 'wb') as f:
+                with open(self.vault_path, "wb") as f:
                     f.write(salt + encrypted)
                 logger.info("✅ Encrypted vault saved")
             except Exception as e:
-                logger.error(f"Fernet encryption failed ({e}), falling back to binary save")
+                logger.error(
+                    f"Fernet encryption failed ({e}), falling back to binary save"
+                )
                 # Fallback: write salt + plaintext bytes so tests can assert file
                 salt = os.urandom(16)
-                with open(self.vault_path, 'wb') as f:
+                with open(self.vault_path, "wb") as f:
                     f.write(salt + vault_data)
                 logger.warning("⚠️ Vault saved in binary fallback mode (not encrypted)")
         except Exception as e:
@@ -187,7 +191,7 @@ class SecretManager:
     def _save_plaintext_vault(self):
         try:
             os.makedirs(os.path.dirname(self.vault_path), exist_ok=True)
-            with open(self.vault_path, 'w') as f:
+            with open(self.vault_path, "w") as f:
                 json.dump(self._vault, f, indent=2)
             logger.warning("⚠️ Vault saved in plaintext - NOT SECURE for production")
         except Exception as e:
@@ -198,7 +202,10 @@ class SecretManager:
         result: dict[str, str] = {}
         # Environment variables
         for key, value in os.environ.items():
-            if any(secret in key.lower() for secret in ['password', 'secret', 'key', 'token']):
+            if any(
+                secret in key.lower()
+                for secret in ["password", "secret", "key", "token"]
+            ):
                 result[f"env:{key}"] = self._mask_secret(value)
         # Vault
         for key, value in self._vault.items():
@@ -209,7 +216,7 @@ class SecretManager:
         if not value:
             return ""
         if len(value) <= 4:
-            return '*' * len(value)
+            return "*" * len(value)
         # For moderately-sized secrets prefer a compact 3-star mask to avoid
         # fingerprinting length; for very long secrets show proportional
         # masking (length-4) as the tests expect.
@@ -217,22 +224,25 @@ class SecretManager:
             stars = 3
         else:
             stars = len(value) - 4
-        return value[:2] + '*' * stars + value[-2:]
+        return value[:2] + "*" * stars + value[-2:]
 
     def validate_security(self) -> dict[str, Any]:
         issues = []
         warnings = []
         config_files = [
-            'config/system_config.json',
-            'config/gpu/gpu_config.json',
-            'config/gpu/environment_config.json'
+            "config/system_config.json",
+            "config/gpu/gpu_config.json",
+            "config/gpu/environment_config.json",
         ]
         for cfg in config_files:
             if os.path.exists(cfg):
                 try:
                     with open(cfg) as f:
                         content = f.read().lower()
-                        if any(word in content for word in ['password', 'secret', 'key', 'token']):
+                        if any(
+                            word in content
+                            for word in ["password", "secret", "key", "token"]
+                        ):
                             issues.append(f"Potential secrets found in {cfg}")
                 except Exception as e:
                     warnings.append(f"Could not check {cfg}: {e}")
@@ -241,17 +251,20 @@ class SecretManager:
             warnings.append("Vault exists but is not encrypted")
         sensitive_env_vars = []
         for key, value in os.environ.items():
-            if any(secret in key.lower() for secret in ['password', 'secret', 'key', 'token']):
+            if any(
+                secret in key.lower()
+                for secret in ["password", "secret", "key", "token"]
+            ):
                 if len(value) < 8:
                     warnings.append(f"Weak secret in {key}")
                 sensitive_env_vars.append(key)
         return {
-            'issues': issues,
-            'warnings': warnings,
-            'sensitive_env_vars': sensitive_env_vars,
-            'vault_encrypted': self._key is not None,
+            "issues": issues,
+            "warnings": warnings,
+            "sensitive_env_vars": sensitive_env_vars,
+            "vault_encrypted": self._key is not None,
             # tests expect vault_exists to indicate an encrypted vault file
-            'vault_exists': vault_file_exists and (self._key is not None)
+            "vault_exists": vault_file_exists and (self._key is not None),
         }
 
 
@@ -302,14 +315,14 @@ if __name__ == "__main__":
 
     # Validate security
     security_check = secrets.validate_security()
-    if security_check['issues']:
+    if security_check["issues"]:
         print("\n🚨 Security Issues:")
-        for issue in security_check['issues']:
+        for issue in security_check["issues"]:
             print(f"  • {issue}")
 
-    if security_check['warnings']:
+    if security_check["warnings"]:
         print("\n⚠️ Security Warnings:")
-        for warning in security_check['warnings']:
+        for warning in security_check["warnings"]:
             print(f"  • {warning}")
 
     print("\n✅ Secret management system initialized")

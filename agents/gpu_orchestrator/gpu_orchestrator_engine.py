@@ -27,8 +27,11 @@ from typing import Any
 
 try:  # NVML bindings became optional once we moved to the conda-provided nvidia-ml-py package
     import pynvml  # type: ignore
+
     _HAS_PYNVML = True
-except ModuleNotFoundError:  # pragma: no cover - exercised implicitly when NVML bindings are absent
+except (
+    ModuleNotFoundError
+):  # pragma: no cover - exercised implicitly when NVML bindings are absent
     pynvml = None  # type: ignore
     _HAS_PYNVML = False
 from datetime import UTC
@@ -44,7 +47,11 @@ GPU_ORCHESTRATOR_PORT = int(os.environ.get("GPU_ORCHESTRATOR_PORT", "8008"))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 SAFE_MODE = os.environ.get("SAFE_MODE", "false").lower() == "true"
 ENABLE_NVML = os.environ.get("ENABLE_NVML", "false").lower() == "true"
-_SKIP_BOOTSTRAP = os.environ.get("GPU_ORCHESTRATOR_SKIP_BOOTSTRAP", "").lower() in ("1", "true", "yes")
+_SKIP_BOOTSTRAP = os.environ.get("GPU_ORCHESTRATOR_SKIP_BOOTSTRAP", "").lower() in (
+    "1",
+    "true",
+    "yes",
+)
 
 # Global state
 _START_TIME = time.time()
@@ -91,26 +98,32 @@ class GPUOrchestratorEngine:
         self.redis_client = None
 
         # Reclaim / DLQ configuration (always set so tests can exercise behavior)
-        self._job_retry_max = int(os.environ.get('ORCH_JOB_RETRY_MAX', '5'))
-        self._claim_idle_ms = int(os.environ.get('ORCH_CLAIM_IDLE_MS', str(60 * 1000)))
-        self._reclaim_interval_s = int(os.environ.get('ORCH_RECLAIM_INTERVAL_S', '30'))
+        self._job_retry_max = int(os.environ.get("ORCH_JOB_RETRY_MAX", "5"))
+        self._claim_idle_ms = int(os.environ.get("ORCH_CLAIM_IDLE_MS", str(60 * 1000)))
+        self._reclaim_interval_s = int(os.environ.get("ORCH_RECLAIM_INTERVAL_S", "30"))
 
         # Leader election state (always initialized)
-        self._leader_lock_name = os.environ.get('GPU_ORCHESTRATOR_LEADER_LOCK', 'gpu_orchestrator_leader')
-        self._leader_try_timeout = int(os.environ.get('GPU_ORCHESTRATOR_LEADER_TRY_TIMEOUT', '1'))
+        self._leader_lock_name = os.environ.get(
+            "GPU_ORCHESTRATOR_LEADER_LOCK", "gpu_orchestrator_leader"
+        )
+        self._leader_try_timeout = int(
+            os.environ.get("GPU_ORCHESTRATOR_LEADER_TRY_TIMEOUT", "1")
+        )
         self.is_leader = False
 
         if not self._bootstrap_external:
-            self.logger.info('GPU Orchestrator running in lightweight test mode; external services will not auto-bootstrap.')
+            self.logger.info(
+                "GPU Orchestrator running in lightweight test mode; external services will not auto-bootstrap."
+            )
             return
 
         # Start background lifecycle enforcer thread
         try:
             t = threading.Thread(target=self._background_policy_enforcer, daemon=True)
             t.start()
-            self.logger.debug('Worker pool lifecycle enforcer started')
+            self.logger.debug("Worker pool lifecycle enforcer started")
         except Exception as e:
-            self.logger.warning(f'Failed to start lifecycle enforcer: {e}')
+            self.logger.warning(f"Failed to start lifecycle enforcer: {e}")
 
         # Optional MariaDB service used for persistence of leases and pools
         try:
@@ -122,16 +135,18 @@ class GPUOrchestratorEngine:
         # API that unit tests which patch create_database_service may rely on.
         try:
             from database.utils.migrated_database_utils import ensure_service_compat
+
             if self.db_service is not None:
                 self.db_service = ensure_service_compat(self.db_service)
         except Exception:
             # Defensive: do not fail init if we cannot patch the fake service
-            self.logger.debug('Failed to install db_service compatibility shims')
+            self.logger.debug("Failed to install db_service compatibility shims")
 
         # Optional Redis client for streams
         try:
             import redis
-            redis_url = os.environ.get('REDIS_URL', None)
+
+            redis_url = os.environ.get("REDIS_URL", None)
             if redis_url:
                 self.redis_client = redis.from_url(redis_url)
             else:
@@ -145,38 +160,40 @@ class GPUOrchestratorEngine:
                 t = threading.Thread(target=self._reclaimer_loop, daemon=True)
                 t.start()
         except Exception:
-            self.logger.debug('Failed to start reclaimer loop')
+            self.logger.debug("Failed to start reclaimer loop")
 
         # Rehydrate any persisted worker pool records so state survives restarts
         try:
             if self.db_service:
                 self._rehydrate_worker_pools_from_db()
         except Exception:
-            self.logger.debug('Failed to rehydrate worker pools from DB (continuing)')
+            self.logger.debug("Failed to rehydrate worker pools from DB (continuing)")
 
         # Start background election loop
         try:
             t = threading.Thread(target=self._leader_election_loop, daemon=True)
             t.start()
         except Exception:
-            self.logger.debug('Failed to start leader election loop')
+            self.logger.debug("Failed to start leader election loop")
 
         # VLLM server management
         self._vllm_process = None
-        self._vllm_enabled = os.environ.get('VLLM_ENABLED', 'false').lower() == 'true'
+        self._vllm_enabled = os.environ.get("VLLM_ENABLED", "false").lower() == "true"
         if self._vllm_enabled and not SAFE_MODE:
             try:
                 self._start_vllm_server()
             except Exception as e:
-                self.logger.error(f'Failed to start VLLM server: {e}')
+                self.logger.error(f"Failed to start VLLM server: {e}")
 
         # Register cleanup on exit
         import atexit
+
         atexit.register(self.cleanup)
 
     def _setup_logging(self):
         """Set up logging for the GPU orchestrator."""
         import logging
+
         logging.basicConfig(level=logging.INFO)
         return logging.getLogger(__name__)
 
@@ -184,91 +201,90 @@ class GPUOrchestratorEngine:
         """Initialize Prometheus metrics."""
         # Uptime gauge
         self.uptime_gauge = Gauge(
-            'gpu_orchestrator_uptime_seconds',
-            'GPU orchestrator uptime in seconds',
-            ['agent', 'agent_display_name'],
-            registry=self.metrics.registry
+            "gpu_orchestrator_uptime_seconds",
+            "GPU orchestrator uptime in seconds",
+            ["agent", "agent_display_name"],
+            registry=self.metrics.registry,
         )
         self.uptime_gauge.labels(
-            agent=self.metrics.agent_name,
-            agent_display_name=self.metrics.display_name
+            agent=self.metrics.agent_name, agent_display_name=self.metrics.display_name
         ).set(time.time() - _START_TIME)
 
         # MPS enabled gauge
         self.mps_enabled_gauge = Gauge(
-            'gpu_orchestrator_mps_enabled',
-            'Whether NVIDIA MPS is enabled (1) or disabled (0)',
-            ['agent', 'agent_display_name'],
-            registry=self.metrics.registry
+            "gpu_orchestrator_mps_enabled",
+            "Whether NVIDIA MPS is enabled (1) or disabled (0)",
+            ["agent", "agent_display_name"],
+            registry=self.metrics.registry,
         )
 
         # Lease expired counter
         self.lease_expired_counter = Counter(
-            'gpu_orchestrator_lease_expired_total',
-            'Total number of GPU leases that have expired',
-            ['agent', 'agent_display_name'],
-            registry=self.metrics.registry
+            "gpu_orchestrator_lease_expired_total",
+            "Total number of GPU leases that have expired",
+            ["agent", "agent_display_name"],
+            registry=self.metrics.registry,
         )
 
         # NVML supported gauge
         self.nvml_supported_gauge = Gauge(
-            'gpu_orchestrator_nvml_supported',
-            'Whether NVML is supported and enabled (1) or not (0)',
-            ['agent', 'agent_display_name'],
-            registry=self.metrics.registry
+            "gpu_orchestrator_nvml_supported",
+            "Whether NVML is supported and enabled (1) or not (0)",
+            ["agent", "agent_display_name"],
+            registry=self.metrics.registry,
         )
 
         # Job queue metrics
         self.stream_length_gauge = Gauge(
-            'gpu_orchestrator_stream_length',
-            'Number of messages in Redis stream',
-            ['stream'],
-            registry=self.metrics.registry
+            "gpu_orchestrator_stream_length",
+            "Number of messages in Redis stream",
+            ["stream"],
+            registry=self.metrics.registry,
         )
 
         self.pending_jobs_gauge = Gauge(
-            'gpu_orchestrator_pending_jobs',
-            'Number of pending jobs in consumer group',
-            ['stream', 'group'],
-            registry=self.metrics.registry
+            "gpu_orchestrator_pending_jobs",
+            "Number of pending jobs in consumer group",
+            ["stream", "group"],
+            registry=self.metrics.registry,
         )
 
         self.job_processing_duration_histogram = Histogram(
-            'gpu_orchestrator_job_processing_duration_seconds',
-            'Time taken to process jobs',
-            ['job_type'],
-            registry=self.metrics.registry
+            "gpu_orchestrator_job_processing_duration_seconds",
+            "Time taken to process jobs",
+            ["job_type"],
+            registry=self.metrics.registry,
         )
 
         self.job_retry_counter = Counter(
-            'gpu_orchestrator_job_retries_total',
-            'Total number of job retries',
-            ['job_type'],
-            registry=self.metrics.registry
+            "gpu_orchestrator_job_retries_total",
+            "Total number of job retries",
+            ["job_type"],
+            registry=self.metrics.registry,
         )
 
         # Reclaimer metrics
         self.reclaimer_runs = Counter(
-            'gpu_orchestrator_reclaimer_runs_total',
-            'Total number of reclaimer passes executed',
+            "gpu_orchestrator_reclaimer_runs_total",
+            "Total number of reclaimer passes executed",
             registry=self.metrics.registry,
         )
 
         self.reclaimer_errors = Counter(
-            'gpu_orchestrator_reclaimer_errors_total',
-            'Total number of errors observed during reclaimer passes',
+            "gpu_orchestrator_reclaimer_errors_total",
+            "Total number of errors observed during reclaimer passes",
             registry=self.metrics.registry,
         )
 
         self.reclaimer_requeued = Counter(
-            'gpu_orchestrator_reclaimer_requeued_total',
-            'Total number of messages requeued by the reclaimer',
+            "gpu_orchestrator_reclaimer_requeued_total",
+            "Total number of messages requeued by the reclaimer",
             registry=self.metrics.registry,
         )
 
         self.reclaimer_dlq = Counter(
-            'gpu_orchestrator_reclaimer_dlq_total',
-            'Total number of messages moved to DLQ by the reclaimer',
+            "gpu_orchestrator_reclaimer_dlq_total",
+            "Total number of messages moved to DLQ by the reclaimer",
             registry=self.metrics.registry,
         )
 
@@ -283,7 +299,9 @@ class GPUOrchestratorEngine:
         if not _HAS_PYNVML:
             _NVML_SUPPORTED = False
             _NVML_INIT_ERROR = "pynvml module not available"
-            self.logger.info("NVML requested but pynvml is not installed. Install nvidia-ml-py to enable NVML metrics.")
+            self.logger.info(
+                "NVML requested but pynvml is not installed. Install nvidia-ml-py to enable NVML metrics."
+            )
             return
 
         try:
@@ -321,90 +339,105 @@ class GPUOrchestratorEngine:
         # setting VLLM_SKIP_START=1 in the environment. This avoids launching
         # subprocesses during unit tests and prevents permission/startup errors
         # on machines where vLLM isn't installed.
-        if os.environ.get('VLLM_SKIP_START', '0') == '1':
-            self.logger.info('Skipping VLLM server start because VLLM_SKIP_START=1')
+        if os.environ.get("VLLM_SKIP_START", "0") == "1":
+            self.logger.info("Skipping VLLM server start because VLLM_SKIP_START=1")
             return
 
         if self._vllm_process is not None:
-            self.logger.warning('VLLM server already running')
+            self.logger.warning("VLLM server already running")
             return
 
         # Check for existing VLLM processes
         try:
             result = subprocess.run(
-                ['pgrep', '-f', 'vllm.entrypoints.openai.api_server'],
+                ["pgrep", "-f", "vllm.entrypoints.openai.api_server"],
                 capture_output=True,
-                text=True
+                text=True,
             )
             if result.returncode == 0:
-                existing_pids = result.stdout.strip().split('\n')
-                self.logger.warning(f'Found existing VLLM processes: {existing_pids}')
-                self.logger.info('Killing existing VLLM processes before starting new one')
+                existing_pids = result.stdout.strip().split("\n")
+                self.logger.warning(f"Found existing VLLM processes: {existing_pids}")
+                self.logger.info(
+                    "Killing existing VLLM processes before starting new one"
+                )
                 for pid in existing_pids:
                     try:
-                        subprocess.run(['kill', '-9', pid], check=False)
-                        self.logger.info(f'Killed VLLM process {pid}')
+                        subprocess.run(["kill", "-9", pid], check=False)
+                        self.logger.info(f"Killed VLLM process {pid}")
                     except Exception as e:
-                        self.logger.warning(f'Failed to kill process {pid}: {e}')
+                        self.logger.warning(f"Failed to kill process {pid}: {e}")
                 # Wait for processes to die
                 time.sleep(3)
         except Exception as e:
-            self.logger.warning(f'Error checking for existing VLLM processes: {e}')
+            self.logger.warning(f"Error checking for existing VLLM processes: {e}")
 
-        vllm_model = os.environ.get('VLLM_MODEL', 'mistralai/Mistral-7B-Instruct-v0.3')
-        vllm_port = int(os.environ.get('VLLM_PORT', '7060'))
-        vllm_host = os.environ.get('VLLM_HOST', '127.0.0.1')
-        vllm_max_len = int(os.environ.get('VLLM_MAX_MODEL_LEN', '4096'))
-        vllm_gpu_util = float(os.environ.get('VLLM_GPU_MEMORY_UTIL', '0.75'))
-        vllm_enable_lora = os.environ.get('VLLM_ENABLE_LORA', 'true').lower() == 'true'
+        vllm_model = os.environ.get("VLLM_MODEL", "mistralai/Mistral-7B-Instruct-v0.3")
+        vllm_port = int(os.environ.get("VLLM_PORT", "7060"))
+        vllm_host = os.environ.get("VLLM_HOST", "127.0.0.1")
+        vllm_max_len = int(os.environ.get("VLLM_MAX_MODEL_LEN", "4096"))
+        vllm_gpu_util = float(os.environ.get("VLLM_GPU_MEMORY_UTIL", "0.75"))
+        vllm_enable_lora = os.environ.get("VLLM_ENABLE_LORA", "true").lower() == "true"
 
         # Build LoRA module list from MODEL_STORE_ROOT
         lora_modules = []
         if vllm_enable_lora:
-            model_store = Path(os.environ.get('MODEL_STORE_ROOT', '/home/adra/JustNews/model_store'))
+            model_store = Path(
+                os.environ.get("MODEL_STORE_ROOT", "/home/adra/JustNews/model_store")
+            )
             adapter_dirs = [
-                'journalist/adapters/mistral_journalist_v1',
-                'chief_editor/adapters/mistral_chief_editor_v1',
-                'reasoning/adapters/mistral_reasoning_v1',
-                'analyst/adapters/mistral_analyst_v1',
-                'synthesizer/adapters/mistral_synth_v1',
-                'fact_checker/adapters/mistral_fact_checker_v1',
-                'critic/adapters/mistral_critic_v1',
+                "journalist/adapters/mistral_journalist_v1",
+                "chief_editor/adapters/mistral_chief_editor_v1",
+                "reasoning/adapters/mistral_reasoning_v1",
+                "analyst/adapters/mistral_analyst_v1",
+                "synthesizer/adapters/mistral_synth_v1",
+                "fact_checker/adapters/mistral_fact_checker_v1",
+                "critic/adapters/mistral_critic_v1",
             ]
             for adapter_dir in adapter_dirs:
                 adapter_path = model_store / adapter_dir
                 if adapter_path.exists():
-                    adapter_name = adapter_dir.split('/')[-1]  # e.g., mistral_journalist_v1
+                    adapter_name = adapter_dir.split("/")[
+                        -1
+                    ]  # e.g., mistral_journalist_v1
                     lora_modules.append(f"{adapter_name}={adapter_path}")
 
         # Use the same Python that's running this service
-        python_bin = os.environ.get('PYTHON_BIN', sys.executable)
+        python_bin = os.environ.get("PYTHON_BIN", sys.executable)
 
         cmd = [
-            python_bin, '-m', 'vllm.entrypoints.openai.api_server',
-            '--model', vllm_model,
-            '--host', vllm_host,
-            '--port', str(vllm_port),
-            '--max-model-len', str(vllm_max_len),
-            '--gpu-memory-utilization', str(vllm_gpu_util),
-            '--disable-log-requests',
-            '--trust-remote-code',
+            python_bin,
+            "-m",
+            "vllm.entrypoints.openai.api_server",
+            "--model",
+            vllm_model,
+            "--host",
+            vllm_host,
+            "--port",
+            str(vllm_port),
+            "--max-model-len",
+            str(vllm_max_len),
+            "--gpu-memory-utilization",
+            str(vllm_gpu_util),
+            "--disable-log-requests",
+            "--trust-remote-code",
         ]
 
         if vllm_enable_lora and lora_modules:
-            cmd.extend(['--enable-lora'])
+            cmd.extend(["--enable-lora"])
             for lora_module in lora_modules:
-                cmd.extend(['--lora-modules', lora_module])
+                cmd.extend(["--lora-modules", lora_module])
 
-        self.logger.info(f'Starting VLLM server: {vllm_model} on {vllm_host}:{vllm_port}')
-        self.logger.info(f'LoRA adapters: {len(lora_modules)} modules')
+        self.logger.info(
+            f"Starting VLLM server: {vllm_model} on {vllm_host}:{vllm_port}"
+        )
+        self.logger.info(f"LoRA adapters: {len(lora_modules)} modules")
 
         # Start VLLM as subprocess
-        log_dir = Path(os.environ.get('JUSTNEWS_ROOT', '/home/adra/JustNews')) / 'run'
+        log_dir = Path(os.environ.get("JUSTNEWS_ROOT", "/home/adra/JustNews")) / "run"
         log_dir.mkdir(parents=True, exist_ok=True)
-        log_file = log_dir / 'vllm_mistral_7b.log'
+        log_file = log_dir / "vllm_mistral_7b.log"
 
-        with open(log_file, 'w') as f:
+        with open(log_file, "w") as f:
             self._vllm_process = subprocess.Popen(
                 cmd,
                 stdout=f,
@@ -412,103 +445,116 @@ class GPUOrchestratorEngine:
                 start_new_session=True,
             )
 
-        self.logger.info(f'VLLM server started with PID {self._vllm_process.pid}, log: {log_file}')
+        self.logger.info(
+            f"VLLM server started with PID {self._vllm_process.pid}, log: {log_file}"
+        )
 
         # Wait a bit for server to start
         time.sleep(5)
 
         # Check if process is still running
         if self._vllm_process.poll() is not None:
-            raise RuntimeError(f'VLLM server failed to start, check {log_file}')
+            raise RuntimeError(f"VLLM server failed to start, check {log_file}")
 
     def _stop_vllm_server(self) -> None:
         """Stop VLLM inference server."""
         if self._vllm_process is None:
-            self.logger.info('No VLLM process tracked, checking for orphaned processes')
+            self.logger.info("No VLLM process tracked, checking for orphaned processes")
             # Still check for orphaned VLLM processes
             try:
                 result = subprocess.run(
-                    ['pgrep', '-f', 'vllm.entrypoints.openai.api_server'],
+                    ["pgrep", "-f", "vllm.entrypoints.openai.api_server"],
                     capture_output=True,
-                    text=True
+                    text=True,
                 )
                 if result.returncode == 0:
-                    orphaned_pids = result.stdout.strip().split('\n')
-                    self.logger.warning(f'Found orphaned VLLM processes: {orphaned_pids}')
+                    orphaned_pids = result.stdout.strip().split("\n")
+                    self.logger.warning(
+                        f"Found orphaned VLLM processes: {orphaned_pids}"
+                    )
                     for pid in orphaned_pids:
                         try:
-                            subprocess.run(['kill', '-15', pid], check=False)
-                            self.logger.info(f'Sent SIGTERM to orphaned VLLM process {pid}')
+                            subprocess.run(["kill", "-15", pid], check=False)
+                            self.logger.info(
+                                f"Sent SIGTERM to orphaned VLLM process {pid}"
+                            )
                         except Exception as e:
-                            self.logger.warning(f'Failed to kill orphaned process {pid}: {e}')
+                            self.logger.warning(
+                                f"Failed to kill orphaned process {pid}: {e}"
+                            )
                     time.sleep(2)
                     # Force kill if still alive
                     result = subprocess.run(
-                        ['pgrep', '-f', 'vllm.entrypoints.openai.api_server'],
+                        ["pgrep", "-f", "vllm.entrypoints.openai.api_server"],
                         capture_output=True,
-                        text=True
+                        text=True,
                     )
                     if result.returncode == 0:
-                        remaining_pids = result.stdout.strip().split('\n')
+                        remaining_pids = result.stdout.strip().split("\n")
                         for pid in remaining_pids:
                             try:
-                                subprocess.run(['kill', '-9', pid], check=False)
-                                self.logger.info(f'Force killed VLLM process {pid}')
+                                subprocess.run(["kill", "-9", pid], check=False)
+                                self.logger.info(f"Force killed VLLM process {pid}")
                             except Exception as e:
-                                self.logger.warning(f'Failed to force kill process {pid}: {e}')
+                                self.logger.warning(
+                                    f"Failed to force kill process {pid}: {e}"
+                                )
             except Exception as e:
-                self.logger.warning(f'Error checking for orphaned VLLM processes: {e}')
+                self.logger.warning(f"Error checking for orphaned VLLM processes: {e}")
             return
 
-        self.logger.info(f'Stopping VLLM server (PID {self._vllm_process.pid})')
+        self.logger.info(f"Stopping VLLM server (PID {self._vllm_process.pid})")
         try:
             self._vllm_process.terminate()
             self._vllm_process.wait(timeout=10)
         except subprocess.TimeoutExpired:
-            self.logger.warning('VLLM server did not terminate, killing')
+            self.logger.warning("VLLM server did not terminate, killing")
             self._vllm_process.kill()
             self._vllm_process.wait()
         except Exception as e:
-            self.logger.error(f'Error stopping VLLM server: {e}')
+            self.logger.error(f"Error stopping VLLM server: {e}")
         finally:
             self._vllm_process = None
 
-        self.logger.info('VLLM server stopped')
+        self.logger.info("VLLM server stopped")
 
     def cleanup(self) -> None:
         """Cleanup method called on shutdown to ensure VLLM is stopped."""
         if self._vllm_enabled:
             try:
-                self.logger.info('GPU Orchestrator cleanup: stopping VLLM server')
+                self.logger.info("GPU Orchestrator cleanup: stopping VLLM server")
                 self._stop_vllm_server()
             except Exception as e:
-                self.logger.error(f'Error during cleanup: {e}')
+                self.logger.error(f"Error during cleanup: {e}")
 
     def get_vllm_status(self) -> dict[str, Any]:
         """Get VLLM server status."""
         if not self._vllm_enabled:
-            return {'enabled': False, 'running': False}
+            return {"enabled": False, "running": False}
 
         running = self._vllm_process is not None and self._vllm_process.poll() is None
         pid = self._vllm_process.pid if self._vllm_process else None
 
         # Try to check endpoint health
-        vllm_url = os.environ.get('VLLM_BASE_URL', 'http://127.0.0.1:7060/v1')
+        vllm_url = os.environ.get("VLLM_BASE_URL", "http://127.0.0.1:7060/v1")
         healthy = False
         if running:
             try:
                 import requests
-                response = requests.get(f"{vllm_url.replace('/v1', '')}/health", timeout=2)
+
+                response = requests.get(
+                    f"{vllm_url.replace('/v1', '')}/health", timeout=2
+                )
                 healthy = response.status_code == 200
             except Exception:
                 pass
 
         return {
-            'enabled': self._vllm_enabled,
-            'running': running,
-            'healthy': healthy,
-            'pid': pid,
-            'endpoint': vllm_url,
+            "enabled": self._vllm_enabled,
+            "running": running,
+            "healthy": healthy,
+            "pid": pid,
+            "endpoint": vllm_url,
         }
 
     def _run_nvidia_smi(self) -> str | None:
@@ -519,9 +565,15 @@ class GPUOrchestratorEngine:
             "--format=csv,noheader,nounits",
         ]
         try:
-            output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True, timeout=3)
+            output = subprocess.check_output(
+                cmd, stderr=subprocess.STDOUT, text=True, timeout=3
+            )
             return output
-        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
+        except (
+            subprocess.CalledProcessError,
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+        ) as e:
             self.logger.debug(f"nvidia-smi unavailable or failed: {e}")
             return None
 
@@ -533,18 +585,22 @@ class GPUOrchestratorEngine:
             if len(parts) < 7:
                 continue
             try:
-                gpus.append({
-                    "index": int(parts[0]),
-                    "name": parts[1],
-                    "memory_total_mb": float(parts[2]),
-                    "memory_used_mb": float(parts[3]),
-                    "utilization_gpu_pct": float(parts[4]),
-                    "temperature_c": float(parts[5]),
-                    "power_draw_w": float(parts[6]),
-                    "memory_utilization_pct": (
-                        (float(parts[3]) / float(parts[2]) * 100.0) if float(parts[2]) > 0 else 0.0
-                    ),
-                })
+                gpus.append(
+                    {
+                        "index": int(parts[0]),
+                        "name": parts[1],
+                        "memory_total_mb": float(parts[2]),
+                        "memory_used_mb": float(parts[3]),
+                        "utilization_gpu_pct": float(parts[4]),
+                        "temperature_c": float(parts[5]),
+                        "power_draw_w": float(parts[6]),
+                        "memory_utilization_pct": (
+                            (float(parts[3]) / float(parts[2]) * 100.0)
+                            if float(parts[2]) > 0
+                            else 0.0
+                        ),
+                    }
+                )
             except ValueError:
                 continue
         return gpus
@@ -566,7 +622,9 @@ class GPUOrchestratorEngine:
                             g["nvml_gpu_util_pct"] = getattr(util, "gpu", None)
                             g["nvml_mem_used_mb"] = round(mem.used / 1024**2, 2)
                             g["nvml_mem_total_mb"] = round(mem.total / 1024**2, 2)
-                            g["nvml_mem_util_pct"] = round((mem.used / mem.total * 100.0) if mem.total else 0.0, 2)
+                            g["nvml_mem_util_pct"] = round(
+                                (mem.used / mem.total * 100.0) if mem.total else 0.0, 2
+                            )
                     except Exception as e:
                         g["nvml_error"] = str(e)
         except Exception as e:
@@ -576,7 +634,11 @@ class GPUOrchestratorEngine:
         """Return a conservative, read-only snapshot of GPU state."""
         smi = self._run_nvidia_smi()
         if smi is None:
-            return {"gpus": [], "available": False, "message": "nvidia-smi not available"}
+            return {
+                "gpus": [],
+                "available": False,
+                "message": "nvidia-smi not available",
+            }
 
         gpus = self._parse_nvidia_smi_csv(smi)
         self._get_nvml_enrichment(gpus)
@@ -585,7 +647,7 @@ class GPUOrchestratorEngine:
             "gpus": gpus,
             "available": True,
             "nvml_enriched": bool(ENABLE_NVML and not SAFE_MODE and _NVML_SUPPORTED),
-            "nvml_supported": _NVML_SUPPORTED
+            "nvml_supported": _NVML_SUPPORTED,
         }
 
     def _detect_mps(self) -> dict[str, Any]:
@@ -595,10 +657,13 @@ class GPUOrchestratorEngine:
         enabled = False
 
         try:
-            out = subprocess.run([
-                "pgrep", "-x", "nvidia-cuda-mps-control"
-            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1)
-            control_process = (out.returncode == 0)
+            out = subprocess.run(
+                ["pgrep", "-x", "nvidia-cuda-mps-control"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=1,
+            )
+            control_process = out.returncode == 0
         except Exception:
             control_process = False
 
@@ -612,7 +677,7 @@ class GPUOrchestratorEngine:
         return {
             "enabled": bool(enabled),
             "pipe_dir": pipe_dir,
-            "control_process": bool(control_process)
+            "control_process": bool(control_process),
         }
 
     def get_comprehensive_gpu_info(self) -> dict[str, Any]:
@@ -624,8 +689,7 @@ class GPUOrchestratorEngine:
 
         # Update MPS metrics
         self.mps_enabled_gauge.labels(
-            agent=self.metrics.agent_name,
-            agent_display_name=self.metrics.display_name
+            agent=self.metrics.agent_name, agent_display_name=self.metrics.display_name
         ).set(1 if data["mps_enabled"] else 0)
 
         return data
@@ -644,25 +708,29 @@ class GPUOrchestratorEngine:
         if expired:
             self.lease_expired_counter.labels(
                 agent=self.metrics.agent_name,
-                agent_display_name=self.metrics.display_name
+                agent_display_name=self.metrics.display_name,
             ).inc(len(expired))
 
         # Also purge expired leases from persistent DB (best-effort)
         try:
-                if self.db_service:
-                    cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+            if self.db_service:
+                cursor, conn = self.db_service.get_safe_cursor(
+                    per_call=True, buffered=True
+                )
+                try:
+                    cursor.execute(
+                        "DELETE FROM orchestrator_leases WHERE expires_at IS NOT NULL AND expires_at < NOW()"
+                    )
+                    conn.commit()
+                finally:
                     try:
-                        cursor.execute("DELETE FROM orchestrator_leases WHERE expires_at IS NOT NULL AND expires_at < NOW()")
-                        conn.commit()
-                    finally:
-                        try:
-                            cursor.close()
-                        except Exception:
-                            pass
-                        try:
-                            conn.close()
-                        except Exception:
-                            pass
+                        cursor.close()
+                    except Exception:
+                        pass
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
         except Exception:
             # Non-fatal - leave in-memory cleanup as primary
             self.logger.debug("Failed to purge expired leases from DB (continuing)")
@@ -681,12 +749,17 @@ class GPUOrchestratorEngine:
 
         candidates = []
         for g in snapshot["gpus"]:
-            if req.get("min_memory_mb") and (g["memory_total_mb"] - g["memory_used_mb"]) < req["min_memory_mb"]:
+            if (
+                req.get("min_memory_mb")
+                and (g["memory_total_mb"] - g["memory_used_mb"]) < req["min_memory_mb"]
+            ):
                 continue
             candidates.append(g)
 
         if candidates:
-            return True, sorted(candidates, key=lambda x: x["memory_used_mb"])[0]["index"]
+            return True, sorted(candidates, key=lambda x: x["memory_used_mb"])[0][
+                "index"
+            ]
         return False, None
 
     def lease_gpu(self, agent: str, min_memory_mb: int | None = 0) -> dict[str, Any]:
@@ -713,13 +786,22 @@ class GPUOrchestratorEngine:
         # Persist lease to DB (best-effort) with a default TTL (1h)
         try:
             if self.db_service:
-                ttl = int(os.environ.get('GPU_ORCHESTRATOR_LEASE_TTL', '3600'))
-                cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                ttl = int(os.environ.get("GPU_ORCHESTRATOR_LEASE_TTL", "3600"))
+                cursor, conn = self.db_service.get_safe_cursor(
+                    per_call=True, buffered=True
+                )
                 # Use FROM_UNIXTIME for created_at handling where helpful, but simple NOW()/DATE_ADD is fine
                 try:
                     cursor.execute(
                         "INSERT INTO orchestrator_leases (token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata) VALUES (%s,%s,%s,%s,NOW(),DATE_ADD(NOW(), INTERVAL %s SECOND),NOW(),%s)",
-                        (token, agent, gpu_index if success else None, 'gpu' if success else 'cpu', ttl, json.dumps(allocation)),
+                        (
+                            token,
+                            agent,
+                            gpu_index if success else None,
+                            "gpu" if success else "cpu",
+                            ttl,
+                            json.dumps(allocation),
+                        ),
                     )
                     conn.commit()
                 finally:
@@ -735,7 +817,9 @@ class GPUOrchestratorEngine:
             self.logger.debug(f"Failed to persist lease to DB (non-fatal): {e}")
         return {"granted": True, **allocation}
 
-    def claim_job_and_lease(self, job_id: str, agent: str, min_memory_mb: int | None = 0) -> dict[str, Any]:
+    def claim_job_and_lease(
+        self, job_id: str, agent: str, min_memory_mb: int | None = 0
+    ) -> dict[str, Any]:
         """Atomically mark a job as claimed and create a GPU lease in the DB.
 
         This method uses a DB transaction and SELECT ... FOR UPDATE semantics to
@@ -746,15 +830,20 @@ class GPUOrchestratorEngine:
         if SAFE_MODE:
             return {"claimed": False, "reason": "SAFE_MODE"}
 
-        if not getattr(self, 'db_service', None):
+        if not getattr(self, "db_service", None):
             # Fall back to non-transactional path if no DB available
             # mark the job claimed (best-effort) and obtain a lease using existing method
             try:
                 cursor = None
                 if self.db_service:
-                    cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                    cursor, conn = self.db_service.get_safe_cursor(
+                        per_call=True, buffered=True
+                    )
                     try:
-                        cursor.execute('SELECT status FROM orchestrator_jobs WHERE job_id=%s', (job_id,))
+                        cursor.execute(
+                            "SELECT status FROM orchestrator_jobs WHERE job_id=%s",
+                            (job_id,),
+                        )
                         r = cursor.fetchone()
                     finally:
                         try:
@@ -766,13 +855,22 @@ class GPUOrchestratorEngine:
                                 conn.close()
                         except Exception:
                             pass
-                    if not r or r[0] != 'pending':
-                        return {"claimed": False, "reason": "not_pending_or_missing", "status": (r[0] if r else None)}
+                    if not r or r[0] != "pending":
+                        return {
+                            "claimed": False,
+                            "reason": "not_pending_or_missing",
+                            "status": (r[0] if r else None),
+                        }
                 # Proceed with updating and leasing best-effort
                 if self.db_service:
-                    cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                    cursor, conn = self.db_service.get_safe_cursor(
+                        per_call=True, buffered=True
+                    )
                     try:
-                        cursor.execute('UPDATE orchestrator_jobs SET status=%s, updated_at=NOW() WHERE job_id=%s', ('claimed', job_id))
+                        cursor.execute(
+                            "UPDATE orchestrator_jobs SET status=%s, updated_at=NOW() WHERE job_id=%s",
+                            ("claimed", job_id),
+                        )
                         conn.commit()
                     finally:
                         try:
@@ -788,8 +886,12 @@ class GPUOrchestratorEngine:
                 pass
 
             lease = self.lease_gpu(agent, min_memory_mb)
-            if lease.get('granted'):
-                return {"claimed": True, "token": lease.get('token'), "allocation": lease}
+            if lease.get("granted"):
+                return {
+                    "claimed": True,
+                    "token": lease.get("token"),
+                    "allocation": lease,
+                }
             return {"claimed": False, "reason": "lease_failed"}
 
         # DB backed path: do SELECT FOR UPDATE and perform update + insert within a single transaction
@@ -799,21 +901,24 @@ class GPUOrchestratorEngine:
             cursor = conn.cursor()
             # begin transaction
             # Use a portable BEGIN TRANSACTION which works for MySQL and SQLite
-            cursor.execute('BEGIN')
+            cursor.execute("BEGIN")
 
             try:
                 # Try SELECT ... FOR UPDATE first — this is the preferred, transactional
                 # approach on databases that support it.
-                cursor.execute('SELECT status FROM orchestrator_jobs WHERE job_id=%s FOR UPDATE', (job_id,))
+                cursor.execute(
+                    "SELECT status FROM orchestrator_jobs WHERE job_id=%s FOR UPDATE",
+                    (job_id,),
+                )
                 r = cursor.fetchone()
                 if not r:
-                    cursor.execute('ROLLBACK')
+                    cursor.execute("ROLLBACK")
                     cursor.close()
                     return {"claimed": False, "reason": "not_found"}
 
                 status = r[0]
-                if status != 'pending':
-                    cursor.execute('ROLLBACK')
+                if status != "pending":
+                    cursor.execute("ROLLBACK")
                     cursor.close()
                     return {"claimed": False, "reason": "not_pending", "status": status}
             except Exception:
@@ -821,33 +926,39 @@ class GPUOrchestratorEngine:
                 # Fall back to an optimistic UPDATE that only claims if the status was pending.
                 try:
                     upd_cur = conn.cursor()
-                    upd_cur.execute('UPDATE orchestrator_jobs SET status=%s, updated_at=NOW() WHERE job_id=%s AND status=%s', ('claimed', job_id, 'pending'))
-                    rowcount = getattr(upd_cur, 'rowcount', None)
+                    upd_cur.execute(
+                        "UPDATE orchestrator_jobs SET status=%s, updated_at=NOW() WHERE job_id=%s AND status=%s",
+                        ("claimed", job_id, "pending"),
+                    )
+                    rowcount = getattr(upd_cur, "rowcount", None)
                     upd_cur.close()
 
                     if rowcount is not None and rowcount == 0:
-                        cursor.execute('ROLLBACK')
+                        cursor.execute("ROLLBACK")
                         cursor.close()
                         return {"claimed": False, "reason": "not_pending"}
                     # else assume we updated successfully and continue
                 except Exception as e:
                     try:
-                        cursor.execute('ROLLBACK')
+                        cursor.execute("ROLLBACK")
                     except Exception:
                         pass
                     cursor.close()
                     return {"claimed": False, "reason": "not_locked", "error": str(e)}
 
             # mark job claimed
-            cursor.execute('UPDATE orchestrator_jobs SET status=%s, updated_at=NOW() WHERE job_id=%s', ('claimed', job_id))
+            cursor.execute(
+                "UPDATE orchestrator_jobs SET status=%s, updated_at=NOW() WHERE job_id=%s",
+                ("claimed", job_id),
+            )
 
             # allocate a GPU SYNTHETICALLY (call internal allocator that doesn't touch DB)
             success, gpu_index = self._allocate_gpu({"min_memory_mb": min_memory_mb})
             token = str(uuid.uuid4())
-            ttl = int(os.environ.get('GPU_ORCHESTRATOR_LEASE_TTL', '3600'))
+            ttl = int(os.environ.get("GPU_ORCHESTRATOR_LEASE_TTL", "3600"))
             allocation = {
                 "agent": agent,
-                "gpu": gpu_index if success else 'cpu',
+                "gpu": gpu_index if success else "cpu",
                 "token": token,
                 "timestamp": time.time(),
             }
@@ -855,11 +966,23 @@ class GPUOrchestratorEngine:
             # persist lease row (co-located in same transaction)
             # Compute created_at / expires_at in Python for DB portability (works on MySQL & SQLite)
             from datetime import datetime, timedelta
-            created_at = datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S')
-            expires_at = (datetime.now(UTC) + timedelta(seconds=ttl)).strftime('%Y-%m-%d %H:%M:%S')
+
+            created_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
+            expires_at = (datetime.now(UTC) + timedelta(seconds=ttl)).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
             cursor.execute(
                 "INSERT INTO orchestrator_leases (token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
-                (token, agent, gpu_index if success else None, 'gpu' if success else 'cpu', created_at, expires_at, created_at, json.dumps(allocation))
+                (
+                    token,
+                    agent,
+                    gpu_index if success else None,
+                    "gpu" if success else "cpu",
+                    created_at,
+                    expires_at,
+                    created_at,
+                    json.dumps(allocation),
+                ),
             )
 
             # commit transaction
@@ -883,7 +1006,7 @@ class GPUOrchestratorEngine:
                 cursor.close()
             except Exception:
                 pass
-            self.logger.debug(f'claim_job_and_lease failed: {e}')
+            self.logger.debug(f"claim_job_and_lease failed: {e}")
             return {"claimed": False, "reason": "internal_error", "error": str(e)}
 
     def release_gpu_lease(self, token: str) -> dict[str, Any]:
@@ -895,9 +1018,13 @@ class GPUOrchestratorEngine:
         # Also remove persistent lease row (best-effort)
         try:
             if self.db_service:
-                cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                cursor, conn = self.db_service.get_safe_cursor(
+                    per_call=True, buffered=True
+                )
                 try:
-                    cursor.execute("DELETE FROM orchestrator_leases WHERE token = %s", (token,))
+                    cursor.execute(
+                        "DELETE FROM orchestrator_leases WHERE token = %s", (token,)
+                    )
                     conn.commit()
                 finally:
                     try:
@@ -917,11 +1044,16 @@ class GPUOrchestratorEngine:
         try:
             # Update in-memory timestamp if present
             if token in ALLOCATIONS:
-                ALLOCATIONS[token]['timestamp'] = time.time()
+                ALLOCATIONS[token]["timestamp"] = time.time()
             if self.db_service:
-                cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                cursor, conn = self.db_service.get_safe_cursor(
+                    per_call=True, buffered=True
+                )
                 try:
-                    cursor.execute("UPDATE orchestrator_leases SET last_heartbeat = NOW() WHERE token = %s", (token,))
+                    cursor.execute(
+                        "UPDATE orchestrator_leases SET last_heartbeat = NOW() WHERE token = %s",
+                        (token,),
+                    )
                     conn.commit()
                 finally:
                     try:
@@ -945,7 +1077,10 @@ class GPUOrchestratorEngine:
     def update_policy(self, update: dict[str, Any]) -> dict[str, Any]:
         """Update GPU policy."""
         if SAFE_MODE:
-            return {**POLICY, "note": "SAFE_MODE enabled: policy updates accepted but not enacted"}
+            return {
+                **POLICY,
+                "note": "SAFE_MODE enabled: policy updates accepted but not enacted",
+            }
 
         changed = False
         if "max_memory_per_agent_mb" in update:
@@ -966,26 +1101,37 @@ class GPUOrchestratorEngine:
     def _pool_policy_defaults(self):
         # Merge defaults from system configuration if available
         defaults = {
-            'min_warm_workers_per_pool': int(os.environ.get('GPU_POOL_MIN_WARM', '0')),
-            'max_total_workers': int(os.environ.get('GPU_POOL_MAX_TOTAL', '8')),
-            'pool_idle_timeout_s': int(os.environ.get('GPU_POOL_IDLE_TIMEOUT_S', '300')),
-            'enforce_period_s': int(os.environ.get('GPU_POOL_POLICY_PERIOD_S', '10')),
+            "min_warm_workers_per_pool": int(os.environ.get("GPU_POOL_MIN_WARM", "0")),
+            "max_total_workers": int(os.environ.get("GPU_POOL_MAX_TOTAL", "8")),
+            "pool_idle_timeout_s": int(
+                os.environ.get("GPU_POOL_IDLE_TIMEOUT_S", "300")
+            ),
+            "enforce_period_s": int(os.environ.get("GPU_POOL_POLICY_PERIOD_S", "10")),
         }
         try:
             # runtime import of config module so tests can monkeypatch
             from config.core import get_gpu_config
+
             gconf = get_gpu_config()
             if gconf:
-                defaults['min_warm_workers_per_pool'] = gconf.get('min_warm_workers_per_pool', defaults['min_warm_workers_per_pool'])
-                defaults['max_total_workers'] = gconf.get('max_total_workers', defaults['max_total_workers'])
-                defaults['pool_idle_timeout_s'] = gconf.get('pool_idle_timeout_s', defaults['pool_idle_timeout_s'])
-                defaults['enforce_period_s'] = gconf.get('enforce_period_s', defaults['enforce_period_s'])
+                defaults["min_warm_workers_per_pool"] = gconf.get(
+                    "min_warm_workers_per_pool", defaults["min_warm_workers_per_pool"]
+                )
+                defaults["max_total_workers"] = gconf.get(
+                    "max_total_workers", defaults["max_total_workers"]
+                )
+                defaults["pool_idle_timeout_s"] = gconf.get(
+                    "pool_idle_timeout_s", defaults["pool_idle_timeout_s"]
+                )
+                defaults["enforce_period_s"] = gconf.get(
+                    "enforce_period_s", defaults["enforce_period_s"]
+                )
         except Exception:
             pass
         return defaults
 
     def get_pool_policy(self) -> dict[str, Any]:
-        if not hasattr(self, '_POOL_POLICY'):
+        if not hasattr(self, "_POOL_POLICY"):
             self._POOL_POLICY = self._pool_policy_defaults()
         return self._POOL_POLICY
 
@@ -1002,9 +1148,9 @@ class GPUOrchestratorEngine:
         # Audit policy change immediately so tests and operators can inspect
         # policy updates even when the API route isn't used.
         try:
-            self._audit_policy_event('policy_update', policy)
+            self._audit_policy_event("policy_update", policy)
         except Exception:
-            self.logger.debug('Failed to audit pool policy update')
+            self.logger.debug("Failed to audit pool policy update")
 
         return self._POOL_POLICY
 
@@ -1017,18 +1163,23 @@ class GPUOrchestratorEngine:
         """
         try:
             policy = self.get_pool_policy()
-            total = sum(p.get('num_workers', 0) for p in self._WORKER_POOLS.values())
-            max_total = policy.get('max_total_workers', 8)
+            total = sum(p.get("num_workers", 0) for p in self._WORKER_POOLS.values())
+            max_total = policy.get("max_total_workers", 8)
 
             if total > max_total:
-                ordered = sorted(self._WORKER_POOLS.items(), key=lambda kv: kv[1].get('started_at', 0))
+                ordered = sorted(
+                    self._WORKER_POOLS.items(),
+                    key=lambda kv: kv[1].get("started_at", 0),
+                )
                 for pool_id, meta in ordered:
                     if total <= max_total:
                         break
                     try:
                         self.stop_worker_pool(pool_id)
-                        total -= meta.get('num_workers', 0)
-                        self.worker_pool_evictions_counter.labels(reason='over_total_sync').inc()
+                        total -= meta.get("num_workers", 0)
+                        self.worker_pool_evictions_counter.labels(
+                            reason="over_total_sync"
+                        ).inc()
                     except Exception:
                         pass
 
@@ -1038,8 +1189,10 @@ class GPUOrchestratorEngine:
                             break
                         try:
                             self.stop_worker_pool(pool_id)
-                            total -= meta.get('num_workers', 0)
-                            self.worker_pool_evictions_counter.labels(reason='over_total_force_sync').inc()
+                            total -= meta.get("num_workers", 0)
+                            self.worker_pool_evictions_counter.labels(
+                                reason="over_total_force_sync"
+                            ).inc()
                         except Exception:
                             pass
         except Exception:
@@ -1050,38 +1203,52 @@ class GPUOrchestratorEngine:
         while True:
             try:
                 # Only the leader should actively enforce pool lifecycle policies.
-                if not getattr(self, 'is_leader', False):
+                if not getattr(self, "is_leader", False):
                     # still update metrics snapshot but skip enforcement
-                    self.worker_pools_gauge.labels(agent=self.metrics.agent_name, agent_display_name=self.metrics.display_name).set(len(self._WORKER_POOLS))
-                    time.sleep(self.get_pool_policy().get('enforce_period_s', 10))
+                    self.worker_pools_gauge.labels(
+                        agent=self.metrics.agent_name,
+                        agent_display_name=self.metrics.display_name,
+                    ).set(len(self._WORKER_POOLS))
+                    time.sleep(self.get_pool_policy().get("enforce_period_s", 10))
                     continue
 
                 policy = self.get_pool_policy()
                 self.logger.debug(f"Policy enforcer tick: policy={policy}")
                 # Compute total configured workers
-                total = sum(p.get('num_workers', 0) for p in self._WORKER_POOLS.values())
-                self.logger.debug(f"Policy enforcer tick: current_total_workers={total}, pools={list(self._WORKER_POOLS.keys())}")
-                max_total = policy.get('max_total_workers', 8)
+                total = sum(
+                    p.get("num_workers", 0) for p in self._WORKER_POOLS.values()
+                )
+                self.logger.debug(
+                    f"Policy enforcer tick: current_total_workers={total}, pools={list(self._WORKER_POOLS.keys())}"
+                )
+                max_total = policy.get("max_total_workers", 8)
 
                 # Evict least-recently used pools if over max_total
                 if total > max_total:
                     # sort by started_at ascending
-                    ordered = sorted(self._WORKER_POOLS.items(), key=lambda kv: kv[1].get('started_at', 0))
+                    ordered = sorted(
+                        self._WORKER_POOLS.items(),
+                        key=lambda kv: kv[1].get("started_at", 0),
+                    )
                     evicted = 0
                     for pool_id, meta in ordered:
                         if total <= max_total:
                             break
                         # skip pools with min_warm requirement
-                        min_warm = policy.get('min_warm_workers_per_pool', 0)
-                        if meta.get('num_workers', 0) <= min_warm:
+                        min_warm = policy.get("min_warm_workers_per_pool", 0)
+                        if meta.get("num_workers", 0) <= min_warm:
                             continue
                         # evict whole pool
                         try:
-                            self.logger.info(f"Evicting worker pool {pool_id} to reduce total workers")
+                            self.logger.info(
+                                f"Evicting worker pool {pool_id} to reduce total workers"
+                            )
                             self.stop_worker_pool(pool_id)
-                            total -= meta.get('num_workers', 0)
+                            total -= meta.get("num_workers", 0)
                             evicted += 1
-                            self.worker_pool_evictions_counter.labels(reason='over_total').inc()
+                            self.worker_pool_evictions_counter.labels(
+                                reason="over_total"
+                            ).inc()
                         except Exception:
                             pass
 
@@ -1091,35 +1258,50 @@ class GPUOrchestratorEngine:
                             if total <= max_total:
                                 break
                             try:
-                                self.logger.info(f"Force-evicting worker pool {pool_id} to enforce limit")
+                                self.logger.info(
+                                    f"Force-evicting worker pool {pool_id} to enforce limit"
+                                )
                                 self.stop_worker_pool(pool_id)
-                                total -= meta.get('num_workers', 0)
-                                self.worker_pool_evictions_counter.labels(reason='over_total_force').inc()
+                                total -= meta.get("num_workers", 0)
+                                self.worker_pool_evictions_counter.labels(
+                                    reason="over_total_force"
+                                ).inc()
                             except Exception:
                                 pass
 
                 # Evict pools that have been idle longer than pool_idle_timeout_s
                 now = time.time()
-                idle_timeout = policy.get('pool_idle_timeout_s', 300)
+                idle_timeout = policy.get("pool_idle_timeout_s", 300)
                 for pool_id, meta in list(self._WORKER_POOLS.items()):
-                    started = meta.get('started_at', now)
-                    running = sum(1 for p in meta.get('procs', []) if p.is_alive())
+                    started = meta.get("started_at", now)
+                    running = sum(1 for p in meta.get("procs", []) if p.is_alive())
                     # if no running workers and older than timeout, evict
                     if running == 0 and (now - started) > idle_timeout:
                         try:
                             self.stop_worker_pool(pool_id)
-                            self.worker_pool_evictions_counter.labels(reason='idle_timeout').inc()
+                            self.worker_pool_evictions_counter.labels(
+                                reason="idle_timeout"
+                            ).inc()
                         except Exception:
                             pass
 
                 # update metrics per pool
-                self.worker_pools_gauge.labels(agent=self.metrics.agent_name, agent_display_name=self.metrics.display_name).set(len(self._WORKER_POOLS))
+                self.worker_pools_gauge.labels(
+                    agent=self.metrics.agent_name,
+                    agent_display_name=self.metrics.display_name,
+                ).set(len(self._WORKER_POOLS))
                 for pid, meta in self._WORKER_POOLS.items():
-                    self.worker_pool_workers_gauge.labels(pool_id=pid).set(meta.get('num_workers', 0))
-                    running = sum(1 for p in meta.get('procs', []) if p.is_alive())
-                    self.worker_pool_running_workers_gauge.labels(pool_id=pid).set(running)
-                    if meta.get('started_at'):
-                        self.worker_pool_started_timestamp.labels(pool_id=pid).set(meta.get('started_at'))
+                    self.worker_pool_workers_gauge.labels(pool_id=pid).set(
+                        meta.get("num_workers", 0)
+                    )
+                    running = sum(1 for p in meta.get("procs", []) if p.is_alive())
+                    self.worker_pool_running_workers_gauge.labels(pool_id=pid).set(
+                        running
+                    )
+                    if meta.get("started_at"):
+                        self.worker_pool_started_timestamp.labels(pool_id=pid).set(
+                            meta.get("started_at")
+                        )
 
                 # Update stream metrics
                 self._update_stream_metrics()
@@ -1131,7 +1313,7 @@ class GPUOrchestratorEngine:
                 pass
 
             # Sleep until next enforcement
-            period = self.get_pool_policy().get('enforce_period_s', 10)
+            period = self.get_pool_policy().get("enforce_period_s", 10)
             time.sleep(period)
 
     def try_acquire_leader_lock(self, timeout: int | None = None) -> bool:
@@ -1148,7 +1330,9 @@ class GPUOrchestratorEngine:
                 timeout = self._leader_try_timeout
             cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
             try:
-                cursor.execute("SELECT GET_LOCK(%s,%s)", (self._leader_lock_name, int(timeout)))
+                cursor.execute(
+                    "SELECT GET_LOCK(%s,%s)", (self._leader_lock_name, int(timeout))
+                )
                 res = cursor.fetchone()
             finally:
                 try:
@@ -1162,10 +1346,10 @@ class GPUOrchestratorEngine:
             locked = bool(res and int(res[0]) == 1)
             if locked:
                 self.is_leader = True
-                self.logger.info('Acquired leader lock')
+                self.logger.info("Acquired leader lock")
             return locked
         except Exception as e:
-            self.logger.debug(f'Leader lock attempt failed: {e}')
+            self.logger.debug(f"Leader lock attempt failed: {e}")
             return False
 
     def release_leader_lock(self) -> bool:
@@ -1192,10 +1376,10 @@ class GPUOrchestratorEngine:
             released = bool(res and res[0] == 1)
             if released:
                 self.is_leader = False
-                self.logger.info('Released leader lock')
+                self.logger.info("Released leader lock")
             return released
         except Exception as e:
-            self.logger.debug(f'Failed to release leader lock: {e}')
+            self.logger.debug(f"Failed to release leader lock: {e}")
             return False
 
     def _leader_election_loop(self):
@@ -1208,13 +1392,15 @@ class GPUOrchestratorEngine:
             # Give a larger window to let synchronous unit tests run before
             # the background election loop probes the DB. This reduces flakiness
             # in tests that control cursor call sequencing.
-            time.sleep(float(os.environ.get('GPU_ORCHESTRATOR_LEADER_START_DELAY_S', '0.5')))
+            time.sleep(
+                float(os.environ.get("GPU_ORCHESTRATOR_LEADER_START_DELAY_S", "0.5"))
+            )
         except Exception:
             pass
         # If we don't have a DB connection, do nothing.
         while True:
             try:
-                if not getattr(self, 'is_leader', False):
+                if not getattr(self, "is_leader", False):
                     got = self.try_acquire_leader_lock(timeout=self._leader_try_timeout)
                     if got:
                         # When becoming leader, reconcile state immediately (best-effort)
@@ -1226,9 +1412,11 @@ class GPUOrchestratorEngine:
                     # we are leader; verify connection still healthy (best-effort)
                     try:
                         # a simple no-op query to detect dead connection
-                        cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                        cursor, conn = self.db_service.get_safe_cursor(
+                            per_call=True, buffered=True
+                        )
                         try:
-                            cursor.execute('SELECT 1')
+                            cursor.execute("SELECT 1")
                             cursor.fetchone()
                         finally:
                             try:
@@ -1241,13 +1429,14 @@ class GPUOrchestratorEngine:
                                 pass
                     except Exception:
                         # lost DB connection -> lose leadership
-                        self.logger.warning('Leader DB connection lost, relinquishing leadership')
+                        self.logger.warning(
+                            "Leader DB connection lost, relinquishing leadership"
+                        )
                         self.is_leader = False
-                time.sleep(int(os.environ.get('GPU_ORCHESTRATOR_LEADER_LOOP_S', '2')))
+                time.sleep(int(os.environ.get("GPU_ORCHESTRATOR_LEADER_LOOP_S", "2")))
             except Exception:
                 # don't crash the loop
                 time.sleep(2)
-
 
     def get_policy(self) -> dict[str, Any]:
         """Get current policy."""
@@ -1295,7 +1484,9 @@ class GPUOrchestratorEngine:
             legacy[key] = value
         return legacy
 
-    def _normalize_agent_entries(self, model_map: dict[str, Any], agent: str) -> list[dict[str, Any]]:
+    def _normalize_agent_entries(
+        self, model_map: dict[str, Any], agent: str
+    ) -> list[dict[str, Any]]:
         agents_cfg = self._agents_section(model_map)
         raw_entries = agents_cfg.get(agent, [])
         if not isinstance(raw_entries, list):
@@ -1311,11 +1502,18 @@ class GPUOrchestratorEngine:
                 }
             else:
                 spec = {"legacy_model_id": item}
-            spec.setdefault("id", spec.get("adapter_name") or spec.get("legacy_model_id") or f"{agent}-{idx}")
+            spec.setdefault(
+                "id",
+                spec.get("adapter_name")
+                or spec.get("legacy_model_id")
+                or f"{agent}-{idx}",
+            )
             normalized.append(spec)
         return normalized
 
-    def _validate_and_load_model(self, agent: str, spec: dict[str, Any], strict: bool) -> tuple[bool, str | None]:
+    def _validate_and_load_model(
+        self, agent: str, spec: dict[str, Any], strict: bool
+    ) -> tuple[bool, str | None]:
         """Validate and load a model entry for an agent."""
         try:
             # If VLLM is enabled and this is an adapter-based model, just verify adapter exists
@@ -1324,7 +1522,11 @@ class GPUOrchestratorEngine:
                 adapter_path_str = spec.get("adapter_model_store_path")
 
                 if adapter_path_str:
-                    model_store = Path(os.environ.get('MODEL_STORE_ROOT', '/home/adra/JustNews/model_store'))
+                    model_store = Path(
+                        os.environ.get(
+                            "MODEL_STORE_ROOT", "/home/adra/JustNews/model_store"
+                        )
+                    )
                     adapter_path = model_store / adapter_path_str
 
                     if adapter_path.exists():
@@ -1336,13 +1538,19 @@ class GPUOrchestratorEngine:
                         return True, None
                     else:
                         if strict:
-                            raise FileNotFoundError(f"Adapter not found at {adapter_path}")
+                            raise FileNotFoundError(
+                                f"Adapter not found at {adapter_path}"
+                            )
                         else:
-                            self.logger.warning(f"Adapter not found at {adapter_path}, continuing in non-strict mode")
+                            self.logger.warning(
+                                f"Adapter not found at {adapter_path}, continuing in non-strict mode"
+                            )
                             return True, None
 
                 # Fallback: just mark as valid since VLLM will handle it
-                self.logger.info(f"VLLM mode: Skipping full model load for agent {agent}")
+                self.logger.info(
+                    f"VLLM mode: Skipping full model load for agent {agent}"
+                )
                 return True, None
 
             if spec.get("base_ref"):
@@ -1364,7 +1572,11 @@ class GPUOrchestratorEngine:
 
             model_type = spec.get("type")
             if not model_type:
-                model_type = "sentence-transformers" if str(legacy_model_id).startswith("sentence-transformers/") else "transformers"
+                model_type = (
+                    "sentence-transformers"
+                    if str(legacy_model_id).startswith("sentence-transformers/")
+                    else "transformers"
+                )
 
             self.logger.info(
                 "Validating and loading model %s (type=%s) for agent %s (strict=%s)",
@@ -1383,10 +1595,14 @@ class GPUOrchestratorEngine:
                 load_transformers_model(legacy_model_id, agent=agent)
             return True, None
         except Exception as e:
-            self.logger.error(f"Error validating/loading model entry for agent {agent}: {e}")
+            self.logger.error(
+                f"Error validating/loading model entry for agent {agent}: {e}"
+            )
             return False, str(e)
 
-    def _preload_worker(self, selected_agents: list[str] | None, strict_override: bool | None) -> None:
+    def _preload_worker(
+        self, selected_agents: list[str] | None, strict_override: bool | None
+    ) -> None:
         """Background worker for model preloading."""
         try:
             model_map = self._read_agent_model_map()
@@ -1405,15 +1621,23 @@ class GPUOrchestratorEngine:
                                 get_agent_model_metadata,
                             )
 
-                            meta = get_agent_model_metadata(agent, spec.get("adapter_name"))
+                            meta = get_agent_model_metadata(
+                                agent, spec.get("adapter_name")
+                            )
                             if meta:
                                 spec = {**spec, "_model_metadata": meta}
                                 variant = self._select_variant_for_spec(spec)
                                 if variant:
                                     spec["_selected_variant"] = variant
-                                    spec["_variant_vram_mb"] = self._variant_vram_mb(spec, variant)
+                                    spec["_variant_vram_mb"] = self._variant_vram_mb(
+                                        spec, variant
+                                    )
                         except Exception as exc:
-                            self.logger.debug("Failed to collect model metadata for agent=%s: %s", agent, exc)
+                            self.logger.debug(
+                                "Failed to collect model metadata for agent=%s: %s",
+                                agent,
+                                exc,
+                            )
                     enriched_specs.append(spec)
                 agent_specs[agent] = enriched_specs
 
@@ -1434,7 +1658,11 @@ class GPUOrchestratorEngine:
             total = sum(len(agent_specs.get(a, [])) for a in agents)
             _MODEL_PRELOAD_STATE["summary"]["total"] = total
 
-            strict_env = os.environ.get("STRICT_MODEL_STORE", "0").lower() in ("1", "true", "yes")
+            strict_env = os.environ.get("STRICT_MODEL_STORE", "0").lower() in (
+                "1",
+                "true",
+                "yes",
+            )
             strict = strict_override if strict_override is not None else strict_env
 
             # Preload models
@@ -1461,17 +1689,23 @@ class GPUOrchestratorEngine:
             _MODEL_PRELOAD_STATE["in_progress"] = False
             _MODEL_PRELOAD_STATE["completed_at"] = time.time()
 
-    def start_model_preload(self, agents: list[str] | None = None,
-                          refresh: bool = False, strict: bool | None = None) -> dict[str, Any]:
+    def start_model_preload(
+        self,
+        agents: list[str] | None = None,
+        refresh: bool = False,
+        strict: bool | None = None,
+    ) -> dict[str, Any]:
         """Start model preload job."""
         # Check if job already completed and not refreshing
-        if (_MODEL_PRELOAD_STATE.get("started_at") and
-            not _MODEL_PRELOAD_STATE.get("in_progress") and not refresh):
-
+        if (
+            _MODEL_PRELOAD_STATE.get("started_at")
+            and not _MODEL_PRELOAD_STATE.get("in_progress")
+            and not refresh
+        ):
             failed = _MODEL_PRELOAD_STATE.get("summary", {}).get("failed", 0)
-            all_ready = (failed == 0 and
-                        _MODEL_PRELOAD_STATE["summary"].get("done", 0) ==
-                        _MODEL_PRELOAD_STATE["summary"].get("total", 0))
+            all_ready = failed == 0 and _MODEL_PRELOAD_STATE["summary"].get(
+                "done", 0
+            ) == _MODEL_PRELOAD_STATE["summary"].get("total", 0)
 
             state = {**_MODEL_PRELOAD_STATE, "all_ready": all_ready}
 
@@ -1480,7 +1714,9 @@ class GPUOrchestratorEngine:
             for a, models in _MODEL_PRELOAD_STATE.get("per_agent", {}).items():
                 for mid, st in models.items():
                     if st.get("status") == "error":
-                        errors.append({"agent": a, "model": mid, "error": st.get("error")})
+                        errors.append(
+                            {"agent": a, "model": mid, "error": st.get("error")}
+                        )
             state["errors"] = errors
 
             if failed > 0:
@@ -1496,9 +1732,7 @@ class GPUOrchestratorEngine:
         _MODEL_PRELOAD_STATE["summary"] = {"total": 0, "done": 0, "failed": 0}
 
         thread = threading.Thread(
-            target=self._preload_worker,
-            args=(agents, strict),
-            daemon=True
+            target=self._preload_worker, args=(agents, strict), daemon=True
         )
         thread.start()
 
@@ -1510,7 +1744,11 @@ class GPUOrchestratorEngine:
         done = _MODEL_PRELOAD_STATE.get("summary", {}).get("done", 0)
         total = _MODEL_PRELOAD_STATE.get("summary", {}).get("total", 0)
 
-        all_ready = (failed == 0 and done == total and not _MODEL_PRELOAD_STATE.get("in_progress", False))
+        all_ready = (
+            failed == 0
+            and done == total
+            and not _MODEL_PRELOAD_STATE.get("in_progress", False)
+        )
 
         # Build error list
         errors = []
@@ -1518,11 +1756,13 @@ class GPUOrchestratorEngine:
             for agent, models in _MODEL_PRELOAD_STATE["per_agent"].items():
                 for model_id, status in models.items():
                     if status.get("status") == "error":
-                        errors.append({
-                            "agent": agent,
-                            "model": model_id,
-                            "error": status.get("error")
-                        })
+                        errors.append(
+                            {
+                                "agent": agent,
+                                "model": model_id,
+                                "error": status.get("error"),
+                            }
+                        )
 
         return {
             "all_ready": all_ready,
@@ -1534,7 +1774,11 @@ class GPUOrchestratorEngine:
         }
 
     def _allow_quantized_variants(self) -> bool:
-        return os.environ.get("GPU_ALLOW_QUANTIZED", "1").lower() not in {"0", "false", "no"}
+        return os.environ.get("GPU_ALLOW_QUANTIZED", "1").lower() not in {
+            "0",
+            "false",
+            "no",
+        }
 
     def _select_variant_for_spec(self, spec: dict[str, Any]) -> str | None:
         if spec.get("_selected_variant"):
@@ -1554,7 +1798,9 @@ class GPUOrchestratorEngine:
                 return variants[0].get("name")
         return "fp16"
 
-    def _variant_vram_mb(self, spec: dict[str, Any], variant: str | None) -> float | None:
+    def _variant_vram_mb(
+        self, spec: dict[str, Any], variant: str | None
+    ) -> float | None:
         metadata = spec.get("_model_metadata") or {}
         manifest = metadata.get("manifest") if isinstance(metadata, dict) else None
         if not manifest:
@@ -1610,13 +1856,19 @@ class GPUOrchestratorEngine:
             variant=variant,
         )
 
-    def _spawn_pool_worker(self, model_id: str | None, adapter: str | None, hold_seconds: int, variant: str | None = None):
+    def _spawn_pool_worker(
+        self,
+        model_id: str | None,
+        adapter: str | None,
+        hold_seconds: int,
+        variant: str | None = None,
+    ):
         """Process entrypoint that loads base model and adapter then sleeps for hold_seconds.
 
         Note: in RE_RANKER_TEST_MODE this function will avoid heavy loads and simply sleep.
         """
         # Local import to avoid heavy deps at module import time in tests
-        if os.environ.get('RE_RANKER_TEST_MODE', '1') in ('1', 'true'):
+        if os.environ.get("RE_RANKER_TEST_MODE", "1") in ("1", "true"):
             # test mode: minimal work and hold
             time.sleep(hold_seconds)
             return
@@ -1629,31 +1881,36 @@ class GPUOrchestratorEngine:
                 BitsAndBytesConfig,
             )
 
-            if variant == 'fp16':
+            if variant == "fp16":
                 model = AutoModelForCausalLM.from_pretrained(
                     model_id,
-                    dtype=getattr(torch, 'float16', None),
-                    device_map='auto',
+                    dtype=getattr(torch, "float16", None),
+                    device_map="auto",
                 )
-            elif variant == 'bnb-4bit-qlora':
+            elif variant == "bnb-4bit-qlora":
                 bnb = BitsAndBytesConfig(
                     load_in_4bit=True,
-                    bnb_4bit_compute_dtype=getattr(torch, 'float16', None),
-                    bnb_4bit_quant_type='nf4',
+                    bnb_4bit_compute_dtype=getattr(torch, "float16", None),
+                    bnb_4bit_quant_type="nf4",
                 )
-                model = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb, device_map='auto')
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_id, quantization_config=bnb, device_map="auto"
+                )
             else:  # default to 8-bit
                 bnb = BitsAndBytesConfig(
                     load_in_8bit=True,
                     bnb_8bit_use_double_quant=True,
-                    bnb_8bit_compute_dtype=getattr(torch, 'float16', None),
+                    bnb_8bit_compute_dtype=getattr(torch, "float16", None),
                 )
-                model = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb, device_map='auto')
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_id, quantization_config=bnb, device_map="auto"
+                )
             _tok = AutoTokenizer.from_pretrained(model_id)
 
             if adapter:
                 try:
                     from peft import PeftModel
+
                     model = PeftModel.from_pretrained(model, adapter)
                 except Exception:
                     # adapter not available or failed – proceed
@@ -1682,61 +1939,90 @@ class GPUOrchestratorEngine:
         to start an already-running pool will return its existing state.
         """
         if pool_id in self._WORKER_POOLS:
-            return {**self._WORKER_POOLS[pool_id], 'note': 'already_running'}
+            return {**self._WORKER_POOLS[pool_id], "note": "already_running"}
 
         # Validate args
         if num_workers < 1:
-            raise ValueError('num_workers must be >= 1')
+            raise ValueError("num_workers must be >= 1")
 
         procs: list[mp.Process] = []
         for _ in range(num_workers):
-            p = mp.Process(target=self._spawn_pool_worker, args=(model_id, adapter, hold_seconds, variant), daemon=True)
+            p = mp.Process(
+                target=self._spawn_pool_worker,
+                args=(model_id, adapter, hold_seconds, variant),
+                daemon=True,
+            )
             p.start()
             procs.append(p)
             time.sleep(0.2)
 
         self._WORKER_POOLS[pool_id] = {
-            'model': model_id,
-            'adapter': adapter,
-            'num_workers': num_workers,
-            'procs': procs,
-            'started_at': time.time(),
-            'hold_seconds': hold_seconds,
-            'variant': variant,
+            "model": model_id,
+            "adapter": adapter,
+            "num_workers": num_workers,
+            "procs": procs,
+            "started_at": time.time(),
+            "hold_seconds": hold_seconds,
+            "variant": variant,
         }
 
         # Audit with optional requestor
-        self._audit_worker_pool_event('start', pool_id, model_id, adapter, num_workers, requestor=requestor, variant=variant)
+        self._audit_worker_pool_event(
+            "start",
+            pool_id,
+            model_id,
+            adapter,
+            num_workers,
+            requestor=requestor,
+            variant=variant,
+        )
         # Persist worker pool row to DB (best-effort)
         try:
             if self.db_service:
-                cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                cursor, conn = self.db_service.get_safe_cursor(
+                    per_call=True, buffered=True
+                )
                 try:
                     cursor.execute(
-                    "INSERT INTO worker_pools (pool_id, agent_name, model_id, adapter, desired_workers, spawned_workers, started_at, status, hold_seconds, metadata) VALUES (%s,%s,%s,%s,%s,%s,NOW(),%s,%s,%s)",
-                        (pool_id, requestor.get('user') if requestor else None, model_id, adapter, num_workers, num_workers, 'running', hold_seconds, json.dumps({'variant': variant}))
+                        "INSERT INTO worker_pools (pool_id, agent_name, model_id, adapter, desired_workers, spawned_workers, started_at, status, hold_seconds, metadata) VALUES (%s,%s,%s,%s,%s,%s,NOW(),%s,%s,%s)",
+                        (
+                            pool_id,
+                            requestor.get("user") if requestor else None,
+                            model_id,
+                            adapter,
+                            num_workers,
+                            num_workers,
+                            "running",
+                            hold_seconds,
+                            json.dumps({"variant": variant}),
+                        ),
                     )
                     conn.commit()
                 finally:
-                        try:
-                            cursor.close()
-                        except Exception:
-                            pass
-                        try:
-                            conn.close()
-                        except Exception:
-                            pass
+                    try:
+                        cursor.close()
+                    except Exception:
+                        pass
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
         except Exception:
-            self.logger.debug('Failed to persist worker_pool to DB (non-fatal)')
-        return {'pool_id': pool_id, 'num_workers': num_workers, 'status': 'started', 'variant': variant}
+            self.logger.debug("Failed to persist worker_pool to DB (non-fatal)")
+        return {
+            "pool_id": pool_id,
+            "num_workers": num_workers,
+            "status": "started",
+            "variant": variant,
+        }
 
     def stop_worker_pool(self, pool_id: str) -> dict[str, Any]:
         """Terminate a previously started pool and reap processes."""
         pool = self._WORKER_POOLS.get(pool_id)
         if not pool:
-            raise ValueError('unknown_pool')
+            raise ValueError("unknown_pool")
 
-        procs = pool.get('procs', [])
+        procs = pool.get("procs", [])
         for p in procs:
             try:
                 p.terminate()
@@ -1750,13 +2036,18 @@ class GPUOrchestratorEngine:
                 pass
 
         self._WORKER_POOLS.pop(pool_id, None)
-        self._audit_worker_pool_event('stop', pool_id, None, None, 0, requestor=None)
+        self._audit_worker_pool_event("stop", pool_id, None, None, 0, requestor=None)
         # Mark persistent pool as stopped (best-effort)
         try:
             if self.db_service:
-                cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                cursor, conn = self.db_service.get_safe_cursor(
+                    per_call=True, buffered=True
+                )
                 try:
-                    cursor.execute("UPDATE worker_pools SET status=%s, spawned_workers=0 WHERE pool_id=%s", ('stopped', pool_id))
+                    cursor.execute(
+                        "UPDATE worker_pools SET status=%s, spawned_workers=0 WHERE pool_id=%s",
+                        ("stopped", pool_id),
+                    )
                     conn.commit()
                 finally:
                     try:
@@ -1768,26 +2059,34 @@ class GPUOrchestratorEngine:
                     except Exception:
                         pass
         except Exception:
-            self.logger.debug('Failed to update worker_pool status in DB (non-fatal)')
-        return {'pool_id': pool_id, 'status': 'stopped'}
+            self.logger.debug("Failed to update worker_pool status in DB (non-fatal)")
+        return {"pool_id": pool_id, "status": "stopped"}
 
     def list_worker_pools(self) -> list[dict[str, Any]]:
         """Return summary of active pools."""
         out = []
         for pid, meta in list(self._WORKER_POOLS.items()):
-            running = sum(1 for p in meta.get('procs', []) if p.is_alive())
-            out.append({
-                'pool_id': pid,
-                'model': meta.get('model'),
-                'adapter': meta.get('adapter'),
-                'configured_workers': meta.get('num_workers'),
-                'running_workers': running,
-                'started_at': meta.get('started_at'),
-                'variant': meta.get('variant'),
-            })
+            running = sum(1 for p in meta.get("procs", []) if p.is_alive())
+            out.append(
+                {
+                    "pool_id": pid,
+                    "model": meta.get("model"),
+                    "adapter": meta.get("adapter"),
+                    "configured_workers": meta.get("num_workers"),
+                    "running_workers": running,
+                    "started_at": meta.get("started_at"),
+                    "variant": meta.get("variant"),
+                }
+            )
         return out
 
-    def hot_swap_pool_adapter(self, pool_id: str, new_adapter: str | None, requestor: dict | None = None, wait_seconds: int = 10) -> dict[str, Any]:
+    def hot_swap_pool_adapter(
+        self,
+        pool_id: str,
+        new_adapter: str | None,
+        requestor: dict | None = None,
+        wait_seconds: int = 10,
+    ) -> dict[str, Any]:
         """Hot-swap adapter for a named pool: start new workers with new adapter, then stop old workers.
 
         This performs a blue-green style swap to avoid downtime: it spawns the same
@@ -1795,10 +2094,10 @@ class GPUOrchestratorEngine:
         """
         meta = self._WORKER_POOLS.get(pool_id)
         if not meta:
-            raise ValueError('unknown_pool')
+            raise ValueError("unknown_pool")
 
-        num_workers = meta.get('num_workers', 1)
-        model = meta.get('model')
+        num_workers = meta.get("num_workers", 1)
+        model = meta.get("model")
 
         # Start a temporary replacement pool id
         _temp_id = f"{pool_id}__swap_{int(time.time())}"
@@ -1806,7 +2105,12 @@ class GPUOrchestratorEngine:
         for _ in range(num_workers):
             p = mp.Process(
                 target=self._spawn_pool_worker,
-                args=(model, new_adapter, meta.get('hold_seconds', 600), meta.get('variant')),
+                args=(
+                    model,
+                    new_adapter,
+                    meta.get("hold_seconds", 600),
+                    meta.get("variant"),
+                ),
                 daemon=True,
             )
             p.start()
@@ -1817,7 +2121,7 @@ class GPUOrchestratorEngine:
         time.sleep(min(wait_seconds, 30))
 
         # stop old pool
-        old_procs = meta.get('procs', [])
+        old_procs = meta.get("procs", [])
         for p in old_procs:
             try:
                 p.terminate()
@@ -1831,59 +2135,78 @@ class GPUOrchestratorEngine:
 
         # Replace metadata
         self._WORKER_POOLS[pool_id] = {
-            'model': model,
-            'adapter': new_adapter,
-            'num_workers': num_workers,
-            'procs': procs,
-            'started_at': time.time(),
-            'hold_seconds': meta.get('hold_seconds', 600),
-            'variant': meta.get('variant'),
+            "model": model,
+            "adapter": new_adapter,
+            "num_workers": num_workers,
+            "procs": procs,
+            "started_at": time.time(),
+            "hold_seconds": meta.get("hold_seconds", 600),
+            "variant": meta.get("variant"),
         }
 
         # audit swap
-        self._audit_worker_pool_event('swap_adapter', pool_id, model, new_adapter, num_workers, requestor=requestor, variant=meta.get('variant'))
-        return {'pool_id': pool_id, 'status': 'swapped', 'new_adapter': new_adapter}
+        self._audit_worker_pool_event(
+            "swap_adapter",
+            pool_id,
+            model,
+            new_adapter,
+            num_workers,
+            requestor=requestor,
+            variant=meta.get("variant"),
+        )
+        return {"pool_id": pool_id, "status": "swapped", "new_adapter": new_adapter}
 
-    def _audit_worker_pool_event(self, action: str, pool_id: str, model_id: str | None, adapter: str | None, num_workers: int, requestor: dict | None = None, variant: str | None = None):
+    def _audit_worker_pool_event(
+        self,
+        action: str,
+        pool_id: str,
+        model_id: str | None,
+        adapter: str | None,
+        num_workers: int,
+        requestor: dict | None = None,
+        variant: str | None = None,
+    ):
         try:
-            audit_dir = Path('logs/audit')
+            audit_dir = Path("logs/audit")
             audit_dir.mkdir(parents=True, exist_ok=True)
             entry = {
-                'timestamp': time.time(),
-                'action': action,
-                'pool_id': pool_id,
-                'model_id': model_id,
-                'adapter': adapter,
-                'num_workers': num_workers,
+                "timestamp": time.time(),
+                "action": action,
+                "pool_id": pool_id,
+                "model_id": model_id,
+                "adapter": adapter,
+                "num_workers": num_workers,
             }
             if variant:
-                entry['variant'] = variant
+                entry["variant"] = variant
             if requestor:
-                entry['requestor'] = requestor
+                entry["requestor"] = requestor
             # optionally include requestor identity when available (controller should add 'requestor' key)
             # Write as JSON line
-            with open(audit_dir / 'gpu_orchestrator_worker_pools.jsonl', 'a') as f:
-                f.write(json.dumps(entry) + '\n')
+            with open(audit_dir / "gpu_orchestrator_worker_pools.jsonl", "a") as f:
+                f.write(json.dumps(entry) + "\n")
         except Exception:
             # Do not fail the operation if auditing fails
-            self.logger.warning('Failed to write worker pool audit entry')
+            self.logger.warning("Failed to write worker pool audit entry")
 
-    def _audit_policy_event(self, action: str, detail: dict, requestor: dict | None = None):
+    def _audit_policy_event(
+        self, action: str, detail: dict, requestor: dict | None = None
+    ):
         try:
-            audit_dir = Path('logs/audit')
+            audit_dir = Path("logs/audit")
             audit_dir.mkdir(parents=True, exist_ok=True)
             entry = {
-                'timestamp': time.time(),
-                'action': action,
-                'detail': detail,
+                "timestamp": time.time(),
+                "action": action,
+                "detail": detail,
             }
             if requestor:
-                entry['requestor'] = requestor
+                entry["requestor"] = requestor
 
-            with open(audit_dir / 'gpu_orchestrator_pool_policy.jsonl', 'a') as f:
-                f.write(json.dumps(entry) + '\n')
+            with open(audit_dir / "gpu_orchestrator_pool_policy.jsonl", "a") as f:
+                f.write(json.dumps(entry) + "\n")
         except Exception:
-            self.logger.warning('Failed to write policy audit entry')
+            self.logger.warning("Failed to write policy audit entry")
 
     def _rehydrate_worker_pools_from_db(self) -> None:
         """Load persisted worker pools from DB into memory without spawning processes.
@@ -1892,9 +2215,13 @@ class GPUOrchestratorEngine:
         can represent existing pools and reconcile them later.
         """
         try:
-            cursor, conn = self.db_service.get_safe_cursor(per_call=True, dictionary=True, buffered=True)
+            cursor, conn = self.db_service.get_safe_cursor(
+                per_call=True, dictionary=True, buffered=True
+            )
             try:
-                cursor.execute("SELECT pool_id, agent_name, model_id, adapter, desired_workers, spawned_workers, started_at, status, hold_seconds, metadata FROM worker_pools WHERE status IN ('starting','running','draining')")
+                cursor.execute(
+                    "SELECT pool_id, agent_name, model_id, adapter, desired_workers, spawned_workers, started_at, status, hold_seconds, metadata FROM worker_pools WHERE status IN ('starting','running','draining')"
+                )
                 rows = cursor.fetchall()
             finally:
                 try:
@@ -1908,33 +2235,52 @@ class GPUOrchestratorEngine:
                     pass
 
             for r in rows:
-                pid = r.get('pool_id')
+                pid = r.get("pool_id")
                 # We don't (re)spawn processes here — just restore metadata for reconciliation
                 self._WORKER_POOLS[pid] = {
-                    'model': r.get('model_id'),
-                    'adapter': r.get('adapter'),
-                    'num_workers': int(r.get('desired_workers') or 0),
-                    'procs': [],
-                    'started_at': (r.get('started_at').timestamp() if getattr(r.get('started_at'), 'timestamp', None) else None),
-                    'hold_seconds': int(r.get('hold_seconds') or 600),
-                    'variant': (r.get('metadata') and (json.loads(r.get('metadata')).get('variant') if isinstance(r.get('metadata'), str) else r.get('metadata', {}).get('variant'))) or None,
+                    "model": r.get("model_id"),
+                    "adapter": r.get("adapter"),
+                    "num_workers": int(r.get("desired_workers") or 0),
+                    "procs": [],
+                    "started_at": (
+                        r.get("started_at").timestamp()
+                        if getattr(r.get("started_at"), "timestamp", None)
+                        else None
+                    ),
+                    "hold_seconds": int(r.get("hold_seconds") or 600),
+                    "variant": (
+                        r.get("metadata")
+                        and (
+                            json.loads(r.get("metadata")).get("variant")
+                            if isinstance(r.get("metadata"), str)
+                            else r.get("metadata", {}).get("variant")
+                        )
+                    )
+                    or None,
                 }
 
             # Update metrics
-            self.worker_pools_gauge.labels(agent=self.metrics.agent_name, agent_display_name=self.metrics.display_name).set(len(self._WORKER_POOLS))
+            self.worker_pools_gauge.labels(
+                agent=self.metrics.agent_name,
+                agent_display_name=self.metrics.display_name,
+            ).set(len(self._WORKER_POOLS))
         except Exception as e:
             # Do not fail startup, just log
-            self.logger.debug(f'Error rehydrating worker pools from DB: {e}')
+            self.logger.debug(f"Error rehydrating worker pools from DB: {e}")
 
     def get_mps_allocation_config(self) -> dict[str, Any]:
         """Get MPS allocation configuration."""
         try:
             import json
+
             project_root = Path(self._project_root())
             config_path = project_root / "config" / "gpu" / "mps_allocation_config.json"
 
             if not config_path.exists():
-                return {"error": "MPS allocation configuration not found", "path": str(config_path)}
+                return {
+                    "error": "MPS allocation configuration not found",
+                    "path": str(config_path),
+                }
 
             with open(config_path) as f:
                 return json.load(f)
@@ -1948,52 +2294,81 @@ class GPUOrchestratorEngine:
             # Get current pending jobs across all streams
             total_pending = 0
             streams = [
-                os.environ.get('ORCH_STREAM_PREFIX', 'stream:orchestrator:') + 'inference_jobs',
-                os.environ.get('ORCH_STREAM_PREFIX', 'stream:orchestrator:') + 'preloads'
+                os.environ.get("ORCH_STREAM_PREFIX", "stream:orchestrator:")
+                + "inference_jobs",
+                os.environ.get("ORCH_STREAM_PREFIX", "stream:orchestrator:")
+                + "preloads",
             ]
 
             for stream in streams:
                 try:
-                    pending_info = self.redis_client.xpending(stream, 'cg:inference')
+                    pending_info = self.redis_client.xpending(stream, "cg:inference")
                     if pending_info and len(pending_info) > 0:
-                        pending_count = pending_info[0].get('pending', 0) if isinstance(pending_info[0], dict) else pending_info[0]
+                        pending_count = (
+                            pending_info[0].get("pending", 0)
+                            if isinstance(pending_info[0], dict)
+                            else pending_info[0]
+                        )
                         total_pending += pending_count
                 except Exception:
                     pass
 
             # Autoscaling rules based on pending jobs
             policy = self.get_pool_policy()
-            current_total_workers = sum(p.get('num_workers', 0) for p in self._WORKER_POOLS.values())
-            max_workers = policy.get('max_total_workers', 8)
+            current_total_workers = sum(
+                p.get("num_workers", 0) for p in self._WORKER_POOLS.values()
+            )
+            max_workers = policy.get("max_total_workers", 8)
 
             # Scale up if pending jobs > 50 and we have capacity
             if total_pending > 50 and current_total_workers < max_workers:
-                self.logger.info(f'Autoscaler: High pending jobs ({total_pending}), considering scale up')
+                self.logger.info(
+                    f"Autoscaler: High pending jobs ({total_pending}), considering scale up"
+                )
                 # For now, just log - production would implement actual scaling
                 # TODO: Implement intelligent pool scaling based on job types and model requirements
 
             # Scale down if pending jobs < 5 and we have excess capacity
-            elif total_pending < 5 and current_total_workers > policy.get('min_warm_workers_per_pool', 0):
-                self.logger.info(f'Autoscaler: Low pending jobs ({total_pending}), considering scale down')
+            elif total_pending < 5 and current_total_workers > policy.get(
+                "min_warm_workers_per_pool", 0
+            ):
+                self.logger.info(
+                    f"Autoscaler: Low pending jobs ({total_pending}), considering scale down"
+                )
                 # TODO: Implement pool consolidation
 
             # Monitor processing times (from histogram if available)
             # TODO: Add rules based on job_processing_duration_histogram percentiles
 
         except Exception as e:
-            self.logger.debug(f'Autoscaler error: {e}')
+            self.logger.debug(f"Autoscaler error: {e}")
 
     # Job queue helpers
-    def submit_job(self, job_id: str, job_type: str, payload: dict[str, Any], timeout_seconds: int | None = None) -> dict[str, Any]:
+    def submit_job(
+        self,
+        job_id: str,
+        job_type: str,
+        payload: dict[str, Any],
+        timeout_seconds: int | None = None,
+    ) -> dict[str, Any]:
         """Persist a job row and push into Redis stream (fallback to DB-only if Redis unavailable)."""
         try:
             # Persist job to DB if available
             if self.db_service:
-                cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                cursor, conn = self.db_service.get_safe_cursor(
+                    per_call=True, buffered=True
+                )
                 try:
                     cursor.execute(
-                    "INSERT INTO orchestrator_jobs (job_id, type, payload, status, attempts, created_at, timeout_seconds) VALUES (%s,%s,%s,%s,%s,NOW(),%s)",
-                        (job_id, job_type, json.dumps(payload), 'pending', 0, timeout_seconds)
+                        "INSERT INTO orchestrator_jobs (job_id, type, payload, status, attempts, created_at, timeout_seconds) VALUES (%s,%s,%s,%s,%s,NOW(),%s)",
+                        (
+                            job_id,
+                            job_type,
+                            json.dumps(payload),
+                            "pending",
+                            0,
+                            timeout_seconds,
+                        ),
                     )
                     conn.commit()
                 finally:
@@ -2010,28 +2385,39 @@ class GPUOrchestratorEngine:
             if self.redis_client:
                 try:
                     # stream name is type-based, fallback to generic inference_jobs
-                    stream = os.environ.get('ORCH_STREAM_PREFIX', 'stream:orchestrator:') + (job_type or 'inference_jobs')
+                    stream = os.environ.get(
+                        "ORCH_STREAM_PREFIX", "stream:orchestrator:"
+                    ) + (job_type or "inference_jobs")
                     # store payload as JSON string under 'payload'
-                    fields = {'job_id': job_id, 'type': job_type, 'payload': json.dumps(payload)}
+                    fields = {
+                        "job_id": job_id,
+                        "type": job_type,
+                        "payload": json.dumps(payload),
+                    }
                     if timeout_seconds is not None:
-                        fields['timeout_seconds'] = str(timeout_seconds)
+                        fields["timeout_seconds"] = str(timeout_seconds)
                     self.redis_client.xadd(stream, fields)
                 except Exception:
                     # Non-fatal; keep job persisted in DB
-                    self.logger.debug('Failed to write job to Redis stream (non-fatal)')
+                    self.logger.debug("Failed to write job to Redis stream (non-fatal)")
 
-            return {'job_id': job_id, 'status': 'submitted'}
+            return {"job_id": job_id, "status": "submitted"}
         except Exception as e:
-            self.logger.error(f'Failed to submit job: {e}')
+            self.logger.error(f"Failed to submit job: {e}")
             raise
 
     def get_job(self, job_id: str) -> dict[str, Any] | None:
         """Retrieve job record from DB if available, else return from in-memory cache if present."""
         try:
             if self.db_service:
-                cursor, conn = self.db_service.get_safe_cursor(per_call=True, dictionary=True, buffered=True)
+                cursor, conn = self.db_service.get_safe_cursor(
+                    per_call=True, dictionary=True, buffered=True
+                )
                 try:
-                    cursor.execute("SELECT job_id, type, payload, status, attempts, created_at, updated_at, last_error, timeout_seconds FROM orchestrator_jobs WHERE job_id=%s", (job_id,))
+                    cursor.execute(
+                        "SELECT job_id, type, payload, status, attempts, created_at, updated_at, last_error, timeout_seconds FROM orchestrator_jobs WHERE job_id=%s",
+                        (job_id,),
+                    )
                     row = cursor.fetchone()
                 finally:
                     try:
@@ -2045,14 +2431,16 @@ class GPUOrchestratorEngine:
                 if row:
                     # parse payload JSON
                     try:
-                        row['payload'] = json.loads(row['payload']) if row.get('payload') else {}
+                        row["payload"] = (
+                            json.loads(row["payload"]) if row.get("payload") else {}
+                        )
                     except Exception:
                         pass
                     return row
             # fallback not found
             return None
         except Exception as e:
-            self.logger.debug(f'Failed to read job from DB: {e}')
+            self.logger.debug(f"Failed to read job from DB: {e}")
             return None
 
     def _reclaimer_pass(self):
@@ -2067,46 +2455,62 @@ class GPUOrchestratorEngine:
 
         # Probe for xautoclaim support once and cache the result. Some redis clients
         # or server versions may not implement xautoclaim; fall back when missing.
-        if getattr(self, '_redis_supports_xautoclaim', None) is None:
+        if getattr(self, "_redis_supports_xautoclaim", None) is None:
             try:
-                self._redis_supports_xautoclaim = hasattr(self.redis_client, 'xautoclaim')
+                self._redis_supports_xautoclaim = hasattr(
+                    self.redis_client, "xautoclaim"
+                )
             except Exception:
                 # Be conservative and disable xautoclaim if probing fails
                 self._redis_supports_xautoclaim = False
 
         streams = [
-            os.environ.get('ORCH_STREAM_PREFIX', 'stream:orchestrator:') + 'inference_jobs',
-            os.environ.get('ORCH_STREAM_PREFIX', 'stream:orchestrator:') + 'preloads'
+            os.environ.get("ORCH_STREAM_PREFIX", "stream:orchestrator:")
+            + "inference_jobs",
+            os.environ.get("ORCH_STREAM_PREFIX", "stream:orchestrator:") + "preloads",
         ]
 
         for s in streams:
             try:
                 # Use XAUTOCLAIM for atomic claiming of idle messages
                 # XAUTOCLAIM returns [next_start_id, [id1, fields1, id2, fields2, ...]]
-                start_id = '0'  # Start from the beginning
+                start_id = "0"  # Start from the beginning
                 count = 10  # Process in batches to avoid blocking too long
-                reclaimer_consumer = 'reclaimer'
+                reclaimer_consumer = "reclaimer"
 
                 while True:
                     try:
                         # Try XAUTOCLAIM first (Redis 6.2+) if supported by client/server
                         if self._redis_supports_xautoclaim is False:
-                            raise AttributeError('xautoclaim not supported')
+                            raise AttributeError("xautoclaim not supported")
 
                         result = None
                         try:
-                            result = self.redis_client.xautoclaim(s, 'cg:inference', reclaimer_consumer, self._claim_idle_ms, start_id, count=count)
+                            result = self.redis_client.xautoclaim(
+                                s,
+                                "cg:inference",
+                                reclaimer_consumer,
+                                self._claim_idle_ms,
+                                start_id,
+                                count=count,
+                            )
                         except AttributeError:
                             # client does not implement xautoclaim
                             raise
                         except Exception as e:
                             # If Redis returned an error, log and fall back once
-                            self.logger.debug(f'Redis xautoclaim failed (will fallback): {e}')
+                            self.logger.debug(
+                                f"Redis xautoclaim failed (will fallback): {e}"
+                            )
                             self._redis_supports_xautoclaim = False
                             raise
                         # If xautoclaim returned an empty / unexpected result structure,
                         # treat it as unsupported and fall back to the safer manual path.
-                        if not result or not isinstance(result, (list, tuple)) or len(result) < 2:
+                        if (
+                            not result
+                            or not isinstance(result, (list, tuple))
+                            or len(result) < 2
+                        ):
                             # Fallback to manual reclaiming process which uses xpending_range/xrange
                             self._redis_supports_xautoclaim = False
                             self._fallback_reclaimer_pass(s)
@@ -2117,32 +2521,42 @@ class GPUOrchestratorEngine:
                         # claimed_messages is a list of [id, fields, id, fields, ...]
                         for i in range(0, len(claimed_messages), 2):
                             msg_id = claimed_messages[i]
-                            fields = claimed_messages[i + 1] if i + 1 < len(claimed_messages) else {}
+                            fields = (
+                                claimed_messages[i + 1]
+                                if i + 1 < len(claimed_messages)
+                                else {}
+                            )
 
                             # Extract job_id, payload, and timeout
                             job_id = None
                             payload = None
                             timeout_seconds = None
-                            if b'job_id' in fields or 'job_id' in fields:
-                                job_id = fields.get(b'job_id') or fields.get('job_id')
+                            if b"job_id" in fields or "job_id" in fields:
+                                job_id = fields.get(b"job_id") or fields.get("job_id")
                                 if isinstance(job_id, bytes):
-                                    job_id = job_id.decode('utf-8')
-                            pld = fields.get(b'payload') or fields.get('payload')
+                                    job_id = job_id.decode("utf-8")
+                            pld = fields.get(b"payload") or fields.get("payload")
                             if pld:
                                 if isinstance(pld, bytes):
                                     try:
-                                        payload = json.loads(pld.decode('utf-8'))
+                                        payload = json.loads(pld.decode("utf-8"))
                                     except Exception:
-                                        payload = pld.decode('utf-8')
+                                        payload = pld.decode("utf-8")
                                 else:
                                     try:
                                         payload = json.loads(pld)
                                     except Exception:
                                         payload = pld
-                            timeout_val = fields.get(b'timeout_seconds') or fields.get('timeout_seconds')
+                            timeout_val = fields.get(b"timeout_seconds") or fields.get(
+                                "timeout_seconds"
+                            )
                             if timeout_val:
                                 try:
-                                    timeout_seconds = int(timeout_val) if isinstance(timeout_val, (str, bytes)) else timeout_val
+                                    timeout_seconds = (
+                                        int(timeout_val)
+                                        if isinstance(timeout_val, (str, bytes))
+                                        else timeout_val
+                                    )
                                 except Exception:
                                     timeout_seconds = None
 
@@ -2150,9 +2564,14 @@ class GPUOrchestratorEngine:
                             attempts = 0
                             if job_id and self.db_service:
                                 try:
-                                    cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                                    cursor, conn = self.db_service.get_safe_cursor(
+                                        per_call=True, buffered=True
+                                    )
                                     try:
-                                        cursor.execute('SELECT attempts FROM orchestrator_jobs WHERE job_id=%s', (job_id,))
+                                        cursor.execute(
+                                            "SELECT attempts FROM orchestrator_jobs WHERE job_id=%s",
+                                            (job_id,),
+                                        )
                                         r = cursor.fetchone()
                                         if r:
                                             attempts = int(r[0])
@@ -2174,9 +2593,14 @@ class GPUOrchestratorEngine:
                             # Update attempts in DB
                             if job_id and self.db_service:
                                 try:
-                                    cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                                    cursor, conn = self.db_service.get_safe_cursor(
+                                        per_call=True, buffered=True
+                                    )
                                     try:
-                                        cursor.execute('UPDATE orchestrator_jobs SET attempts=%s, updated_at=NOW() WHERE job_id=%s', (attempts, job_id))
+                                        cursor.execute(
+                                            "UPDATE orchestrator_jobs SET attempts=%s, updated_at=NOW() WHERE job_id=%s",
+                                            (attempts, job_id),
+                                        )
                                         conn.commit()
                                     finally:
                                         try:
@@ -2194,20 +2618,38 @@ class GPUOrchestratorEngine:
 
                             if attempts >= self._job_retry_max:
                                 # Move to DLQ
-                                dlq = s + ':dlq'
+                                dlq = s + ":dlq"
                                 try:
-                                    dlq_fields = {'job_id': job_id or '', 'payload': json.dumps(payload) if payload is not None else ''}
+                                    dlq_fields = {
+                                        "job_id": job_id or "",
+                                        "payload": json.dumps(payload)
+                                        if payload is not None
+                                        else "",
+                                    }
                                     if timeout_seconds is not None:
-                                        dlq_fields['timeout_seconds'] = str(timeout_seconds)
+                                        dlq_fields["timeout_seconds"] = str(
+                                            timeout_seconds
+                                        )
                                     self.redis_client.xadd(dlq, dlq_fields)
                                 except Exception:
                                     pass
-                                # Mark job dead-lettered in DB
+                                    # Mark job dead-lettered in DB
                                     if job_id and self.db_service:
                                         try:
-                                            cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                                            cursor, conn = (
+                                                self.db_service.get_safe_cursor(
+                                                    per_call=True, buffered=True
+                                                )
+                                            )
                                             try:
-                                                cursor.execute('UPDATE orchestrator_jobs SET status=%s, last_error=%s, updated_at=NOW() WHERE job_id=%s', ('dead_letter', 'max_attempts_exceeded', job_id))
+                                                cursor.execute(
+                                                    "UPDATE orchestrator_jobs SET status=%s, last_error=%s, updated_at=NOW() WHERE job_id=%s",
+                                                    (
+                                                        "dead_letter",
+                                                        "max_attempts_exceeded",
+                                                        job_id,
+                                                    ),
+                                                )
                                                 conn.commit()
                                             finally:
                                                 try:
@@ -2222,46 +2664,58 @@ class GPUOrchestratorEngine:
                                             pass
                                 # ACK the claimed message
                                 try:
-                                    self.redis_client.xack(s, 'cg:inference', msg_id)
+                                    self.redis_client.xack(s, "cg:inference", msg_id)
                                 except Exception:
                                     pass
                                 self.reclaimer_dlq.inc()
                             else:
                                 # Requeue message as a new message for processing
                                 try:
-                                    requeue_fields = {'job_id': job_id or '', 'type': fields.get(b'type') or fields.get('type') or '', 'payload': json.dumps(payload) if payload is not None else ''}
+                                    requeue_fields = {
+                                        "job_id": job_id or "",
+                                        "type": fields.get(b"type")
+                                        or fields.get("type")
+                                        or "",
+                                        "payload": json.dumps(payload)
+                                        if payload is not None
+                                        else "",
+                                    }
                                     if timeout_seconds is not None:
-                                        requeue_fields['timeout_seconds'] = str(timeout_seconds)
+                                        requeue_fields["timeout_seconds"] = str(
+                                            timeout_seconds
+                                        )
                                     self.redis_client.xadd(s, requeue_fields)
-                                    self.redis_client.xack(s, 'cg:inference', msg_id)
+                                    self.redis_client.xack(s, "cg:inference", msg_id)
                                 except Exception:
                                     pass
                                 self.reclaimer_requeued.inc()
 
                         start_id = next_start_id
-                        if start_id == '0':
+                        if start_id == "0":
                             break  # Finished processing all
 
                     except AttributeError:
                         # XAUTOCLAIM not available (client or server) — fallback to manual reclaiming
-                        self.logger.debug('XAUTOCLAIM not available (client/server). Falling back to manual reclaiming')
+                        self.logger.debug(
+                            "XAUTOCLAIM not available (client/server). Falling back to manual reclaiming"
+                        )
                         self._redis_supports_xautoclaim = False
                         self._fallback_reclaimer_pass(s)
                         break
                     except Exception as e:
                         # Don't let a transient redis or parsing error kill the reclaimer loop.
-                        self.logger.debug(f'Error during XAUTOCLAIM pass: {e}')
+                        self.logger.debug(f"Error during XAUTOCLAIM pass: {e}")
                         self.reclaimer_errors.inc()
                         # Fall back to the safer manual path to avoid missing messages
                         try:
                             self._fallback_reclaimer_pass(s)
                         except Exception:
-                            self.logger.debug('Fallback reclaimer also failed')
+                            self.logger.debug("Fallback reclaimer also failed")
                         break
 
             except Exception as e:
                 # Log and increment error metric — continue to next stream
-                self.logger.debug(f'Error iterating stream {s}: {e}')
+                self.logger.debug(f"Error iterating stream {s}: {e}")
                 self.reclaimer_errors.inc()
                 continue
 
@@ -2273,7 +2727,9 @@ class GPUOrchestratorEngine:
         try:
             pending = []
             try:
-                pending = self.redis_client.xpending_range(stream, 'cg:inference', '-', '+', count=100)
+                pending = self.redis_client.xpending_range(
+                    stream, "cg:inference", "-", "+", count=100
+                )
             except Exception:
                 return
 
@@ -2293,26 +2749,32 @@ class GPUOrchestratorEngine:
                     job_id = None
                     payload = None
                     timeout_seconds = None
-                    if b'job_id' in fields or 'job_id' in fields:
-                        job_id = fields.get(b'job_id') or fields.get('job_id')
+                    if b"job_id" in fields or "job_id" in fields:
+                        job_id = fields.get(b"job_id") or fields.get("job_id")
                         if isinstance(job_id, bytes):
-                            job_id = job_id.decode('utf-8')
-                    pld = fields.get(b'payload') or fields.get('payload')
+                            job_id = job_id.decode("utf-8")
+                    pld = fields.get(b"payload") or fields.get("payload")
                     if pld:
                         if isinstance(pld, bytes):
                             try:
-                                payload = json.loads(pld.decode('utf-8'))
+                                payload = json.loads(pld.decode("utf-8"))
                             except Exception:
-                                payload = pld.decode('utf-8')
+                                payload = pld.decode("utf-8")
                         else:
                             try:
                                 payload = json.loads(pld)
                             except Exception:
                                 payload = pld
-                    timeout_val = fields.get(b'timeout_seconds') or fields.get('timeout_seconds')
+                    timeout_val = fields.get(b"timeout_seconds") or fields.get(
+                        "timeout_seconds"
+                    )
                     if timeout_val:
                         try:
-                            timeout_seconds = int(timeout_val) if isinstance(timeout_val, (str, bytes)) else timeout_val
+                            timeout_seconds = (
+                                int(timeout_val)
+                                if isinstance(timeout_val, (str, bytes))
+                                else timeout_val
+                            )
                         except Exception:
                             timeout_seconds = None
 
@@ -2320,9 +2782,14 @@ class GPUOrchestratorEngine:
                     attempts = 0
                     if job_id and self.db_service:
                         try:
-                            cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                            cursor, conn = self.db_service.get_safe_cursor(
+                                per_call=True, buffered=True
+                            )
                             try:
-                                cursor.execute('SELECT attempts FROM orchestrator_jobs WHERE job_id=%s', (job_id,))
+                                cursor.execute(
+                                    "SELECT attempts FROM orchestrator_jobs WHERE job_id=%s",
+                                    (job_id,),
+                                )
                                 r = cursor.fetchone()
                                 if r:
                                     attempts = int(r[0])
@@ -2342,9 +2809,14 @@ class GPUOrchestratorEngine:
 
                     if job_id and self.db_service:
                         try:
-                            cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                            cursor, conn = self.db_service.get_safe_cursor(
+                                per_call=True, buffered=True
+                            )
                             try:
-                                cursor.execute('UPDATE orchestrator_jobs SET attempts=%s, updated_at=NOW() WHERE job_id=%s', (attempts, job_id))
+                                cursor.execute(
+                                    "UPDATE orchestrator_jobs SET attempts=%s, updated_at=NOW() WHERE job_id=%s",
+                                    (attempts, job_id),
+                                )
                                 conn.commit()
                             finally:
                                 try:
@@ -2359,19 +2831,33 @@ class GPUOrchestratorEngine:
                             pass
 
                     if attempts >= self._job_retry_max:
-                        dlq = stream + ':dlq'
+                        dlq = stream + ":dlq"
                         try:
-                            dlq_fields = {'job_id': job_id or '', 'payload': json.dumps(payload) if payload is not None else ''}
+                            dlq_fields = {
+                                "job_id": job_id or "",
+                                "payload": json.dumps(payload)
+                                if payload is not None
+                                else "",
+                            }
                             if timeout_seconds is not None:
-                                dlq_fields['timeout_seconds'] = str(timeout_seconds)
+                                dlq_fields["timeout_seconds"] = str(timeout_seconds)
                             self.redis_client.xadd(dlq, dlq_fields)
                         except Exception:
                             pass
                         if job_id and self.db_service:
                             try:
-                                cursor, conn = self.db_service.get_safe_cursor(per_call=True, buffered=True)
+                                cursor, conn = self.db_service.get_safe_cursor(
+                                    per_call=True, buffered=True
+                                )
                                 try:
-                                    cursor.execute('UPDATE orchestrator_jobs SET status=%s, last_error=%s, updated_at=NOW() WHERE job_id=%s', ('dead_letter', 'max_attempts_exceeded', job_id))
+                                    cursor.execute(
+                                        "UPDATE orchestrator_jobs SET status=%s, last_error=%s, updated_at=NOW() WHERE job_id=%s",
+                                        (
+                                            "dead_letter",
+                                            "max_attempts_exceeded",
+                                            job_id,
+                                        ),
+                                    )
                                     conn.commit()
                                 finally:
                                     try:
@@ -2385,16 +2871,22 @@ class GPUOrchestratorEngine:
                             except Exception:
                                 pass
                         try:
-                            self.redis_client.xack(stream, 'cg:inference', msg_id)
+                            self.redis_client.xack(stream, "cg:inference", msg_id)
                         except Exception:
                             pass
                     else:
                         try:
-                            requeue_fields = {'job_id': job_id or '', 'type': fields.get(b'type') or fields.get('type') or '', 'payload': json.dumps(payload) if payload is not None else ''}
+                            requeue_fields = {
+                                "job_id": job_id or "",
+                                "type": fields.get(b"type") or fields.get("type") or "",
+                                "payload": json.dumps(payload)
+                                if payload is not None
+                                else "",
+                            }
                             if timeout_seconds is not None:
-                                requeue_fields['timeout_seconds'] = str(timeout_seconds)
+                                requeue_fields["timeout_seconds"] = str(timeout_seconds)
                             self.redis_client.xadd(stream, requeue_fields)
-                            self.redis_client.xack(stream, 'cg:inference', msg_id)
+                            self.redis_client.xack(stream, "cg:inference", msg_id)
                         except Exception:
                             pass
 

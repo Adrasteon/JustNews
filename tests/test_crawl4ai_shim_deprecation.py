@@ -10,9 +10,9 @@ def test_crawl4ai_shim_does_not_warn_on_import():
     as errors under the CI policy.
     """
     # Import the shim fresh and capture any warnings raised during import.
-    module_name = 'agents.scout.crawl4ai_server'
+    module_name = "agents.scout.crawl4ai_server"
     with warnings.catch_warnings(record=True) as warns:
-        warnings.simplefilter('always')
+        warnings.simplefilter("always")
         try:
             importlib.reload(importlib.import_module(module_name))
         except Exception:

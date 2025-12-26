@@ -25,7 +25,13 @@ class FakeModel:
 
 
 def test_hf_adapter_retries_succeeds(monkeypatch):
-    a = HFAdapter(model_name="gpt-test", name="test-hf", timeout=1.0, max_retries=3, backoff_base=0.01)
+    a = HFAdapter(
+        model_name="gpt-test",
+        name="test-hf",
+        timeout=1.0,
+        max_retries=3,
+        backoff_base=0.01,
+    )
     # simulate as if adapter was loaded
     a.mark_loaded()
     a._tokenizer = FakeTokenizer()
@@ -37,7 +43,13 @@ def test_hf_adapter_retries_succeeds(monkeypatch):
 
 
 def test_hf_adapter_retries_exhaust(monkeypatch):
-    a = HFAdapter(model_name="gpt-test", name="test-hf", timeout=1.0, max_retries=2, backoff_base=0.01)
+    a = HFAdapter(
+        model_name="gpt-test",
+        name="test-hf",
+        timeout=1.0,
+        max_retries=2,
+        backoff_base=0.01,
+    )
     a.mark_loaded()
     a._tokenizer = FakeTokenizer()
     a._model = FakeModel(fail_times=5)  # will keep failing

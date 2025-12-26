@@ -11,6 +11,7 @@ import sys
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
+
 def test_version_consistency():
     """Test that all components use the same version"""
     print("🔍 JustNews Version Consistency Check")
@@ -20,6 +21,7 @@ def test_version_consistency():
     try:
         from justnews import VERSION_INFO
         from justnews import __version__ as central_version
+
         print(f"✅ Centralized Version: {central_version}")
         print(f"   Status: {VERSION_INFO['status']}")
         expected_version = central_version
@@ -37,8 +39,8 @@ def test_version_consistency():
 
     for agent_name, module_path in agents_to_test:
         try:
-            module = __import__(module_path, fromlist=['__version__'])
-            agent_version = getattr(module, '__version__', None)
+            module = __import__(module_path, fromlist=["__version__"])
+            agent_version = getattr(module, "__version__", None)
             if agent_version == expected_version:
                 print(f"✅ {agent_name}: {agent_version}")
             else:
@@ -50,7 +52,9 @@ def test_version_consistency():
 
     # Test API endpoints (would need running services)
     print("\n📡 API Endpoints (requires running services):")
-    print("   Run individual agents and check /health endpoints for version consistency")
+    print(
+        "   Run individual agents and check /health endpoints for version consistency"
+    )
 
     print("\n" + "=" * 50)
     if all_consistent:
@@ -59,6 +63,7 @@ def test_version_consistency():
     else:
         print("⚠️  Version inconsistencies found - please check agent imports")
         return False
+
 
 if __name__ == "__main__":
     success = test_version_consistency()

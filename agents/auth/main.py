@@ -70,7 +70,7 @@ app = FastAPI(
     title="JustNews Authentication Service",
     description="User authentication, authorization, and session management service",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -90,7 +90,7 @@ async def root():
         "service": "JustNews Authentication Service",
         "version": "1.0.0",
         "description": "JWT-based authentication with role-based access control",
-        "status": "running"
+        "status": "running",
     }
 
 
@@ -104,10 +104,7 @@ async def health_check():
         # Determine HTTP status code based on health
         status_code = 200 if health_info["status"] == "healthy" else 503
 
-        return JSONResponse(
-            content=health_info,
-            status_code=status_code
-        )
+        return JSONResponse(content=health_info, status_code=status_code)
 
     except Exception as e:
         logger.error(f"Health check error: {e}")
@@ -116,9 +113,9 @@ async def health_check():
                 "service": "auth_service",
                 "status": "error",
                 "error": str(e),
-                "timestamp": asyncio.get_event_loop().time()
+                "timestamp": asyncio.get_event_loop().time(),
             },
-            status_code=503
+            status_code=503,
         )
 
 
@@ -132,7 +129,9 @@ async def service_info():
 
     except Exception as e:
         logger.error(f"Service info error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get service information") from e
+        raise HTTPException(
+            status_code=500, detail="Failed to get service information"
+        ) from e
 
 
 @app.get("/ready")
@@ -145,14 +144,13 @@ async def readiness_check():
         else:
             return JSONResponse(
                 content={"status": "not ready", "reason": "engine not initialized"},
-                status_code=503
+                status_code=503,
             )
 
     except Exception as e:
         logger.error(f"Readiness check error: {e}")
         return JSONResponse(
-            content={"status": "error", "error": str(e)},
-            status_code=503
+            content={"status": "error", "error": str(e)}, status_code=503
         )
 
 
@@ -168,8 +166,8 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={
             "error": "Internal server error",
-            "detail": str(exc) if app.debug else "An unexpected error occurred"
-        }
+            "detail": str(exc) if app.debug else "An unexpected error occurred",
+        },
     )
 
 
@@ -187,12 +185,7 @@ def main():
 
     # Configure uvicorn
     config = uvicorn.Config(
-        app=app,
-        host=host,
-        port=port,
-        workers=workers,
-        reload=reload,
-        log_level="info"
+        app=app, host=host, port=port, workers=workers, reload=reload, log_level="info"
     )
 
     server = uvicorn.Server(config)

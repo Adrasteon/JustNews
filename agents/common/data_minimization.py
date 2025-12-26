@@ -26,6 +26,7 @@ from common.observability import get_logger
 
 class DataPurpose(Enum):
     """Legal purposes for data processing under GDPR"""
+
     CONTRACT_FULFILLMENT = "contract_fulfillment"
     LEGAL_OBLIGATION = "legal_obligation"
     LEGITIMATE_INTEREST = "legitimate_interest"
@@ -36,6 +37,7 @@ class DataPurpose(Enum):
 
 class DataCategory(Enum):
     """Categories of personal data"""
+
     IDENTIFIERS = "identifiers"  # Name, email, phone, etc.
     FINANCIAL = "financial"  # Payment info, transaction history
     HEALTH = "health"  # Medical data, health records
@@ -48,6 +50,7 @@ class DataCategory(Enum):
 @dataclass
 class DataCollectionPolicy:
     """Policy defining what data can be collected and for what purposes"""
+
     purpose: DataPurpose
     categories: list[DataCategory]
     retention_period_days: int
@@ -60,15 +63,17 @@ class DataCollectionPolicy:
 
     def is_expired(self) -> bool:
         """Check if the policy has expired"""
-        return datetime.now() > (self.created_at + timedelta(days=self.retention_period_days))
+        return datetime.now() > (
+            self.created_at + timedelta(days=self.retention_period_days)
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         data = asdict(self)
-        data['purpose'] = self.purpose.value
-        data['categories'] = [cat.value for cat in self.categories]
-        data['created_at'] = self.created_at.isoformat()
-        data['updated_at'] = self.updated_at.isoformat()
+        data["purpose"] = self.purpose.value
+        data["categories"] = [cat.value for cat in self.categories]
+        data["created_at"] = self.created_at.isoformat()
+        data["updated_at"] = self.updated_at.isoformat()
         return data
 
 
@@ -91,10 +96,12 @@ class DataMinimizationManager:
             if policy_file.exists():
                 with open(policy_file) as f:
                     data = json.load(f)
-                    for policy_data in data.get('policies', []):
+                    for policy_data in data.get("policies", []):
                         policy = self._deserialize_policy(policy_data)
-                        self.policies[policy_data['purpose']] = policy
-                self.logger.info(f"Loaded {len(self.policies)} data minimization policies")
+                        self.policies[policy_data["purpose"]] = policy
+                self.logger.info(
+                    f"Loaded {len(self.policies)} data minimization policies"
+                )
             else:
                 self._create_default_policies()
         except Exception as e:
@@ -113,7 +120,7 @@ class DataMinimizationManager:
                 justification="Required for service delivery and billing",
                 legal_basis="Article 6(1)(b) GDPR - Contract fulfillment",
                 created_at=datetime.now(),
-                updated_at=datetime.now()
+                updated_at=datetime.now(),
             ),
             DataCollectionPolicy(
                 purpose=DataPurpose.LEGITIMATE_INTEREST,
@@ -124,7 +131,7 @@ class DataMinimizationManager:
                 justification="Improve service quality and user experience",
                 legal_basis="Article 6(1)(f) GDPR - Legitimate interests",
                 created_at=datetime.now(),
-                updated_at=datetime.now()
+                updated_at=datetime.now(),
             ),
             DataCollectionPolicy(
                 purpose=DataPurpose.CONSENT,
@@ -135,8 +142,8 @@ class DataMinimizationManager:
                 justification="Marketing communications with user consent",
                 legal_basis="Article 6(1)(a) GDPR - Consent",
                 created_at=datetime.now(),
-                updated_at=datetime.now()
-            )
+                updated_at=datetime.now(),
+            ),
         ]
 
         for policy in default_policies:
@@ -148,15 +155,15 @@ class DataMinimizationManager:
     def _deserialize_policy(self, data: dict[str, Any]) -> DataCollectionPolicy:
         """Deserialize policy from dictionary"""
         return DataCollectionPolicy(
-            purpose=DataPurpose(data['purpose']),
-            categories=[DataCategory(cat) for cat in data['categories']],
-            retention_period_days=data['retention_period_days'],
-            required_fields=data['required_fields'],
-            optional_fields=data['optional_fields'],
-            justification=data['justification'],
-            legal_basis=data['legal_basis'],
-            created_at=datetime.fromisoformat(data['created_at']),
-            updated_at=datetime.fromisoformat(data['updated_at'])
+            purpose=DataPurpose(data["purpose"]),
+            categories=[DataCategory(cat) for cat in data["categories"]],
+            retention_period_days=data["retention_period_days"],
+            required_fields=data["required_fields"],
+            optional_fields=data["optional_fields"],
+            justification=data["justification"],
+            legal_basis=data["legal_basis"],
+            created_at=datetime.fromisoformat(data["created_at"]),
+            updated_at=datetime.fromisoformat(data["updated_at"]),
         )
 
     def _save_policies(self):
@@ -166,18 +173,19 @@ class DataMinimizationManager:
             policy_file.parent.mkdir(parents=True, exist_ok=True)
 
             data = {
-                'policies': [policy.to_dict() for policy in self.policies.values()],
-                'last_updated': datetime.now().isoformat()
+                "policies": [policy.to_dict() for policy in self.policies.values()],
+                "last_updated": datetime.now().isoformat(),
             }
 
-            with open(policy_file, 'w') as f:
+            with open(policy_file, "w") as f:
                 json.dump(data, f, indent=2)
 
         except Exception as e:
             self.logger.error(f"Failed to save policies: {e}")
 
-    def validate_data_collection(self, purpose: str, data_fields: list[str],
-                               user_id: str) -> dict[str, Any]:
+    def validate_data_collection(
+        self, purpose: str, data_fields: list[str], user_id: str
+    ) -> dict[str, Any]:
         """
         Validate if data collection is allowed under minimization principles
 
@@ -199,15 +207,15 @@ class DataMinimizationManager:
                 details={
                     "violation_type": "unknown_purpose",
                     "purpose": purpose,
-                    "data_fields": data_fields
+                    "data_fields": data_fields,
                 },
-                compliance_relevant=True
+                compliance_relevant=True,
             )
             return {
                 "allowed": False,
                 "reason": f"Unknown data collection purpose: {purpose}",
                 "allowed_fields": [],
-                "denied_fields": data_fields
+                "denied_fields": data_fields,
             }
 
         policy = self.policies[purpose]
@@ -218,7 +226,7 @@ class DataMinimizationManager:
                 "allowed": False,
                 "reason": f"Data collection policy expired for purpose: {purpose}",
                 "allowed_fields": [],
-                "denied_fields": data_fields
+                "denied_fields": data_fields,
             }
 
         # Separate required and optional fields
@@ -249,21 +257,24 @@ class DataMinimizationManager:
                 "total_fields": len(data_fields),
                 "allowed_fields": len(allowed_fields),
                 "denied_fields": len(denied_fields),
-                "policy_categories": [cat.value for cat in policy.categories]
+                "policy_categories": [cat.value for cat in policy.categories],
             },
-            compliance_relevant=True
+            compliance_relevant=True,
         )
 
         return {
             "allowed": len(allowed_fields) > 0,
-            "reason": "Data collection validated" if allowed_fields else "No allowed fields found",
+            "reason": "Data collection validated"
+            if allowed_fields
+            else "No allowed fields found",
             "allowed_fields": allowed_fields,
             "denied_fields": denied_fields,
-            "policy": policy.to_dict()
+            "policy": policy.to_dict(),
         }
 
-    def minimize_data_payload(self, data: dict[str, Any], purpose: str,
-                            user_id: str) -> dict[str, Any]:
+    def minimize_data_payload(
+        self, data: dict[str, Any], purpose: str, user_id: str
+    ) -> dict[str, Any]:
         """
         Minimize data payload by removing unnecessary fields
 
@@ -305,9 +316,9 @@ class DataMinimizationManager:
                 "original_fields": original_size,
                 "minimized_fields": minimized_size,
                 "fields_removed": original_size - minimized_size,
-                "removed_fields": list(set(data.keys()) - set(minimized_data.keys()))
+                "removed_fields": list(set(data.keys()) - set(minimized_data.keys())),
             },
-            compliance_relevant=True
+            compliance_relevant=True,
         )
 
         return minimized_data
@@ -350,16 +361,16 @@ class DataMinimizationManager:
             details={
                 "expired_purposes": expired_purposes,
                 "remaining_purposes": active_purposes,
-                "cleanup_timestamp": datetime.now().isoformat()
+                "cleanup_timestamp": datetime.now().isoformat(),
             },
             compliance_relevant=True,
-            gdpr_article="5"
+            gdpr_article="5",
         )
 
         return {
             "cleaned_purposes": expired_purposes,
             "remaining_purposes": active_purposes,
-            "message": f"Cleaned {len(expired_purposes)} expired data purposes"
+            "message": f"Cleaned {len(expired_purposes)} expired data purposes",
         }
 
     def get_data_usage_summary(self, user_id: str) -> dict[str, Any]:
@@ -378,7 +389,7 @@ class DataMinimizationManager:
             "user_id": user_id,
             "purposes": purposes,
             "policies": policies,
-            "total_policies": len(policies)
+            "total_policies": len(policies),
         }
 
     def add_policy(self, policy: DataCollectionPolicy) -> bool:
@@ -396,9 +407,9 @@ class DataMinimizationManager:
                 details={
                     "purpose": policy.purpose.value,
                     "categories": [cat.value for cat in policy.categories],
-                    "retention_days": policy.retention_period_days
+                    "retention_days": policy.retention_period_days,
                 },
-                compliance_relevant=True
+                compliance_relevant=True,
             )
 
             return True
@@ -417,8 +428,10 @@ class DataMinimizationManager:
             "expired_policies": expired_policies,
             "active_policies": total_policies - expired_policies,
             "active_users": active_users,
-            "compliance_rate": (total_policies - expired_policies) / total_policies if total_policies > 0 else 0,
-            "last_updated": datetime.now().isoformat()
+            "compliance_rate": (total_policies - expired_policies) / total_policies
+            if total_policies > 0
+            else 0,
+            "last_updated": datetime.now().isoformat(),
         }
 
 
@@ -437,7 +450,7 @@ async def demo_data_minimization():
         "address": "123 Main St",
         "social_security": "123-45-6789",  # Should be denied
         "usage_patterns": ["read_news", "search"],
-        "preferences": {"theme": "dark"}
+        "preferences": {"theme": "dark"},
     }
 
     print("\n📋 Testing Data Collection Validation:")
@@ -445,9 +458,7 @@ async def demo_data_minimization():
 
     # Test contract fulfillment
     result = manager.validate_data_collection(
-        "contract_fulfillment",
-        list(test_data.keys()),
-        "user123"
+        "contract_fulfillment", list(test_data.keys()), "user123"
     )
 
     print("Contract Fulfillment Validation:")
@@ -459,7 +470,9 @@ async def demo_data_minimization():
     print("\n📦 Testing Data Minimization:")
     print("-" * 30)
 
-    minimized = manager.minimize_data_payload(test_data, "contract_fulfillment", "user123")
+    minimized = manager.minimize_data_payload(
+        test_data, "contract_fulfillment", "user123"
+    )
     print(f"Original data fields: {len(test_data)}")
     print(f"Minimized data fields: {len(minimized)}")
     print(f"Minimized data: {minimized}")
@@ -498,4 +511,5 @@ async def demo_data_minimization():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(demo_data_minimization())

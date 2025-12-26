@@ -108,7 +108,11 @@ class DashboardStorage:
             bucket = int(ts // 300)  # five-minute buckets
             bucket_data = buckets.setdefault(
                 bucket,
-                {"timestamp": bucket * 300, "gpu_utilization_percent": [], "memory_used_mb": []},
+                {
+                    "timestamp": bucket * 300,
+                    "gpu_utilization_percent": [],
+                    "memory_used_mb": [],
+                },
             )
             for gpu in entry.get("gpus", []):
                 util = self._to_float(gpu.get("gpu_utilization_percent"))
@@ -124,7 +128,9 @@ class DashboardStorage:
             trends.append(
                 {
                     "timestamp": data["timestamp"],
-                    "gpu_utilization_percent": self._mean(data["gpu_utilization_percent"]),
+                    "gpu_utilization_percent": self._mean(
+                        data["gpu_utilization_percent"]
+                    ),
                     "memory_used_mb": self._mean(data["memory_used_mb"]),
                 }
             )
@@ -214,7 +220,9 @@ class DashboardStorage:
             return {str(key): self._serialisable(val) for key, val in value.items()}
         return str(value)
 
-    def _select_metric_value(self, gpu: dict[str, Any], metric_type: str) -> float | None:
+    def _select_metric_value(
+        self, gpu: dict[str, Any], metric_type: str
+    ) -> float | None:
         key_map = {
             "utilization": "gpu_utilization_percent",
             "memory": "memory_used_mb",

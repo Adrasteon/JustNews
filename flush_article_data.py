@@ -49,7 +49,7 @@ def clear_mariadb_data(db_service) -> list[str]:
         cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
 
         # Clear article-related tables
-        tables_to_clear = ['crawler_performance', 'article_source_map', 'articles']
+        tables_to_clear = ["crawler_performance", "article_source_map", "articles"]
 
         for table in tables_to_clear:
             cursor.execute(f"SELECT COUNT(*) FROM {table}")
@@ -77,21 +77,20 @@ def clear_chromadb_data() -> list[str]:
     operations = []
 
     try:
-        client = chromadb.HttpClient(host='localhost', port=3307)
+        client = chromadb.HttpClient(host="localhost", port=3307)
 
         # Get current count
-        collection = client.get_collection('articles')
+        collection = client.get_collection("articles")
         count = collection.count()
         operations.append(f"ChromaDB articles collection had {count} documents")
 
         # Delete the collection
-        client.delete_collection('articles')
+        client.delete_collection("articles")
         operations.append("Deleted ChromaDB articles collection")
 
         # Recreate empty collection with same configuration
         collection = client.create_collection(
-            name='articles',
-            metadata={"hnsw:space": "cosine"}
+            name="articles", metadata={"hnsw:space": "cosine"}
         )
         operations.append("Recreated empty ChromaDB articles collection")
 
@@ -108,7 +107,7 @@ def verify_cleanup(db_service) -> list[str]:
 
     try:
         # Check MariaDB tables
-        tables_to_check = ['articles', 'article_source_map', 'crawler_performance']
+        tables_to_check = ["articles", "article_source_map", "crawler_performance"]
         for table in tables_to_check:
             cursor.execute(f"SELECT COUNT(*) FROM {table}")
             count = cursor.fetchone()[0]
@@ -122,10 +121,12 @@ def verify_cleanup(db_service) -> list[str]:
         cursor.close()
 
         # Check ChromaDB
-        client = chromadb.HttpClient(host='localhost', port=3307)
-        collection = client.get_collection('articles')
+        client = chromadb.HttpClient(host="localhost", port=3307)
+        collection = client.get_collection("articles")
         chromadb_count = collection.count()
-        verifications.append(f"ChromaDB articles: {chromadb_count} documents (should be 0)")
+        verifications.append(
+            f"ChromaDB articles: {chromadb_count} documents (should be 0)"
+        )
 
         return verifications
 
@@ -135,9 +136,14 @@ def verify_cleanup(db_service) -> list[str]:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Flush article data while preserving sources")
-    parser.add_argument("--confirm", action="store_true",
-                       help="Skip confirmation prompt (use with caution!)")
+    parser = argparse.ArgumentParser(
+        description="Flush article data while preserving sources"
+    )
+    parser.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Skip confirmation prompt (use with caution!)",
+    )
     args = parser.parse_args()
 
     print("🧹 JustNews Database Flush Script")

@@ -19,7 +19,9 @@ def test_record_business_metric_and_prometheus_counter():
     # Before recording, history is empty
     assert "content_processed" not in c._metric_history
 
-    c.record_business_metric("content_processed", 1.0, labels={"content_type": "article", "stage": "parsed"})
+    c.record_business_metric(
+        "content_processed", 1.0, labels={"content_type": "article", "stage": "parsed"}
+    )
 
     # History should have one entry
     assert "content_processed" in c._metric_history
@@ -28,7 +30,11 @@ def test_record_business_metric_and_prometheus_counter():
     # Prometheus counter should have an entry for the given labels
     val = c.registry.get_sample_value(
         "justnews_content_processed_total",
-        labels={"agent": "test-agent", "content_type": "article", "processing_stage": "parsed"},
+        labels={
+            "agent": "test-agent",
+            "content_type": "article",
+            "processing_stage": "parsed",
+        },
     )
 
     assert val is not None and val > 0
@@ -153,42 +159,54 @@ def test_cleanup_old_data_prunes_history_and_resolved_alerts():
     assert "new_key" in c._active_alerts
 
 
-import pytest
+import pytest  # noqa: E402
 
-from monitoring.core.metrics_collector import (
+from monitoring.core.metrics_collector import (  # noqa: E402
     _enhanced_metrics_instances,
     get_enhanced_metrics_collector,
 )
 
 
 def test_record_business_metric_history_and_prometheus_counter():
-    c = EnhancedMetricsCollector('testagent')
+    c = EnhancedMetricsCollector("testagent")
     # record business metric and ensure it is stored in history
-    c.record_business_metric('content_processed', 1.0, labels={'content_type': 'news', 'stage': 'ingest'})
-    assert 'content_processed' in c._metric_history
-    assert len(c._metric_history['content_processed']) == 1
+    c.record_business_metric(
+        "content_processed", 1.0, labels={"content_type": "news", "stage": "ingest"}
+    )
+    assert "content_processed" in c._metric_history
+    assert len(c._metric_history["content_processed"]) == 1
 
 
 def test_record_performance_metric_updates_baselines():
-    c = EnhancedMetricsCollector('perfagent')
-    c.record_performance_metric('op', 0.1)
-    assert 'op' in c._performance_baselines
-    prev = c._performance_baselines['op']
-    c.record_performance_metric('op', 0.2)
-    assert c._performance_baselines['op'] != prev
+    c = EnhancedMetricsCollector("perfagent")
+    c.record_performance_metric("op", 0.1)
+    assert "op" in c._performance_baselines
+    prev = c._performance_baselines["op"]
+    c.record_performance_metric("op", 0.2)
+    assert c._performance_baselines["op"] != prev
 
 
 @pytest.mark.asyncio
 async def test_alert_rule_evaluation_triggers_handler(monkeypatch):
-    c = EnhancedMetricsCollector('alertagent')
+    c = EnhancedMetricsCollector("alertagent")
 
     # create rule: warning if > 1.0
-    threshold = MetricThreshold(warning_threshold=1.0, critical_threshold=2.0, direction='above')
-    rule = AlertRule(name='test_rule', metric_name='m', thresholds=threshold, description='d', severity=AlertSeverity.WARNING)
+    threshold = MetricThreshold(
+        warning_threshold=1.0, critical_threshold=2.0, direction="above"
+    )
+    rule = AlertRule(
+        name="test_rule",
+        metric_name="m",
+        thresholds=threshold,
+        description="d",
+        severity=AlertSeverity.WARNING,
+    )
     c.add_alert_rule(rule)
 
     # patch _get_metric_value to return 1.5
-    monkeypatch.setattr(c, '_get_metric_value', lambda name: asyncio.sleep(0, result=1.5))
+    monkeypatch.setattr(
+        c, "_get_metric_value", lambda name: asyncio.sleep(0, result=1.5)
+    )
 
     handled = []
 
@@ -204,30 +222,41 @@ async def test_alert_rule_evaluation_triggers_handler(monkeypatch):
 
 
 def test_cleanup_old_data_removes_old_entries():
-    c = EnhancedMetricsCollector('cleanupagent')
+    c = EnhancedMetricsCollector("cleanupagent")
     old_ts = datetime.now(UTC) - timedelta(hours=48)
     new_ts = datetime.now(UTC)
-    c._metric_history['m'] = [(old_ts, 1.0), (new_ts, 2.0)]
+    c._metric_history["m"] = [(old_ts, 1.0), (new_ts, 2.0)]
     # add resolved alert older than cutoff
-    alert_key = 'r1'
+    alert_key = "r1"
     from monitoring.core.metrics_collector import Alert
-    alert = Alert(rule_name='r1', severity=AlertSeverity.WARNING, message='x', value=1.0, threshold=0.5, timestamp=new_ts, resolved=True, resolved_at=old_ts)
+
+    alert = Alert(
+        rule_name="r1",
+        severity=AlertSeverity.WARNING,
+        message="x",
+        value=1.0,
+        threshold=0.5,
+        timestamp=new_ts,
+        resolved=True,
+        resolved_at=old_ts,
+    )
     c._active_alerts[alert_key] = alert
 
     import asyncio
+
     asyncio.run(c._cleanup_old_data())
 
     # metric_history should have removed old item
-    assert len(c._metric_history['m']) == 1
+    assert len(c._metric_history["m"]) == 1
 
 
 def test_get_metrics_summary_and_global_collection():
-    name = 'summaryagent'
+    name = "summaryagent"
     # ensure singleton behavior
     if name in _enhanced_metrics_instances:
         del _enhanced_metrics_instances[name]
 
     collector = get_enhanced_metrics_collector(name)
     s = collector.get_metrics_summary()
-    assert s['agent'] == name
-    assert 'timestamp' in s
+    assert s["agent"] == name
+    assert "timestamp" in s

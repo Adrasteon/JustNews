@@ -46,9 +46,18 @@ from agents.common.agent_chain_harness import AgentChainResult, NormalizedArticl
 
 
 def test_publish_skipped_when_token_invalid(monkeypatch):
-    article = NormalizedArticle(article_id='42', url='x', title='T', text='Content'*100, metadata={})
-    candidate = type('C', (), {'row': {'id': 42}, 'article': article})
-    result = AgentChainResult(article_id='42', story_brief={}, fact_checks=[], draft={'a':1}, acceptance_score=0.9, needs_followup=False)
+    article = NormalizedArticle(
+        article_id="42", url="x", title="T", text="Content" * 100, metadata={}
+    )
+    candidate = type("C", (), {"row": {"id": 42}, "article": article})
+    result = AgentChainResult(
+        article_id="42",
+        story_brief={},
+        fact_checks=[],
+        draft={"a": 1},
+        acceptance_score=0.9,
+        needs_followup=False,
+    )
 
     repository = _StubRepository([candidate])
     harness = _StubHarness(result)
@@ -56,11 +65,20 @@ def test_publish_skipped_when_token_invalid(monkeypatch):
     metrics = _StubMetrics()
 
     # monkeypatch verify_publish_token to always return False
-    monkeypatch.setattr('agents.common.publisher_integration.verify_publish_token', lambda t: False)
+    monkeypatch.setattr(
+        "agents.common.publisher_integration.verify_publish_token", lambda t: False
+    )
 
-    runner = AgentChainRunner(repository=repository, harness=harness, persistence=persistence, metrics=metrics, publish_on_accept=True, publish_token='badtoken')
+    runner = AgentChainRunner(
+        repository=repository,
+        harness=harness,
+        persistence=persistence,
+        metrics=metrics,
+        publish_on_accept=True,
+        publish_token="badtoken",
+    )
 
     outputs = runner.run(limit=1)
 
     # publishing should be attempted but skipped and metrics recorded as 'skipped'
-    assert 'skipped' in metrics.recorded
+    assert "skipped" in metrics.recorded

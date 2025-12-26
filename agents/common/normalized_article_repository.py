@@ -27,6 +27,7 @@ class NormalizedArticleRepository:
         svc = db_service or create_database_service()
         try:
             from database.utils.migrated_database_utils import ensure_service_compat
+
             svc = ensure_service_compat(svc)
         except Exception:
             pass
@@ -52,7 +53,9 @@ class NormalizedArticleRepository:
         except Exception:
             # ensure_conn is best-effort; proceed to per-call connection
             pass
-        cursor, conn = self.db_service.get_safe_cursor(per_call=True, dictionary=True, buffered=True)
+        cursor, conn = self.db_service.get_safe_cursor(
+            per_call=True, dictionary=True, buffered=True
+        )
         params: list = [min_chars]
         filters: list[str] = [
             "(content IS NOT NULL AND CHAR_LENGTH(content) >= %s)",
@@ -102,16 +105,23 @@ class NormalizedArticleRepository:
 
         candidates: list[ArticleCandidate] = []
         for row in rows:
-            text = (row.get("content") or "").strip() or (row.get("summary") or "").strip()
+            text = (row.get("content") or "").strip() or (
+                row.get("summary") or ""
+            ).strip()
             if not text or len(text) < min_chars:
-                logger.debug("Skipping article %s due to insufficient text", row.get("id"))
+                logger.debug(
+                    "Skipping article %s due to insufficient text", row.get("id")
+                )
                 continue
 
             metadata = self._build_metadata(row)
             article = NormalizedArticle(
                 article_id=str(row.get("id")),
                 url=row.get("url") or metadata.get("canonical_url") or "",
-                title=row.get("title") or metadata.get("title") or metadata.get("headline") or "Untitled",
+                title=row.get("title")
+                or metadata.get("title")
+                or metadata.get("headline")
+                or "Untitled",
                 text=text,
                 metadata=metadata,
             )

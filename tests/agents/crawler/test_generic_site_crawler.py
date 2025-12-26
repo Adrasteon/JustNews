@@ -81,4 +81,6 @@ def test_build_article_respects_review_flags(monkeypatch, tmp_path):
 
     assert article is not None
     assert article["needs_review"] is True
-    assert "word_count_below_threshold" in "".join(article["extraction_metadata"]["review_reasons"])
+    assert "word_count_below_threshold" in "".join(
+        article["extraction_metadata"]["review_reasons"]
+    )

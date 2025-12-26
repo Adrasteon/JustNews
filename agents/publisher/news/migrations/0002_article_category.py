@@ -4,15 +4,28 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('news', '0001_initial'),
+        ("news", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='article',
-            name='category',
-            field=models.CharField(choices=[('world', 'World'), ('uk', 'UK'), ('business', 'Business'), ('politics', 'Politics'), ('health', 'Health'), ('science', 'Science'), ('technology', 'Tech'), ('entertainment', 'Entertainment'), ('sport', 'Sport')], default='world', max_length=20),
+            model_name="article",
+            name="category",
+            field=models.CharField(
+                choices=[
+                    ("world", "World"),
+                    ("uk", "UK"),
+                    ("business", "Business"),
+                    ("politics", "Politics"),
+                    ("health", "Health"),
+                    ("science", "Science"),
+                    ("technology", "Tech"),
+                    ("entertainment", "Entertainment"),
+                    ("sport", "Sport"),
+                ],
+                default="world",
+                max_length=20,
+            ),
         ),
     ]

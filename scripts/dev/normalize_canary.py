@@ -5,6 +5,7 @@ Reads JSON records from `output/canary_raw/*.json`, computes a normalized URL
 using `common.url_normalization.normalize_article_url`, and writes a normalized
 JSON record to `output/canary_normalized/`.
 """
+
 from __future__ import annotations
 
 import json

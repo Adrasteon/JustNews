@@ -31,12 +31,18 @@ class FakeEngine:
     async def analyze_sentiment(self, text):
         if self._raise:
             raise RuntimeError("sentiment fail")
-        return FakeResult(result="positive", confidence=0.87, model_used="mini", processing_time=0.01)
+        return FakeResult(
+            result="positive", confidence=0.87, model_used="mini", processing_time=0.01
+        )
 
     async def detect_bias(self, text):
         if self._raise:
             raise RuntimeError("bias fail")
-        return FakeResult(result={"bias_score": 0.2, "bias_type": "lean_left"}, model_used="bias-model", processing_time=0.02)
+        return FakeResult(
+            result={"bias_score": 0.2, "bias_type": "lean_left"},
+            model_used="bias-model",
+            processing_time=0.02,
+        )
 
 
 @pytest.mark.asyncio

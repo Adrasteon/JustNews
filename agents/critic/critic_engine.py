@@ -44,6 +44,8 @@ except Exception:
         class GPUConfigManager:  # pragma: no cover - fallback
             def get_optimal_device(self):
                 return None
+
+
 try:
     from transformers import (
         AutoModelForSequenceClassification,
@@ -52,6 +54,7 @@ try:
         DistilBertTokenizer,
         pipeline,
     )
+
     TRANSFORMERS_AVAILABLE = True
 except Exception:
     AutoModelForSequenceClassification = None
@@ -81,9 +84,11 @@ except Exception:  # pragma: no cover - optional dependency wiring
 # Configure logging
 logger = get_logger(__name__)
 
+
 @dataclass
 class CriticConfig:
     """Configuration for the critic engine."""
+
     # Model configurations
     bert_model_name: str = "microsoft/DialoGPT-medium"
     roberta_model_name: str = "cardiffnlp/twitter-roberta-base-sentiment-latest"
@@ -104,9 +109,11 @@ class CriticConfig:
     enable_feedback_collection: bool = True
     feedback_log_path: str = "logs/critic_feedback.jsonl"
 
+
 @dataclass
 class ReviewResult:
     """Result of a comprehensive content review."""
+
     quality_score: float = 0.0
     bias_score: float = 0.0
     factual_consistency: float = 0.0
@@ -117,6 +124,7 @@ class ReviewResult:
     recommendations: list[str] = field(default_factory=list)
     processing_time: float = 0.0
     model_versions: dict[str, str] = field(default_factory=dict)
+
 
 class CriticEngine:
     """
@@ -146,7 +154,7 @@ class CriticEngine:
             "average_processing_time": 0.0,
             "gpu_memory_usage": 0.0,
             "model_load_times": {},
-            "error_counts": {}
+            "error_counts": {},
         }
 
         # Feedback collection
@@ -194,11 +202,17 @@ class CriticEngine:
 
             if self.config.use_gpu and torch.cuda.is_available():
                 device = self.gpu_manager.get_optimal_device()
-                self.models['bert'] = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
-                self.tokenizers['bert'] = AutoTokenizer.from_pretrained(model_name)
+                self.models["bert"] = (
+                    AutoModelForSequenceClassification.from_pretrained(model_name).to(
+                        device
+                    )
+                )
+                self.tokenizers["bert"] = AutoTokenizer.from_pretrained(model_name)
             else:
-                self.models['bert'] = AutoModelForSequenceClassification.from_pretrained(model_name)
-                self.tokenizers['bert'] = AutoTokenizer.from_pretrained(model_name)
+                self.models["bert"] = (
+                    AutoModelForSequenceClassification.from_pretrained(model_name)
+                )
+                self.tokenizers["bert"] = AutoTokenizer.from_pretrained(model_name)
 
             load_time = time.time() - start_time
             self.processing_stats["model_load_times"]["bert"] = load_time
@@ -206,8 +220,8 @@ class CriticEngine:
 
         except Exception as e:
             self.logger.error(f"Failed to load BERT model: {e}")
-            self.models['bert'] = None
-            self.tokenizers['bert'] = None
+            self.models["bert"] = None
+            self.tokenizers["bert"] = None
 
     def _load_roberta_model(self):
         """Load RoBERTa model for bias detection."""
@@ -216,15 +230,14 @@ class CriticEngine:
 
             if self.config.use_gpu and torch.cuda.is_available():
                 device = self.gpu_manager.get_optimal_device()
-                self.pipelines['roberta'] = pipeline(
+                self.pipelines["roberta"] = pipeline(
                     "sentiment-analysis",
                     model=self.config.roberta_model_name,
-                    device=device.index if hasattr(device, 'index') else 0
+                    device=device.index if hasattr(device, "index") else 0,
                 )
             else:
-                self.pipelines['roberta'] = pipeline(
-                    "sentiment-analysis",
-                    model=self.config.roberta_model_name
+                self.pipelines["roberta"] = pipeline(
+                    "sentiment-analysis", model=self.config.roberta_model_name
                 )
 
             load_time = time.time() - start_time
@@ -233,7 +246,7 @@ class CriticEngine:
 
         except Exception as e:
             self.logger.error(f"Failed to load RoBERTa model: {e}")
-            self.pipelines['roberta'] = None
+            self.pipelines["roberta"] = None
 
     def _load_deberta_model(self):
         """Load DeBERTa model for factual consistency."""
@@ -245,11 +258,17 @@ class CriticEngine:
 
             if self.config.use_gpu and torch.cuda.is_available():
                 device = self.gpu_manager.get_optimal_device()
-                self.models['deberta'] = AutoModelForSequenceClassification.from_pretrained(model_name).to(device)
-                self.tokenizers['deberta'] = AutoTokenizer.from_pretrained(model_name)
+                self.models["deberta"] = (
+                    AutoModelForSequenceClassification.from_pretrained(model_name).to(
+                        device
+                    )
+                )
+                self.tokenizers["deberta"] = AutoTokenizer.from_pretrained(model_name)
             else:
-                self.models['deberta'] = AutoModelForSequenceClassification.from_pretrained(model_name)
-                self.tokenizers['deberta'] = AutoTokenizer.from_pretrained(model_name)
+                self.models["deberta"] = (
+                    AutoModelForSequenceClassification.from_pretrained(model_name)
+                )
+                self.tokenizers["deberta"] = AutoTokenizer.from_pretrained(model_name)
 
             load_time = time.time() - start_time
             self.processing_stats["model_load_times"]["deberta"] = load_time
@@ -257,8 +276,8 @@ class CriticEngine:
 
         except Exception as e:
             self.logger.error(f"Failed to load DeBERTa model: {e}")
-            self.models['deberta'] = None
-            self.tokenizers['deberta'] = None
+            self.models["deberta"] = None
+            self.tokenizers["deberta"] = None
 
     def _load_distilbert_model(self):
         """Load DistilBERT model for readability assessment."""
@@ -267,11 +286,19 @@ class CriticEngine:
 
             if self.config.use_gpu and torch.cuda.is_available():
                 device = self.gpu_manager.get_optimal_device()
-                self.models['distilbert'] = DistilBertModel.from_pretrained(self.config.distilbert_model_name).to(device)
-                self.tokenizers['distilbert'] = DistilBertTokenizer.from_pretrained(self.config.distilbert_model_name)
+                self.models["distilbert"] = DistilBertModel.from_pretrained(
+                    self.config.distilbert_model_name
+                ).to(device)
+                self.tokenizers["distilbert"] = DistilBertTokenizer.from_pretrained(
+                    self.config.distilbert_model_name
+                )
             else:
-                self.models['distilbert'] = DistilBertModel.from_pretrained(self.config.distilbert_model_name)
-                self.tokenizers['distilbert'] = DistilBertTokenizer.from_pretrained(self.config.distilbert_model_name)
+                self.models["distilbert"] = DistilBertModel.from_pretrained(
+                    self.config.distilbert_model_name
+                )
+                self.tokenizers["distilbert"] = DistilBertTokenizer.from_pretrained(
+                    self.config.distilbert_model_name
+                )
 
             load_time = time.time() - start_time
             self.processing_stats["model_load_times"]["distilbert"] = load_time
@@ -279,8 +306,8 @@ class CriticEngine:
 
         except Exception as e:
             self.logger.error(f"Failed to load DistilBERT model: {e}")
-            self.models['distilbert'] = None
-            self.tokenizers['distilbert'] = None
+            self.models["distilbert"] = None
+            self.tokenizers["distilbert"] = None
 
     def _load_sentence_transformer(self):
         """Load SentenceTransformer for plagiarism detection."""
@@ -292,31 +319,38 @@ class CriticEngine:
 
             if self.config.use_gpu and torch.cuda.is_available():
                 device = self.gpu_manager.get_optimal_device()
-                self.models['sentence_transformer'] = SentenceTransformer(
+                self.models["sentence_transformer"] = SentenceTransformer(
                     self.config.sentence_transformer_model,
-                    device=device.index if hasattr(device, 'index') else 'cuda'
+                    device=device.index if hasattr(device, "index") else "cuda",
                 )
             else:
-                self.models['sentence_transformer'] = SentenceTransformer(
-                    self.config.sentence_transformer_model,
-                    device='cpu'
+                self.models["sentence_transformer"] = SentenceTransformer(
+                    self.config.sentence_transformer_model, device="cpu"
                 )
 
             load_time = time.time() - start_time
-            self.processing_stats["model_load_times"]["sentence_transformer"] = load_time
+            self.processing_stats["model_load_times"]["sentence_transformer"] = (
+                load_time
+            )
             self.logger.info(f"📚 SentenceTransformer loaded in {load_time:.2f}s")
 
         except Exception as e:
             self.logger.error(f"Failed to load SentenceTransformer: {e}")
-            self.models['sentence_transformer'] = None
+            self.models["sentence_transformer"] = None
 
     def _initialize_mistral_adapter(self) -> None:
         """Prepare the high-accuracy Mistral adapter for critiques."""
         if MistralAdapter is None:
-            self.logger.info("Mistral adapter dependencies unavailable; using legacy critic stack")
+            self.logger.info(
+                "Mistral adapter dependencies unavailable; using legacy critic stack"
+            )
             return
         try:
-            self.mistral_adapter = MistralAdapter(agent="critic", adapter_name=CRITIC_ADAPTER_NAME, system_prompt=SYSTEM_PROMPT)
+            self.mistral_adapter = MistralAdapter(
+                agent="critic",
+                adapter_name=CRITIC_ADAPTER_NAME,
+                system_prompt=SYSTEM_PROMPT,
+            )
             if getattr(self.mistral_adapter, "enabled", True):
                 self.logger.info("Critic Mistral adapter enabled (lazy-loaded)")
             else:
@@ -325,7 +359,9 @@ class CriticEngine:
             self.logger.warning(f"Failed to initialize Critic Mistral adapter: {exc}")
             self.mistral_adapter = None
 
-    def _maybe_run_mistral_review(self, content: str, url: str | None) -> ReviewResult | None:
+    def _maybe_run_mistral_review(
+        self, content: str, url: str | None
+    ) -> ReviewResult | None:
         if not self.mistral_adapter or not content.strip():
             return None
         try:
@@ -337,7 +373,9 @@ class CriticEngine:
             return None
         return self._build_review_result_from_adapter(assessment)
 
-    def _build_review_result_from_adapter(self, assessment: CriticAssessment) -> ReviewResult:
+    def _build_review_result_from_adapter(
+        self, assessment: CriticAssessment
+    ) -> ReviewResult:
         plagiarism_score = max(0.0, min(1.0, 1.0 - assessment.originality))
         recommendations = assessment.recommendations or ["No recommendations provided."]
         versions = self._get_model_versions()
@@ -360,17 +398,23 @@ class CriticEngine:
         total = self.processing_stats["total_reviews"]
         prev_avg = self.processing_stats["average_processing_time"]
         self.processing_stats["average_processing_time"] = (
-            (prev_avg * (total - 1)) + processing_time
-        ) / total if total else processing_time
+            ((prev_avg * (total - 1)) + processing_time) / total
+            if total
+            else processing_time
+        )
         if torch.cuda.is_available():
             try:
                 max_mem = torch.cuda.max_memory_allocated()
                 if max_mem > 0:
-                    self.processing_stats["gpu_memory_usage"] = torch.cuda.memory_allocated() / max_mem
+                    self.processing_stats["gpu_memory_usage"] = (
+                        torch.cuda.memory_allocated() / max_mem
+                    )
             except Exception:
                 pass
 
-    def comprehensive_review(self, content: str, url: str | None = None) -> ReviewResult:
+    def comprehensive_review(
+        self, content: str, url: str | None = None
+    ) -> ReviewResult:
         """
         Perform comprehensive content review using all 5 models.
 
@@ -384,19 +428,23 @@ class CriticEngine:
         start_time = time.time()
 
         try:
-            self.logger.info(f"🔍 Starting comprehensive review for {len(content)} characters")
+            self.logger.info(
+                f"🔍 Starting comprehensive review for {len(content)} characters"
+            )
 
             # Validate input
             if not content or not content.strip():
                 return ReviewResult(
                     assessment="Empty content provided",
-                    recommendations=["Provide valid content for analysis"]
+                    recommendations=["Provide valid content for analysis"],
                 )
 
             # Truncate content if too long
             if len(content) > self.config.max_content_length:
-                content = content[:self.config.max_content_length]
-                self.logger.warning(f"Content truncated to {self.config.max_content_length} characters")
+                content = content[: self.config.max_content_length]
+                self.logger.warning(
+                    f"Content truncated to {self.config.max_content_length} characters"
+                )
 
             adapter_result = self._maybe_run_mistral_review(content, url)
             if adapter_result:
@@ -417,15 +465,21 @@ class CriticEngine:
 
             # Calculate overall score
             overall_score = self._calculate_overall_score(
-                quality_result, bias_result, consistency_result,
-                readability_result, plagiarism_result
+                quality_result,
+                bias_result,
+                consistency_result,
+                readability_result,
+                plagiarism_result,
             )
 
             # Generate assessment and recommendations
             assessment = self._generate_assessment(overall_score)
             recommendations = self._generate_recommendations(
-                quality_result, bias_result, consistency_result,
-                readability_result, plagiarism_result
+                quality_result,
+                bias_result,
+                consistency_result,
+                readability_result,
+                plagiarism_result,
             )
 
             # Update processing stats
@@ -442,24 +496,32 @@ class CriticEngine:
                 assessment=assessment,
                 recommendations=recommendations,
                 processing_time=processing_time,
-                model_versions=self._get_model_versions()
+                model_versions=self._get_model_versions(),
             )
 
-            self.logger.info(f"✅ Comprehensive review completed in {processing_time:.2f}s with score {overall_score:.2f}")
+            self.logger.info(
+                f"✅ Comprehensive review completed in {processing_time:.2f}s with score {overall_score:.2f}"
+            )
             return result
 
         except Exception as e:
             processing_time = time.time() - start_time
-            self.logger.error(f"❌ Comprehensive review failed after {processing_time:.2f}s: {e}")
-            self.processing_stats["error_counts"]["comprehensive_review"] = self.processing_stats["error_counts"].get("comprehensive_review", 0) + 1
+            self.logger.error(
+                f"❌ Comprehensive review failed after {processing_time:.2f}s: {e}"
+            )
+            self.processing_stats["error_counts"]["comprehensive_review"] = (
+                self.processing_stats["error_counts"].get("comprehensive_review", 0) + 1
+            )
 
             return ReviewResult(
                 assessment=f"Review failed: {str(e)}",
                 recommendations=["Retry analysis or check content format"],
-                processing_time=processing_time
+                processing_time=processing_time,
             )
 
-    def critique_synthesis(self, content: str, url: str | None = None) -> dict[str, Any]:
+    def critique_synthesis(
+        self, content: str, url: str | None = None
+    ) -> dict[str, Any]:
         """
         Synthesize comprehensive content critique.
 
@@ -483,14 +545,16 @@ class CriticEngine:
                 "assessment": review.assessment,
                 "recommendations": review.recommendations,
                 "processing_time": review.processing_time,
-                "model_versions": review.model_versions
+                "model_versions": review.model_versions,
             }
 
         except Exception as e:
             self.logger.error(f"Critique synthesis failed: {e}")
             return {"error": str(e)}
 
-    def critique_neutrality(self, content: str, url: str | None = None) -> dict[str, Any]:
+    def critique_neutrality(
+        self, content: str, url: str | None = None
+    ) -> dict[str, Any]:
         """
         Analyze content neutrality and bias.
 
@@ -509,14 +573,16 @@ class CriticEngine:
                 "bias_indicators": bias_result.get("indicators", []),
                 "sentiment_distribution": bias_result.get("sentiment_distribution", {}),
                 "recommendations": bias_result.get("recommendations", []),
-                "processing_time": bias_result.get("processing_time", 0.0)
+                "processing_time": bias_result.get("processing_time", 0.0),
             }
 
         except Exception as e:
             self.logger.error(f"Neutrality analysis failed: {e}")
             return {"error": str(e)}
 
-    def analyze_argument_structure(self, content: str, url: str | None = None) -> dict[str, Any]:
+    def analyze_argument_structure(
+        self, content: str, url: str | None = None
+    ) -> dict[str, Any]:
         """
         Analyze logical argument structure.
 
@@ -535,20 +601,25 @@ class CriticEngine:
                 "argument_strength": {
                     "strength_score": quality_result.get("score", 0.5),
                     "logical_coherence": quality_result.get("coherence", 0.5),
-                    "evidence_quality": quality_result.get("evidence_quality", 0.5)
+                    "evidence_quality": quality_result.get("evidence_quality", 0.5),
                 },
                 "structural_analysis": {
-                    "sentence_count": len(content.split('.')),
-                    "average_sentence_length": sum(len(s.split()) for s in content.split('.')) / max(1, len(content.split('.'))),
-                    "complexity_score": quality_result.get("complexity", 0.5)
-                }
+                    "sentence_count": len(content.split(".")),
+                    "average_sentence_length": sum(
+                        len(s.split()) for s in content.split(".")
+                    )
+                    / max(1, len(content.split("."))),
+                    "complexity_score": quality_result.get("complexity", 0.5),
+                },
             }
 
         except Exception as e:
             self.logger.error(f"Argument structure analysis failed: {e}")
             return {"error": str(e)}
 
-    def assess_editorial_consistency(self, content: str, url: str | None = None) -> dict[str, Any]:
+    def assess_editorial_consistency(
+        self, content: str, url: str | None = None
+    ) -> dict[str, Any]:
         """
         Assess editorial consistency and coherence.
 
@@ -566,14 +637,16 @@ class CriticEngine:
                 "consistency_score": consistency_result.get("score", 0.5),
                 "factual_accuracy": consistency_result.get("factual_accuracy", 0.5),
                 "internal_coherence": consistency_result.get("coherence", 0.5),
-                "contradictions": consistency_result.get("contradictions", [])
+                "contradictions": consistency_result.get("contradictions", []),
             }
 
         except Exception as e:
             self.logger.error(f"Editorial consistency assessment failed: {e}")
             return {"error": str(e)}
 
-    def detect_logical_fallacies(self, content: str, url: str | None = None) -> dict[str, Any]:
+    def detect_logical_fallacies(
+        self, content: str, url: str | None = None
+    ) -> dict[str, Any]:
         """
         Detect logical fallacies and reasoning errors.
 
@@ -593,24 +666,28 @@ class CriticEngine:
 
             # Simple heuristic-based fallacy detection
             if fallacy_score < 0.3:
-                fallacies.append({
-                    "fallacy": "weak_argumentation",
-                    "confidence": 0.7,
-                    "description": "Overall weak argumentative structure"
-                })
+                fallacies.append(
+                    {
+                        "fallacy": "weak_argumentation",
+                        "confidence": 0.7,
+                        "description": "Overall weak argumentative structure",
+                    }
+                )
 
             return {
                 "fallacies_detected": fallacies,
                 "fallacy_count": len(fallacies),
                 "logical_strength": fallacy_score,
-                "analysis_confidence": 0.6
+                "analysis_confidence": 0.6,
             }
 
         except Exception as e:
             self.logger.error(f"Logical fallacy detection failed: {e}")
             return {"error": str(e)}
 
-    def assess_source_credibility(self, content: str, url: str | None = None) -> dict[str, Any]:
+    def assess_source_credibility(
+        self, content: str, url: str | None = None
+    ) -> dict[str, Any]:
         """
         Assess source credibility and evidence quality.
 
@@ -633,7 +710,9 @@ class CriticEngine:
                 "citation_count": len(citations),
                 "credibility_score": credibility_score,
                 "evidence_quality": credibility_score,
-                "source_reliability": self._assess_source_reliability(url) if url else 0.5
+                "source_reliability": self._assess_source_reliability(url)
+                if url
+                else 0.5,
             }
 
         except Exception as e:
@@ -643,35 +722,43 @@ class CriticEngine:
     def _assess_quality(self, content: str) -> dict[str, Any]:
         """Assess content quality using BERT."""
         try:
-            if not self.models.get('bert') or not self.tokenizers.get('bert'):
+            if not self.models.get("bert") or not self.tokenizers.get("bert"):
                 return {"score": 0.5, "error": "BERT model not available"}
 
             # Tokenize content
-            inputs = self.tokenizers['bert'](
+            inputs = self.tokenizers["bert"](
                 content,
                 return_tensors="pt",
                 truncation=True,
                 max_length=self.config.max_content_length,
-                padding=True
+                padding=True,
             )
 
             # Move to GPU if available
             if self.config.use_gpu and torch.cuda.is_available():
-                inputs = {k: v.to(self.gpu_manager.get_optimal_device()) for k, v in inputs.items()}
+                inputs = {
+                    k: v.to(self.gpu_manager.get_optimal_device())
+                    for k, v in inputs.items()
+                }
 
             # Get prediction
             with torch.no_grad():
-                outputs = self.models['bert'](**inputs)
+                outputs = self.models["bert"](**inputs)
                 predictions = torch.softmax(outputs.logits, dim=-1)
 
             # Convert to quality score (0-1 scale)
-            quality_score = predictions[0][1].item() if len(predictions[0]) > 1 else predictions[0][0].item()
+            quality_score = (
+                predictions[0][1].item()
+                if len(predictions[0]) > 1
+                else predictions[0][0].item()
+            )
 
             return {
                 "score": quality_score,
-                "coherence": quality_score * 0.9 + 0.1,  # Slight adjustment for coherence
+                "coherence": quality_score * 0.9
+                + 0.1,  # Slight adjustment for coherence
                 "evidence_quality": quality_score * 0.8 + 0.2,
-                "complexity": min(1.0, len(content.split()) / 100.0)
+                "complexity": min(1.0, len(content.split()) / 100.0),
             }
 
         except Exception as e:
@@ -681,24 +768,33 @@ class CriticEngine:
     def _detect_bias(self, content: str) -> dict[str, Any]:
         """Detect bias using RoBERTa sentiment analysis."""
         try:
-            if not self.pipelines.get('roberta'):
+            if not self.pipelines.get("roberta"):
                 return {"score": 0.5, "error": "RoBERTa pipeline not available"}
 
             # Analyze sentiment
-            results = self.pipelines['roberta'](content)
+            results = self.pipelines["roberta"](content)
 
             # Calculate bias score based on sentiment distribution
-            sentiment_scores = {"LABEL_0": -1, "LABEL_1": 0, "LABEL_2": 1}  # Negative, Neutral, Positive
-            bias_score = sum(result['score'] * sentiment_scores.get(result['label'], 0) for result in results)
+            sentiment_scores = {
+                "LABEL_0": -1,
+                "LABEL_1": 0,
+                "LABEL_2": 1,
+            }  # Negative, Neutral, Positive
+            bias_score = sum(
+                result["score"] * sentiment_scores.get(result["label"], 0)
+                for result in results
+            )
 
             # Normalize to 0-1 scale (0 = neutral, 1 = highly biased)
             bias_score = abs(bias_score) / 2.0
 
             return {
                 "score": bias_score,
-                "sentiment_distribution": {result['label']: result['score'] for result in results},
+                "sentiment_distribution": {
+                    result["label"]: result["score"] for result in results
+                },
                 "indicators": ["sentiment_imbalance"] if bias_score > 0.7 else [],
-                "recommendations": ["Balance perspectives"] if bias_score > 0.7 else []
+                "recommendations": ["Balance perspectives"] if bias_score > 0.7 else [],
             }
 
         except Exception as e:
@@ -708,30 +804,33 @@ class CriticEngine:
     def _check_factual_consistency(self, content: str) -> dict[str, Any]:
         """Check factual consistency using DeBERTa."""
         try:
-            if not self.models.get('deberta') or not self.tokenizers.get('deberta'):
+            if not self.models.get("deberta") or not self.tokenizers.get("deberta"):
                 return {"score": 0.5, "error": "DeBERTa model not available"}
 
             # Simple consistency check based on coherence
-            inputs = self.tokenizers['deberta'](
+            inputs = self.tokenizers["deberta"](
                 content,
                 return_tensors="pt",
                 truncation=True,
                 max_length=self.config.max_content_length,
-                padding=True
+                padding=True,
             )
 
             if self.config.use_gpu and torch.cuda.is_available():
-                inputs = {k: v.to(self.gpu_manager.get_optimal_device()) for k, v in inputs.items()}
+                inputs = {
+                    k: v.to(self.gpu_manager.get_optimal_device())
+                    for k, v in inputs.items()
+                }
 
             with torch.no_grad():
-                outputs = self.models['deberta'](**inputs)
+                outputs = self.models["deberta"](**inputs)
                 consistency_score = torch.softmax(outputs.logits, dim=-1)[0][1].item()
 
             return {
                 "score": consistency_score,
                 "factual_accuracy": consistency_score * 0.9 + 0.1,
                 "coherence": consistency_score,
-                "contradictions": []
+                "contradictions": [],
             }
 
         except Exception as e:
@@ -741,26 +840,33 @@ class CriticEngine:
     def _assess_readability(self, content: str) -> dict[str, Any]:
         """Assess readability using DistilBERT."""
         try:
-            if not self.models.get('distilbert') or not self.tokenizers.get('distilbert'):
+            if not self.models.get("distilbert") or not self.tokenizers.get(
+                "distilbert"
+            ):
                 return {"score": 0.5, "error": "DistilBERT model not available"}
 
             # Simple readability assessment based on sentence complexity
-            sentences = content.split('.')
-            avg_words_per_sentence = sum(len(s.split()) for s in sentences) / max(1, len(sentences))
+            sentences = content.split(".")
+            avg_words_per_sentence = sum(len(s.split()) for s in sentences) / max(
+                1, len(sentences)
+            )
 
             # Use DistilBERT to assess linguistic complexity
-            inputs = self.tokenizers['distilbert'](
+            inputs = self.tokenizers["distilbert"](
                 content[:512],  # Limit input size
                 return_tensors="pt",
                 truncation=True,
-                padding=True
+                padding=True,
             )
 
             if self.config.use_gpu and torch.cuda.is_available():
-                inputs = {k: v.to(self.gpu_manager.get_optimal_device()) for k, v in inputs.items()}
+                inputs = {
+                    k: v.to(self.gpu_manager.get_optimal_device())
+                    for k, v in inputs.items()
+                }
 
             with torch.no_grad():
-                outputs = self.models['distilbert'](**inputs)
+                outputs = self.models["distilbert"](**inputs)
                 complexity_score = outputs.last_hidden_state.mean().item()
 
             # Normalize complexity score
@@ -770,7 +876,9 @@ class CriticEngine:
                 "score": readability_score,
                 "avg_words_per_sentence": avg_words_per_sentence,
                 "complexity_score": complexity_score,
-                "grade_level": "intermediate" if readability_score > 0.6 else "advanced"
+                "grade_level": "intermediate"
+                if readability_score > 0.6
+                else "advanced",
             }
 
         except Exception as e:
@@ -780,7 +888,7 @@ class CriticEngine:
     def _detect_plagiarism(self, content: str) -> dict[str, Any]:
         """Detect potential plagiarism using SentenceTransformer."""
         try:
-            if not self.models.get('sentence_transformer'):
+            if not self.models.get("sentence_transformer"):
                 return {"score": 0.0, "error": "SentenceTransformer not available"}
 
             # For now, return low plagiarism score (would need reference corpus for real detection)
@@ -791,14 +899,16 @@ class CriticEngine:
                 "score": plagiarism_score,
                 "similarity_score": plagiarism_score,
                 "matches_found": 0,
-                "confidence": 0.5
+                "confidence": 0.5,
             }
 
         except Exception as e:
             self.logger.error(f"SentenceTransformer plagiarism detection failed: {e}")
             return {"score": 0.0, "error": str(e)}
 
-    def _calculate_overall_score(self, quality, bias, consistency, readability, plagiarism) -> float:
+    def _calculate_overall_score(
+        self, quality, bias, consistency, readability, plagiarism
+    ) -> float:
         """Calculate overall critique score from individual analyses."""
         try:
             weights = {
@@ -806,15 +916,16 @@ class CriticEngine:
                 "bias": 0.2,
                 "consistency": 0.25,
                 "readability": 0.15,
-                "plagiarism": 0.1
+                "plagiarism": 0.1,
             }
 
             overall = (
-                quality.get("score", 0.5) * weights["quality"] +
-                (1.0 - bias.get("score", 0.5)) * weights["bias"] +  # Invert bias score
-                consistency.get("score", 0.5) * weights["consistency"] +
-                readability.get("score", 0.5) * weights["readability"] +
-                (1.0 - plagiarism.get("score", 0.0)) * weights["plagiarism"]  # Invert plagiarism score
+                quality.get("score", 0.5) * weights["quality"]
+                + (1.0 - bias.get("score", 0.5)) * weights["bias"]  # Invert bias score
+                + consistency.get("score", 0.5) * weights["consistency"]
+                + readability.get("score", 0.5) * weights["readability"]
+                + (1.0 - plagiarism.get("score", 0.0))
+                * weights["plagiarism"]  # Invert plagiarism score
             )
 
             return max(0.0, min(1.0, overall))
@@ -836,7 +947,9 @@ class CriticEngine:
         else:
             return "Very poor quality content - major revision needed"
 
-    def _generate_recommendations(self, quality, bias, consistency, readability, plagiarism) -> list[str]:
+    def _generate_recommendations(
+        self, quality, bias, consistency, readability, plagiarism
+    ) -> list[str]:
         """Generate improvement recommendations based on analysis results."""
         recommendations = []
 
@@ -857,7 +970,9 @@ class CriticEngine:
                 recommendations.append("Address potential plagiarism concerns")
 
             if not recommendations:
-                recommendations.append("Content meets quality standards - minor polishing recommended")
+                recommendations.append(
+                    "Content meets quality standards - minor polishing recommended"
+                )
 
         except Exception:
             recommendations.append("Manual review recommended due to analysis error")
@@ -870,20 +985,24 @@ class CriticEngine:
 
         # Simple citation pattern matching
         citation_patterns = [
-            r'according to ([A-Z][a-z]+ [A-Z][a-z]+)',
-            r'([A-Z][a-z]+ [A-Z][a-z]+) said',
-            r'study by ([A-Z][A-Z][a-z]+)',
-            r'"([^"]*)" \(([^)]+)\)'
+            r"according to ([A-Z][a-z]+ [A-Z][a-z]+)",
+            r"([A-Z][a-z]+ [A-Z][a-z]+) said",
+            r"study by ([A-Z][A-Z][a-z]+)",
+            r'"([^"]*)" \(([^)]+)\)',
         ]
 
         for pattern in citation_patterns:
             matches = re.finditer(pattern, content)
             for match in matches:
-                citations.append({
-                    "text": match.group(1) if len(match.groups()) > 0 else match.group(0),
-                    "type": "citation",
-                    "position": match.start()
-                })
+                citations.append(
+                    {
+                        "text": match.group(1)
+                        if len(match.groups()) > 0
+                        else match.group(0),
+                        "type": "citation",
+                        "position": match.start(),
+                    }
+                )
 
         return citations
 
@@ -893,8 +1012,15 @@ class CriticEngine:
             return 0.5
 
         # Simple heuristic-based assessment
-        reliable_domains = ['.edu', '.gov', '.org', 'bbc.com', 'reuters.com', 'apnews.com']
-        unreliable_indicators = ['blogspot', 'wordpress', 'medium.com']
+        reliable_domains = [
+            ".edu",
+            ".gov",
+            ".org",
+            "bbc.com",
+            "reuters.com",
+            "apnews.com",
+        ]
+        unreliable_indicators = ["blogspot", "wordpress", "medium.com"]
 
         url_lower = url.lower()
 
@@ -912,17 +1038,17 @@ class CriticEngine:
             "roberta": self.config.roberta_model_name,
             "deberta": self.config.deberta_model_name,
             "distilbert": self.config.distilbert_model_name,
-            "sentence_transformer": self.config.sentence_transformer_model
+            "sentence_transformer": self.config.sentence_transformer_model,
         }
 
     def get_model_status(self) -> dict[str, bool]:
         """Get status of all models."""
         return {
-            "bert": self.models.get('bert') is not None,
-            "roberta": self.pipelines.get('roberta') is not None,
-            "deberta": self.models.get('deberta') is not None,
-            "distilbert": self.models.get('distilbert') is not None,
-            "sentence_transformer": self.models.get('sentence_transformer') is not None
+            "bert": self.models.get("bert") is not None,
+            "roberta": self.pipelines.get("roberta") is not None,
+            "deberta": self.models.get("deberta") is not None,
+            "distilbert": self.models.get("distilbert") is not None,
+            "sentence_transformer": self.models.get("sentence_transformer") is not None,
         }
 
     def log_feedback(self, operation: str, data: dict[str, Any]):
@@ -934,7 +1060,7 @@ class CriticEngine:
             feedback_entry = {
                 "timestamp": datetime.now().isoformat(),
                 "operation": operation,
-                "data": data
+                "data": data,
             }
 
             self.feedback_data.append(feedback_entry)
@@ -952,9 +1078,9 @@ class CriticEngine:
         try:
             os.makedirs(os.path.dirname(self.config.feedback_log_path), exist_ok=True)
 
-            with open(self.config.feedback_log_path, 'a', encoding='utf-8') as f:
+            with open(self.config.feedback_log_path, "a", encoding="utf-8") as f:
                 for entry in self.feedback_data:
-                    f.write(json.dumps(entry) + '\n')
+                    f.write(json.dumps(entry) + "\n")
 
         except Exception as e:
             self.logger.error(f"Failed to write feedback to file: {e}")

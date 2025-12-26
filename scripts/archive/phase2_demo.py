@@ -46,35 +46,38 @@ async def demo_multi_site_clustering():
 
     sample_sources = [
         {
-            'id': 1,
-            'url': 'https://www.bbc.co.uk/news',
-            'domain': 'bbc.co.uk',
-            'name': 'BBC News',
-            'description': 'British Broadcasting Corporation News',
-            'metadata': {
-                'selectors': {
-                    'article_links': ['a[href*="article"]', 'a[href*="news"]'],
-                    'title': ['h1', '.story-headline'],
-                    'content': ['.story-body__inner p', '[data-component="text-block"]']
+            "id": 1,
+            "url": "https://www.bbc.co.uk/news",
+            "domain": "bbc.co.uk",
+            "name": "BBC News",
+            "description": "British Broadcasting Corporation News",
+            "metadata": {
+                "selectors": {
+                    "article_links": ['a[href*="article"]', 'a[href*="news"]'],
+                    "title": ["h1", ".story-headline"],
+                    "content": [
+                        ".story-body__inner p",
+                        '[data-component="text-block"]',
+                    ],
                 }
-            }
+            },
         },
         {
-            'id': 2,
-            'url': 'https://www.reuters.com',
-            'domain': 'reuters.com',
-            'name': 'Reuters',
-            'description': 'Reuters News Agency',
-            'metadata': {}
+            "id": 2,
+            "url": "https://www.reuters.com",
+            "domain": "reuters.com",
+            "name": "Reuters",
+            "description": "Reuters News Agency",
+            "metadata": {},
         },
         {
-            'id': 3,
-            'url': 'https://www.theguardian.com',
-            'domain': 'theguardian.com',
-            'name': 'The Guardian',
-            'description': 'The Guardian Newspaper',
-            'metadata': {}
-        }
+            "id": 3,
+            "url": "https://www.theguardian.com",
+            "domain": "theguardian.com",
+            "name": "The Guardian",
+            "description": "The Guardian Newspaper",
+            "metadata": {},
+        },
     ]
 
     site_configs = []
@@ -93,7 +96,7 @@ async def demo_multi_site_clustering():
 
     multi_crawler = MultiSiteCrawler(
         concurrent_sites=2,  # Crawl 2 sites at once
-        articles_per_site=10  # 10 articles per site
+        articles_per_site=10,  # 10 articles per site
     )
 
     print("✅ Multi-site crawler configured:")
@@ -111,11 +114,7 @@ async def demo_multi_site_clustering():
         "total_articles": 25,
         "processing_time_seconds": 45.2,
         "articles_per_second": 0.55,
-        "site_breakdown": {
-            "bbc.co.uk": 12,
-            "reuters.com": 8,
-            "theguardian.com": 5
-        },
+        "site_breakdown": {"bbc.co.uk": 12, "reuters.com": 8, "theguardian.com": 5},
         "timestamp": datetime.now().isoformat(),
         "articles": [
             {
@@ -125,9 +124,9 @@ async def demo_multi_site_clustering():
                 "domain": "bbc.co.uk",
                 "extraction_method": "generic_dom",
                 "status": "success",
-                "crawl_mode": "generic_site"
+                "crawl_mode": "generic_site",
             }
-        ]
+        ],
     }
 
     print(json.dumps(simulated_results, indent=2, default=str))
@@ -144,7 +143,9 @@ async def demo_multi_site_clustering():
     print("\n🚀 Ready for production deployment!")
     print("   Use: orchestrator.crawl_all_sources() for full database-driven crawl")
     print("   Use: orchestrator.crawl_top_sources(5) for top 5 sources")
-    print("   Use: orchestrator.crawl_sources_by_domain(['bbc.co.uk']) for specific domains")
+    print(
+        "   Use: orchestrator.crawl_sources_by_domain(['bbc.co.uk']) for specific domains"
+    )
 
 
 if __name__ == "__main__":

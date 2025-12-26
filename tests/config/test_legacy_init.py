@@ -46,7 +46,10 @@ def test_determine_config_type_various_keywords():
     assert migrator._determine_config_type(Path("crawl_settings.yml"), "") == "crawling"
     assert migrator._determine_config_type(Path("monitor.yaml"), "") == "monitoring"
     assert migrator._determine_config_type(Path("security.env"), "") == "security"
-    assert migrator._determine_config_type(Path("training.json"), "train something") == "training"
+    assert (
+        migrator._determine_config_type(Path("training.json"), "train something")
+        == "training"
+    )
     # Unknown
     assert migrator._determine_config_type(Path("misc.txt"), "nothing relevant") is None
 

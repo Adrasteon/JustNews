@@ -31,35 +31,36 @@ class TestDualDatabasePerformance:
     def performance_config(self):
         """Performance test configuration"""
         return {
-            'database': {
-                'mariadb': {
-                    'host': 'localhost',
-                    'port': 3306,
-                    'database': 'justnews_perf_test',
-                    'user': 'perf_user',
-                    'password': 'perf_password',
-                    'pool_size': 5
+            "database": {
+                "mariadb": {
+                    "host": "localhost",
+                    "port": 3306,
+                    "database": "justnews_perf_test",
+                    "user": "perf_user",
+                    "password": "perf_password",
+                    "pool_size": 5,
                 },
-                'chromadb': {
-                    'host': 'localhost',
-                    'port': 3307,
-                    'collection': 'perf_articles'
+                "chromadb": {
+                    "host": "localhost",
+                    "port": 3307,
+                    "collection": "perf_articles",
                 },
-                'embedding': {
-                    'model': 'all-MiniLM-L6-v2',
-                    'dimensions': 384,
-                    'device': 'cpu'
-                }
+                "embedding": {
+                    "model": "all-MiniLM-L6-v2",
+                    "dimensions": 384,
+                    "device": "cpu",
+                },
             }
         }
 
     @pytest.fixture
     def mock_performance_service(self, performance_config):
         """Create mock service optimized for performance testing"""
-        with patch('mysql.connector.connect') as mock_mb_connect:
-            with patch('chromadb.HttpClient') as mock_chroma_client:
-                with patch('sentence_transformers.SentenceTransformer') as mock_embedding:
-
+        with patch("mysql.connector.connect") as mock_mb_connect:
+            with patch("chromadb.HttpClient") as mock_chroma_client:
+                with patch(
+                    "sentence_transformers.SentenceTransformer"
+                ) as mock_embedding:
                     # Setup MariaDB mock with connection pooling simulation
                     mock_conn = MagicMock()
                     mock_conn.close = MagicMock()
@@ -68,7 +69,7 @@ class TestDualDatabasePerformance:
                     # Setup ChromaDB mock
                     mock_client = MagicMock()
                     mock_collection = MagicMock()
-                    mock_collection.name = 'perf_articles'
+                    mock_collection.name = "perf_articles"
                     mock_client.get_collection.return_value = mock_collection
                     mock_chroma_client.return_value = mock_client
 
@@ -91,11 +92,31 @@ class TestDualDatabasePerformance:
         # Setup mock data
         mock_cursor = MagicMock()
         mock_article_row = (
-            1, "https://example.com/article1", "Test Article", "Content " * 100,
-            "Summary", True, 1, datetime(2024, 1, 1), datetime(2024, 1, 2),
-            "https://example.com/article1", "hash123", "sha256", "en", "politics",
-            '["tag1"]', '["author1"]', "html123", 0.95, False, '[]', '{}', '{}',
-            datetime(2024, 1, 1), '{"meta": "data"}', datetime(2024, 1, 1)
+            1,
+            "https://example.com/article1",
+            "Test Article",
+            "Content " * 100,
+            "Summary",
+            True,
+            1,
+            datetime(2024, 1, 1),
+            datetime(2024, 1, 2),
+            "https://example.com/article1",
+            "hash123",
+            "sha256",
+            "en",
+            "politics",
+            '["tag1"]',
+            '["author1"]',
+            "html123",
+            0.95,
+            False,
+            "[]",
+            "{}",
+            "{}",
+            datetime(2024, 1, 1),
+            '{"meta": "data"}',
+            datetime(2024, 1, 1),
         )
         mock_cursor.fetchone.return_value = mock_article_row
         mock_performance_service.mb_conn.cursor.return_value = mock_cursor
@@ -124,7 +145,7 @@ class TestDualDatabasePerformance:
                 title=f"Performance Test Article {i + 1}",
                 content=f"Content for performance test article {i + 1}. " * 20,
                 source_id=1,
-                created_at=datetime(2024, 1, 1)
+                created_at=datetime(2024, 1, 1),
             )
             articles.append(article)
 
@@ -147,7 +168,7 @@ class TestDualDatabasePerformance:
                 ids=[str(article.id)],
                 embeddings=[[0.1] * 384],
                 metadatas=[{"article_id": article.id}],
-                documents=[article.content]
+                documents=[article.content],
             )
 
         end_time = time.time()
@@ -163,26 +184,34 @@ class TestDualDatabasePerformance:
         """Test semantic search performance"""
         # Setup mock search results
         mock_performance_service.collection.query.return_value = {
-            'ids': [[str(i) for i in range(10)]],
-            'metadatas': [[{'article_id': i} for i in range(10)]],
-            'documents': [["Content"] * 10],
-            'distances': [[0.1 * i for i in range(10)]]
+            "ids": [[str(i) for i in range(10)]],
+            "metadatas": [[{"article_id": i} for i in range(10)]],
+            "documents": [["Content"] * 10],
+            "distances": [[0.1 * i for i in range(10)]],
         }
 
         # Mock article retrieval
         mock_cursor = MagicMock()
         mock_performance_service.mb_conn.cursor.return_value = mock_cursor
 
-        with patch.object(mock_performance_service, 'get_article_by_id') as mock_get_article:
+        with patch.object(
+            mock_performance_service, "get_article_by_id"
+        ) as mock_get_article:
             mock_get_article.return_value = Article(
-                id=1, url="https://test.com", title="Test", content="Content",
-                source_id=1, created_at=datetime(2024, 1, 1)
+                id=1,
+                url="https://test.com",
+                title="Test",
+                content="Content",
+                source_id=1,
+                created_at=datetime(2024, 1, 1),
             )
 
             # Measure search performance
             start_time = time.time()
             for _ in range(50):
-                results = mock_performance_service.semantic_search("test query", n_results=10)
+                results = mock_performance_service.semantic_search(
+                    "test query", n_results=10
+                )
                 assert len(results) == 10
             end_time = time.time()
 
@@ -195,13 +224,17 @@ class TestDualDatabasePerformance:
 
     def test_concurrent_operations_performance(self, mock_performance_service):
         """Test performance under concurrent operations"""
+
         def simulate_concurrent_reads(service, results, thread_id):
             """Simulate concurrent read operations"""
             thread_results = []
             for i in range(100):
                 # Simulate article retrieval
                 mock_cursor = MagicMock()
-                mock_cursor.fetchone.return_value = (thread_id * 100 + i, f"Article {i}")
+                mock_cursor.fetchone.return_value = (
+                    thread_id * 100 + i,
+                    f"Article {i}",
+                )
                 service.mb_conn.cursor.return_value = mock_cursor
 
                 article = service.get_article_by_id(thread_id * 100 + i)
@@ -219,7 +252,7 @@ class TestDualDatabasePerformance:
         for thread_id in range(num_threads):
             thread = threading.Thread(
                 target=simulate_concurrent_reads,
-                args=(mock_performance_service, results, thread_id)
+                args=(mock_performance_service, results, thread_id),
             )
             threads.append(thread)
             thread.start()
@@ -255,7 +288,7 @@ class TestDualDatabasePerformance:
                 title=f"Memory Test Article {i}",
                 content="Large content " * 1000,  # Large content to test memory
                 source_id=1,
-                created_at=datetime(2024, 1, 1)
+                created_at=datetime(2024, 1, 1),
             )
             articles.append(article)
 
@@ -286,14 +319,10 @@ class TestDualDatabasePerformance:
         queries = [
             "INSERT INTO articles (title, content) VALUES (?, ?)",
             "INSERT INTO article_sources (article_id, source_id) VALUES (?, ?)",
-            "UPDATE article_stats SET count = count + 1 WHERE id = ?"
+            "UPDATE article_stats SET count = count + 1 WHERE id = ?",
         ]
 
-        params_list = [
-            ("Test Article", "Test Content"),
-            (1, 1),
-            (1,)
-        ]
+        params_list = [("Test Article", "Test Content"), (1, 1), (1,)]
 
         mock_cursor = MagicMock()
         mock_performance_service.mb_conn.cursor.return_value = mock_cursor
@@ -319,14 +348,16 @@ class TestDualDatabasePerformance:
             "Short content",
             "Medium content " * 50,
             "Long content " * 500,
-            "Very long content " * 2000
+            "Very long content " * 2000,
         ]
 
         total_time = 0
         total_embeddings = 0
 
         # Mock the encode method to return immediately
-        with patch.object(mock_performance_service.embedding_model, 'encode') as mock_encode:
+        with patch.object(
+            mock_performance_service.embedding_model, "encode"
+        ) as mock_encode:
             mock_encode.return_value = [0.1] * 384
 
             for content in test_contents:
@@ -334,7 +365,7 @@ class TestDualDatabasePerformance:
                 embedding = mock_performance_service.embedding_model.encode(content)
                 end_time = time.time()
 
-                total_time += (end_time - start_time)
+                total_time += end_time - start_time
                 total_embeddings += 1
 
                 assert len(embedding) == 384  # Expected dimensions
@@ -347,6 +378,7 @@ class TestDualDatabasePerformance:
     @pytest.mark.asyncio
     async def test_async_operation_performance(self, mock_performance_service):
         """Test async operation performance"""
+
         async def simulate_async_operation(service, operation_id):
             """Simulate an async database operation"""
             await asyncio.sleep(0.001)  # Simulate async I/O
@@ -420,7 +452,7 @@ class TestDualDatabasePerformance:
                 title=f"Large Dataset Article {i + 1}",
                 content=f"Content for article {i + 1} in large dataset. " * 10,
                 source_id=(i % 10) + 1,  # Distribute across 10 sources
-                created_at=datetime(2024, 1, 1)
+                created_at=datetime(2024, 1, 1),
             )
             articles.append(article)
 
@@ -446,10 +478,12 @@ class TestDualDatabasePerformance:
         """Test search index performance"""
         # Setup mock search index
         mock_performance_service.collection.query.return_value = {
-            'ids': [[str(i) for i in range(50)]],  # Return exactly 50 results as requested
-            'metadatas': [[{'score': 0.9 - i * 0.01} for i in range(50)]],
-            'documents': [["Document content"] * 50],
-            'distances': [[0.1 + i * 0.01 for i in range(50)]]
+            "ids": [
+                [str(i) for i in range(50)]
+            ],  # Return exactly 50 results as requested
+            "metadatas": [[{"score": 0.9 - i * 0.01} for i in range(50)]],
+            "documents": [["Document content"] * 50],
+            "distances": [[0.1 + i * 0.01 for i in range(50)]],
         }
 
         # Test different search queries
@@ -458,40 +492,57 @@ class TestDualDatabasePerformance:
             "politics and government",
             "science breakthrough",
             "sports championship",
-            "entertainment awards"
+            "entertainment awards",
         ]
 
         total_search_time = 0
         total_results = 0
 
         # Mock the embedding and article/source retrieval
-        with patch.object(mock_performance_service.embedding_model, 'encode') as mock_encode:
+        with patch.object(
+            mock_performance_service.embedding_model, "encode"
+        ) as mock_encode:
             mock_encode.return_value = np.array([0.1] * 384)
 
-            with patch.object(mock_performance_service, 'get_article_by_id') as mock_get_article:
+            with patch.object(
+                mock_performance_service, "get_article_by_id"
+            ) as mock_get_article:
                 mock_get_article.return_value = Article(
-                    id=1, url="https://test.com", title="Test", content="Content",
-                    source_id=1, created_at=datetime(2024, 1, 1)
+                    id=1,
+                    url="https://test.com",
+                    title="Test",
+                    content="Content",
+                    source_id=1,
+                    created_at=datetime(2024, 1, 1),
                 )
 
-                with patch.object(mock_performance_service, 'get_source_by_id') as mock_get_source:
+                with patch.object(
+                    mock_performance_service, "get_source_by_id"
+                ) as mock_get_source:
                     mock_get_source.return_value = Source(
-                        id=1, url="https://source.com", domain="source.com", name="Test Source",
-                        created_at=datetime(2024, 1, 1)
+                        id=1,
+                        url="https://source.com",
+                        domain="source.com",
+                        name="Test Source",
+                        created_at=datetime(2024, 1, 1),
                     )
 
                     for query in search_queries:
                         start_time = time.time()
-                        results = mock_performance_service.semantic_search(query, n_results=50)
+                        results = mock_performance_service.semantic_search(
+                            query, n_results=50
+                        )
                         end_time = time.time()
 
-                        total_search_time += (end_time - start_time)
+                        total_search_time += end_time - start_time
                         total_results += len(results)
 
         avg_search_time = total_search_time / len(search_queries)
 
         # Performance assertions
-        assert avg_search_time < 0.05  # Should be reasonably fast with mocking (allowing for test overhead)
+        assert (
+            avg_search_time < 0.05
+        )  # Should be reasonably fast with mocking (allowing for test overhead)
         assert total_results == len(search_queries) * 50  # All results returned
 
 
@@ -499,6 +550,7 @@ class TestDualDatabasePerformance:
 @pytest.mark.parametrize("concurrency_level", [1, 5, 10, 20])
 def test_scalability_under_load(concurrency_level, mock_database_service):
     """Test system scalability under different concurrency levels"""
+
     def worker_task(service, task_id, results):
         """Worker task for concurrent execution"""
         start_time = time.time()
@@ -521,7 +573,9 @@ def test_scalability_under_load(concurrency_level, mock_database_service):
     start_time = time.time()
 
     for i in range(concurrency_level):
-        thread = threading.Thread(target=worker_task, args=(mock_database_service, i, results))
+        thread = threading.Thread(
+            target=worker_task, args=(mock_database_service, i, results)
+        )
         threads.append(thread)
         thread.start()
 

@@ -27,7 +27,7 @@ class TestSecurityFrameworkIntegration:
             jwt_algorithm="HS256",
             jwt_expiration_hours=1,
             bcrypt_rounds=4,  # Fast for testing
-            session_timeout_minutes=5
+            session_timeout_minutes=5,
         )
 
     @pytest.fixture
@@ -43,9 +43,7 @@ class TestSecurityFrameworkIntegration:
         """Test complete authentication flow"""
         # Create test user
         user_id = await security_manager.auth_service.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="TestPass123!"
+            username="testuser", email="test@example.com", password="TestPass123!"
         )
 
         # Authenticate user
@@ -53,7 +51,7 @@ class TestSecurityFrameworkIntegration:
             username="testuser",
             password="TestPass123!",
             ip_address="192.168.1.100",
-            user_agent="TestBrowser/1.0"
+            user_agent="TestBrowser/1.0",
         )
 
         assert "access_token" in tokens
@@ -92,11 +90,13 @@ class TestSecurityFrameworkIntegration:
         await security_manager.log_compliance_event(
             event_type="data_access",
             user_id=user_id,
-            data={"resource": "user_profile", "action": "read"}
+            data={"resource": "user_profile", "action": "read"},
         )
 
         # Export user data (should include compliance events)
-        export_data = await security_manager.compliance_service.export_user_data(user_id)
+        export_data = await security_manager.compliance_service.export_user_data(
+            user_id
+        )
         assert user_id in [event["user_id"] for event in export_data["audit_events"]]
 
     @pytest.mark.asyncio
@@ -104,15 +104,13 @@ class TestSecurityFrameworkIntegration:
         """Test security monitoring and alerting"""
         # Log security events
         await security_manager.monitor_service.log_security_event(
-            "authentication_success",
-            123,
-            {"ip_address": "192.168.1.100"}
+            "authentication_success", 123, {"ip_address": "192.168.1.100"}
         )
 
         await security_manager.monitor_service.log_security_event(
             "authentication_failure",
             None,
-            {"ip_address": "192.168.1.100", "username": "testuser"}
+            {"ip_address": "192.168.1.100", "username": "testuser"},
         )
 
         # Get security metrics
@@ -125,9 +123,7 @@ class TestSecurityFrameworkIntegration:
         """Test role-based access control"""
         # Create test user
         user_id = await security_manager.auth_service.create_user(
-            username="adminuser",
-            email="admin@example.com",
-            password="AdminPass123!"
+            username="adminuser", email="admin@example.com", password="AdminPass123!"
         )
 
         # Assign admin role
@@ -137,11 +133,15 @@ class TestSecurityFrameworkIntegration:
         can_admin_users = await security_manager.check_permission(user_id, "users:read")
         assert can_admin_users is True
 
-        can_admin_system = await security_manager.check_permission(user_id, "system:read")
+        can_admin_system = await security_manager.check_permission(
+            user_id, "system:read"
+        )
         assert can_admin_system is True
 
         # Test inherited permissions
-        can_read_articles = await security_manager.check_permission(user_id, "articles:read")
+        can_read_articles = await security_manager.check_permission(
+            user_id, "articles:read"
+        )
         assert can_read_articles is True
 
     @pytest.mark.asyncio
@@ -149,16 +149,14 @@ class TestSecurityFrameworkIntegration:
         """Test GDPR data subject rights"""
         # Create test user
         user_id = await security_manager.auth_service.create_user(
-            username="gdpruser",
-            email="gdpr@example.com",
-            password="GdprPass123!"
+            username="gdpruser", email="gdpr@example.com", password="GdprPass123!"
         )
 
         # Record consent (don't need the id for the rest of the test)
         _consent_id = await security_manager.compliance_service.record_consent(
             user_id=user_id,
             purpose="marketing",
-            consent_text="I consent to marketing communications"
+            consent_text="I consent to marketing communications",
         )
 
         # Check consent
@@ -169,20 +167,18 @@ class TestSecurityFrameworkIntegration:
 
         # Submit data erasure request
         request_id = await security_manager.compliance_service.submit_data_request(
-            user_id=user_id,
-            request_type="erase",
-            details={"reason": "user_request"}
+            user_id=user_id, request_type="erase", details={"reason": "user_request"}
         )
 
         # Process erasure request
         await security_manager.compliance_service.process_data_request(
-            request_id=request_id,
-            action="complete",
-            result={"erased_records": 5}
+            request_id=request_id, action="complete", result={"erased_records": 5}
         )
 
         # Verify data deletion
-        _export_data = await security_manager.compliance_service.export_user_data(user_id)
+        _export_data = await security_manager.compliance_service.export_user_data(
+            user_id
+        )
         # Consent should still be there for audit purposes, but user data should be minimal
 
     @pytest.mark.asyncio
@@ -208,14 +204,11 @@ class TestSecurityFrameworkIntegration:
         async def create_and_auth_user(i):
             username = f"concurrent_user_{i}"
             user_id = await security_manager.auth_service.create_user(
-                username=username,
-                email=f"user{i}@example.com",
-                password=f"Pass{i}123!"
+                username=username, email=f"user{i}@example.com", password=f"Pass{i}123!"
             )
 
             tokens = await security_manager.authenticate_user(
-                username=username,
-                password=f"Pass{i}123!"
+                username=username, password=f"Pass{i}123!"
             )
 
             return user_id, tokens
@@ -236,12 +229,11 @@ class TestSecurityFrameworkIntegration:
         _user_id = await security_manager.auth_service.create_user(
             username="sessionuser",
             email="session@example.com",
-            password="SessionPass123!"
+            password="SessionPass123!",
         )
 
         tokens = await security_manager.authenticate_user(
-            username="sessionuser",
-            password="SessionPass123!"
+            username="sessionuser", password="SessionPass123!"
         )
 
         # Validate session exists
@@ -277,8 +269,8 @@ class TestSecurityFrameworkIntegration:
                 {
                     "ip_address": "192.168.1.100",
                     "username": "testuser",
-                    "attempt": i + 1
-                }
+                    "attempt": i + 1,
+                },
             )
 
         # Give async processing time
@@ -299,7 +291,7 @@ class TestSecurityErrorHandling:
     def security_config(self):
         return SecurityConfig(
             jwt_secret="test_jwt_secret_key_for_testing_only_32_chars_minimum",
-            bcrypt_rounds=4
+            bcrypt_rounds=4,
         )
 
     @pytest.fixture
@@ -314,8 +306,7 @@ class TestSecurityErrorHandling:
         """Test invalid authentication handling"""
         with pytest.raises(AuthenticationError):
             await security_manager.authenticate_user(
-                username="nonexistent",
-                password="wrongpass"
+                username="nonexistent", password="wrongpass"
             )
 
     @pytest.mark.asyncio
@@ -331,7 +322,7 @@ class TestSecurityErrorHandling:
         user_id = await security_manager.auth_service.create_user(
             username="regularuser",
             email="regular@example.com",
-            password="RegularPass123!"
+            password="RegularPass123!",
         )
 
         # Try to access admin-only resource

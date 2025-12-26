@@ -17,19 +17,26 @@ from database.utils.migrated_database_utils import (
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--limit', type=int, default=100, help='Maximum number of sources to mark as verified (default 100)')
+    p.add_argument(
+        "--limit",
+        type=int,
+        default=100,
+        help="Maximum number of sources to mark as verified (default 100)",
+    )
     args = p.parse_args()
 
     svc = create_database_service()
     query = f"UPDATE sources SET last_verified = NOW() WHERE last_verified IS NULL LIMIT {args.limit};"
     print(f"Running: {query}")
-    results = execute_mariadb_query(svc, query, fetch=False)
+    _ = execute_mariadb_query(svc, query, fetch=False)
 
     # Report how many rows are now verified (approximation)
-    rows = execute_mariadb_query(svc, "SELECT COUNT(*) FROM sources WHERE last_verified IS NOT NULL")
+    rows = execute_mariadb_query(
+        svc, "SELECT COUNT(*) FROM sources WHERE last_verified IS NOT NULL"
+    )
     count = rows[0][0] if rows else 0
     print(f"Sources with last_verified NOT NULL: {count}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

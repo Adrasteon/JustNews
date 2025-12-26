@@ -80,20 +80,19 @@ except ImportError as e:
 # Convenience functions
 __all__ = [
     # Core coordinator
-    'OnTheFlyTrainingCoordinator',
-    'TrainingExample',
-    'ModelPerformance',
-    'initialize_online_training',
-    'get_training_coordinator',
-    'add_training_feedback',
-    'add_user_correction',
-    'get_online_training_status',
-
+    "OnTheFlyTrainingCoordinator",
+    "TrainingExample",
+    "ModelPerformance",
+    "initialize_online_training",
+    "get_training_coordinator",
+    "add_training_feedback",
+    "add_user_correction",
+    "get_online_training_status",
     # System manager
-    'SystemWideTrainingManager',
-    'get_system_training_manager',
-    'collect_prediction',
-    'submit_correction',
-    'get_training_dashboard',
-    'force_update'
+    "SystemWideTrainingManager",
+    "get_system_training_manager",
+    "collect_prediction",
+    "submit_correction",
+    "get_training_dashboard",
+    "force_update",
 ]

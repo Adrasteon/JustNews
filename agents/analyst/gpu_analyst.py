@@ -23,6 +23,7 @@ logger = get_logger(__name__)
 # Dependency detection
 try:
     import torch
+
     TORCH_AVAILABLE = True
 except ImportError:
     torch = None
@@ -30,6 +31,7 @@ except ImportError:
 
 try:
     from transformers import pipeline
+
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     pipeline = None
@@ -37,6 +39,7 @@ except ImportError:
 
 try:
     from agents.common.gpu_orchestrator_client import GPUOrchestratorClient
+
     ORCHESTRATOR_AVAILABLE = True
 except ImportError:
     GPUOrchestratorClient = None
@@ -44,9 +47,11 @@ except ImportError:
 
 try:
     from agents.common.gpu_manager import release_agent_gpu, request_agent_gpu
+
     PRODUCTION_GPU_AVAILABLE = True
 except ImportError:
     PRODUCTION_GPU_AVAILABLE = False
+
 
 class GPUAcceleratedAnalyst:
     """
@@ -109,18 +114,31 @@ class GPUAcceleratedAnalyst:
     def _initialize_gpu_allocation(self):
         """Initialize GPU allocation through production manager."""
         try:
-            if PRODUCTION_GPU_AVAILABLE and TORCH_AVAILABLE and torch.cuda.is_available():
+            if (
+                PRODUCTION_GPU_AVAILABLE
+                and TORCH_AVAILABLE
+                and torch.cuda.is_available()
+            ):
                 allocation = request_agent_gpu("analyst", self.gpu_memory_gb)
-                if isinstance(allocation, dict) and allocation.get("status") == "allocated":
+                if (
+                    isinstance(allocation, dict)
+                    and allocation.get("status") == "allocated"
+                ):
                     self.gpu_allocated = True
                     self.gpu_device = allocation.get("gpu_device", 0)
-                    self.gpu_memory_gb = allocation.get("allocated_memory_gb", self.gpu_memory_gb)
-                    logger.info(f"✅ GPU allocated: {self.gpu_memory_gb}GB on device {self.gpu_device}")
+                    self.gpu_memory_gb = allocation.get(
+                        "allocated_memory_gb", self.gpu_memory_gb
+                    )
+                    logger.info(
+                        f"✅ GPU allocated: {self.gpu_memory_gb}GB on device {self.gpu_device}"
+                    )
                 else:
                     logger.warning(f"⚠️ GPU allocation failed: {allocation}")
                     self.gpu_device = 0
             else:
-                self.gpu_device = 0 if (TORCH_AVAILABLE and torch.cuda.is_available()) else -1
+                self.gpu_device = (
+                    0 if (TORCH_AVAILABLE and torch.cuda.is_available()) else -1
+                )
         except Exception as e:
             logger.error(f"❌ GPU allocation failed: {e}")
             self.gpu_device = -1
@@ -128,7 +146,12 @@ class GPUAcceleratedAnalyst:
     def _initialize_gpu_models(self):
         """Initialize GPU-accelerated models."""
         try:
-            if not (TORCH_AVAILABLE and TRANSFORMERS_AVAILABLE and pipeline and self.gpu_device >= 0):
+            if not (
+                TORCH_AVAILABLE
+                and TRANSFORMERS_AVAILABLE
+                and pipeline
+                and self.gpu_device >= 0
+            ):
                 logger.warning("⚠️ GPU dependencies not available")
                 return
 
@@ -143,7 +166,7 @@ class GPUAcceleratedAnalyst:
                 device=self.gpu_device,
                 max_length=512,
                 truncation=True,
-                top_k=None
+                top_k=None,
             )
 
             # Load bias detector
@@ -153,7 +176,7 @@ class GPUAcceleratedAnalyst:
                 device=self.gpu_device,
                 max_length=512,
                 truncation=True,
-                top_k=None
+                top_k=None,
             )
 
             self.models_loaded = True
@@ -173,12 +196,16 @@ class GPUAcceleratedAnalyst:
 
             if free_memory_gb < self.memory_threshold_gb:
                 if not self.memory_circuit_breaker:
-                    logger.warning(f"🔴 Memory circuit breaker activated: {free_memory_gb:.2f}GB free")
+                    logger.warning(
+                        f"🔴 Memory circuit breaker activated: {free_memory_gb:.2f}GB free"
+                    )
                 self.memory_circuit_breaker = True
                 return False
             else:
                 if self.memory_circuit_breaker:
-                    logger.info(f"🟢 Memory circuit breaker reset: {free_memory_gb:.2f}GB free")
+                    logger.info(
+                        f"🟢 Memory circuit breaker reset: {free_memory_gb:.2f}GB free"
+                    )
                 self.memory_circuit_breaker = False
                 return True
 
@@ -220,7 +247,9 @@ class GPUAcceleratedAnalyst:
             self.performance_stats["gpu_requests"] += 1
             self.performance_stats["total_time"] += processing_time
 
-            logger.info(f"✅ GPU sentiment: {sentiment_score:.3f} ({processing_time:.3f}s)")
+            logger.info(
+                f"✅ GPU sentiment: {sentiment_score:.3f} ({processing_time:.3f}s)"
+            )
             return sentiment_score
 
         except Exception as e:
@@ -254,7 +283,9 @@ class GPUAcceleratedAnalyst:
             # Convert toxicity to bias score
             if isinstance(result, list) and len(result) > 0:
                 scores = {item["label"]: item["score"] for item in result[0]}
-                bias_score = scores.get("TOXIC", max(scores.values()) if scores else 0.5)
+                bias_score = scores.get(
+                    "TOXIC", max(scores.values()) if scores else 0.5
+                )
             else:
                 bias_score = 0.5
 
@@ -290,8 +321,10 @@ class GPUAcceleratedAnalyst:
         except Exception as e:
             logger.error(f"Cleanup failed: {e}")
 
+
 # Global instance
 _gpu_analyst = None
+
 
 def get_gpu_analyst():
     """Get or create GPU analyst instance."""
@@ -299,6 +332,7 @@ def get_gpu_analyst():
     if _gpu_analyst is None:
         _gpu_analyst = GPUAcceleratedAnalyst()
     return _gpu_analyst
+
 
 def cleanup_gpu_analyst():
     """Clean up GPU analyst resources."""

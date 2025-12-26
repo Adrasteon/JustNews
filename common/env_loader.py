@@ -80,7 +80,9 @@ def _iter_candidate_paths(extra_paths: Sequence[Path] | None = None) -> list[Pat
     return ordered
 
 
-def load_global_env(*, logger=None, extra_paths: Iterable[Path] | None = None) -> list[Path]:
+def load_global_env(
+    *, logger=None, extra_paths: Iterable[Path] | None = None
+) -> list[Path]:
     """Load environment variables from the first accessible global.env files.
 
     Returns a list of paths that were successfully loaded.  The same file is
@@ -106,7 +108,11 @@ def load_global_env(*, logger=None, extra_paths: Iterable[Path] | None = None) -
                     key = key.strip()
                     value = value.strip()
                     # Strip surrounding quotes and inline comments if present.
-                    if value.startswith(("'", '"')) and value.endswith(("'", '"')) and len(value) >= 2:
+                    if (
+                        value.startswith(("'", '"'))
+                        and value.endswith(("'", '"'))
+                        and len(value) >= 2
+                    ):
                         value = value[1:-1]
                     if " #" in value:
                         value = value.split(" #", 1)[0].strip()

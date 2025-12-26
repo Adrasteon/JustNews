@@ -24,31 +24,41 @@ from pydantic import BaseModel, Field, field_validator
 # Configure logging
 logger = logging.getLogger(__name__)
 
+
 class AlertSeverity(Enum):
     """Alert severity levels"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
 
+
 class AlertStatus(Enum):
     """Alert status values"""
+
     ACTIVE = "active"
     ACKNOWLEDGED = "acknowledged"
     RESOLVED = "resolved"
     SUPPRESSED = "suppressed"
 
+
 class NotificationChannel(Enum):
     """Available notification channels"""
+
     EMAIL = "email"
     SMS = "sms"
     SLACK = "slack"
     WEBHOOK = "webhook"
     DASHBOARD = "dashboard"
 
+
 class AlertRule(BaseModel):
     """Alert rule configuration"""
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique rule identifier")
+
+    id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()), description="Unique rule identifier"
+    )
     name: str = Field(..., description="Rule name")
     description: str | None = Field(None, description="Rule description")
     query: str = Field(..., description="Prometheus-style query or condition")
@@ -56,10 +66,12 @@ class AlertRule(BaseModel):
     threshold: float = Field(..., description="Alert threshold value")
     duration: int = Field(300, description="Duration in seconds before alert fires")
     labels: dict[str, str] = Field(default_factory=dict, description="Alert labels")
-    annotations: dict[str, str] = Field(default_factory=dict, description="Alert annotations")
+    annotations: dict[str, str] = Field(
+        default_factory=dict, description="Alert annotations"
+    )
     enabled: bool = Field(True, description="Whether the rule is enabled")
 
-    @field_validator('duration')
+    @field_validator("duration")
     @classmethod
     def validate_duration(cls, v):
         """Validate duration is positive"""
@@ -67,9 +79,13 @@ class AlertRule(BaseModel):
             raise ValueError("Duration must be positive")
         return v
 
+
 class Alert(BaseModel):
     """Alert instance"""
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique alert identifier")
+
+    id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()), description="Unique alert identifier"
+    )
     rule_id: str = Field(..., description="Associated rule ID")
     rule_name: str = Field(..., description="Associated rule name")
     severity: AlertSeverity = Field(..., description="Alert severity")
@@ -78,21 +94,32 @@ class Alert(BaseModel):
     description: str = Field(..., description="Detailed alert description")
     value: float = Field(..., description="Alert value")
     labels: dict[str, str] = Field(default_factory=dict, description="Alert labels")
-    annotations: dict[str, str] = Field(default_factory=dict, description="Alert annotations")
-    starts_at: datetime = Field(default_factory=datetime.now, description="Alert start time")
+    annotations: dict[str, str] = Field(
+        default_factory=dict, description="Alert annotations"
+    )
+    starts_at: datetime = Field(
+        default_factory=datetime.now, description="Alert start time"
+    )
     ends_at: datetime | None = Field(None, description="Alert end time")
     acknowledged_by: str | None = Field(None, description="User who acknowledged")
     acknowledged_at: datetime | None = Field(None, description="Acknowledgement time")
     resolved_by: str | None = Field(None, description="User who resolved")
     resolved_at: datetime | None = Field(None, description="Resolution time")
 
+
 class NotificationConfig(BaseModel):
     """Notification configuration"""
+
     channel: NotificationChannel = Field(..., description="Notification channel")
     enabled: bool = Field(True, description="Whether notifications are enabled")
-    recipients: list[str] = Field(default_factory=list, description="Notification recipients")
+    recipients: list[str] = Field(
+        default_factory=list, description="Notification recipients"
+    )
     template: str | None = Field(None, description="Notification template")
-    filters: dict[str, Any] = Field(default_factory=dict, description="Notification filters")
+    filters: dict[str, Any] = Field(
+        default_factory=dict, description="Notification filters"
+    )
+
 
 @dataclass
 class AlertDashboard:
@@ -113,25 +140,24 @@ class AlertDashboard:
     alert_history: list[Alert] = field(default_factory=list)
 
     # Notification configurations
-    notification_configs: dict[NotificationChannel, NotificationConfig] = field(default_factory=dict)
+    notification_configs: dict[NotificationChannel, NotificationConfig] = field(
+        default_factory=dict
+    )
 
     # Alert handlers
     alert_handlers: dict[str, list[Callable]] = field(default_factory=dict)
 
     # Dashboard statistics
-    stats: dict[str, Any] = field(default_factory=lambda: {
-        "total_alerts": 0,
-        "active_alerts": 0,
-        "acknowledged_alerts": 0,
-        "resolved_alerts": 0,
-        "suppressed_alerts": 0,
-        "alerts_by_severity": {
-            "low": 0,
-            "medium": 0,
-            "high": 0,
-            "critical": 0
+    stats: dict[str, Any] = field(
+        default_factory=lambda: {
+            "total_alerts": 0,
+            "active_alerts": 0,
+            "acknowledged_alerts": 0,
+            "resolved_alerts": 0,
+            "suppressed_alerts": 0,
+            "alerts_by_severity": {"low": 0, "medium": 0, "high": 0, "critical": 0},
         }
-    })
+    )
 
     # Configuration
     max_history_size: int = field(default=10000)
@@ -155,8 +181,8 @@ class AlertDashboard:
                 labels={"component": "system", "resource": "cpu"},
                 annotations={
                     "summary": "High CPU usage detected",
-                    "description": "CPU usage is above 90% for more than 5 minutes"
-                }
+                    "description": "CPU usage is above 90% for more than 5 minutes",
+                },
             ),
             AlertRule(
                 name="Memory Usage Critical",
@@ -168,21 +194,21 @@ class AlertDashboard:
                 labels={"component": "system", "resource": "memory"},
                 annotations={
                     "summary": "Critical memory usage",
-                    "description": "Memory usage is above 95% for more than 2 minutes"
-                }
+                    "description": "Memory usage is above 95% for more than 2 minutes",
+                },
             ),
             AlertRule(
                 name="Agent Down",
                 description="Agent service is not responding",
-                query="up{job=~\"justnews-.*\"} == 0",
+                query='up{job=~"justnews-.*"} == 0',
                 severity=AlertSeverity.CRITICAL,
                 threshold=0.0,
                 duration=60,
                 labels={"component": "agent", "type": "availability"},
                 annotations={
                     "summary": "Agent service down",
-                    "description": "Agent service has stopped responding"
-                }
+                    "description": "Agent service has stopped responding",
+                },
             ),
             AlertRule(
                 name="High Error Rate",
@@ -194,8 +220,8 @@ class AlertDashboard:
                 labels={"component": "application", "type": "errors"},
                 annotations={
                     "summary": "High error rate detected",
-                    "description": "Application error rate is above 5% for more than 10 minutes"
-                }
+                    "description": "Application error rate is above 5% for more than 10 minutes",
+                },
             ),
             AlertRule(
                 name="Security Alert",
@@ -207,9 +233,9 @@ class AlertDashboard:
                 labels={"component": "security", "type": "incident"},
                 annotations={
                     "summary": "Security alert triggered",
-                    "description": "Security monitoring has detected an incident"
-                }
-            )
+                    "description": "Security monitoring has detected an incident",
+                },
+            ),
         ]
 
         for rule in default_rules:
@@ -222,26 +248,26 @@ class AlertDashboard:
                 channel=NotificationChannel.EMAIL,
                 enabled=True,
                 recipients=["alerts@justnews.com"],
-                filters={"severity": ["high", "critical"]}
+                filters={"severity": ["high", "critical"]},
             ),
             NotificationConfig(
                 channel=NotificationChannel.SLACK,
                 enabled=True,
                 recipients=["#alerts"],
-                filters={"severity": ["medium", "high", "critical"]}
+                filters={"severity": ["medium", "high", "critical"]},
             ),
             NotificationConfig(
                 channel=NotificationChannel.SMS,
                 enabled=False,  # Disabled by default
                 recipients=["+1234567890"],
-                filters={"severity": ["critical"]}
+                filters={"severity": ["critical"]},
             ),
             NotificationConfig(
                 channel=NotificationChannel.WEBHOOK,
                 enabled=True,
                 recipients=["https://api.pagerduty.com/v2/enqueue"],
-                filters={"severity": ["high", "critical"]}
-            )
+                filters={"severity": ["high", "critical"]},
+            ),
         ]
 
         for config in default_configs:
@@ -302,22 +328,26 @@ class AlertDashboard:
             except Exception as e:
                 logger.error(f"Error evaluating rule '{rule.name}': {e}")
 
-    async def _evaluate_condition(self, rule: AlertRule, metrics_data: dict[str, Any]) -> bool:
+    async def _evaluate_condition(
+        self, rule: AlertRule, metrics_data: dict[str, Any]
+    ) -> bool:
         """Evaluate alert rule condition"""
         # Simple threshold-based evaluation
         # In a real implementation, this would parse the query and evaluate it
-        metric_name = rule.query.split('>')[0].strip() if '>' in rule.query else rule.query
+        metric_name = (
+            rule.query.split(">")[0].strip() if ">" in rule.query else rule.query
+        )
 
         if metric_name in metrics_data:
             value = metrics_data[metric_name]
-            if '>' in rule.query:
-                threshold = float(rule.query.split('>')[1].strip())
+            if ">" in rule.query:
+                threshold = float(rule.query.split(">")[1].strip())
                 return value > threshold
-            elif '<' in rule.query:
-                threshold = float(rule.query.split('<')[1].strip())
+            elif "<" in rule.query:
+                threshold = float(rule.query.split("<")[1].strip())
                 return value < threshold
-            elif '==' in rule.query:
-                threshold = float(rule.query.split('==')[1].strip())
+            elif "==" in rule.query:
+                threshold = float(rule.query.split("==")[1].strip())
                 return value == threshold
 
         return False
@@ -333,7 +363,7 @@ class AlertDashboard:
 
         if existing_alert:
             # Update existing alert
-            existing_alert.value = metrics_data.get(rule.query.split('>')[0].strip(), 0)
+            existing_alert.value = metrics_data.get(rule.query.split(">")[0].strip(), 0)
             logger.debug(f"Updated existing alert for rule '{rule.name}'")
             return
 
@@ -343,10 +373,12 @@ class AlertDashboard:
             rule_name=rule.name,
             severity=rule.severity,
             summary=rule.annotations.get("summary", f"Alert: {rule.name}"),
-            description=rule.annotations.get("description", f"Alert triggered for rule: {rule.name}"),
-            value=metrics_data.get(rule.query.split('>')[0].strip(), 0),
+            description=rule.annotations.get(
+                "description", f"Alert triggered for rule: {rule.name}"
+            ),
+            value=metrics_data.get(rule.query.split(">")[0].strip(), 0),
             labels=rule.labels.copy(),
-            annotations=rule.annotations.copy()
+            annotations=rule.annotations.copy(),
         )
 
         self.active_alerts[alert.id] = alert
@@ -354,7 +386,9 @@ class AlertDashboard:
         self.stats["active_alerts"] += 1
         self.stats["alerts_by_severity"][rule.severity.value] += 1
 
-        logger.warning(f"Fired alert: {alert.summary} (severity: {alert.severity.value})")
+        logger.warning(
+            f"Fired alert: {alert.summary} (severity: {alert.severity.value})"
+        )
 
         # Send notifications
         await self._send_notifications(alert)
@@ -457,7 +491,9 @@ class AlertDashboard:
                         return False
         return True
 
-    async def _send_notification(self, channel: NotificationChannel, config: NotificationConfig, alert: Alert):
+    async def _send_notification(
+        self, channel: NotificationChannel, config: NotificationConfig, alert: Alert
+    ):
         """Send notification via specific channel"""
         if channel == NotificationChannel.EMAIL:
             await self._send_email_notification(config, alert)
@@ -471,22 +507,32 @@ class AlertDashboard:
     async def _send_email_notification(self, config: NotificationConfig, alert: Alert):
         """Send email notification"""
         # Implementation would integrate with email service
-        logger.info(f"Sending email notification to {config.recipients} for alert: {alert.summary}")
+        logger.info(
+            f"Sending email notification to {config.recipients} for alert: {alert.summary}"
+        )
 
     async def _send_slack_notification(self, config: NotificationConfig, alert: Alert):
         """Send Slack notification"""
         # Implementation would integrate with Slack API
-        logger.info(f"Sending Slack notification to {config.recipients} for alert: {alert.summary}")
+        logger.info(
+            f"Sending Slack notification to {config.recipients} for alert: {alert.summary}"
+        )
 
     async def _send_sms_notification(self, config: NotificationConfig, alert: Alert):
         """Send SMS notification"""
         # Implementation would integrate with SMS service
-        logger.info(f"Sending SMS notification to {config.recipients} for alert: {alert.summary}")
+        logger.info(
+            f"Sending SMS notification to {config.recipients} for alert: {alert.summary}"
+        )
 
-    async def _send_webhook_notification(self, config: NotificationConfig, alert: Alert):
+    async def _send_webhook_notification(
+        self, config: NotificationConfig, alert: Alert
+    ):
         """Send webhook notification"""
         # Implementation would send HTTP POST to webhook URL
-        logger.info(f"Sending webhook notification to {config.recipients} for alert: {alert.summary}")
+        logger.info(
+            f"Sending webhook notification to {config.recipients} for alert: {alert.summary}"
+        )
 
     async def _trigger_alert_handlers(self, event_type: str, alert: Alert):
         """Trigger alert event handlers"""
@@ -504,7 +550,9 @@ class AlertDashboard:
         self.alert_handlers[event_type].append(handler)
         logger.info(f"Added alert handler for event type '{event_type}'")
 
-    def get_active_alerts(self, severity_filter: AlertSeverity | None = None) -> list[Alert]:
+    def get_active_alerts(
+        self, severity_filter: AlertSeverity | None = None
+    ) -> list[Alert]:
         """Get active alerts, optionally filtered by severity"""
         alerts = list(self.active_alerts.values())
         if severity_filter:
@@ -534,7 +582,8 @@ class AlertDashboard:
         original_count = len(self.alert_history)
 
         self.alert_history = [
-            alert for alert in self.alert_history
+            alert
+            for alert in self.alert_history
             if alert.resolved_at and alert.resolved_at >= cutoff
         ]
 
@@ -545,11 +594,15 @@ class AlertDashboard:
     def export_alerts(self, format: str = "json") -> str:
         """Export alerts in specified format"""
         alerts_data = {
-            "active_alerts": [alert.model_dump() for alert in self.active_alerts.values()],
-            "alert_history": [alert.model_dump() for alert in self.alert_history[-100:]],  # Last 100
+            "active_alerts": [
+                alert.model_dump() for alert in self.active_alerts.values()
+            ],
+            "alert_history": [
+                alert.model_dump() for alert in self.alert_history[-100:]
+            ],  # Last 100
             "rules": [rule.model_dump() for rule in self.rules.values()],
             "stats": self.stats,
-            "exported_at": datetime.now().isoformat()
+            "exported_at": datetime.now().isoformat(),
         }
 
         if format == "json":

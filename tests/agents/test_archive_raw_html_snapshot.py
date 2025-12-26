@@ -12,7 +12,9 @@ def test_missing_reference_returns_status_none(tmp_path):
 
 
 def test_missing_source_reports_warning(tmp_path):
-    result = ensure_raw_html_artifact("archive_storage/raw_html/ghost.html", service_dir=tmp_path)
+    result = ensure_raw_html_artifact(
+        "archive_storage/raw_html/ghost.html", service_dir=tmp_path
+    )
     assert result["status"] == "missing_source"
     assert result["raw_html_ref"] is None
 

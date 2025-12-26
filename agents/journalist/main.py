@@ -5,6 +5,7 @@ Lightweight agent wrapper that exposes a simple interface to the JournalistEngin
 This mirrors other agents' structure so it can be registered with MCP or run standalone
 for local testing.
 """
+
 from __future__ import annotations
 
 import logging
@@ -62,7 +63,9 @@ async def crawl_url(payload: dict):
     """
     if engine is None:
         return {"success": False, "error": "Engine not initialized"}
-    result = await engine.crawl_and_analyze(payload.get("url"), mode=payload.get("mode"))
+    result = await engine.crawl_and_analyze(
+        payload.get("url"), mode=payload.get("mode")
+    )
     return result
 
 

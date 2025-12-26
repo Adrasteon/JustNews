@@ -34,6 +34,7 @@ Security Notes:
   - Ensure secrets rotation plan removes any accidental persistence.
   - Search for "apply_test_db_env_fallback" to locate usages during cleanup.
 """
+
 from __future__ import annotations
 
 import logging
@@ -44,11 +45,11 @@ _DISABLE_FLAG = "JUSTNEWS_DISABLE_TEST_DB_FALLBACK"
 
 # Canonical development defaults (ONLY applied if missing)
 _DEV_DEFAULTS = {
-  "DB_HOST": "localhost",
-  "DB_PORT": "3306",
-  "DB_NAME": "justnews",
-  "DB_USER": "justnews_user",
-  "DB_PASSWORD": "password123",
+    "DB_HOST": "localhost",
+    "DB_PORT": "3306",
+    "DB_NAME": "justnews",
+    "DB_USER": "justnews_user",
+    "DB_PASSWORD": "password123",
 }
 
 # Legacy / alternate variable name mapping – values resolved from _DEV_DEFAULTS
@@ -123,12 +124,14 @@ def apply_test_db_env_fallback(logger: logging.Logger | None = None) -> list[str
     if applied:
         _logger = logger or logging.getLogger("dev_db_fallback")
         _logger.warning(
-            "⚠️ USING TEMP HARD-CODED TEST DB VARS (REMOVE BEFORE PROD): %s", ",".join(applied)
+            "⚠️ USING TEMP HARD-CODED TEST DB VARS (REMOVE BEFORE PROD): %s",
+            ",".join(applied),
         )
         _logger.warning(
             "This is a temporary unblocker for the crawler; replace with secure env management."
         )
 
     return applied
+
 
 __all__ = ["apply_test_db_env_fallback"]

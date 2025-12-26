@@ -16,6 +16,7 @@ from typing import Any
 
 try:
     from sentence_transformers import SentenceTransformer
+
     _SENTENCE_TRANSFORMERS_AVAILABLE = True
 except Exception:  # sentence-transformers may be missing or incompatible in CI/dev
     SentenceTransformer = None  # type: ignore
@@ -34,6 +35,7 @@ logger = get_logger(__name__)
 @dataclass
 class SearchResult:
     """Represents a single search result"""
+
     article_id: int
     title: str
     content: str
@@ -46,6 +48,7 @@ class SearchResult:
 @dataclass
 class SearchResponse:
     """Represents the complete search response"""
+
     query: str
     results: list[SearchResult]
     total_results: int
@@ -72,13 +75,13 @@ class SemanticSearchService:
 
         # Initialize embedding model (best-effort). If sentence-transformers is
         # missing or incompatible, run in degraded mode and don't crash at import time.
-        embedding_config = self.config.get('embedding', {})
+        embedding_config = self.config.get("embedding", {})
         # If a test or higher scope has provided a patched `SentenceTransformer`
         # (i.e. module-level variable has been replaced), prefer that. Otherwise
         # attempt a runtime import. This keeps test mocking reliable and avoids
         # import-time failures when sentence-transformers is absent.
         st_cls = None
-        if 'SentenceTransformer' in globals() and SentenceTransformer is not None:
+        if "SentenceTransformer" in globals() and SentenceTransformer is not None:
             st_cls = SentenceTransformer
         else:
             try:
@@ -90,13 +93,19 @@ class SemanticSearchService:
             st_cls = _ST
 
         if st_cls is None:
-            logger.debug("sentence-transformers not available; SemanticSearchService running in degraded mode")
+            logger.debug(
+                "sentence-transformers not available; SemanticSearchService running in degraded mode"
+            )
             self.embedding_model = None
         else:
             try:
-                self.embedding_model = st_cls(embedding_config.get('model', 'all-MiniLM-L6-v2'))
+                self.embedding_model = st_cls(
+                    embedding_config.get("model", "all-MiniLM-L6-v2")
+                )
             except Exception as e:
-                logger.warning("SentenceTransformer failed to initialize, running degraded: %s", e)
+                logger.warning(
+                    "SentenceTransformer failed to initialize, running degraded: %s", e
+                )
                 self.embedding_model = None
 
         # Cache for frequently accessed articles
@@ -109,8 +118,8 @@ class SemanticSearchService:
         self,
         query: str,
         n_results: int = 10,
-        search_type: str = 'semantic',
-        min_score: float = 0.0
+        search_type: str = "semantic",
+        min_score: float = 0.0,
     ) -> SearchResponse:
         """
         Perform search across the database
@@ -128,11 +137,11 @@ class SemanticSearchService:
 
         # Validate search_type and perform appropriate search. For unsupported
         # types we raise a ValueError (tests expect this behavior).
-        if search_type == 'semantic':
+        if search_type == "semantic":
             results = self._semantic_search(query, n_results, min_score)
-        elif search_type == 'text':
+        elif search_type == "text":
             results = self._text_search(query, n_results)
-        elif search_type == 'hybrid':
+        elif search_type == "hybrid":
             results = self._hybrid_search(query, n_results, min_score)
         else:
             logger.error(f"Search failed: Unsupported search type: {search_type}")
@@ -149,10 +158,7 @@ class SemanticSearchService:
         )
 
     def _semantic_search(
-        self,
-        query: str,
-        n_results: int,
-        min_score: float
+        self, query: str, n_results: int, min_score: float
     ) -> list[SearchResult]:
         """
         Perform semantic search using vector similarity
@@ -168,7 +174,7 @@ class SemanticSearchService:
         # Generate embedding for the query — if embedding model unavailable,
         # we run in degraded mode and return an empty result set so unit tests
         # that only import this module won't fail during collection.
-        if not getattr(self, 'embedding_model', None):
+        if not getattr(self, "embedding_model", None):
             logger.warning("Embedding model not available - semantic search disabled")
             return []
 
@@ -183,22 +189,24 @@ class SemanticSearchService:
         # Search in ChromaDB. Wrap in try/except so backend failures return
         # an empty result set instead of raising (tests expect graceful handling).
         try:
-            if not getattr(self.db_service, 'collection', None):
-                logger.warning("ChromaDB collection not initialized - semantic search unavailable")
+            if not getattr(self.db_service, "collection", None):
+                logger.warning(
+                    "ChromaDB collection not initialized - semantic search unavailable"
+                )
                 return []
             chroma_results = self.db_service.collection.query(
                 query_embeddings=[query_embedding],
                 n_results=n_results * 2,  # Get more results for filtering
-                include=['documents', 'metadatas', 'distances']
+                include=["documents", "metadatas", "distances"],
             )
         except Exception as e:
             logger.error(f"Chroma query failed: {e}")
             return []
 
         results = []
-        if chroma_results['ids']:
-            for i, article_id in enumerate(chroma_results['ids'][0]):
-                distance = chroma_results['distances'][0][i]
+        if chroma_results["ids"]:
+            for i, article_id in enumerate(chroma_results["ids"][0]):
+                distance = chroma_results["distances"][0][i]
                 similarity_score = 1.0 - distance  # Convert distance to similarity
 
                 if similarity_score < min_score:
@@ -208,23 +216,29 @@ class SemanticSearchService:
                 article_data = self._get_article_by_id(int(article_id))
                 if article_data:
                     # Handle publication_date conversion
-                    pub_date = article_data.get('publication_date')
+                    pub_date = article_data.get("publication_date")
                     if pub_date is None:
-                        pub_date_str = ''
+                        pub_date_str = ""
                     elif isinstance(pub_date, str):
                         pub_date_str = pub_date
                     else:
                         # Assume it's a datetime object
-                        pub_date_str = pub_date.isoformat() if hasattr(pub_date, 'isoformat') else str(pub_date)
+                        pub_date_str = (
+                            pub_date.isoformat()
+                            if hasattr(pub_date, "isoformat")
+                            else str(pub_date)
+                        )
 
                     result = SearchResult(
                         article_id=int(article_id),
-                        title=article_data.get('title', ''),
-                        content=article_data.get('content', ''),
-                        source_name=article_data.get('source_name', 'Unknown Source'),
+                        title=article_data.get("title", ""),
+                        content=article_data.get("content", ""),
+                        source_name=article_data.get("source_name", "Unknown Source"),
                         published_date=pub_date_str,
                         similarity_score=similarity_score,
-                        metadata=chroma_results['metadatas'][0][i] if chroma_results['metadatas'] else {}
+                        metadata=chroma_results["metadatas"][0][i]
+                        if chroma_results["metadatas"]
+                        else {},
                     )
                     results.append(result)
 
@@ -250,33 +264,34 @@ class SemanticSearchService:
         results = []
         for article in articles:
             # Handle publication_date conversion
-            pub_date = article.get('publication_date')
+            pub_date = article.get("publication_date")
             if pub_date is None:
-                pub_date_str = ''
+                pub_date_str = ""
             elif isinstance(pub_date, str):
                 pub_date_str = pub_date
             else:
                 # Assume it's a datetime object
-                pub_date_str = pub_date.isoformat() if hasattr(pub_date, 'isoformat') else str(pub_date)
+                pub_date_str = (
+                    pub_date.isoformat()
+                    if hasattr(pub_date, "isoformat")
+                    else str(pub_date)
+                )
 
             result = SearchResult(
-                article_id=article['id'],
-                title=article.get('title', ''),
-                content=article.get('content', ''),
-                source_name=article.get('source_name', 'Unknown Source'),
+                article_id=article["id"],
+                title=article.get("title", ""),
+                content=article.get("content", ""),
+                source_name=article.get("source_name", "Unknown Source"),
                 published_date=pub_date_str,
                 similarity_score=1.0,  # Text search doesn't have similarity scores
-                metadata={}
+                metadata={},
             )
             results.append(result)
 
         return results
 
     def _hybrid_search(
-        self,
-        query: str,
-        n_results: int,
-        min_score: float
+        self, query: str, n_results: int, min_score: float
     ) -> list[SearchResult]:
         """
         Perform hybrid search combining semantic and text search
@@ -308,9 +323,7 @@ class SemanticSearchService:
 
         # Sort by similarity score and return top results
         sorted_results = sorted(
-            combined_results.values(),
-            key=lambda x: x.similarity_score,
-            reverse=True
+            combined_results.values(), key=lambda x: x.similarity_score, reverse=True
         )
 
         return sorted_results[:n_results]
@@ -345,10 +358,7 @@ class SemanticSearchService:
             return None
 
     def get_similar_articles(
-        self,
-        article_id: int,
-        n_results: int = 5,
-        min_score: float = 0.7
+        self, article_id: int, n_results: int = 5, min_score: float = 0.7
     ) -> list[SearchResult]:
         """
         Find articles similar to a given article
@@ -378,9 +388,7 @@ class SemanticSearchService:
         return results[:n_results]
 
     def get_articles_by_category(
-        self,
-        category: str,
-        n_results: int = 10
+        self, category: str, n_results: int = 10
     ) -> list[SearchResult]:
         """
         Get articles by category/topic
@@ -397,9 +405,7 @@ class SemanticSearchService:
         return self._semantic_search(category, n_results, 0.0)
 
     def get_recent_articles_with_search(
-        self,
-        query: str | None = None,
-        n_results: int = 10
+        self, query: str | None = None, n_results: int = 10
     ) -> list[SearchResult]:
         """
         Get recent articles, optionally filtered by search query
@@ -421,23 +427,27 @@ class SemanticSearchService:
             results = []
             for article in articles:
                 # Handle publication_date conversion
-                pub_date = article.get('publication_date')
+                pub_date = article.get("publication_date")
                 if pub_date is None:
-                    pub_date_str = ''
+                    pub_date_str = ""
                 elif isinstance(pub_date, str):
                     pub_date_str = pub_date
                 else:
                     # Assume it's a datetime object
-                    pub_date_str = pub_date.isoformat() if hasattr(pub_date, 'isoformat') else str(pub_date)
+                    pub_date_str = (
+                        pub_date.isoformat()
+                        if hasattr(pub_date, "isoformat")
+                        else str(pub_date)
+                    )
 
                 result = SearchResult(
-                    article_id=article['id'],
-                    title=article.get('title', ''),
-                    content=article.get('content', ''),
-                    source_name=article.get('source_name', 'Unknown Source'),
+                    article_id=article["id"],
+                    title=article.get("title", ""),
+                    content=article.get("content", ""),
+                    source_name=article.get("source_name", "Unknown Source"),
                     published_date=pub_date_str,
                     similarity_score=1.0,
-                    metadata={}
+                    metadata={},
                 )
                 results.append(result)
 
@@ -453,12 +463,16 @@ class SemanticSearchService:
         stats = get_database_stats(self.db_service)
 
         # Add search-specific stats
-        stats.update({
-            'embedding_model': self.config.get('embedding', {}).get('model'),
-            'embedding_dimensions': self.config.get('embedding', {}).get('dimensions', 384),
-            'cache_size': len(self._article_cache),
-            'cache_max_size': self._cache_max_size
-        })
+        stats.update(
+            {
+                "embedding_model": self.config.get("embedding", {}).get("model"),
+                "embedding_dimensions": self.config.get("embedding", {}).get(
+                    "dimensions", 384
+                ),
+                "cache_size": len(self._article_cache),
+                "cache_max_size": self._cache_max_size,
+            }
+        )
 
         return stats
 
@@ -488,8 +502,8 @@ def get_search_service() -> SemanticSearchService:
 async def async_search(
     query: str,
     n_results: int = 10,
-    search_type: str = 'semantic',
-    min_score: float = 0.0
+    search_type: str = "semantic",
+    min_score: float = 0.0,
 ) -> SearchResponse:
     """
     Asynchronous search function
@@ -507,10 +521,5 @@ async def async_search(
     service = get_search_service()
 
     return await loop.run_in_executor(
-        None,
-        service.search,
-        query,
-        n_results,
-        search_type,
-        min_score
+        None, service.search, query, n_results, search_type, min_score
     )

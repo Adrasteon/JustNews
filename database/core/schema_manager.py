@@ -26,7 +26,9 @@ class SchemaManager:
     Advanced schema management with versioning and migration tracking
     """
 
-    def __init__(self, connection_pool: DatabaseConnectionPool, schema_dir: str = "migrations"):
+    def __init__(
+        self, connection_pool: DatabaseConnectionPool, schema_dir: str = "migrations"
+    ):
         """
         Initialize the schema manager
 
@@ -85,7 +87,7 @@ class SchemaManager:
 
         try:
             results = self.pool.execute_query(query)
-            return results[0]['version'] if results else None
+            return results[0]["version"] if results else None
         except Exception as e:
             logger.error(f"Failed to get current schema version: {e}")
             return None
@@ -118,11 +120,11 @@ class SchemaManager:
             Validation results dictionary
         """
         validation_results = {
-            'is_valid': True,
-            'errors': [],
-            'warnings': [],
-            'checksum_mismatches': [],
-            'missing_migrations': []
+            "is_valid": True,
+            "errors": [],
+            "warnings": [],
+            "checksum_mismatches": [],
+            "missing_migrations": [],
         }
 
         try:
@@ -133,39 +135,43 @@ class SchemaManager:
 
             # Check for missing migration files
             migration_files = self._get_migration_files()
-            applied_versions = {m['version'] for m in applied_migrations}
+            applied_versions = {m["version"] for m in applied_migrations}
 
             for migration_file in migration_files:
-                version = migration_file['version']
+                version = migration_file["version"]
                 if version not in applied_versions:
-                    validation_results['missing_migrations'].append(version)
-                    validation_results['warnings'].append(f"Migration {version} not applied")
+                    validation_results["missing_migrations"].append(version)
+                    validation_results["warnings"].append(
+                        f"Migration {version} not applied"
+                    )
 
             # Validate checksums for applied migrations
             for applied in applied_migrations:
-                version = applied['version']
-                stored_checksum = applied['checksum']
+                version = applied["version"]
+                stored_checksum = applied["checksum"]
 
                 migration_file = next(
-                    (f for f in migration_files if f['version'] == version), None
+                    (f for f in migration_files if f["version"] == version), None
                 )
 
                 if migration_file:
-                    current_checksum = migration_file['checksum']
+                    current_checksum = migration_file["checksum"]
                     if stored_checksum != current_checksum:
-                        validation_results['checksum_mismatches'].append({
-                            'version': version,
-                            'stored': stored_checksum,
-                            'current': current_checksum
-                        })
-                        validation_results['errors'].append(
+                        validation_results["checksum_mismatches"].append(
+                            {
+                                "version": version,
+                                "stored": stored_checksum,
+                                "current": current_checksum,
+                            }
+                        )
+                        validation_results["errors"].append(
                             f"Checksum mismatch for migration {version}"
                         )
-                        validation_results['is_valid'] = False
+                        validation_results["is_valid"] = False
 
         except Exception as e:
-            validation_results['errors'].append(f"Schema validation failed: {e}")
-            validation_results['is_valid'] = False
+            validation_results["errors"].append(f"Schema validation failed: {e}")
+            validation_results["is_valid"] = False
 
         return validation_results
 
@@ -182,26 +188,28 @@ class SchemaManager:
             return migrations
 
         for filename in sorted(os.listdir(self.schema_dir)):
-            if filename.endswith('.sql'):
+            if filename.endswith(".sql"):
                 filepath = os.path.join(self.schema_dir, filename)
 
                 try:
-                    with open(filepath, encoding='utf-8') as f:
+                    with open(filepath, encoding="utf-8") as f:
                         content = f.read()
 
                     # Extract version from filename (e.g., "001_create_table.sql" -> "001")
-                    version = filename.split('_')[0]
+                    version = filename.split("_")[0]
 
                     # Calculate checksum
-                    checksum = hashlib.sha256(content.encode('utf-8')).hexdigest()
+                    checksum = hashlib.sha256(content.encode("utf-8")).hexdigest()
 
-                    migrations.append({
-                        'version': version,
-                        'filename': filename,
-                        'filepath': filepath,
-                        'content': content,
-                        'checksum': checksum
-                    })
+                    migrations.append(
+                        {
+                            "version": version,
+                            "filename": filename,
+                            "filepath": filepath,
+                            "content": content,
+                            "checksum": checksum,
+                        }
+                    )
 
                 except Exception as e:
                     logger.warning(f"Failed to read migration file {filename}: {e}")
@@ -216,11 +224,11 @@ class SchemaManager:
             Schema information dictionary
         """
         return {
-            'current_version': self.get_current_version(),
-            'migration_history': self.get_migration_history(),
-            'validation_results': self.validate_schema(),
-            'table_count': self._get_table_count(),
-            'total_rows': self._get_total_row_count()
+            "current_version": self.get_current_version(),
+            "migration_history": self.get_migration_history(),
+            "validation_results": self.validate_schema(),
+            "table_count": self._get_table_count(),
+            "total_rows": self._get_total_row_count(),
         }
 
     def _get_table_count(self) -> int:
@@ -232,7 +240,7 @@ class SchemaManager:
             WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
             """
             results = self.pool.execute_query(query)
-            return results[0]['table_count'] if results else 0
+            return results[0]["table_count"] if results else 0
         except Exception as e:
             logger.warning(f"Failed to get table count: {e}")
             return 0
@@ -250,11 +258,11 @@ class SchemaManager:
 
             total_rows = 0
             for table in tables:
-                table_name = table['table_name']
+                table_name = table["table_name"]
                 count_query = f"SELECT COUNT(*) as row_count FROM {table_name}"
                 try:
                     count_result = self.pool.execute_query(count_query)
-                    total_rows += count_result[0]['row_count']
+                    total_rows += count_result[0]["row_count"]
                 except Exception:
                     # Skip tables we can't count
                     continue

@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 class EncryptionKey(BaseModel):
     """Encryption key information"""
+
     id: str
     algorithm: str
     created_at: datetime
@@ -36,6 +37,7 @@ class EncryptionKey(BaseModel):
 
 class EncryptedData(BaseModel):
     """Encrypted data container"""
+
     data: str  # Base64 encoded encrypted data
     key_id: str
     algorithm: str
@@ -45,6 +47,7 @@ class EncryptedData(BaseModel):
 
 class KeyPair(BaseModel):
     """Asymmetric key pair"""
+
     public_key: str  # PEM encoded
     private_key: str  # Encrypted PEM encoded
     key_id: str
@@ -54,6 +57,7 @@ class KeyPair(BaseModel):
 @dataclass
 class EncryptionConfig:
     """Encryption service configuration"""
+
     default_algorithm: str = "AES-256-GCM"
     key_rotation_days: int = 90
     master_key_provider: str = "local"  # local, aws-kms, azure-keyvault
@@ -112,8 +116,9 @@ class EncryptionService:
             self._master_key = None
         logger.info("EncryptionService shutdown")
 
-    async def encrypt_data(self, data: str | bytes, key_id: str | None = None,
-                          algorithm: str | None = None) -> str:
+    async def encrypt_data(
+        self, data: str | bytes, key_id: str | None = None, algorithm: str | None = None
+    ) -> str:
         """
         Encrypt data using symmetric encryption
 
@@ -137,7 +142,7 @@ class EncryptionService:
 
             # Convert data to bytes
             if isinstance(data, str):
-                data_bytes = data.encode('utf-8')
+                data_bytes = data.encode("utf-8")
             else:
                 data_bytes = data
 
@@ -145,13 +150,15 @@ class EncryptionService:
             encrypted = fernet.encrypt(data_bytes)
 
             # Return base64 encoded
-            return base64.b64encode(encrypted).decode('utf-8')
+            return base64.b64encode(encrypted).decode("utf-8")
 
         except Exception as e:
             logger.error(f"Data encryption failed: {e}")
             raise EncryptionError(f"Encryption failed: {str(e)}") from e
 
-    async def decrypt_data(self, encrypted_data: str, key_id: str | None = None) -> str | bytes:
+    async def decrypt_data(
+        self, encrypted_data: str, key_id: str | None = None
+    ) -> str | bytes:
         """
         Decrypt data using symmetric encryption
 
@@ -184,7 +191,7 @@ class EncryptionService:
 
             # Try to decode as string, return bytes if it fails
             try:
-                return decrypted.decode('utf-8')
+                return decrypted.decode("utf-8")
             except UnicodeDecodeError:
                 return decrypted
 
@@ -194,9 +201,12 @@ class EncryptionService:
             logger.error(f"Data decryption failed: {e}")
             raise EncryptionError(f"Decryption failed: {str(e)}") from e
 
-    async def generate_key(self, algorithm: str = "AES-256",
-                          key_type: str = "symmetric",
-                          usage: str = "encrypt") -> str:
+    async def generate_key(
+        self,
+        algorithm: str = "AES-256",
+        key_type: str = "symmetric",
+        usage: str = "encrypt",
+    ) -> str:
         """
         Generate new encryption key
 
@@ -211,7 +221,9 @@ class EncryptionService:
         try:
             key_id = f"key_{secrets.token_urlsafe(8)}"
             created_at = datetime.now(UTC)
-            expires_at = created_at + timedelta(days=self.encryption_config.key_rotation_days)
+            expires_at = created_at + timedelta(
+                days=self.encryption_config.key_rotation_days
+            )
 
             if key_type == "symmetric":
                 # Generate Fernet key
@@ -229,21 +241,20 @@ class EncryptionService:
                     "created_at": created_at.isoformat(),
                     "expires_at": expires_at.isoformat(),
                     "is_active": True,
-                    "key_material": base64.b64encode(encrypted_key).decode('utf-8')
+                    "key_material": base64.b64encode(encrypted_key).decode("utf-8"),
                 }
 
             elif key_type == "asymmetric":
                 # Generate RSA key pair
                 private_key = rsa.generate_private_key(
-                    public_exponent=65537,
-                    key_size=2048
+                    public_exponent=65537, key_size=2048
                 )
 
                 # Serialize private key
                 private_pem = private_key.private_bytes(
                     encoding=serialization.Encoding.PEM,
                     format=serialization.PrivateFormat.PKCS8,
-                    encryption_algorithm=serialization.NoEncryption()
+                    encryption_algorithm=serialization.NoEncryption(),
                 )
 
                 # Encrypt private key with master key
@@ -254,7 +265,7 @@ class EncryptionService:
                 public_key = private_key.public_key()
                 public_pem = public_key.public_bytes(
                     encoding=serialization.Encoding.PEM,
-                    format=serialization.PublicFormat.SubjectPublicKeyInfo
+                    format=serialization.PublicFormat.SubjectPublicKeyInfo,
                 )
 
                 key_data = {
@@ -265,8 +276,8 @@ class EncryptionService:
                     "created_at": created_at.isoformat(),
                     "expires_at": expires_at.isoformat(),
                     "is_active": True,
-                    "public_key": base64.b64encode(public_pem).decode('utf-8'),
-                    "private_key": base64.b64encode(encrypted_private).decode('utf-8')
+                    "public_key": base64.b64encode(public_pem).decode("utf-8"),
+                    "private_key": base64.b64encode(encrypted_private).decode("utf-8"),
                 }
 
             else:
@@ -305,7 +316,7 @@ class EncryptionService:
             new_key_id = await self.generate_key(
                 algorithm=old_key["algorithm"],
                 key_type=old_key["key_type"],
-                usage=old_key["usage"]
+                usage=old_key["usage"],
             )
 
             # Mark old key as inactive
@@ -344,7 +355,7 @@ class EncryptionService:
                 public_key=key_data["public_key"],
                 private_key=key_data["private_key"],
                 key_id=key_id,
-                algorithm=algorithm
+                algorithm=algorithm,
             )
 
         except Exception as e:
@@ -379,14 +390,11 @@ class EncryptionService:
             private_pem = master_fernet.decrypt(encrypted_private)
 
             # Load private key
-            private_key = serialization.load_pem_private_key(
-                private_pem,
-                password=None
-            )
+            private_key = serialization.load_pem_private_key(private_pem, password=None)
 
             # Convert data to bytes
             if isinstance(data, str):
-                data_bytes = data.encode('utf-8')
+                data_bytes = data.encode("utf-8")
             else:
                 data_bytes = data
 
@@ -395,18 +403,20 @@ class EncryptionService:
                 data_bytes,
                 padding.PSS(
                     mgf=padding.MGF1(hashes.SHA256()),
-                    salt_length=padding.PSS.MAX_LENGTH
+                    salt_length=padding.PSS.MAX_LENGTH,
                 ),
-                hashes.SHA256()
+                hashes.SHA256(),
             )
 
-            return base64.b64encode(signature).decode('utf-8')
+            return base64.b64encode(signature).decode("utf-8")
 
         except Exception as e:
             logger.error(f"Data signing failed: {e}")
             raise EncryptionError(f"Signing failed: {str(e)}") from e
 
-    async def verify_signature(self, data: str | bytes, signature: str, key_id: str) -> bool:
+    async def verify_signature(
+        self, data: str | bytes, signature: str, key_id: str
+    ) -> bool:
         """
         Verify data signature
 
@@ -433,7 +443,7 @@ class EncryptionService:
 
             # Convert data to bytes
             if isinstance(data, str):
-                data_bytes = data.encode('utf-8')
+                data_bytes = data.encode("utf-8")
             else:
                 data_bytes = data
 
@@ -446,9 +456,9 @@ class EncryptionService:
                 data_bytes,
                 padding.PSS(
                     mgf=padding.MGF1(hashes.SHA256()),
-                    salt_length=padding.PSS.MAX_LENGTH
+                    salt_length=padding.PSS.MAX_LENGTH,
                 ),
-                hashes.SHA256()
+                hashes.SHA256(),
             )
 
             return True
@@ -475,14 +485,16 @@ class EncryptionService:
                     if expires_at < now:
                         continue  # Key expired
 
-                active_keys.append({
-                    "id": key_data["id"],
-                    "algorithm": key_data["algorithm"],
-                    "key_type": key_data["key_type"],
-                    "usage": key_data["usage"],
-                    "created_at": key_data["created_at"],
-                    "expires_at": key_data.get("expires_at")
-                })
+                active_keys.append(
+                    {
+                        "id": key_data["id"],
+                        "algorithm": key_data["algorithm"],
+                        "key_type": key_data["key_type"],
+                        "usage": key_data["usage"],
+                        "created_at": key_data["created_at"],
+                        "expires_at": key_data.get("expires_at"),
+                    }
+                )
 
         return active_keys
 
@@ -494,10 +506,15 @@ class EncryptionService:
             Status information
         """
         active_keys = await self.get_active_keys()
-        expired_keys = sum(1 for k in self._keys.values()
-                          if not k.get("is_active", True) or
-                          (k.get("expires_at") and
-                           datetime.fromisoformat(k["expires_at"]) < datetime.now(UTC)))
+        expired_keys = sum(
+            1
+            for k in self._keys.values()
+            if not k.get("is_active", True)
+            or (
+                k.get("expires_at")
+                and datetime.fromisoformat(k["expires_at"]) < datetime.now(UTC)
+            )
+        )
 
         return {
             "status": "healthy",
@@ -505,18 +522,22 @@ class EncryptionService:
             "active_keys": len(active_keys),
             "expired_keys": expired_keys,
             "cached_keys": len(self._key_cache),
-            "default_algorithm": self.encryption_config.default_algorithm
+            "default_algorithm": self.encryption_config.default_algorithm,
         }
 
     async def _get_or_create_default_key(self) -> str:
         """Get or create default encryption key"""
         # Look for active symmetric key
         for key_data in self._keys.values():
-            if (key_data.get("is_active", True) and
-                key_data["key_type"] == "symmetric" and
-                key_data["usage"] in ["encrypt", "both"]):
+            if (
+                key_data.get("is_active", True)
+                and key_data["key_type"] == "symmetric"
+                and key_data["usage"] in ["encrypt", "both"]
+            ):
                 expires_at = key_data.get("expires_at")
-                if expires_at and datetime.fromisoformat(expires_at) > datetime.now(UTC):
+                if expires_at and datetime.fromisoformat(expires_at) > datetime.now(
+                    UTC
+                ):
                     return key_data["id"]
 
         # Create new default key
@@ -547,8 +568,9 @@ class EncryptionService:
         if self.encryption_config.enable_key_caching:
             if len(self._key_cache) >= self.encryption_config.max_cached_keys:
                 # Remove oldest cached key
-                oldest_key = min(self._key_cache.keys(),
-                               key=lambda k: self._keys[k]["created_at"])
+                oldest_key = min(
+                    self._key_cache.keys(), key=lambda k: self._keys[k]["created_at"]
+                )
                 del self._key_cache[oldest_key]
 
             self._key_cache[key_id] = fernet

@@ -35,17 +35,21 @@ ready = False
 
 class MCPBusClient:
     """MCP Bus client for agent registration"""
+
     def __init__(self, base_url: str = MCP_BUS_URL):
         self.base_url = base_url
 
     def register_agent(self, agent_name: str, agent_address: str, tools: list):
         import requests
+
         registration_data = {
             "name": agent_name,
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
+            response = requests.post(
+                f"{self.base_url}/register", json=registration_data, timeout=(2, 5)
+            )
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
@@ -74,7 +78,12 @@ async def lifespan(app: FastAPI):
         mcp_bus_client.register_agent(
             agent_name="analytics",
             agent_address=f"http://localhost:{ANALYTICS_AGENT_PORT}",
-            tools=["get_system_health", "get_performance_metrics", "get_agent_profile", "get_optimization_recommendations"],
+            tools=[
+                "get_system_health",
+                "get_performance_metrics",
+                "get_agent_profile",
+                "get_optimization_recommendations",
+            ],
         )
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
@@ -100,7 +109,7 @@ app = FastAPI(
     title="JustNews Analytics Service",
     description="Advanced analytics and performance monitoring service",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -119,6 +128,7 @@ app.middleware("http")(metrics.request_middleware)
 # Register common shutdown endpoint
 try:
     from agents.common.shutdown import register_shutdown_endpoint
+
     register_shutdown_endpoint(app)
 except Exception:
     logger.debug("shutdown endpoint not registered for analytics")
@@ -126,6 +136,7 @@ except Exception:
 # Register reload endpoint if available
 try:
     from agents.common.reload import register_reload_endpoint
+
     register_reload_endpoint(app)
 except Exception:
     logger.debug("reload endpoint not registered for analytics")
@@ -143,7 +154,7 @@ async def root():
         "version": "1.0.0",
         "description": "Advanced analytics and performance monitoring",
         "status": "running",
-        "dashboard": "/dashboard"
+        "dashboard": "/dashboard",
     }
 
 
@@ -157,10 +168,7 @@ async def health_check():
         # Determine HTTP status code based on health
         status_code = 200 if health_info["status"] == "healthy" else 503
 
-        return JSONResponse(
-            content=health_info,
-            status_code=status_code
-        )
+        return JSONResponse(content=health_info, status_code=status_code)
 
     except Exception as e:
         logger.error(f"Health check error: {e}")
@@ -169,9 +177,9 @@ async def health_check():
                 "service": "analytics_service",
                 "status": "error",
                 "error": str(e),
-                "timestamp": asyncio.get_event_loop().time()
+                "timestamp": asyncio.get_event_loop().time(),
             },
-            status_code=503
+            status_code=503,
         )
 
 
@@ -191,7 +199,9 @@ async def service_info():
 
     except Exception as e:
         logger.error(f"Service info error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get service information") from e
+        raise HTTPException(
+            status_code=500, detail="Failed to get service information"
+        ) from e
 
 
 # Metrics endpoint
@@ -199,6 +209,7 @@ async def service_info():
 def get_metrics():
     """Prometheus metrics endpoint."""
     from fastapi import Response
+
     return Response(content=metrics.get_metrics(), media_type="text/plain")
 
 
@@ -208,6 +219,7 @@ def get_metrics():
 class ToolCall(BaseModel):
     args: list
     kwargs: dict
+
 
 class PerformanceMetrics(BaseModel):
     agent_name: str
@@ -245,7 +257,9 @@ def get_performance_metrics(call: ToolCall):
         hours = kwargs.get("hours", 1)
 
         if hours < 1 or hours > 24:
-            raise HTTPException(status_code=400, detail="Hours must be between 1 and 24")
+            raise HTTPException(
+                status_code=400, detail="Hours must be between 1 and 24"
+            )
 
         engine = get_analytics_engine()
         analytics = engine.get_performance_metrics(hours=hours)
@@ -269,7 +283,9 @@ def get_agent_profile(call: ToolCall):
             raise HTTPException(status_code=400, detail="agent_name is required")
 
         if hours < 1 or hours > 168:  # Max 1 week
-            raise HTTPException(status_code=400, detail="Hours must be between 1 and 168")
+            raise HTTPException(
+                status_code=400, detail="Hours must be between 1 and 168"
+            )
 
         engine = get_analytics_engine()
         profile = engine.get_agent_profile(agent_name, hours=hours)
@@ -305,10 +321,18 @@ def record_performance_metric(call: ToolCall):
         kwargs = call.kwargs or {}
 
         # Validate required fields
-        required_fields = ["agent_name", "operation", "processing_time_s", "batch_size", "success"]
+        required_fields = [
+            "agent_name",
+            "operation",
+            "processing_time_s",
+            "batch_size",
+            "success",
+        ]
         for field in required_fields:
             if field not in kwargs:
-                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+                raise HTTPException(
+                    status_code=400, detail=f"Missing required field: {field}"
+                )
 
         engine = get_analytics_engine()
         success = engine.record_performance_metric(kwargs)
@@ -334,8 +358,8 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={
             "error": "Internal server error",
-            "detail": str(exc) if app.debug else "An unexpected error occurred"
-        }
+            "detail": str(exc) if app.debug else "An unexpected error occurred",
+        },
     )
 
 
@@ -353,12 +377,7 @@ def main():
 
     # Configure uvicorn
     config = uvicorn.Config(
-        app=app,
-        host=host,
-        port=port,
-        workers=workers,
-        reload=reload,
-        log_level="info"
+        app=app, host=host, port=port, workers=workers, reload=reload, log_level="info"
     )
 
     server = uvicorn.Server(config)
@@ -369,6 +388,7 @@ def main():
         server.should_exit = True
 
     import signal
+
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 

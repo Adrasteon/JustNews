@@ -3,6 +3,7 @@
 Smoke test for vLLM Mistral-7B endpoint (replaces Qwen2 smoke test).
 Validates OpenAI-compatible API, basic chat completion, and optional adapter routing.
 """
+
 import os
 import sys
 
@@ -24,23 +25,34 @@ def load_vllm_config(config_path: str = "config/vllm_mistral_7b.yaml") -> dict:
     env_base = os.environ.get("VLLM_BASE_URL")
     env_api_key = os.environ.get("VLLM_API_KEY")
     if env_base:
-        return {"base_url": env_base.rstrip('/'), "api_key": env_api_key or "dummy"}
+        return {"base_url": env_base.rstrip("/"), "api_key": env_api_key or "dummy"}
 
     # Legacy flat endpoint
     if isinstance(cfg, dict) and "endpoint" in cfg:
         ep = cfg["endpoint"]
-        base = ep.get("base_url") or f"http://{ep.get('host', '127.0.0.1')}:{ep.get('port', 7060)}"
-        return {"base_url": base.rstrip('/'), "api_key": ep.get("api_key", "dummy")}
+        base = (
+            ep.get("base_url")
+            or f"http://{ep.get('host', '127.0.0.1')}:{ep.get('port', 7060)}"
+        )
+        return {"base_url": base.rstrip("/"), "api_key": ep.get("api_key", "dummy")}
 
     # New structured config (vllm_mistral_7b.yaml)
     bm = (cfg or {}).get("base_models", {})
     m = bm.get("mistral-7b") or bm.get("mistral-7b", {})
     if isinstance(m, dict) and "endpoint" in m:
         base = m.get("endpoint")
-        return {"base_url": base.rstrip('/'), "api_key": env_api_key or os.environ.get("VLLM_API_KEY", "dummy")}
+        return {
+            "base_url": base.rstrip("/"),
+            "api_key": env_api_key or os.environ.get("VLLM_API_KEY", "dummy"),
+        }
 
     # Fallback to localhost
-    return {"base_url": os.environ.get("VLLM_BASE_URL", "http://127.0.0.1:7060/v1").rstrip('/'), "api_key": os.environ.get("VLLM_API_KEY", "dummy")}
+    return {
+        "base_url": os.environ.get("VLLM_BASE_URL", "http://127.0.0.1:7060/v1").rstrip(
+            "/"
+        ),
+        "api_key": os.environ.get("VLLM_API_KEY", "dummy"),
+    }
 
 
 def test_health(base_url: str):
@@ -75,12 +87,16 @@ def test_chat_completion(base_url: str, api_key: str = "dummy"):
         "max_tokens": 10,
         "temperature": 0.0,
     }
-    resp = requests.post(f"{base_url}/v1/chat/completions", json=payload, headers=headers, timeout=30)
+    resp = requests.post(
+        f"{base_url}/v1/chat/completions", json=payload, headers=headers, timeout=30
+    )
     resp.raise_for_status()
     result = resp.json()
     answer = result["choices"][0]["message"]["content"].strip()
     print(f"✅ Chat completion result: {answer}")
-    assert "4" in answer.lower() or "four" in answer.lower(), f"Unexpected answer: {answer}"
+    assert "4" in answer.lower() or "four" in answer.lower(), (
+        f"Unexpected answer: {answer}"
+    )
 
 
 def main():

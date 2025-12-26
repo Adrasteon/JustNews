@@ -22,6 +22,7 @@ from .log_collector import LogEntry, LogLevel
 
 class QueryOperator(Enum):
     """Query operators for log searching"""
+
     EQUALS = "eq"
     NOT_EQUALS = "ne"
     CONTAINS = "contains"
@@ -38,6 +39,7 @@ class QueryOperator(Enum):
 @dataclass
 class LogQuery:
     """Log search query"""
+
     filters: dict[str, Any] = None
     operators: dict[str, QueryOperator] = None
     time_range: tuple[datetime, datetime] | None = None
@@ -50,6 +52,7 @@ class LogQuery:
 @dataclass
 class QueryResult:
     """Query result with pagination"""
+
     entries: list[LogEntry]
     total_count: int
     has_more: bool
@@ -68,17 +71,19 @@ class LogStorage:
         self.config = config or self._get_default_config()
 
         # Storage configuration
-        self.storage_path = Path(self.config['storage_path'])
-        self.index_enabled = self.config['index_enabled']
-        self.compression_enabled = self.config['compression_enabled']
+        self.storage_path = Path(self.config["storage_path"])
+        self.index_enabled = self.config["index_enabled"]
+        self.compression_enabled = self.config["compression_enabled"]
 
         # Indexing
-        self._index: dict[str, dict[str, list[str]]] = {}  # field -> value -> file_paths
+        self._index: dict[
+            str, dict[str, list[str]]
+        ] = {}  # field -> value -> file_paths
         self._reverse_index: dict[str, dict[str, Any]] = {}  # file_path -> metadata
 
         # Cache
         self._query_cache: dict[str, QueryResult] = {}
-        self._cache_ttl_seconds = self.config['cache_ttl_seconds']
+        self._cache_ttl_seconds = self.config["cache_ttl_seconds"]
 
         # Ensure storage directory exists
         self.storage_path.mkdir(parents=True, exist_ok=True)
@@ -90,13 +95,19 @@ class LogStorage:
     def _get_default_config(self) -> dict[str, Any]:
         """Get default storage configuration"""
         return {
-            'storage_path': 'logs/storage',
-            'index_enabled': True,
-            'compression_enabled': True,
-            'cache_ttl_seconds': 300,
-            'max_query_time_seconds': 30,
-            'index_fields': ['level', 'agent_name', 'logger_name', 'error_type', 'endpoint'],
-            'retention_days': 90
+            "storage_path": "logs/storage",
+            "index_enabled": True,
+            "compression_enabled": True,
+            "cache_ttl_seconds": 300,
+            "max_query_time_seconds": 30,
+            "index_fields": [
+                "level",
+                "agent_name",
+                "logger_name",
+                "error_type",
+                "endpoint",
+            ],
+            "retention_days": 90,
         }
 
     async def store_logs(self, log_entries: list[LogEntry]) -> None:
@@ -142,7 +153,9 @@ class LogStorage:
             if cache_key in self._query_cache:
                 cached_result = self._query_cache[cache_key]
                 # Check if cache is still valid
-                if (datetime.now(UTC) - start_time).total_seconds() < self._cache_ttl_seconds:
+                if (
+                    datetime.now(UTC) - start_time
+                ).total_seconds() < self._cache_ttl_seconds:
                     return cached_result
 
             # Find relevant files
@@ -171,7 +184,7 @@ class LogStorage:
                 entries=paginated_entries,
                 total_count=total_count,
                 has_more=end_idx < total_count,
-                query_time_ms=(datetime.now(UTC) - start_time).total_seconds() * 1000
+                query_time_ms=(datetime.now(UTC) - start_time).total_seconds() * 1000,
             )
 
             # Cache result
@@ -185,7 +198,7 @@ class LogStorage:
                 entries=[],
                 total_count=0,
                 has_more=False,
-                query_time_ms=(datetime.now(UTC) - start_time).total_seconds() * 1000
+                query_time_ms=(datetime.now(UTC) - start_time).total_seconds() * 1000,
             )
 
     async def _find_relevant_files(self, query: LogQuery) -> list[Path]:
@@ -222,11 +235,13 @@ class LogStorage:
         # Field-based filtering using index
         for field, value in (query.filters or {}).items():
             if field in self._index and value in self._index[field]:
-                relevant_files.update(
-                    Path(fp) for fp in self._index[field][value]
-                )
+                relevant_files.update(Path(fp) for fp in self._index[field][value])
 
-        return list(relevant_files) if relevant_files else list(self.storage_path.glob("logs_*.json"))
+        return (
+            list(relevant_files)
+            if relevant_files
+            else list(self.storage_path.glob("logs_*.json"))
+        )
 
     async def _query_file(self, filepath: Path, query: LogQuery) -> list[LogEntry]:
         """Query a specific log file"""
@@ -237,7 +252,8 @@ class LogStorage:
             if query.time_range:
                 start_time, end_time = query.time_range
                 entries = [
-                    entry for entry in entries
+                    entry
+                    for entry in entries
                     if start_time <= entry.timestamp <= end_time
                 ]
 
@@ -247,7 +263,11 @@ class LogStorage:
                 for entry in entries:
                     match = True
                     for field, value in query.filters.items():
-                        operator = query.operators.get(field, QueryOperator.EQUALS) if query.operators else QueryOperator.EQUALS
+                        operator = (
+                            query.operators.get(field, QueryOperator.EQUALS)
+                            if query.operators
+                            else QueryOperator.EQUALS
+                        )
 
                         entry_value = getattr(entry, field, None)
                         if not self._matches_operator(entry_value, value, operator):
@@ -265,7 +285,9 @@ class LogStorage:
             logging.error(f"Error querying file {filepath}: {e}")
             return []
 
-    async def _apply_filters(self, entries: list[LogEntry], query: LogQuery) -> list[LogEntry]:
+    async def _apply_filters(
+        self, entries: list[LogEntry], query: LogQuery
+    ) -> list[LogEntry]:
         """Apply additional filters to entries"""
         # This is a fallback for complex queries not handled in _query_file
         return entries
@@ -277,13 +299,30 @@ class LogStorage:
         if query.sort_by == "timestamp":
             return sorted(entries, key=lambda x: x.timestamp, reverse=reverse)
         elif query.sort_by == "level":
-            level_order = {level: i for i, level in enumerate([LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARNING, LogLevel.ERROR, LogLevel.CRITICAL])}
-            return sorted(entries, key=lambda x: level_order.get(x.level, 0), reverse=reverse)
+            level_order = {
+                level: i
+                for i, level in enumerate(
+                    [
+                        LogLevel.DEBUG,
+                        LogLevel.INFO,
+                        LogLevel.WARNING,
+                        LogLevel.ERROR,
+                        LogLevel.CRITICAL,
+                    ]
+                )
+            }
+            return sorted(
+                entries, key=lambda x: level_order.get(x.level, 0), reverse=reverse
+            )
         else:
             # Generic sorting for other fields
-            return sorted(entries, key=lambda x: getattr(x, query.sort_by, ""), reverse=reverse)
+            return sorted(
+                entries, key=lambda x: getattr(x, query.sort_by, ""), reverse=reverse
+            )
 
-    def _matches_operator(self, entry_value: Any, query_value: Any, operator: QueryOperator) -> bool:
+    def _matches_operator(
+        self, entry_value: Any, query_value: Any, operator: QueryOperator
+    ) -> bool:
         """Check if entry value matches query with operator"""
         try:
             if operator == QueryOperator.EQUALS:
@@ -329,7 +368,7 @@ class LogStorage:
         try:
             entries_data = [entry.to_dict() for entry in entries]
 
-            async with aiofiles.open(filepath, 'w') as f:
+            async with aiofiles.open(filepath, "w") as f:
                 if self.compression_enabled:
                     # For now, just pretty print. Could add gzip compression
                     data = json.dumps(entries_data, indent=2)
@@ -347,7 +386,7 @@ class LogStorage:
             filepath = str(self.storage_path / filename)
 
             for entry in entries:
-                for field in self.config['index_fields']:
+                for field in self.config["index_fields"]:
                     value = getattr(entry, field, None)
                     if value is not None:
                         value_str = str(value)
@@ -364,12 +403,12 @@ class LogStorage:
 
             # Update reverse index
             self._reverse_index[filepath] = {
-                'entry_count': len(entries),
-                'date_range': {
-                    'start': min(e.timestamp for e in entries).isoformat(),
-                    'end': max(e.timestamp for e in entries).isoformat()
+                "entry_count": len(entries),
+                "date_range": {
+                    "start": min(e.timestamp for e in entries).isoformat(),
+                    "end": max(e.timestamp for e in entries).isoformat(),
                 },
-                'last_updated': datetime.now(UTC).isoformat()
+                "last_updated": datetime.now(UTC).isoformat(),
             }
 
             # Save index to disk
@@ -385,8 +424,8 @@ class LogStorage:
             if index_file.exists():
                 async with aiofiles.open(index_file) as f:
                     index_data = json.loads(await f.read())
-                    self._index = index_data.get('index', {})
-                    self._reverse_index = index_data.get('reverse_index', {})
+                    self._index = index_data.get("index", {})
+                    self._reverse_index = index_data.get("reverse_index", {})
 
         except Exception as e:
             logging.error(f"Error loading index: {e}")
@@ -396,12 +435,12 @@ class LogStorage:
         try:
             index_file = self.storage_path / "index.json"
             index_data = {
-                'index': self._index,
-                'reverse_index': self._reverse_index,
-                'last_updated': datetime.now(UTC).isoformat()
+                "index": self._index,
+                "reverse_index": self._reverse_index,
+                "last_updated": datetime.now(UTC).isoformat(),
             }
 
-            async with aiofiles.open(index_file, 'w') as f:
+            async with aiofiles.open(index_file, "w") as f:
                 await f.write(json.dumps(index_data, indent=2))
 
         except Exception as e:
@@ -416,26 +455,28 @@ class LogStorage:
             str(query.limit),
             str(query.offset),
             query.sort_by,
-            query.sort_order
+            query.sort_order,
         ]
         return "|".join(key_parts)
 
     async def cleanup_old_logs(self, retention_days: int | None = None) -> int:
         """Clean up old log files based on retention policy"""
-        retention = retention_days or self.config['retention_days']
+        retention = retention_days or self.config["retention_days"]
         cutoff_date = datetime.now(UTC) - timedelta(days=retention)
 
         cleaned_count = 0
         for log_file in self.storage_path.glob("logs_*.json"):
             try:
                 # Extract date from filename
-                filename_parts = log_file.stem.split('_')
+                filename_parts = log_file.stem.split("_")
                 if len(filename_parts) >= 2:
                     # filename could split into multiple parts if the timestamp contains an underscore
                     # e.g. 'logs_YYYYMMDD_HH' -> ['logs', 'YYYYMMDD', 'HH']
                     # join the tail parts back together to restore 'YYYYMMDD_HH'
                     file_date_str = "_".join(filename_parts[1:])  # YYYYMMDD_HH
-                    file_date = datetime.strptime(file_date_str, "%Y%m%d_%H").replace(tzinfo=UTC)
+                    file_date = datetime.strptime(file_date_str, "%Y%m%d_%H").replace(
+                        tzinfo=UTC
+                    )
 
                     if file_date < cutoff_date:
                         log_file.unlink()
@@ -477,12 +518,12 @@ class LogStorage:
                 total_entries += len(entries)
 
             return {
-                'total_files': total_files,
-                'total_entries': total_entries,
-                'total_size_bytes': total_size,
-                'index_enabled': self.index_enabled,
-                'indexed_fields': list(self._index.keys()),
-                'cache_entries': len(self._query_cache)
+                "total_files": total_files,
+                "total_entries": total_entries,
+                "total_size_bytes": total_size,
+                "index_enabled": self.index_enabled,
+                "indexed_fields": list(self._index.keys()),
+                "cache_entries": len(self._query_cache),
             }
 
         except Exception as e:
@@ -493,6 +534,7 @@ class LogStorage:
 # Global storage instance
 _global_storage: LogStorage | None = None
 
+
 def get_log_storage(config: dict[str, Any] | None = None) -> LogStorage:
     """Get or create global log storage"""
     global _global_storage
@@ -501,6 +543,7 @@ def get_log_storage(config: dict[str, Any] | None = None) -> LogStorage:
         _global_storage = LogStorage(config)
 
     return _global_storage
+
 
 def init_log_storage(config: dict[str, Any] | None = None) -> LogStorage:
     """Initialize log storage system"""

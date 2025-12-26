@@ -1,6 +1,4 @@
-"""Tests for the ClusterFetcher: ensures cluster membership resolution and DB fetches work.
-"""
-
+"""Tests for the ClusterFetcher: ensures cluster membership resolution and DB fetches work."""
 
 import pytest
 
@@ -11,11 +9,11 @@ pytestmark = pytest.mark.database
 
 def make_db_row(article_id, title, content, url, metadata=None):
     return {
-        'id': article_id,
-        'title': title,
-        'content': content,
-        'url': url,
-        'metadata': metadata or {}
+        "id": article_id,
+        "title": title,
+        "content": content,
+        "url": url,
+        "metadata": metadata or {},
     }
 
 
@@ -24,7 +22,7 @@ def test_fetch_cluster_by_article_ids():
     from unittest.mock import MagicMock
 
     mock_cursor = MagicMock()
-    row = make_db_row('a1', 'T1', 'Content 1', 'https://example.com/1', {'k': 'v'})
+    row = make_db_row("a1", "T1", "Content 1", "https://example.com/1", {"k": "v"})
     mock_cursor.fetchone.return_value = row
 
     fake_db = MagicMock()
@@ -33,24 +31,32 @@ def test_fetch_cluster_by_article_ids():
     fetcher = ClusterFetcher(db_service=fake_db)
 
     # Pass a list of article ids to fetch
-    results = fetcher.fetch_cluster(article_ids=['a1'])
+    results = fetcher.fetch_cluster(article_ids=["a1"])
 
     assert isinstance(results, list)
     assert len(results) == 1
-    assert results[0].article_id == 'a1'
-    assert 'Content 1' in results[0].content
-    assert results[0].url == 'https://example.com/1'
+    assert results[0].article_id == "a1"
+    assert "Content 1" in results[0].content
+    assert results[0].url == "https://example.com/1"
 
 
 def test_fetch_cluster_by_cluster_id_uses_transparency_repo():
     # Transparency sample cluster is provided in archive_storage/transparency
-    cluster_id = 'cluster-2025-10-election-security-001'
+    cluster_id = "cluster-2025-10-election-security-001"
 
     # Prepare two DB rows in sequence for two article ids found in the transparency cluster
     from unittest.mock import MagicMock
+
     mock_cursor = MagicMock()
-    row1 = make_db_row('article-2025-10-25-ap-001', 'AP 1', 'AP Content', 'https://apnews.com/a')
-    row2 = make_db_row('article-2025-10-24-reuters-003', 'Reuters 1', 'Reuters Content', 'https://www.reuters.com/r')
+    row1 = make_db_row(
+        "article-2025-10-25-ap-001", "AP 1", "AP Content", "https://apnews.com/a"
+    )
+    row2 = make_db_row(
+        "article-2025-10-24-reuters-003",
+        "Reuters 1",
+        "Reuters Content",
+        "https://www.reuters.com/r",
+    )
 
     # Simulate sequential fetchone() returns
     mock_cursor.fetchone.side_effect = [row1, row2]
@@ -64,17 +70,18 @@ def test_fetch_cluster_by_cluster_id_uses_transparency_repo():
 
     assert isinstance(results, list)
     assert len(results) == 2
-    assert results[0].article_id == 'article-2025-10-25-ap-001'
-    assert results[1].url.startswith('https://www.reuters.com')
+    assert results[0].article_id == "article-2025-10-25-ap-001"
+    assert results[1].url.startswith("https://www.reuters.com")
 
 
 def test_fetch_cluster_deduplication_by_url():
     from unittest.mock import MagicMock
+
     mock_cursor = MagicMock()
 
     # Two rows with the same URL should result in one record after dedupe
-    row1 = make_db_row('a1', 'T1', 'Content 1', 'https://example.com/1')
-    row2 = make_db_row('a2', 'T2', 'Content 2', 'https://example.com/1')
+    row1 = make_db_row("a1", "T1", "Content 1", "https://example.com/1")
+    row2 = make_db_row("a2", "T2", "Content 2", "https://example.com/1")
     mock_cursor.fetchone.side_effect = [row1, row2]
 
     fake_db = MagicMock()
@@ -82,7 +89,7 @@ def test_fetch_cluster_deduplication_by_url():
 
     fetcher = ClusterFetcher(db_service=fake_db)
 
-    results = fetcher.fetch_cluster(article_ids=['a1', 'a2'])
+    results = fetcher.fetch_cluster(article_ids=["a1", "a2"])
 
     assert len(results) == 1
-    assert results[0].url == 'https://example.com/1'
+    assert results[0].url == "https://example.com/1"

@@ -9,6 +9,7 @@ Design goals:
 - Minimal dependencies (std lib only).
 - Clear failures and retries for robustness.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -28,7 +29,11 @@ class ModelManifest:
     metadata: dict
 
     def to_dict(self) -> dict:
-        return {"version": self.version, "checksum": self.checksum, "metadata": self.metadata}
+        return {
+            "version": self.version,
+            "checksum": self.checksum,
+            "metadata": self.metadata,
+        }
 
 
 class ModelStoreError(Exception):

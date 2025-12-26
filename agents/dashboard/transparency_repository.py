@@ -50,7 +50,12 @@ class TransparencyRepository:
             raise FileNotFoundError(f"Transparency archive not found: {self.base_dir}")
 
         # Ensure sub-directories exist even when empty so operators notice gaps.
-        for directory in (self.facts_dir, self.articles_dir, self.clusters_dir, self.evidence_dir):
+        for directory in (
+            self.facts_dir,
+            self.articles_dir,
+            self.clusters_dir,
+            self.evidence_dir,
+        ):
             directory.mkdir(parents=True, exist_ok=True)
 
         self.index_file = self.base_dir / "index.json"
@@ -67,7 +72,10 @@ class TransparencyRepository:
         evidences = self._list_entities(self.evidence_dir)
 
         last_updated = self._compute_last_updated(
-            [index_payload.get("generated_at"), *(fact.get("last_updated") for fact in facts)]
+            [
+                index_payload.get("generated_at"),
+                *(fact.get("last_updated") for fact in facts),
+            ]
         )
 
         missing_assets = self._find_missing_assets(facts)
@@ -75,7 +83,7 @@ class TransparencyRepository:
         integrity = {
             "status": "ok" if not missing_assets else "degraded",
             "missing_assets": missing_assets,
-            "dataset_version": index_payload.get("dataset_version")
+            "dataset_version": index_payload.get("dataset_version"),
         }
 
         status_payload = {
@@ -84,11 +92,11 @@ class TransparencyRepository:
                 "facts": len(facts),
                 "clusters": len(clusters),
                 "articles": len(articles),
-                "evidence": len(evidences)
+                "evidence": len(evidences),
             },
             "last_updated": last_updated,
             "generated_at": index_payload.get("generated_at"),
-            "integrity": integrity
+            "integrity": integrity,
         }
 
         logger.debug("Transparency repository status computed: %s", status_payload)
@@ -99,9 +107,7 @@ class TransparencyRepository:
         index_payload = self._load_index()
         facts = index_payload.get("facts", [])
         facts_sorted = sorted(
-            facts,
-            key=lambda fact: fact.get("last_updated", ""),
-            reverse=True
+            facts, key=lambda fact: fact.get("last_updated", ""), reverse=True
         )
         return facts_sorted[:limit]
 
@@ -113,23 +119,31 @@ class TransparencyRepository:
         cluster_id = fact_payload.get("cluster_id")
         evidence_ids = fact_payload.get("evidence_ids", [])
 
-        article_payload = self._load_optional_entity(self.articles_dir, article_id, "article")
-        cluster_payload = self._load_optional_entity(self.clusters_dir, cluster_id, "cluster")
+        article_payload = self._load_optional_entity(
+            self.articles_dir, article_id, "article"
+        )
+        cluster_payload = self._load_optional_entity(
+            self.clusters_dir, cluster_id, "cluster"
+        )
         evidence_payloads = [
             self._load_optional_entity(self.evidence_dir, evidence_id, "evidence")
             for evidence_id in evidence_ids
         ]
 
         missing: list[str] = [
-            label for label, payload in (
+            label
+            for label, payload in (
                 ("article", article_payload),
-                ("cluster", cluster_payload)
+                ("cluster", cluster_payload),
             )
             if payload is None
         ]
 
         missing.extend(
-            f"evidence:{evidence_id}" for evidence_id, payload in zip(evidence_ids, evidence_payloads, strict=True)
+            f"evidence:{evidence_id}"
+            for evidence_id, payload in zip(
+                evidence_ids, evidence_payloads, strict=True
+            )
             if payload is None
         )
 
@@ -137,8 +151,10 @@ class TransparencyRepository:
             "fact": fact_payload,
             "article": article_payload,
             "cluster": cluster_payload,
-            "evidence": [payload for payload in evidence_payloads if payload is not None],
-            "missing_assets": missing
+            "evidence": [
+                payload for payload in evidence_payloads if payload is not None
+            ],
+            "missing_assets": missing,
         }
 
         if missing and self.require_strict:
@@ -148,29 +164,49 @@ class TransparencyRepository:
 
     def get_cluster(self, cluster_id: str) -> dict[str, Any]:
         """Return cluster payload plus linked facts."""
-        cluster_payload = self._load_entity(self.clusters_dir, cluster_id, entity_label="cluster")
+        cluster_payload = self._load_entity(
+            self.clusters_dir, cluster_id, entity_label="cluster"
+        )
         fact_ids = cluster_payload.get("fact_ids", [])
-        facts = [self._load_optional_entity(self.facts_dir, fact_id, "fact") for fact_id in fact_ids]
+        facts = [
+            self._load_optional_entity(self.facts_dir, fact_id, "fact")
+            for fact_id in fact_ids
+        ]
         return {
             "cluster": cluster_payload,
             "facts": [fact for fact in facts if fact is not None],
-            "missing_facts": [fact_id for fact_id, fact in zip(fact_ids, facts, strict=True) if fact is None]
+            "missing_facts": [
+                fact_id
+                for fact_id, fact in zip(fact_ids, facts, strict=True)
+                if fact is None
+            ],
         }
 
     def get_article(self, article_id: str) -> dict[str, Any]:
         """Return article payload plus associated fact and cluster references."""
-        article_payload = self._load_entity(self.articles_dir, article_id, entity_label="article")
+        article_payload = self._load_entity(
+            self.articles_dir, article_id, entity_label="article"
+        )
         index_payload = self._load_index()
 
-        facts = [fact for fact in index_payload.get("facts", []) if fact.get("article_id") == article_id]
-        clusters = [cluster for cluster in index_payload.get("clusters", []) if any(
-            member.get("article_id") == article_id for member in cluster.get("member_articles", [])
-        )]
+        facts = [
+            fact
+            for fact in index_payload.get("facts", [])
+            if fact.get("article_id") == article_id
+        ]
+        clusters = [
+            cluster
+            for cluster in index_payload.get("clusters", [])
+            if any(
+                member.get("article_id") == article_id
+                for member in cluster.get("member_articles", [])
+            )
+        ]
 
         return {
             "article": article_payload,
             "related_facts": facts,
-            "related_clusters": clusters
+            "related_clusters": clusters,
         }
 
     # ------------------------------------------------------------------
@@ -182,13 +218,19 @@ class TransparencyRepository:
             return {}
         return self._load_json(self.index_file)
 
-    def _load_entity(self, directory: Path, entity_id: str, *, entity_label: str) -> dict[str, Any]:
+    def _load_entity(
+        self, directory: Path, entity_id: str, *, entity_label: str
+    ) -> dict[str, Any]:
         payload = self._load_optional_entity(directory, entity_id, entity_label)
         if payload is None:
-            raise FileNotFoundError(f"{entity_label.capitalize()} {entity_id} not found in {directory}")
+            raise FileNotFoundError(
+                f"{entity_label.capitalize()} {entity_id} not found in {directory}"
+            )
         return payload
 
-    def _load_optional_entity(self, directory: Path, entity_id: str | None, entity_label: str) -> dict[str, Any] | None:
+    def _load_optional_entity(
+        self, directory: Path, entity_id: str | None, entity_label: str
+    ) -> dict[str, Any] | None:
         if not entity_id:
             return None
         path = directory / f"{entity_id}.json"
@@ -218,7 +260,10 @@ class TransparencyRepository:
         if not filtered:
             return None
         try:
-            return max(filtered, key=lambda ts: datetime.fromisoformat(ts.replace("Z", "+00:00")))
+            return max(
+                filtered,
+                key=lambda ts: datetime.fromisoformat(ts.replace("Z", "+00:00")),
+            )
         except ValueError:
             logger.debug("Unable to parse timestamps for last_updated: %s", filtered)
             return max(filtered)
@@ -251,5 +296,6 @@ def default_repository() -> TransparencyRepository:
     project_root = Path(__file__).resolve().parents[2]
     default_path = project_root / "archive_storage" / "transparency"
     return TransparencyRepository(default_path)
+
 
 __all__ = ["TransparencyRepository", "default_repository"]

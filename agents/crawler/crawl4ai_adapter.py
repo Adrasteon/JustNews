@@ -6,6 +6,7 @@ Crawl4AI-backed crawling.  The adapter translates profile dictionaries into
 articles using the existing extraction pipeline so downstream ingestion logic
 remains unchanged.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -111,7 +112,11 @@ def _ensure_absolute(url: str, base: str) -> str:
 def _normalise_url_for_site(url: str, site_config: SiteConfig) -> str:
     if not url:
         return ""
-    base = site_config.start_url or f"https://{site_config.domain}" if site_config.domain else ""
+    base = (
+        site_config.start_url or f"https://{site_config.domain}"
+        if site_config.domain
+        else ""
+    )
     if not base:
         return url
     return _ensure_absolute(url, base)
@@ -149,7 +154,9 @@ def _build_link_preview_config(settings: dict[str, Any] | None):
     if LinkPreviewConfig is None:
         return None
 
-    kwargs = {key: settings[key] for key in _ALLOWED_LINK_PREVIEW_KEYS if key in settings}
+    kwargs = {
+        key: settings[key] for key in _ALLOWED_LINK_PREVIEW_KEYS if key in settings
+    }
     if not kwargs:
         return None
     for pattern_key in ("include_patterns", "exclude_patterns"):
@@ -169,7 +176,11 @@ def _build_run_config(profile: dict[str, Any]):
     if "markdown_generator" in run_config_def:
         markdown_generator_def = run_config_def.pop("markdown_generator")
 
-    kwargs = {key: run_config_def[key] for key in _ALLOWED_RUN_CONFIG_KEYS if key in run_config_def}
+    kwargs = {
+        key: run_config_def[key]
+        for key in _ALLOWED_RUN_CONFIG_KEYS
+        if key in run_config_def
+    }
 
     for list_key in ("js_code", "target_elements", "excluded_tags"):
         if list_key in kwargs and isinstance(kwargs[list_key], str):
@@ -230,7 +241,10 @@ def _build_content_filter(settings: Mapping[str, Any] | None):
 
     if filter_type in {"bm25", "bm25contentfilter"} and BM25ContentFilter is not None:
         return BM25ContentFilter(**options)
-    if filter_type in {"pruning", "pruningcontentfilter"} and PruningContentFilter is not None:
+    if (
+        filter_type in {"pruning", "pruningcontentfilter"}
+        and PruningContentFilter is not None
+    ):
         return PruningContentFilter(**options)
     return None
 
@@ -244,15 +258,21 @@ def _build_markdown_generator(settings: Mapping[str, Any] | None):
     DefaultMarkdownGenerator = getattr(crawl4ai, "DefaultMarkdownGenerator", None)
     if DefaultMarkdownGenerator is None:
         try:
-            markdown_module = importlib.import_module("crawl4ai.markdown_generation_strategy")
-            DefaultMarkdownGenerator = getattr(markdown_module, "DefaultMarkdownGenerator", None)
+            markdown_module = importlib.import_module(
+                "crawl4ai.markdown_generation_strategy"
+            )
+            DefaultMarkdownGenerator = getattr(
+                markdown_module, "DefaultMarkdownGenerator", None
+            )
         except ImportError:  # pragma: no cover - optional dependency missing
             DefaultMarkdownGenerator = None
     if DefaultMarkdownGenerator is None:
         return None
 
     kwargs: dict[str, Any] = {}
-    content_filter = _build_content_filter(settings.get("content_filter") if isinstance(settings, Mapping) else None)
+    content_filter = _build_content_filter(
+        settings.get("content_filter") if isinstance(settings, Mapping) else None
+    )
     if content_filter is not None:
         kwargs["content_filter"] = content_filter
     return DefaultMarkdownGenerator(**kwargs)
@@ -267,11 +287,21 @@ def _select_link_candidates(
     if not links or remaining_budget <= 0:
         return []
 
-    include_patterns = context.profile.get("link_preview", {}).get("include_patterns") or []
-    exclude_patterns = context.profile.get("link_preview", {}).get("exclude_patterns") or []
-    include_patterns = include_patterns if isinstance(include_patterns, list) else [include_patterns]
-    exclude_patterns = exclude_patterns if isinstance(exclude_patterns, list) else [exclude_patterns]
-    require_article_like = bool((context.profile.get("extra") or {}).get("require_article_like_url"))
+    include_patterns = (
+        context.profile.get("link_preview", {}).get("include_patterns") or []
+    )
+    exclude_patterns = (
+        context.profile.get("link_preview", {}).get("exclude_patterns") or []
+    )
+    include_patterns = (
+        include_patterns if isinstance(include_patterns, list) else [include_patterns]
+    )
+    exclude_patterns = (
+        exclude_patterns if isinstance(exclude_patterns, list) else [exclude_patterns]
+    )
+    require_article_like = bool(
+        (context.profile.get("extra") or {}).get("require_article_like_url")
+    )
 
     def _score(entry: dict[str, Any]) -> float:
         for key in ("total_score", "contextual_score", "intrinsic_score"):
@@ -299,13 +329,14 @@ def _select_link_candidates(
             allowed_domains.update(str(item).lower() for item in extra_domains if item)
 
     filtered: list[tuple[float, str]] = []
+
     def _is_allowed_domain(netloc: str) -> bool:
         if not netloc:
             return False
         nl = netloc.lower()
         for domain in allowed_domains:
             d = domain.lower()
-            if nl == d or nl.endswith('.' + d):
+            if nl == d or nl.endswith("." + d):
                 return True
         return False
 
@@ -327,12 +358,23 @@ def _select_link_candidates(
                 if netloc and not _is_allowed_domain(netloc):
                     continue
             else:
-                base_netloc = urlparse(context.site_config.start_url or '').netloc.lower()
-                if netloc and base_netloc and netloc != base_netloc and not netloc.endswith('.' + base_netloc):
+                base_netloc = urlparse(
+                    context.site_config.start_url or ""
+                ).netloc.lower()
+                if (
+                    netloc
+                    and base_netloc
+                    and netloc != base_netloc
+                    and not netloc.endswith("." + base_netloc)
+                ):
                     continue
-        if include_patterns and not any(pattern in absolute for pattern in include_patterns):
+        if include_patterns and not any(
+            pattern in absolute for pattern in include_patterns
+        ):
             continue
-        if exclude_patterns and any(pattern in absolute for pattern in exclude_patterns):
+        if exclude_patterns and any(
+            pattern in absolute for pattern in exclude_patterns
+        ):
             continue
         if require_article_like:
             path = parsed.path.lower()
@@ -354,7 +396,9 @@ def _build_article_from_result(
     html = getattr(result, "cleaned_html", None) or getattr(result, "html", None)
     if not html:
         markdown_obj = getattr(result, "markdown", None)
-        raw_markdown = getattr(markdown_obj, "raw_markdown", None) if markdown_obj else None
+        raw_markdown = (
+            getattr(markdown_obj, "raw_markdown", None) if markdown_obj else None
+        )
         if raw_markdown:
             html = f"<article>{raw_markdown}</article>"
     if not html:
@@ -372,7 +416,9 @@ def _build_article_from_result(
             "mode": profile.get("mode"),
             "source_url": getattr(result, "url", target_url),
             "links_followed": links_followed,
-            "link_preview_count": len(getattr(result, "links", {}).get("internal", [])) if getattr(result, "links", None) else 0,
+            "link_preview_count": len(getattr(result, "links", {}).get("internal", []))
+            if getattr(result, "links", None)
+            else 0,
         }
     )
 
@@ -433,7 +479,9 @@ def _build_article_from_adaptive_doc(
     if not article:
         return None
 
-    crawl_meta = article.setdefault("extraction_metadata", {}).setdefault("crawl4ai", {})
+    crawl_meta = article.setdefault("extraction_metadata", {}).setdefault(
+        "crawl4ai", {}
+    )
     adaptive_run = crawl_meta.setdefault("adaptive_run", {})
     confidence = getattr(adaptive, "confidence", None)
     if confidence is not None:
@@ -561,7 +609,9 @@ async def _run_adaptive_crawl(
                         current_run_config = run_config
 
                 try:
-                    state = await adaptive.digest(url, query, run_config=current_run_config)
+                    state = await adaptive.digest(
+                        url, query, run_config=current_run_config
+                    )
                 except TypeError:
                     state = await adaptive.digest(url, query)
             except Exception as exc:  # noqa: BLE001 - prefer resilience
@@ -583,14 +633,18 @@ async def _run_adaptive_crawl(
                 doc_url = str(doc.get("url") or "").strip()
                 if doc_url and doc_url in seen_urls:
                     continue
-                article = _build_article_from_adaptive_doc(builder, doc, profile, adaptive, state)
+                article = _build_article_from_adaptive_doc(
+                    builder, doc, profile, adaptive, state
+                )
                 if article:
                     seen_urls.add(article.get("url") or doc_url)
                     articles.append(article)
                 if len(articles) >= max_articles:
                     break
 
-            _record_adaptive_metrics(adaptive, state, len(articles) - emitted_before, profile)
+            _record_adaptive_metrics(
+                adaptive, state, len(articles) - emitted_before, profile
+            )
 
     return articles
 
@@ -620,7 +674,9 @@ async def crawl_site_with_crawl4ai(
         if inferred:
             start_urls = [inferred]
     if not start_urls:
-        logger.warning("Crawl4AI profile for %s did not provide any start URLs", site_config.name)
+        logger.warning(
+            "Crawl4AI profile for %s did not provide any start URLs", site_config.name
+        )
         return []
 
     unique_urls: list[str] = []
@@ -642,7 +698,9 @@ async def crawl_site_with_crawl4ai(
         if "follow_external" in profile:
             follow_external = bool(profile.get("follow_external"))
         else:
-            follow_external = os.getenv("CRAWL4AI_FOLLOW_EXTERNAL", "false").lower() in ("1", "true", "yes")
+            follow_external = os.getenv(
+                "CRAWL4AI_FOLLOW_EXTERNAL", "false"
+            ).lower() in ("1", "true", "yes")
     page_budget = int(profile.get("max_pages") or article_limit or len(unique_urls))
     page_budget = max(page_budget, len(unique_urls))
     seed_urls = set(unique_urls)
@@ -698,7 +756,11 @@ async def crawl_site_with_crawl4ai(
         attempts = 3
         for attempt in range(1, attempts + 1):
             try:
-                crawler_factory = AsyncWebCrawler(config=browser_config) if browser_config else AsyncWebCrawler()
+                crawler_factory = (
+                    AsyncWebCrawler(config=browser_config)
+                    if browser_config
+                    else AsyncWebCrawler()
+                )
                 async with crawler_factory as crawler:
                     result = await crawler.arun(target_url, config=run_config)
             except Exception as exc:  # noqa: BLE001 - robustness first
@@ -718,7 +780,9 @@ async def crawl_site_with_crawl4ai(
             if getattr(result, "success", True):
                 return result
 
-            error_text = str(getattr(result, "error", "") or getattr(result, "message", ""))
+            error_text = str(
+                getattr(result, "error", "") or getattr(result, "message", "")
+            )
             logger.debug("Crawl4AI returned unsuccessful result for %s", target_url)
             if attempt == attempts or not _is_recoverable_error(error_text):
                 return result
@@ -726,7 +790,11 @@ async def crawl_site_with_crawl4ai(
 
         return None
 
-    while queue and pages_fetched < context.page_budget and len(articles) < context.max_articles:
+    while (
+        queue
+        and pages_fetched < context.page_budget
+        and len(articles) < context.max_articles
+    ):
         current_url = queue.pop(0)
         if not current_url or current_url in visited:
             continue
@@ -762,12 +830,18 @@ async def crawl_site_with_crawl4ai(
         ):
             remaining_pages = context.page_budget - pages_fetched
             candidates = result.links.get("internal", []) if result.links else []
-            next_urls = _select_link_candidates(candidates, context, visited, remaining_pages)
+            next_urls = _select_link_candidates(
+                candidates, context, visited, remaining_pages
+            )
             for url in next_urls:
                 if url not in queue and url not in visited:
                     queue.append(url)
 
-    if skip_seed_articles and not strict_skip_seed_articles and len(articles) < context.max_articles:
+    if (
+        skip_seed_articles
+        and not strict_skip_seed_articles
+        and len(articles) < context.max_articles
+    ):
         needed = context.max_articles - len(articles)
         articles.extend(seed_buffer[:needed])
 

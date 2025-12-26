@@ -118,7 +118,10 @@ def test_runner_publishes_on_accept(monkeypatch, tmp_path):
     metrics = _StubMetrics(recorded=[], acceptance=[])
 
     # Monkeypatch the publishing helper
-    monkeypatch.setattr('agents.common.publisher_integration.publish_normalized_article', _PublishSpy.publish_normalized_article)
+    monkeypatch.setattr(
+        "agents.common.publisher_integration.publish_normalized_article",
+        _PublishSpy.publish_normalized_article,
+    )
 
     runner = AgentChainRunner(
         repository=repository,
@@ -164,8 +167,12 @@ def test_runner_publishes_with_valid_token(monkeypatch, tmp_path):
         called["ok"] = True
         return True
 
-    monkeypatch.setattr('agents.common.publisher_integration.publish_normalized_article', fake_publish)
-    monkeypatch.setattr('agents.common.publisher_integration.verify_publish_token', lambda t: True)
+    monkeypatch.setattr(
+        "agents.common.publisher_integration.publish_normalized_article", fake_publish
+    )
+    monkeypatch.setattr(
+        "agents.common.publisher_integration.verify_publish_token", lambda t: True
+    )
 
     runner = AgentChainRunner(
         repository=repository,
@@ -174,7 +181,7 @@ def test_runner_publishes_with_valid_token(monkeypatch, tmp_path):
         metrics=metrics,
         artifact_writer=ArtifactWriter(tmp_path),
         publish_on_accept=True,
-        publish_token='valid',
+        publish_token="valid",
     )
 
     outputs = runner.run(limit=1)

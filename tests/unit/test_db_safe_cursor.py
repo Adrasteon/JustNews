@@ -1,5 +1,3 @@
-
-
 from database.models.migrated_models import MigratedDatabaseService
 from database.utils.migrated_database_utils import execute_mariadb_query
 
@@ -58,7 +56,7 @@ def test_get_safe_cursor_per_call_returns_conn_and_cursor():
     assert cursor is not None
     assert conn is not None
     # cursor should be a FakeCursor
-    assert hasattr(cursor, 'fetchone')
+    assert hasattr(cursor, "fetchone")
     cursor.close()
     conn.close()
 
@@ -67,7 +65,7 @@ def test_execute_mariadb_query_uses_per_call_connection_and_closes():
     svc = make_fake_service()
 
     # execute_mariadb_query should use get_safe_cursor(per_call=True) and close the per-call connection
-    results = execute_mariadb_query(svc, 'SELECT 1', fetch=True)
+    results = execute_mariadb_query(svc, "SELECT 1", fetch=True)
     assert isinstance(results, list)
 
 
@@ -76,12 +74,12 @@ def test_get_db_cursor_context_manager_commits_and_closes(monkeypatch):
 
     # Replace initialize_database_service to return our fake
     svc = make_fake_service()
-    monkeypatch.setattr(db_module, 'initialize_database_service', lambda: svc)
+    monkeypatch.setattr(db_module, "initialize_database_service", lambda: svc)
 
     with db_module.get_db_cursor(commit=True, dictionary=False) as (conn, cursor):
-        assert hasattr(cursor, 'execute')
+        assert hasattr(cursor, "execute")
         # Simulate a write
-        cursor.execute('CREATE')
+        cursor.execute("CREATE")
 
     # After context exit the per-call connection should be closed
     # svc.get_connection returns new connections; ensure we don't leak a connection

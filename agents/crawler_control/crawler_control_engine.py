@@ -3,6 +3,7 @@ Crawler Control Engine for JustNews.
 
 Management and monitoring engine for crawler operations.
 """
+
 import os
 from typing import Any
 
@@ -20,19 +21,24 @@ class CrawlerControlEngine:
     """
 
     def __init__(self):
-        self.crawler_agent_url = os.environ.get("CRAWLER_AGENT_URL", "http://localhost:8015")
-        self.analyst_agent_url = os.environ.get("ANALYST_AGENT_URL", "http://localhost:8004")
-        self.memory_agent_url = os.environ.get("MEMORY_AGENT_URL", "http://localhost:8007")
+        self.crawler_agent_url = os.environ.get(
+            "CRAWLER_AGENT_URL", "http://localhost:8015"
+        )
+        self.analyst_agent_url = os.environ.get(
+            "ANALYST_AGENT_URL", "http://localhost:8004"
+        )
+        self.memory_agent_url = os.environ.get(
+            "MEMORY_AGENT_URL", "http://localhost:8007"
+        )
         self.mcp_bus_url = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
     def start_crawl(self, domains: list[str], **kwargs) -> dict[str, Any]:
         """Start a new crawl job"""
         try:
-            payload = {
-                "args": [domains],
-                "kwargs": kwargs
-            }
-            response = requests.post(f"{self.crawler_agent_url}/unified_production_crawl", json=payload)
+            payload = {"args": [domains], "kwargs": kwargs}
+            response = requests.post(
+                f"{self.crawler_agent_url}/unified_production_crawl", json=payload
+            )
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
@@ -57,7 +63,7 @@ class CrawlerControlEngine:
             if stopped_jobs:
                 return {
                     "stopped_jobs": stopped_jobs,
-                    "message": f"Requested stop for {len(stopped_jobs)} jobs (stopping not yet fully implemented in crawler)"
+                    "message": f"Requested stop for {len(stopped_jobs)} jobs (stopping not yet fully implemented in crawler)",
                 }
             else:
                 return {"stopped_jobs": [], "message": "No active jobs to stop"}
@@ -76,7 +82,9 @@ class CrawlerControlEngine:
             job_details = {}
             for job_id, _status in jobs.items():
                 try:
-                    detail_response = requests.get(f"{self.crawler_agent_url}/job_status/{job_id}")
+                    detail_response = requests.get(
+                        f"{self.crawler_agent_url}/job_status/{job_id}"
+                    )
                     detail_response.raise_for_status()
                     job_details[job_id] = detail_response.json()
                 except requests.RequestException:
@@ -120,7 +128,7 @@ class CrawlerControlEngine:
                 "articles_processed": 150,
                 "sites_crawled": 5,
                 "articles_per_second": 2.5,
-                "mode_usage": {"ultra_fast": 2, "ai_enhanced": 1, "generic": 2}
+                "mode_usage": {"ultra_fast": 2, "ai_enhanced": 1, "generic": 2},
             }
 
     def get_analyst_metrics(self) -> dict[str, Any]:
@@ -131,11 +139,7 @@ class CrawlerControlEngine:
             return response.json()
         except requests.RequestException:
             # Fallback mock data
-            return {
-                "sentiment_count": 120,
-                "bias_count": 80,
-                "topics_count": 95
-            }
+            return {"sentiment_count": 120, "bias_count": 80, "topics_count": 95}
 
     def get_memory_metrics(self) -> dict[str, Any]:
         """Get memory usage metrics"""
@@ -145,10 +149,7 @@ class CrawlerControlEngine:
             return response.json()
         except requests.RequestException:
             # Fallback mock data
-            return {
-                "used": 60,
-                "free": 40
-            }
+            return {"used": 60, "free": 40}
 
     def get_system_health(self) -> dict[str, Any]:
         """Get overall system health"""
@@ -157,7 +158,7 @@ class CrawlerControlEngine:
             ("crawler", self.crawler_agent_url),
             ("analyst", self.analyst_agent_url),
             ("memory", self.memory_agent_url),
-            ("mcp_bus", self.mcp_bus_url)
+            ("mcp_bus", self.mcp_bus_url),
         ]
 
         for name, url in agents:

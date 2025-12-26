@@ -21,8 +21,10 @@ from pydantic import BaseModel, Field, field_validator
 # Configure logging
 logger = logging.getLogger(__name__)
 
+
 class GrafanaConfig(BaseModel):
     """Grafana configuration"""
+
     url: str = Field(..., description="Grafana server URL")
     api_key: str = Field(..., description="Grafana API key")
     datasource_name: str = Field("prometheus", description="Default datasource name")
@@ -30,43 +32,65 @@ class GrafanaConfig(BaseModel):
     organization_id: int = Field(1, description="Grafana organization ID")
     timeout: int = Field(30, description="Request timeout in seconds")
 
-    @field_validator('url')
+    @field_validator("url")
     @classmethod
     def validate_url(cls, v):
-        if not v.startswith(('http://', 'https://')):
-            raise ValueError('URL must start with http:// or https://')
-        return v.rstrip('/')
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("URL must start with http:// or https://")
+        return v.rstrip("/")
+
 
 class DashboardPanel(BaseModel):
     """Grafana dashboard panel configuration"""
+
     id: int | None = Field(None, description="Panel ID")
     title: str = Field(..., description="Panel title")
     type: str = Field(..., description="Panel type (graph, table, heatmap, etc.)")
-    targets: list[dict[str, Any]] = Field(default_factory=list, description="Query targets")
+    targets: list[dict[str, Any]] = Field(
+        default_factory=list, description="Query targets"
+    )
     grid_pos: dict[str, Any] = Field(..., description="Grid position")
     options: dict[str, Any] = Field(default_factory=dict, description="Panel options")
-    field_config: dict[str, Any] = Field(default_factory=dict, description="Field configuration")
-    transformations: list[dict[str, Any]] = Field(default_factory=list, description="Data transformations")
+    field_config: dict[str, Any] = Field(
+        default_factory=dict, description="Field configuration"
+    )
+    transformations: list[dict[str, Any]] = Field(
+        default_factory=list, description="Data transformations"
+    )
+
 
 class DashboardTemplate(BaseModel):
     """Grafana dashboard template"""
+
     name: str = Field(..., description="Template name")
     description: str = Field("", description="Template description")
     tags: list[str] = Field(default_factory=list, description="Dashboard tags")
-    panels: list[DashboardPanel] = Field(default_factory=list, description="Dashboard panels")
-    templating: dict[str, Any] = Field(default_factory=dict, description="Template variables")
-    time: dict[str, Any] = Field(default_factory=lambda: {"from": "now-1h", "to": "now"}, description="Time range")
+    panels: list[DashboardPanel] = Field(
+        default_factory=list, description="Dashboard panels"
+    )
+    templating: dict[str, Any] = Field(
+        default_factory=dict, description="Template variables"
+    )
+    time: dict[str, Any] = Field(
+        default_factory=lambda: {"from": "now-1h", "to": "now"},
+        description="Time range",
+    )
     refresh: str = Field("30s", description="Refresh interval")
+
 
 class GrafanaAlertRule(BaseModel):
     """Grafana alert rule configuration"""
+
     name: str = Field(..., description="Alert rule name")
     query: str = Field(..., description="PromQL query")
     condition: str = Field(..., description="Alert condition")
     duration: str = Field("5m", description="For duration")
     severity: str = Field("warning", description="Alert severity")
     labels: dict[str, str] = Field(default_factory=dict, description="Alert labels")
-    annotations: dict[str, str] = Field(default_factory=dict, description="Alert annotations")
+    annotations: dict[str, str] = Field(
+        default_factory=dict, description="Alert annotations"
+    )
+
 
 @dataclass
 class GrafanaIntegration:
@@ -109,40 +133,43 @@ class GrafanaIntegration:
                 DashboardPanel(
                     title="CPU Usage",
                     type="graph",
-                    targets=[{
-                        "expr": "100 - (avg by(instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
-                        "legendFormat": "{{instance}}"
-                    }],
-                    grid_pos={"h": 8, "w": 12, "x": 0, "y": 0}
+                    targets=[
+                        {
+                            "expr": '100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)',
+                            "legendFormat": "{{instance}}",
+                        }
+                    ],
+                    grid_pos={"h": 8, "w": 12, "x": 0, "y": 0},
                 ),
                 DashboardPanel(
                     title="Memory Usage",
                     type="graph",
-                    targets=[{
-                        "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100",
-                        "legendFormat": "{{instance}}"
-                    }],
-                    grid_pos={"h": 8, "w": 12, "x": 12, "y": 0}
+                    targets=[
+                        {
+                            "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100",
+                            "legendFormat": "{{instance}}",
+                        }
+                    ],
+                    grid_pos={"h": 8, "w": 12, "x": 12, "y": 0},
                 ),
                 DashboardPanel(
                     title="System Uptime",
                     type="stat",
-                    targets=[{
-                        "expr": "up",
-                        "legendFormat": "{{instance}}"
-                    }],
-                    grid_pos={"h": 4, "w": 8, "x": 0, "y": 8}
+                    targets=[{"expr": "up", "legendFormat": "{{instance}}"}],
+                    grid_pos={"h": 4, "w": 8, "x": 0, "y": 8},
                 ),
                 DashboardPanel(
                     title="Error Rate",
                     type="graph",
-                    targets=[{
-                        "expr": "rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m]) * 100",
-                        "legendFormat": "{{service}}"
-                    }],
-                    grid_pos={"h": 8, "w": 16, "x": 8, "y": 8}
-                )
-            ]
+                    targets=[
+                        {
+                            "expr": 'rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) * 100',
+                            "legendFormat": "{{service}}",
+                        }
+                    ],
+                    grid_pos={"h": 8, "w": 16, "x": 8, "y": 8},
+                ),
+            ],
         )
 
         # Business Metrics Dashboard
@@ -154,40 +181,32 @@ class GrafanaIntegration:
                 DashboardPanel(
                     title="Monthly Active Users",
                     type="stat",
-                    targets=[{
-                        "expr": "monthly_active_users",
-                        "legendFormat": "MAU"
-                    }],
-                    grid_pos={"h": 4, "w": 6, "x": 0, "y": 0}
+                    targets=[{"expr": "monthly_active_users", "legendFormat": "MAU"}],
+                    grid_pos={"h": 4, "w": 6, "x": 0, "y": 0},
                 ),
                 DashboardPanel(
                     title="Revenue Growth",
                     type="graph",
-                    targets=[{
-                        "expr": "revenue_total",
-                        "legendFormat": "Revenue"
-                    }],
-                    grid_pos={"h": 8, "w": 12, "x": 6, "y": 0}
+                    targets=[{"expr": "revenue_total", "legendFormat": "Revenue"}],
+                    grid_pos={"h": 8, "w": 12, "x": 6, "y": 0},
                 ),
                 DashboardPanel(
                     title="Content Accuracy Score",
                     type="gauge",
-                    targets=[{
-                        "expr": "content_accuracy_score",
-                        "legendFormat": "Accuracy"
-                    }],
-                    grid_pos={"h": 6, "w": 6, "x": 18, "y": 0}
+                    targets=[
+                        {"expr": "content_accuracy_score", "legendFormat": "Accuracy"}
+                    ],
+                    grid_pos={"h": 6, "w": 6, "x": 18, "y": 0},
                 ),
                 DashboardPanel(
                     title="Customer Satisfaction",
                     type="stat",
-                    targets=[{
-                        "expr": "customer_satisfaction_score",
-                        "legendFormat": "CSAT"
-                    }],
-                    grid_pos={"h": 4, "w": 6, "x": 0, "y": 4}
-                )
-            ]
+                    targets=[
+                        {"expr": "customer_satisfaction_score", "legendFormat": "CSAT"}
+                    ],
+                    grid_pos={"h": 4, "w": 6, "x": 0, "y": 4},
+                ),
+            ],
         )
 
         # Agent Performance Dashboard
@@ -199,37 +218,40 @@ class GrafanaIntegration:
                 DashboardPanel(
                     title="Agent Response Times",
                     type="heatmap",
-                    targets=[{
-                        "expr": "agent_response_time_seconds",
-                        "legendFormat": "{{agent}}"
-                    }],
-                    grid_pos={"h": 8, "w": 16, "x": 0, "y": 0}
+                    targets=[
+                        {
+                            "expr": "agent_response_time_seconds",
+                            "legendFormat": "{{agent}}",
+                        }
+                    ],
+                    grid_pos={"h": 8, "w": 16, "x": 0, "y": 0},
                 ),
                 DashboardPanel(
                     title="Agent Success Rate",
                     type="bargauge",
-                    targets=[{
-                        "expr": "agent_success_rate",
-                        "legendFormat": "{{agent}}"
-                    }],
-                    grid_pos={"h": 8, "w": 8, "x": 16, "y": 0}
+                    targets=[
+                        {"expr": "agent_success_rate", "legendFormat": "{{agent}}"}
+                    ],
+                    grid_pos={"h": 8, "w": 8, "x": 16, "y": 0},
                 ),
                 DashboardPanel(
                     title="Content Processing Queue",
                     type="graph",
-                    targets=[{
-                        "expr": "content_processing_queue_length",
-                        "legendFormat": "Queue Length"
-                    }],
-                    grid_pos={"h": 6, "w": 12, "x": 0, "y": 8}
-                )
-            ]
+                    targets=[
+                        {
+                            "expr": "content_processing_queue_length",
+                            "legendFormat": "Queue Length",
+                        }
+                    ],
+                    grid_pos={"h": 6, "w": 12, "x": 0, "y": 8},
+                ),
+            ],
         )
 
         self.templates = {
             "system_overview": system_overview,
             "business_metrics": business_metrics,
-            "agent_performance": agent_performance
+            "agent_performance": agent_performance,
         }
 
     def _setup_default_alert_rules(self):
@@ -237,15 +259,15 @@ class GrafanaIntegration:
         default_rules = [
             GrafanaAlertRule(
                 name="High CPU Usage",
-                query="100 - (avg by(instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100) > 90",
+                query='100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90',
                 condition="CPU usage > 90%",
                 duration="5m",
                 severity="critical",
                 labels={"service": "system", "severity": "critical"},
                 annotations={
                     "summary": "High CPU usage detected",
-                    "description": "CPU usage is above 90% for more than 5 minutes"
-                }
+                    "description": "CPU usage is above 90% for more than 5 minutes",
+                },
             ),
             GrafanaAlertRule(
                 name="High Memory Usage",
@@ -256,8 +278,8 @@ class GrafanaIntegration:
                 labels={"service": "system", "severity": "warning"},
                 annotations={
                     "summary": "High memory usage detected",
-                    "description": "Memory usage is above 95% for more than 3 minutes"
-                }
+                    "description": "Memory usage is above 95% for more than 3 minutes",
+                },
             ),
             GrafanaAlertRule(
                 name="Service Down",
@@ -268,21 +290,21 @@ class GrafanaIntegration:
                 labels={"service": "availability", "severity": "critical"},
                 annotations={
                     "summary": "Service is down",
-                    "description": "Service {{ $labels.instance }} is not responding"
-                }
+                    "description": "Service {{ $labels.instance }} is not responding",
+                },
             ),
             GrafanaAlertRule(
                 name="High Error Rate",
-                query="rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m]) * 100 > 5",
+                query='rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) * 100 > 5',
                 condition="Error rate > 5%",
                 duration="5m",
                 severity="warning",
                 labels={"service": "api", "severity": "warning"},
                 annotations={
                     "summary": "High error rate detected",
-                    "description": "Error rate is above 5% for more than 5 minutes"
-                }
-            )
+                    "description": "Error rate is above 5% for more than 5 minutes",
+                },
+            ),
         ]
 
         for rule in default_rules:
@@ -294,9 +316,9 @@ class GrafanaIntegration:
             self.session = aiohttp.ClientSession(
                 headers={
                     "Authorization": f"Bearer {self.config.api_key}",
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
                 },
-                timeout=aiohttp.ClientTimeout(total=self.config.timeout)
+                timeout=aiohttp.ClientTimeout(total=self.config.timeout),
             )
 
         # Test connection
@@ -322,33 +344,38 @@ class GrafanaIntegration:
         """Ensure the dashboard folder exists"""
         try:
             # Check if folder exists
-            async with self.session.get(
-                f"{self.config.url}/api/folders"
-            ) as response:
+            async with self.session.get(f"{self.config.url}/api/folders") as response:
                 if response.status == 200:
                     folders = await response.json()
-                    folder_exists = any(f["title"] == self.config.folder_name for f in folders)
+                    folder_exists = any(
+                        f["title"] == self.config.folder_name for f in folders
+                    )
 
                     if not folder_exists:
                         # Create folder
                         folder_data = {
                             "title": self.config.folder_name,
-                            "uid": self.config.folder_name.lower().replace(" ", "_")
+                            "uid": self.config.folder_name.lower().replace(" ", "_"),
                         }
                         async with self.session.post(
-                            f"{self.config.url}/api/folders",
-                            json=folder_data
+                            f"{self.config.url}/api/folders", json=folder_data
                         ) as create_response:
                             if create_response.status not in [200, 201]:
-                                logger.warning(f"Failed to create folder: {create_response.status}")
+                                logger.warning(
+                                    f"Failed to create folder: {create_response.status}"
+                                )
                             else:
-                                logger.info(f"Created Grafana folder: {self.config.folder_name}")
+                                logger.info(
+                                    f"Created Grafana folder: {self.config.folder_name}"
+                                )
                 else:
                     logger.warning(f"Failed to check folders: {response.status}")
         except Exception as e:
             logger.error(f"Error ensuring folder exists: {e}")
 
-    async def deploy_dashboard(self, template_name: str, dashboard_name: str | None = None) -> str:
+    async def deploy_dashboard(
+        self, template_name: str, dashboard_name: str | None = None
+    ) -> str:
         """
         Deploy a dashboard from template
 
@@ -370,30 +397,37 @@ class GrafanaIntegration:
 
         try:
             async with self.session.post(
-                f"{self.config.url}/api/dashboards/db",
-                json=dashboard_json
+                f"{self.config.url}/api/dashboards/db", json=dashboard_json
             ) as response:
                 if response.status in [200, 201]:
                     result = await response.json()
                     uid = result["uid"]
                     self.deployed_dashboards[name] = uid
-                    logger.info(f"Successfully deployed dashboard '{name}' with UID: {uid}")
+                    logger.info(
+                        f"Successfully deployed dashboard '{name}' with UID: {uid}"
+                    )
                     return uid
                 else:
                     error_text = await response.text()
-                    raise Exception(f"Failed to deploy dashboard: {response.status} - {error_text}")
+                    raise Exception(
+                        f"Failed to deploy dashboard: {response.status} - {error_text}"
+                    )
         except Exception as e:
             logger.error(f"Error deploying dashboard '{name}': {e}")
             raise
 
-    def _create_dashboard_json(self, template: DashboardTemplate, name: str) -> dict[str, Any]:
+    def _create_dashboard_json(
+        self, template: DashboardTemplate, name: str
+    ) -> dict[str, Any]:
         """Create Grafana dashboard JSON from template"""
         dashboard = {
             "dashboard": {
                 "title": name,
                 "tags": template.tags,
                 "timezone": "browser",
-                "panels": [panel.model_dump(exclude_none=True) for panel in template.panels],
+                "panels": [
+                    panel.model_dump(exclude_none=True) for panel in template.panels
+                ],
                 "time": template.time,
                 "refresh": template.refresh,
                 "templating": template.templating,
@@ -402,10 +436,10 @@ class GrafanaIntegration:
                 "style": "dark",
                 "editable": True,
                 "hideControls": False,
-                "graphTooltip": 1
+                "graphTooltip": 1,
             },
             "folderUid": self.config.folder_name.lower().replace(" ", "_"),
-            "overwrite": True
+            "overwrite": True,
         }
 
         return dashboard
@@ -441,16 +475,17 @@ class GrafanaIntegration:
                 update_data = {
                     "dashboard": dashboard,
                     "folderUid": current.get("meta", {}).get("folderUid"),
-                    "overwrite": True
+                    "overwrite": True,
                 }
 
                 async with self.session.post(
-                    f"{self.config.url}/api/dashboards/db",
-                    json=update_data
+                    f"{self.config.url}/api/dashboards/db", json=update_data
                 ) as update_response:
                     if update_response.status not in [200, 201]:
                         error_text = await update_response.text()
-                        raise Exception(f"Failed to update dashboard: {update_response.status} - {error_text}")
+                        raise Exception(
+                            f"Failed to update dashboard: {update_response.status} - {error_text}"
+                        )
 
                     logger.info(f"Successfully updated dashboard '{dashboard_name}'")
 
@@ -458,7 +493,9 @@ class GrafanaIntegration:
             logger.error(f"Error updating dashboard '{dashboard_name}': {e}")
             raise
 
-    def _apply_dashboard_updates(self, dashboard: dict[str, Any], updates: dict[str, Any]):
+    def _apply_dashboard_updates(
+        self, dashboard: dict[str, Any], updates: dict[str, Any]
+    ):
         """Apply updates to dashboard JSON"""
         for key, value in updates.items():
             if key == "panels":
@@ -499,7 +536,9 @@ class GrafanaIntegration:
                     logger.info(f"Successfully deleted dashboard '{dashboard_name}'")
                 else:
                     error_text = await response.text()
-                    raise Exception(f"Failed to delete dashboard: {response.status} - {error_text}")
+                    raise Exception(
+                        f"Failed to delete dashboard: {response.status} - {error_text}"
+                    )
         except Exception as e:
             logger.error(f"Error deleting dashboard '{dashboard_name}': {e}")
             raise
@@ -519,19 +558,20 @@ class GrafanaIntegration:
                 "duration": rule.duration,
                 "severity": rule.severity,
                 "labels": rule.labels,
-                "annotations": rule.annotations
+                "annotations": rule.annotations,
             }
 
             async with self.session.post(
-                f"{self.config.url}/api/v1/provisioning/alert-rules",
-                json=rule_data
+                f"{self.config.url}/api/v1/provisioning/alert-rules", json=rule_data
             ) as response:
                 if response.status in [200, 201]:
                     self.alert_rules[rule.name] = rule
                     logger.info(f"Successfully created alert rule '{rule.name}'")
                 else:
                     error_text = await response.text()
-                    raise Exception(f"Failed to create alert rule: {response.status} - {error_text}")
+                    raise Exception(
+                        f"Failed to create alert rule: {response.status} - {error_text}"
+                    )
         except Exception as e:
             logger.error(f"Error creating alert rule '{rule.name}': {e}")
             raise
@@ -572,7 +612,9 @@ class GrafanaIntegration:
         # This is a simplified implementation
         try:
             # In a real implementation, you'd need to get the rule ID first
-            logger.warning(f"Alert rule deletion not fully implemented for '{rule_name}'")
+            logger.warning(
+                f"Alert rule deletion not fully implemented for '{rule_name}'"
+            )
             del self.alert_rules[rule_name]
         except Exception as e:
             logger.error(f"Error deleting alert rule '{rule_name}': {e}")
@@ -611,7 +653,7 @@ class GrafanaIntegration:
                     "tags": dashboard.get("tags", []),
                     "version": dashboard.get("version"),
                     "last_updated": dashboard_data.get("meta", {}).get("updated"),
-                    "folder": dashboard_data.get("meta", {}).get("folderTitle")
+                    "folder": dashboard_data.get("meta", {}).get("folderTitle"),
                 }
         except Exception as e:
             logger.error(f"Error getting dashboard metrics for '{dashboard_name}': {e}")
@@ -640,16 +682,20 @@ class GrafanaIntegration:
                 dashboard_data = await response.json()
 
                 # Save to file
-                with open(file_path, 'w') as f:
+                with open(file_path, "w") as f:
                     json.dump(dashboard_data, f, indent=2)
 
-                logger.info(f"Successfully exported dashboard '{dashboard_name}' to {file_path}")
+                logger.info(
+                    f"Successfully exported dashboard '{dashboard_name}' to {file_path}"
+                )
 
         except Exception as e:
             logger.error(f"Error exporting dashboard '{dashboard_name}': {e}")
             raise
 
-    async def import_dashboard(self, file_path: str, dashboard_name: str | None = None) -> str:
+    async def import_dashboard(
+        self, file_path: str, dashboard_name: str | None = None
+    ) -> str:
         """
         Import a dashboard from a JSON file
 
@@ -668,19 +714,22 @@ class GrafanaIntegration:
                 dashboard_data["dashboard"]["title"] = dashboard_name
 
             async with self.session.post(
-                f"{self.config.url}/api/dashboards/db",
-                json=dashboard_data
+                f"{self.config.url}/api/dashboards/db", json=dashboard_data
             ) as response:
                 if response.status in [200, 201]:
                     result = await response.json()
                     uid = result["uid"]
                     name = dashboard_data["dashboard"]["title"]
                     self.deployed_dashboards[name] = uid
-                    logger.info(f"Successfully imported dashboard '{name}' with UID: {uid}")
+                    logger.info(
+                        f"Successfully imported dashboard '{name}' with UID: {uid}"
+                    )
                     return uid
                 else:
                     error_text = await response.text()
-                    raise Exception(f"Failed to import dashboard: {response.status} - {error_text}")
+                    raise Exception(
+                        f"Failed to import dashboard: {response.status} - {error_text}"
+                    )
         except Exception as e:
             logger.error(f"Error importing dashboard from {file_path}: {e}")
             raise
@@ -713,9 +762,7 @@ class GrafanaIntegration:
             System status information
         """
         try:
-            async with self.session.get(
-                f"{self.config.url}/api/health"
-            ) as response:
+            async with self.session.get(f"{self.config.url}/api/health") as response:
                 if response.status != 200:
                     raise Exception(f"Failed to get system status: {response.status}")
 

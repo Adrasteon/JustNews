@@ -101,7 +101,7 @@ class AuthEngine:
             "status": self._health_status,
             "initialized": self._initialized,
             "timestamp": asyncio.get_event_loop().time(),
-            "checks": {}
+            "checks": {},
         }
 
         try:
@@ -118,7 +118,7 @@ class AuthEngine:
                             db_healthy = True
                             health_info["checks"]["database"] = {
                                 "status": "healthy",
-                                "user_count": result[0] if result else 0
+                                "user_count": result[0] if result else 0,
                             }
                 else:
                     db_error = "Connection pool not initialized"
@@ -128,7 +128,7 @@ class AuthEngine:
             if not db_healthy:
                 health_info["checks"]["database"] = {
                     "status": "unhealthy",
-                    "error": db_error
+                    "error": db_error,
                 }
                 health_info["status"] = "degraded"
 
@@ -166,7 +166,7 @@ class AuthEngine:
                 "Password reset",
                 "GDPR compliance (data export/deletion)",
                 "Consent management",
-                "Data minimization"
+                "Data minimization",
             ],
             "endpoints": [
                 "POST /auth/register",
@@ -179,12 +179,17 @@ class AuthEngine:
                 "POST /auth/data-export",
                 "POST /auth/data-deletion",
                 "GET /auth/consents",
-                "GET /health"
+                "GET /health",
             ],
             "database": {
                 "type": "MariaDB",
-                "tables": ["users", "refresh_tokens", "password_reset_tokens", "consent_records"]
-            }
+                "tables": [
+                    "users",
+                    "refresh_tokens",
+                    "password_reset_tokens",
+                    "consent_records",
+                ],
+            },
         }
 
 

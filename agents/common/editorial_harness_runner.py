@@ -41,7 +41,9 @@ class HarnessResultPersistence:
             "timestamp": timestamp,
             "source": "agent_chain_harness",
             "article_id": article_row.get("id"),
-            "notes": "Dry-run harness output" if result.needs_followup else "Harness draft accepted",
+            "notes": "Dry-run harness output"
+            if result.needs_followup
+            else "Harness draft accepted",
         }
         fact_check_status = "needs_followup" if result.needs_followup else "accepted"
         try:
@@ -75,7 +77,9 @@ class ArtifactWriter:
         self.root = root or Path.cwd() / "output" / "agent_chain_runs"
         self.root.mkdir(parents=True, exist_ok=True)
 
-    def write(self, article_id: str | int, result: AgentChainResult, article_row: dict) -> Path:
+    def write(
+        self, article_id: str | int, result: AgentChainResult, article_row: dict
+    ) -> Path:
         payload = {
             "article_id": article_id,
             "metadata": article_row,
@@ -103,14 +107,22 @@ class AgentChainRunner:
     ) -> None:
         self.repository = repository or NormalizedArticleRepository()
         self.harness = harness or AgentChainHarness()
-        self.persistence = persistence or HarnessResultPersistence(self.repository.db_service)
+        self.persistence = persistence or HarnessResultPersistence(
+            self.repository.db_service
+        )
         self.metrics = metrics or get_stage_b_metrics()
-        self.artifacts = (artifact_writer or ArtifactWriter()) if write_artifacts else None
+        self.artifacts = (
+            (artifact_writer or ArtifactWriter()) if write_artifacts else None
+        )
         self.publish_on_accept = publish_on_accept
         self.publish_token = publish_token
 
-    def run(self, *, limit: int = 5, article_ids: Sequence[int | str] | None = None) -> list[AgentChainResult]:
-        candidates = self.repository.fetch_candidates(limit=limit, article_ids=article_ids)
+    def run(
+        self, *, limit: int = 5, article_ids: Sequence[int | str] | None = None
+    ) -> list[AgentChainResult]:
+        candidates = self.repository.fetch_candidates(
+            limit=limit, article_ids=article_ids
+        )
         if not candidates:
             logger.info("No normalized articles ready for the editorial harness.")
             return []
@@ -122,34 +134,50 @@ class AgentChainRunner:
                 result = self.harness.run_article(candidate.article)
                 self.persistence.save(candidate.row, result)
                 # optionally publish accepted drafts
-                if self.publish_on_accept and not result.needs_followup and result.acceptance_score and result.acceptance_score >= 0.5:
+                if (
+                    self.publish_on_accept
+                    and not result.needs_followup
+                    and result.acceptance_score
+                    and result.acceptance_score >= 0.5
+                ):
                     try:
                         from agents.common.publisher_integration import (
                             publish_normalized_article,
                             verify_publish_token,
                         )
+
                         # If a publish_token was supplied to the runner, verify it before publishing.
                         # If no token was supplied we allow publishing in environments where
                         # the operator intentionally did not set a gating token (e.g. local dev).
-                        if self.publish_token is not None and not verify_publish_token(self.publish_token):
-                            logger.info("Publish skipped for article %s: approval token invalid or missing", article_id)
+                        if self.publish_token is not None and not verify_publish_token(
+                            self.publish_token
+                        ):
+                            logger.info(
+                                "Publish skipped for article %s: approval token invalid or missing",
+                                article_id,
+                            )
                             try:
-                                self.metrics.record_publish_result('skipped')
+                                self.metrics.record_publish_result("skipped")
                             except Exception:
                                 pass
-                            raise RuntimeError('publish approval token invalid')
-                        start = __import__('time').time()
-                        ok = publish_normalized_article(candidate.article, author=candidate.row.get('authors') or 'Editorial Harness')
-                        elapsed = __import__('time').time() - start
+                            raise RuntimeError("publish approval token invalid")
+                        start = __import__("time").time()
+                        ok = publish_normalized_article(
+                            candidate.article,
+                            author=candidate.row.get("authors") or "Editorial Harness",
+                        )
+                        elapsed = __import__("time").time() - start
                         try:
-                            self.metrics.record_publish_result('success' if ok else 'failure')
+                            self.metrics.record_publish_result(
+                                "success" if ok else "failure"
+                            )
                             self.metrics.observe_publish_latency(elapsed)
                         except Exception:
-                            logger.debug('Failed to record publish metrics')
+                            logger.debug("Failed to record publish metrics")
                     except Exception:
-                        logger.exception('Failed to publish article %s', article_id)
+                        logger.exception("Failed to publish article %s", article_id)
                         try:
-                            self.metrics.record_publish_result('failure')
+                            self.metrics.record_publish_result("failure")
                         except Exception:
                             pass
                 if self.artifacts:

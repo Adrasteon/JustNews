@@ -6,6 +6,7 @@ Design decisions:
 - Uses bitsandbytes `BitsAndBytesConfig` when available and environment indicates 8-bit
 - Testable in CI by setting `RE_RANKER_TEST_MODE=1` which uses a deterministic stub model
 """
+
 from __future__ import annotations
 
 import os
@@ -75,7 +76,9 @@ class ReRanker:
         try:
             self.adapter = ReRankerMistralAdapter()
         except Exception as exc:  # pragma: no cover - adapter optional
-            logger.warning("ReRanker adapter init failed, falling back to direct model: %s", exc)
+            logger.warning(
+                "ReRanker adapter init failed, falling back to direct model: %s", exc
+            )
             self.adapter = None
 
         if self.adapter is None:
@@ -98,7 +101,9 @@ class ReRanker:
             )
         else:
             # fallback non-quantized loading
-            model = AutoModelForCausalLM.from_pretrained(self.model_id, device_map="auto", trust_remote_code=True)
+            model = AutoModelForCausalLM.from_pretrained(
+                self.model_id, device_map="auto", trust_remote_code=True
+            )
 
         tokenizer = AutoTokenizer.from_pretrained(self.model_id)
 
@@ -115,7 +120,9 @@ class ReRanker:
             try:
                 adapter_scores = self.adapter.score_candidates(query, candidates)
             except Exception as exc:  # pragma: no cover - adapter optional
-                logger.warning("ReRanker adapter scoring failed, will fall back: %s", exc)
+                logger.warning(
+                    "ReRanker adapter scoring failed, will fall back: %s", exc
+                )
                 adapter_scores = None
             if adapter_scores is not None:
                 return adapter_scores
@@ -135,7 +142,9 @@ class ReRanker:
 
         return self._score_with_model(query, candidates)
 
-    def _score_with_model(self, query: str, candidates: Sequence[ReRankCandidate]) -> list[float]:
+    def _score_with_model(
+        self, query: str, candidates: Sequence[ReRankCandidate]
+    ) -> list[float]:
         scores: list[float] = []
         for c in candidates:
             input_text = f"Query: {query}\nCandidate: {c.text}\nScore:"
@@ -157,7 +166,10 @@ class ReRanker:
 def simple_demo():
     model = ReRanker()
     queries = "Is the company profitable?"
-    cands = [ReRankCandidate(id="a1", text="The company saw revenue growth in Q4."), ReRankCandidate(id="a2", text="We reported losses last year.")]
+    cands = [
+        ReRankCandidate(id="a1", text="The company saw revenue growth in Q4."),
+        ReRankCandidate(id="a2", text="We reported losses last year."),
+    ]
     print(model.score(queries, cands))
 
 

@@ -19,6 +19,7 @@ from database.utils.migrated_database_utils import (
 # Configure centralized logging
 logger = get_logger(__name__)
 
+
 # Environment variables (read at runtime, not import time)
 def get_db_config():
     """Get database configuration from environment variables"""
@@ -28,14 +29,16 @@ def get_db_config():
     # Apply development fallback credentials if required
     applied = apply_test_db_env_fallback(logger)
     if applied:
-        logger.warning("Development DB fallback variables applied: %s", ",".join(applied))
+        logger.warning(
+            "Development DB fallback variables applied: %s", ",".join(applied)
+        )
 
     # Use MariaDB-style environment variables for the migrated storage backend.
     config = {
-        'host': os.environ.get("MARIADB_HOST"),
-        'database': os.environ.get("MARIADB_DB"),
-        'user': os.environ.get("MARIADB_USER"),
-        'password': os.environ.get("MARIADB_PASSWORD")
+        "host": os.environ.get("MARIADB_HOST"),
+        "database": os.environ.get("MARIADB_DB"),
+        "user": os.environ.get("MARIADB_USER"),
+        "password": os.environ.get("MARIADB_PASSWORD"),
     }
 
     # If any are missing, try to parse DATABASE_URL
@@ -45,17 +48,19 @@ def get_db_config():
             logger.info("Parsing database configuration from DATABASE_URL")
             try:
                 from urllib.parse import urlparse
+
                 parsed = urlparse(database_url)
-                config['host'] = parsed.hostname or config['host']
-                config['database'] = parsed.path.lstrip('/') or config['database']
-                config['user'] = parsed.username or config['user']
-                config['password'] = parsed.password or config['password']
+                config["host"] = parsed.hostname or config["host"]
+                config["database"] = parsed.path.lstrip("/") or config["database"]
+                config["user"] = parsed.username or config["user"]
+                config["password"] = parsed.password or config["password"]
                 if parsed.port:
-                    config['port'] = parsed.port
+                    config["port"] = parsed.port
             except Exception as e:
                 logger.warning(f"Failed to parse DATABASE_URL: {e}")
 
     return config
+
 
 # Global migrated DB service instance
 _db_service = None
@@ -117,7 +122,9 @@ def get_db_cursor(commit: bool = False, dictionary: bool = True):
     service = initialize_database_service()
     # Prefer a per-call connection + cursor to avoid sharing resultsets across
     # concurrent callers which may lead to 'Unread result found' in mysql-connector.
-    cursor, conn = service.get_safe_cursor(per_call=True, dictionary=dictionary, buffered=True)
+    cursor, conn = service.get_safe_cursor(
+        per_call=True, dictionary=dictionary, buffered=True
+    )
     try:
         yield conn, cursor
         if commit:

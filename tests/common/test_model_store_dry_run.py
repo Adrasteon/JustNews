@@ -1,4 +1,5 @@
 """Dry-run smoke tests for ModelStore-backed loaders."""
+
 from __future__ import annotations
 
 import json

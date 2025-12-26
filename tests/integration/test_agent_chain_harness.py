@@ -56,4 +56,3 @@ def test_agent_chain_harness_runs_full_adapter_loop(slug, monkeypatch, tmp_path)
             assert check["claim"].strip()
             assert check["verdict"] in {"verified", "refuted", "unclear"}
             assert 0.0 <= check["confidence"] <= 1.0
-

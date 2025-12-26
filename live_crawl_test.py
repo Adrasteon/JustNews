@@ -131,7 +131,7 @@ async def run_crawl_test():
         "catholicnewsagency.com",
         "ncronline.org",
         "cruxnow.com",
-        "angelusnews.com"
+        "angelusnews.com",
     ]
 
     print(f"📋 Selected {len(test_sites)} test sites:")
@@ -156,22 +156,22 @@ async def run_crawl_test():
             result = await crawler.run_unified_crawl(
                 domains=test_sites,
                 max_articles_per_site=40,
-                concurrent_sites=10  # Increased concurrency for extreme load testing
+                concurrent_sites=10,  # Increased concurrency for extreme load testing
             )
 
             crawl_time = time.time() - crawl_start
             total_time = time.time() - start_time
 
             # Analyze results
-            print("\n" + "="*60)
+            print("\n" + "=" * 60)
             print("📊 CRAWL RESULTS SUMMARY")
-            print("="*60)
+            print("=" * 60)
 
-            sites_crawled = result.get('sites_crawled', 0)
-            total_ingested = result.get('total_articles', 0)
-            total_candidates = result.get('total_ingest_candidates', total_ingested)
-            duplicates = result.get('duplicates_skipped', 0)
-            errors = result.get('ingestion_errors', 0)
+            sites_crawled = result.get("sites_crawled", 0)
+            total_ingested = result.get("total_articles", 0)
+            total_candidates = result.get("total_ingest_candidates", total_ingested)
+            duplicates = result.get("duplicates_skipped", 0)
+            errors = result.get("ingestion_errors", 0)
 
             print(f"⏱️  Total time: {total_time:.1f}s")
             print(f"🚀 Crawl time: {crawl_time:.1f}s")
@@ -189,17 +189,19 @@ async def run_crawl_test():
             if total_ingested > 0:
                 articles_per_second = total_ingested / crawl_time
                 print(f"📈 Performance: {articles_per_second:.2f} articles/second")
-                print(f"⏱️  Average time per article: {crawl_time/total_ingested:.1f}s")
+                print(
+                    f"⏱️  Average time per article: {crawl_time / total_ingested:.1f}s"
+                )
                 print()
 
             # Site-by-site breakdown
             print("📋 SITE-BY-SITE BREAKDOWN:")
             print("-" * 40)
 
-            site_breakdown = result.get('site_breakdown', {})
-            site_candidates = result.get('site_candidate_breakdown', {})
-            site_duplicates = result.get('site_duplicate_breakdown', {})
-            site_errors = result.get('site_error_breakdown', {})
+            site_breakdown = result.get("site_breakdown", {})
+            site_candidates = result.get("site_candidate_breakdown", {})
+            site_duplicates = result.get("site_duplicate_breakdown", {})
+            site_errors = result.get("site_error_breakdown", {})
 
             for site in test_sites:
                 ingested = site_breakdown.get(site, 0)
@@ -213,39 +215,47 @@ async def run_crawl_test():
                     f"duplicates={duplicate_count:2d} errors={error_count:2d}"
                 )
 
-            articles = result.get('articles', []) or []
+            articles = result.get("articles", []) or []
             modal_dismissals = defaultdict(int)
             cookie_consents = defaultdict(int)
             paywall_article_counts = defaultdict(int)
 
             for article in articles:
-                domain = article.get('domain') or article.get('source_name')
+                domain = article.get("domain") or article.get("source_name")
                 if not domain:
                     continue
-                metadata = article.get('extraction_metadata', {}) or {}
-                modal_info = metadata.get('modal_handler', {}) or {}
-                if modal_info.get('modal_detected'):
+                metadata = article.get("extraction_metadata", {}) or {}
+                modal_info = metadata.get("modal_handler", {}) or {}
+                if modal_info.get("modal_detected"):
                     modal_dismissals[domain] += 1
-                cookie_consents[domain] += modal_info.get('consent_cookies', 0)
-                if article.get('paywall_flag'):
+                cookie_consents[domain] += modal_info.get("consent_cookies", 0)
+                if article.get("paywall_flag"):
                     paywall_article_counts[domain] += 1
 
             total_modal_dismissals = sum(modal_dismissals.values())
             total_cookie_consents = sum(cookie_consents.values())
-            modal_dismissals_positive = {site: count for site, count in modal_dismissals.items() if count > 0}
-            cookie_consents_positive = {site: count for site, count in cookie_consents.items() if count > 0}
+            modal_dismissals_positive = {
+                site: count for site, count in modal_dismissals.items() if count > 0
+            }
+            cookie_consents_positive = {
+                site: count for site, count in cookie_consents.items() if count > 0
+            }
 
-            site_paywall_breakdown = result.get('site_paywall_breakdown', {}) or {}
+            site_paywall_breakdown = result.get("site_paywall_breakdown", {}) or {}
             if not site_paywall_breakdown and paywall_article_counts:
                 site_paywall_breakdown = dict(paywall_article_counts)
 
-            aggregated_paywalls = result.get('total_paywalls_detected')
+            aggregated_paywalls = result.get("total_paywalls_detected")
             if aggregated_paywalls is None:
                 aggregated_paywalls = sum(site_paywall_breakdown.values())
             if aggregated_paywalls == 0:
                 aggregated_paywalls = sum(paywall_article_counts.values())
 
-            paywalled_site_list = set(site_paywall_breakdown.keys()) if site_paywall_breakdown else set(paywall_article_counts.keys())
+            paywalled_site_list = (
+                set(site_paywall_breakdown.keys())
+                if site_paywall_breakdown
+                else set(paywall_article_counts.keys())
+            )
             total_paywalled_sites = len(paywalled_site_list)
 
             print()
@@ -258,7 +268,9 @@ async def run_crawl_test():
 
             if site_paywall_breakdown:
                 print("  Paywall encounters by site:")
-                for site, count in sorted(site_paywall_breakdown.items(), key=lambda item: (-item[1], item[0])):
+                for site, count in sorted(
+                    site_paywall_breakdown.items(), key=lambda item: (-item[1], item[0])
+                ):
                     print(f"    {site}: {count}")
             elif paywalled_site_list:
                 print("  Paywalled site list:")
@@ -267,12 +279,18 @@ async def run_crawl_test():
 
             if modal_dismissals_positive:
                 print("  Modal dismissals by site:")
-                for site, count in sorted(modal_dismissals_positive.items(), key=lambda item: (-item[1], item[0])):
+                for site, count in sorted(
+                    modal_dismissals_positive.items(),
+                    key=lambda item: (-item[1], item[0]),
+                ):
                     print(f"    {site}: {count}")
 
             if cookie_consents_positive:
                 print("  Cookie consents by site:")
-                for site, count in sorted(cookie_consents_positive.items(), key=lambda item: (-item[1], item[0])):
+                for site, count in sorted(
+                    cookie_consents_positive.items(),
+                    key=lambda item: (-item[1], item[0]),
+                ):
                     print(f"    {site}: {count}")
 
             print()
@@ -281,10 +299,14 @@ async def run_crawl_test():
 
             # Assess success criteria
             success_criteria = {
-                "Sites with articles": sites_crawled >= 70,  # At least 70% success rate (70/100)
-                "Total articles": total_ingested >= 1000,     # At least 1,000 articles (25% of potential 4,000)
-                "Average per site": total_ingested / sites_crawled >= 10.0 if sites_crawled > 0 else False,
-                "Low error rate": errors / max(total_candidates, 1) < 0.5
+                "Sites with articles": sites_crawled
+                >= 70,  # At least 70% success rate (70/100)
+                "Total articles": total_ingested
+                >= 1000,  # At least 1,000 articles (25% of potential 4,000)
+                "Average per site": total_ingested / sites_crawled >= 10.0
+                if sites_crawled > 0
+                else False,
+                "Low error rate": errors / max(total_candidates, 1) < 0.5,
             }
 
             all_passed = True
@@ -303,7 +325,7 @@ async def run_crawl_test():
                 print("   Some improvements may be needed.")
 
             # Strategy breakdown
-            strategy_breakdown = result.get('strategy_breakdown', {})
+            strategy_breakdown = result.get("strategy_breakdown", {})
             if strategy_breakdown:
                 print()
                 print("🎲 CRAWLING STRATEGIES USED:")
@@ -315,7 +337,9 @@ async def run_crawl_test():
     except Exception as e:
         print(f"❌ Crawl test failed with error: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     asyncio.run(run_crawl_test())

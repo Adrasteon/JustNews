@@ -5,6 +5,7 @@ Provides heuristic claim extraction suitable for the Analyst agent. The
 implementation uses spaCy sentence splitting and simple heuristics to
 identify verifiable claims. This is intentionally conservative for MVP.
 """
+
 from __future__ import annotations
 
 import re
@@ -16,14 +17,17 @@ logger = get_logger(__name__)
 
 try:
     from spacy.lang.en import English as SpacyEnglish
+
     HAS_SPACY = True
 except Exception:  # pragma: no cover - tests may not have spacy
     SpacyEnglish = None
     HAS_SPACY = False
 
 
-CLAIM_PATTERN = re.compile(r"\b(?:is|are|was|were|reported|claims|say|says|said|according to|revealed|announced|shows|found|shows|found|estimate|estimated)\b",
-                           flags=re.IGNORECASE)
+CLAIM_PATTERN = re.compile(
+    r"\b(?:is|are|was|were|reported|claims|say|says|said|according to|revealed|announced|shows|found|shows|found|estimate|estimated)\b",
+    flags=re.IGNORECASE,
+)
 
 
 def _sentences_spacy(text: str) -> list[str]:
@@ -59,31 +63,37 @@ def extract_claims(text: str, max_claims: int = 8) -> list[dict[str, Any]]:
             break
 
         # look for indicative claim words or numeric facts
-        if CLAIM_PATTERN.search(sent) or re.search(r"\d{1,3}(?:,\d{3})*(?:\.|%|\b)", sent):
+        if CLAIM_PATTERN.search(sent) or re.search(
+            r"\d{1,3}(?:,\d{3})*(?:\.|%|\b)", sent
+        ):
             confidence = 0.6
             if re.search(r"\d", sent):
                 confidence = 0.75
             if "according to" in sent.lower() or "reported" in sent.lower():
                 confidence = 0.8
 
-            candidates.append({
-                "claim_text": sent,
-                "start": None,
-                "end": None,
-                "confidence": confidence,
-                "claim_type": "assertion",
-            })
+            candidates.append(
+                {
+                    "claim_text": sent,
+                    "start": None,
+                    "end": None,
+                    "confidence": confidence,
+                    "claim_type": "assertion",
+                }
+            )
 
     # If we found nothing, optionally return the first sentence as a weak claim
     if not candidates and sentences:
         first = sentences[0]
-        candidates.append({
-            "claim_text": first,
-            "start": None,
-            "end": None,
-            "confidence": 0.3,
-            "claim_type": "weak_assertion",
-        })
+        candidates.append(
+            {
+                "claim_text": first,
+                "start": None,
+                "end": None,
+                "confidence": 0.3,
+                "claim_type": "weak_assertion",
+            }
+        )
 
     logger.info(f"Extracted {len(candidates)} claim(s) from text")
     return candidates

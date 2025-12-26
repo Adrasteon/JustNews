@@ -32,6 +32,7 @@ try:
     # transformers is an optional heavy dependency; import pipeline lazily and
     # degrade to None if unavailable so test collection doesn't fail.
     from transformers import pipeline  # type: ignore
+
     TRANSFORMERS_AVAILABLE = True
 except Exception:
     pipeline = None  # type: ignore
@@ -40,13 +41,14 @@ except Exception:
 from common.observability import get_logger
 
 # Suppress transformers warnings in production, but do not suppress during tests.
-if os.environ.get('PYTEST_RUNNING') != '1':
+if os.environ.get("PYTEST_RUNNING") != "1":
     warnings.filterwarnings("ignore", category=FutureWarning)
     warnings.filterwarnings("ignore", category=UserWarning)
 
 # Crawl4AI imports with fallbacks
 try:
     from crawl4ai import AsyncWebCrawler, CrawlResult
+
     CRAWL4AI_AVAILABLE = True
 except ImportError:
     AsyncWebCrawler = None
@@ -55,23 +57,29 @@ except ImportError:
 
 logger = get_logger(__name__)
 
+
 class CrawlMode(Enum):
     """Crawling mode enumeration."""
+
     FAST = "fast"
     STANDARD = "standard"
     DEEP = "deep"
 
+
 class ContentType(Enum):
     """Content type enumeration."""
+
     ARTICLE = "article"
     NEWS = "news"
     BLOG = "blog"
     SOCIAL = "social"
     OTHER = "other"
 
+
 @dataclass
 class CrawlResult:
     """Result container for crawling operations."""
+
     url: str
     content: str
     title: str
@@ -80,18 +88,22 @@ class CrawlResult:
     processing_time: float
     success: bool
 
+
 @dataclass
 class AnalysisResult:
     """Result container for AI analysis operations."""
+
     text: str
     result: Any
     confidence: float
     processing_time: float
     model_used: str
 
+
 @dataclass
 class ScoutConfig:
     """Configuration for Scout Engine."""
+
     # Model configurations
     bert_model: str = "nlptown/bert-base-multilingual-uncased-sentiment"
     deberta_model: str = "microsoft/DialoGPT-medium"
@@ -112,6 +124,7 @@ class ScoutConfig:
     enable_gpu: bool = True
     cache_models: bool = True
     model_cache_dir: str = "./model_cache"
+
 
 class ScoutEngine:
     """
@@ -140,11 +153,11 @@ class ScoutEngine:
 
         # Processing stats
         self.processing_stats = {
-            'total_crawled': 0,
-            'total_analyzed': 0,
-            'success_rate': 0.0,
-            'average_crawl_time': 0.0,
-            'average_analysis_time': 0.0,
+            "total_crawled": 0,
+            "total_analyzed": 0,
+            "success_rate": 0.0,
+            "average_crawl_time": 0.0,
+            "average_analysis_time": 0.0,
         }
 
         # Initialize components
@@ -184,19 +197,19 @@ class ScoutEngine:
             if not TRANSFORMERS_AVAILABLE or pipeline is None:
                 raise RuntimeError("transformers.pipeline unavailable")
 
-            self.pipelines['sentiment'] = pipeline(
+            self.pipelines["sentiment"] = pipeline(
                 "sentiment-analysis",
                 model=self.config.bert_model,
                 tokenizer=self.config.bert_model,
                 device=self.device,
                 return_all_scores=True,
                 truncation=True,
-                max_length=self.config.max_sequence_length
+                max_length=self.config.max_sequence_length,
             )
             logger.info("✅ Sentiment analysis model loaded")
         except Exception as e:
             logger.warning(f"Failed to load sentiment model: {e}")
-            self.pipelines['sentiment'] = None
+            self.pipelines["sentiment"] = None
 
     def _load_bias_model(self):
         """Load bias detection model."""
@@ -204,25 +217,27 @@ class ScoutEngine:
             if not TRANSFORMERS_AVAILABLE or pipeline is None:
                 raise RuntimeError("transformers.pipeline unavailable")
 
-            self.pipelines['bias'] = pipeline(
+            self.pipelines["bias"] = pipeline(
                 "text-classification",
                 model=self.config.roberta_model,
                 tokenizer=self.config.roberta_model,
                 device=self.device,
                 truncation=True,
-                max_length=self.config.max_sequence_length
+                max_length=self.config.max_sequence_length,
             )
             logger.info("✅ Bias detection model loaded")
         except Exception as e:
             logger.warning(f"Failed to load bias model: {e}")
-            self.pipelines['bias'] = None
+            self.pipelines["bias"] = None
 
     def _initialize_fallbacks(self):
         """Initialize fallback processing systems."""
         logger.info("Initializing fallback processing systems...")
         # Simple rule-based fallbacks will be implemented in analysis methods
 
-    async def crawl_url(self, url: str, mode: CrawlMode = CrawlMode.STANDARD) -> CrawlResult:
+    async def crawl_url(
+        self, url: str, mode: CrawlMode = CrawlMode.STANDARD
+    ) -> CrawlResult:
         """
         Crawl a URL and extract content.
 
@@ -250,16 +265,16 @@ class ScoutEngine:
 
             result = CrawlResult(
                 url=url,
-                content=content.get('text', ''),
-                title=content.get('title', ''),
-                links=content.get('links', []),
-                metadata=content.get('metadata', {}),
+                content=content.get("text", ""),
+                title=content.get("title", ""),
+                links=content.get("links", []),
+                metadata=content.get("metadata", {}),
                 processing_time=processing_time,
-                success=True
+                success=True,
             )
 
-            self.processing_stats['total_crawled'] += 1
-            self._update_average_time('crawl', processing_time)
+            self.processing_stats["total_crawled"] += 1
+            self._update_average_time("crawl", processing_time)
 
             logger.info(f"✅ Crawl completed: {processing_time:.2f}s")
             return result
@@ -273,9 +288,9 @@ class ScoutEngine:
                 content="",
                 title="",
                 links=[],
-                metadata={'error': str(e)},
+                metadata={"error": str(e)},
                 processing_time=processing_time,
-                success=False
+                success=False,
             )
 
     async def _crawl_with_crawl4ai(self, url: str, mode: CrawlMode) -> dict[str, Any]:
@@ -283,26 +298,27 @@ class ScoutEngine:
         try:
             async with AsyncWebCrawler() as crawler:
                 config = {
-                    'timeout': self.config.crawl_timeout,
-                    'user_agent': self.config.user_agent
+                    "timeout": self.config.crawl_timeout,
+                    "user_agent": self.config.user_agent,
                 }
 
                 if mode == CrawlMode.DEEP:
-                    config.update({
-                        'max_pages': 10,
-                        'follow_links': True
-                    })
+                    config.update({"max_pages": 10, "follow_links": True})
 
                 result = await crawler.arun(url=url, config=config)
 
                 return {
-                    'text': result.markdown if hasattr(result, 'markdown') else '',
-                    'title': result.title if hasattr(result, 'title') else '',
-                    'links': result.links if hasattr(result, 'links') else [],
-                    'metadata': {
-                        'status_code': result.status_code if hasattr(result, 'status_code') else 200,
-                        'content_type': result.content_type if hasattr(result, 'content_type') else 'text/html'
-                    }
+                    "text": result.markdown if hasattr(result, "markdown") else "",
+                    "title": result.title if hasattr(result, "title") else "",
+                    "links": result.links if hasattr(result, "links") else [],
+                    "metadata": {
+                        "status_code": result.status_code
+                        if hasattr(result, "status_code")
+                        else 200,
+                        "content_type": result.content_type
+                        if hasattr(result, "content_type")
+                        else "text/html",
+                    },
                 }
 
         except Exception as e:
@@ -312,8 +328,10 @@ class ScoutEngine:
     async def _crawl_with_requests(self, url: str) -> dict[str, Any]:
         """Fallback crawling using requests."""
         try:
-            headers = {'User-Agent': self.config.user_agent}
-            response = requests.get(url, headers=headers, timeout=self.config.crawl_timeout)
+            headers = {"User-Agent": self.config.user_agent}
+            response = requests.get(
+                url, headers=headers, timeout=self.config.crawl_timeout
+            )
             response.raise_for_status()
 
             # Simple HTML parsing
@@ -322,55 +340,59 @@ class ScoutEngine:
             links = self._extract_links_from_html(response.text, url)
 
             return {
-                'text': text,
-                'title': title,
-                'links': links,
-                'metadata': {
-                    'status_code': response.status_code,
-                    'content_type': response.headers.get('content-type', 'text/html')
-                }
+                "text": text,
+                "title": title,
+                "links": links,
+                "metadata": {
+                    "status_code": response.status_code,
+                    "content_type": response.headers.get("content-type", "text/html"),
+                },
             }
 
         except Exception as e:
             logger.error(f"Requests fallback failed: {e}")
-            return {
-                'text': '',
-                'title': '',
-                'links': [],
-                'metadata': {'error': str(e)}
-            }
+            return {"text": "", "title": "", "links": [], "metadata": {"error": str(e)}}
 
     def _extract_text_from_html(self, html: str) -> str:
         """Simple HTML text extraction."""
         # Remove scripts and styles
-        html = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
-        html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
+        html = re.sub(
+            r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE
+        )
+        html = re.sub(
+            r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL | re.IGNORECASE
+        )
 
         # Remove HTML tags
-        text = re.sub(r'<[^>]+>', '', html)
+        text = re.sub(r"<[^>]+>", "", html)
 
         # Clean up whitespace
-        text = re.sub(r'\s+', ' ', text).strip()
+        text = re.sub(r"\s+", " ", text).strip()
 
         return text
 
     def _extract_title_from_html(self, html: str) -> str:
         """Extract title from HTML."""
-        title_match = re.search(r'<title[^>]*>(.*?)</title>', html, re.IGNORECASE | re.DOTALL)
+        title_match = re.search(
+            r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL
+        )
         return title_match.group(1).strip() if title_match else ""
 
     def _extract_links_from_html(self, html: str, base_url: str) -> list[str]:
         """Extract links from HTML."""
         links = []
-        link_pattern = re.compile(r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>', re.IGNORECASE)
+        link_pattern = re.compile(
+            r'<a[^>]+href=["\']([^"\']+)["\'][^>]*>', re.IGNORECASE
+        )
 
         for match in link_pattern.finditer(html):
             link = match.group(1)
             # Convert relative URLs to absolute
-            if link.startswith('/'):
+            if link.startswith("/"):
                 from urllib.parse import urljoin
+
                 link = urljoin(base_url, link)
-            elif not link.startswith(('http://', 'https://')):
+            elif not link.startswith(("http://", "https://")):
                 link = urljoin(base_url, link)
 
             if link not in links:
@@ -381,12 +403,14 @@ class ScoutEngine:
     def _is_valid_url(self, url: str) -> bool:
         """Validate URL format."""
         url_pattern = re.compile(
-            r'^https?://'  # http:// or https://
-            r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'  # domain...
-            r'localhost|'  # localhost...
-            r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
-            r'(?::\d+)?'  # optional port
-            r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+            r"^https?://"  # http:// or https://
+            r"(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|"  # domain...
+            r"localhost|"  # localhost...
+            r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"  # ...or ip
+            r"(?::\d+)?"  # optional port
+            r"(?:/?|[/?]\S+)$",
+            re.IGNORECASE,
+        )
 
         return url_pattern.match(url) is not None
 
@@ -407,18 +431,18 @@ class ScoutEngine:
             if not text or not text.strip():
                 raise ValueError("Empty text provided")
 
-            if self.pipelines.get('sentiment'):
+            if self.pipelines.get("sentiment"):
                 # Use transformer pipeline
-                results = self.pipelines['sentiment'](text)
+                results = self.pipelines["sentiment"](text)
 
                 # Process results
                 if isinstance(results[0], list):
                     results = results[0]
 
                 # Find highest confidence result
-                best_result = max(results, key=lambda x: x['score'])
-                sentiment = best_result['label']
-                confidence = best_result['score']
+                best_result = max(results, key=lambda x: x["score"])
+                sentiment = best_result["label"]
+                confidence = best_result["score"]
 
                 # Normalize sentiment labels
                 sentiment = self._normalize_sentiment_label(sentiment)
@@ -434,13 +458,17 @@ class ScoutEngine:
                 result=sentiment,
                 confidence=confidence,
                 processing_time=processing_time,
-                model_used=self.config.bert_model if self.pipelines.get('sentiment') else 'fallback'
+                model_used=self.config.bert_model
+                if self.pipelines.get("sentiment")
+                else "fallback",
             )
 
-            self.processing_stats['total_analyzed'] += 1
-            self._update_average_time('analysis', processing_time)
+            self.processing_stats["total_analyzed"] += 1
+            self._update_average_time("analysis", processing_time)
 
-            logger.info(f"✅ Sentiment analysis completed: {sentiment} ({confidence:.2f})")
+            logger.info(
+                f"✅ Sentiment analysis completed: {sentiment} ({confidence:.2f})"
+            )
             return result
 
         except Exception as e:
@@ -452,24 +480,43 @@ class ScoutEngine:
                 result="neutral",
                 confidence=0.0,
                 processing_time=processing_time,
-                model_used="error"
+                model_used="error",
             )
 
     def _normalize_sentiment_label(self, label: str) -> str:
         """Normalize sentiment labels to standard format."""
         label = label.lower()
 
-        if 'positive' in label or 'pos' in label or '4' in label or '5' in label:
+        if "positive" in label or "pos" in label or "4" in label or "5" in label:
             return "positive"
-        elif 'negative' in label or 'neg' in label or '1' in label or '2' in label:
+        elif "negative" in label or "neg" in label or "1" in label or "2" in label:
             return "negative"
         else:
             return "neutral"
 
     def _fallback_sentiment_analysis(self, text: str) -> tuple[str, float]:
         """Simple rule-based sentiment analysis fallback."""
-        positive_words = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic', 'love', 'like', 'best']
-        negative_words = ['bad', 'terrible', 'awful', 'horrible', 'hate', 'worst', 'disappointing', 'poor']
+        positive_words = [
+            "good",
+            "great",
+            "excellent",
+            "amazing",
+            "wonderful",
+            "fantastic",
+            "love",
+            "like",
+            "best",
+        ]
+        negative_words = [
+            "bad",
+            "terrible",
+            "awful",
+            "horrible",
+            "hate",
+            "worst",
+            "disappointing",
+            "poor",
+        ]
 
         text_lower = text.lower()
         positive_count = sum(1 for word in positive_words if word in text_lower)
@@ -499,14 +546,18 @@ class ScoutEngine:
             if not text or not text.strip():
                 raise ValueError("Empty text provided")
 
-            if self.pipelines.get('bias'):
+            if self.pipelines.get("bias"):
                 # Use transformer pipeline
-                results = self.pipelines['bias'](text)
+                results = self.pipelines["bias"](text)
 
                 # Process results - bias detection typically gives confidence scores
                 if isinstance(results, list) and results:
                     result = results[0]
-                    bias_score = 1.0 - result['score'] if result['label'].lower() == 'neutral' else result['score']
+                    bias_score = (
+                        1.0 - result["score"]
+                        if result["label"].lower() == "neutral"
+                        else result["score"]
+                    )
                     bias_type = "political" if bias_score > 0.7 else "minimal"
                 else:
                     bias_score = 0.5
@@ -523,11 +574,13 @@ class ScoutEngine:
                 result={"bias_score": bias_score, "bias_type": bias_type},
                 confidence=bias_score,
                 processing_time=processing_time,
-                model_used=self.config.roberta_model if self.pipelines.get('bias') else 'fallback'
+                model_used=self.config.roberta_model
+                if self.pipelines.get("bias")
+                else "fallback",
             )
 
-            self.processing_stats['total_analyzed'] += 1
-            self._update_average_time('analysis', processing_time)
+            self.processing_stats["total_analyzed"] += 1
+            self._update_average_time("analysis", processing_time)
 
             logger.info(f"✅ Bias detection completed: {bias_type} ({bias_score:.2f})")
             return result
@@ -541,14 +594,22 @@ class ScoutEngine:
                 result={"bias_score": 0.0, "bias_type": "unknown"},
                 confidence=0.0,
                 processing_time=processing_time,
-                model_used="error"
+                model_used="error",
             )
 
     def _fallback_bias_detection(self, text: str) -> tuple[float, str]:
         """Simple rule-based bias detection fallback."""
         bias_indicators = [
-            'fake news', 'liberal', 'conservative', 'left-wing', 'right-wing',
-            'propaganda', 'biased', 'agenda', 'spin', 'manipulated'
+            "fake news",
+            "liberal",
+            "conservative",
+            "left-wing",
+            "right-wing",
+            "propaganda",
+            "biased",
+            "agenda",
+            "spin",
+            "manipulated",
         ]
 
         text_lower = text.lower()
@@ -561,7 +622,9 @@ class ScoutEngine:
         else:
             return 0.2, "minimal_bias"
 
-    async def discover_sources(self, domains: list[str] | None = None, max_sources: int = 10) -> list[dict[str, Any]]:
+    async def discover_sources(
+        self, domains: list[str] | None = None, max_sources: int = 10
+    ) -> list[dict[str, Any]]:
         """
         Discover news sources using intelligent algorithms.
 
@@ -572,7 +635,9 @@ class ScoutEngine:
         Returns:
             List of discovered sources
         """
-        logger.info(f"🔍 Discovering sources: domains={domains}, max_sources={max_sources}")
+        logger.info(
+            f"🔍 Discovering sources: domains={domains}, max_sources={max_sources}"
+        )
 
         sources = []
 
@@ -580,8 +645,13 @@ class ScoutEngine:
             # Use predefined news domains if none specified
             if not domains:
                 domains = [
-                    "bbc.com", "cnn.com", "reuters.com", "apnews.com",
-                    "nytimes.com", "washingtonpost.com", "theguardian.com"
+                    "bbc.com",
+                    "cnn.com",
+                    "reuters.com",
+                    "apnews.com",
+                    "nytimes.com",
+                    "washingtonpost.com",
+                    "theguardian.com",
                 ]
 
             # Crawl each domain for sources
@@ -595,9 +665,11 @@ class ScoutEngine:
                             "domain": domain,
                             "url": url,
                             "title": crawl_result.title,
-                            "content_preview": crawl_result.content[:200] + "..." if len(crawl_result.content) > 200 else crawl_result.content,
+                            "content_preview": crawl_result.content[:200] + "..."
+                            if len(crawl_result.content) > 200
+                            else crawl_result.content,
                             "links_found": len(crawl_result.links),
-                            "discovered_at": datetime.now(UTC).isoformat()
+                            "discovered_at": datetime.now(UTC).isoformat(),
                         }
                         sources.append(source_info)
 
@@ -612,7 +684,9 @@ class ScoutEngine:
             logger.error(f"❌ Source discovery failed: {e}")
             return []
 
-    async def deep_crawl_site(self, site_url: str, max_pages: int = 50) -> dict[str, Any]:
+    async def deep_crawl_site(
+        self, site_url: str, max_pages: int = 50
+    ) -> dict[str, Any]:
         """
         Perform deep crawling of a website.
 
@@ -648,16 +722,18 @@ class ScoutEngine:
                             "url": current_url,
                             "title": crawl_result.title,
                             "content_length": len(crawl_result.content),
-                            "links_found": len(crawl_result.links)
+                            "links_found": len(crawl_result.links),
                         }
                         crawled_pages.append(page_info)
                         pages_crawled += 1
 
                         # Add new internal links to visit queue
                         for link in crawl_result.links:
-                            if (link not in visited_urls and
-                                link.startswith(site_url) and
-                                len(to_visit) < max_pages * 2):  # Limit queue size
+                            if (
+                                link not in visited_urls
+                                and link.startswith(site_url)
+                                and len(to_visit) < max_pages * 2
+                            ):  # Limit queue size
                                 to_visit.append(link)
 
                 except Exception as e:
@@ -669,7 +745,7 @@ class ScoutEngine:
                 "pages_crawled": pages_crawled,
                 "total_urls_visited": len(visited_urls),
                 "articles_found": crawled_pages,
-                "success": True
+                "success": True,
             }
 
             logger.info(f"✅ Deep crawl completed: {pages_crawled} pages")
@@ -682,36 +758,42 @@ class ScoutEngine:
                 "pages_crawled": 0,
                 "articles_found": [],
                 "success": False,
-                "error": str(e)
+                "error": str(e),
             }
 
     def _update_average_time(self, operation: str, processing_time: float):
         """Update average processing time statistics."""
-        if operation == 'crawl':
-            key = 'average_crawl_time'
-        elif operation == 'analysis':
-            key = 'average_analysis_time'
+        if operation == "crawl":
+            key = "average_crawl_time"
+        elif operation == "analysis":
+            key = "average_analysis_time"
         else:
             return
 
         current_avg = self.processing_stats[key]
-        total_count = self.processing_stats['total_crawled'] if operation == 'crawl' else self.processing_stats['total_analyzed']
+        total_count = (
+            self.processing_stats["total_crawled"]
+            if operation == "crawl"
+            else self.processing_stats["total_analyzed"]
+        )
 
         if total_count > 0:
-            self.processing_stats[key] = (current_avg * (total_count - 1) + processing_time) / total_count
+            self.processing_stats[key] = (
+                current_avg * (total_count - 1) + processing_time
+            ) / total_count
 
     def get_model_info(self) -> dict[str, Any]:
         """Get information about loaded models."""
         return {
-            'sentiment_model': {
-                'loaded': self.pipelines.get('sentiment') is not None,
-                'model_name': self.config.bert_model
+            "sentiment_model": {
+                "loaded": self.pipelines.get("sentiment") is not None,
+                "model_name": self.config.bert_model,
             },
-            'bias_model': {
-                'loaded': self.pipelines.get('bias') is not None,
-                'model_name': self.config.roberta_model
+            "bias_model": {
+                "loaded": self.pipelines.get("bias") is not None,
+                "model_name": self.config.roberta_model,
             },
-            'crawl4ai_available': CRAWL4AI_AVAILABLE
+            "crawl4ai_available": CRAWL4AI_AVAILABLE,
         }
 
     def get_processing_stats(self) -> dict[str, Any]:
@@ -737,12 +819,13 @@ class ScoutEngine:
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
 
+
 # Export main components
 __all__ = [
-    'ScoutEngine',
-    'ScoutConfig',
-    'CrawlMode',
-    'ContentType',
-    'CrawlResult',
-    'AnalysisResult'
+    "ScoutEngine",
+    "ScoutConfig",
+    "CrawlMode",
+    "ContentType",
+    "CrawlResult",
+    "AnalysisResult",
 ]

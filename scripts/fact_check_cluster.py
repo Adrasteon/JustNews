@@ -31,7 +31,7 @@ def fact_check_cluster(
     texts: list[str],
     article_ids: list[str] | None = None,
     cluster_id: str | None = None,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> dict:
     """
     Run fact-checking on a cluster via Analyst integration.
@@ -53,7 +53,7 @@ def fact_check_cluster(
         texts=texts,
         article_ids=article_ids,
         cluster_id=cluster_id,
-        enable_fact_check=True
+        enable_fact_check=True,
     )
 
     return report
@@ -61,9 +61,9 @@ def fact_check_cluster(
 
 def display_results(report: dict, verbose: bool = False):
     """Display fact-check results in human-readable format."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("FACT-CHECK RESULTS")
-    print("="*80)
+    print("=" * 80)
 
     if "error" in report:
         print(f"\n❌ Error: {report['error']}")
@@ -78,9 +78,9 @@ def display_results(report: dict, verbose: bool = False):
     print(f"Articles Analyzed: {articles_count}")
 
     if summary:
-        print("\n" + "-"*80)
+        print("\n" + "-" * 80)
         print("CLUSTER SUMMARY")
-        print("-"*80)
+        print("-" * 80)
         print(f"Total Checked: {summary.get('total_articles_checked', 0)}")
         print(f"Passed: {summary.get('passed_count', 0)}")
         print(f"Failed: {summary.get('failed_count', 0)}")
@@ -95,9 +95,9 @@ def display_results(report: dict, verbose: bool = False):
     # Per-article results
     source_fact_checks = report.get("source_fact_checks", [])
     if source_fact_checks:
-        print("\n" + "-"*80)
+        print("\n" + "-" * 80)
         print("PER-ARTICLE FACT-CHECK RESULTS")
-        print("-"*80)
+        print("-" * 80)
 
         for i, sfc in enumerate(source_fact_checks, 1):
             article_id = sfc.get("article_id", "unknown")
@@ -110,7 +110,7 @@ def display_results(report: dict, verbose: bool = False):
                 "passed": "✅",
                 "failed": "❌",
                 "needs_review": "⚠️",
-                "pending": "⏳"
+                "pending": "⏳",
             }.get(status, "❓")
 
             print(f"\n{i}. Article: {article_id}")
@@ -124,9 +124,13 @@ def display_results(report: dict, verbose: bool = False):
             if claim_verdicts:
                 print(f"   Claims Verified: {len(claim_verdicts)}")
                 if verbose:
-                    for j, cv in enumerate(claim_verdicts[:5], 1):  # Show first 5 claims
-                        print(f"      {j}. \"{cv.get('claim_text', '')[:60]}...\"")
-                        print(f"         Verdict: {cv.get('verdict')} (confidence: {cv.get('confidence', 0.0):.2f})")
+                    for j, cv in enumerate(
+                        claim_verdicts[:5], 1
+                    ):  # Show first 5 claims
+                        print(f'      {j}. "{cv.get("claim_text", "")[:60]}..."')
+                        print(
+                            f"         Verdict: {cv.get('verdict')} (confidence: {cv.get('confidence', 0.0):.2f})"
+                        )
 
             # Detailed trace (verbose mode)
             if verbose:
@@ -137,14 +141,20 @@ def display_results(report: dict, verbose: bool = False):
 
                     fact_verification = trace.get("fact_verification", {})
                     if fact_verification:
-                        print(f"      Verification Score: {fact_verification.get('verification_score', 0.0):.3f}")
-                        print(f"      Classification: {fact_verification.get('classification', 'unknown')}")
+                        print(
+                            f"      Verification Score: {fact_verification.get('verification_score', 0.0):.3f}"
+                        )
+                        print(
+                            f"      Classification: {fact_verification.get('classification', 'unknown')}"
+                        )
 
                     contradictions = trace.get("contradictions", {})
                     if contradictions and contradictions.get("contradictions_found"):
-                        print(f"      ⚠️  Contradictions Found: {contradictions.get('count', 0)}")
+                        print(
+                            f"      ⚠️  Contradictions Found: {contradictions.get('count', 0)}"
+                        )
 
-    print("\n" + "="*80 + "\n")
+    print("\n" + "=" * 80 + "\n")
 
 
 def main():
@@ -169,33 +179,20 @@ def main():
         ),
     )
 
-    parser.add_argument(
-        "--texts",
-        nargs="+",
-        help="Article texts to fact-check"
-    )
+    parser.add_argument("--texts", nargs="+", help="Article texts to fact-check")
     parser.add_argument(
         "--article-ids",
         nargs="+",
-        help="Article IDs (optional, must match --texts count)"
+        help="Article IDs (optional, must match --texts count)",
     )
-    parser.add_argument(
-        "--cluster-id",
-        type=str,
-        help="Cluster ID for grouping"
-    )
+    parser.add_argument("--cluster-id", type=str, help="Cluster ID for grouping")
     parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
-        help="Show detailed fact-check trace output"
+        help="Show detailed fact-check trace output",
     )
-    parser.add_argument(
-        "--output",
-        "-o",
-        type=str,
-        help="Save results to JSON file"
-    )
+    parser.add_argument("--output", "-o", type=str, help="Save results to JSON file")
 
     args = parser.parse_args()
 
@@ -212,7 +209,7 @@ def main():
             texts=args.texts,
             article_ids=args.article_ids,
             cluster_id=args.cluster_id,
-            verbose=args.verbose
+            verbose=args.verbose,
         )
 
         # Display results

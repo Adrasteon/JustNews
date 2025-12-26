@@ -25,8 +25,10 @@ from common.observability import get_logger
 
 logger = get_logger(__name__)
 
+
 class DataType(Enum):
     """Types of data subject to retention policies"""
+
     USER_AUTH = "user_auth"
     USER_SESSIONS = "user_sessions"
     ARTICLE_CONTENT = "article_content"
@@ -36,16 +38,20 @@ class DataType(Enum):
     AUDIT_LOGS = "audit_logs"
     EXTERNAL_LINKS = "external_links"
 
+
 class RetentionAction(Enum):
     """Actions to take when retention period expires"""
+
     DELETE = "delete"
     ANONYMIZE = "anonymize"
     ARCHIVE = "archive"
     REVIEW = "review"
 
+
 @dataclass
 class RetentionPolicy:
     """Data retention policy configuration"""
+
     data_type: DataType
     retention_days: int
     action: RetentionAction
@@ -57,20 +63,21 @@ class RetentionPolicy:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for storage"""
         data = asdict(self)
-        data['data_type'] = self.data_type.value
-        data['action'] = self.action.value
+        data["data_type"] = self.data_type.value
+        data["action"] = self.action.value
         if self.last_cleanup:
-            data['last_cleanup'] = self.last_cleanup.isoformat()
+            data["last_cleanup"] = self.last_cleanup.isoformat()
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'RetentionPolicy':
+    def from_dict(cls, data: dict[str, Any]) -> "RetentionPolicy":
         """Create from dictionary"""
-        data['data_type'] = DataType(data['data_type'])
-        data['action'] = RetentionAction(data['action'])
-        if data.get('last_cleanup'):
-            data['last_cleanup'] = datetime.fromisoformat(data['last_cleanup'])
+        data["data_type"] = DataType(data["data_type"])
+        data["action"] = RetentionAction(data["action"])
+        if data.get("last_cleanup"):
+            data["last_cleanup"] = datetime.fromisoformat(data["last_cleanup"])
         return cls(**data)
+
 
 class DataRetentionManager:
     """
@@ -89,50 +96,50 @@ class DataRetentionManager:
                 data_type=DataType.USER_AUTH,
                 retention_days=2555,  # 7 years for user account data
                 action=RetentionAction.REVIEW,
-                description="User authentication data retention"
+                description="User authentication data retention",
             ),
             DataType.USER_SESSIONS: RetentionPolicy(
                 data_type=DataType.USER_SESSIONS,
                 retention_days=365,  # 1 year for session data
                 action=RetentionAction.DELETE,
-                description="User session data retention"
+                description="User session data retention",
             ),
             DataType.ARTICLE_CONTENT: RetentionPolicy(
                 data_type=DataType.ARTICLE_CONTENT,
                 retention_days=1825,  # 5 years for article content
                 action=RetentionAction.ARCHIVE,
-                description="Archived article content retention"
+                description="Archived article content retention",
             ),
             DataType.ARTICLE_METADATA: RetentionPolicy(
                 data_type=DataType.ARTICLE_METADATA,
                 retention_days=2555,  # 7 years for metadata
                 action=RetentionAction.REVIEW,
-                description="Article metadata retention"
+                description="Article metadata retention",
             ),
             DataType.ENTITY_DATA: RetentionPolicy(
                 data_type=DataType.ENTITY_DATA,
                 retention_days=1825,  # 5 years for extracted entities
                 action=RetentionAction.ANONYMIZE,
-                description="Entity extraction data retention"
+                description="Entity extraction data retention",
             ),
             DataType.KNOWLEDGE_GRAPH: RetentionPolicy(
                 data_type=DataType.KNOWLEDGE_GRAPH,
                 retention_days=1825,  # 5 years for KG relationships
                 action=RetentionAction.ANONYMIZE,
-                description="Knowledge graph data retention"
+                description="Knowledge graph data retention",
             ),
             DataType.AUDIT_LOGS: RetentionPolicy(
                 data_type=DataType.AUDIT_LOGS,
                 retention_days=2555,  # 7 years for audit logs
                 action=RetentionAction.ARCHIVE,
-                description="Audit log retention"
+                description="Audit log retention",
             ),
             DataType.EXTERNAL_LINKS: RetentionPolicy(
                 data_type=DataType.EXTERNAL_LINKS,
                 retention_days=1095,  # 3 years for external links
                 action=RetentionAction.DELETE,
-                description="External knowledge base links retention"
-            )
+                description="External knowledge base links retention",
+            ),
         }
 
         # Load or create policies
@@ -144,7 +151,7 @@ class DataRetentionManager:
         """Load retention policies from config file"""
         if self.config_path.exists():
             try:
-                with open(self.config_path, encoding='utf-8') as f:
+                with open(self.config_path, encoding="utf-8") as f:
                     data = json.load(f)
                     policies = {}
                     for _key, policy_data in data.items():
@@ -164,7 +171,7 @@ class DataRetentionManager:
             for data_type, policy in self.policies.items():
                 data[data_type.value] = policy.to_dict()
 
-            with open(self.config_path, 'w', encoding='utf-8') as f:
+            with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
 
             logger.debug("💾 Retention policies saved")
@@ -175,15 +182,20 @@ class DataRetentionManager:
         """Get retention policy for a data type"""
         return self.policies.get(data_type, self.default_policies.get(data_type))
 
-    def update_policy(self, data_type: DataType, retention_days: int,
-                     action: RetentionAction, description: str = ""):
+    def update_policy(
+        self,
+        data_type: DataType,
+        retention_days: int,
+        action: RetentionAction,
+        description: str = "",
+    ):
         """Update retention policy for a data type"""
         if data_type not in self.policies:
             self.policies[data_type] = RetentionPolicy(
                 data_type=data_type,
                 retention_days=retention_days,
                 action=action,
-                description=description
+                description=description,
             )
         else:
             policy = self.policies[data_type]
@@ -200,8 +212,9 @@ class DataRetentionManager:
         policy = self.get_policy(data_type)
         return datetime.now() - timedelta(days=policy.retention_days)
 
-    async def cleanup_expired_data(self, data_type: DataType,
-                                  data_access_func, dry_run: bool = False) -> dict[str, Any]:
+    async def cleanup_expired_data(
+        self, data_type: DataType, data_access_func, dry_run: bool = False
+    ) -> dict[str, Any]:
         """
         Clean up expired data according to retention policy
 
@@ -218,11 +231,15 @@ class DataRetentionManager:
             return {"skipped": True, "reason": "Policy disabled"}
 
         cutoff_date = self.get_expired_data_cutoff(data_type)
-        logger.info(f"🧹 Starting cleanup for {data_type.value} (cutoff: {cutoff_date.isoformat()})")
+        logger.info(
+            f"🧹 Starting cleanup for {data_type.value} (cutoff: {cutoff_date.isoformat()})"
+        )
 
         try:
             # Get expired data
-            expired_data = await data_access_func.get_expired_data(data_type, cutoff_date)
+            expired_data = await data_access_func.get_expired_data(
+                data_type, cutoff_date
+            )
 
             if not expired_data:
                 logger.info(f"✅ No expired data found for {data_type.value}")
@@ -230,11 +247,13 @@ class DataRetentionManager:
                     "data_type": data_type.value,
                     "expired_records": 0,
                     "action_taken": "none",
-                    "dry_run": dry_run
+                    "dry_run": dry_run,
                 }
 
             records_count = len(expired_data)
-            logger.info(f"📊 Found {records_count} expired records for {data_type.value}")
+            logger.info(
+                f"📊 Found {records_count} expired records for {data_type.value}"
+            )
 
             if dry_run:
                 return {
@@ -242,18 +261,24 @@ class DataRetentionManager:
                     "expired_records": records_count,
                     "action_taken": "none",
                     "dry_run": True,
-                    "expired_data_preview": expired_data[:5]  # Show first 5 for review
+                    "expired_data_preview": expired_data[:5],  # Show first 5 for review
                 }
 
             # Perform cleanup action
             if policy.action == RetentionAction.DELETE:
-                result = await data_access_func.delete_expired_data(data_type, expired_data)
+                result = await data_access_func.delete_expired_data(
+                    data_type, expired_data
+                )
                 action_description = "deleted"
             elif policy.action == RetentionAction.ANONYMIZE:
-                result = await data_access_func.anonymize_expired_data(data_type, expired_data)
+                result = await data_access_func.anonymize_expired_data(
+                    data_type, expired_data
+                )
                 action_description = "anonymized"
             elif policy.action == RetentionAction.ARCHIVE:
-                result = await data_access_func.archive_expired_data(data_type, expired_data)
+                result = await data_access_func.archive_expired_data(
+                    data_type, expired_data
+                )
                 action_description = "archived"
             elif policy.action == RetentionAction.REVIEW:
                 result = await data_access_func.flag_for_review(data_type, expired_data)
@@ -274,10 +299,12 @@ class DataRetentionManager:
                 "cutoff_date": cutoff_date.isoformat(),
                 "cleanup_timestamp": policy.last_cleanup.isoformat(),
                 "dry_run": False,
-                "result": result
+                "result": result,
             }
 
-            logger.info(f"✅ Cleanup complete for {data_type.value}: {action_description} {records_count} records")
+            logger.info(
+                f"✅ Cleanup complete for {data_type.value}: {action_description} {records_count} records"
+            )
             return summary
 
         except Exception as e:
@@ -286,11 +313,12 @@ class DataRetentionManager:
                 "data_type": data_type.value,
                 "error": str(e),
                 "expired_records": 0,
-                "action_taken": "error"
+                "action_taken": "error",
             }
 
-    async def run_full_cleanup(self, data_access_funcs: dict[DataType, Any],
-                              dry_run: bool = False) -> dict[str, Any]:
+    async def run_full_cleanup(
+        self, data_access_funcs: dict[DataType, Any], dry_run: bool = False
+    ) -> dict[str, Any]:
         """
         Run cleanup for all enabled data types
 
@@ -319,11 +347,13 @@ class DataRetentionManager:
             "total_data_types_processed": len(results),
             "total_records_processed": total_processed,
             "dry_run": dry_run,
-            "results": results
+            "results": results,
         }
 
         logger.info("✅ Full cleanup complete!")
-        logger.info(f"📊 Processed {total_processed} records across {len(results)} data types")
+        logger.info(
+            f"📊 Processed {total_processed} records across {len(results)} data types"
+        )
 
         return summary
 
@@ -336,8 +366,10 @@ class DataRetentionManager:
             "summary": {
                 "total_policies": len(self.policies),
                 "enabled_policies": sum(1 for p in self.policies.values() if p.enabled),
-                "total_records_processed": sum(p.records_processed for p in self.policies.values())
-            }
+                "total_records_processed": sum(
+                    p.records_processed for p in self.policies.values()
+                ),
+            },
         }
 
         for data_type, policy in self.policies.items():
@@ -346,11 +378,14 @@ class DataRetentionManager:
                 "action": policy.action.value,
                 "enabled": policy.enabled,
                 "description": policy.description,
-                "last_cleanup": policy.last_cleanup.isoformat() if policy.last_cleanup else None,
-                "records_processed": policy.records_processed
+                "last_cleanup": policy.last_cleanup.isoformat()
+                if policy.last_cleanup
+                else None,
+                "records_processed": policy.records_processed,
             }
 
         return report
+
 
 # Example data access functions for different data types
 class UserDataAccess:
@@ -359,7 +394,9 @@ class UserDataAccess:
     def __init__(self, db_connection):
         self.db = db_connection
 
-    async def get_expired_data(self, data_type: DataType, cutoff_date: datetime) -> list[dict[str, Any]]:
+    async def get_expired_data(
+        self, data_type: DataType, cutoff_date: datetime
+    ) -> list[dict[str, Any]]:
         """Get expired user data"""
         if data_type == DataType.USER_SESSIONS:
             # Query for expired sessions
@@ -369,25 +406,34 @@ class UserDataAccess:
             return []  # Placeholder
         return []
 
-    async def delete_expired_data(self, data_type: DataType, expired_data: list[dict[str, Any]]) -> dict[str, Any]:
+    async def delete_expired_data(
+        self, data_type: DataType, expired_data: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Delete expired user data"""
         # Implementation would delete from database
         return {"deleted": len(expired_data)}
 
-    async def anonymize_expired_data(self, data_type: DataType, expired_data: list[dict[str, Any]]) -> dict[str, Any]:
+    async def anonymize_expired_data(
+        self, data_type: DataType, expired_data: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Anonymize expired user data"""
         # Implementation would hash/anonymize personal data
         return {"anonymized": len(expired_data)}
 
-    async def archive_expired_data(self, data_type: DataType, expired_data: list[dict[str, Any]]) -> dict[str, Any]:
+    async def archive_expired_data(
+        self, data_type: DataType, expired_data: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Archive expired user data"""
         # Implementation would move to archive storage
         return {"archived": len(expired_data)}
 
-    async def flag_for_review(self, data_type: DataType, expired_data: list[dict[str, Any]]) -> dict[str, Any]:
+    async def flag_for_review(
+        self, data_type: DataType, expired_data: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Flag expired data for manual review"""
         # Implementation would mark for review
         return {"flagged": len(expired_data)}
+
 
 async def demo_data_retention():
     """Demonstrate data retention policy management"""
@@ -426,6 +472,7 @@ async def demo_data_retention():
     print("   2. Set up automated cleanup scheduling")
     print("   3. Add compliance dashboard")
     print("   4. Implement audit logging")
+
 
 if __name__ == "__main__":
     asyncio.run(demo_data_retention())

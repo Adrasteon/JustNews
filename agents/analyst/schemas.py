@@ -3,6 +3,7 @@ Analyst Schemas - Output datatypes for Analyst agent
 
 Defines minimal dataclasses used for AnalysisReport and Claim objects.
 """
+
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -11,6 +12,7 @@ from typing import Any
 @dataclass
 class ClaimVerdict:
     """Verdict for a single claim from fact-checker."""
+
     claim_text: str
     verdict: str  # 'verified', 'questionable', 'false', 'unverifiable'
     confidence: float
@@ -26,6 +28,7 @@ class ClaimVerdict:
 @dataclass
 class SourceFactCheck:
     """Per-article fact-check result."""
+
     article_id: str
     fact_check_status: str  # 'passed', 'failed', 'needs_review', 'pending'
     overall_score: float
@@ -41,7 +44,9 @@ class SourceFactCheck:
             "fact_check_status": self.fact_check_status,
             "overall_score": float(self.overall_score),
             "claim_verdicts": [cv.to_dict() for cv in (self.claim_verdicts or [])],
-            "credibility_score": float(self.credibility_score) if self.credibility_score else None,
+            "credibility_score": float(self.credibility_score)
+            if self.credibility_score
+            else None,
             "source_url": self.source_url,
             "processed_at": self.processed_at,
             "fact_check_trace": self.fact_check_trace,
@@ -81,7 +86,9 @@ class PerArticleAnalysis:
             "bias": self.bias,
             "entities": self.entities,
             "claims": [c.to_dict() for c in self.claims or []],
-            "source_fact_check": self.source_fact_check.to_dict() if self.source_fact_check else None,
+            "source_fact_check": self.source_fact_check.to_dict()
+            if self.source_fact_check
+            else None,
             "processing_time_seconds": self.processing_time_seconds,
         }
 
@@ -110,7 +117,9 @@ class AnalysisReport:
             "entities": self.entities or [],
             "primary_claims": [c.to_dict() for c in (self.primary_claims or [])],
             "per_article": [p.to_dict() for p in (self.per_article or [])],
-            "source_fact_checks": [sfc.to_dict() for sfc in (self.source_fact_checks or [])],
+            "source_fact_checks": [
+                sfc.to_dict() for sfc in (self.source_fact_checks or [])
+            ],
             "cluster_fact_check_summary": self.cluster_fact_check_summary,
             "generated_at": self.generated_at,
         }

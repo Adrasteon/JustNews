@@ -9,6 +9,7 @@ This implementation is intentionally simple to keep test coverage small
 and understandable. Production implementations should implement robust
 XCLAIM/XAUTOCLAIM handling, idempotency guarantees, timeouts and retries.
 """
+
 from __future__ import annotations
 
 import json
@@ -18,20 +19,30 @@ from typing import Any
 
 
 class Worker:
-    def __init__(self, engine, redis_client=None, group='cg:inference', consumer='worker-1', agent_name: str = 'worker'):
+    def __init__(
+        self,
+        engine,
+        redis_client=None,
+        group="cg:inference",
+        consumer="worker-1",
+        agent_name: str = "worker",
+    ):
         self.engine = engine
-        self.redis = redis_client or getattr(engine, 'redis_client', None)
+        self.redis = redis_client or getattr(engine, "redis_client", None)
         self.group = group
         self.consumer = consumer
         self.agent_name = agent_name
-        self.stream = os.environ.get('ORCH_STREAM_PREFIX', 'stream:orchestrator:') + 'inference_jobs'
+        self.stream = (
+            os.environ.get("ORCH_STREAM_PREFIX", "stream:orchestrator:")
+            + "inference_jobs"
+        )
 
     def _decode_field(self, v: Any):
         if v is None:
             return None
         if isinstance(v, bytes):
             try:
-                return v.decode('utf-8')
+                return v.decode("utf-8")
             except Exception:
                 return v
         return v
@@ -50,14 +61,16 @@ class Worker:
         entries = []
         try:
             # Prefer xreadgroup if available
-            if hasattr(self.redis, 'xreadgroup'):
-                msgs = self.redis.xreadgroup(self.group, self.consumer, {self.stream: '>'}, count=1, block=100)
+            if hasattr(self.redis, "xreadgroup"):
+                msgs = self.redis.xreadgroup(
+                    self.group, self.consumer, {self.stream: ">"}, count=1, block=100
+                )
                 for _stream, pairs in msgs:
                     for mid, fields in pairs:
                         entries.append((mid, fields))
             else:
                 # fallback to xrange to get available messages
-                pairs = self.redis.xrange(self.stream, '-', '+')
+                pairs = self.redis.xrange(self.stream, "-", "+")
                 if pairs:
                     entries.append(pairs[0])
         except Exception:
@@ -74,26 +87,30 @@ class Worker:
         payload = None
         t = None
         if isinstance(fields, dict):
-            job_id_val = fields.get(b'job_id') or fields.get('job_id')
+            job_id_val = fields.get(b"job_id") or fields.get("job_id")
             if job_id_val is not None:
                 job_id = self._decode_field(job_id_val)
                 # job_id may be stored as a JSON string in tests (e.g. '"wjob1"'),
                 # attempt to normalize by JSON-loading if possible.
                 try:
-                    if isinstance(job_id, str) and job_id.startswith('"') and job_id.endswith('"'):
+                    if (
+                        isinstance(job_id, str)
+                        and job_id.startswith('"')
+                        and job_id.endswith('"')
+                    ):
                         job_id = json.loads(job_id)
                 except Exception:
                     pass
-            p = fields.get(b'payload') or fields.get('payload')
+            p = fields.get(b"payload") or fields.get("payload")
             if p is not None:
                 try:
                     if isinstance(p, bytes):
-                        payload = json.loads(p.decode('utf-8'))
+                        payload = json.loads(p.decode("utf-8"))
                     else:
                         payload = json.loads(p)
                 except Exception:
                     payload = self._decode_field(p)
-            t = fields.get(b'type') or fields.get('type')
+            t = fields.get(b"type") or fields.get("type")
             if t is not None:
                 t = self._decode_field(t)
 
@@ -104,16 +121,22 @@ class Worker:
             pass
 
         lease_token = None
-        if job_id and getattr(self.engine, 'db_service', None):
+        if job_id and getattr(self.engine, "db_service", None):
             try:
                 # Use engine helper that performs an atomic claim + lease transaction
-                claim_resp = self.engine.claim_job_and_lease(job_id, self.agent_name, payload.get('min_memory_mb') if isinstance(payload, dict) else 0)
-                if claim_resp.get('claimed'):
-                    lease_token = claim_resp.get('token')
+                claim_resp = self.engine.claim_job_and_lease(
+                    job_id,
+                    self.agent_name,
+                    payload.get("min_memory_mb") if isinstance(payload, dict) else 0,
+                )
+                if claim_resp.get("claimed"):
+                    lease_token = claim_resp.get("token")
                 else:
                     # couldn't claim (not pending / already claimed) — treat as processed
                     try:
-                        self.engine.logger.debug(f"Worker could not claim job_id={job_id}: {claim_resp}")
+                        self.engine.logger.debug(
+                            f"Worker could not claim job_id={job_id}: {claim_resp}"
+                        )
                     except Exception:
                         pass
                     # ack & return to avoid re-processing the message repeatedly
@@ -129,9 +152,12 @@ class Worker:
         # acquire lease (best-effort)
         lease_token = None
         try:
-            lease_resp = self.engine.lease_gpu(self.agent_name, payload.get('min_memory_mb') if isinstance(payload, dict) else 0)
-            if lease_resp.get('granted'):
-                lease_token = lease_resp.get('token')
+            lease_resp = self.engine.lease_gpu(
+                self.agent_name,
+                payload.get("min_memory_mb") if isinstance(payload, dict) else 0,
+            )
+            if lease_resp.get("granted"):
+                lease_token = lease_resp.get("token")
         except Exception:
             lease_token = None
 
@@ -146,17 +172,24 @@ class Worker:
             duration = time.time() - start_time
 
             # Record processing duration
-            if hasattr(self.engine, 'job_processing_duration_histogram'):
-                job_type = t or 'unknown'
-                self.engine.job_processing_duration_histogram.labels(job_type=job_type).observe(duration)
+            if hasattr(self.engine, "job_processing_duration_histogram"):
+                job_type = t or "unknown"
+                self.engine.job_processing_duration_histogram.labels(
+                    job_type=job_type
+                ).observe(duration)
 
             # mark running -> done
-            if job_id and getattr(self.engine, 'db_service', None):
+            if job_id and getattr(self.engine, "db_service", None):
                 try:
-                    cursor, conn = self.engine.db_service.get_safe_cursor(per_call=True, buffered=True)
+                    cursor, conn = self.engine.db_service.get_safe_cursor(
+                        per_call=True, buffered=True
+                    )
                     try:
                         print(f"DEBUG: marking done for job_id={job_id}")
-                        cursor.execute('UPDATE orchestrator_jobs SET status=%s, updated_at=CURRENT_TIMESTAMP WHERE job_id=%s', ('done', job_id))
+                        cursor.execute(
+                            "UPDATE orchestrator_jobs SET status=%s, updated_at=CURRENT_TIMESTAMP WHERE job_id=%s",
+                            ("done", job_id),
+                        )
                         conn.commit()
                     finally:
                         try:
@@ -168,7 +201,9 @@ class Worker:
                         except Exception:
                             pass
                     try:
-                        self.engine.logger.debug(f"Worker finished job_id={job_id}, updated DB to done")
+                        self.engine.logger.debug(
+                            f"Worker finished job_id={job_id}, updated DB to done"
+                        )
                     except Exception:
                         pass
                 except Exception:
@@ -176,16 +211,21 @@ class Worker:
 
         except Exception as e:
             # Record retry
-            if hasattr(self.engine, 'job_retry_counter'):
-                job_type = t or 'unknown'
+            if hasattr(self.engine, "job_retry_counter"):
+                job_type = t or "unknown"
                 self.engine.job_retry_counter.labels(job_type=job_type).inc()
 
             # mark failed
-            if job_id and getattr(self.engine, 'db_service', None):
+            if job_id and getattr(self.engine, "db_service", None):
                 try:
-                    cursor, conn = self.engine.db_service.get_safe_cursor(per_call=True, buffered=True)
+                    cursor, conn = self.engine.db_service.get_safe_cursor(
+                        per_call=True, buffered=True
+                    )
                     try:
-                        cursor.execute('UPDATE orchestrator_jobs SET status=%s, last_error=%s, updated_at=CURRENT_TIMESTAMP WHERE job_id=%s', ('failed', str(e), job_id))
+                        cursor.execute(
+                            "UPDATE orchestrator_jobs SET status=%s, last_error=%s, updated_at=CURRENT_TIMESTAMP WHERE job_id=%s",
+                            ("failed", str(e), job_id),
+                        )
                         conn.commit()
                     finally:
                         try:

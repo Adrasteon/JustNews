@@ -18,11 +18,26 @@ async def _write_sample_file(storage_path, filename, entries):
 
 
 def create_entry(ts, level=LogLevel.INFO, agent_name="test-agent", message="ok"):
-    return LogEntry(timestamp=ts, level=level, logger_name="logger", message=message, agent_name=agent_name)
+    return LogEntry(
+        timestamp=ts,
+        level=level,
+        logger_name="logger",
+        message=message,
+        agent_name=agent_name,
+    )
 
 
 def test_matches_operator_various():
-    storage = LogStorage({"storage_path": "tests/tmp_logs", "index_enabled": False, "compression_enabled": False, "cache_ttl_seconds": 1, "index_fields": [], "retention_days": 1})
+    storage = LogStorage(
+        {
+            "storage_path": "tests/tmp_logs",
+            "index_enabled": False,
+            "compression_enabled": False,
+            "cache_ttl_seconds": 1,
+            "index_fields": [],
+            "retention_days": 1,
+        }
+    )
 
     # EQUALS
     assert storage._matches_operator("a", "a", QueryOperator.EQUALS)
@@ -38,7 +53,14 @@ def test_matches_operator_various():
 
 
 def test_store_and_query_logs(tmp_path):
-    cfg = {"storage_path": str(tmp_path), "index_enabled": False, "compression_enabled": False, "cache_ttl_seconds": 1, "index_fields": [], "retention_days": 90}
+    cfg = {
+        "storage_path": str(tmp_path),
+        "index_enabled": False,
+        "compression_enabled": False,
+        "cache_ttl_seconds": 1,
+        "index_fields": [],
+        "retention_days": 90,
+    }
     storage = LogStorage(cfg)
 
     now = datetime.now(UTC)
@@ -56,7 +78,11 @@ def test_store_and_query_logs(tmp_path):
     assert result.total_count >= 2
 
     # query filter by level
-    q2 = LogQuery(filters={"level": LogLevel.ERROR}, operators={"level": QueryOperator.EQUALS}, limit=10)
+    q2 = LogQuery(
+        filters={"level": LogLevel.ERROR},
+        operators={"level": QueryOperator.EQUALS},
+        limit=10,
+    )
     res2 = asyncio.run(storage.query_logs(q2))
     # Should find at least one error entry
     assert any(e.level == LogLevel.ERROR for e in res2.entries)
@@ -64,7 +90,14 @@ def test_store_and_query_logs(tmp_path):
 
 def test_cleanup_and_stats(tmp_path):
     # Avoid scheduling background index loading during init (which would require an event loop)
-    cfg = {"storage_path": str(tmp_path), "index_enabled": False, "compression_enabled": False, "cache_ttl_seconds": 1, "index_fields": ["level"], "retention_days": 0}
+    cfg = {
+        "storage_path": str(tmp_path),
+        "index_enabled": False,
+        "compression_enabled": False,
+        "cache_ttl_seconds": 1,
+        "index_fields": ["level"],
+        "retention_days": 0,
+    }
     storage = LogStorage(cfg)
 
     # Create two files: one old and one new
@@ -74,7 +107,9 @@ def test_cleanup_and_stats(tmp_path):
     old_file = tmp_path / f"logs_{old_time}.json"
     new_file = tmp_path / f"logs_{new_time}.json"
 
-    entries_old = [create_entry(datetime.now(UTC) - timedelta(days=2), level=LogLevel.WARNING)]
+    entries_old = [
+        create_entry(datetime.now(UTC) - timedelta(days=2), level=LogLevel.WARNING)
+    ]
     entries_new = [create_entry(datetime.now(UTC), level=LogLevel.INFO)]
 
     # Use the storage's save routine to create files

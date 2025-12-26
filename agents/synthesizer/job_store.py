@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS synthesizer_jobs (
 ) ENGINE=InnoDB;
 """
 
+
 # Simple in-memory job store for synthesizer; can be upgraded to MariaDB as needed
 class InMemoryJobStore:
     def __init__(self):
@@ -90,7 +91,10 @@ def create_job(job_id: str) -> None:
         with _get_conn() as conn:
             cursor = conn.cursor()
             try:
-                cursor.execute("INSERT INTO synthesizer_jobs (job_id, status) VALUES (%s, %s)", (job_id, "pending"))
+                cursor.execute(
+                    "INSERT INTO synthesizer_jobs (job_id, status) VALUES (%s, %s)",
+                    (job_id, "pending"),
+                )
                 conn.commit()
             finally:
                 cursor.close()
@@ -167,14 +171,21 @@ def get_job(job_id: str) -> dict[str, Any] | None:
         with _get_conn() as conn:
             cursor = conn.cursor(dictionary=True)
             try:
-                cursor.execute("SELECT * FROM synthesizer_jobs WHERE job_id = %s LIMIT 1", (job_id,))
+                cursor.execute(
+                    "SELECT * FROM synthesizer_jobs WHERE job_id = %s LIMIT 1",
+                    (job_id,),
+                )
                 row = cursor.fetchone()
                 if not row:
                     return None
                 row = _normalize_row(row)
                 if row.get("result"):
                     try:
-                        row["result"] = json.loads(row["result"]) if isinstance(row["result"], str) else row["result"]
+                        row["result"] = (
+                            json.loads(row["result"])
+                            if isinstance(row["result"], str)
+                            else row["result"]
+                        )
                     except Exception:
                         pass
                 return row

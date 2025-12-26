@@ -25,6 +25,7 @@ from .storage import get_storage
 
 logger = logging.getLogger(__name__)
 
+
 # Load configuration
 def _load_config() -> dict:
     """Load dashboard configuration."""
@@ -32,11 +33,13 @@ def _load_config() -> dict:
     if config_path.exists():
         try:
             import json
+
             with open(config_path) as f:
                 return json.load(f)
         except Exception as e:
             logger.warning(f"Failed to load config: {e}")
     return {}
+
 
 _config = _load_config()
 MCP_BUS_URL = _config.get("mcp_bus_url", "http://localhost:8000")
@@ -44,6 +47,7 @@ MCP_BUS_URL = _config.get("mcp_bus_url", "http://localhost:8000")
 
 class ToolCall(BaseModel):
     """Standard MCP tool call format"""
+
     args: list
     kwargs: dict[str, Any]
 
@@ -70,33 +74,34 @@ class EnhancedGPUMonitor:
             if self.gpu_manager:
                 # Try GPU manager first
                 system_status = self.gpu_manager.get_system_status()
-                gpu_info = system_status.get('gpu_info', {})
+                gpu_info = system_status.get("gpu_info", {})
 
                 if gpu_info:
                     gpus = []
-                    for gpu in gpu_info.get('gpus', []):
+                    for gpu in gpu_info.get("gpus", []):
                         gpu_data = {
-                            'index': gpu.get('index', 0),
-                            'name': gpu.get('name', 'Unknown'),
-                            'memory_used_mb': gpu.get('memory_used_mb', 0),
-                            'memory_total_mb': gpu.get('memory_total_mb', 0),
-                            'memory_free_mb': gpu.get('memory_free_mb', 0),
-                            'gpu_utilization_percent': gpu.get('utilization_percent', 0),
-                            'memory_utilization_percent': gpu.get('memory_utilization_percent', 0),
-                            'temperature_celsius': gpu.get('temperature_celsius', 0),
-                            'fan_speed_percent': gpu.get('fan_speed_percent', 0),
-                            'power_draw_watts': gpu.get('power_draw_watts', 0.0),
-                            'power_limit_watts': gpu.get('power_limit_watts', 0.0),
-                            'is_healthy': gpu.get('is_healthy', True),
-                            'timestamp': time.time()
+                            "index": gpu.get("index", 0),
+                            "name": gpu.get("name", "Unknown"),
+                            "memory_used_mb": gpu.get("memory_used_mb", 0),
+                            "memory_total_mb": gpu.get("memory_total_mb", 0),
+                            "memory_free_mb": gpu.get("memory_free_mb", 0),
+                            "gpu_utilization_percent": gpu.get(
+                                "utilization_percent", 0
+                            ),
+                            "memory_utilization_percent": gpu.get(
+                                "memory_utilization_percent", 0
+                            ),
+                            "temperature_celsius": gpu.get("temperature_celsius", 0),
+                            "fan_speed_percent": gpu.get("fan_speed_percent", 0),
+                            "power_draw_watts": gpu.get("power_draw_watts", 0.0),
+                            "power_limit_watts": gpu.get("power_limit_watts", 0.0),
+                            "is_healthy": gpu.get("is_healthy", True),
+                            "timestamp": time.time(),
                         }
                         gpus.append(gpu_data)
 
                     # Store in history
-                    current_data = {
-                        'timestamp': time.time(),
-                        'gpus': gpus
-                    }
+                    current_data = {"timestamp": time.time(), "gpus": gpus}
                     self.gpu_history.append(current_data)
                     if len(self.gpu_history) > self.max_history_size:
                         self.gpu_history.pop(0)
@@ -109,10 +114,10 @@ class EnhancedGPUMonitor:
                         logger.warning(f"Failed to store GPU metrics: {e}")
 
                     return {
-                        'status': 'success',
-                        'gpu_count': len(gpus),
-                        'gpus': gpus,
-                        'timestamp': time.time()
+                        "status": "success",
+                        "gpu_count": len(gpus),
+                        "gpus": gpus,
+                        "timestamp": time.time(),
                     }
                 else:
                     return self._get_nvidia_smi_fallback()
@@ -121,50 +126,54 @@ class EnhancedGPUMonitor:
 
         except Exception as e:
             logger.error(f"Error getting GPU info: {e}")
-            return {
-                'status': 'error',
-                'message': str(e),
-                'timestamp': time.time()
-            }
+            return {"status": "error", "message": str(e), "timestamp": time.time()}
 
     def _get_nvidia_smi_fallback(self) -> dict:
         """Fallback GPU monitoring using nvidia-smi."""
         try:
             result = subprocess.run(
-                ['nvidia-smi', '--query-gpu=index,name,memory.used,memory.total,memory.free,utilization.gpu,utilization.memory,temperature.gpu,fan.speed,power.draw,power.limit',
-                 '--format=csv,noheader,nounits'],
-                capture_output=True, text=True, timeout=5
+                [
+                    "nvidia-smi",
+                    "--query-gpu=index,name,memory.used,memory.total,memory.free,utilization.gpu,utilization.memory,temperature.gpu,fan.speed,power.draw,power.limit",
+                    "--format=csv,noheader,nounits",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
 
             if result.returncode == 0:
-                lines = result.stdout.strip().split('\n')
+                lines = result.stdout.strip().split("\n")
                 gpus = []
                 for line in lines:
                     if line.strip():
-                        parts = [part.strip() for part in line.split(',')]
+                        parts = [part.strip() for part in line.split(",")]
                         if len(parts) >= 10:
                             gpu_info = {
-                                'index': int(parts[0]),
-                                'name': parts[1],
-                                'memory_used_mb': int(parts[2]),
-                                'memory_total_mb': int(parts[3]),
-                                'memory_free_mb': int(parts[4]),
-                                'gpu_utilization_percent': int(parts[5]),
-                                'memory_utilization_percent': int(parts[6]),
-                                'temperature_celsius': int(parts[7]),
-                                'fan_speed_percent': int(parts[8]) if parts[8] != '[Not Supported]' else 0,
-                                'power_draw_watts': float(parts[9]) if parts[9] != '[Not Supported]' else 0.0,
-                                'power_limit_watts': float(parts[10]) if len(parts) > 10 and parts[10] != '[Not Supported]' else 0.0,
-                                'is_healthy': True,  # Assume healthy if nvidia-smi works
-                                'timestamp': time.time()
+                                "index": int(parts[0]),
+                                "name": parts[1],
+                                "memory_used_mb": int(parts[2]),
+                                "memory_total_mb": int(parts[3]),
+                                "memory_free_mb": int(parts[4]),
+                                "gpu_utilization_percent": int(parts[5]),
+                                "memory_utilization_percent": int(parts[6]),
+                                "temperature_celsius": int(parts[7]),
+                                "fan_speed_percent": int(parts[8])
+                                if parts[8] != "[Not Supported]"
+                                else 0,
+                                "power_draw_watts": float(parts[9])
+                                if parts[9] != "[Not Supported]"
+                                else 0.0,
+                                "power_limit_watts": float(parts[10])
+                                if len(parts) > 10 and parts[10] != "[Not Supported]"
+                                else 0.0,
+                                "is_healthy": True,  # Assume healthy if nvidia-smi works
+                                "timestamp": time.time(),
                             }
                             gpus.append(gpu_info)
 
                 # Store in history
-                current_data = {
-                    'timestamp': time.time(),
-                    'gpus': gpus
-                }
+                current_data = {"timestamp": time.time(), "gpus": gpus}
                 self.gpu_history.append(current_data)
                 if len(self.gpu_history) > self.max_history_size:
                     self.gpu_history.pop(0)
@@ -177,29 +186,27 @@ class EnhancedGPUMonitor:
                     logger.warning(f"Failed to store GPU metrics: {e}")
 
                 return {
-                    'status': 'success',
-                    'gpu_count': len(gpus),
-                    'gpus': gpus,
-                    'timestamp': time.time()
+                    "status": "success",
+                    "gpu_count": len(gpus),
+                    "gpus": gpus,
+                    "timestamp": time.time(),
                 }
             else:
                 return {
-                    'status': 'error',
-                    'message': f'nvidia-smi command failed: {result.stderr}',
-                    'timestamp': time.time()
+                    "status": "error",
+                    "message": f"nvidia-smi command failed: {result.stderr}",
+                    "timestamp": time.time(),
                 }
         except Exception as e:
             logger.error(f"Error getting GPU info: {e}")
-            return {
-                'status': 'error',
-                'message': str(e),
-                'timestamp': time.time()
-            }
+            return {"status": "error", "message": str(e), "timestamp": time.time()}
 
     def get_gpu_history(self, hours: int = 1) -> list[dict]:
         """Get GPU history for the specified number of hours."""
         cutoff_time = time.time() - (hours * 3600)
-        return [entry for entry in self.gpu_history if entry['timestamp'] >= cutoff_time]
+        return [
+            entry for entry in self.gpu_history if entry["timestamp"] >= cutoff_time
+        ]
 
     def get_agent_gpu_usage(self) -> dict:
         """Get GPU usage statistics per agent using production GPU manager."""
@@ -207,17 +214,17 @@ class EnhancedGPUMonitor:
             if self.gpu_manager:
                 # Get allocation data from production manager
                 system_status = self.gpu_manager.get_system_status()
-                allocations = system_status.get('active_allocations', 0)
+                allocations = system_status.get("active_allocations", 0)
 
                 # Get per-agent allocation details
                 agent_ports = {
-                    'scout': 8002,
-                    'fact_checker': 8003,
-                    'analyst': 8004,
-                    'synthesizer': 8005,
-                    'critic': 8006,
-                    'memory': 8007,
-                    'newsreader': 8009
+                    "scout": 8002,
+                    "fact_checker": 8003,
+                    "analyst": 8004,
+                    "synthesizer": 8005,
+                    "critic": 8006,
+                    "memory": 8007,
+                    "newsreader": 8009,
                 }
 
                 agent_usage = {}
@@ -226,53 +233,71 @@ class EnhancedGPUMonitor:
                 for agent_name, port in agent_ports.items():
                     try:
                         # Check if agent is active
-                        response = requests.get(f"http://localhost:{port}/health", timeout=2)
+                        response = requests.get(
+                            f"http://localhost:{port}/health", timeout=2
+                        )
                         is_active = response.status_code == 200
-                    except (requests.RequestException, ConnectionError, TimeoutError) as e:
+                    except (
+                        requests.RequestException,
+                        ConnectionError,
+                        TimeoutError,
+                    ) as e:
                         logger.debug(f"Failed to check agent {agent_name} health: {e}")
                         is_active = False
 
                     # Get allocation status from GPU manager
                     allocation_status = None
                     if self.gpu_manager:
-                        allocation_status = self.gpu_manager.get_allocation_status(agent_name)
+                        allocation_status = self.gpu_manager.get_allocation_status(
+                            agent_name
+                        )
 
                     if allocation_status:
-                        memory_used = allocation_status.get('allocated_memory_gb', 0) * 1024  # Convert to MB
-                        gpu_util = 0  # Could be enhanced with actual utilization tracking
+                        memory_used = (
+                            allocation_status.get("allocated_memory_gb", 0) * 1024
+                        )  # Convert to MB
+                        gpu_util = (
+                            0  # Could be enhanced with actual utilization tracking
+                        )
                     else:
                         # Mock data based on agent type and activity
                         base_usage = {
-                            'scout': {'memory_mb': 800, 'utilization_percent': 15},
-                            'fact_checker': {'memory_mb': 600, 'utilization_percent': 12},
-                            'analyst': {'memory_mb': 400, 'utilization_percent': 8},
-                            'synthesizer': {'memory_mb': 1000, 'utilization_percent': 20},
-                            'critic': {'memory_mb': 500, 'utilization_percent': 10},
-                            'memory': {'memory_mb': 300, 'utilization_percent': 6},
-                            'newsreader': {'memory_mb': 900, 'utilization_percent': 18}
-                        }.get(agent_name, {'memory_mb': 0, 'utilization_percent': 0})
+                            "scout": {"memory_mb": 800, "utilization_percent": 15},
+                            "fact_checker": {
+                                "memory_mb": 600,
+                                "utilization_percent": 12,
+                            },
+                            "analyst": {"memory_mb": 400, "utilization_percent": 8},
+                            "synthesizer": {
+                                "memory_mb": 1000,
+                                "utilization_percent": 20,
+                            },
+                            "critic": {"memory_mb": 500, "utilization_percent": 10},
+                            "memory": {"memory_mb": 300, "utilization_percent": 6},
+                            "newsreader": {"memory_mb": 900, "utilization_percent": 18},
+                        }.get(agent_name, {"memory_mb": 0, "utilization_percent": 0})
 
-                        memory_used = base_usage['memory_mb'] if is_active else 0
-                        gpu_util = base_usage['utilization_percent'] if is_active else 0
+                        memory_used = base_usage["memory_mb"] if is_active else 0
+                        gpu_util = base_usage["utilization_percent"] if is_active else 0
 
                     agent_usage[agent_name] = {
-                        'active': is_active,
-                        'memory_used_mb': memory_used,
-                        'gpu_utilization_percent': gpu_util,
-                        'allocation_status': allocation_status,
-                        'last_updated': time.time()
+                        "active": is_active,
+                        "memory_used_mb": memory_used,
+                        "gpu_utilization_percent": gpu_util,
+                        "allocation_status": allocation_status,
+                        "last_updated": time.time(),
                     }
 
                     if is_active:
                         total_memory_used += memory_used
 
                 return {
-                    'status': 'success',
-                    'agents': agent_usage,
-                    'total_memory_used_mb': total_memory_used,
-                    'active_allocations': allocations,
-                    'gpu_manager_available': True,
-                    'timestamp': time.time()
+                    "status": "success",
+                    "agents": agent_usage,
+                    "total_memory_used_mb": total_memory_used,
+                    "active_allocations": allocations,
+                    "gpu_manager_available": True,
+                    "timestamp": time.time(),
                 }
             else:
                 # Fallback to basic agent checking
@@ -280,23 +305,19 @@ class EnhancedGPUMonitor:
 
         except Exception as e:
             logger.error(f"Error getting agent GPU usage: {e}")
-            return {
-                'status': 'error',
-                'message': str(e),
-                'timestamp': time.time()
-            }
+            return {"status": "error", "message": str(e), "timestamp": time.time()}
 
     def _get_agent_gpu_usage_fallback(self) -> dict:
         """Fallback agent GPU usage when GPU manager not available."""
         try:
             agent_ports = {
-                'scout': 8002,
-                'fact_checker': 8003,
-                'analyst': 8004,
-                'synthesizer': 8005,
-                'critic': 8006,
-                'memory': 8007,
-                'newsreader': 8009
+                "scout": 8002,
+                "fact_checker": 8003,
+                "analyst": 8004,
+                "synthesizer": 8005,
+                "critic": 8006,
+                "memory": 8007,
+                "newsreader": 8009,
             }
 
             agent_usage = {}
@@ -305,50 +326,50 @@ class EnhancedGPUMonitor:
             for agent_name, port in agent_ports.items():
                 try:
                     # Check if agent is active
-                    response = requests.get(f"http://localhost:{port}/health", timeout=2)
+                    response = requests.get(
+                        f"http://localhost:{port}/health", timeout=2
+                    )
                     is_active = response.status_code == 200
                 except (requests.RequestException, ConnectionError, TimeoutError) as e:
-                    logger.debug(f"Failed to check agent {agent_name} health (fallback): {e}")
+                    logger.debug(
+                        f"Failed to check agent {agent_name} health (fallback): {e}"
+                    )
                     is_active = False
 
                 # Mock GPU usage based on agent type and activity
                 base_usage = {
-                    'scout': {'memory_mb': 800, 'utilization_percent': 15},
-                    'fact_checker': {'memory_mb': 600, 'utilization_percent': 12},
-                    'analyst': {'memory_mb': 400, 'utilization_percent': 8},
-                    'synthesizer': {'memory_mb': 1000, 'utilization_percent': 20},
-                    'critic': {'memory_mb': 500, 'utilization_percent': 10},
-                    'memory': {'memory_mb': 300, 'utilization_percent': 6},
-                    'newsreader': {'memory_mb': 900, 'utilization_percent': 18}
-                }.get(agent_name, {'memory_mb': 0, 'utilization_percent': 0})
+                    "scout": {"memory_mb": 800, "utilization_percent": 15},
+                    "fact_checker": {"memory_mb": 600, "utilization_percent": 12},
+                    "analyst": {"memory_mb": 400, "utilization_percent": 8},
+                    "synthesizer": {"memory_mb": 1000, "utilization_percent": 20},
+                    "critic": {"memory_mb": 500, "utilization_percent": 10},
+                    "memory": {"memory_mb": 300, "utilization_percent": 6},
+                    "newsreader": {"memory_mb": 900, "utilization_percent": 18},
+                }.get(agent_name, {"memory_mb": 0, "utilization_percent": 0})
 
-                memory_used = base_usage['memory_mb'] if is_active else 0
-                gpu_util = base_usage['utilization_percent'] if is_active else 0
+                memory_used = base_usage["memory_mb"] if is_active else 0
+                gpu_util = base_usage["utilization_percent"] if is_active else 0
 
                 agent_usage[agent_name] = {
-                    'active': is_active,
-                    'memory_used_mb': memory_used,
-                    'gpu_utilization_percent': gpu_util,
-                    'last_updated': time.time()
+                    "active": is_active,
+                    "memory_used_mb": memory_used,
+                    "gpu_utilization_percent": gpu_util,
+                    "last_updated": time.time(),
                 }
 
                 if is_active:
                     total_memory_used += memory_used
 
             return {
-                'status': 'success',
-                'agents': agent_usage,
-                'total_memory_used_mb': total_memory_used,
-                'gpu_manager_available': False,
-                'timestamp': time.time()
+                "status": "success",
+                "agents": agent_usage,
+                "total_memory_used_mb": total_memory_used,
+                "gpu_manager_available": False,
+                "timestamp": time.time(),
             }
         except Exception as e:
             logger.error(f"Error getting agent GPU usage fallback: {e}")
-            return {
-                'status': 'error',
-                'message': str(e),
-                'timestamp': time.time()
-            }
+            return {"status": "error", "message": str(e), "timestamp": time.time()}
 
 
 class DashboardEngine:
@@ -374,6 +395,7 @@ class DashboardEngine:
         if config_path.exists():
             try:
                 import json
+
                 with open(config_path) as f:
                     return json.load(f)
             except Exception as e:
@@ -401,7 +423,8 @@ class DashboardEngine:
         config_path = Path(__file__).parent / "config.json"
         try:
             import json
-            with open(config_path, 'w') as f:
+
+            with open(config_path, "w") as f:
                 json.dump(config, f, indent=2)
         except Exception as e:
             logger.error(f"Failed to save config: {e}")
@@ -422,7 +445,9 @@ class DashboardEngine:
             # Use model_dump() for Pydantic v2 compatibility; fall back to dict() when unavailable
             response = requests.post(
                 f"{MCP_BUS_URL}/call",
-                json=(call.model_dump() if hasattr(call, "model_dump") else call.dict()),
+                json=(
+                    call.model_dump() if hasattr(call, "model_dump") else call.dict()
+                ),
             )
             response.raise_for_status()
             return response.json()
@@ -443,21 +468,19 @@ class DashboardEngine:
                     "status": "success",
                     "source": "dashboard_fallback",
                     "config": self.config.get("gpu_config", {}),
-                    "timestamp": time.time()
+                    "timestamp": time.time(),
                 }
         except Exception as e:
             logger.error(f"Error getting GPU config: {e}")
-            return {
-                "status": "error",
-                "message": str(e),
-                "timestamp": time.time()
-            }
+            return {"status": "error", "message": str(e), "timestamp": time.time()}
 
     def update_gpu_config(self, new_config: dict) -> dict:
         """Update GPU configuration."""
         try:
             # Try to update via GPU manager
-            response = requests.post("http://localhost:8000/gpu/config", json=new_config, timeout=5)
+            response = requests.post(
+                "http://localhost:8000/gpu/config", json=new_config, timeout=5
+            )
             if response.status_code == 200:
                 return response.json()
             else:
@@ -471,7 +494,7 @@ class DashboardEngine:
                     "source": "dashboard_fallback",
                     "message": "Configuration updated locally",
                     "config": self.config["gpu_config"],
-                    "timestamp": time.time()
+                    "timestamp": time.time(),
                 }
         except Exception as e:
             logger.error(f"Error updating GPU config: {e}")
@@ -492,6 +515,7 @@ class DashboardEngine:
         # Always fetch sources directly from MariaDB
         try:
             from agents.crawler.crawler_utils import get_active_sources
+
             # Fetch up to 100 sources, not paywalled
             sources = get_active_sources(limit=100, include_paywalled=False)
             snapshot["sources"] = sources
@@ -514,11 +538,20 @@ class DashboardEngine:
 
         if not isinstance(raw_state, Mapping):
             snapshot["error"] = "scheduler state is not a mapping"
-            logger.warning("Unexpected scheduler state payload type: %s", type(raw_state))
+            logger.warning(
+                "Unexpected scheduler state payload type: %s", type(raw_state)
+            )
             return snapshot
 
         snapshot["state_available"] = True
-        for key in ("executed_at", "target_articles", "remaining_articles", "governance", "dry_run", "crawler_url"):
+        for key in (
+            "executed_at",
+            "target_articles",
+            "remaining_articles",
+            "governance",
+            "dry_run",
+            "crawler_url",
+        ):
             if key in raw_state:
                 snapshot[key] = raw_state[key]
 
@@ -548,14 +581,20 @@ class DashboardEngine:
         try:
             history_payload = self._read_json_file(self.scheduler_success_path)
         except FileNotFoundError:
-            logger.debug("Scheduler success history file %s not found", self.scheduler_success_path)
+            logger.debug(
+                "Scheduler success history file %s not found",
+                self.scheduler_success_path,
+            )
             return []
         except Exception as exc:
             logger.warning("Failed to load scheduler success history: %s", exc)
             return []
 
         if not isinstance(history_payload, list):
-            logger.warning("Scheduler success history payload is not a list (type=%s)", type(history_payload))
+            logger.warning(
+                "Scheduler success history payload is not a list (type=%s)",
+                type(history_payload),
+            )
             return []
 
         if limit and len(history_payload) > limit:
@@ -574,7 +613,9 @@ class DashboardEngine:
         articles_iter = self._iter_adaptive_articles(runs)
         return summarise_adaptive_articles(articles_iter) or {}
 
-    def _iter_adaptive_articles(self, runs: Iterable[Any]) -> Iterable[Mapping[str, Any]]:
+    def _iter_adaptive_articles(
+        self, runs: Iterable[Any]
+    ) -> Iterable[Mapping[str, Any]]:
         for run in runs or []:
             if not isinstance(run, Mapping):
                 continue
@@ -588,7 +629,9 @@ class DashboardEngine:
                 if isinstance(article, Mapping):
                     yield article
 
-    def _build_adaptive_metrics(self, summary: Mapping[str, Any] | None) -> dict[str, Any]:
+    def _build_adaptive_metrics(
+        self, summary: Mapping[str, Any] | None
+    ) -> dict[str, Any]:
         """Compute high-level adaptive metrics for dashboard consumption."""
 
         metrics: dict[str, Any] = {
@@ -611,12 +654,17 @@ class DashboardEngine:
 
         if isinstance(articles_block, Mapping):
             metrics["articles_total"] = int(articles_block.get("total", 0) or 0)
-            metrics["articles_sufficient"] = int(articles_block.get("sufficient", 0) or 0)
+            metrics["articles_sufficient"] = int(
+                articles_block.get("sufficient", 0) or 0
+            )
             metrics["articles_insufficient"] = int(
-                articles_block.get("insufficient", 0) or max(metrics["articles_total"] - metrics["articles_sufficient"], 0)
+                articles_block.get("insufficient", 0)
+                or max(metrics["articles_total"] - metrics["articles_sufficient"], 0)
             )
 
-        confidence_block = summary.get("confidence") if isinstance(summary, Mapping) else None
+        confidence_block = (
+            summary.get("confidence") if isinstance(summary, Mapping) else None
+        )
         if isinstance(confidence_block, Mapping):
             confidence_avg = confidence_block.get("average")
             if confidence_avg is not None:
@@ -625,7 +673,9 @@ class DashboardEngine:
                 except (TypeError, ValueError):
                     metrics["confidence_average"] = None
 
-        pages_block = summary.get("pages_crawled") if isinstance(summary, Mapping) else None
+        pages_block = (
+            summary.get("pages_crawled") if isinstance(summary, Mapping) else None
+        )
         if isinstance(pages_block, Mapping):
             pages_avg = pages_block.get("average")
             if pages_avg is not None:
@@ -634,7 +684,9 @@ class DashboardEngine:
                 except (TypeError, ValueError):
                     metrics["pages_crawled_average"] = None
 
-        source_block = summary.get("source_score") if isinstance(summary, Mapping) else None
+        source_block = (
+            summary.get("source_score") if isinstance(summary, Mapping) else None
+        )
         if isinstance(source_block, Mapping):
             source_avg = source_block.get("average")
             if source_avg is not None:
@@ -643,7 +695,9 @@ class DashboardEngine:
                 except (TypeError, ValueError):
                     metrics["source_score_average"] = None
 
-        stop_reasons = summary.get("stop_reasons") if isinstance(summary, Mapping) else None
+        stop_reasons = (
+            summary.get("stop_reasons") if isinstance(summary, Mapping) else None
+        )
         if isinstance(stop_reasons, Mapping):
             items: list[dict[str, Any]] = []
             for reason, count in stop_reasons.items():
@@ -652,9 +706,13 @@ class DashboardEngine:
                 except (TypeError, ValueError):
                     continue
                 items.append({"reason": str(reason), "count": count_value})
-            metrics["stop_reasons"] = sorted(items, key=lambda item: item["count"], reverse=True)
+            metrics["stop_reasons"] = sorted(
+                items, key=lambda item: item["count"], reverse=True
+            )
 
-        coverage_stats = summary.get("coverage_stats") if isinstance(summary, Mapping) else None
+        coverage_stats = (
+            summary.get("coverage_stats") if isinstance(summary, Mapping) else None
+        )
         if isinstance(coverage_stats, Mapping):
             filtered: dict[str, Any] = {}
             for key, value in coverage_stats.items():
@@ -671,17 +729,17 @@ class DashboardEngine:
             if self.gpu_monitor.gpu_manager:
                 system_status = self.gpu_monitor.gpu_manager.get_system_status()
                 return {
-                    'status': 'success',
-                    'gpu_manager_available': True,
-                    'system_status': system_status,
-                    'timestamp': time.time()
+                    "status": "success",
+                    "gpu_manager_available": True,
+                    "system_status": system_status,
+                    "timestamp": time.time(),
                 }
             else:
                 return {
-                    'status': 'success',
-                    'gpu_manager_available': False,
-                    'message': 'GPU manager not available, using fallback monitoring',
-                    'timestamp': time.time()
+                    "status": "success",
+                    "gpu_manager_available": False,
+                    "message": "GPU manager not available, using fallback monitoring",
+                    "timestamp": time.time(),
                 }
         except Exception as e:
             logger.error(f"Error getting GPU manager status: {e}")
@@ -693,25 +751,35 @@ class DashboardEngine:
             if self.gpu_monitor.gpu_manager:
                 # Get allocation data from GPU manager
                 allocations = []
-                agent_names = ['scout', 'fact_checker', 'analyst', 'synthesizer', 'critic', 'memory', 'newsreader']
+                agent_names = [
+                    "scout",
+                    "fact_checker",
+                    "analyst",
+                    "synthesizer",
+                    "critic",
+                    "memory",
+                    "newsreader",
+                ]
                 for agent_name in agent_names:
-                    allocation_status = self.gpu_monitor.gpu_manager.get_allocation_status(agent_name)
+                    allocation_status = (
+                        self.gpu_monitor.gpu_manager.get_allocation_status(agent_name)
+                    )
                     if allocation_status:
                         allocations.append(allocation_status)
 
                 return {
-                    'status': 'success',
-                    'allocations': allocations,
-                    'total_allocations': len(allocations),
-                    'timestamp': time.time()
+                    "status": "success",
+                    "allocations": allocations,
+                    "total_allocations": len(allocations),
+                    "timestamp": time.time(),
                 }
             else:
                 return {
-                    'status': 'success',
-                    'gpu_manager_available': False,
-                    'allocations': [],
-                    'message': 'GPU manager not available',
-                    'timestamp': time.time()
+                    "status": "success",
+                    "gpu_manager_available": False,
+                    "allocations": [],
+                    "message": "GPU manager not available",
+                    "timestamp": time.time(),
                 }
         except Exception as e:
             logger.error(f"Error getting GPU allocations: {e}")
@@ -722,35 +790,43 @@ class DashboardEngine:
         try:
             if self.gpu_monitor.gpu_manager:
                 system_status = self.gpu_monitor.gpu_manager.get_system_status()
-                metrics = system_status.get('metrics', {})
+                metrics = system_status.get("metrics", {})
 
                 return {
-                    'status': 'success',
-                    'gpu_manager_available': True,
-                    'metrics': metrics,
-                    'timestamp': time.time()
+                    "status": "success",
+                    "gpu_manager_available": True,
+                    "metrics": metrics,
+                    "timestamp": time.time(),
                 }
             else:
                 return {
-                    'status': 'success',
-                    'gpu_manager_available': False,
-                    'metrics': {},
-                    'message': 'GPU manager not available',
-                    'timestamp': time.time()
+                    "status": "success",
+                    "gpu_manager_available": False,
+                    "metrics": {},
+                    "message": "GPU manager not available",
+                    "timestamp": time.time(),
                 }
         except Exception as e:
             logger.error(f"Error getting GPU metrics: {e}")
             raise HTTPException(status_code=500, detail=str(e)) from e
 
-    def get_gpu_history_from_db(self, hours: int = 24, gpu_index: int | None = None, metric: str = "utilization") -> dict:
+    def get_gpu_history_from_db(
+        self, hours: int = 24, gpu_index: int | None = None, metric: str = "utilization"
+    ) -> dict:
         """Get GPU metrics history from database."""
         try:
             if metric == "utilization":
-                history = self.storage.get_gpu_metrics_history(hours, gpu_index, metric_type="utilization")
+                history = self.storage.get_gpu_metrics_history(
+                    hours, gpu_index, metric_type="utilization"
+                )
             elif metric == "memory":
-                history = self.storage.get_gpu_metrics_history(hours, gpu_index, metric_type="memory_used_mb")
+                history = self.storage.get_gpu_metrics_history(
+                    hours, gpu_index, metric_type="memory_used_mb"
+                )
             elif metric == "temperature":
-                history = self.storage.get_gpu_metrics_history(hours, gpu_index, metric_type="temperature_celsius")
+                history = self.storage.get_gpu_metrics_history(
+                    hours, gpu_index, metric_type="temperature_celsius"
+                )
             elif metric == "performance":
                 # For performance, we'll use processing time or similar metrics
                 history = self.storage.get_performance_trends(hours)
@@ -761,45 +837,46 @@ class DashboardEngine:
             formatted_data = []
             for entry in history:
                 if metric == "utilization":
-                    value = entry.get('gpu_utilization_percent', 0)
+                    value = entry.get("gpu_utilization_percent", 0)
                 elif metric == "memory":
-                    value = entry.get('memory_used_mb', 0) / 1024  # Convert to GB
+                    value = entry.get("memory_used_mb", 0) / 1024  # Convert to GB
                 elif metric == "temperature":
-                    value = entry.get('temperature_celsius', 0)
+                    value = entry.get("temperature_celsius", 0)
                 elif metric == "performance":
-                    value = entry.get('processing_time_ms', 0)
+                    value = entry.get("processing_time_ms", 0)
                 else:
-                    value = entry.get('gpu_utilization_percent', 0)
+                    value = entry.get("gpu_utilization_percent", 0)
 
-                formatted_data.append({
-                    'timestamp': entry.get('timestamp', 0),
-                    'value': value
-                })
+                formatted_data.append(
+                    {"timestamp": entry.get("timestamp", 0), "value": value}
+                )
 
             return {
-                'status': 'success',
-                'hours': hours,
-                'gpu_index': gpu_index,
-                'metric': metric,
-                'data_points': len(formatted_data),
-                'data': formatted_data,
-                'timestamp': time.time()
+                "status": "success",
+                "hours": hours,
+                "gpu_index": gpu_index,
+                "metric": metric,
+                "data_points": len(formatted_data),
+                "data": formatted_data,
+                "timestamp": time.time(),
             }
         except Exception as e:
             logger.error(f"Error getting GPU history from DB: {e}")
             raise HTTPException(status_code=500, detail=str(e)) from e
 
-    def get_allocation_history(self, hours: int = 24, agent_name: str | None = None) -> dict:
+    def get_allocation_history(
+        self, hours: int = 24, agent_name: str | None = None
+    ) -> dict:
         """Get agent allocation history from database."""
         try:
             history = self.storage.get_agent_allocation_history(hours, agent_name)
             return {
-                'status': 'success',
-                'hours': hours,
-                'agent_name': agent_name,
-                'data_points': len(history),
-                'history': history,
-                'timestamp': time.time()
+                "status": "success",
+                "hours": hours,
+                "agent_name": agent_name,
+                "data_points": len(history),
+                "history": history,
+                "timestamp": time.time(),
             }
         except Exception as e:
             logger.error(f"Error getting allocation history: {e}")
@@ -810,10 +887,10 @@ class DashboardEngine:
         try:
             trends = self.storage.get_performance_trends(hours)
             return {
-                'status': 'success',
-                'hours': hours,
-                'trends': trends,
-                'timestamp': time.time()
+                "status": "success",
+                "hours": hours,
+                "trends": trends,
+                "timestamp": time.time(),
             }
         except Exception as e:
             logger.error(f"Error getting performance trends: {e}")
@@ -824,11 +901,11 @@ class DashboardEngine:
         try:
             alerts = self.storage.get_recent_alerts(limit)
             return {
-                'status': 'success',
-                'limit': limit,
-                'alerts': alerts,
-                'total_alerts': len(alerts),
-                'timestamp': time.time()
+                "status": "success",
+                "limit": limit,
+                "alerts": alerts,
+                "total_alerts": len(alerts),
+                "timestamp": time.time(),
             }
         except Exception as e:
             logger.error(f"Error getting recent alerts: {e}")
@@ -839,9 +916,9 @@ class DashboardEngine:
         try:
             stats = self.storage.get_storage_stats()
             return {
-                'status': 'success',
-                'storage_stats': stats,
-                'timestamp': time.time()
+                "status": "success",
+                "storage_stats": stats,
+                "timestamp": time.time(),
             }
         except Exception as e:
             logger.error(f"Error getting storage stats: {e}")
@@ -864,27 +941,45 @@ class DashboardEngine:
                 manager_status = self.gpu_monitor.gpu_manager.get_system_status()
 
                 # Get allocations
-                agent_names = ['scout', 'fact_checker', 'analyst', 'synthesizer', 'critic', 'memory', 'newsreader']
+                agent_names = [
+                    "scout",
+                    "fact_checker",
+                    "analyst",
+                    "synthesizer",
+                    "critic",
+                    "memory",
+                    "newsreader",
+                ]
                 for agent_name in agent_names:
-                    allocation_status = self.gpu_monitor.gpu_manager.get_allocation_status(agent_name)
+                    allocation_status = (
+                        self.gpu_monitor.gpu_manager.get_allocation_status(agent_name)
+                    )
                     if allocation_status:
                         allocations.append(allocation_status)
 
-                metrics = manager_status.get('metrics', {})
+                metrics = manager_status.get("metrics", {})
 
             # Calculate enhanced summary
             summary = {
                 "total_gpus": gpu_info.get("gpu_count", 0),
                 "total_memory_used_mb": agent_usage.get("total_memory_used_mb", 0),
-                "active_agents": sum(1 for agent in agent_usage.get("agents", {}).values() if agent.get("active", False)),
-                "gpu_utilization_avg": sum(gpu.get("gpu_utilization_percent", 0) for gpu in gpu_info.get("gpus", [])) / max(1, len(gpu_info.get("gpus", []))),
+                "active_agents": sum(
+                    1
+                    for agent in agent_usage.get("agents", {}).values()
+                    if agent.get("active", False)
+                ),
+                "gpu_utilization_avg": sum(
+                    gpu.get("gpu_utilization_percent", 0)
+                    for gpu in gpu_info.get("gpus", [])
+                )
+                / max(1, len(gpu_info.get("gpus", []))),
                 "gpu_manager_available": self.gpu_monitor.gpu_manager is not None,
                 "active_allocations": len(allocations),
-                "total_allocation_requests": metrics.get('total_allocations', 0),
-                "successful_allocations": metrics.get('successful_allocations', 0),
-                "failed_allocations": metrics.get('failed_allocations', 0),
-                "cpu_fallbacks": metrics.get('cpu_fallbacks', 0),
-                "gpu_recoveries": metrics.get('gpu_recoveries', 0)
+                "total_allocation_requests": metrics.get("total_allocations", 0),
+                "successful_allocations": metrics.get("successful_allocations", 0),
+                "failed_allocations": metrics.get("failed_allocations", 0),
+                "cpu_fallbacks": metrics.get("cpu_fallbacks", 0),
+                "gpu_recoveries": metrics.get("gpu_recoveries", 0),
             }
 
             return {
@@ -897,10 +992,10 @@ class DashboardEngine:
                     "available": self.gpu_monitor.gpu_manager is not None,
                     "status": manager_status,
                     "allocations": allocations,
-                    "metrics": metrics
+                    "metrics": metrics,
                 },
                 "orchestrator_policy": orchestrator_policy,
-                "summary": summary
+                "summary": summary,
             }
         except Exception as e:
             logger.error(f"Error in get_comprehensive_gpu_dashboard_data: {e}")
@@ -912,7 +1007,10 @@ class DashboardEngine:
             response = requests.get("http://localhost:8000/policy", timeout=(1.5, 3.0))
             if response.status_code == 200:
                 return response.json()
-            return {"safe_mode_read_only": True, "error": f"unexpected_status:{response.status_code}"}
+            return {
+                "safe_mode_read_only": True,
+                "error": f"unexpected_status:{response.status_code}",
+            }
         except Exception as e:
             return {"safe_mode_read_only": True, "error": str(e)}
 
@@ -925,13 +1023,16 @@ class DashboardEngine:
                 in_path = str((Path(__file__).resolve().parents[2] / path).resolve())
 
             if not os.path.exists(in_path):
-                raise HTTPException(status_code=404, detail=f"File not found: {in_path}")
+                raise HTTPException(
+                    status_code=404, detail=f"File not found: {in_path}"
+                )
 
             ingested_points = 0
             max_lines = max_lines or 10000
 
             with open(in_path, encoding="utf-8", errors="ignore") as fh:
                 import json
+
                 # First attempt: line-by-line JSONL
                 any_line_parsed = False
                 for i, line in enumerate(fh):
@@ -954,9 +1055,8 @@ class DashboardEngine:
                     fh.seek(0)
                     blob = fh.read()
                     # Heuristic cleanup for known artifacts from older watcher: remove "[," after array openers
-                    blob_clean = (
-                        blob.replace('gpus": [,', 'gpus": [')
-                            .replace('processes": [,', 'processes": [')
+                    blob_clean = blob.replace('gpus": [,', 'gpus": [').replace(
+                        'processes": [,', 'processes": ['
                     )
                     try:
                         data = json.loads(blob_clean)
@@ -991,7 +1091,12 @@ class DashboardEngine:
                             self._ingest_single_gpu_record(rec)
                             ingested_points += 1
 
-            return {"status": "success", "ingested_records": ingested_points, "path": in_path, "timestamp": time.time()}
+            return {
+                "status": "success",
+                "ingested_records": ingested_points,
+                "path": in_path,
+                "timestamp": time.time(),
+            }
         except HTTPException:
             raise
         except Exception as e:
@@ -1050,17 +1155,29 @@ class DashboardEngine:
                     "gpu_utilization_percent": int(_to_float(util) or 0),
                     "memory_utilization_percent": None,
                     "temperature_celsius": int(_to_float(temp_c) or 0),
-                    "fan_speed_percent": _to_float(g.get("fan_speed_percent") or g.get("fan.speed")) or 0,
+                    "fan_speed_percent": _to_float(
+                        g.get("fan_speed_percent") or g.get("fan.speed")
+                    )
+                    or 0,
                     "power_draw_watts": _to_float(power_w) or 0.0,
-                    "power_limit_watts": _to_float(g.get("power_limit_watts") or g.get("power.limit")) or 0.0,
+                    "power_limit_watts": _to_float(
+                        g.get("power_limit_watts") or g.get("power.limit")
+                    )
+                    or 0.0,
                     "is_healthy": True,
                     "timestamp": epoch,
                 }
 
                 # Compute memory utilization if possible
-                if gpu_info["memory_used_mb"] is not None and gpu_info["memory_total_mb"]:
+                if (
+                    gpu_info["memory_used_mb"] is not None
+                    and gpu_info["memory_total_mb"]
+                ):
                     try:
-                        gpu_info["memory_utilization_percent"] = int((gpu_info["memory_used_mb"] / gpu_info["memory_total_mb"]) * 100)
+                        gpu_info["memory_utilization_percent"] = int(
+                            (gpu_info["memory_used_mb"] / gpu_info["memory_total_mb"])
+                            * 100
+                        )
                     except Exception:
                         gpu_info["memory_utilization_percent"] = None
 
@@ -1076,10 +1193,12 @@ class DashboardEngine:
         try:
             # Handle timezone-aware timestamps
             from datetime import datetime
+
             return datetime.fromisoformat(ts_str.replace("Z", "+00:00")).timestamp()
         except Exception:
             try:
                 import dateutil.parser  # type: ignore
+
                 return dateutil.parser.isoparse(ts_str).timestamp()
             except Exception:
                 return time.time()

@@ -6,6 +6,7 @@ small set of heuristic checks (fact-check simulation, minimum quality checks)
 and emits draft JSONs into `output/canary_drafts/` representing a ready-for-review
 article draft. This avoids depending on heavy LLM models during smoke runs.
 """
+
 from __future__ import annotations
 
 import json
@@ -43,11 +44,14 @@ def create_draft(parsed_path: Path) -> Path:
         "summary": text[:300].strip(),
         "word_count": payload.get("word_count"),
         "fact_check": fact,
-        "ready_for_review": fact["confidence"] >= 0.5 and payload.get("word_count", 0) >= 50,
+        "ready_for_review": fact["confidence"] >= 0.5
+        and payload.get("word_count", 0) >= 50,
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUT_DIR / parsed_path.name
-    out_path.write_text(json.dumps(draft, ensure_ascii=False, indent=2), encoding="utf-8")
+    out_path.write_text(
+        json.dumps(draft, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     incr("draft_created")
     return out_path
 

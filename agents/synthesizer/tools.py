@@ -26,10 +26,9 @@ from .synthesizer_engine import SynthesizerEngine
 
 logger = get_logger(__name__)
 
+
 async def cluster_articles_tool(
-    engine: SynthesizerEngine,
-    article_texts: list[str],
-    n_clusters: int = 3
+    engine: SynthesizerEngine, article_texts: list[str], n_clusters: int = 3
 ) -> dict[str, Any]:
     """
     Cluster articles using advanced ML techniques.
@@ -42,12 +41,13 @@ async def cluster_articles_tool(
     Returns:
         Clustering results with cluster assignments
     """
-    logger.info(f"🎯 Clustering {len(article_texts)} articles into {n_clusters} clusters")
+    logger.info(
+        f"🎯 Clustering {len(article_texts)} articles into {n_clusters} clusters"
+    )
 
     # start_time is outside the try/except so we can compute elapsed on exception paths
     start_time = time.time()
     try:
-
         # Validate input
         if not article_texts:
             return {
@@ -55,7 +55,7 @@ async def cluster_articles_tool(
                 "clusters": [],
                 "n_clusters": 0,
                 "articles_processed": 0,
-                "error": "No articles provided"
+                "error": "No articles provided",
             }
 
         # Perform clustering
@@ -71,7 +71,7 @@ async def cluster_articles_tool(
             "method": result.method,
             "model_used": result.model_used,
             "confidence": result.confidence,
-            "processing_time": processing_time
+            "processing_time": processing_time,
         }
 
         # Add topics if available
@@ -79,13 +79,16 @@ async def cluster_articles_tool(
             response["topics"] = result.metadata["topics"]
 
         # Log feedback for training
-        engine.log_feedback("cluster_articles", {
-            "method": result.method,
-            "n_clusters": response["n_clusters"],
-            "articles_processed": response["articles_processed"],
-            "confidence": result.confidence,
-            "processing_time": processing_time
-        })
+        engine.log_feedback(
+            "cluster_articles",
+            {
+                "method": result.method,
+                "n_clusters": response["n_clusters"],
+                "articles_processed": response["articles_processed"],
+                "confidence": result.confidence,
+                "processing_time": processing_time,
+            },
+        )
 
         return response
 
@@ -93,18 +96,18 @@ async def cluster_articles_tool(
         logger.error(f"❌ Clustering failed: {e}")
         return {
             "success": False,
-            "clusters": [list(range(len(article_texts)))],  # Fallback: all in one cluster
+            "clusters": [
+                list(range(len(article_texts)))
+            ],  # Fallback: all in one cluster
             "n_clusters": 1,
             "articles_processed": len(article_texts),
             "method": "error_fallback",
             "error": str(e),
-            "processing_time": time.time() - start_time
+            "processing_time": time.time() - start_time,
         }
 
-async def neutralize_text_tool(
-    engine: SynthesizerEngine,
-    text: str
-) -> dict[str, Any]:
+
+async def neutralize_text_tool(engine: SynthesizerEngine, text: str) -> dict[str, Any]:
     """
     Neutralize text for bias and aggressive language.
 
@@ -120,14 +123,13 @@ async def neutralize_text_tool(
     # start_time is outside the try/except so we can compute elapsed on exception paths
     start_time = time.time()
     try:
-
         # Validate input
         if not text or not text.strip():
             return {
                 "success": False,
                 "neutralized_text": "",
                 "original_text": text,
-                "error": "Empty text provided"
+                "error": "Empty text provided",
             }
 
         # Perform neutralization
@@ -142,21 +144,24 @@ async def neutralize_text_tool(
             "method": result.method,
             "model_used": result.model_used,
             "confidence": result.confidence,
-            "processing_time": processing_time
+            "processing_time": processing_time,
         }
 
         # Add bias score if available
-        if hasattr(result, 'bias_score'):
+        if hasattr(result, "bias_score"):
             response["bias_score"] = result.bias_score
 
         # Log feedback for training
-        engine.log_feedback("neutralize_text", {
-            "method": result.method,
-            "input_length": len(text),
-            "output_length": len(result.content),
-            "confidence": result.confidence,
-            "processing_time": processing_time
-        })
+        engine.log_feedback(
+            "neutralize_text",
+            {
+                "method": result.method,
+                "input_length": len(text),
+                "output_length": len(result.content),
+                "confidence": result.confidence,
+                "processing_time": processing_time,
+            },
+        )
 
         return response
 
@@ -168,12 +173,12 @@ async def neutralize_text_tool(
             "original_text": text,
             "method": "error_fallback",
             "error": str(e),
-            "processing_time": time.time() - start_time
+            "processing_time": time.time() - start_time,
         }
 
+
 async def aggregate_cluster_tool(
-    engine: SynthesizerEngine,
-    article_texts: list[str]
+    engine: SynthesizerEngine, article_texts: list[str]
 ) -> dict[str, Any]:
     """
     Aggregate a cluster of articles into a synthesis.
@@ -190,14 +195,13 @@ async def aggregate_cluster_tool(
     # start_time is outside the try/except so we can compute elapsed on exception paths
     start_time = time.time()
     try:
-
         # Validate input
         if not article_texts:
             return {
                 "success": False,
                 "summary": "",
                 "key_points": [],
-                "error": "No articles provided"
+                "error": "No articles provided",
             }
 
         # Perform aggregation
@@ -212,7 +216,7 @@ async def aggregate_cluster_tool(
             "model_used": result.model_used,
             "confidence": result.confidence,
             "articles_processed": len(article_texts),
-            "processing_time": processing_time
+            "processing_time": processing_time,
         }
 
         # Add key points if available
@@ -220,13 +224,16 @@ async def aggregate_cluster_tool(
             response["key_points"] = result.metadata["key_points"]
 
         # Log feedback for training
-        engine.log_feedback("aggregate_cluster", {
-            "method": result.method,
-            "articles_processed": len(article_texts),
-            "summary_length": len(result.content),
-            "confidence": result.confidence,
-            "processing_time": processing_time
-        })
+        engine.log_feedback(
+            "aggregate_cluster",
+            {
+                "method": result.method,
+                "articles_processed": len(article_texts),
+                "summary_length": len(result.content),
+                "confidence": result.confidence,
+                "processing_time": processing_time,
+            },
+        )
 
         return response
 
@@ -240,15 +247,16 @@ async def aggregate_cluster_tool(
             "method": "error_fallback",
             "articles_processed": len(article_texts),
             "error": str(e),
-            "processing_time": time.time() - start_time
+            "processing_time": time.time() - start_time,
         }
+
 
 async def synthesize_gpu_tool(
     engine: SynthesizerEngine,
     articles: list[dict[str, Any]],
     max_clusters: int = 5,
     context: str = "news analysis",
-    cluster_id: str | None = None
+    cluster_id: str | None = None,
 ) -> dict[str, Any]:
     """
     GPU-accelerated full synthesis pipeline.
@@ -262,47 +270,48 @@ async def synthesize_gpu_tool(
     Returns:
         Full synthesis results
     """
-    logger.info(f"🚀 GPU synthesis: {len(articles)} articles, max_clusters={max_clusters}")
+    logger.info(
+        f"🚀 GPU synthesis: {len(articles)} articles, max_clusters={max_clusters}"
+    )
 
     # start_time is outside the try/except so we can compute elapsed on exception paths
     start_time = time.time()
     try:
-
         # Validate input
         if not articles:
-            return {
-                "success": False,
-                "synthesis": "",
-                "error": "No articles provided"
-            }
+            return {"success": False, "synthesis": "", "error": "No articles provided"}
 
         # Perform GPU-accelerated synthesis
         # Allow caller to provide `cluster_id` in kwargs for cluster-driven synthesis
         options = {}
         if cluster_id:
-            options['cluster_id'] = cluster_id
+            options["cluster_id"] = cluster_id
         # if caller passed kwargs with cluster_id, prefer that
         # (compatibility: some callers pass `cluster_id` via keyword args)
         # Check the engine argument list or kwargs passed to this function
         # This tool is typically called from endpoints which we update accordingly.
         cluster_id = None
-        if 'cluster_id' in locals() and locals().get('cluster_id'):
-            cluster_id = locals().get('cluster_id')
+        if "cluster_id" in locals() and locals().get("cluster_id"):
+            cluster_id = locals().get("cluster_id")
         # Some engine implementations accept an `options` kwarg; older ones
         # don't — detect and call accordingly for compatibility with tests
         import inspect
 
         try:
             sig = inspect.signature(engine.synthesize_gpu)
-            if 'options' in sig.parameters:
-                result = await engine.synthesize_gpu(articles, max_clusters, context, options=options)
+            if "options" in sig.parameters:
+                result = await engine.synthesize_gpu(
+                    articles, max_clusters, context, options=options
+                )
             else:
                 result = await engine.synthesize_gpu(articles, max_clusters, context)
         except (ValueError, TypeError):
             # If signature inspection fails (e.g. C-bound function), fall back to
             # attempting a kwargs call and then a positional-only call.
             try:
-                result = await engine.synthesize_gpu(articles, max_clusters, context, options=options)
+                result = await engine.synthesize_gpu(
+                    articles, max_clusters, context, options=options
+                )
             except TypeError:
                 result = await engine.synthesize_gpu(articles, max_clusters, context)
 
@@ -317,7 +326,7 @@ async def synthesize_gpu_tool(
             "processing_time": processing_time,
             "gpu_used": result.metadata.get("gpu_used", False),
             "articles_processed": result.metadata.get("articles_processed", 0),
-            "clusters_found": result.metadata.get("clusters_found", 0)
+            "clusters_found": result.metadata.get("clusters_found", 0),
         }
 
         # Add themes if available
@@ -325,26 +334,31 @@ async def synthesize_gpu_tool(
             response["themes"] = result.metadata["themes"]
 
         # Calculate performance metrics
-        articles_per_sec = result.metadata.get("articles_processed", 0) / max(processing_time, 0.001)
+        articles_per_sec = result.metadata.get("articles_processed", 0) / max(
+            processing_time, 0.001
+        )
 
         # Log feedback for training
-        engine.log_feedback("synthesize_gpu", {
-            "method": result.method,
-            "articles_processed": response["articles_processed"],
-            "clusters_found": response["clusters_found"],
-            "synthesis_length": len(result.content),
-            "confidence": result.confidence,
-            "gpu_used": response["gpu_used"],
-            "articles_per_sec": articles_per_sec,
-            "processing_time": processing_time,
-            "context": context
-        })
+        engine.log_feedback(
+            "synthesize_gpu",
+            {
+                "method": result.method,
+                "articles_processed": response["articles_processed"],
+                "clusters_found": response["clusters_found"],
+                "synthesis_length": len(result.content),
+                "confidence": result.confidence,
+                "gpu_used": response["gpu_used"],
+                "articles_per_sec": articles_per_sec,
+                "processing_time": processing_time,
+                "context": context,
+            },
+        )
 
         # Add performance metrics to response
         response["performance"] = {
             "articles_per_sec": articles_per_sec,
             "gpu_used": response["gpu_used"],
-            "processing_time": processing_time
+            "processing_time": processing_time,
         }
 
         return response
@@ -352,25 +366,35 @@ async def synthesize_gpu_tool(
     except Exception as e:
         logger.error(f"❌ GPU synthesis failed: {e}")
         # Emergency fallback
-        combined = " ".join([article.get('content', '') for article in articles[:3] if isinstance(article, dict)])
+        combined = " ".join(
+            [
+                article.get("content", "")
+                for article in articles[:3]
+                if isinstance(article, dict)
+            ]
+        )
         return {
             "success": False,
             "synthesis": combined,
             "method": "emergency_fallback",
             "articles_processed": len(articles),
             "error": str(e),
-            "processing_time": time.time() - start_time
+            "processing_time": time.time() - start_time,
         }
+
 
 def synthesize_content(
     engine: SynthesizerEngine,
     articles: list[dict[str, Any]],
     max_clusters: int = 5,
-    context: str = "news analysis"
+    context: str = "news analysis",
 ) -> Any:
     """Backward compatible wrapper that drives the async synthesis pipeline."""
+
     async def _run():
-        return await synthesize_gpu_tool(engine, articles, max_clusters=max_clusters, context=context)
+        return await synthesize_gpu_tool(
+            engine, articles, max_clusters=max_clusters, context=context
+        )
 
     try:
         loop = asyncio.get_running_loop()
@@ -384,6 +408,7 @@ def synthesize_content(
     # and is the modern recommended API. This avoids calling run_until_complete on a
     # potentially non-running loop object.
     return asyncio.run(_run())
+
 
 async def health_check(engine: SynthesizerEngine) -> dict[str, Any]:
     """
@@ -402,61 +427,79 @@ async def health_check(engine: SynthesizerEngine) -> dict[str, Any]:
             "timestamp": time.time(),
             "overall_status": "healthy",
             "components": {},
-            "issues": []
+            "issues": [],
         }
 
         # Check model status
         model_status = engine.get_model_status()
 
         health_status["components"]["bertopic_model"] = {
-            "status": "healthy" if model_status.get('bertopic', False) else "unhealthy",
-            "loaded": model_status.get('bertopic', False)
+            "status": "healthy" if model_status.get("bertopic", False) else "unhealthy",
+            "loaded": model_status.get("bertopic", False),
         }
 
         health_status["components"]["bart_model"] = {
-            "status": "healthy" if model_status.get('bart', False) else "unhealthy",
-            "loaded": model_status.get('bart', False)
+            "status": "healthy" if model_status.get("bart", False) else "unhealthy",
+            "loaded": model_status.get("bart", False),
         }
 
         health_status["components"]["flan_t5_model"] = {
-            "status": "healthy" if model_status.get('flan_t5', False) else "unhealthy",
-            "loaded": model_status.get('flan_t5', False)
+            "status": "healthy" if model_status.get("flan_t5", False) else "unhealthy",
+            "loaded": model_status.get("flan_t5", False),
         }
 
         health_status["components"]["embedding_model"] = {
-            "status": "healthy" if model_status.get('embeddings', False) else "unhealthy",
-            "loaded": model_status.get('embeddings', False)
+            "status": "healthy"
+            if model_status.get("embeddings", False)
+            else "unhealthy",
+            "loaded": model_status.get("embeddings", False),
         }
 
         health_status["components"]["gpu_allocation"] = {
-            "status": "healthy" if model_status.get('gpu_allocated', False) else "degraded",
-            "allocated": model_status.get('gpu_allocated', False)
+            "status": "healthy"
+            if model_status.get("gpu_allocated", False)
+            else "degraded",
+            "allocated": model_status.get("gpu_allocated", False),
         }
 
         # Get processing stats
         stats = engine.get_processing_stats()
         health_status["components"]["processing_stats"] = {
             "status": "healthy",
-            "total_processed": stats.get('total_processed', 0),
-            "avg_processing_time": stats.get('avg_processing_time', 0.0)
+            "total_processed": stats.get("total_processed", 0),
+            "avg_processing_time": stats.get("avg_processing_time", 0.0),
         }
 
         # Determine overall status
-        unhealthy_components = [k for k, v in health_status["components"].items() if v["status"] == "unhealthy"]
+        unhealthy_components = [
+            k
+            for k, v in health_status["components"].items()
+            if v["status"] == "unhealthy"
+        ]
         if unhealthy_components:
             health_status["overall_status"] = "unhealthy"
-            health_status["issues"] = [f"Component {comp} is unhealthy" for comp in unhealthy_components]
+            health_status["issues"] = [
+                f"Component {comp} is unhealthy" for comp in unhealthy_components
+            ]
 
-        degraded_components = [k for k, v in health_status["components"].items() if v["status"] == "degraded"]
+        degraded_components = [
+            k
+            for k, v in health_status["components"].items()
+            if v["status"] == "degraded"
+        ]
         if degraded_components and health_status["overall_status"] == "healthy":
             health_status["overall_status"] = "degraded"
-            health_status["issues"] = [f"Component {comp} is degraded" for comp in degraded_components]
+            health_status["issues"] = [
+                f"Component {comp} is degraded" for comp in degraded_components
+            ]
 
         # Add model counts
-        health_status["model_count"] = model_status.get('total_models', 0)
-        health_status["gpu_available"] = model_status.get('gpu_allocated', False)
+        health_status["model_count"] = model_status.get("total_models", 0)
+        health_status["gpu_available"] = model_status.get("gpu_allocated", False)
 
-        logger.info(f"🏥 Health check completed: {health_status['overall_status']} ({health_status['model_count']} models)")
+        logger.info(
+            f"🏥 Health check completed: {health_status['overall_status']} ({health_status['model_count']} models)"
+        )
         return health_status
 
     except Exception as e:
@@ -464,8 +507,9 @@ async def health_check(engine: SynthesizerEngine) -> dict[str, Any]:
         return {
             "timestamp": time.time(),
             "overall_status": "unhealthy",
-            "error": str(e)
+            "error": str(e),
         }
+
 
 async def get_stats(engine: SynthesizerEngine) -> dict[str, Any]:
     """
@@ -482,15 +526,17 @@ async def get_stats(engine: SynthesizerEngine) -> dict[str, Any]:
         model_status = engine.get_model_status()
 
         return {
-            "total_processed": stats.get('total_processed', 0),
-            "gpu_processed": stats.get('gpu_processed', 0),
-            "cpu_processed": stats.get('cpu_processed', 0),
-            "avg_processing_time": stats.get('avg_processing_time', 0.0),
-            "gpu_memory_usage_gb": stats.get('gpu_memory_usage_gb', 0.0),
+            "total_processed": stats.get("total_processed", 0),
+            "gpu_processed": stats.get("gpu_processed", 0),
+            "cpu_processed": stats.get("cpu_processed", 0),
+            "avg_processing_time": stats.get("avg_processing_time", 0.0),
+            "gpu_memory_usage_gb": stats.get("gpu_memory_usage_gb", 0.0),
             "model_status": model_status,
-            "gpu_available": model_status.get('gpu_allocated', False),
-            "models_loaded": model_status.get('total_models', 0),
-            "last_performance_check": stats.get('last_performance_check').isoformat() if stats.get('last_performance_check') else None
+            "gpu_available": model_status.get("gpu_allocated", False),
+            "models_loaded": model_status.get("total_models", 0),
+            "last_performance_check": stats.get("last_performance_check").isoformat()
+            if stats.get("last_performance_check")
+            else None,
         }
 
     except Exception as e:
@@ -501,10 +547,13 @@ async def get_stats(engine: SynthesizerEngine) -> dict[str, Any]:
             "cpu_processed": 0,
             "avg_processing_time": 0.0,
             "gpu_memory_usage_gb": 0.0,
-            "error": str(e)
+            "error": str(e),
         }
 
-def validate_clustering_request(article_texts: list[str], n_clusters: int) -> tuple[bool, str]:
+
+def validate_clustering_request(
+    article_texts: list[str], n_clusters: int
+) -> tuple[bool, str]:
     """
     Validate clustering request parameters.
 
@@ -529,17 +578,24 @@ def validate_clustering_request(article_texts: list[str], n_clusters: int) -> tu
             return False, "Number of clusters must be at least 1"
 
         if n_clusters > len(article_texts):
-            return False, f"Cannot create {n_clusters} clusters from {len(article_texts)} articles"
+            return (
+                False,
+                f"Cannot create {n_clusters} clusters from {len(article_texts)} articles",
+            )
 
         # Check for empty texts
         empty_texts = sum(1 for text in article_texts if not text or not text.strip())
         if empty_texts > 0:
-            return False, f"{empty_texts} article(s) have empty or whitespace-only content"
+            return (
+                False,
+                f"{empty_texts} article(s) have empty or whitespace-only content",
+            )
 
         return True, ""
 
     except Exception as e:
         return False, f"Validation error: {e}"
+
 
 def validate_synthesis_request(articles: list[dict[str, Any]]) -> tuple[bool, str]:
     """
@@ -567,7 +623,7 @@ def validate_synthesis_request(articles: list[dict[str, Any]]) -> tuple[bool, st
             if not isinstance(article, dict):
                 return False, f"Article at index {i} is not a dictionary"
 
-            content = article.get('content', '')
+            content = article.get("content", "")
             if not content or not content.strip():
                 invalid_articles += 1
 
@@ -578,6 +634,7 @@ def validate_synthesis_request(articles: list[dict[str, Any]]) -> tuple[bool, st
 
     except Exception as e:
         return False, f"Validation error: {e}"
+
 
 def format_clustering_result(result: dict[str, Any], format_type: str = "json") -> str:
     """
@@ -606,17 +663,19 @@ def format_clustering_result(result: dict[str, Any], format_type: str = "json") 
                 f"Confidence: {result.get('confidence', 0.0):.2f}",
                 f"Processing Time: {result.get('processing_time', 0.0):.2f}s",
                 "",
-                "Clusters:"
+                "Clusters:",
             ]
 
-            clusters = result.get('clusters', [])
+            clusters = result.get("clusters", [])
             for i, cluster in enumerate(clusters):
-                lines.append(f"  Cluster {i}: {len(cluster)} articles (indices: {cluster})")
+                lines.append(
+                    f"  Cluster {i}: {len(cluster)} articles (indices: {cluster})"
+                )
 
             return "\n".join(lines)
 
         elif format_type == "markdown":
-            success_emoji = "✅" if result.get('success', False) else "❌"
+            success_emoji = "✅" if result.get("success", False) else "❌"
             lines = [
                 f"# Clustering Result {success_emoji}",
                 "",
@@ -627,12 +686,14 @@ def format_clustering_result(result: dict[str, Any], format_type: str = "json") 
                 f"**Confidence:** {result.get('confidence', 0.0):.2f}",
                 f"**Processing Time:** {result.get('processing_time', 0.0):.2f}s",
                 "",
-                "## Cluster Details"
+                "## Cluster Details",
             ]
 
-            clusters = result.get('clusters', [])
+            clusters = result.get("clusters", [])
             for i, cluster in enumerate(clusters):
-                lines.append(f"- **Cluster {i}:** {len(cluster)} articles (indices: {cluster})")
+                lines.append(
+                    f"- **Cluster {i}:** {len(cluster)} articles (indices: {cluster})"
+                )
 
             return "\n".join(lines)
 
@@ -641,6 +702,7 @@ def format_clustering_result(result: dict[str, Any], format_type: str = "json") 
 
     except Exception as e:
         return f"Formatting error: {e}"
+
 
 def format_synthesis_result(result: dict[str, Any], format_type: str = "json") -> str:
     """
@@ -670,10 +732,10 @@ def format_synthesis_result(result: dict[str, Any], format_type: str = "json") -
                 f"Confidence: {result.get('confidence', 0.0):.2f}",
                 f"Processing Time: {result.get('processing_time', 0.0):.2f}s",
                 "",
-                "Synthesis:"
+                "Synthesis:",
             ]
 
-            synthesis = result.get('synthesis', '')
+            synthesis = result.get("synthesis", "")
             if len(synthesis) > 500:
                 lines.append(synthesis[:500] + "...")
             else:
@@ -682,8 +744,8 @@ def format_synthesis_result(result: dict[str, Any], format_type: str = "json") -
             return "\n".join(lines)
 
         elif format_type == "markdown":
-            success_emoji = "✅" if result.get('success', False) else "❌"
-            gpu_emoji = "🚀" if result.get('gpu_used', False) else "💻"
+            success_emoji = "✅" if result.get("success", False) else "❌"
+            gpu_emoji = "🚀" if result.get("gpu_used", False) else "💻"
 
             lines = [
                 f"# Synthesis Result {success_emoji} {gpu_emoji}",
@@ -696,10 +758,10 @@ def format_synthesis_result(result: dict[str, Any], format_type: str = "json") -
                 f"**Confidence:** {result.get('confidence', 0.0):.2f}",
                 f"**Processing Time:** {result.get('processing_time', 0.0):.2f}s",
                 "",
-                "## Synthesized Content"
+                "## Synthesized Content",
             ]
 
-            synthesis = result.get('synthesis', '')
+            synthesis = result.get("synthesis", "")
             if synthesis:
                 lines.extend(["", "```", synthesis, "```"])
             else:
@@ -713,17 +775,18 @@ def format_synthesis_result(result: dict[str, Any], format_type: str = "json") -
     except Exception as e:
         return f"Formatting error: {e}"
 
+
 # Export main functions
 __all__ = [
-    'cluster_articles_tool',
-    'neutralize_text_tool',
-    'aggregate_cluster_tool',
-    'synthesize_gpu_tool',
-    'synthesize_content',
-    'health_check',
-    'get_stats',
-    'validate_clustering_request',
-    'validate_synthesis_request',
-    'format_clustering_result',
-    'format_synthesis_result'
+    "cluster_articles_tool",
+    "neutralize_text_tool",
+    "aggregate_cluster_tool",
+    "synthesize_gpu_tool",
+    "synthesize_content",
+    "health_check",
+    "get_stats",
+    "validate_clustering_request",
+    "validate_synthesis_request",
+    "format_clustering_result",
+    "format_synthesis_result",
 ]

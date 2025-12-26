@@ -31,7 +31,9 @@ class StageBMetrics:
         return self.extraction_total.labels(result=result)._value.get()
 
     def get_fallback_count(self, fallback: str, outcome: str) -> float:
-        return self.extraction_fallback_total.labels(fallback=fallback, outcome=outcome)._value.get()
+        return self.extraction_fallback_total.labels(
+            fallback=fallback, outcome=outcome
+        )._value.get()
 
     def get_ingestion_count(self, status: str) -> float:
         return self.ingestion_total.labels(status=status)._value.get()

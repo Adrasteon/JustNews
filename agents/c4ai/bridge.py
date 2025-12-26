@@ -3,6 +3,7 @@
 This was previously under `agents/scout`; it's moved here for clearer separation
 so multiple agents can import `agents.c4ai.bridge`.
 """
+
 from __future__ import annotations
 
 import os
@@ -22,7 +23,13 @@ except Exception:
     CacheMode = None
 
 
-async def crawl_via_local_server(url: str, *, mode: str = "standard", use_llm: bool = True, base_url: str | None = None) -> dict[str, Any]:
+async def crawl_via_local_server(
+    url: str,
+    *,
+    mode: str = "standard",
+    use_llm: bool = True,
+    base_url: str | None = None,
+) -> dict[str, Any]:
     """Call a local Crawl4AI HTTP server (systemd-managed) and return a normalized result.
 
     Falls back to in-process AsyncWebCrawler if the HTTP endpoint is not reachable
@@ -39,7 +46,9 @@ async def crawl_via_local_server(url: str, *, mode: str = "standard", use_llm: b
     if aiohttp is not None:
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(f"{base_url}/crawl", json=payload, timeout=60) as resp:
+                async with session.post(
+                    f"{base_url}/crawl", json=payload, timeout=60
+                ) as resp:
                     data = await resp.json()
                     if isinstance(data, dict) and data.get("results"):
                         return data["results"][0]
@@ -54,7 +63,11 @@ async def crawl_via_local_server(url: str, *, mode: str = "standard", use_llm: b
 
     try:
         browser_conf = BrowserConfig(headless=True) if BrowserConfig else None
-        run_conf = CrawlerRunConfig(cache_mode=CacheMode.BYPASS) if CrawlerRunConfig and CacheMode else None
+        run_conf = (
+            CrawlerRunConfig(cache_mode=CacheMode.BYPASS)
+            if CrawlerRunConfig and CacheMode
+            else None
+        )
         async with AsyncWebCrawler(config=browser_conf) as crawler:
             res = await crawler.arun(url, config=run_conf)
             return {

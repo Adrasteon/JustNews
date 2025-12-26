@@ -37,7 +37,7 @@ def check_services_running():
         8000: "MCP Bus",
         8002: "Scout Agent",
         8009: "NewsReader Agent",
-        8007: "Memory Agent"
+        8007: "Memory Agent",
     }
 
     missing_services = []
@@ -47,7 +47,7 @@ def check_services_running():
                 ["ss", "-ltn", f"sport = :{port}"],
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
             )
             if "LISTEN" not in result.stdout:
                 missing_services.append(f"{service} (port {port})")
@@ -63,6 +63,7 @@ def check_services_running():
 
     print("✅ All required services are running")
     return True
+
 
 def run_large_scale_crawl(args=None):
     """Execute the large-scale crawl"""
@@ -97,23 +98,30 @@ def run_large_scale_crawl(args=None):
         print(f"\n❌ Error running crawl: {e}")
         return 1
 
+
 def main():
     """Main execution with argument parsing"""
     import argparse
 
     parser = argparse.ArgumentParser(description="Run Large-Scale Multi-Site Crawl")
-    parser.add_argument("--test", action="store_true",
-                       help="Run in test mode with small numbers")
-    parser.add_argument("--sites", nargs="+",
-                       help="Specific sites to crawl (default: bbc cnn reuters nytimes guardian)")
-    parser.add_argument("--articles", type=int,
-                       help="Articles per site (default: 50)")
-    parser.add_argument("--concurrent", type=int,
-                       help="Concurrent sites (default: 5)")
-    parser.add_argument("--mode", choices=["ultra_fast", "ai_enhanced", "mixed"],
-                       help="Crawl mode (default: mixed)")
-    parser.add_argument("--quality", type=float,
-                       help="Quality threshold (default: 0.6)")
+    parser.add_argument(
+        "--test", action="store_true", help="Run in test mode with small numbers"
+    )
+    parser.add_argument(
+        "--sites",
+        nargs="+",
+        help="Specific sites to crawl (default: bbc cnn reuters nytimes guardian)",
+    )
+    parser.add_argument("--articles", type=int, help="Articles per site (default: 50)")
+    parser.add_argument("--concurrent", type=int, help="Concurrent sites (default: 5)")
+    parser.add_argument(
+        "--mode",
+        choices=["ultra_fast", "ai_enhanced", "mixed"],
+        help="Crawl mode (default: mixed)",
+    )
+    parser.add_argument(
+        "--quality", type=float, help="Quality threshold (default: 0.6)"
+    )
 
     args = parser.parse_args()
 
@@ -165,7 +173,7 @@ def main():
     if not args.test:
         try:
             response = input("\n🚀 Start large-scale crawl? (y/N): ").strip().lower()
-            if response not in ['y', 'yes']:
+            if response not in ["y", "yes"]:
                 print("❌ Crawl cancelled")
                 sys.exit(0)
         except KeyboardInterrupt:
@@ -175,6 +183,7 @@ def main():
     # Run the crawl
     exit_code = run_large_scale_crawl(crawl_args)
     sys.exit(exit_code)
+
 
 if __name__ == "__main__":
     main()

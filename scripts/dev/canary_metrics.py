@@ -4,6 +4,7 @@
 Records lightweight counters into `output/metrics/canary_metrics.json` so
 tests can validate that each stage emitted at least one successful event.
 """
+
 from __future__ import annotations
 
 import json

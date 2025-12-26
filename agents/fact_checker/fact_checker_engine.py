@@ -32,6 +32,7 @@ except Exception:  # pragma: no cover - optional dependency wiring
 # Configure logging
 logger = get_logger(__name__)
 
+
 class FactCheckerConfig:
     """Configuration for the Fact Checker Engine."""
 
@@ -41,46 +42,44 @@ class FactCheckerConfig:
                 "model_name": "distilbert-base-uncased-finetuned-sst-2-english",
                 "max_length": 512,
                 "batch_size": 16,
-                "device": "auto"  # auto, cpu, cuda
+                "device": "auto",  # auto, cpu, cuda
             },
             "roberta": {
                 "model_name": "roberta-base",
                 "max_length": 512,
                 "batch_size": 16,
-                "device": "auto"
+                "device": "auto",
             },
             "sentence_transformers": {
                 "model_name": "sentence-transformers/all-MiniLM-L6-v2",
                 "max_length": 512,
                 "batch_size": 32,
-                "device": "auto"
+                "device": "auto",
             },
-            "spacy": {
-                "model_name": "en_core_web_sm",
-                "batch_size": 16
-            }
+            "spacy": {"model_name": "en_core_web_sm", "batch_size": 16},
         }
 
         self.gpu_config = {
             "enable_gpu": True,
             "gpu_memory_limit": 0.8,
             "cpu_fallback": True,
-            "tensorrt_enabled": False
+            "tensorrt_enabled": False,
         }
 
         self.training_config = {
             "online_training": True,
             "feedback_collection": True,
             "model_update_interval": 3600,  # seconds
-            "max_training_samples": 10000
+            "max_training_samples": 10000,
         }
 
         self.performance_config = {
             "cache_enabled": True,
             "cache_ttl": 300,  # seconds
             "parallel_processing": True,
-            "max_concurrent_requests": 4
+            "max_concurrent_requests": 4,
         }
+
 
 class FactCheckerEngine:
     """
@@ -118,7 +117,7 @@ class FactCheckerEngine:
             "gpu_requests": 0,
             "cpu_requests": 0,
             "average_processing_time": 0.0,
-            "error_count": 0
+            "error_count": 0,
         }
 
         # Cache
@@ -138,7 +137,10 @@ class FactCheckerEngine:
             # Initialize spaCy (lightweight, always available)
             try:
                 import spacy
-                self.spacy_nlp = spacy.load(self.config.model_configs["spacy"]["model_name"])
+
+                self.spacy_nlp = spacy.load(
+                    self.config.model_configs["spacy"]["model_name"]
+                )
                 self.logger.info("✅ spaCy NER model loaded successfully")
             except Exception as e:
                 self.logger.warning(f"⚠️ spaCy model loading failed: {e}")
@@ -151,7 +153,9 @@ class FactCheckerEngine:
                 from transformers import pipeline
 
                 # Check GPU availability
-                self.gpu_available = torch.cuda.is_available() and self.config.gpu_config["enable_gpu"]
+                self.gpu_available = (
+                    torch.cuda.is_available() and self.config.gpu_config["enable_gpu"]
+                )
                 device = 0 if self.gpu_available else -1
 
                 # DistilBERT for fact verification
@@ -160,7 +164,7 @@ class FactCheckerEngine:
                         "sentiment-analysis",
                         model=self.config.model_configs["distilbert"]["model_name"],
                         device=device,
-                        return_all_scores=True
+                        return_all_scores=True,
                     )
                     self.logger.info("✅ DistilBERT model loaded successfully")
                 except Exception as e:
@@ -173,7 +177,7 @@ class FactCheckerEngine:
                         "text-classification",
                         model=self.config.model_configs["roberta"]["model_name"],
                         device=device,
-                        return_all_scores=True
+                        return_all_scores=True,
                     )
                     self.logger.info("✅ RoBERTa model loaded successfully")
                 except Exception as e:
@@ -192,8 +196,10 @@ class FactCheckerEngine:
                 device = "cuda" if self.gpu_available else "cpu"
                 try:
                     self.sentence_transformer = SentenceTransformer(
-                        self.config.model_configs["sentence_transformers"]["model_name"],
-                        device=device
+                        self.config.model_configs["sentence_transformers"][
+                            "model_name"
+                        ],
+                        device=device,
                     )
                 except TypeError:
                     # Some test-time mocks of SentenceTransformer don't accept the
@@ -204,7 +210,9 @@ class FactCheckerEngine:
                     )
                 self.logger.info("✅ SentenceTransformer model loaded successfully")
             except ImportError as e:
-                self.logger.warning(f"⚠️ SentenceTransformers library not available: {e}")
+                self.logger.warning(
+                    f"⚠️ SentenceTransformers library not available: {e}"
+                )
                 self.sentence_transformer = None
 
             # Initialize TensorRT if enabled
@@ -231,7 +239,7 @@ class FactCheckerEngine:
             # Create TensorRT engine for fact-checking
             self.tensorrt_engine = TensorRTEngine(
                 model_configs=self.config.model_configs,
-                memory_limit=self.config.gpu_config["gpu_memory_limit"]
+                memory_limit=self.config.gpu_config["gpu_memory_limit"],
             )
 
             self.logger.info("✅ TensorRT engine initialized for GPU acceleration")
@@ -243,19 +251,33 @@ class FactCheckerEngine:
     def _initialize_mistral_adapter(self) -> None:
         """Prepare the high-accuracy Mistral adapter (lazy-loaded)."""
         if MistralAdapter is None:
-            self.logger.info("Mistral adapter dependencies unavailable; continuing with legacy fact-checking stack")
+            self.logger.info(
+                "Mistral adapter dependencies unavailable; continuing with legacy fact-checking stack"
+            )
             return
         try:
-            self.mistral_adapter = MistralAdapter(agent="fact_checker", adapter_name=MODEL_ADAPTER_NAME, system_prompt=SYSTEM_PROMPT)
+            self.mistral_adapter = MistralAdapter(
+                agent="fact_checker",
+                adapter_name=MODEL_ADAPTER_NAME,
+                system_prompt=SYSTEM_PROMPT,
+            )
             if getattr(self.mistral_adapter, "enabled", True):
-                self.logger.info("Fact Checker Mistral adapter enabled (loaded on first use)")
+                self.logger.info(
+                    "Fact Checker Mistral adapter enabled (loaded on first use)"
+                )
             else:
-                self.logger.info("Fact Checker Mistral adapter disabled via env variable")
+                self.logger.info(
+                    "Fact Checker Mistral adapter disabled via env variable"
+                )
         except Exception as exc:
-            self.logger.warning(f"Failed to initialize Fact Checker Mistral adapter: {exc}")
+            self.logger.warning(
+                f"Failed to initialize Fact Checker Mistral adapter: {exc}"
+            )
             self.mistral_adapter = None
 
-    def _evaluate_with_mistral(self, claim: str, context: str | None = None) -> ClaimAssessment | None:
+    def _evaluate_with_mistral(
+        self, claim: str, context: str | None = None
+    ) -> ClaimAssessment | None:
         """Run the Mistral adapter for the given claim when available."""
         if not self.mistral_adapter or not claim.strip():
             return None
@@ -288,7 +310,7 @@ class FactCheckerEngine:
             "gpu_available": self.gpu_available,
             "tensorrt_enabled": self.tensorrt_engine is not None,
             "online_training_enabled": self.config.training_config["online_training"],
-            "cache_enabled": self.config.performance_config["cache_enabled"]
+            "cache_enabled": self.config.performance_config["cache_enabled"],
         }
 
     def get_performance_stats(self) -> dict[str, Any]:
@@ -298,10 +320,14 @@ class FactCheckerEngine:
             "cache_size": len(self.cache),
             "feedback_buffer_size": len(self.feedback_buffer),
             "training_data_size": len(self.training_data),
-            "last_model_update": datetime.fromtimestamp(self.last_model_update).isoformat()
+            "last_model_update": datetime.fromtimestamp(
+                self.last_model_update
+            ).isoformat(),
         }
 
-    def verify_facts(self, content: str, source_url: str | None = None, context: str | None = None) -> dict[str, Any]:
+    def verify_facts(
+        self, content: str, source_url: str | None = None, context: str | None = None
+    ) -> dict[str, Any]:
         """
         Verify factual claims in content using AI models.
 
@@ -332,7 +358,7 @@ class FactCheckerEngine:
                     "verification_score": 0.5,
                     "classification": "no_claims_found",
                     "confidence": 0.0,
-                    "claims_analyzed": 0
+                    "claims_analyzed": 0,
                 }
 
             # Verify each claim
@@ -346,16 +372,22 @@ class FactCheckerEngine:
 
             # Aggregate results
             avg_score = np.mean(verification_scores) if verification_scores else 0.5
-            dominant_classification = max(set(classifications), key=classifications.count) if classifications else "unknown"
+            dominant_classification = (
+                max(set(classifications), key=classifications.count)
+                if classifications
+                else "unknown"
+            )
 
             result = {
                 "verification_score": float(avg_score),
                 "classification": dominant_classification,
-                "confidence": float(np.std(verification_scores)) if len(verification_scores) > 1 else 1.0,
+                "confidence": float(np.std(verification_scores))
+                if len(verification_scores) > 1
+                else 1.0,
                 "claims_analyzed": len(claim_texts),
                 "claims_verified": len(verification_scores),
                 "individual_scores": verification_scores,
-                "classifications": classifications
+                "classifications": classifications,
             }
 
             # Cache result
@@ -363,8 +395,11 @@ class FactCheckerEngine:
 
             processing_time = time.time() - start_time
             self.processing_stats["average_processing_time"] = (
-                (self.processing_stats["average_processing_time"] * (self.processing_stats["total_requests"] - 1)) +
-                processing_time
+                (
+                    self.processing_stats["average_processing_time"]
+                    * (self.processing_stats["total_requests"] - 1)
+                )
+                + processing_time
             ) / self.processing_stats["total_requests"]
 
             return result
@@ -374,7 +409,9 @@ class FactCheckerEngine:
             self.logger.error(f"Error in fact verification: {e}")
             return {"error": str(e)}
 
-    def _verify_single_claim(self, claim: str, context: str | None = None) -> dict[str, Any]:
+    def _verify_single_claim(
+        self, claim: str, context: str | None = None
+    ) -> dict[str, Any]:
         """Verify a single claim using available models."""
         try:
             adapter_assessment = self._evaluate_with_mistral(claim, context)
@@ -384,7 +421,9 @@ class FactCheckerEngine:
                     "refuted": "refuted",
                     "unclear": "questionable",
                 }
-                classification = classification_map.get(adapter_assessment.verdict, "questionable")
+                classification = classification_map.get(
+                    adapter_assessment.verdict, "questionable"
+                )
                 return {
                     "score": adapter_assessment.score,
                     "classification": classification,
@@ -397,12 +436,18 @@ class FactCheckerEngine:
             # Use DistilBERT if available
             if self.distilbert_model:
                 try:
-                    result = self.distilbert_model(claim[:512])  # Truncate to model limit
+                    result = self.distilbert_model(
+                        claim[:512]
+                    )  # Truncate to model limit
                     # Convert sentiment scores to verification scores
                     scores = {item["label"]: item["score"] for item in result}
                     positive_score = scores.get("POSITIVE", 0.5)
-                    verification_score = positive_score  # Higher positive = more likely true
-                    classification = "verified" if verification_score > 0.6 else "questionable"
+                    verification_score = (
+                        positive_score  # Higher positive = more likely true
+                    )
+                    classification = (
+                        "verified" if verification_score > 0.6 else "questionable"
+                    )
                 except Exception as e:
                     self.logger.warning(f"DistilBERT verification failed: {e}")
                     verification_score = 0.5
@@ -410,12 +455,14 @@ class FactCheckerEngine:
             else:
                 # Fallback heuristic
                 verification_score = self._heuristic_verification(claim)
-                classification = "verified" if verification_score > 0.6 else "questionable"
+                classification = (
+                    "verified" if verification_score > 0.6 else "questionable"
+                )
 
             return {
                 "score": verification_score,
                 "classification": classification,
-                "method": "distilbert" if self.distilbert_model else "heuristic"
+                "method": "distilbert" if self.distilbert_model else "heuristic",
             }
 
         except Exception as e:
@@ -428,28 +475,51 @@ class FactCheckerEngine:
 
         # Positive indicators
         positive_indicators = [
-            "according to", "reported by", "study shows", "research indicates",
-            "data from", "official statement", "confirmed", "verified"
+            "according to",
+            "reported by",
+            "study shows",
+            "research indicates",
+            "data from",
+            "official statement",
+            "confirmed",
+            "verified",
         ]
 
         # Negative indicators
         negative_indicators = [
-            "allegedly", "claimed", "supposedly", "rumored", "unconfirmed",
-            "speculation", "possibly", "might be"
+            "allegedly",
+            "claimed",
+            "supposedly",
+            "rumored",
+            "unconfirmed",
+            "speculation",
+            "possibly",
+            "might be",
         ]
 
-        positive_score = sum(1 for indicator in positive_indicators if indicator in claim_lower)
-        negative_score = sum(1 for indicator in negative_indicators if indicator in claim_lower)
+        positive_score = sum(
+            1 for indicator in positive_indicators if indicator in claim_lower
+        )
+        negative_score = sum(
+            1 for indicator in negative_indicators if indicator in claim_lower
+        )
 
         # Base score of 0.5, adjusted by indicators
         score = 0.5 + (positive_score * 0.1) - (negative_score * 0.1)
         return max(0.0, min(1.0, score))
 
-    def validate_sources(self, content: str, source_url: str | None = None, domain: str | None = None) -> dict[str, Any]:
+    def validate_sources(
+        self, content: str, source_url: str | None = None, domain: str | None = None
+    ) -> dict[str, Any]:
         """Validate source credibility (alias for assess_credibility)."""
         return self.assess_credibility(content, domain, source_url)
 
-    def assess_credibility(self, content: str | None = None, domain: str | None = None, source_url: str | None = None) -> dict[str, Any]:
+    def assess_credibility(
+        self,
+        content: str | None = None,
+        domain: str | None = None,
+        source_url: str | None = None,
+    ) -> dict[str, Any]:
         """
         Assess source credibility using domain analysis and content evaluation.
 
@@ -466,6 +536,7 @@ class FactCheckerEngine:
             if not domain and source_url:
                 try:
                     from urllib.parse import urlparse
+
                     domain = urlparse(source_url).netloc.lower()
                 except Exception:
                     domain = None
@@ -504,7 +575,7 @@ class FactCheckerEngine:
                 "domain_score": float(domain_score),
                 "content_score": float(content_score),
                 "domain": domain,
-                "source_url": source_url
+                "source_url": source_url,
             }
 
         except Exception as e:
@@ -520,15 +591,30 @@ class FactCheckerEngine:
 
         # High credibility domains
         high_credibility = [
-            ".edu", ".gov", ".org", ".ac.", ".mil",
-            "bbc.com", "reuters.com", "apnews.com", "npr.org",
-            "nytimes.com", "washingtonpost.com", "wsj.com"
+            ".edu",
+            ".gov",
+            ".org",
+            ".ac.",
+            ".mil",
+            "bbc.com",
+            "reuters.com",
+            "apnews.com",
+            "npr.org",
+            "nytimes.com",
+            "washingtonpost.com",
+            "wsj.com",
         ]
 
         # Low credibility indicators
         low_credibility = [
-            "fake", "hoax", "satire", "joke", "parody",
-            "buzzfeed", "huffpost", "breitbart"
+            "fake",
+            "hoax",
+            "satire",
+            "joke",
+            "parody",
+            "buzzfeed",
+            "huffpost",
+            "breitbart",
         ]
 
         # Check for high credibility indicators
@@ -542,7 +628,12 @@ class FactCheckerEngine:
         # Default medium credibility
         return 0.6
 
-    def comprehensive_fact_check(self, content: str, source_url: str | None = None, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
+    def comprehensive_fact_check(
+        self,
+        content: str,
+        source_url: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Perform comprehensive fact-checking on full articles.
 
@@ -569,23 +660,27 @@ class FactCheckerEngine:
             if metadata and "related_sources" in metadata:
                 related_texts = metadata["related_sources"]
                 if len(related_texts) > 1:
-                    contradictions = self.detect_contradictions([content] + related_texts)
+                    contradictions = self.detect_contradictions(
+                        [content] + related_texts
+                    )
 
             # Calculate overall score
             weights = {
                 "fact_verification": 0.5,
                 "credibility": 0.3,
-                "claims_quality": 0.2
+                "claims_quality": 0.2,
             }
 
             fact_score = fact_verification.get("verification_score", 0.5)
             credibility_score = credibility.get("credibility_score", 0.5)
-            claims_score = min(1.0, len(claims_analysis.get("claims", [])) / 10.0)  # Normalize by expected claims
+            claims_score = min(
+                1.0, len(claims_analysis.get("claims", [])) / 10.0
+            )  # Normalize by expected claims
 
             overall_score = (
-                fact_score * weights["fact_verification"] +
-                credibility_score * weights["credibility"] +
-                claims_score * weights["claims_quality"]
+                fact_score * weights["fact_verification"]
+                + credibility_score * weights["credibility"]
+                + claims_score * weights["claims_quality"]
             )
 
             return {
@@ -595,7 +690,7 @@ class FactCheckerEngine:
                 "claims_analysis": claims_analysis,
                 "contradictions_analysis": contradictions,
                 "metadata_analysis": metadata or {},
-                "processing_timestamp": datetime.now().isoformat()
+                "processing_timestamp": datetime.now().isoformat(),
             }
 
         except Exception as e:
@@ -629,7 +724,7 @@ class FactCheckerEngine:
 
             else:
                 # Fallback: split by sentences and filter
-                sentences = re.split(r'[.!?]+', content)
+                sentences = re.split(r"[.!?]+", content)
                 for sentence in sentences:
                     sentence = sentence.strip()
                     if len(sentence) > 20 and self._is_potential_claim(sentence):
@@ -641,7 +736,7 @@ class FactCheckerEngine:
             return {
                 "claims": claims,
                 "claim_count": len(claims),
-                "extraction_method": "spacy" if self.spacy_nlp else "heuristic"
+                "extraction_method": "spacy" if self.spacy_nlp else "heuristic",
             }
 
         except Exception as e:
@@ -654,16 +749,34 @@ class FactCheckerEngine:
 
         # Claim indicators
         claim_indicators = [
-            "is", "was", "were", "are", "has", "have", "had",
-            "according to", "reported", "stated", "announced",
-            "study", "research", "data", "evidence", "found",
-            "confirmed", "verified", "proved", "showed"
+            "is",
+            "was",
+            "were",
+            "are",
+            "has",
+            "have",
+            "had",
+            "according to",
+            "reported",
+            "stated",
+            "announced",
+            "study",
+            "research",
+            "data",
+            "evidence",
+            "found",
+            "confirmed",
+            "verified",
+            "proved",
+            "showed",
         ]
 
         # Question indicators (not claims)
         question_indicators = ["?", "what", "how", "why", "when", "where", "who"]
 
-        has_claim_indicator = any(indicator in text_lower for indicator in claim_indicators)
+        has_claim_indicator = any(
+            indicator in text_lower for indicator in claim_indicators
+        )
         has_question = any(indicator in text_lower for indicator in question_indicators)
 
         return has_claim_indicator and not has_question and len(text.split()) > 3
@@ -692,17 +805,24 @@ class FactCheckerEngine:
                 for i in range(len(text_passages)):
                     for j in range(i + 1, len(text_passages)):
                         similarity = np.dot(embeddings[i], embeddings[j]) / (
-                            np.linalg.norm(embeddings[i]) * np.linalg.norm(embeddings[j])
+                            np.linalg.norm(embeddings[i])
+                            * np.linalg.norm(embeddings[j])
                         )
 
                         # Low similarity might indicate contradiction
                         if similarity < 0.3:  # Threshold for potential contradiction
-                            contradictions.append({
-                                "passage_1": text_passages[i][:200] + "..." if len(text_passages[i]) > 200 else text_passages[i],
-                                "passage_2": text_passages[j][:200] + "..." if len(text_passages[j]) > 200 else text_passages[j],
-                                "similarity_score": float(similarity),
-                                "potential_contradiction": True
-                            })
+                            contradictions.append(
+                                {
+                                    "passage_1": text_passages[i][:200] + "..."
+                                    if len(text_passages[i]) > 200
+                                    else text_passages[i],
+                                    "passage_2": text_passages[j][:200] + "..."
+                                    if len(text_passages[j]) > 200
+                                    else text_passages[j],
+                                    "similarity_score": float(similarity),
+                                    "potential_contradiction": True,
+                                }
+                            )
 
             else:
                 # Fallback: keyword-based contradiction detection
@@ -711,14 +831,16 @@ class FactCheckerEngine:
             return {
                 "contradictions_found": len(contradictions),
                 "analysis": contradictions,
-                "method": "semantic" if self.sentence_transformer else "keyword"
+                "method": "semantic" if self.sentence_transformer else "keyword",
             }
 
         except Exception as e:
             self.logger.error(f"Contradiction detection failed: {e}")
             return {"error": str(e), "contradictions_found": 0, "analysis": []}
 
-    def _keyword_contradiction_detection(self, text_passages: list[str]) -> list[dict[str, Any]]:
+    def _keyword_contradiction_detection(
+        self, text_passages: list[str]
+    ) -> list[dict[str, Any]]:
         """Keyword-based contradiction detection fallback."""
         contradictions = []
 
@@ -730,7 +852,7 @@ class FactCheckerEngine:
             ("won", "lost"),
             ("yes", "no"),
             ("true", "false"),
-            ("confirmed", "denied")
+            ("confirmed", "denied"),
         ]
 
         for i in range(len(text_passages)):
@@ -741,12 +863,18 @@ class FactCheckerEngine:
                 # Check for contradictory keyword pairs
                 for pos, neg in contradiction_pairs:
                     if pos in text1_lower and neg in text2_lower:
-                        contradictions.append({
-                            "passage_1": text_passages[i][:200] + "..." if len(text_passages[i]) > 200 else text_passages[i],
-                            "passage_2": text_passages[j][:200] + "..." if len(text_passages[j]) > 200 else text_passages[j],
-                            "contradiction_type": f"{pos}_vs_{neg}",
-                            "potential_contradiction": True
-                        })
+                        contradictions.append(
+                            {
+                                "passage_1": text_passages[i][:200] + "..."
+                                if len(text_passages[i]) > 200
+                                else text_passages[i],
+                                "passage_2": text_passages[j][:200] + "..."
+                                if len(text_passages[j]) > 200
+                                else text_passages[j],
+                                "contradiction_type": f"{pos}_vs_{neg}",
+                                "potential_contradiction": True,
+                            }
+                        )
                         break
 
         return contradictions
@@ -770,20 +898,34 @@ class FactCheckerEngine:
 
             # News content indicators
             news_keywords = [
-                "breaking", "news", "report", "headline", "announced",
-                "according to", "sources", "said", "stated", "reported"
+                "breaking",
+                "news",
+                "report",
+                "headline",
+                "announced",
+                "according to",
+                "sources",
+                "said",
+                "stated",
+                "reported",
             ]
 
             # Structure indicators
-            structure_indicators = [
-                " - ", " | ", "\n\n", "by ", "published", "updated"
-            ]
+            structure_indicators = [" - ", " | ", "\n\n", "by ", "published", "updated"]
 
-            keyword_score = sum(1 for keyword in news_keywords if keyword in content_lower) / len(news_keywords)
-            structure_score = sum(1 for indicator in structure_indicators if indicator in content) / len(structure_indicators)
-            length_score = min(1.0, len(content) / 500.0)  # News articles are typically substantial
+            keyword_score = sum(
+                1 for keyword in news_keywords if keyword in content_lower
+            ) / len(news_keywords)
+            structure_score = sum(
+                1 for indicator in structure_indicators if indicator in content
+            ) / len(structure_indicators)
+            length_score = min(
+                1.0, len(content) / 500.0
+            )  # News articles are typically substantial
 
-            is_news_score = (keyword_score * 0.4 + structure_score * 0.3 + length_score * 0.3)
+            is_news_score = (
+                keyword_score * 0.4 + structure_score * 0.3 + length_score * 0.3
+            )
 
             return {
                 "is_news": is_news_score > 0.5,
@@ -792,14 +934,16 @@ class FactCheckerEngine:
                 "structure_score": float(structure_score),
                 "length_score": float(length_score),
                 "method": "cpu_analysis",
-                "analysis_timestamp": datetime.now().isoformat()
+                "analysis_timestamp": datetime.now().isoformat(),
             }
 
         except Exception as e:
             self.logger.error(f"CPU news validation failed: {e}")
             return {"error": str(e), "is_news": False, "method": "cpu_fallback"}
 
-    async def verify_claims_gpu(self, claims: list[str], sources: list[str]) -> dict[str, Any]:
+    async def verify_claims_gpu(
+        self, claims: list[str], sources: list[str]
+    ) -> dict[str, Any]:
         """GPU-accelerated batch claim verification."""
         try:
             if self.tensorrt_engine:
@@ -810,7 +954,9 @@ class FactCheckerEngine:
             self.logger.warning(f"GPU claims verification failed: {e}")
             return await self._verify_claims_cpu(claims, sources)
 
-    async def _verify_claims_cpu(self, claims: list[str], sources: list[str]) -> dict[str, Any]:
+    async def _verify_claims_cpu(
+        self, claims: list[str], sources: list[str]
+    ) -> dict[str, Any]:
         """CPU-based batch claim verification."""
         try:
             source_text = "\n".join(sources) if sources else ""
@@ -828,17 +974,21 @@ class FactCheckerEngine:
 
                 results[claim] = {
                     "verification_score": verification_score,
-                    "classification": "verified" if verification_score > 0.6 else "questionable",
+                    "classification": "verified"
+                    if verification_score > 0.6
+                    else "questionable",
                     "confidence": verification_score,
-                    "method": "cpu_batch"
+                    "method": "cpu_batch",
                 }
 
             return {
                 "results": results,
                 "total_claims": len(claims),
-                "verified_claims": sum(1 for r in results.values() if r["classification"] == "verified"),
+                "verified_claims": sum(
+                    1 for r in results.values() if r["classification"] == "verified"
+                ),
                 "method": "cpu_batch",
-                "analysis_timestamp": datetime.now().isoformat()
+                "analysis_timestamp": datetime.now().isoformat(),
             }
 
         except Exception as e:
@@ -855,7 +1005,7 @@ class FactCheckerEngine:
                 "type": feedback_type,
                 "data": feedback_data,
                 "timestamp": datetime.now().isoformat(),
-                "session_id": os.getenv("SESSION_ID", "unknown")
+                "session_id": os.getenv("SESSION_ID", "unknown"),
             }
 
             self.feedback_buffer.append(feedback_entry)
@@ -864,7 +1014,10 @@ class FactCheckerEngine:
             if len(self.feedback_buffer) >= 10:  # Configurable threshold
                 self._process_feedback_buffer()
 
-            return {"status": "feedback_logged", "buffer_size": len(self.feedback_buffer)}
+            return {
+                "status": "feedback_logged",
+                "buffer_size": len(self.feedback_buffer),
+            }
 
         except Exception as e:
             self.logger.error(f"Feedback logging failed: {e}")
@@ -887,14 +1040,21 @@ class FactCheckerEngine:
             # Clear buffer
             self.feedback_buffer.clear()
 
-            self.logger.info(f"✅ Processed {len(self.feedback_buffer)} feedback entries for training")
+            self.logger.info(
+                f"✅ Processed {len(self.feedback_buffer)} feedback entries for training"
+            )
 
         except Exception as e:
             self.logger.error(f"Feedback processing failed: {e}")
 
-    def correct_verification(self, claim: str, context: str | None = None,
-                           incorrect_classification: str = "", correct_classification: str = "",
-                           priority: int = 2) -> dict[str, Any]:
+    def correct_verification(
+        self,
+        claim: str,
+        context: str | None = None,
+        incorrect_classification: str = "",
+        correct_classification: str = "",
+        priority: int = 2,
+    ) -> dict[str, Any]:
         """Submit user correction for fact verification."""
         try:
             correction_data = {
@@ -903,20 +1063,28 @@ class FactCheckerEngine:
                 "incorrect_classification": incorrect_classification,
                 "correct_classification": correct_classification,
                 "priority": priority,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
             self.log_feedback("verification_correction", correction_data)
 
-            return {"status": "correction_submitted", "correction_id": len(self.training_data)}
+            return {
+                "status": "correction_submitted",
+                "correction_id": len(self.training_data),
+            }
 
         except Exception as e:
             self.logger.error(f"Verification correction failed: {e}")
             return {"error": str(e)}
 
-    def correct_credibility(self, source_text: str | None = None, domain: str = "",
-                          incorrect_reliability: str = "", correct_reliability: str = "",
-                          priority: int = 2) -> dict[str, Any]:
+    def correct_credibility(
+        self,
+        source_text: str | None = None,
+        domain: str = "",
+        incorrect_reliability: str = "",
+        correct_reliability: str = "",
+        priority: int = 2,
+    ) -> dict[str, Any]:
         """Submit user correction for credibility assessment."""
         try:
             correction_data = {
@@ -925,12 +1093,15 @@ class FactCheckerEngine:
                 "incorrect_reliability": incorrect_reliability,
                 "correct_reliability": correct_reliability,
                 "priority": priority,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
             self.log_feedback("credibility_correction", correction_data)
 
-            return {"status": "correction_submitted", "correction_id": len(self.training_data)}
+            return {
+                "status": "correction_submitted",
+                "correction_id": len(self.training_data),
+            }
 
         except Exception as e:
             self.logger.error(f"Credibility correction failed: {e}")
@@ -940,14 +1111,21 @@ class FactCheckerEngine:
         """Get online training status."""
         try:
             return {
-                "online_training_enabled": self.config.training_config["online_training"],
-                "feedback_collection_enabled": self.config.training_config["feedback_collection"],
+                "online_training_enabled": self.config.training_config[
+                    "online_training"
+                ],
+                "feedback_collection_enabled": self.config.training_config[
+                    "feedback_collection"
+                ],
                 "training_data_size": len(self.training_data),
                 "feedback_buffer_size": len(self.feedback_buffer),
-                "last_model_update": datetime.fromtimestamp(self.last_model_update).isoformat(),
+                "last_model_update": datetime.fromtimestamp(
+                    self.last_model_update
+                ).isoformat(),
                 "next_update_due": datetime.fromtimestamp(
-                    self.last_model_update + self.config.training_config["model_update_interval"]
-                ).isoformat()
+                    self.last_model_update
+                    + self.config.training_config["model_update_interval"]
+                ).isoformat(),
             }
 
         except Exception as e:
@@ -971,7 +1149,7 @@ class FactCheckerEngine:
             return {
                 "status": "model_updated",
                 "training_data_processed": len(self.training_data),
-                "update_timestamp": datetime.now().isoformat()
+                "update_timestamp": datetime.now().isoformat(),
             }
 
         except Exception as e:
@@ -998,8 +1176,9 @@ class FactCheckerEngine:
             # Limit cache size
             if len(self.cache) > 1000:  # Configurable limit
                 # Remove oldest entries
-                oldest_keys = sorted(self.cache_timestamps.keys(),
-                                   key=lambda k: self.cache_timestamps[k])[:100]
+                oldest_keys = sorted(
+                    self.cache_timestamps.keys(), key=lambda k: self.cache_timestamps[k]
+                )[:100]
                 for key in oldest_keys:
                     del self.cache[key]
                     del self.cache_timestamps[key]

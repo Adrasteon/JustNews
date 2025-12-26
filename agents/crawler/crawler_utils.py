@@ -66,7 +66,9 @@ def _db_config() -> dict[str, Any]:
     }
 
 
-def initialize_connection_pool(minconn: int | None = None, maxconn: int | None = None) -> None:
+def initialize_connection_pool(
+    minconn: int | None = None, maxconn: int | None = None
+) -> None:
     """Initialise a thread-safe MariaDB connection pool."""
 
     global _CONNECTION_POOL
@@ -133,7 +135,9 @@ def create_crawling_performance_table() -> None:
             finally:
                 cursor.close()
     except mysql.connector.Error:
-        logger.debug("Skipping crawler_performance table creation (database unavailable)")
+        logger.debug(
+            "Skipping crawler_performance table creation (database unavailable)"
+        )
 
 
 @dataclass
@@ -180,11 +184,20 @@ class RobotsChecker:
 
     def __init__(self, ttl_seconds: int | None = None, user_agent: str | None = None):
         import urllib.robotparser
+
         self._robot_parser_class = urllib.robotparser.RobotFileParser
         self._cache: dict[str, tuple[urllib.robotparser.RobotFileParser, float]] = {}
-        self._ttl = int(ttl_seconds if ttl_seconds is not None else int(os.environ.get("CRAWLER_ROBOTS_TTL", "86400")))
-        self._user_agent = user_agent or os.environ.get("CRAWLER_ROBOTS_USER_AGENT", "JustNewsCrawler")
-        self._fetch_fallback = os.environ.get("CRAWLER_ROBOTS_FALLBACK", "allow").lower()
+        self._ttl = int(
+            ttl_seconds
+            if ttl_seconds is not None
+            else int(os.environ.get("CRAWLER_ROBOTS_TTL", "86400"))
+        )
+        self._user_agent = user_agent or os.environ.get(
+            "CRAWLER_ROBOTS_USER_AGENT", "JustNewsCrawler"
+        )
+        self._fetch_fallback = os.environ.get(
+            "CRAWLER_ROBOTS_FALLBACK", "allow"
+        ).lower()
 
     def _get_parser_for_domain(self, domain: str):
         entry = self._cache.get(domain)
@@ -373,7 +386,9 @@ def record_crawling_performance(
             finally:
                 cursor.close()
     except mysql.connector.Error:
-        logger.debug("Could not record crawling performance for %s", domain or source_id)
+        logger.debug(
+            "Could not record crawling performance for %s", domain or source_id
+        )
 
 
 def record_paywall_detection(
@@ -465,7 +480,9 @@ def record_paywall_detection(
         return False
 
 
-def get_source_performance_history(identifier: Any, limit: int = 5) -> list[dict[str, Any]]:
+def get_source_performance_history(
+    identifier: Any, limit: int = 5
+) -> list[dict[str, Any]]:
     if identifier is None:
         return []
     if isinstance(identifier, int):
@@ -492,7 +509,9 @@ def get_source_performance_history(identifier: Any, limit: int = 5) -> list[dict
         return []
 
 
-def get_optimal_sources_for_strategy(strategy: str, limit: int = 10) -> list[dict[str, Any]]:
+def get_optimal_sources_for_strategy(
+    strategy: str, limit: int = 10
+) -> list[dict[str, Any]]:
     sql = (
         "SELECT source_id, domain, AVG(articles_per_second) AS avg_speed "
         "FROM crawler_performance WHERE strategy_used = %s "

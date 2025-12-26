@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 class SecurityEventType(Enum):
     """Security event types"""
+
     AUTHENTICATION_SUCCESS = "authentication_success"
     AUTHENTICATION_FAILURE = "authentication_failure"
     AUTHENTICATION_BLOCKED = "authentication_blocked"
@@ -41,6 +42,7 @@ class SecurityEventType(Enum):
 
 class AlertSeverity(Enum):
     """Alert severity levels"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -49,6 +51,7 @@ class AlertSeverity(Enum):
 
 class SecurityAlert(BaseModel):
     """Security alert"""
+
     id: str
     timestamp: datetime
     event_type: str
@@ -65,6 +68,7 @@ class SecurityAlert(BaseModel):
 
 class SecurityMetrics(BaseModel):
     """Security metrics snapshot"""
+
     timestamp: datetime
     total_events: int
     events_by_type: dict[str, int]
@@ -77,6 +81,7 @@ class SecurityMetrics(BaseModel):
 
 class MonitoringRule(BaseModel):
     """Monitoring rule for threat detection"""
+
     id: str
     name: str
     description: str
@@ -91,6 +96,7 @@ class MonitoringRule(BaseModel):
 @dataclass
 class MonitoringConfig:
     """Monitoring service configuration"""
+
     alert_thresholds: dict[str, Any] = None
     monitoring_window_minutes: int = 60
     max_events_in_memory: int = 10000
@@ -104,7 +110,7 @@ class MonitoringConfig:
                 "failed_logins_per_hour": 10,
                 "suspicious_activities_per_day": 5,
                 "unusual_traffic_burst": 100,
-                "brute_force_attempts": 5
+                "brute_force_attempts": 5,
             }
 
 
@@ -119,7 +125,9 @@ class SecurityMonitor:
     def __init__(self, config: SecurityConfig):
         self.config = config
         self.monitoring_config = MonitoringConfig()
-        self._security_events: deque = deque(maxlen=self.monitoring_config.max_events_in_memory)
+        self._security_events: deque = deque(
+            maxlen=self.monitoring_config.max_events_in_memory
+        )
         self._active_alerts: dict[str, SecurityAlert] = {}
         self._monitoring_rules = self._get_default_rules()
         self._event_counts: dict[str, int] = defaultdict(int)
@@ -135,7 +143,7 @@ class SecurityMonitor:
                 description="Detect multiple failed login attempts from same IP",
                 event_pattern={"event_type": "authentication_failure"},
                 condition="len([e for e in recent_events if e.get('ip_address') == event.get('ip_address')]) >= 5",
-                severity=AlertSeverity.HIGH
+                severity=AlertSeverity.HIGH,
             ),
             "unusual_traffic": MonitoringRule(
                 id="unusual_traffic",
@@ -143,7 +151,7 @@ class SecurityMonitor:
                 description="Detect unusual traffic patterns",
                 event_pattern={"event_type": "suspicious_activity"},
                 condition="event_counts.get('suspicious_activity', 0) > 50",
-                severity=AlertSeverity.MEDIUM
+                severity=AlertSeverity.MEDIUM,
             ),
             "account_lockout": MonitoringRule(
                 id="account_lockout",
@@ -151,7 +159,7 @@ class SecurityMonitor:
                 description="Account locked due to failed attempts",
                 event_pattern={"event_type": "authentication_blocked"},
                 condition="True",  # Always alert on account lockouts
-                severity=AlertSeverity.MEDIUM
+                severity=AlertSeverity.MEDIUM,
             ),
             "data_breach_attempt": MonitoringRule(
                 id="data_breach_attempt",
@@ -159,7 +167,7 @@ class SecurityMonitor:
                 description="Detect potential data breach attempts",
                 event_pattern={"event_type": "data_breach_attempt"},
                 condition="True",
-                severity=AlertSeverity.CRITICAL
+                severity=AlertSeverity.CRITICAL,
             ),
             "compliance_violation": MonitoringRule(
                 id="compliance_violation",
@@ -167,8 +175,8 @@ class SecurityMonitor:
                 description="Detect compliance violations",
                 event_pattern={"event_type": "compliance_violation"},
                 condition="True",
-                severity=AlertSeverity.HIGH
-            )
+                severity=AlertSeverity.HIGH,
+            ),
         }
 
     async def initialize(self) -> None:
@@ -182,8 +190,13 @@ class SecurityMonitor:
         await self._save_monitoring_data()
         logger.info("SecurityMonitor shutdown")
 
-    async def log_security_event(self, event_type: str, user_id: int | None,
-                               details: dict[str, Any], severity: AlertSeverity = AlertSeverity.LOW) -> None:
+    async def log_security_event(
+        self,
+        event_type: str,
+        user_id: int | None,
+        details: dict[str, Any],
+        severity: AlertSeverity = AlertSeverity.LOW,
+    ) -> None:
         """
         Log security event and check for threats
 
@@ -201,7 +214,7 @@ class SecurityMonitor:
                 "severity": severity.value,
                 "details": details,
                 "ip_address": details.get("ip_address"),
-                "user_agent": details.get("user_agent")
+                "user_agent": details.get("user_agent"),
             }
 
             # Add to event queue
@@ -243,7 +256,7 @@ class SecurityMonitor:
                 "details": alert.details,
                 "user_id": alert.user_id,
                 "ip_address": alert.ip_address,
-                "resolved": alert.resolved
+                "resolved": alert.resolved,
             }
             for alert in self._active_alerts.values()
             if not alert.resolved
@@ -281,8 +294,7 @@ class SecurityMonitor:
 
             # Filter events in time window
             recent_events = [
-                e for e in self._security_events
-                if e["timestamp"] > cutoff_time
+                e for e in self._security_events if e["timestamp"] > cutoff_time
             ]
 
             # Count events by type
@@ -301,26 +313,33 @@ class SecurityMonitor:
 
             # Get suspicious IPs (more than threshold events)
             suspicious_ips = [
-                ip for ip, timestamps in self._ip_activity.items()
-                if len([t for t in timestamps if t > cutoff_time]) > self.monitoring_config.suspicious_activity_threshold
+                ip
+                for ip, timestamps in self._ip_activity.items()
+                if len([t for t in timestamps if t > cutoff_time])
+                > self.monitoring_config.suspicious_activity_threshold
             ]
 
             # Get top attack vectors
             top_attack_vectors = sorted(
-                [{"event_type": et, "count": count} for et, count in events_by_type.items()],
+                [
+                    {"event_type": et, "count": count}
+                    for et, count in events_by_type.items()
+                ],
                 key=lambda x: x["count"],
-                reverse=True
+                reverse=True,
             )[:5]
 
             return SecurityMetrics(
                 timestamp=datetime.now(UTC),
                 total_events=len(recent_events),
                 events_by_type=dict(events_by_type),
-                active_alerts=len([a for a in self._active_alerts.values() if not a.resolved]),
+                active_alerts=len(
+                    [a for a in self._active_alerts.values() if not a.resolved]
+                ),
                 alerts_by_severity=dict(alerts_by_severity),
                 failed_auth_attempts=failed_auth_attempts,
                 suspicious_ips=suspicious_ips,
-                top_attack_vectors=top_attack_vectors
+                top_attack_vectors=top_attack_vectors,
             )
 
         except Exception as e:
@@ -333,7 +352,7 @@ class SecurityMonitor:
                 alerts_by_severity={},
                 failed_auth_attempts=0,
                 suspicious_ips=[],
-                top_attack_vectors=[]
+                top_attack_vectors=[],
             )
 
     async def add_monitoring_rule(self, rule: MonitoringRule) -> None:
@@ -385,7 +404,9 @@ class SecurityMonitor:
                 "severity": rule.severity.value,
                 "enabled": rule.enabled,
                 "cooldown_minutes": rule.cooldown_minutes,
-                "last_triggered": rule.last_triggered.isoformat() if rule.last_triggered else None
+                "last_triggered": rule.last_triggered.isoformat()
+                if rule.last_triggered
+                else None,
             }
             for rule_id, rule in self._monitoring_rules.items()
         }
@@ -405,7 +426,7 @@ class SecurityMonitor:
             "active_alerts": active_alerts,
             "monitoring_rules": len(self._monitoring_rules),
             "tracked_ips": len(self._ip_activity),
-            "alert_handlers": len(self._alert_handlers)
+            "alert_handlers": len(self._alert_handlers),
         }
 
     async def _check_monitoring_rules(self, event: dict[str, Any]) -> None:
@@ -417,7 +438,9 @@ class SecurityMonitor:
 
                 # Check cooldown
                 if rule.last_triggered:
-                    cooldown_end = rule.last_triggered + timedelta(minutes=rule.cooldown_minutes)
+                    cooldown_end = rule.last_triggered + timedelta(
+                        minutes=rule.cooldown_minutes
+                    )
                     if datetime.now(UTC) < cooldown_end:
                         continue
 
@@ -441,7 +464,9 @@ class SecurityMonitor:
                 return False
         return True
 
-    async def _evaluate_condition(self, event: dict[str, Any], rule: MonitoringRule) -> bool:
+    async def _evaluate_condition(
+        self, event: dict[str, Any], rule: MonitoringRule
+    ) -> bool:
         """Evaluate monitoring rule condition"""
         try:
             # Get recent events for context
@@ -451,7 +476,7 @@ class SecurityMonitor:
             context = {
                 "event": event,
                 "recent_events": recent_events,
-                "event_counts": dict(self._event_counts)
+                "event_counts": dict(self._event_counts),
             }
 
             # Evaluate condition (in a safe way)
@@ -471,9 +496,11 @@ class SecurityMonitor:
                 "list": list,
                 "dict": dict,
                 "set": set,
-                "tuple": tuple
+                "tuple": tuple,
             }
-            condition_result = eval(rule.condition, {"__builtins__": allowed_builtins}, context)
+            condition_result = eval(
+                rule.condition, {"__builtins__": allowed_builtins}, context
+            )
 
             return bool(condition_result)
 
@@ -481,7 +508,9 @@ class SecurityMonitor:
             logger.error(f"Error evaluating condition for rule {rule.id}: {e}")
             return False
 
-    async def _generate_alert(self, event: dict[str, Any], rule: MonitoringRule) -> None:
+    async def _generate_alert(
+        self, event: dict[str, Any], rule: MonitoringRule
+    ) -> None:
         """Generate security alert"""
         try:
             alert_id = f"alert_{datetime.now(UTC).timestamp()}_{secrets.token_hex(4)}"
@@ -496,10 +525,10 @@ class SecurityMonitor:
                 details={
                     "triggering_event": event,
                     "rule_id": rule.id,
-                    "rule_name": rule.name
+                    "rule_name": rule.name,
                 },
                 user_id=event.get("user_id"),
-                ip_address=event.get("ip_address")
+                ip_address=event.get("ip_address"),
             )
 
             self._active_alerts[alert_id] = alert
@@ -511,7 +540,9 @@ class SecurityMonitor:
                 except Exception as e:
                     logger.error(f"Alert handler error: {e}")
 
-            logger.warning(f"Generated security alert: {alert.title} (severity: {alert.severity.value})")
+            logger.warning(
+                f"Generated security alert: {alert.title} (severity: {alert.severity.value})"
+            )
 
         except Exception as e:
             logger.error(f"Failed to generate alert: {e}")
@@ -523,7 +554,8 @@ class SecurityMonitor:
 
             for ip in list(self._ip_activity.keys()):
                 self._ip_activity[ip] = [
-                    timestamp for timestamp in self._ip_activity[ip]
+                    timestamp
+                    for timestamp in self._ip_activity[ip]
                     if timestamp > cutoff_time
                 ]
 
@@ -547,11 +579,17 @@ class SecurityMonitor:
             try:
                 await asyncio.sleep(86400)  # Run daily
 
-                cutoff_date = datetime.now(UTC) - timedelta(days=self.monitoring_config.alert_retention_days)
+                cutoff_date = datetime.now(UTC) - timedelta(
+                    days=self.monitoring_config.alert_retention_days
+                )
 
                 alerts_to_remove = []
                 for alert_id, alert in self._active_alerts.items():
-                    if alert.resolved and alert.resolved_at and alert.resolved_at < cutoff_date:
+                    if (
+                        alert.resolved
+                        and alert.resolved_at
+                        and alert.resolved_at < cutoff_date
+                    ):
                         alerts_to_remove.append(alert_id)
 
                 for alert_id in alerts_to_remove:
@@ -574,7 +612,9 @@ class SecurityMonitor:
                 # Keep some history but reset high-frequency counters
                 for event_type in list(self._event_counts.keys()):
                     if event_type in ["authentication_failure", "suspicious_activity"]:
-                        self._event_counts[event_type] = max(0, self._event_counts[event_type] - 10)
+                        self._event_counts[event_type] = max(
+                            0, self._event_counts[event_type] - 10
+                        )
 
             except asyncio.CancelledError:
                 break
@@ -590,9 +630,13 @@ class SecurityMonitor:
                 self._active_alerts = {}
                 for alert_dict in alerts_data.get("alerts", []):
                     # Convert timestamp strings back to datetime
-                    alert_dict["timestamp"] = datetime.fromisoformat(alert_dict["timestamp"])
+                    alert_dict["timestamp"] = datetime.fromisoformat(
+                        alert_dict["timestamp"]
+                    )
                     if alert_dict.get("resolved_at"):
-                        alert_dict["resolved_at"] = datetime.fromisoformat(alert_dict["resolved_at"])
+                        alert_dict["resolved_at"] = datetime.fromisoformat(
+                            alert_dict["resolved_at"]
+                        )
                     self._active_alerts[alert_dict["id"]] = SecurityAlert(**alert_dict)
 
             # Load monitoring rules
@@ -600,7 +644,9 @@ class SecurityMonitor:
                 rules_data = json.loads(await f.read())
                 for rule_dict in rules_data.get("rules", []):
                     if rule_dict.get("last_triggered"):
-                        rule_dict["last_triggered"] = datetime.fromisoformat(rule_dict["last_triggered"])
+                        rule_dict["last_triggered"] = datetime.fromisoformat(
+                            rule_dict["last_triggered"]
+                        )
                     rule = MonitoringRule(**rule_dict)
                     self._monitoring_rules[rule.id] = rule
 
@@ -628,8 +674,10 @@ class SecurityMonitor:
                         "user_id": alert.user_id,
                         "ip_address": alert.ip_address,
                         "resolved": alert.resolved,
-                        "resolved_at": alert.resolved_at.isoformat() if alert.resolved_at else None,
-                        "resolution_notes": alert.resolution_notes
+                        "resolved_at": alert.resolved_at.isoformat()
+                        if alert.resolved_at
+                        else None,
+                        "resolution_notes": alert.resolution_notes,
                     }
                     for alert in self._active_alerts.values()
                 ]
@@ -650,7 +698,9 @@ class SecurityMonitor:
                         "severity": rule.severity.value,
                         "enabled": rule.enabled,
                         "cooldown_minutes": rule.cooldown_minutes,
-                        "last_triggered": rule.last_triggered.isoformat() if rule.last_triggered else None
+                        "last_triggered": rule.last_triggered.isoformat()
+                        if rule.last_triggered
+                        else None,
                     }
                     for rule in self._monitoring_rules.values()
                 ]

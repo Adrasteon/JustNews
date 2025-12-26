@@ -26,6 +26,7 @@ from common.observability import get_logger
 try:
     import psutil
     import torch
+
     GPU_AVAILABLE = torch.cuda.is_available()
     TORCH_AVAILABLE = True
 except ImportError:
@@ -36,8 +37,10 @@ except ImportError:
 
 logger = get_logger(__name__)
 
+
 class PerformanceRecord(NamedTuple):
     """Record of performance metrics for optimization learning"""
+
     agent_name: str
     model_type: str
     batch_size: int
@@ -47,6 +50,7 @@ class PerformanceRecord(NamedTuple):
     gpu_utilization_percent: float
     timestamp: datetime
     success: bool
+
 
 class ResourceProfile:
     """Performance profile for an agent/model combination"""
@@ -85,7 +89,9 @@ class ResourceProfile:
         for memory_gb, records in memory_groups.items():
             if len(records) >= 3:
                 # Calculate throughput-weighted optimal batch size
-                best_batch_size = max(records, key=lambda r: r.throughput_items_per_second).batch_size
+                best_batch_size = max(
+                    records, key=lambda r: r.throughput_items_per_second
+                ).batch_size
 
                 # Verify it's consistently good (top 25% of performances)
                 throughputs = [r.throughput_items_per_second for r in records]
@@ -100,8 +106,9 @@ class ResourceProfile:
             return None
 
         # Find closest memory allocation
-        closest_memory = min(self.optimal_batch_sizes.keys(),
-                           key=lambda x: abs(x - memory_gb))
+        closest_memory = min(
+            self.optimal_batch_sizes.keys(), key=lambda x: abs(x - memory_gb)
+        )
 
         return self.optimal_batch_sizes.get(closest_memory)
 
@@ -117,17 +124,22 @@ class ResourceProfile:
 
             if batch_size < batch_sizes[0]:
                 # Extrapolate downwards
-                slope = (memory_usages[1] - memory_usages[0]) / (batch_sizes[1] - batch_sizes[0])
+                slope = (memory_usages[1] - memory_usages[0]) / (
+                    batch_sizes[1] - batch_sizes[0]
+                )
                 return memory_usages[0] + slope * (batch_size - batch_sizes[0])
             elif batch_size > batch_sizes[-1]:
                 # Extrapolate upwards
-                slope = (memory_usages[-1] - memory_usages[-2]) / (batch_sizes[-1] - batch_sizes[-2])
+                slope = (memory_usages[-1] - memory_usages[-2]) / (
+                    batch_sizes[-1] - batch_sizes[-2]
+                )
                 return memory_usages[-1] + slope * (batch_size - batch_sizes[-1])
             else:
                 # Interpolate
                 return np.interp(batch_size, batch_sizes, memory_usages)
 
         return None
+
 
 class EnhancedGPUOptimizer:
     """
@@ -163,6 +175,7 @@ class EnhancedGPUOptimizer:
 
     def _start_background_tasks(self):
         """Start background optimization tasks"""
+
         # Save history periodically
         def save_history_task():
             while True:
@@ -172,8 +185,9 @@ class EnhancedGPUOptimizer:
         save_thread = threading.Thread(target=save_history_task, daemon=True)
         save_thread.start()
 
-    def get_optimized_allocation(self, agent_name: str, model_type: str,
-                               requested_memory_gb: float) -> dict[str, Any]:
+    def get_optimized_allocation(
+        self, agent_name: str, model_type: str, requested_memory_gb: float
+    ) -> dict[str, Any]:
         """
         Get optimized GPU allocation parameters
 
@@ -202,20 +216,31 @@ class EnhancedGPUOptimizer:
             predicted_memory = requested_memory_gb
 
         # Adjust memory allocation based on prediction
-        adjusted_memory = max(requested_memory_gb, predicted_memory * 1.1)  # 10% safety margin
+        adjusted_memory = max(
+            requested_memory_gb, predicted_memory * 1.1
+        )  # 10% safety margin
 
         return {
-            'batch_size': optimal_batch_size,
-            'predicted_memory_gb': predicted_memory,
-            'adjusted_memory_gb': adjusted_memory,
-            'optimization_source': 'learned' if profile.get_optimal_batch_size(requested_memory_gb) else 'heuristic',
-            'confidence': self._calculate_confidence(profile, optimal_batch_size)
+            "batch_size": optimal_batch_size,
+            "predicted_memory_gb": predicted_memory,
+            "adjusted_memory_gb": adjusted_memory,
+            "optimization_source": "learned"
+            if profile.get_optimal_batch_size(requested_memory_gb)
+            else "heuristic",
+            "confidence": self._calculate_confidence(profile, optimal_batch_size),
         }
 
-    def record_performance(self, agent_name: str, model_type: str, batch_size: int,
-                          memory_used_gb: float, processing_time_seconds: float,
-                          items_processed: int, gpu_utilization_percent: float,
-                          success: bool = True):
+    def record_performance(
+        self,
+        agent_name: str,
+        model_type: str,
+        batch_size: int,
+        memory_used_gb: float,
+        processing_time_seconds: float,
+        items_processed: int,
+        gpu_utilization_percent: float,
+        success: bool = True,
+    ):
         """
         Record performance metrics for learning
 
@@ -232,7 +257,11 @@ class EnhancedGPUOptimizer:
         if not self.learning_enabled:
             return
 
-        throughput = items_processed / processing_time_seconds if processing_time_seconds > 0 else 0
+        throughput = (
+            items_processed / processing_time_seconds
+            if processing_time_seconds > 0
+            else 0
+        )
 
         record = PerformanceRecord(
             agent_name=agent_name,
@@ -243,7 +272,7 @@ class EnhancedGPUOptimizer:
             throughput_items_per_second=throughput,
             gpu_utilization_percent=gpu_utilization_percent,
             timestamp=datetime.now(),
-            success=success
+            success=success,
         )
 
         # Add to global history
@@ -253,9 +282,13 @@ class EnhancedGPUOptimizer:
         profile = self._get_or_create_profile(agent_name, model_type)
         profile.add_performance_record(record)
 
-        logger.debug(f"📊 Performance recorded: {agent_name} {model_type} batch_size={batch_size} throughput={throughput:.2f}")
+        logger.debug(
+            f"📊 Performance recorded: {agent_name} {model_type} batch_size={batch_size} throughput={throughput:.2f}"
+        )
 
-    def _get_or_create_profile(self, agent_name: str, model_type: str) -> ResourceProfile:
+    def _get_or_create_profile(
+        self, agent_name: str, model_type: str
+    ) -> ResourceProfile:
         """Get or create a performance profile"""
         profile_key = f"{agent_name}_{model_type}"
 
@@ -270,7 +303,7 @@ class EnhancedGPUOptimizer:
             # Get GPU memory info for more accurate calculations
             if GPU_AVAILABLE and torch.cuda.is_available():
                 gpu_status = self._get_gpu_status()
-                free_memory = gpu_status.get('free_memory_gb', 16.0)
+                free_memory = gpu_status.get("free_memory_gb", 16.0)
 
                 # Use available memory as constraint
                 available_memory = min(memory_gb, free_memory * 0.8)
@@ -278,7 +311,9 @@ class EnhancedGPUOptimizer:
                 # Model-specific optimizations with learning from common patterns
                 if model_type == "embedding":
                     # Embedding models: optimize for latency with larger batches
-                    base_batch = int(available_memory * 12)  # More aggressive than before
+                    base_batch = int(
+                        available_memory * 12
+                    )  # More aggressive than before
                     return self._constrain_batch_size(base_batch, 4, 64)
 
                 elif model_type == "generation":
@@ -314,7 +349,9 @@ class EnhancedGPUOptimizer:
             logger.warning(f"Error in heuristic batch calculation: {e}")
             return 4  # Conservative default
 
-    def _constrain_batch_size(self, batch_size: int, min_size: int, max_size: int) -> int:
+    def _constrain_batch_size(
+        self, batch_size: int, min_size: int, max_size: int
+    ) -> int:
         """Constrain batch size within reasonable bounds"""
         return max(min_size, min(max_size, batch_size))
 
@@ -323,19 +360,25 @@ class EnhancedGPUOptimizer:
         try:
             if GPU_AVAILABLE and torch.cuda.is_available():
                 device_id = 0  # Use first GPU
-                total_memory = torch.cuda.get_device_properties(device_id).total_memory / (1024**3)
+                total_memory = torch.cuda.get_device_properties(
+                    device_id
+                ).total_memory / (1024**3)
                 allocated = torch.cuda.memory_allocated(device_id) / (1024**3)
                 free_memory = total_memory - allocated
 
                 return {
-                    'total_memory_gb': total_memory,
-                    'free_memory_gb': free_memory,
-                    'allocated_memory_gb': allocated
+                    "total_memory_gb": total_memory,
+                    "free_memory_gb": free_memory,
+                    "allocated_memory_gb": allocated,
                 }
         except Exception:
             pass
 
-        return {'total_memory_gb': 24.0, 'free_memory_gb': 16.0, 'allocated_memory_gb': 8.0}
+        return {
+            "total_memory_gb": 24.0,
+            "free_memory_gb": 16.0,
+            "allocated_memory_gb": 8.0,
+        }
 
     def _calculate_confidence(self, profile: ResourceProfile, batch_size: int) -> float:
         """Calculate confidence score for batch size recommendation"""
@@ -344,7 +387,8 @@ class EnhancedGPUOptimizer:
 
         # Count successful records with this batch size
         matching_records = [
-            r for r in profile.performance_history
+            r
+            for r in profile.performance_history
             if r.batch_size == batch_size and r.success
         ]
 
@@ -375,26 +419,28 @@ class EnhancedGPUOptimizer:
         successful_records = len([r for r in self.performance_history if r.success])
 
         if total_records == 0:
-            return {'status': 'no_data'}
+            return {"status": "no_data"}
 
         # Calculate average throughput by model type
         throughput_by_type = defaultdict(list)
         for record in self.performance_history:
             if record.success:
-                throughput_by_type[record.model_type].append(record.throughput_items_per_second)
+                throughput_by_type[record.model_type].append(
+                    record.throughput_items_per_second
+                )
 
         avg_throughput_by_type = {}
         for model_type, throughputs in throughput_by_type.items():
             avg_throughput_by_type[model_type] = np.mean(throughputs)
 
         return {
-            'total_performance_records': total_records,
-            'successful_records': successful_records,
-            'success_rate': successful_records / total_records,
-            'active_profiles': len(self.profiles),
-            'average_throughput_by_type': dict(avg_throughput_by_type),
-            'learning_enabled': self.learning_enabled,
-            'adaptation_enabled': self.adaptation_enabled
+            "total_performance_records": total_records,
+            "successful_records": successful_records,
+            "success_rate": successful_records / total_records,
+            "active_profiles": len(self.profiles),
+            "average_throughput_by_type": dict(avg_throughput_by_type),
+            "learning_enabled": self.learning_enabled,
+            "adaptation_enabled": self.adaptation_enabled,
         }
 
     def _load_history(self):
@@ -405,15 +451,19 @@ class EnhancedGPUOptimizer:
                     data = json.load(f)
 
                 # Restore performance records
-                for record_data in data.get('performance_history', []):
+                for record_data in data.get("performance_history", []):
                     record = PerformanceRecord(**record_data)
                     self.performance_history.append(record)
 
                     # Restore profile data
-                    profile = self._get_or_create_profile(record.agent_name, record.model_type)
+                    profile = self._get_or_create_profile(
+                        record.agent_name, record.model_type
+                    )
                     profile.add_performance_record(record)
 
-                logger.info(f"✅ Loaded {len(self.performance_history)} historical performance records")
+                logger.info(
+                    f"✅ Loaded {len(self.performance_history)} historical performance records"
+                )
 
         except Exception as e:
             logger.warning(f"Failed to load optimization history: {e}")
@@ -422,31 +472,37 @@ class EnhancedGPUOptimizer:
         """Save historical performance data"""
         try:
             data = {
-                'performance_history': [record._asdict() for record in self.performance_history],
-                'profiles': {
+                "performance_history": [
+                    record._asdict() for record in self.performance_history
+                ],
+                "profiles": {
                     key: {
-                        'agent_name': profile.agent_name,
-                        'model_type': profile.model_type,
-                        'optimal_batch_sizes': profile.optimal_batch_sizes,
-                        'memory_usage_patterns': profile.memory_usage_patterns,
-                        'last_updated': profile.last_updated.isoformat()
+                        "agent_name": profile.agent_name,
+                        "model_type": profile.model_type,
+                        "optimal_batch_sizes": profile.optimal_batch_sizes,
+                        "memory_usage_patterns": profile.memory_usage_patterns,
+                        "last_updated": profile.last_updated.isoformat(),
                     }
                     for key, profile in self.profiles.items()
                 },
-                'saved_at': datetime.now().isoformat()
+                "saved_at": datetime.now().isoformat(),
             }
 
-            with open(self.history_file, 'w') as f:
+            with open(self.history_file, "w") as f:
                 json.dump(data, f, indent=2, default=str)
 
-            logger.debug(f"💾 Saved {len(self.performance_history)} performance records")
+            logger.debug(
+                f"💾 Saved {len(self.performance_history)} performance records"
+            )
 
         except Exception as e:
             logger.error(f"Failed to save optimization history: {e}")
 
+
 # Global optimizer instance
 _optimizer: EnhancedGPUOptimizer | None = None
 _optimizer_lock = threading.Lock()
+
 
 def get_gpu_optimizer() -> EnhancedGPUOptimizer:
     """Get the global GPU optimizer instance"""
@@ -456,26 +512,44 @@ def get_gpu_optimizer() -> EnhancedGPUOptimizer:
             _optimizer = EnhancedGPUOptimizer()
         return _optimizer
 
-def optimize_gpu_allocation(agent_name: str, model_type: str, memory_gb: float) -> dict[str, Any]:
+
+def optimize_gpu_allocation(
+    agent_name: str, model_type: str, memory_gb: float
+) -> dict[str, Any]:
     """Get optimized GPU allocation parameters"""
     optimizer = get_gpu_optimizer()
     return optimizer.get_optimized_allocation(agent_name, model_type, memory_gb)
 
-def record_gpu_performance(agent_name: str, model_type: str, batch_size: int,
-                          memory_used_gb: float, processing_time_seconds: float,
-                          items_processed: int, gpu_utilization_percent: float,
-                          success: bool = True):
+
+def record_gpu_performance(
+    agent_name: str,
+    model_type: str,
+    batch_size: int,
+    memory_used_gb: float,
+    processing_time_seconds: float,
+    items_processed: int,
+    gpu_utilization_percent: float,
+    success: bool = True,
+):
     """Record GPU performance for optimization learning"""
     optimizer = get_gpu_optimizer()
     optimizer.record_performance(
-        agent_name, model_type, batch_size, memory_used_gb,
-        processing_time_seconds, items_processed, gpu_utilization_percent, success
+        agent_name,
+        model_type,
+        batch_size,
+        memory_used_gb,
+        processing_time_seconds,
+        items_processed,
+        gpu_utilization_percent,
+        success,
     )
+
 
 def get_optimization_stats() -> dict[str, Any]:
     """Get optimization statistics"""
     optimizer = get_gpu_optimizer()
     return optimizer.get_optimization_stats()
+
 
 # Initialize optimizer on import
 _optimizer = get_gpu_optimizer()

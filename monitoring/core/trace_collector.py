@@ -35,6 +35,7 @@ try:
     from opentelemetry.trace.propagation.tracecontext import (
         TraceContextTextMapPropagator,
     )
+
     _OTEL_AVAILABLE = True
 except Exception:
     # OpenTelemetry or dependencies may be missing or incompatible in CI/dev envs.
@@ -61,9 +62,11 @@ logger = logging.getLogger(__name__)
 _trace_provider = None
 _tracer = None
 
+
 @dataclass
 class TraceContext:
     """Represents a distributed trace context"""
+
     trace_id: str
     span_id: str
     parent_span_id: str | None = None
@@ -74,21 +77,23 @@ class TraceContext:
         """Create TraceContext from OpenTelemetry SpanContext"""
         return cls(
             trace_id=hex(span_context.trace_id)[2:],  # Remove 0x prefix
-            span_id=hex(span_context.span_id)[2:],    # Remove 0x prefix
+            span_id=hex(span_context.span_id)[2:],  # Remove 0x prefix
         )
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
-            'trace_id': self.trace_id,
-            'span_id': self.span_id,
-            'parent_span_id': self.parent_span_id,
-            'baggage': self.baggage
+            "trace_id": self.trace_id,
+            "span_id": self.span_id,
+            "parent_span_id": self.parent_span_id,
+            "baggage": self.baggage,
         }
+
 
 @dataclass
 class TraceSpan:
     """Represents a single span in a distributed trace"""
+
     span_id: str
     trace_id: str
     parent_span_id: str | None
@@ -107,25 +112,27 @@ class TraceSpan:
     def to_dict(self) -> dict[str, Any]:
         """Convert span to dictionary for storage/analysis"""
         return {
-            'span_id': self.span_id,
-            'trace_id': self.trace_id,
-            'parent_span_id': self.parent_span_id,
-            'name': self.name,
-            'kind': self.kind,
-            'start_time': self.start_time.isoformat(),
-            'end_time': self.end_time.isoformat() if self.end_time else None,
-            'duration_ms': self.duration_ms,
-            'status': self.status,
-            'attributes': self.attributes,
-            'events': self.events,
-            'service_name': self.service_name,
-            'agent_name': self.agent_name,
-            'operation': self.operation
+            "span_id": self.span_id,
+            "trace_id": self.trace_id,
+            "parent_span_id": self.parent_span_id,
+            "name": self.name,
+            "kind": self.kind,
+            "start_time": self.start_time.isoformat(),
+            "end_time": self.end_time.isoformat() if self.end_time else None,
+            "duration_ms": self.duration_ms,
+            "status": self.status,
+            "attributes": self.attributes,
+            "events": self.events,
+            "service_name": self.service_name,
+            "agent_name": self.agent_name,
+            "operation": self.operation,
         }
+
 
 @dataclass
 class TraceData:
     """Complete trace data including all spans"""
+
     trace_id: str
     root_span_id: str
     spans: list[TraceSpan] = field(default_factory=list)
@@ -140,17 +147,18 @@ class TraceData:
     def to_dict(self) -> dict[str, Any]:
         """Convert trace to dictionary for storage"""
         return {
-            'trace_id': self.trace_id,
-            'root_span_id': self.root_span_id,
-            'spans': [span.to_dict() for span in self.spans],
-            'start_time': self.start_time.isoformat(),
-            'end_time': self.end_time.isoformat() if self.end_time else None,
-            'duration_ms': self.duration_ms,
-            'service_count': self.service_count,
-            'total_spans': self.total_spans,
-            'error_count': self.error_count,
-            'status': self.status
+            "trace_id": self.trace_id,
+            "root_span_id": self.root_span_id,
+            "spans": [span.to_dict() for span in self.spans],
+            "start_time": self.start_time.isoformat(),
+            "end_time": self.end_time.isoformat() if self.end_time else None,
+            "duration_ms": self.duration_ms,
+            "service_count": self.service_count,
+            "total_spans": self.total_spans,
+            "error_count": self.error_count,
+            "status": self.status,
         }
+
 
 class TraceCollector:
     """
@@ -179,7 +187,9 @@ class TraceCollector:
                 logger.warning("Trace setup failed; tracing disabled: %s", e)
                 self._setup_tracing = lambda *a, **k: None
         else:
-            logger.debug("OpenTelemetry not available; running TraceCollector in no-op mode")
+            logger.debug(
+                "OpenTelemetry not available; running TraceCollector in no-op mode"
+            )
             # Replace heavy methods with no-ops to avoid downstream errors
             self._setup_tracing = lambda *a, **k: None
             self.start_trace = lambda *a, **k: TraceContext(trace_id="0", span_id="0")
@@ -197,20 +207,20 @@ class TraceCollector:
         self.collection_latency = self.metrics.create_histogram(
             "trace_collection_latency_seconds",
             "Time spent collecting traces",
-            ["operation"]
+            ["operation"],
         )
         self.span_count = self.metrics.create_counter(
             "trace_spans_total",
             "Total number of spans collected",
-            ["service", "status"]
+            ["service", "status"],
         )
         self.trace_count = self.metrics.create_counter(
-            "traces_total",
-            "Total number of traces processed",
-            ["status"]
+            "traces_total", "Total number of traces processed", ["status"]
         )
 
-        logger.info(f"TraceCollector initialized for service: {service_name}, agent: {agent_name}")
+        logger.info(
+            f"TraceCollector initialized for service: {service_name}, agent: {agent_name}"
+        )
 
     def _setup_tracing(self):
         """Setup OpenTelemetry tracing infrastructure"""
@@ -218,11 +228,13 @@ class TraceCollector:
 
         if _trace_provider is None:
             # Create resource
-            resource = Resource.create({
-                ResourceAttributes.SERVICE_NAME: self.service_name,
-                ResourceAttributes.SERVICE_VERSION: "1.0.0",
-                "agent.name": self.agent_name
-            })
+            resource = Resource.create(
+                {
+                    ResourceAttributes.SERVICE_NAME: self.service_name,
+                    ResourceAttributes.SERVICE_VERSION: "1.0.0",
+                    "agent.name": self.agent_name,
+                }
+            )
 
             # Create trace provider
             _trace_provider = TracerProvider(resource=resource)
@@ -246,11 +258,13 @@ class TraceCollector:
     def _create_exporters(self) -> list[Any]:
         """Create configured trace exporters"""
         exporters = []
-        tracing_config = self.config.get('tracing', {})
+        tracing_config = self.config.get("tracing", {})
 
         # Jaeger exporter
-        if tracing_config.get('jaeger_enabled', True):
-            jaeger_endpoint = tracing_config.get('jaeger_endpoint', 'http://localhost:14268/api/traces')
+        if tracing_config.get("jaeger_enabled", True):
+            jaeger_endpoint = tracing_config.get(
+                "jaeger_endpoint", "http://localhost:14268/api/traces"
+            )
             jaeger_exporter = JaegerExporter(
                 agent_host_name="localhost",
                 agent_port=6831,
@@ -259,23 +273,22 @@ class TraceCollector:
             logger.info(f"Jaeger exporter configured: {jaeger_endpoint}")
 
         # OTLP exporter
-        if tracing_config.get('otlp_enabled', False):
-            otlp_endpoint = tracing_config.get('otlp_endpoint', 'http://localhost:4317')
-            otlp_exporter = OTLPSpanExporter(
-                endpoint=otlp_endpoint,
-                insecure=True
-            )
+        if tracing_config.get("otlp_enabled", False):
+            otlp_endpoint = tracing_config.get("otlp_endpoint", "http://localhost:4317")
+            otlp_exporter = OTLPSpanExporter(endpoint=otlp_endpoint, insecure=True)
             exporters.append(otlp_exporter)
             logger.info(f"OTLP exporter configured: {otlp_endpoint}")
 
         # Custom file exporter for development
-        if tracing_config.get('file_export_enabled', True):
+        if tracing_config.get("file_export_enabled", True):
             # We'll implement a custom file exporter
             pass
 
         return exporters
 
-    def start_trace(self, name: str, attributes: dict[str, Any] | None = None) -> TraceContext:
+    def start_trace(
+        self, name: str, attributes: dict[str, Any] | None = None
+    ) -> TraceContext:
         """
         Start a new trace with root span.
 
@@ -296,10 +309,7 @@ class TraceCollector:
             trace_id = hex(span.get_span_context().trace_id)[2:]
             span_id = hex(span.get_span_context().span_id)[2:]
 
-            trace_data = TraceData(
-                trace_id=trace_id,
-                root_span_id=span_id
-            )
+            trace_data = TraceData(trace_id=trace_id, root_span_id=span_id)
 
             # Store active trace
             if len(self.active_traces) < self.max_active_traces:
@@ -316,8 +326,12 @@ class TraceCollector:
 
             return trace_context
 
-    def start_span(self, name: str, parent_context: TraceContext | None = None,
-                   attributes: dict[str, Any] | None = None) -> TraceContext:
+    def start_span(
+        self,
+        name: str,
+        parent_context: TraceContext | None = None,
+        attributes: dict[str, Any] | None = None,
+    ) -> TraceContext:
         """
         Start a new span within an existing trace.
 
@@ -337,9 +351,11 @@ class TraceCollector:
                 span_context = trace.SpanContext(
                     trace_id=int(parent_context.trace_id, 16),
                     span_id=int(parent_context.span_id, 16),
-                    is_remote=True
+                    is_remote=True,
                 )
-                span = _tracer.start_span(name, context=span_context, kind=SpanKind.INTERNAL)
+                span = _tracer.start_span(
+                    name, context=span_context, kind=SpanKind.INTERNAL
+                )
             else:
                 span = _tracer.start_span(name, kind=SpanKind.INTERNAL)
 
@@ -353,12 +369,18 @@ class TraceCollector:
             trace_context = TraceContext.from_opentelemetry(span.get_span_context())
 
             self.span_count.labels(service=self.service_name, status="started").inc()
-            logger.debug(f"Started span: {trace_context.span_id} in trace: {trace_context.trace_id}")
+            logger.debug(
+                f"Started span: {trace_context.span_id} in trace: {trace_context.trace_id}"
+            )
 
             return trace_context
 
-    def end_span(self, context: TraceContext, status: str = "ok",
-                 attributes: dict[str, Any] | None = None):
+    def end_span(
+        self,
+        context: TraceContext,
+        status: str = "ok",
+        attributes: dict[str, Any] | None = None,
+    ):
         """
         End a span and record completion.
 
@@ -373,7 +395,7 @@ class TraceCollector:
                 span_context = trace.SpanContext(
                     trace_id=int(context.trace_id, 16),
                     span_id=int(context.span_id, 16),
-                    is_remote=True
+                    is_remote=True,
                 )
             else:
                 # In degraded / no-op mode there's no actual span context to construct.
@@ -382,7 +404,10 @@ class TraceCollector:
             # Get current span (this is a simplified approach)
             # In a real implementation, you'd need to maintain span references
             current_span = trace.get_current_span()
-            if current_span and current_span.get_span_context().span_id == span_context.span_id:
+            if (
+                current_span
+                and current_span.get_span_context().span_id == span_context.span_id
+            ):
                 if attributes:
                     for key, value in attributes.items():
                         current_span.set_attribute(key, value)
@@ -397,8 +422,9 @@ class TraceCollector:
                 self.span_count.labels(service=self.service_name, status=status).inc()
                 logger.debug(f"Ended span: {context.span_id}, status: {status}")
 
-    def record_event(self, context: TraceContext, name: str,
-                    attributes: dict[str, Any] | None = None):
+    def record_event(
+        self, context: TraceContext, name: str, attributes: dict[str, Any] | None = None
+    ):
         """
         Record an event within a span.
 
@@ -475,22 +501,27 @@ class TraceCollector:
     def get_stats(self) -> dict[str, Any]:
         """Get tracing statistics"""
         return {
-            'active_traces': len(self.active_traces),
-            'completed_traces': len(self.completed_traces),
-            'total_traces': len(self.active_traces) + len(self.completed_traces),
-            'max_active_traces': self.max_active_traces,
-            'retention_hours': self.trace_retention_hours
+            "active_traces": len(self.active_traces),
+            "completed_traces": len(self.completed_traces),
+            "total_traces": len(self.active_traces) + len(self.completed_traces),
+            "max_active_traces": self.max_active_traces,
+            "retention_hours": self.trace_retention_hours,
         }
+
 
 # Global collector instance
 _collector = None
 
-def get_trace_collector(service_name: str = "justnews-agent", agent_name: str = "") -> TraceCollector:
+
+def get_trace_collector(
+    service_name: str = "justnews-agent", agent_name: str = ""
+) -> TraceCollector:
     """Get or create global trace collector instance"""
     global _collector
     if _collector is None:
         _collector = TraceCollector(service_name, agent_name)
     return _collector
+
 
 # Convenience functions for easy tracing
 def start_trace(name: str, attributes: dict[str, Any] | None = None) -> TraceContext:
@@ -498,30 +529,43 @@ def start_trace(name: str, attributes: dict[str, Any] | None = None) -> TraceCon
     collector = get_trace_collector()
     return collector.start_trace(name, attributes)
 
-def start_span(name: str, parent_context: TraceContext | None = None,
-               attributes: dict[str, Any] | None = None) -> TraceContext:
+
+def start_span(
+    name: str,
+    parent_context: TraceContext | None = None,
+    attributes: dict[str, Any] | None = None,
+) -> TraceContext:
     """Convenience function to start a new span"""
     collector = get_trace_collector()
     return collector.start_span(name, parent_context, attributes)
 
-def end_span(context: TraceContext, status: str = "ok",
-             attributes: dict[str, Any] | None = None):
+
+def end_span(
+    context: TraceContext, status: str = "ok", attributes: dict[str, Any] | None = None
+):
     """Convenience function to end a span"""
     collector = get_trace_collector()
     collector.end_span(context, status, attributes)
 
-def record_event(context: TraceContext, name: str,
-                attributes: dict[str, Any] | None = None):
+
+def record_event(
+    context: TraceContext, name: str, attributes: dict[str, Any] | None = None
+):
     """Convenience function to record an event"""
     collector = get_trace_collector()
     collector.record_event(context, name, attributes)
+
 
 # Context manager for automatic span management
 class traced_span:
     """Context manager for automatic span lifecycle management"""
 
-    def __init__(self, name: str, parent_context: TraceContext | None = None,
-                 attributes: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        name: str,
+        parent_context: TraceContext | None = None,
+        attributes: dict[str, Any] | None = None,
+    ):
         self.name = name
         self.parent_context = parent_context
         self.attributes = attributes or {}

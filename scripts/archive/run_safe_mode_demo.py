@@ -33,20 +33,31 @@ from fastapi.testclient import TestClient
 RESULTS_DIR = Path(__file__).parent / "orchestrator_demo_results"
 RESULTS_DIR.mkdir(exist_ok=True)
 
+
 def _load_app():
     # Local import so SAFE_MODE env var re-evaluated
     from agents.gpu_orchestrator.main import app  # type: ignore
+
     return app
+
 
 def run_cycle_inprocess(safe_mode: bool) -> dict[str, Any]:
     """Original in-process cycle (kept for reference / debugging)."""
     os.environ["SAFE_MODE"] = "true" if safe_mode else "false"
     app = _load_app()
-    record: dict[str, Any] = {"safe_mode": safe_mode, "timestamp": datetime.now(UTC).isoformat(), "mode": "inprocess"}
+    record: dict[str, Any] = {
+        "safe_mode": safe_mode,
+        "timestamp": datetime.now(UTC).isoformat(),
+        "mode": "inprocess",
+    }
     with TestClient(app) as client:
         for ep in ("health", "ready", "policy"):
             r = client.get(f"/{ep}")
-            record[ep] = r.json() if r.headers.get("content-type", "" ).startswith("application/json") else r.text
+            record[ep] = (
+                r.json()
+                if r.headers.get("content-type", "").startswith("application/json")
+                else r.text
+            )
         lease_req = {"agent": "demo", "memory_gb": 0.1}
         lr = client.post("/lease", json=lease_req)
         try:
@@ -88,9 +99,14 @@ def run_cycle_subprocess(safe_mode: bool) -> dict[str, Any]:
             break
         if collecting:
             payload_lines.append(line)
-    data = json.loads("\n".join(payload_lines)) if payload_lines else {"error": "no_payload"}
+    data = (
+        json.loads("\n".join(payload_lines))
+        if payload_lines
+        else {"error": "no_payload"}
+    )
     data["mode"] = "subprocess"
     return data
+
 
 def main():
     cycles = []
@@ -110,6 +126,7 @@ def main():
         for c in cycles:
             f.write(json.dumps(c) + "\n")
     print(f"Combined log written: {combined_path}")
+
 
 if __name__ == "__main__":  # pragma: no cover
     if IS_SUBPROCESS:

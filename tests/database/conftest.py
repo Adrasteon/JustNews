@@ -15,11 +15,9 @@ import pytest
 from database.models.migrated_models import Article, MigratedDatabaseService, Source
 
 # Test Markers
-pytestmark = [
-    pytest.mark.database,
-    pytest.mark.asyncio,
-    pytest.mark.integration
-]
+pytestmark = [pytest.mark.database, pytest.mark.asyncio, pytest.mark.integration]
+
+
 @pytest.fixture(scope="session")
 def event_loop():
     """Create an instance of the default event loop for the test session."""
@@ -27,41 +25,42 @@ def event_loop():
     yield loop
     loop.close()
 
+
 @pytest.fixture(scope="session")
 def test_config() -> dict[str, Any]:
     """Base test configuration for dual database setup"""
     return {
-        'database': {
-            'mariadb': {
-                'host': 'localhost',
-                'port': 3306,
-                'database': 'justnews_test',
-                'user': 'test_user',
-                'password': 'test_password',
-                'charset': 'utf8mb4',
-                'autocommit': False
+        "database": {
+            "mariadb": {
+                "host": "localhost",
+                "port": 3306,
+                "database": "justnews_test",
+                "user": "test_user",
+                "password": "test_password",
+                "charset": "utf8mb4",
+                "autocommit": False,
             },
-            'chromadb': {
-                'host': 'localhost',
-                'port': 3307,
-                'collection': 'test_articles',
-                'settings': {
-                    'anonymized_telemetry': False
-                }
+            "chromadb": {
+                "host": "localhost",
+                "port": 3307,
+                "collection": "test_articles",
+                "settings": {"anonymized_telemetry": False},
             },
-            'embedding': {
-                'model': 'all-MiniLM-L6-v2',
-                'dimensions': 384,
-                'device': 'cpu',
-                'cache_folder': '/tmp/test_cache'
-            }
+            "embedding": {
+                "model": "all-MiniLM-L6-v2",
+                "dimensions": 384,
+                "device": "cpu",
+                "cache_folder": "/tmp/test_cache",
+            },
         },
-        'testing': {
-            'mock_connections': True,
-            'use_real_embeddings': False,
-            'cleanup_after_tests': True
-        }
+        "testing": {
+            "mock_connections": True,
+            "use_real_embeddings": False,
+            "cleanup_after_tests": True,
+        },
     }
+
+
 @pytest.fixture
 def mock_mariadb_connection():
     """Mock MariaDB connection with cursor"""
@@ -72,6 +71,8 @@ def mock_mariadb_connection():
     mock_conn.commit = MagicMock()
     mock_conn.rollback = MagicMock()
     return mock_conn, mock_cursor
+
+
 @pytest.fixture
 def mock_chromadb_client():
     """Mock ChromaDB client with collection"""
@@ -79,9 +80,9 @@ def mock_chromadb_client():
     mock_collection = MagicMock()
 
     # Setup collection properties
-    mock_collection.name = 'test_articles'
+    mock_collection.name = "test_articles"
     mock_collection.count.return_value = 0
-    mock_collection.metadata = {'test': True}
+    mock_collection.metadata = {"test": True}
 
     # Setup client methods
     mock_client.get_collection.return_value = mock_collection
@@ -102,16 +103,25 @@ def mock_embedding_model():
 
 
 @pytest.fixture
-def mock_database_service(test_config, mock_mariadb_connection, mock_chromadb_client, mock_embedding_model, monkeypatch):
+def mock_database_service(
+    test_config,
+    mock_mariadb_connection,
+    mock_chromadb_client,
+    mock_embedding_model,
+    monkeypatch,
+):
     """Create a fully mocked database service"""
     mock_conn, mock_cursor = mock_mariadb_connection
     mock_client, mock_collection = mock_chromadb_client
 
-    with patch('mysql.connector.connect', return_value=mock_conn):
-        with patch('chromadb.HttpClient', return_value=mock_client):
-            with patch('sentence_transformers.SentenceTransformer', return_value=mock_embedding_model):
+    with patch("mysql.connector.connect", return_value=mock_conn):
+        with patch("chromadb.HttpClient", return_value=mock_client):
+            with patch(
+                "sentence_transformers.SentenceTransformer",
+                return_value=mock_embedding_model,
+            ):
                 # Disable canonical Chroma enforcement for most unit tests in this suite.
-                monkeypatch.setenv('CHROMADB_REQUIRE_CANONICAL', '0')
+                monkeypatch.setenv("CHROMADB_REQUIRE_CANONICAL", "0")
                 service = MigratedDatabaseService(test_config)
 
                 # Store mocks for test access
@@ -128,42 +138,43 @@ def mock_database_service(test_config, mock_mariadb_connection, mock_chromadb_cl
 def sample_source_data():
     """Sample source data for testing"""
     return {
-        'id': 1,
-        'url': 'https://example.com',
-        'domain': 'example.com',
-        'name': 'Example News',
-        'created_at': datetime(2024, 1, 1, 12, 0, 0),
-        'metadata': {'test': True, 'version': '1.0'},
+        "id": 1,
+        "url": "https://example.com",
+        "domain": "example.com",
+        "name": "Example News",
+        "created_at": datetime(2024, 1, 1, 12, 0, 0),
+        "metadata": {"test": True, "version": "1.0"},
     }
+
 
 @pytest.fixture
 def sample_article_data():
     """Sample article data for testing"""
     return {
-        'id': 1,
-        'url': 'https://example.com/article1',
-        'title': 'Test Article Title',
-        'content': 'This is a comprehensive test article content with enough text to be meaningful for testing purposes. It includes various topics and should work well with embedding models.',
-        'summary': 'A test article for database integration testing.',
-        'is_active': True,
-        'source_id': 1,
-        'published_at': datetime(2024, 1, 1, 12, 0, 0),
-        'updated_at': datetime(2024, 1, 2, 12, 0, 0),
-        'canonical_url': 'https://example.com/article1',
-        'url_hash': 'hash123456789',
-        'content_hash': 'content_hash_abc',
-        'content_hash_algorithm': 'sha256',
-        'language': 'en',
-        'category': 'technology',
-        'tags': ['test', 'integration', 'database'],
-        'authors': ['Test Author'],
-        'raw_html': '<html><body>Test content</body></html>',
-        'extraction_confidence': 0.95,
-        'is_paywalled': False,
-        'image_urls': ['https://example.com/image1.jpg'],
-        'sentiment_analysis': {'polarity': 0.1, 'subjectivity': 0.3},
-        'word_count': 42,
-        'read_time_minutes': 2,
+        "id": 1,
+        "url": "https://example.com/article1",
+        "title": "Test Article Title",
+        "content": "This is a comprehensive test article content with enough text to be meaningful for testing purposes. It includes various topics and should work well with embedding models.",
+        "summary": "A test article for database integration testing.",
+        "is_active": True,
+        "source_id": 1,
+        "published_at": datetime(2024, 1, 1, 12, 0, 0),
+        "updated_at": datetime(2024, 1, 2, 12, 0, 0),
+        "canonical_url": "https://example.com/article1",
+        "url_hash": "hash123456789",
+        "content_hash": "content_hash_abc",
+        "content_hash_algorithm": "sha256",
+        "language": "en",
+        "category": "technology",
+        "tags": ["test", "integration", "database"],
+        "authors": ["Test Author"],
+        "raw_html": "<html><body>Test content</body></html>",
+        "extraction_confidence": 0.95,
+        "is_paywalled": False,
+        "image_urls": ["https://example.com/image1.jpg"],
+        "sentiment_analysis": {"polarity": 0.1, "subjectivity": 0.3},
+        "word_count": 42,
+        "read_time_minutes": 2,
         # created_at/updated_at already provided earlier in this record
     }
 
@@ -184,45 +195,43 @@ def sample_article(sample_article_data):
 def mock_query_results():
     """Mock database query results"""
     return {
-        'articles': [
+        "articles": [
             {
-                'id': 1,
-                'title': 'Test Article 1',
-                'content': 'Content 1',
-                'source_id': 1,
-                'created_at': datetime(2024, 1, 1)
+                "id": 1,
+                "title": "Test Article 1",
+                "content": "Content 1",
+                "source_id": 1,
+                "created_at": datetime(2024, 1, 1),
             },
             {
-                'id': 2,
-                'title': 'Test Article 2',
-                'content': 'Content 2',
-                'source_id': 1,
-                'created_at': datetime(2024, 1, 2)
-            }
-
-
+                "id": 2,
+                "title": "Test Article 2",
+                "content": "Content 2",
+                "source_id": 1,
+                "created_at": datetime(2024, 1, 2),
+            },
         ],
-        'sources': [
+        "sources": [
             {
-                'id': 1,
-                'url': 'https://example.com',
-                'domain': 'example.com',
-                'name': 'Example News',
-                'created_at': datetime(2024, 1, 1)
+                "id": 1,
+                "url": "https://example.com",
+                "domain": "example.com",
+                "name": "Example News",
+                "created_at": datetime(2024, 1, 1),
             }
         ],
-        'vectors': [
+        "vectors": [
             {
-                'id': '1',
-                'metadata': {'article_id': 1, 'score': 0.9},
-                'document': 'Test content 1'
+                "id": "1",
+                "metadata": {"article_id": 1, "score": 0.9},
+                "document": "Test content 1",
             },
             {
-                'id': '2',
-                'metadata': {'article_id': 2, 'score': 0.8},
-                'document': 'Test content 2'
-            }
-        ]
+                "id": "2",
+                "metadata": {"article_id": 2, "score": 0.8},
+                "document": "Test content 2",
+            },
+        ],
     }
 
 
@@ -230,13 +239,13 @@ def mock_query_results():
 def mock_chromadb_results():
     """Mock ChromaDB query results"""
     return {
-        'ids': [['1', '2']],
-        'metadatas': [
-            [{'article_id': 1, 'score': 0.9}],
-            [{'article_id': 2, 'score': 0.8}]
+        "ids": [["1", "2"]],
+        "metadatas": [
+            [{"article_id": 1, "score": 0.9}],
+            [{"article_id": 2, "score": 0.8}],
         ],
-        'documents': [['Test content 1'], ['Test content 2']],
-        'distances': [[0.1, 0.2]]
+        "documents": [["Test content 1"], ["Test content 2"]],
+        "distances": [[0.1, 0.2]],
     }
 
 
@@ -254,7 +263,7 @@ def _disable_chroma_canonical_in_tests(monkeypatch):
 
     Tests that want canonical enforcement can override it using monkeypatch.setenv in the test body.
     """
-    monkeypatch.setenv('CHROMADB_REQUIRE_CANONICAL', '0')
+    monkeypatch.setenv("CHROMADB_REQUIRE_CANONICAL", "0")
     yield
 
 
@@ -305,15 +314,20 @@ def mock_successful_transaction(cursor: MagicMock):
     cursor.fetchone.return_value = None
 
 
-def mock_failed_transaction(cursor: MagicMock, error_message: str = "Transaction failed"):
+def mock_failed_transaction(
+    cursor: MagicMock, error_message: str = "Transaction failed"
+):
     """Setup cursor to simulate failed transaction"""
     cursor.execute.side_effect = Exception(error_message)
 
 
 # Async test utilities
-async def async_assert_eventually_true(condition_func, timeout: float = 5.0, interval: float = 0.1):
+async def async_assert_eventually_true(
+    condition_func, timeout: float = 5.0, interval: float = 0.1
+):
     """Assert that a condition becomes true within a timeout"""
     import time
+
     start_time = time.time()
 
     while time.time() - start_time < timeout:
@@ -329,46 +343,49 @@ def parametrize_database_configs():
     configs = [
         # Standard configuration
         {
-            'name': 'standard',
-            'config': {
-                'database': {
-                    'mariadb': {'host': 'localhost', 'port': 3306},
-                    'chromadb': {'host': 'localhost', 'port': 3307},
-                    'embedding': {'model': 'all-MiniLM-L6-v2'}
+            "name": "standard",
+            "config": {
+                "database": {
+                    "mariadb": {"host": "localhost", "port": 3306},
+                    "chromadb": {"host": "localhost", "port": 3307},
+                    "embedding": {"model": "all-MiniLM-L6-v2"},
                 }
-            }
+            },
         },
         # High availability configuration
         {
-            'name': 'high_availability',
-            'config': {
-                'database': {
-                    'mariadb': {'host': 'db-cluster', 'port': 3306, 'pool_size': 10},
-                    'chromadb': {'host': 'chroma-cluster', 'port': 3307},
-                    'embedding': {'model': 'all-mpnet-base-v2', 'device': 'cuda'}
+            "name": "high_availability",
+            "config": {
+                "database": {
+                    "mariadb": {"host": "db-cluster", "port": 3306, "pool_size": 10},
+                    "chromadb": {"host": "chroma-cluster", "port": 3307},
+                    "embedding": {"model": "all-mpnet-base-v2", "device": "cuda"},
                 }
-            }
+            },
         },
         # Minimal configuration
         {
-            'name': 'minimal',
-            'config': {
-                'database': {
-                    'mariadb': {'host': 'localhost', 'port': 3306},
-                    'chromadb': {'host': 'localhost', 'port': 3307},
-                    'embedding': {'model': 'paraphrase-MiniLM-L3-v2'}
+            "name": "minimal",
+            "config": {
+                "database": {
+                    "mariadb": {"host": "localhost", "port": 3306},
+                    "chromadb": {"host": "localhost", "port": 3307},
+                    "embedding": {"model": "paraphrase-MiniLM-L3-v2"},
                 }
-            }
-        }
+            },
+        },
     ]
 
-    return pytest.mark.parametrize("config_variant", configs, ids=[c['name'] for c in configs])
+    return pytest.mark.parametrize(
+        "config_variant", configs, ids=[c["name"] for c in configs]
+    )
 
 
 # Performance testing utilities
 def time_operation(operation_func, *args, **kwargs):
     """Time an operation and return result with timing"""
     import time
+
     start_time = time.time()
     result = operation_func(*args, **kwargs)
     end_time = time.time()
@@ -379,6 +396,7 @@ def time_operation(operation_func, *args, **kwargs):
 async def time_async_operation(operation_func, *args, **kwargs):
     """Time an async operation and return result with timing"""
     import time
+
     start_time = time.time()
     result = await operation_func(*args, **kwargs)
     end_time = time.time()
@@ -397,7 +415,7 @@ def generate_test_articles(count: int, source_id: int = 1) -> list[Article]:
             title=f"Test Article {i + 1}",
             content=f"This is test content for article {i + 1}. " * 10,
             source_id=source_id,
-            created_at=datetime(2024, 1, 1)
+            created_at=datetime(2024, 1, 1),
         )
         articles.append(article)
     return articles
@@ -412,7 +430,7 @@ def generate_test_sources(count: int) -> list[Source]:
             url=f"https://source{i + 1}.com",
             domain=f"source{i + 1}.com",
             name=f"Test Source {i + 1}",
-            created_at=datetime(2024, 1, 1)
+            created_at=datetime(2024, 1, 1),
         )
         sources.append(source)
     return sources

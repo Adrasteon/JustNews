@@ -46,7 +46,6 @@ async def test_paywall_aggregator_threshold(monkeypatch, tmp_path):
         success=True,
     )
 
-
     # Build fake crawl4ai module (AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode)
     import sys
     import types
@@ -89,12 +88,16 @@ async def test_paywall_aggregator_threshold(monkeypatch, tmp_path):
             return DummyPaywall(should_skip=True)
 
     paywall_mod.PaywallDetector = FakePaywallDetector
-    monkeypatch.setitem(sys.modules, "agents.crawler.enhancements.paywall_detector", paywall_mod)
+    monkeypatch.setitem(
+        sys.modules, "agents.crawler.enhancements.paywall_detector", paywall_mod
+    )
 
     # Fake crawler_utils module with record_paywall_detection, RobotsChecker, RateLimiter
     cu_mod = types.ModuleType("agents.crawler.crawler_utils")
 
-    def fake_record_paywall_detection(source_id=None, domain=None, skip_count=0, threshold=0, paywall_type=None):
+    def fake_record_paywall_detection(
+        source_id=None, domain=None, skip_count=0, threshold=0, paywall_type=None
+    ):
         # placeholder; we'll monkeypatch a collector below
         return None
 
@@ -120,8 +123,17 @@ async def test_paywall_aggregator_threshold(monkeypatch, tmp_path):
     # Track calls to record_paywall_detection via monkeypatching the crawler_utils module
     calls = []
 
-    def fake_record_paywall_detection_collector(source_id, domain, skip_count, threshold, paywall_type):
-        calls.append({"domain": domain, "skip_count": skip_count, "threshold": threshold, "type": paywall_type})
+    def fake_record_paywall_detection_collector(
+        source_id, domain, skip_count, threshold, paywall_type
+    ):
+        calls.append(
+            {
+                "domain": domain,
+                "skip_count": skip_count,
+                "threshold": threshold,
+                "type": paywall_type,
+            }
+        )
 
     cu_mod.record_paywall_detection = fake_record_paywall_detection_collector
 
@@ -144,7 +156,9 @@ async def test_paywall_aggregator_threshold(monkeypatch, tmp_path):
     import sqlite3
 
     with sqlite3.connect(dbfile) as conn:
-        cur = conn.execute("SELECT count FROM paywall_counts WHERE domain = ?", ("example.com",))
+        cur = conn.execute(
+            "SELECT count FROM paywall_counts WHERE domain = ?", ("example.com",)
+        )
         row = cur.fetchone()
 
     assert row is not None

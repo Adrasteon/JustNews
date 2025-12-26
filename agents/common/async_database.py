@@ -3,7 +3,6 @@ Async database operations for JustNews
 Provides async database operations using asyncpg for non-blocking operations
 """
 
-
 from common.observability import get_logger
 from database.utils.migrated_database_utils import (
     create_database_service,

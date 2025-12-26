@@ -1,4 +1,5 @@
 """CI-safe smoke tests for the shared Mistral adapters."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -27,7 +28,9 @@ def test_journalist_adapter_includes_url_and_title():
     adapter = JournalistMistralAdapter()
     captured = _stub_chat(adapter, {"headline": "Mock"})
 
-    doc = adapter.generate_story_brief(markdown="Hello world", url="https://example.com", title="Sample")
+    doc = adapter.generate_story_brief(
+        markdown="Hello world", url="https://example.com", title="Sample"
+    )
 
     assert doc == {"headline": "Mock", "url": "https://example.com"}
     body = captured["messages"][1]["content"]
@@ -115,7 +118,10 @@ def test_reranker_adapter_emits_scores_in_order():
         {"scores": [{"id": "a", "score": 0.9}, {"id": "b", "score": 0.2}]},
     )
 
-    cands = [ReRankCandidate(id="a", text="alpha"), ReRankCandidate(id="b", text="beta")]
+    cands = [
+        ReRankCandidate(id="a", text="alpha"),
+        ReRankCandidate(id="b", text="beta"),
+    ]
     scores = adapter.score_candidates("query", cands)
 
     assert scores == [0.9, 0.2]

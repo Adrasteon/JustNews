@@ -18,7 +18,6 @@ Endpoints:
 - PUT /auth/users/{user_id}/deactivate - Admin endpoint to deactivate user
 """
 
-
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -71,16 +70,20 @@ security = HTTPBearer()
 # Create router
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+
 class LoginResponse(BaseModel):
     """Login response model"""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int
     user: dict[str, Any]
 
+
 class UserResponse(BaseModel):
     """User information response"""
+
     user_id: int
     email: str
     username: str
@@ -90,63 +93,87 @@ class UserResponse(BaseModel):
     created_at: datetime
     last_login: datetime | None = None
 
+
 class RegisterResponse(BaseModel):
     """Registration response model"""
+
     message: str
     user_id: int
     requires_activation: bool = True
 
+
 class PasswordResetResponse(BaseModel):
     """Password reset response model"""
+
     message: str
     email_sent: bool = True
+
 
 # Data Export Models
 class DataExportRequest(BaseModel):
     """Request model for data export"""
-    include_sensitive_data: bool = Field(False, description="Include sensitive data like passwords (admin only)")
+
+    include_sensitive_data: bool = Field(
+        False, description="Include sensitive data like passwords (admin only)"
+    )
     format: str = Field("json", description="Export format: json, csv, or xml")
+
 
 class DataExportResponse(BaseModel):
     """Response model for data export"""
+
     export_id: str
     status: str
     estimated_completion: str | None = None
     download_url: str | None = None
 
+
 class UserDataExport(BaseModel):
     """User data export model"""
+
     user_profile: dict[str, Any]
     login_history: list[dict[str, Any]]
     session_history: list[dict[str, Any]]
     search_history: list[dict[str, Any]] | None = None
     export_metadata: dict[str, Any]
 
+
 # Right to be Forgotten Models
 class DataDeletionRequest(BaseModel):
     """Request model for data deletion"""
-    confirmation: str = Field(..., description="Must be 'DELETE_ALL_MY_DATA' to confirm")
+
+    confirmation: str = Field(
+        ..., description="Must be 'DELETE_ALL_MY_DATA' to confirm"
+    )
     reason: str | None = Field(None, description="Optional reason for deletion request")
+
 
 class DataDeletionResponse(BaseModel):
     """Response model for data deletion"""
+
     request_id: str
     status: str
     estimated_completion: str
     message: str
 
+
 # Consent Management Models
 class ConsentGrantRequest(BaseModel):
     """Request model for granting consent"""
+
     consent_type: str
     details: dict[str, Any] | None = None
 
+
 class ConsentWithdrawRequest(BaseModel):
     """Request model for withdrawing consent"""
+
     consent_type: str
+
 
 class ConsentStatusResponse(BaseModel):
     """Response model for consent status"""
+
     consent_type: str
     granted: bool
     required: bool
@@ -154,8 +181,10 @@ class ConsentStatusResponse(BaseModel):
     last_updated: str | None
     status: str
 
+
 class UserConsentSummary(BaseModel):
     """User consent summary"""
+
     user_id: int
     consents: dict[str, dict[str, Any]]
     required_consents_granted: int
@@ -164,7 +193,10 @@ class UserConsentSummary(BaseModel):
     total_optional_consents: int
     compliance_status: str
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict[str, Any]:
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> dict[str, Any]:
     """Dependency to get current authenticated user"""
     token = credentials.credentials
     payload = verify_token(token)
@@ -183,7 +215,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             detail="User not found",
         )
 
-    if user['status'] != UserStatus.ACTIVE.value:
+    if user["status"] != UserStatus.ACTIVE.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is not active",
@@ -191,14 +223,18 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 
     return user
 
-async def get_admin_user(current_user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+
+async def get_admin_user(
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """Dependency to ensure user has admin role"""
-    if current_user['role'] != UserRole.ADMIN.value:
+    if current_user["role"] != UserRole.ADMIN.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
         )
     return current_user
+
 
 @router.post("/register", response_model=RegisterResponse)
 async def register_user(user_data: UserCreate, background_tasks: BackgroundTasks):
@@ -209,14 +245,14 @@ async def register_user(user_data: UserCreate, background_tasks: BackgroundTasks
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already registered"
+                detail="Username already registered",
             )
 
         existing_email = get_user_by_username_or_email(user_data.email)
         if existing_email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
+                detail="Email already registered",
             )
 
         # Create user
@@ -224,7 +260,7 @@ async def register_user(user_data: UserCreate, background_tasks: BackgroundTasks
         if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to create user"
+                detail="Failed to create user",
             )
 
         # TODO: Send activation email in background
@@ -235,7 +271,7 @@ async def register_user(user_data: UserCreate, background_tasks: BackgroundTasks
         return RegisterResponse(
             message="User registered successfully. Please check your email for activation instructions.",
             user_id=user_id,
-            requires_activation=True
+            requires_activation=True,
         )
 
     except HTTPException:
@@ -244,8 +280,9 @@ async def register_user(user_data: UserCreate, background_tasks: BackgroundTasks
         logger.error(f"Registration error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Registration failed"
+            detail="Registration failed",
         ) from e
+
 
 @router.post("/login", response_model=LoginResponse)
 async def login_user(login_data: UserLogin):
@@ -256,64 +293,68 @@ async def login_user(login_data: UserLogin):
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid username or password"
+                detail="Invalid username or password",
             )
 
         # Check if account is locked
-        if user.get('locked_until') and user['locked_until'] > datetime.now(UTC):
+        if user.get("locked_until") and user["locked_until"] > datetime.now(UTC):
             raise HTTPException(
                 status_code=status.HTTP_423_LOCKED,
-                detail="Account is temporarily locked due to too many failed login attempts"
+                detail="Account is temporarily locked due to too many failed login attempts",
             )
 
         # Check if account is active
-        if user['status'] != UserStatus.ACTIVE.value:
-            if user['status'] == UserStatus.PENDING.value:
+        if user["status"] != UserStatus.ACTIVE.value:
+            if user["status"] == UserStatus.PENDING.value:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Account is pending activation. Please check your email."
+                    detail="Account is pending activation. Please check your email.",
                 )
             else:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Account is not active"
+                    detail="Account is not active",
                 )
 
         # Verify password
-        if not verify_password(login_data.password, user['hashed_password'], user['salt']):
-            increment_login_attempts(user['user_id'])
+        if not verify_password(
+            login_data.password, user["hashed_password"], user["salt"]
+        ):
+            increment_login_attempts(user["user_id"])
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid username or password"
+                detail="Invalid username or password",
             )
 
         # Reset login attempts and update last login
-        reset_login_attempts(user['user_id'])
-        update_user_login(user['user_id'])
+        reset_login_attempts(user["user_id"])
+        update_user_login(user["user_id"])
 
         # Create tokens
         token_data = {
-            "user_id": user['user_id'],
-            "username": user['username'],
-            "email": user['email'],
-            "role": user['role']
+            "user_id": user["user_id"],
+            "username": user["username"],
+            "email": user["email"],
+            "role": user["role"],
         }
 
         access_token = create_access_token(token_data)
         refresh_token = create_refresh_token(token_data)
 
         # Store refresh token
-        if not store_refresh_token(user['user_id'], refresh_token):
+        if not store_refresh_token(user["user_id"], refresh_token):
             logger.warning(f"Failed to store refresh token for user {user['user_id']}")
 
         # Prepare user response data
         user_response = {
-            "user_id": user['user_id'],
-            "username": user['username'],
-            "email": user['email'],
-            "full_name": user['full_name'],
-            "role": user['role'],
-            "last_login": user['last_login'].isoformat() if user['last_login'] else None
+            "user_id": user["user_id"],
+            "username": user["username"],
+            "email": user["email"],
+            "full_name": user["full_name"],
+            "role": user["role"],
+            "last_login": user["last_login"].isoformat()
+            if user["last_login"]
+            else None,
         }
 
         logger.info(f"User logged in: {user['username']} (ID: {user['user_id']})")
@@ -323,7 +364,7 @@ async def login_user(login_data: UserLogin):
             refresh_token=refresh_token,
             token_type="bearer",
             expires_in=30 * 60,  # 30 minutes
-            user=user_response
+            user=user_response,
         )
 
     except HTTPException:
@@ -331,9 +372,9 @@ async def login_user(login_data: UserLogin):
     except Exception as e:
         logger.error(f"Login error: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Login failed"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Login failed"
         ) from e
+
 
 @router.post("/refresh")
 async def refresh_access_token(refresh_data: dict[str, str]):
@@ -342,32 +383,29 @@ async def refresh_access_token(refresh_data: dict[str, str]):
         refresh_token = refresh_data.get("refresh_token")
         if not refresh_token:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Refresh token required"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Refresh token required"
             )
 
         # Validate refresh token
         user_id = validate_refresh_token(refresh_token)
         if user_id is None:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
             )
 
         # Get user
         user = get_user_by_id(user_id)
-        if user is None or user['status'] != UserStatus.ACTIVE.value:
+        if user is None or user["status"] != UserStatus.ACTIVE.value:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
             )
 
         # Create new access token
         token_data = {
-            "user_id": user['user_id'],
-            "username": user['username'],
-            "email": user['email'],
-            "role": user['role']
+            "user_id": user["user_id"],
+            "username": user["username"],
+            "email": user["email"],
+            "role": user["role"],
         }
 
         access_token = create_access_token(token_data)
@@ -377,7 +415,7 @@ async def refresh_access_token(refresh_data: dict[str, str]):
         return {
             "access_token": access_token,
             "token_type": "bearer",
-            "expires_in": 30 * 60
+            "expires_in": 30 * 60,
         }
 
     except HTTPException:
@@ -386,11 +424,15 @@ async def refresh_access_token(refresh_data: dict[str, str]):
         logger.error(f"Token refresh error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Token refresh failed"
+            detail="Token refresh failed",
         ) from e
 
+
 @router.post("/logout")
-async def logout_user(refresh_data: dict[str, str], current_user: dict[str, Any] = Depends(get_current_user)):
+async def logout_user(
+    refresh_data: dict[str, str],
+    current_user: dict[str, Any] = Depends(get_current_user),
+):
     """Logout user and revoke refresh token"""
     try:
         refresh_token = refresh_data.get("refresh_token")
@@ -403,26 +445,31 @@ async def logout_user(refresh_data: dict[str, str], current_user: dict[str, Any]
     except Exception as e:
         logger.error(f"Logout error: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Logout failed"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Logout failed"
         ) from e
 
+
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(current_user: dict[str, Any] = Depends(get_current_user)):
+async def get_current_user_info(
+    current_user: dict[str, Any] = Depends(get_current_user),
+):
     """Get current user information"""
     return UserResponse(
-        user_id=current_user['user_id'],
-        email=current_user['email'],
-        username=current_user['username'],
-        full_name=current_user['full_name'],
-        role=UserRole(current_user['role']),
-        status=UserStatus(current_user['status']),
-        created_at=current_user['created_at'],
-        last_login=current_user['last_login']
+        user_id=current_user["user_id"],
+        email=current_user["email"],
+        username=current_user["username"],
+        full_name=current_user["full_name"],
+        role=UserRole(current_user["role"]),
+        status=UserStatus(current_user["status"]),
+        created_at=current_user["created_at"],
+        last_login=current_user["last_login"],
     )
 
+
 @router.post("/password-reset", response_model=PasswordResetResponse)
-async def request_password_reset(request: PasswordResetRequest, background_tasks: BackgroundTasks):
+async def request_password_reset(
+    request: PasswordResetRequest, background_tasks: BackgroundTasks
+):
     """Request password reset"""
     try:
         user = get_user_by_username_or_email(request.email)
@@ -433,7 +480,7 @@ async def request_password_reset(request: PasswordResetRequest, background_tasks
             )
 
         # Create password reset token
-        create_password_reset_token(user['user_id'])
+        create_password_reset_token(user["user_id"])
 
         # TODO: Send password reset email in background
         # background_tasks.add_task(send_password_reset_email, request.email, reset_token)
@@ -448,8 +495,9 @@ async def request_password_reset(request: PasswordResetRequest, background_tasks
         logger.error(f"Password reset request error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Password reset request failed"
+            detail="Password reset request failed",
         ) from e
+
 
 @router.post("/password-reset/confirm")
 async def confirm_password_reset(reset_data: PasswordReset):
@@ -460,14 +508,14 @@ async def confirm_password_reset(reset_data: PasswordReset):
         if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired reset token"
+                detail="Invalid or expired reset token",
             )
 
         # Update password
         if not update_user_password(user_id, reset_data.new_password):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to update password"
+                detail="Failed to update password",
             )
 
         # Mark token as used
@@ -486,28 +534,29 @@ async def confirm_password_reset(reset_data: PasswordReset):
         logger.error(f"Password reset confirmation error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Password reset confirmation failed"
+            detail="Password reset confirmation failed",
         ) from e
+
 
 @router.get("/users", response_model=list[UserResponse])
 async def list_users(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    current_user: dict[str, Any] = Depends(get_admin_user)
+    current_user: dict[str, Any] = Depends(get_admin_user),
 ):
     """Admin endpoint to list users"""
     try:
         users = get_all_users(limit=limit, offset=offset)
         return [
             UserResponse(
-                user_id=user['user_id'],
-                email=user['email'],
-                username=user['username'],
-                full_name=user['full_name'],
-                role=UserRole(user['role']),
-                status=UserStatus(user['status']),
-                created_at=user['created_at'],
-                last_login=user['last_login']
+                user_id=user["user_id"],
+                email=user["email"],
+                username=user["username"],
+                full_name=user["full_name"],
+                role=UserRole(user["role"]),
+                status=UserStatus(user["status"]),
+                created_at=user["created_at"],
+                last_login=user["last_login"],
             )
             for user in users
         ]
@@ -516,23 +565,24 @@ async def list_users(
         logger.error(f"List users error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve users"
+            detail="Failed to retrieve users",
         ) from e
+
 
 @router.put("/users/{user_id}/activate")
 async def activate_user_account(
-    user_id: int,
-    current_user: dict[str, Any] = Depends(get_admin_user)
+    user_id: int, current_user: dict[str, Any] = Depends(get_admin_user)
 ):
     """Admin endpoint to activate user account"""
     try:
         if not activate_user(user_id):
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
 
-        logger.info(f"User account activated by admin {current_user['username']}: User ID {user_id}")
+        logger.info(
+            f"User account activated by admin {current_user['username']}: User ID {user_id}"
+        )
         return {"message": "User account activated successfully"}
 
     except HTTPException:
@@ -541,26 +591,27 @@ async def activate_user_account(
         logger.error(f"Activate user error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to activate user"
+            detail="Failed to activate user",
         ) from e
+
 
 @router.put("/users/{user_id}/deactivate")
 async def deactivate_user_account(
-    user_id: int,
-    current_user: dict[str, Any] = Depends(get_admin_user)
+    user_id: int, current_user: dict[str, Any] = Depends(get_admin_user)
 ):
     """Admin endpoint to deactivate user account"""
     try:
         if not deactivate_user(user_id):
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
             )
 
         # Revoke all sessions for security
         revoke_all_user_sessions(user_id)
 
-        logger.info(f"User account deactivated by admin {current_user['username']}: User ID {user_id}")
+        logger.info(
+            f"User account deactivated by admin {current_user['username']}: User ID {user_id}"
+        )
         return {"message": "User account deactivated successfully"}
 
     except HTTPException:
@@ -569,16 +620,18 @@ async def deactivate_user_account(
         logger.error(f"Deactivate user error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to deactivate user"
+            detail="Failed to deactivate user",
         ) from e
 
+
 # Data Export Endpoints
+
 
 @router.post("/data-export", response_model=DataExportResponse)
 async def request_data_export(
     request: DataExportRequest,
     background_tasks: BackgroundTasks,
-    current_user: dict[str, Any] = Depends(get_current_user)
+    current_user: dict[str, Any] = Depends(get_current_user),
 ):
     """Request export of user's personal data (GDPR Article 20)"""
     try:
@@ -594,29 +647,29 @@ async def request_data_export(
         background_tasks.add_task(
             perform_data_export,
             export_id=export_id,
-            user_id=current_user['user_id'],
+            user_id=current_user["user_id"],
             include_sensitive=request.include_sensitive_data,
             export_format=request.format,
-            export_dir=export_dir
+            export_dir=export_dir,
         )
 
         return DataExportResponse(
             export_id=export_id,
             status="processing",
-            estimated_completion=(datetime.now() + timedelta(minutes=5)).isoformat()
+            estimated_completion=(datetime.now() + timedelta(minutes=5)).isoformat(),
         )
 
     except Exception as e:
         logger.error(f"Data export request error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to initiate data export"
+            detail="Failed to initiate data export",
         ) from e
+
 
 @router.get("/data-export/{export_id}")
 async def get_data_export_status(
-    export_id: str,
-    current_user: dict[str, Any] = Depends(get_current_user)
+    export_id: str, current_user: dict[str, Any] = Depends(get_current_user)
 ):
     """Get status of data export request"""
     try:
@@ -625,18 +678,16 @@ async def get_data_export_status(
 
         if not export_file.exists():
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Export not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Export not found"
             )
 
         with open(export_file) as f:
             export_data = json.load(f)
 
         # Check if export belongs to current user
-        if export_data.get('user_id') != current_user['user_id']:
+        if export_data.get("user_id") != current_user["user_id"]:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
             )
 
         return export_data
@@ -647,13 +698,13 @@ async def get_data_export_status(
         logger.error(f"Get export status error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get export status"
+            detail="Failed to get export status",
         ) from e
+
 
 @router.get("/data-export/{export_id}/download")
 async def download_data_export(
-    export_id: str,
-    current_user: dict[str, Any] = Depends(get_current_user)
+    export_id: str, current_user: dict[str, Any] = Depends(get_current_user)
 ):
     """Download completed data export"""
     try:
@@ -662,8 +713,7 @@ async def download_data_export(
 
         if not export_file.exists():
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Export file not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Export file not found"
             )
 
         # Check ownership via status file
@@ -671,16 +721,15 @@ async def download_data_export(
         if status_file.exists():
             with open(status_file) as f:
                 status_data = json.load(f)
-                if status_data.get('user_id') != current_user['user_id']:
+                if status_data.get("user_id") != current_user["user_id"]:
                     raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="Access denied"
+                        status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
                     )
 
         return FileResponse(
             path=export_file,
             filename=f"user_data_export_{export_id}.json",
-            media_type='application/json'
+            media_type="application/json",
         )
 
     except HTTPException:
@@ -689,8 +738,9 @@ async def download_data_export(
         logger.error(f"Download export error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to download export"
+            detail="Failed to download export",
         ) from e
+
 
 # Background task for data export
 async def perform_data_export(
@@ -698,7 +748,7 @@ async def perform_data_export(
     user_id: int,
     include_sensitive: bool,
     export_format: str,
-    export_dir: Path
+    export_dir: Path,
 ):
     """Background task to perform comprehensive data export"""
     try:
@@ -713,10 +763,10 @@ async def perform_data_export(
             "user_id": user_id,
             "status": "processing",
             "started_at": datetime.now().isoformat(),
-            "format": export_format
+            "format": export_format,
         }
 
-        with open(export_dir / f"{export_id}.json", 'w') as f:
+        with open(export_dir / f"{export_id}.json", "w") as f:
             json.dump(status_data, f)
 
         # Gather user data
@@ -736,15 +786,15 @@ async def perform_data_export(
         # Prepare export data
         export_data = UserDataExport(
             user_profile={
-                "user_id": user_data['user_id'],
-                "email": user_data['email'],
-                "username": user_data['username'],
-                "full_name": user_data['full_name'],
-                "role": user_data['role'],
-                "status": user_data['status'],
-                "created_at": user_data['created_at'],
-                "last_login": user_data['last_login'],
-                "login_attempts": user_data.get('login_attempts', 0)
+                "user_id": user_data["user_id"],
+                "email": user_data["email"],
+                "username": user_data["username"],
+                "full_name": user_data["full_name"],
+                "role": user_data["role"],
+                "status": user_data["status"],
+                "created_at": user_data["created_at"],
+                "last_login": user_data["last_login"],
+                "login_attempts": user_data.get("login_attempts", 0),
             },
             login_history=login_history,
             session_history=session_history,
@@ -755,24 +805,26 @@ async def perform_data_export(
                 "gdpr_compliant": True,
                 "includes_sensitive_data": include_sensitive,
                 "data_retention_policy": "7_years_user_data",
-                "export_format": export_format
-            }
+                "export_format": export_format,
+            },
         )
 
         # Save export data
         export_file = export_dir / f"{export_id}_data.json"
-        with open(export_file, 'w') as f:
+        with open(export_file, "w") as f:
             json.dump(export_data.model_dump(), f, indent=2, default=str)
 
         # Update status to completed
-        status_data.update({
-            "status": "completed",
-            "completed_at": datetime.now().isoformat(),
-            "file_size_bytes": export_file.stat().st_size,
-            "download_url": f"/auth/data-export/{export_id}/download"
-        })
+        status_data.update(
+            {
+                "status": "completed",
+                "completed_at": datetime.now().isoformat(),
+                "file_size_bytes": export_file.stat().st_size,
+                "download_url": f"/auth/data-export/{export_id}/download",
+            }
+        )
 
-        with open(export_dir / f"{export_id}.json", 'w') as f:
+        with open(export_dir / f"{export_id}.json", "w") as f:
             json.dump(status_data, f)
 
         logger.info(f"Data export completed for user {user_id}, export ID: {export_id}")
@@ -786,22 +838,24 @@ async def perform_data_export(
             "user_id": user_id,
             "status": "failed",
             "error": str(e),
-            "failed_at": datetime.now().isoformat()
+            "failed_at": datetime.now().isoformat(),
         }
 
         try:
-            with open(export_dir / f"{export_id}.json", 'w') as f:
+            with open(export_dir / f"{export_id}.json", "w") as f:
                 json.dump(status_data, f)
         except OSError:
             pass
 
+
 # Right to be Forgotten Endpoints
+
 
 @router.post("/data-deletion", response_model=DataDeletionResponse)
 async def request_data_deletion(
     request: DataDeletionRequest,
     background_tasks: BackgroundTasks,
-    current_user: dict[str, Any] = Depends(get_current_user)
+    current_user: dict[str, Any] = Depends(get_current_user),
 ):
     """Request complete deletion of user's personal data (GDPR Right to be Forgotten)"""
     try:
@@ -809,7 +863,7 @@ async def request_data_deletion(
         if request.confirmation != "DELETE_ALL_MY_DATA":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid confirmation. Must be exactly 'DELETE_ALL_MY_DATA'"
+                detail="Invalid confirmation. Must be exactly 'DELETE_ALL_MY_DATA'",
             )
 
         import uuid
@@ -821,15 +875,15 @@ async def request_data_deletion(
         background_tasks.add_task(
             perform_data_deletion,
             request_id=request_id,
-            user_id=current_user['user_id'],
-            reason=request.reason
+            user_id=current_user["user_id"],
+            reason=request.reason,
         )
 
         return DataDeletionResponse(
             request_id=request_id,
             status="processing",
             estimated_completion=(datetime.now() + timedelta(hours=24)).isoformat(),
-            message="Your data deletion request has been submitted. You will receive confirmation once completed."
+            message="Your data deletion request has been submitted. You will receive confirmation once completed.",
         )
 
     except HTTPException:
@@ -838,13 +892,13 @@ async def request_data_deletion(
         logger.error(f"Data deletion request error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to initiate data deletion"
+            detail="Failed to initiate data deletion",
         ) from e
+
 
 @router.get("/data-deletion/{request_id}")
 async def get_data_deletion_status(
-    request_id: str,
-    current_user: dict[str, Any] = Depends(get_current_user)
+    request_id: str, current_user: dict[str, Any] = Depends(get_current_user)
 ):
     """Get status of data deletion request"""
     try:
@@ -854,17 +908,16 @@ async def get_data_deletion_status(
         if not status_file.exists():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Deletion request not found"
+                detail="Deletion request not found",
             )
 
         with open(status_file) as f:
             deletion_data = json.load(f)
 
         # Check if request belongs to current user
-        if deletion_data.get('user_id') != current_user['user_id']:
+        if deletion_data.get("user_id") != current_user["user_id"]:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
             )
 
         return deletion_data
@@ -875,21 +928,20 @@ async def get_data_deletion_status(
         logger.error(f"Get deletion status error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get deletion status"
+            detail="Failed to get deletion status",
         ) from e
 
+
 # Background task for data deletion
-async def perform_data_deletion(
-    request_id: str,
-    user_id: int,
-    reason: str | None
-):
+async def perform_data_deletion(request_id: str, user_id: int, reason: str | None):
     """Background task to perform complete user data deletion"""
     try:
         import json
         from datetime import datetime
 
-        logger.info(f"Starting data deletion for user {user_id}, request ID: {request_id}")
+        logger.info(
+            f"Starting data deletion for user {user_id}, request ID: {request_id}"
+        )
 
         deletion_dir = Path("./data_deletions")
         deletion_dir.mkdir(exist_ok=True)
@@ -901,10 +953,10 @@ async def perform_data_deletion(
             "status": "processing",
             "started_at": datetime.now().isoformat(),
             "reason": reason,
-            "deletion_steps": []
+            "deletion_steps": [],
         }
 
-        with open(deletion_dir / f"{request_id}.json", 'w') as f:
+        with open(deletion_dir / f"{request_id}.json", "w") as f:
             json.dump(status_data, f)
 
         # Step 1: Get user data before deletion
@@ -912,21 +964,25 @@ async def perform_data_deletion(
         if not user_data:
             raise Exception("User not found")
 
-        status_data["deletion_steps"].append({
-            "step": "user_lookup",
-            "status": "completed",
-            "timestamp": datetime.now().isoformat(),
-            "message": f"Found user data for {user_data['email']}"
-        })
+        status_data["deletion_steps"].append(
+            {
+                "step": "user_lookup",
+                "status": "completed",
+                "timestamp": datetime.now().isoformat(),
+                "message": f"Found user data for {user_data['email']}",
+            }
+        )
 
         # Step 2: Revoke all sessions
         revoke_all_user_sessions(user_id)
-        status_data["deletion_steps"].append({
-            "step": "session_revocation",
-            "status": "completed",
-            "timestamp": datetime.now().isoformat(),
-            "message": "All user sessions revoked"
-        })
+        status_data["deletion_steps"].append(
+            {
+                "step": "session_revocation",
+                "status": "completed",
+                "timestamp": datetime.now().isoformat(),
+                "message": "All user sessions revoked",
+            }
+        )
 
         # Step 3: Anonymize user data (instead of complete deletion for audit purposes)
         # In a real implementation, you might want to:
@@ -945,15 +1001,17 @@ async def perform_data_deletion(
         update_user_anonymized(
             user_id=user_id,
             anonymized_email=anonymized_email,
-            anonymized_username=anonymized_username
+            anonymized_username=anonymized_username,
         )
 
-        status_data["deletion_steps"].append({
-            "step": "data_anonymization",
-            "status": "completed",
-            "timestamp": datetime.now().isoformat(),
-            "message": "User data anonymized for audit purposes"
-        })
+        status_data["deletion_steps"].append(
+            {
+                "step": "data_anonymization",
+                "status": "completed",
+                "timestamp": datetime.now().isoformat(),
+                "message": "User data anonymized for audit purposes",
+            }
+        )
 
         # Step 4: Clean up related data
         # This would include:
@@ -964,27 +1022,35 @@ async def perform_data_deletion(
 
         cleanup_related_data(user_id)
 
-        status_data["deletion_steps"].append({
-            "step": "related_data_cleanup",
-            "status": "completed",
-            "timestamp": datetime.now().isoformat(),
-            "message": "Related user data cleaned up"
-        })
+        status_data["deletion_steps"].append(
+            {
+                "step": "related_data_cleanup",
+                "status": "completed",
+                "timestamp": datetime.now().isoformat(),
+                "message": "Related user data cleaned up",
+            }
+        )
 
         # Step 5: Log deletion for compliance
-        logger.info(f"GDPR deletion completed for user {user_id} (original email: {user_data['email']})")
+        logger.info(
+            f"GDPR deletion completed for user {user_id} (original email: {user_data['email']})"
+        )
 
         # Update status to completed
-        status_data.update({
-            "status": "completed",
-            "completed_at": datetime.now().isoformat(),
-            "final_message": "Your data has been successfully deleted/anonymized per GDPR requirements."
-        })
+        status_data.update(
+            {
+                "status": "completed",
+                "completed_at": datetime.now().isoformat(),
+                "final_message": "Your data has been successfully deleted/anonymized per GDPR requirements.",
+            }
+        )
 
-        with open(deletion_dir / f"{request_id}.json", 'w') as f:
+        with open(deletion_dir / f"{request_id}.json", "w") as f:
             json.dump(status_data, f)
 
-        logger.info(f"Data deletion completed for user {user_id}, request ID: {request_id}")
+        logger.info(
+            f"Data deletion completed for user {user_id}, request ID: {request_id}"
+        )
 
     except Exception as e:
         logger.error(f"Data deletion failed for user {user_id}: {e}")
@@ -995,14 +1061,15 @@ async def perform_data_deletion(
             "user_id": user_id,
             "status": "failed",
             "error": str(e),
-            "failed_at": datetime.now().isoformat()
+            "failed_at": datetime.now().isoformat(),
         }
 
         try:
-            with open(deletion_dir / f"{request_id}.json", 'w') as f:
+            with open(deletion_dir / f"{request_id}.json", "w") as f:
                 json.dump(status_data, f)
         except OSError:
             pass
+
 
 def cleanup_related_data(user_id: int):
     """Clean up related user data files and records"""
@@ -1015,7 +1082,7 @@ def cleanup_related_data(user_id: int):
                     try:
                         with open(file_path) as f:
                             data = json.load(f)
-                            if data.get('user_id') == user_id:
+                            if data.get("user_id") == user_id:
                                 file_path.unlink()
                     except (OSError, json.JSONDecodeError):
                         pass
@@ -1028,7 +1095,7 @@ def cleanup_related_data(user_id: int):
                     try:
                         with open(file_path) as f:
                             data = json.load(f)
-                            if data.get('user_id') == user_id:
+                            if data.get("user_id") == user_id:
                                 file_path.unlink()
                     except (OSError, json.JSONDecodeError):
                         pass
@@ -1038,26 +1105,29 @@ def cleanup_related_data(user_id: int):
     except Exception as e:
         logger.error(f"Failed to cleanup related data for user {user_id}: {e}")
 
+
 # Consent Management Endpoints
+
 
 @router.get("/consents", response_model=UserConsentSummary)
 async def get_user_consents(current_user: dict[str, Any] = Depends(get_current_user)):
     """Get current user's consent status"""
     try:
-        summary = consent_manager.get_consent_summary(current_user['user_id'])
+        summary = consent_manager.get_consent_summary(current_user["user_id"])
         return UserConsentSummary(**summary)
 
     except Exception as e:
         logger.error(f"Get user consents error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve consent status"
+            detail="Failed to retrieve consent status",
         ) from e
+
 
 @router.post("/consents/grant")
 async def grant_user_consent(
     request: ConsentGrantRequest,
-    current_user: dict[str, Any] = Depends(get_current_user)
+    current_user: dict[str, Any] = Depends(get_current_user),
 ):
     """Grant consent for a specific type"""
     try:
@@ -1067,35 +1137,36 @@ async def grant_user_consent(
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid consent type: {request.consent_type}"
+                detail=f"Invalid consent type: {request.consent_type}",
             ) from exc
 
         # Grant consent
         consent_id = consent_manager.grant_consent(
-            user_id=current_user['user_id'],
+            user_id=current_user["user_id"],
             consent_type=consent_type,
-            details=request.details
+            details=request.details,
         )
 
         # Log to audit
         from agents.common.compliance_audit import audit_logger
+
         audit_logger.log_event(
             event_type=audit_logger.AuditEventType.DATA_MODIFICATION,
             severity=audit_logger.AuditEventSeverity.LOW,
-            user_id=current_user['user_id'],
-            user_email=current_user['email'],
+            user_id=current_user["user_id"],
+            user_email=current_user["email"],
             resource_type="user_consent",
             resource_id=consent_id,
             action="consent_granted",
             details={"consent_type": request.consent_type},
             compliance_relevant=True,
-            gdpr_article="6"
+            gdpr_article="6",
         )
 
         return {
             "message": f"Consent granted for {request.consent_type}",
             "consent_id": consent_id,
-            "granted_at": datetime.now().isoformat()
+            "granted_at": datetime.now().isoformat(),
         }
 
     except HTTPException:
@@ -1104,13 +1175,14 @@ async def grant_user_consent(
         logger.error(f"Grant consent error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to grant consent"
+            detail="Failed to grant consent",
         ) from e
+
 
 @router.post("/consents/withdraw")
 async def withdraw_user_consent(
     request: ConsentWithdrawRequest,
-    current_user: dict[str, Any] = Depends(get_current_user)
+    current_user: dict[str, Any] = Depends(get_current_user),
 ):
     """Withdraw consent for a specific type"""
     try:
@@ -1120,38 +1192,38 @@ async def withdraw_user_consent(
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid consent type: {request.consent_type}"
+                detail=f"Invalid consent type: {request.consent_type}",
             ) from exc
 
         # Withdraw consent
         success = consent_manager.withdraw_consent(
-            user_id=current_user['user_id'],
-            consent_type=consent_type
+            user_id=current_user["user_id"], consent_type=consent_type
         )
 
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No active consent found for {request.consent_type}"
+                detail=f"No active consent found for {request.consent_type}",
             )
 
         # Log to audit
         from agents.common.compliance_audit import audit_logger
+
         audit_logger.log_event(
             event_type=audit_logger.AuditEventType.DATA_MODIFICATION,
             severity=audit_logger.AuditEventSeverity.MEDIUM,
-            user_id=current_user['user_id'],
-            user_email=current_user['email'],
+            user_id=current_user["user_id"],
+            user_email=current_user["email"],
             resource_type="user_consent",
             action="consent_withdrawn",
             details={"consent_type": request.consent_type},
             compliance_relevant=True,
-            gdpr_article="7"
+            gdpr_article="7",
         )
 
         return {
             "message": f"Consent withdrawn for {request.consent_type}",
-            "withdrawn_at": datetime.now().isoformat()
+            "withdrawn_at": datetime.now().isoformat(),
         }
 
     except HTTPException:
@@ -1160,11 +1232,14 @@ async def withdraw_user_consent(
         logger.error(f"Withdraw consent error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to withdraw consent"
+            detail="Failed to withdraw consent",
         ) from e
 
+
 @router.get("/consents/policies")
-async def get_consent_policies(current_user: dict[str, Any] = Depends(get_current_user)):
+async def get_consent_policies(
+    current_user: dict[str, Any] = Depends(get_current_user),
+):
     """Get available consent policies"""
     try:
         policies = {}
@@ -1175,26 +1250,26 @@ async def get_consent_policies(current_user: dict[str, Any] = Depends(get_curren
                 "required": policy.required,
                 "default_granted": policy.default_granted,
                 "expires_days": policy.expires_days,
-                "version": policy.version
+                "version": policy.version,
             }
 
         return {
             "policies": policies,
             "total_policies": len(policies),
-            "required_policies": sum(1 for p in policies.values() if p["required"])
+            "required_policies": sum(1 for p in policies.values() if p["required"]),
         }
 
     except Exception as e:
         logger.error(f"Get consent policies error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve consent policies"
+            detail="Failed to retrieve consent policies",
         ) from e
+
 
 @router.get("/consents/check/{consent_type}")
 async def check_user_consent(
-    consent_type: str,
-    current_user: dict[str, Any] = Depends(get_current_user)
+    consent_type: str, current_user: dict[str, Any] = Depends(get_current_user)
 ):
     """Check if user has granted a specific consent"""
     try:
@@ -1204,16 +1279,18 @@ async def check_user_consent(
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid consent type: {consent_type}"
+                detail=f"Invalid consent type: {consent_type}",
             ) from exc
 
         # Check consent
-        has_consent = consent_manager.check_consent(current_user['user_id'], consent_enum)
+        has_consent = consent_manager.check_consent(
+            current_user["user_id"], consent_enum
+        )
 
         return {
             "consent_type": consent_type,
             "granted": has_consent,
-            "checked_at": datetime.now().isoformat()
+            "checked_at": datetime.now().isoformat(),
         }
 
     except HTTPException:
@@ -1222,14 +1299,16 @@ async def check_user_consent(
         logger.error(f"Check consent error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to check consent"
+            detail="Failed to check consent",
         ) from e
+
 
 # Admin Consent Management Endpoints
 
+
 @router.get("/admin/consents/statistics")
 async def get_consent_statistics(
-    current_user: dict[str, Any] = Depends(get_admin_user)
+    current_user: dict[str, Any] = Depends(get_admin_user),
 ):
     """Admin endpoint to get consent statistics"""
     try:
@@ -1240,13 +1319,13 @@ async def get_consent_statistics(
         logger.error(f"Get consent statistics error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve consent statistics"
+            detail="Failed to retrieve consent statistics",
         ) from e
+
 
 @router.get("/admin/consents/users/{user_id}")
 async def get_user_consent_details(
-    user_id: int,
-    current_user: dict[str, Any] = Depends(get_admin_user)
+    user_id: int, current_user: dict[str, Any] = Depends(get_admin_user)
 ):
     """Admin endpoint to get detailed consent information for a user"""
     try:
@@ -1261,21 +1340,22 @@ async def get_user_consent_details(
         return {
             "user_id": user_id,
             "summary": summary,
-            "consent_records": consent_details
+            "consent_records": consent_details,
         }
 
     except Exception as e:
         logger.error(f"Get user consent details error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve user consent details"
+            detail="Failed to retrieve user consent details",
         ) from e
+
 
 @router.post("/admin/consents/users/{user_id}/grant")
 async def admin_grant_user_consent(
     user_id: int,
     request: ConsentGrantRequest,
-    current_user: dict[str, Any] = Depends(get_admin_user)
+    current_user: dict[str, Any] = Depends(get_admin_user),
 ):
     """Admin endpoint to grant consent on behalf of a user"""
     try:
@@ -1285,40 +1365,41 @@ async def admin_grant_user_consent(
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid consent type: {request.consent_type}"
+                detail=f"Invalid consent type: {request.consent_type}",
             ) from exc
 
         # Grant consent
         consent_id = consent_manager.grant_consent(
             user_id=user_id,
             consent_type=consent_type,
-            details={**request.details, "granted_by_admin": current_user['user_id']}
+            details={**request.details, "granted_by_admin": current_user["user_id"]},
         )
 
         # Log to audit
         from agents.common.compliance_audit import audit_logger
+
         audit_logger.log_event(
             event_type=audit_logger.AuditEventType.DATA_MODIFICATION,
             severity=audit_logger.AuditEventSeverity.MEDIUM,
-            user_id=current_user['user_id'],
-            user_email=current_user['email'],
+            user_id=current_user["user_id"],
+            user_email=current_user["email"],
             resource_type="user_consent",
             resource_id=consent_id,
             action="admin_consent_granted",
             details={
                 "consent_type": request.consent_type,
                 "target_user_id": user_id,
-                "admin_action": True
+                "admin_action": True,
             },
             compliance_relevant=True,
-            gdpr_article="6"
+            gdpr_article="6",
         )
 
         return {
             "message": f"Consent granted for user {user_id}: {request.consent_type}",
             "consent_id": consent_id,
-            "granted_by": current_user['username'],
-            "granted_at": datetime.now().isoformat()
+            "granted_by": current_user["username"],
+            "granted_at": datetime.now().isoformat(),
         }
 
     except HTTPException:
@@ -1327,14 +1408,16 @@ async def admin_grant_user_consent(
         logger.error(f"Admin grant consent error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to grant consent"
+            detail="Failed to grant consent",
         ) from e
+
 
 # Data Minimization Endpoints
 
+
 @router.get("/data-minimization/status")
 async def get_data_minimization_status(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Get data minimization compliance status"""
     try:
@@ -1342,17 +1425,13 @@ async def get_data_minimization_status(
         token_data = verify_token(credentials.credentials)
         if not token_data or token_data.get("role") != "admin":
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Admin access required"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
             )
 
         manager = DataMinimizationManager()
         status_info = manager.get_compliance_status()
 
-        return {
-            "status": "success",
-            "data": status_info
-        }
+        return {"status": "success", "data": status_info}
 
     except HTTPException:
         raise
@@ -1360,21 +1439,21 @@ async def get_data_minimization_status(
         logger.error(f"Data minimization status error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get data minimization status"
+            detail="Failed to get data minimization status",
         ) from e
+
 
 @router.post("/data-minimization/validate")
 async def validate_data_collection(
     request: dict[str, Any],
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Validate data collection against minimization policies"""
     try:
         token_data = verify_token(credentials.credentials)
         if not token_data:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
             )
 
         user_id = str(token_data.get("user_id"))
@@ -1384,16 +1463,13 @@ async def validate_data_collection(
         if not purpose or not data_fields:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Purpose and data_fields are required"
+                detail="Purpose and data_fields are required",
             )
 
         manager = DataMinimizationManager()
         result = manager.validate_data_collection(purpose, data_fields, user_id)
 
-        return {
-            "status": "success",
-            "data": result
-        }
+        return {"status": "success", "data": result}
 
     except HTTPException:
         raise
@@ -1401,21 +1477,21 @@ async def validate_data_collection(
         logger.error(f"Data validation error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to validate data collection"
+            detail="Failed to validate data collection",
         ) from e
+
 
 @router.post("/data-minimization/minimize")
 async def minimize_data_payload(
     request: dict[str, Any],
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Minimize data payload according to policies"""
     try:
         token_data = verify_token(credentials.credentials)
         if not token_data:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
             )
 
         user_id = str(token_data.get("user_id"))
@@ -1424,8 +1500,7 @@ async def minimize_data_payload(
 
         if not purpose:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Purpose is required"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Purpose is required"
             )
 
         manager = DataMinimizationManager()
@@ -1436,8 +1511,8 @@ async def minimize_data_payload(
             "data": {
                 "original_fields": len(data),
                 "minimized_fields": len(minimized_data),
-                "minimized_data": minimized_data
-            }
+                "minimized_data": minimized_data,
+            },
         }
 
     except HTTPException:
@@ -1446,20 +1521,20 @@ async def minimize_data_payload(
         logger.error(f"Data minimization error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to minimize data"
+            detail="Failed to minimize data",
         ) from e
+
 
 @router.post("/data-minimization/cleanup")
 async def cleanup_expired_data(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Clean up expired data for the current user"""
     try:
         token_data = verify_token(credentials.credentials)
         if not token_data:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
             )
 
         user_id = str(token_data.get("user_id"))
@@ -1467,10 +1542,7 @@ async def cleanup_expired_data(
         manager = DataMinimizationManager()
         result = manager.cleanup_expired_data(user_id)
 
-        return {
-            "status": "success",
-            "data": result
-        }
+        return {"status": "success", "data": result}
 
     except HTTPException:
         raise
@@ -1478,20 +1550,20 @@ async def cleanup_expired_data(
         logger.error(f"Data cleanup error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to cleanup expired data"
+            detail="Failed to cleanup expired data",
         ) from e
+
 
 @router.get("/data-minimization/usage")
 async def get_data_usage_summary(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Get data usage summary for the current user"""
     try:
         token_data = verify_token(credentials.credentials)
         if not token_data:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
             )
 
         user_id = str(token_data.get("user_id"))
@@ -1499,10 +1571,7 @@ async def get_data_usage_summary(
         manager = DataMinimizationManager()
         result = manager.get_data_usage_summary(user_id)
 
-        return {
-            "status": "success",
-            "data": result
-        }
+        return {"status": "success", "data": result}
 
     except HTTPException:
         raise
@@ -1510,13 +1579,14 @@ async def get_data_usage_summary(
         logger.error(f"Data usage summary error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get data usage summary"
+            detail="Failed to get data usage summary",
         ) from e
+
 
 @router.post("/data-minimization/policies")
 async def add_data_policy(
     request: dict[str, Any],
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """Add a new data collection policy (Admin only)"""
     try:
@@ -1524,8 +1594,7 @@ async def add_data_policy(
         token_data = verify_token(credentials.credentials)
         if not token_data or token_data.get("role") != "admin":
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Admin access required"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
             )
 
         # Parse policy data
@@ -1541,8 +1610,7 @@ async def add_data_policy(
 
         if not purpose_str:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Purpose is required"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Purpose is required"
             )
 
         try:
@@ -1551,7 +1619,7 @@ async def add_data_policy(
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid purpose or category: {exc}"
+                detail=f"Invalid purpose or category: {exc}",
             ) from exc
 
         policy = DataCollectionPolicy(
@@ -1563,7 +1631,7 @@ async def add_data_policy(
             justification=justification,
             legal_basis=legal_basis,
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
 
         manager = DataMinimizationManager()
@@ -1572,13 +1640,13 @@ async def add_data_policy(
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to add policy"
+                detail="Failed to add policy",
             )
 
         return {
             "status": "success",
             "message": f"Policy added for purpose: {purpose_str}",
-            "data": policy.to_dict()
+            "data": policy.to_dict(),
         }
 
     except HTTPException:
@@ -1587,8 +1655,9 @@ async def add_data_policy(
         logger.error(f"Add policy error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to add data policy"
+            detail="Failed to add data policy",
         ) from e
+
 
 # Initialize database tables on import
 try:

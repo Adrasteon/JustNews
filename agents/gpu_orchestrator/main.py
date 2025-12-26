@@ -45,40 +45,51 @@ def _require_admin(request: Request):
     Accepts either ADMIN_API_KEY (static) or a role-based JWT (requires role=admin).
     Returns requestor info dict (may be empty) on success, or raises HTTPException.
     """
-    admin_key = os.environ.get('ADMIN_API_KEY')
-    auth_header = (request.headers.get('Authorization') or request.headers.get('X-Admin-API-Key') or '').strip()
+    admin_key = os.environ.get("ADMIN_API_KEY")
+    auth_header = (
+        request.headers.get("Authorization")
+        or request.headers.get("X-Admin-API-Key")
+        or ""
+    ).strip()
     if admin_key and auth_header:
-        if auth_header.lower().startswith('bearer '):
-            token = auth_header.split(' ', 1)[1]
+        if auth_header.lower().startswith("bearer "):
+            token = auth_header.split(" ", 1)[1]
         else:
             token = auth_header
         if token != admin_key:
-            raise HTTPException(status_code=401, detail='Admin API key missing or invalid')
+            raise HTTPException(
+                status_code=401, detail="Admin API key missing or invalid"
+            )
         # return simple admin identity
-        return {'method': 'api_key', 'user': 'admin_api_key'}
+        return {"method": "api_key", "user": "admin_api_key"}
 
     if not auth_header:
-        raise HTTPException(status_code=401, detail='Admin credentials missing')
+        raise HTTPException(status_code=401, detail="Admin credentials missing")
 
     # JWT path
-    if auth_header.lower().startswith('bearer '):
-        token = auth_header.split(' ', 1)[1]
+    if auth_header.lower().startswith("bearer "):
+        token = auth_header.split(" ", 1)[1]
     else:
         token = auth_header
 
     try:
         import agents.common.auth_models as auth_models
+
         payload = auth_models.verify_token(token)
         if payload is None:
-            raise HTTPException(status_code=401, detail='Invalid authentication token')
+            raise HTTPException(status_code=401, detail="Invalid authentication token")
         user = auth_models.get_user_by_id(payload.user_id)
-        if user is None or user.get('role') != auth_models.UserRole.ADMIN.value:
-            raise HTTPException(status_code=403, detail='Admin role required')
-        return {'method': 'jwt', 'user': {'user_id': payload.user_id, 'username': payload.username}}
+        if user is None or user.get("role") != auth_models.UserRole.ADMIN.value:
+            raise HTTPException(status_code=403, detail="Admin role required")
+        return {
+            "method": "jwt",
+            "user": {"user_id": payload.user_id, "username": payload.username},
+        }
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail='Auth verification failed') from e
+        raise HTTPException(status_code=401, detail="Auth verification failed") from e
+
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
@@ -108,7 +119,9 @@ class MCPBusClient:
         try:
             import requests
         except Exception:
-            engine.logger.warning("Requests library not available; skipping MCP Bus registration attempt")
+            engine.logger.warning(
+                "Requests library not available; skipping MCP Bus registration attempt"
+            )
             return
 
         registration_data = {
@@ -120,23 +133,30 @@ class MCPBusClient:
         for attempt in range(5):  # Retry up to 5 times
             try:
                 response = requests.post(
-                    f"{self.base_url}/register",
-                    json=registration_data,
-                    timeout=(2, 5)
+                    f"{self.base_url}/register", json=registration_data, timeout=(2, 5)
                 )
                 response.raise_for_status()
-                engine.logger.info(f"Successfully registered {agent_name} with MCP Bus on attempt {attempt + 1}")
+                engine.logger.info(
+                    f"Successfully registered {agent_name} with MCP Bus on attempt {attempt + 1}"
+                )
                 return
             except requests.exceptions.RequestException as e:
-                engine.logger.warning(f"MCP Bus unavailable for registration (attempt {attempt + 1}/5): {e}")
-                time.sleep(2 ** attempt)  # Exponential backoff
+                engine.logger.warning(
+                    f"MCP Bus unavailable for registration (attempt {attempt + 1}/5): {e}"
+                )
+                time.sleep(2**attempt)  # Exponential backoff
 
-        engine.logger.error(f"Failed to register {agent_name} with MCP Bus after multiple attempts.")
+        engine.logger.error(
+            f"Failed to register {agent_name} with MCP Bus after multiple attempts."
+        )
 
 
 class PolicyUpdate(BaseModel):
     """GPU policy update model."""
-    max_memory_per_agent_mb: int | None = Field(None, ge=256, description="Per-agent memory cap in MB")
+
+    max_memory_per_agent_mb: int | None = Field(
+        None, ge=256, description="Per-agent memory cap in MB"
+    )
     allow_fractional_shares: bool | None = None
     kill_on_oom: bool | None = None
 
@@ -145,6 +165,7 @@ class PolicyUpdate(BaseModel):
 
 class LeaseRequest(BaseModel):
     """GPU lease request model."""
+
     agent: str
     min_memory_mb: int | None = Field(0, ge=0)
 
@@ -153,6 +174,7 @@ class LeaseRequest(BaseModel):
 
 class ReleaseRequest(BaseModel):
     """GPU lease release request model."""
+
     token: str
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -160,9 +182,17 @@ class ReleaseRequest(BaseModel):
 
 class PreloadRequest(BaseModel):
     """Model preload request model."""
-    agents: list[str] | None = Field(default=None, description="Subset of agents to preload; default all from AGENT_MODEL_MAP.json")
-    refresh: bool = Field(default=False, description="Restart preloading even if a job already completed")
-    strict: bool | None = Field(default=None, description="Override STRICT_MODEL_STORE env for this preload run")
+
+    agents: list[str] | None = Field(
+        default=None,
+        description="Subset of agents to preload; default all from AGENT_MODEL_MAP.json",
+    )
+    refresh: bool = Field(
+        default=False, description="Restart preloading even if a job already completed"
+    )
+    strict: bool | None = Field(
+        default=None, description="Override STRICT_MODEL_STORE env for this preload run"
+    )
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -170,13 +200,31 @@ class PreloadRequest(BaseModel):
 class WorkerPoolRequest(BaseModel):
     """Request payload for orchestrator-managed worker pools."""
 
-    pool_id: str | None = Field(default=None, description="Explicit pool identifier; defaults to agent or timestamp")
-    agent: str | None = Field(default=None, description="Logical agent name used for auditing")
+    pool_id: str | None = Field(
+        default=None,
+        description="Explicit pool identifier; defaults to agent or timestamp",
+    )
+    agent: str | None = Field(
+        default=None, description="Logical agent name used for auditing"
+    )
     model: str | None = Field(default=None, description="Model identifier to load")
-    adapter: str | None = Field(default=None, description="Optional adapter path to apply after loading the base model")
-    num_workers: int = Field(default=1, ge=1, le=64, description="Number of warm workers to spawn")
-    hold_seconds: int = Field(default=600, ge=1, le=7200, description="How long workers remain alive without external intervention")
-    variant: str | None = Field(default=None, description="Optional loading strategy hint (fp16, bnb-4bit-qlora, etc.)")
+    adapter: str | None = Field(
+        default=None,
+        description="Optional adapter path to apply after loading the base model",
+    )
+    num_workers: int = Field(
+        default=1, ge=1, le=64, description="Number of warm workers to spawn"
+    )
+    hold_seconds: int = Field(
+        default=600,
+        ge=1,
+        le=7200,
+        description="How long workers remain alive without external intervention",
+    )
+    variant: str | None = Field(
+        default=None,
+        description="Optional loading strategy hint (fp16, bnb-4bit-qlora, etc.)",
+    )
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -192,8 +240,11 @@ async def lifespan(app: FastAPI):
     # Registration status tracker
     registration_complete = threading.Event()
 
-    def register_agent_background(agent_name: str, agent_address: str, tools: list[str]):
+    def register_agent_background(
+        agent_name: str, agent_address: str, tools: list[str]
+    ):
         """Register the agent with the MCP Bus in a background thread."""
+
         def background_task():
             client = MCPBusClient()
             try:
@@ -229,7 +280,9 @@ async def lifespan(app: FastAPI):
     if registration_complete.is_set():
         engine.logger.info("MCP Bus registration completed successfully.")
     else:
-        engine.logger.warning("MCP Bus registration did not complete within the timeout.")
+        engine.logger.warning(
+            "MCP Bus registration did not complete within the timeout."
+        )
 
     READINESS = True
     yield
@@ -245,12 +298,14 @@ app.middleware("http")(engine.metrics.request_middleware)
 # Optional shared endpoints
 try:
     from agents.common.shutdown import register_shutdown_endpoint
+
     register_shutdown_endpoint(app)
 except Exception:
     engine.logger.debug("shutdown endpoint not registered for gpu_orchestrator")
 
 try:
     from agents.common.reload import register_reload_endpoint
+
     register_reload_endpoint(app)
 except Exception:
     engine.logger.debug("reload endpoint not registered for gpu_orchestrator")
@@ -269,26 +324,29 @@ def ready():
     return {"ready": READINESS}
 
 
-@app.get('/leader')
+@app.get("/leader")
 def get_leader(request: Request):
     """Return leader state for the orchestrator instance (true/false)."""
     # No admin required — provides visibility
     try:
-        return {'is_leader': getattr(engine, 'is_leader', False), 'lock_name': getattr(engine, '_leader_lock_name', None)}
+        return {
+            "is_leader": getattr(engine, "is_leader", False),
+            "lock_name": getattr(engine, "_leader_lock_name", None),
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@app.post('/control/reclaim')
+@app.post("/control/reclaim")
 def trigger_reclaim(request: Request):
     """Trigger an immediate reclaim pass (leader only)."""
     _require_admin(request)
     try:
-        if not getattr(engine, 'is_leader', False):
-            raise HTTPException(status_code=409, detail='not_leader')
+        if not getattr(engine, "is_leader", False):
+            raise HTTPException(status_code=409, detail="not_leader")
         try:
             engine._reclaimer_pass()
-            return {'reclaimed': True}
+            return {"reclaimed": True}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e)) from e
     except HTTPException:
@@ -325,7 +383,7 @@ def set_policy_endpoint(update: PolicyUpdate):
     return set_policy(
         max_memory_per_agent_mb=update.max_memory_per_agent_mb,
         allow_fractional_shares=update.allow_fractional_shares,
-        kill_on_oom=update.kill_on_oom
+        kill_on_oom=update.kill_on_oom,
     )
 
 
@@ -365,11 +423,15 @@ def list_leases(request: Request):
         mem = engine.get_allocations()
         resp = {"in_memory": mem}
         # Add persistent rows when DB accessible
-        if getattr(engine, 'db_service', None):
+        if getattr(engine, "db_service", None):
             try:
-                cursor, conn = engine.db_service.get_safe_cursor(per_call=True, dictionary=True, buffered=True)
+                cursor, conn = engine.db_service.get_safe_cursor(
+                    per_call=True, dictionary=True, buffered=True
+                )
                 try:
-                    cursor.execute("SELECT token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata FROM orchestrator_leases")
+                    cursor.execute(
+                        "SELECT token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata FROM orchestrator_leases"
+                    )
                     rows = cursor.fetchall()
                 finally:
                     try:
@@ -380,9 +442,9 @@ def list_leases(request: Request):
                         conn.close()
                     except Exception:
                         pass
-                resp['persistent'] = rows
+                resp["persistent"] = rows
             except Exception:
-                resp['persistent'] = None
+                resp["persistent"] = None
 
         return resp
     except Exception as e:
@@ -418,17 +480,19 @@ def create_worker_pool(
     """
 
     body = payload.model_dump(exclude_unset=True) if payload else {}
-    pool_id = body.get('pool_id') or agent or body.get('agent') or f"pool_{int(time.time())}"
-    model_id = body.get('model') or model
-    adapter_id = body.get('adapter') or adapter
-    configured_workers = int(body.get('num_workers', num_workers))
-    hold_time = int(body.get('hold_seconds', hold_seconds))
-    variant_hint = body.get('variant') or variant
+    pool_id = (
+        body.get("pool_id") or agent or body.get("agent") or f"pool_{int(time.time())}"
+    )
+    model_id = body.get("model") or model
+    adapter_id = body.get("adapter") or adapter
+    configured_workers = int(body.get("num_workers", num_workers))
+    hold_time = int(body.get("hold_seconds", hold_seconds))
+    variant_hint = body.get("variant") or variant
 
     # Require admin and capture requestor identity for audit
     requestor = _require_admin(request)
     try:
-        requestor['ip'] = request.client.host
+        requestor["ip"] = request.client.host
     except Exception:
         pass
 
@@ -458,13 +522,15 @@ def list_pools(request: Request):
 def delete_pool(request: Request, pool_id: str):
     requestor = _require_admin(request)
     try:
-        requestor['ip'] = request.client.host
+        requestor["ip"] = request.client.host
     except Exception:
         pass
     try:
         resp = engine.stop_worker_pool(pool_id)
         # audit stop with requestor
-        engine._audit_worker_pool_event('stop', pool_id, None, None, 0, requestor=requestor)
+        engine._audit_worker_pool_event(
+            "stop", pool_id, None, None, 0, requestor=requestor
+        )
         return resp
     except ValueError as exc:
         raise HTTPException(status_code=404, detail="unknown_pool") from exc
@@ -484,27 +550,27 @@ def vllm_status_endpoint():
     return engine.get_vllm_status()
 
 
-@app.post('/jobs/submit')
+@app.post("/jobs/submit")
 def jobs_submit(request: Request, payload: dict):
     """Submit a job to the orchestrator: persists and optionally pushes to job stream."""
     # admin or agent may submit jobs; always accept
     try:
-        job_id = payload.get('job_id') or f"job_{int(time.time()*1000)}"
-        job_type = payload.get('type') or 'inference_jobs'
-        job_payload = payload.get('payload') or {}
+        job_id = payload.get("job_id") or f"job_{int(time.time() * 1000)}"
+        job_type = payload.get("type") or "inference_jobs"
+        job_payload = payload.get("payload") or {}
         resp = engine.submit_job(job_id, job_type, job_payload)
         return resp
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-@app.get('/jobs/{job_id}')
+@app.get("/jobs/{job_id}")
 def jobs_get(request: Request, job_id: str):
     _require_admin(request)
     try:
         record = engine.get_job(job_id)
         if not record:
-            raise HTTPException(status_code=404, detail='not_found')
+            raise HTTPException(status_code=404, detail="not_found")
         return record
     except HTTPException:
         raise
@@ -527,18 +593,20 @@ def get_metrics_endpoint():
 @app.get("/tools")
 def list_tools_endpoint():
     """List all tools exposed by the GPU Orchestrator."""
-    return {"tools": [
-        "health",
-        "gpu_info",
-        "get_policy",
-        "set_policy",
-        "get_allocations",
-        "lease",
-        "release",
-        "models_preload",
-        "models_status",
-        "mps_allocation"
-    ]}
+    return {
+        "tools": [
+            "health",
+            "gpu_info",
+            "get_policy",
+            "set_policy",
+            "get_allocations",
+            "lease",
+            "release",
+            "models_preload",
+            "models_status",
+            "mps_allocation",
+        ]
+    }
 
 
 @app.post("/notify_ready")
@@ -562,22 +630,24 @@ def notify_ready_endpoint():
                 "mps_allocation",
             ],
         )
-        engine.logger.info("Successfully registered GPU Orchestrator with MCP Bus after notification.")
+        engine.logger.info(
+            "Successfully registered GPU Orchestrator with MCP Bus after notification."
+        )
     except Exception as e:
         engine.logger.error(f"Failed to register GPU Orchestrator with MCP Bus: {e}")
         raise HTTPException(status_code=500, detail="Registration failed") from e
 
 
-@app.get('/workers/policy')
+@app.get("/workers/policy")
 def get_pool_policy():
     return engine.get_pool_policy()
 
 
-@app.post('/workers/policy')
+@app.post("/workers/policy")
 def set_pool_policy(request: Request, payload: dict):
     requestor = _require_admin(request)
     try:
-        requestor['ip'] = request.client.host
+        requestor["ip"] = request.client.host
     except Exception:
         pass
     try:
@@ -585,35 +655,47 @@ def set_pool_policy(request: Request, payload: dict):
         # Persist policy to system configuration for durable storage
         try:
             from config.core import get_config_manager
+
             mgr = get_config_manager()
-            mgr.update_config({'gpu_orchestrator': {'pool_policy': payload}})
+            mgr.update_config({"gpu_orchestrator": {"pool_policy": payload}})
         except Exception:
             # if persistence fails, log & continue — do not block operator action
-            engine.logger.warning('Failed to persist pool policy to system config')
+            engine.logger.warning("Failed to persist pool policy to system config")
 
-        engine._audit_policy_event('policy_update', payload, requestor=requestor)
+        engine._audit_policy_event("policy_update", payload, requestor=requestor)
         return new
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
-@app.post('/workers/pool/{pool_id}/swap')
-def swap_pool_adapter(request: Request, pool_id: str, new_adapter: str | None = None, wait_seconds: int = 10):
+@app.post("/workers/pool/{pool_id}/swap")
+def swap_pool_adapter(
+    request: Request,
+    pool_id: str,
+    new_adapter: str | None = None,
+    wait_seconds: int = 10,
+):
     requestor = _require_admin(request)
     try:
-        requestor['ip'] = request.client.host
+        requestor["ip"] = request.client.host
     except Exception:
         pass
     try:
-        return engine.hot_swap_pool_adapter(pool_id=pool_id, new_adapter=new_adapter, requestor=requestor, wait_seconds=wait_seconds)
+        return engine.hot_swap_pool_adapter(
+            pool_id=pool_id,
+            new_adapter=new_adapter,
+            requestor=requestor,
+            wait_seconds=wait_seconds,
+        )
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail='unknown_pool') from exc
+        raise HTTPException(status_code=404, detail="unknown_pool") from exc
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=GPU_ORCHESTRATOR_PORT)
 
 

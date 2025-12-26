@@ -24,12 +24,13 @@ class TestFactCheckerTools:
 
     def test_get_fact_checker_engine_singleton(self):
         """Test that get_fact_checker_engine returns singleton instance"""
-        with patch('agents.fact_checker.tools.FactCheckerEngine') as mock_engine_class:
+        with patch("agents.fact_checker.tools.FactCheckerEngine") as mock_engine_class:
             mock_engine = Mock()
             mock_engine_class.return_value = mock_engine
 
             # Reset global engine
             import agents.fact_checker.tools
+
             agents.fact_checker.tools._engine = None
 
             engine1 = get_fact_checker_engine()
@@ -47,13 +48,15 @@ class TestFactCheckerTools:
             "verdict": "true",
             "confidence": 0.85,
             "evidence": ["Source confirms claim"],
-            "contradictions": []
+            "contradictions": [],
         }
 
-        with patch('agents.fact_checker.tools.get_fact_checker_engine', return_value=mock_engine):
+        with patch(
+            "agents.fact_checker.tools.get_fact_checker_engine",
+            return_value=mock_engine,
+        ):
             result = await process_fact_check_request(
-                content="The Earth is round.",
-                operation_type="verify_facts"
+                content="The Earth is round.", operation_type="verify_facts"
             )
 
             assert result["verdict"] == "true"
@@ -69,15 +72,18 @@ class TestFactCheckerTools:
             "overall_credibility": 0.75,
             "sources": [
                 {"url": "example.com", "credibility_score": 0.8},
-                {"url": "news.org", "credibility_score": 0.9}
-            ]
+                {"url": "news.org", "credibility_score": 0.9},
+            ],
         }
 
-        with patch('agents.fact_checker.tools.get_fact_checker_engine', return_value=mock_engine):
+        with patch(
+            "agents.fact_checker.tools.get_fact_checker_engine",
+            return_value=mock_engine,
+        ):
             result = await process_fact_check_request(
                 content="Article content here",
                 operation_type="validate_sources",
-                sources=["example.com", "news.org"]
+                sources=["example.com", "news.org"],
             )
 
             assert result["overall_credibility"] == 0.75
@@ -89,10 +95,12 @@ class TestFactCheckerTools:
         """Test processing request with unknown operation type"""
         mock_engine = Mock()
 
-        with patch('agents.fact_checker.tools.get_fact_checker_engine', return_value=mock_engine):
+        with patch(
+            "agents.fact_checker.tools.get_fact_checker_engine",
+            return_value=mock_engine,
+        ):
             result = await process_fact_check_request(
-                content="Sample content",
-                operation_type="unknown"
+                content="Sample content", operation_type="unknown"
             )
 
             assert result["error"] == "Unknown operation type: unknown"
@@ -104,10 +112,12 @@ class TestFactCheckerTools:
         mock_engine = Mock()
         mock_engine.verify_facts.side_effect = Exception("Engine failure")
 
-        with patch('agents.fact_checker.tools.get_fact_checker_engine', return_value=mock_engine):
+        with patch(
+            "agents.fact_checker.tools.get_fact_checker_engine",
+            return_value=mock_engine,
+        ):
             result = await process_fact_check_request(
-                content="Test content",
-                operation_type="verify_facts"
+                content="Test content", operation_type="verify_facts"
             )
 
             assert result["error"] == "Engine failure"
@@ -115,11 +125,13 @@ class TestFactCheckerTools:
 
     def test_verify_facts_wrapper(self):
         """Test verify_facts wrapper function"""
-        with patch('agents.fact_checker.tools.process_fact_check_request') as mock_process:
+        with patch(
+            "agents.fact_checker.tools.process_fact_check_request"
+        ) as mock_process:
             mock_process.return_value = {
                 "verdict": "partially_true",
                 "confidence": 0.7,
-                "evidence": ["Some supporting evidence"]
+                "evidence": ["Some supporting evidence"],
             }
 
             result = verify_facts("Climate change is real.")
@@ -130,10 +142,12 @@ class TestFactCheckerTools:
 
     def test_validate_sources_wrapper(self):
         """Test validate_sources wrapper function"""
-        with patch('agents.fact_checker.tools.process_fact_check_request') as mock_process:
+        with patch(
+            "agents.fact_checker.tools.process_fact_check_request"
+        ) as mock_process:
             mock_process.return_value = {
                 "overall_credibility": 0.6,
-                "sources": [{"url": "example.com", "score": 0.6}]
+                "sources": [{"url": "example.com", "score": 0.6}],
             }
 
             sources = ["example.com", "news.org"]
@@ -143,19 +157,21 @@ class TestFactCheckerTools:
             mock_process.assert_called_once_with(
                 content="Article content",
                 operation_type="validate_sources",
-                sources=sources
+                sources=sources,
             )
 
     def test_comprehensive_fact_check_wrapper(self):
         """Test comprehensive_fact_check wrapper function"""
-        with patch('agents.fact_checker.tools.process_fact_check_request') as mock_process:
+        with patch(
+            "agents.fact_checker.tools.process_fact_check_request"
+        ) as mock_process:
             mock_process.return_value = {
                 "overall_verdict": "true",
                 "claim_checks": [
                     {"claim": "Fact 1", "verdict": "true"},
-                    {"claim": "Fact 2", "verdict": "false"}
+                    {"claim": "Fact 2", "verdict": "false"},
                 ],
-                "source_credibility": 0.8
+                "source_credibility": 0.8,
             }
 
             result = comprehensive_fact_check("Full article text")
@@ -166,12 +182,14 @@ class TestFactCheckerTools:
 
     def test_extract_claims_wrapper(self):
         """Test extract_claims wrapper function"""
-        with patch('agents.fact_checker.tools.process_fact_check_request') as mock_process:
+        with patch(
+            "agents.fact_checker.tools.process_fact_check_request"
+        ) as mock_process:
             mock_process.return_value = {
                 "claims": [
                     "The sky is blue",
                     "Water boils at 100°C",
-                    "Humans need oxygen to survive"
+                    "Humans need oxygen to survive",
                 ]
             }
 
@@ -183,11 +201,13 @@ class TestFactCheckerTools:
 
     def test_assess_credibility_wrapper(self):
         """Test assess_credibility wrapper function"""
-        with patch('agents.fact_checker.tools.process_fact_check_request') as mock_process:
+        with patch(
+            "agents.fact_checker.tools.process_fact_check_request"
+        ) as mock_process:
             mock_process.return_value = {
                 "credibility_score": 0.75,
                 "factors": ["Domain authority", "Content quality"],
-                "recommendations": ["Generally reliable"]
+                "recommendations": ["Generally reliable"],
             }
 
             result = assess_credibility("newswebsite.com")
@@ -198,16 +218,18 @@ class TestFactCheckerTools:
 
     def test_detect_contradictions_wrapper(self):
         """Test detect_contradictions wrapper function"""
-        with patch('agents.fact_checker.tools.process_fact_check_request') as mock_process:
+        with patch(
+            "agents.fact_checker.tools.process_fact_check_request"
+        ) as mock_process:
             mock_process.return_value = {
                 "contradictions": [
                     {
                         "text": "Statement A contradicts Statement B",
                         "severity": "high",
-                        "explanation": "Direct contradiction"
+                        "explanation": "Direct contradiction",
                     }
                 ],
-                "logical_consistency": 0.3
+                "logical_consistency": 0.3,
             }
 
             text = "The article makes contradictory claims."
@@ -223,17 +245,19 @@ class TestFactCheckerMainApp:
 
     def test_app_creation(self):
         """Test that the FastAPI app can be created"""
-        with patch('agents.fact_checker.main.JustNewsMetrics'), \
-             patch('agents.fact_checker.main.create_database_service'), \
-             patch('agents.fact_checker.main.get_logger'):
-
+        with (
+            patch("agents.fact_checker.main.JustNewsMetrics"),
+            patch("agents.fact_checker.main.create_database_service"),
+            patch("agents.fact_checker.main.get_logger"),
+        ):
             from agents.fact_checker.main import app
-            assert app is not None
-            assert hasattr(app, 'routes')
 
-    @patch('agents.fact_checker.main.validate_content_size')
-    @patch('agents.fact_checker.main.sanitize_content')
-    @patch('agents.fact_checker.main.verify_facts')
+            assert app is not None
+            assert hasattr(app, "routes")
+
+    @patch("agents.fact_checker.main.validate_content_size")
+    @patch("agents.fact_checker.main.sanitize_content")
+    @patch("agents.fact_checker.main.verify_facts")
     def test_verify_endpoint(self, mock_verify, mock_sanitize, mock_validate):
         """Test the /verify endpoint"""
         mock_validate.return_value = True
@@ -241,19 +265,20 @@ class TestFactCheckerMainApp:
         mock_verify.return_value = {
             "verdict": "true",
             "confidence": 0.9,
-            "evidence": ["Reliable source confirms"]
+            "evidence": ["Reliable source confirms"],
         }
 
-        with patch('agents.fact_checker.main.JustNewsMetrics'), \
-             patch('agents.fact_checker.main.create_database_service'), \
-             patch('agents.fact_checker.main.get_logger'):
-
+        with (
+            patch("agents.fact_checker.main.JustNewsMetrics"),
+            patch("agents.fact_checker.main.create_database_service"),
+            patch("agents.fact_checker.main.get_logger"),
+        ):
             from agents.fact_checker.main import app
+
             client = TestClient(app)
 
             response = client.post(
-                "/verify",
-                json={"content": "The Earth orbits the Sun."}
+                "/verify", json={"content": "The Earth orbits the Sun."}
             )
 
             assert response.status_code == 200
@@ -261,47 +286,49 @@ class TestFactCheckerMainApp:
             assert data["verdict"] == "true"
             assert data["confidence"] == 0.9
 
-    @patch('agents.fact_checker.main.validate_content_size')
+    @patch("agents.fact_checker.main.validate_content_size")
     def test_verify_endpoint_content_too_large(self, mock_validate):
         """Test handling of oversized content"""
         mock_validate.return_value = False
 
-        with patch('agents.fact_checker.main.JustNewsMetrics'), \
-             patch('agents.fact_checker.main.create_database_service'), \
-             patch('agents.fact_checker.main.get_logger'):
-
+        with (
+            patch("agents.fact_checker.main.JustNewsMetrics"),
+            patch("agents.fact_checker.main.create_database_service"),
+            patch("agents.fact_checker.main.get_logger"),
+        ):
             from agents.fact_checker.main import app
+
             client = TestClient(app)
 
             large_content = "x" * 2000000  # 2MB content
-            response = client.post(
-                "/verify",
-                json={"content": large_content}
-            )
+            response = client.post("/verify", json={"content": large_content})
 
             assert response.status_code == 400
             assert "Content too large" in response.json()["detail"]
 
-    @patch('agents.fact_checker.main.extract_claims')
+    @patch("agents.fact_checker.main.extract_claims")
     def test_extract_claims_endpoint(self, mock_extract):
         """Test the /extract-claims endpoint"""
         mock_extract.return_value = [
             "Claim 1: The sky is blue",
-            "Claim 2: Water is wet"
+            "Claim 2: Water is wet",
         ]
 
-        with patch('agents.fact_checker.main.JustNewsMetrics'), \
-             patch('agents.fact_checker.main.create_database_service'), \
-             patch('agents.fact_checker.main.get_logger'), \
-             patch('agents.fact_checker.main.validate_content_size', return_value=True), \
-             patch('agents.fact_checker.main.sanitize_content', return_value="sanitized"):
-
+        with (
+            patch("agents.fact_checker.main.JustNewsMetrics"),
+            patch("agents.fact_checker.main.create_database_service"),
+            patch("agents.fact_checker.main.get_logger"),
+            patch("agents.fact_checker.main.validate_content_size", return_value=True),
+            patch(
+                "agents.fact_checker.main.sanitize_content", return_value="sanitized"
+            ),
+        ):
             from agents.fact_checker.main import app
+
             client = TestClient(app)
 
             response = client.post(
-                "/extract-claims",
-                json={"content": "The sky is blue. Water is wet."}
+                "/extract-claims", json={"content": "The sky is blue. Water is wet."}
             )
 
             assert response.status_code == 200
@@ -311,11 +338,13 @@ class TestFactCheckerMainApp:
 
     def test_health_endpoint(self):
         """Test the /health endpoint"""
-        with patch('agents.fact_checker.main.JustNewsMetrics'), \
-             patch('agents.fact_checker.main.create_database_service'), \
-             patch('agents.fact_checker.main.get_logger'):
-
+        with (
+            patch("agents.fact_checker.main.JustNewsMetrics"),
+            patch("agents.fact_checker.main.create_database_service"),
+            patch("agents.fact_checker.main.get_logger"),
+        ):
             from agents.fact_checker.main import app
+
             client = TestClient(app)
 
             response = client.get("/health")
@@ -327,15 +356,17 @@ class TestFactCheckerMainApp:
 
     def test_metrics_endpoint(self):
         """Test the /metrics endpoint"""
-        with patch('agents.fact_checker.main.JustNewsMetrics') as mock_metrics_class, \
-             patch('agents.fact_checker.main.create_database_service'), \
-             patch('agents.fact_checker.main.get_logger'):
-
+        with (
+            patch("agents.fact_checker.main.JustNewsMetrics") as mock_metrics_class,
+            patch("agents.fact_checker.main.create_database_service"),
+            patch("agents.fact_checker.main.get_logger"),
+        ):
             mock_metrics = Mock()
             mock_metrics.get_metrics.return_value = "# Fact checker metrics"
             mock_metrics_class.return_value = mock_metrics
 
             from agents.fact_checker.main import app
+
             client = TestClient(app)
 
             response = client.get("/metrics")

@@ -43,89 +43,131 @@ class TrainingMetrics(JustNewsMetrics):
         """Initialize training-specific metrics"""
         # Training examples metrics
         self.training_examples_total = Counter(
-            'justnews_training_examples_total',
-            'Total number of training examples processed',
-            ['agent', 'agent_display_name', 'example_type', 'example_type_display_name'],
-            registry=self.registry
+            "justnews_training_examples_total",
+            "Total number of training examples processed",
+            [
+                "agent",
+                "agent_display_name",
+                "example_type",
+                "example_type_display_name",
+            ],
+            registry=self.registry,
         )
 
         self.training_examples_buffer_size = Gauge(
-            'justnews_training_examples_buffer_size',
-            'Current size of training example buffers',
-            ['agent', 'agent_display_name', 'buffer_agent', 'buffer_agent_display_name'],
-            registry=self.registry
+            "justnews_training_examples_buffer_size",
+            "Current size of training example buffers",
+            [
+                "agent",
+                "agent_display_name",
+                "buffer_agent",
+                "buffer_agent_display_name",
+            ],
+            registry=self.registry,
         )
 
         # Model update metrics
         self.model_updates_total = Counter(
-            'justnews_model_updates_total',
-            'Total number of model updates performed',
-            ['agent', 'agent_display_name', 'target_agent', 'target_agent_display_name', 'update_type'],
-            registry=self.registry
+            "justnews_model_updates_total",
+            "Total number of model updates performed",
+            [
+                "agent",
+                "agent_display_name",
+                "target_agent",
+                "target_agent_display_name",
+                "update_type",
+            ],
+            registry=self.registry,
         )
 
         self.model_update_duration = Histogram(
-            'justnews_model_update_duration_seconds',
-            'Duration of model updates in seconds',
-            ['agent', 'agent_display_name', 'target_agent', 'target_agent_display_name'],
+            "justnews_model_update_duration_seconds",
+            "Duration of model updates in seconds",
+            [
+                "agent",
+                "agent_display_name",
+                "target_agent",
+                "target_agent_display_name",
+            ],
             buckets=[10, 30, 60, 120, 300, 600, 1800],  # 10s to 30min
-            registry=self.registry
+            registry=self.registry,
         )
 
         # Performance improvement metrics
         self.performance_improvement = Histogram(
-            'justnews_performance_improvement',
-            'Model performance improvements after training',
-            ['agent', 'agent_display_name', 'target_agent', 'target_agent_display_name'],
+            "justnews_performance_improvement",
+            "Model performance improvements after training",
+            [
+                "agent",
+                "agent_display_name",
+                "target_agent",
+                "target_agent_display_name",
+            ],
             buckets=[-0.1, -0.05, -0.01, 0.0, 0.01, 0.05, 0.1, 0.2],
-            registry=self.registry
+            registry=self.registry,
         )
 
         # Training system health metrics
         self.training_system_active = Gauge(
-            'justnews_training_system_active',
-            'Whether the training system is actively running',
-            ['agent', 'agent_display_name'],
-            registry=self.registry
+            "justnews_training_system_active",
+            "Whether the training system is actively running",
+            ["agent", "agent_display_name"],
+            registry=self.registry,
         )
 
         self.rollback_events_total = Counter(
-            'justnews_rollback_events_total',
-            'Total number of model rollbacks due to performance degradation',
-            ['agent', 'agent_display_name', 'target_agent', 'target_agent_display_name'],
-            registry=self.registry
+            "justnews_rollback_events_total",
+            "Total number of model rollbacks due to performance degradation",
+            [
+                "agent",
+                "agent_display_name",
+                "target_agent",
+                "target_agent_display_name",
+            ],
+            registry=self.registry,
         )
 
-    def record_training_example(self, agent_name: str, example_type: str = "prediction_feedback"):
+    def record_training_example(
+        self, agent_name: str, example_type: str = "prediction_feedback"
+    ):
         """Record a training example being added"""
-        example_display = example_type.replace('_', '-')
+        example_display = example_type.replace("_", "-")
         self.training_examples_total.labels(
             agent=self.agent_name,
             agent_display_name=self.display_name,
             example_type=example_type,
-            example_type_display_name=example_display
+            example_type_display_name=example_display,
         ).inc()
 
     def update_buffer_size(self, buffer_agent: str, size: int):
         """Update training buffer size for an agent"""
-        buffer_display = self.AGENT_DISPLAY_NAMES.get(buffer_agent, f'{buffer_agent}-agent')
+        buffer_display = self.AGENT_DISPLAY_NAMES.get(
+            buffer_agent, f"{buffer_agent}-agent"
+        )
         self.training_examples_buffer_size.labels(
             agent=self.agent_name,
             agent_display_name=self.display_name,
             buffer_agent=buffer_agent,
-            buffer_agent_display_name=buffer_display
+            buffer_agent_display_name=buffer_display,
         ).set(size)
 
-    def record_model_update(self, target_agent: str, update_type: str = "incremental", duration: float = None):
+    def record_model_update(
+        self,
+        target_agent: str,
+        update_type: str = "incremental",
+        duration: float = None,
+    ):
         """Record a model update event"""
-        target_display = self.AGENT_DISPLAY_NAMES.get(target_agent, f'{target_agent}-agent')
+        target_display = self.AGENT_DISPLAY_NAMES.get(
+            target_agent, f"{target_agent}-agent"
+        )
 
         self.model_updates_total.labels(
             agent=self.agent_name,
             agent_display_name=self.display_name,
             target_agent=target_agent,
             target_agent_display_name=target_display,
-            update_type=update_type
+            update_type=update_type,
         ).inc()
 
         if duration is not None:
@@ -133,34 +175,37 @@ class TrainingMetrics(JustNewsMetrics):
                 agent=self.agent_name,
                 agent_display_name=self.display_name,
                 target_agent=target_agent,
-                target_agent_display_name=target_display
+                target_agent_display_name=target_display,
             ).observe(duration)
 
     def record_performance_change(self, target_agent: str, improvement: float):
         """Record performance improvement/degradation after training"""
-        target_display = self.AGENT_DISPLAY_NAMES.get(target_agent, f'{target_agent}-agent')
+        target_display = self.AGENT_DISPLAY_NAMES.get(
+            target_agent, f"{target_agent}-agent"
+        )
         self.performance_improvement.labels(
             agent=self.agent_name,
             agent_display_name=self.display_name,
             target_agent=target_agent,
-            target_agent_display_name=target_display
+            target_agent_display_name=target_display,
         ).observe(improvement)
 
     def record_rollback(self, target_agent: str):
         """Record a model rollback event"""
-        target_display = self.AGENT_DISPLAY_NAMES.get(target_agent, f'{target_agent}-agent')
+        target_display = self.AGENT_DISPLAY_NAMES.get(
+            target_agent, f"{target_agent}-agent"
+        )
         self.rollback_events_total.labels(
             agent=self.agent_name,
             agent_display_name=self.display_name,
             target_agent=target_agent,
-            target_agent_display_name=target_display
+            target_agent_display_name=target_display,
         ).inc()
 
     def set_training_active(self, active: bool):
         """Set training system active status"""
         self.training_system_active.labels(
-            agent=self.agent_name,
-            agent_display_name=self.display_name
+            agent=self.agent_name, agent_display_name=self.display_name
         ).set(1 if active else 0)
 
 
@@ -174,7 +219,9 @@ class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL) -> None:
         self.base_url = base_url
 
-    def register_agent(self, agent_name: str, agent_address: str, tools: list[str]) -> None:
+    def register_agent(
+        self, agent_name: str, agent_address: str, tools: list[str]
+    ) -> None:
         """Register training system with MCP Bus"""
         registration_data = {
             "name": agent_name,
@@ -190,16 +237,20 @@ class MCPBusClient:
             logger.exception("Failed to register %s with MCP Bus.", agent_name)
             raise
 
-    def call_agent_tool(self, agent: str, tool: str, args: list = None, kwargs: dict = None) -> dict[str, Any]:
+    def call_agent_tool(
+        self, agent: str, tool: str, args: list = None, kwargs: dict = None
+    ) -> dict[str, Any]:
         """Call a tool on another agent via MCP Bus"""
         payload = {
             "agent": agent,
             "tool": tool,
             "args": args or [],
-            "kwargs": kwargs or {}
+            "kwargs": kwargs or {},
         }
         try:
-            response = requests.post(f"{self.base_url}/call", json=payload, timeout=(5, 10))
+            response = requests.post(
+                f"{self.base_url}/call", json=payload, timeout=(5, 10)
+            )
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -209,19 +260,31 @@ class MCPBusClient:
 
 class TrainingRequest(BaseModel):
     """Request model for training operations"""
+
     agent_name: str = Field(..., description="Name of the agent to train")
     task_type: str = Field(..., description="Type of task for training")
     input_text: str = Field(..., description="Input text for training example")
     expected_output: Any = Field(..., description="Expected output for training")
-    uncertainty_score: float = Field(..., ge=0.0, le=1.0, description="Uncertainty score (0.0-1.0)")
-    importance_score: float = Field(0.5, ge=0.0, le=1.0, description="Importance score (0.0-1.0)")
-    source_url: str | None = Field(None, description="Source URL for the training example")
-    user_feedback: str | None = Field(None, description="User feedback or correction notes")
-    correction_priority: int = Field(0, ge=0, le=3, description="Correction priority (0-3)")
+    uncertainty_score: float = Field(
+        ..., ge=0.0, le=1.0, description="Uncertainty score (0.0-1.0)"
+    )
+    importance_score: float = Field(
+        0.5, ge=0.0, le=1.0, description="Importance score (0.0-1.0)"
+    )
+    source_url: str | None = Field(
+        None, description="Source URL for the training example"
+    )
+    user_feedback: str | None = Field(
+        None, description="User feedback or correction notes"
+    )
+    correction_priority: int = Field(
+        0, ge=0, le=3, description="Correction priority (0-3)"
+    )
 
 
 class CorrectionRequest(BaseModel):
     """Request model for user corrections"""
+
     agent_name: str = Field(..., description="Name of the agent being corrected")
     task_type: str = Field(..., description="Type of task being corrected")
     input_text: str = Field(..., description="Original input text")
@@ -233,12 +296,17 @@ class CorrectionRequest(BaseModel):
 
 class PredictionFeedback(BaseModel):
     """Request model for prediction feedback"""
-    agent_name: str = Field(..., description="Name of the agent that made the prediction")
+
+    agent_name: str = Field(
+        ..., description="Name of the agent that made the prediction"
+    )
     task_type: str = Field(..., description="Type of task performed")
     input_text: str = Field(..., description="Input text that was processed")
     predicted_output: Any = Field(..., description="Output that was predicted")
     actual_output: Any = Field(..., description="Actual correct output")
-    confidence_score: float = Field(..., ge=0.0, le=1.0, description="Confidence score of the prediction")
+    confidence_score: float = Field(
+        ..., ge=0.0, le=1.0, description="Confidence score of the prediction"
+    )
 
 
 class HitlCandidate(BaseModel):
@@ -286,6 +354,7 @@ async def lifespan(app: FastAPI):
 
         # Initialize training coordinator (call for side-effects)
         from training_system.core.training_coordinator import initialize_online_training
+
         _training_coordinator = initialize_online_training()
         logger.info("Online training coordinator initialized")
 
@@ -333,7 +402,7 @@ async def health_check():
     return {
         "status": "healthy" if ready else "starting",
         "timestamp": datetime.now().isoformat(),
-        "service": "training_system"
+        "service": "training_system",
     }
 
 
@@ -351,7 +420,7 @@ async def add_training_example(request: TrainingRequest):
             importance_score=request.importance_score,
             source_url=request.source_url,
             user_feedback=request.user_feedback,
-            correction_priority=request.correction_priority
+            correction_priority=request.correction_priority,
         )
 
         # Record metrics
@@ -361,12 +430,14 @@ async def add_training_example(request: TrainingRequest):
         return {
             "status": "success",
             "message": "Training example added successfully",
-            "data": result
+            "data": result,
         }
 
     except Exception as e:
         logger.error(f"Failed to add training example: {e}")
-        training_metrics.record_error("training_example_error", "/tool/add_training_example")
+        training_metrics.record_error(
+            "training_example_error", "/tool/add_training_example"
+        )
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -382,13 +453,13 @@ async def submit_user_correction(request: CorrectionRequest):
             incorrect_output=request.incorrect_output,
             correct_output=request.correct_output,
             priority=request.priority,
-            explanation=request.explanation
+            explanation=request.explanation,
         )
 
         return {
             "status": "success",
             "message": "User correction submitted successfully",
-            "data": result
+            "data": result,
         }
 
     except Exception as e:
@@ -407,13 +478,13 @@ async def add_prediction_feedback(request: PredictionFeedback):
             input_text=request.input_text,
             predicted_output=request.predicted_output,
             actual_output=request.actual_output,
-            confidence_score=request.confidence_score
+            confidence_score=request.confidence_score,
         )
 
         return {
             "status": "success",
             "message": "Prediction feedback added successfully",
-            "data": result
+            "data": result,
         }
 
     except Exception as e:
@@ -430,7 +501,9 @@ async def receive_hitl_label(payload: HitlLabelPayload):
         result = training_manager.process_hitl_label(payload.model_dump(mode="python"))
 
         training_metrics.record_training_example(result["agent_name"], "hitl_label")
-        training_metrics.update_buffer_size(result["agent_name"], result.get("buffer_size", 0))
+        training_metrics.update_buffer_size(
+            result["agent_name"], result.get("buffer_size", 0)
+        )
 
         return {
             "status": "success",
@@ -450,14 +523,11 @@ async def get_training_status():
         coordinator = get_training_coordinator()
         if coordinator:
             status = coordinator.get_training_status()
-            return {
-                "status": "success",
-                "data": status
-            }
+            return {"status": "success", "data": status}
         else:
             return {
                 "status": "error",
-                "message": "Training coordinator not initialized"
+                "message": "Training coordinator not initialized",
             }
 
     except Exception as e:
@@ -472,10 +542,7 @@ async def get_system_training_dashboard():
         training_manager = get_system_training_manager()
         dashboard = training_manager.get_system_training_dashboard()
 
-        return {
-            "status": "success",
-            "data": dashboard
-        }
+        return {"status": "success", "data": dashboard}
 
     except Exception as e:
         logger.error(f"Failed to get training dashboard: {e}")
@@ -492,12 +559,12 @@ async def force_agent_update(agent_name: str):
             return {
                 "status": "success",
                 "message": f"Update {'triggered' if success else 'not needed'} for {agent_name}",
-                "data": {"update_triggered": success}
+                "data": {"update_triggered": success},
             }
         else:
             return {
                 "status": "error",
-                "message": "Training coordinator not initialized"
+                "message": "Training coordinator not initialized",
             }
 
     except Exception as e:
@@ -512,10 +579,7 @@ async def get_training_metrics():
         training_manager = get_system_training_manager()
         metrics_data = training_manager.get_training_metrics()
 
-        return {
-            "status": "success",
-            "data": metrics_data
-        }
+        return {"status": "success", "data": metrics_data}
 
     except Exception as e:
         logger.error(f"Failed to get training metrics: {e}")
@@ -531,32 +595,48 @@ def call_training_tool(tool_name: str, **kwargs) -> dict[str, Any]:
     return mcp_client.call_agent_tool("training_system", tool_name, kwargs=kwargs)
 
 
-def add_training_example_via_mcp(agent_name: str, task_type: str, input_text: str,
-                                expected_output: Any, uncertainty_score: float,
-                                importance_score: float = 0.5, **kwargs) -> dict[str, Any]:
+def add_training_example_via_mcp(
+    agent_name: str,
+    task_type: str,
+    input_text: str,
+    expected_output: Any,
+    uncertainty_score: float,
+    importance_score: float = 0.5,
+    **kwargs,
+) -> dict[str, Any]:
     """Add training example via MCP Bus"""
-    return call_training_tool("add_training_example",
-                             agent_name=agent_name,
-                             task_type=task_type,
-                             input_text=input_text,
-                             expected_output=expected_output,
-                             uncertainty_score=uncertainty_score,
-                             importance_score=importance_score,
-                             **kwargs)
+    return call_training_tool(
+        "add_training_example",
+        agent_name=agent_name,
+        task_type=task_type,
+        input_text=input_text,
+        expected_output=expected_output,
+        uncertainty_score=uncertainty_score,
+        importance_score=importance_score,
+        **kwargs,
+    )
 
 
-def submit_correction_via_mcp(agent_name: str, task_type: str, input_text: str,
-                             incorrect_output: Any, correct_output: Any,
-                             priority: int = 2, **kwargs) -> dict[str, Any]:
+def submit_correction_via_mcp(
+    agent_name: str,
+    task_type: str,
+    input_text: str,
+    incorrect_output: Any,
+    correct_output: Any,
+    priority: int = 2,
+    **kwargs,
+) -> dict[str, Any]:
     """Submit user correction via MCP Bus"""
-    return call_training_tool("submit_user_correction",
-                             agent_name=agent_name,
-                             task_type=task_type,
-                             input_text=input_text,
-                             incorrect_output=incorrect_output,
-                             correct_output=correct_output,
-                             priority=priority,
-                             **kwargs)
+    return call_training_tool(
+        "submit_user_correction",
+        agent_name=agent_name,
+        task_type=task_type,
+        input_text=input_text,
+        incorrect_output=incorrect_output,
+        correct_output=correct_output,
+        priority=priority,
+        **kwargs,
+    )
 
 
 def get_training_status_via_mcp() -> dict[str, Any]:

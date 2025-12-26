@@ -17,7 +17,7 @@ def test_replace_model_dict(tmp_path: Path):
     out = run_script(tmp_path, apply=False)
     assert "Found 1 .dict() occurrences" in out
 
-    out2 = run_script(tmp_path, apply=True)
+    _ = run_script(tmp_path, apply=True)
     assert "Applied replacements to" in out2
 
     txt = f.read_text()
@@ -26,7 +26,9 @@ def test_replace_model_dict(tmp_path: Path):
 
 def test_skip_patch_dict(tmp_path: Path):
     f = tmp_path / "m2.py"
-    f.write_text("from unittest.mock import patch\nwith patch.dict(os.environ, {'X': '1'}):\n    pass\n")
+    f.write_text(
+        "from unittest.mock import patch\nwith patch.dict(os.environ, {'X': '1'}):\n    pass\n"
+    )
 
     out = run_script(tmp_path, apply=False)
     assert "Found 0" in out or "No .dict() occurrences" in out or True
@@ -39,11 +41,13 @@ def test_skip_patch_dict(tmp_path: Path):
 
 def test_json_dump_model_dict(tmp_path: Path):
     f = tmp_path / "m3.py"
-    f.write_text("import json\nexport_data = MyModel()\njson.dump(export_data.dict(), f)\n")
+    f.write_text(
+        "import json\nexport_data = MyModel()\njson.dump(export_data.dict(), f)\n"
+    )
 
     out = run_script(tmp_path, apply=False)
     assert "Found 1 .dict() occurrences" in out
 
-    out2 = run_script(tmp_path, apply=True)
+    _ = run_script(tmp_path, apply=True)
     txt = f.read_text()
     assert "export_data.model_dump()" in txt

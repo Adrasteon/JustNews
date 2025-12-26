@@ -63,7 +63,9 @@ class SiteConfig:
         data = self._normalise_source(source)
 
         self.source_id = data.get("id")
-        self.name = data.get("name") or data.get("domain") or data.get("url") or "unknown"
+        self.name = (
+            data.get("name") or data.get("domain") or data.get("url") or "unknown"
+        )
 
         raw_domain = data.get("domain")
         raw_url = data.get("url")
@@ -163,9 +165,13 @@ class GenericSiteCrawler:
         self.site_config = site_config
         self.concurrent_browsers = concurrent_browsers
         self.batch_size = batch_size
-        resolved = enable_http_fetch if enable_http_fetch is not None else _bool_from_env(
-            os.environ.get("UNIFIED_CRAWLER_ENABLE_HTTP_FETCH"),
-            default=True,
+        resolved = (
+            enable_http_fetch
+            if enable_http_fetch is not None
+            else _bool_from_env(
+                os.environ.get("UNIFIED_CRAWLER_ENABLE_HTTP_FETCH"),
+                default=True,
+            )
         )
         self.enable_http_fetch = resolved
         self.session = session or requests.Session()
@@ -174,7 +180,11 @@ class GenericSiteCrawler:
         self.stealth_factory = stealth_factory
         self.modal_handler = modal_handler
         self.paywall_detector = paywall_detector
-        self.enable_stealth_headers = enable_stealth_headers if enable_stealth_headers is not None else bool(stealth_factory)
+        self.enable_stealth_headers = (
+            enable_stealth_headers
+            if enable_stealth_headers is not None
+            else bool(stealth_factory)
+        )
         self._modal_dismissals = 0
         self._cookie_consents = 0
 
@@ -198,9 +208,13 @@ class GenericSiteCrawler:
                 if candidate:
                     target_url = self._normalise_target_url(candidate[0])
             elif isinstance(self.site_config.metadata.get("start_url"), str):
-                target_url = self._normalise_target_url(self.site_config.metadata["start_url"])
+                target_url = self._normalise_target_url(
+                    self.site_config.metadata["start_url"]
+                )
         if not target_url:
-            logger.warning("No URL configured for site %s; skipping", self.site_config.name)
+            logger.warning(
+                "No URL configured for site %s; skipping", self.site_config.name
+            )
             return []
 
         logger.info("Generic crawler fetching homepage: %s", target_url)
@@ -234,7 +248,9 @@ class GenericSiteCrawler:
                     logger.debug("Fetching article: %s", url)
                     article_html = await asyncio.to_thread(self._fetch_url, url)
                     if article_html:
-                        article_html, modal_result = self._apply_modal_handler(article_html, context="article")
+                        article_html, modal_result = self._apply_modal_handler(
+                            article_html, context="article"
+                        )
                         article = self._build_article(url, article_html)
                         if article and self.paywall_detector:
                             detection = await self.paywall_detector.analyze(
@@ -255,8 +271,12 @@ class GenericSiteCrawler:
                         if article:
                             metadata = article.setdefault("extraction_metadata", {})
                             modal_info = {
-                                "modal_detected": bool(modal_result.modals_detected) if modal_result else False,
-                                "consent_cookies": len(modal_result.applied_cookies) if modal_result else 0,
+                                "modal_detected": bool(modal_result.modals_detected)
+                                if modal_result
+                                else False,
+                                "consent_cookies": len(modal_result.applied_cookies)
+                                if modal_result
+                                else 0,
                             }
                             metadata["modal_handler"] = modal_info
                         return article
@@ -276,11 +296,19 @@ class GenericSiteCrawler:
             if result:
                 articles.append(result)
 
-        logger.info("Successfully extracted %d articles from %s", len(articles), self.site_config.domain)
+        logger.info(
+            "Successfully extracted %d articles from %s",
+            len(articles),
+            self.site_config.domain,
+        )
         return articles
 
     def _notify_proxy_failure(self, error: Exception) -> None:
-        handler = getattr(self.proxy_manager, "report_failure", None) if self.proxy_manager else None
+        handler = (
+            getattr(self.proxy_manager, "report_failure", None)
+            if self.proxy_manager
+            else None
+        )
         if not callable(handler):
             return
         try:
@@ -369,7 +397,9 @@ class GenericSiteCrawler:
                 proxy_in_use = True
 
         try:
-            response = self.session.get(url, timeout=10, headers=headers, proxies=proxies)
+            response = self.session.get(
+                url, timeout=10, headers=headers, proxies=proxies
+            )
             response.raise_for_status()
             return response.text
         except requests.exceptions.RequestException as exc:
@@ -431,7 +461,9 @@ class GenericSiteCrawler:
 
         return article
 
-    def _apply_modal_handler(self, html: str, *, context: str) -> tuple[str, ModalHandlingResult | None]:
+    def _apply_modal_handler(
+        self, html: str, *, context: str
+    ) -> tuple[str, ModalHandlingResult | None]:
         """Run the modal handler while tracking dismissals and consent cookies."""
         if not self.modal_handler:
             return html, None
@@ -443,7 +475,9 @@ class GenericSiteCrawler:
         if modal_result.modals_detected:
             self._modal_dismissals += 1
             notes = "; ".join(modal_result.notes) if modal_result.notes else context
-            logger.debug("Consent modal detected for %s (%s)", self.site_config.domain, notes)
+            logger.debug(
+                "Consent modal detected for %s (%s)", self.site_config.domain, notes
+            )
         return modal_result.cleaned_html, modal_result
 
     def _extract_article_links(self, html: str, base_url: str) -> list[str]:
@@ -467,11 +501,12 @@ class GenericSiteCrawler:
                 continue
 
             # Convert relative URLs to absolute
-            if link.startswith('/'):
+            if link.startswith("/"):
                 # Use the base URL's scheme and netloc
                 from urllib.parse import urljoin
+
                 link = urljoin(base_url, link)
-            elif not link.startswith('http'):
+            elif not link.startswith("http"):
                 continue  # Skip non-HTTP links
 
             # Filter for article-like URLs
@@ -486,52 +521,85 @@ class GenericSiteCrawler:
                 seen.add(url)
                 unique_urls.append(url)
 
-        logger.debug(f"Extracted {len(unique_urls)} potential article URLs from {self.site_config.domain}")
+        logger.debug(
+            f"Extracted {len(unique_urls)} potential article URLs from {self.site_config.domain}"
+        )
         return unique_urls[:50]  # Limit to prevent excessive crawling
 
     def _is_article_url(self, url: str) -> bool:
         """Determine if a URL likely points to an article."""
         try:
             from urllib.parse import urlparse
+
             parsed = urlparse(url)
 
             # Must be on the same domain (allow www. prefix)
-            base_domain = self.site_config.domain.replace('www.', '')
-            url_domain = parsed.netloc.replace('www.', '')
+            base_domain = self.site_config.domain.replace("www.", "")
+            url_domain = parsed.netloc.replace("www.", "")
             if base_domain not in url_domain:
                 return False
 
             path = parsed.path.lower()
 
             # BBC-specific patterns
-            if 'bbc' in self.site_config.domain.lower():
+            if "bbc" in self.site_config.domain.lower():
                 # Article patterns for BBC
-                if any(pattern in path for pattern in ['/news/', '/sport/', '/business/', '/world/', '/politics/', '/technology/', '/science/', '/health/', '/entertainment/', '/arts/']):
+                if any(
+                    pattern in path
+                    for pattern in [
+                        "/news/",
+                        "/sport/",
+                        "/business/",
+                        "/world/",
+                        "/politics/",
+                        "/technology/",
+                        "/science/",
+                        "/health/",
+                        "/entertainment/",
+                        "/arts/",
+                    ]
+                ):
                     # Exclude non-article paths
-                    if any(exclude in path for exclude in ['/weather/', '/iplayer/', '/sounds/', '/programmes/', '/video/', '/audio/', '/photos/', '/gallery/']):
+                    if any(
+                        exclude in path
+                        for exclude in [
+                            "/weather/",
+                            "/iplayer/",
+                            "/sounds/",
+                            "/programmes/",
+                            "/video/",
+                            "/audio/",
+                            "/photos/",
+                            "/gallery/",
+                        ]
+                    ):
                         return False
                     # Must have article ID pattern (alphanumeric string at end)
-                    last_segment = path.split('/')[-1]
-                    if last_segment and len(last_segment) > 5:  # Article IDs are typically long alphanumeric strings
+                    last_segment = path.split("/")[-1]
+                    if (
+                        last_segment and len(last_segment) > 5
+                    ):  # Article IDs are typically long alphanumeric strings
                         return True
 
             # CNN patterns
-            elif 'cnn' in self.site_config.domain.lower():
-                if '/202' in path or '/index.html' in path:  # Recent articles
+            elif "cnn" in self.site_config.domain.lower():
+                if "/202" in path or "/index.html" in path:  # Recent articles
                     return True
 
             # Reuters patterns
-            elif 'reuters' in self.site_config.domain.lower():
-                if '/article/' in path or '/world/' in path or '/business/' in path:
+            elif "reuters" in self.site_config.domain.lower():
+                if "/article/" in path or "/world/" in path or "/business/" in path:
                     return True
 
             # Generic patterns for other news sites
             else:
                 # Look for year patterns in URL (common in news sites)
-                if '/202' in path or '/201' in path:
+                if "/202" in path or "/201" in path:
                     return True
                 # Look for article-like paths
-                if any(pattern in path for pattern in ['/article/', '/story/', '/news/']):
+                if any(
+                    pattern in path for pattern in ["/article/", "/story/", "/news/"]
+                ):
                     return True
 
             return False

@@ -23,18 +23,22 @@ logger = logging.getLogger(__name__)
 
 class UserCredentials(BaseModel):
     """User credentials for authentication"""
+
     username: str = Field(..., min_length=3, max_length=50)
     password: str = Field(..., min_length=8)
 
-    @validator('username')
+    @validator("username")
     def username_alphanumeric(cls, v):
-        if not v.replace('_', '').replace('-', '').isalnum():
-            raise ValueError('Username must be alphanumeric with optional underscores or hyphens')
+        if not v.replace("_", "").replace("-", "").isalnum():
+            raise ValueError(
+                "Username must be alphanumeric with optional underscores or hyphens"
+            )
         return v
 
 
 class LoginRequest(BaseModel):
     """Login request model"""
+
     username: str
     password: str
     mfa_code: str | None = None
@@ -42,6 +46,7 @@ class LoginRequest(BaseModel):
 
 class TokenPair(BaseModel):
     """JWT token pair"""
+
     access_token: str
     refresh_token: str
     expires_at: datetime
@@ -49,6 +54,7 @@ class TokenPair(BaseModel):
 
 class MFASetup(BaseModel):
     """MFA setup information"""
+
     secret: str
     qr_code_url: str
     backup_codes: list[str]
@@ -125,7 +131,9 @@ class AuthenticationService:
             # Lock account if too many attempts
             if user_data["login_attempts"] >= self.config.max_login_attempts:
                 lock_duration = timedelta(minutes=30)  # 30 minute lockout
-                user_data["locked_until"] = (datetime.now(UTC) + lock_duration).isoformat()
+                user_data["locked_until"] = (
+                    datetime.now(UTC) + lock_duration
+                ).isoformat()
 
             await self._save_user_data()
             raise AuthenticationError("Invalid username or password")
@@ -158,7 +166,9 @@ class AuthenticationService:
             "session_id": session_id,
             "type": "access",
             "iat": int(now.timestamp()),
-            "exp": int((now + timedelta(hours=self.config.jwt_expiration_hours)).timestamp())
+            "exp": int(
+                (now + timedelta(hours=self.config.jwt_expiration_hours)).timestamp()
+            ),
         }
 
         # Refresh token payload
@@ -167,20 +177,16 @@ class AuthenticationService:
             "session_id": session_id,
             "type": "refresh",
             "iat": int(now.timestamp()),
-            "exp": int((now + timedelta(days=30)).timestamp())  # 30 days
+            "exp": int((now + timedelta(days=30)).timestamp()),  # 30 days
         }
 
         # Generate tokens
         access_token = jwt.encode(
-            access_payload,
-            self.config.jwt_secret,
-            algorithm=self.config.jwt_algorithm
+            access_payload, self.config.jwt_secret, algorithm=self.config.jwt_algorithm
         )
 
         refresh_token = jwt.encode(
-            refresh_payload,
-            self.config.jwt_secret,
-            algorithm=self.config.jwt_algorithm
+            refresh_payload, self.config.jwt_secret, algorithm=self.config.jwt_algorithm
         )
 
         # Store refresh token metadata
@@ -188,13 +194,10 @@ class AuthenticationService:
             "user_id": user_id,
             "session_id": session_id,
             "created_at": now.isoformat(),
-            "expires_at": (now + timedelta(days=30)).isoformat()
+            "expires_at": (now + timedelta(days=30)).isoformat(),
         }
 
-        return {
-            "access_token": access_token,
-            "refresh_token": refresh_token
-        }
+        return {"access_token": access_token, "refresh_token": refresh_token}
 
     async def validate_token(self, token: str) -> dict[str, Any]:
         """
@@ -212,9 +215,7 @@ class AuthenticationService:
         try:
             # Decode token
             payload = jwt.decode(
-                token,
-                self.config.jwt_secret,
-                algorithms=[self.config.jwt_algorithm]
+                token, self.config.jwt_secret, algorithms=[self.config.jwt_algorithm]
             )
 
             # Check token type
@@ -293,8 +294,9 @@ class AuthenticationService:
         for token in tokens_to_remove:
             del self._refresh_tokens[token]
 
-    async def create_user(self, username: str, email: str, password: str,
-                         roles: list[str] | None = None) -> int:
+    async def create_user(
+        self, username: str, email: str, password: str, roles: list[str] | None = None
+    ) -> int:
         """
         Create new user account
 
@@ -316,12 +318,13 @@ class AuthenticationService:
 
         # Hash password
         password_hash = bcrypt.hashpw(
-            password.encode(),
-            bcrypt.gensalt(self.config.bcrypt_rounds)
+            password.encode(), bcrypt.gensalt(self.config.bcrypt_rounds)
         ).decode()
 
         # Generate user ID
-        user_id = max([u.get("id", 0) for u in self._user_store.values()], default=0) + 1
+        user_id = (
+            max([u.get("id", 0) for u in self._user_store.values()], default=0) + 1
+        )
 
         # Create user data
         user_data = {
@@ -335,7 +338,7 @@ class AuthenticationService:
             "last_login": None,
             "mfa_enabled": False,
             "login_attempts": 0,
-            "locked_until": None
+            "locked_until": None,
         }
 
         self._user_store[username.lower()] = user_data
@@ -369,8 +372,7 @@ class AuthenticationService:
             if key == "password":
                 # Hash new password
                 user_data["password_hash"] = bcrypt.hashpw(
-                    value.encode(),
-                    bcrypt.gensalt(self.config.bcrypt_rounds)
+                    value.encode(), bcrypt.gensalt(self.config.bcrypt_rounds)
                 ).decode()
             elif key == "username":
                 # Check if new username is available
@@ -425,7 +427,7 @@ class AuthenticationService:
                     "is_active": user_data["is_active"],
                     "created_at": user_data["created_at"],
                     "last_login": user_data["last_login"],
-                    "mfa_enabled": user_data["mfa_enabled"]
+                    "mfa_enabled": user_data["mfa_enabled"],
                 }
 
         raise AuthenticationError("User not found")
@@ -468,8 +470,7 @@ class AuthenticationService:
         user_data = await self.get_user_info(user_id)
 
         provisioning_uri = totp.provisioning_uri(
-            name=user_data["email"],
-            issuer_name="JustNews"
+            name=user_data["email"], issuer_name="JustNews"
         )
 
         # Generate QR code image
@@ -488,7 +489,7 @@ class AuthenticationService:
         return MFASetup(
             secret=secret,
             qr_code_url=f"data:image/png;base64,{qr_code_data}",
-            backup_codes=backup_codes
+            backup_codes=backup_codes,
         )
 
     async def verify_mfa(self, user_id: int, code: str) -> bool:
@@ -550,7 +551,9 @@ class AuthenticationService:
             "status": "healthy",
             "total_users": len(self._user_store),
             "active_sessions": len(self._refresh_tokens),
-            "mfa_enabled_users": sum(1 for u in self._user_store.values() if u.get("mfa_enabled", False))
+            "mfa_enabled_users": sum(
+                1 for u in self._user_store.values() if u.get("mfa_enabled", False)
+            ),
         }
 
     async def _load_user_data(self) -> None:
@@ -569,10 +572,7 @@ class AuthenticationService:
     async def _save_user_data(self) -> None:
         """Save user data to persistent storage"""
         try:
-            data = {
-                "users": self._user_store,
-                "mfa_secrets": self._mfa_secrets
-            }
+            data = {"users": self._user_store, "mfa_secrets": self._mfa_secrets}
             async with aiofiles.open("data/users.json", "w") as f:
                 await f.write(json.dumps(data, indent=2))
         except Exception as e:

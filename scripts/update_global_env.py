@@ -4,6 +4,7 @@
 Run from the repository root:
     python3 scripts/update_global_env.py [--path /custom/global.env]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -13,7 +14,9 @@ from pathlib import Path
 def parse_args() -> argparse.Namespace:
     repo_root = Path(__file__).resolve().parent.parent
     default_path = repo_root.parent / "global.env"
-    parser = argparse.ArgumentParser(description="Update system global.env with model store vars")
+    parser = argparse.ArgumentParser(
+        description="Update system global.env with model store vars"
+    )
     parser.add_argument(
         "--path",
         type=Path,

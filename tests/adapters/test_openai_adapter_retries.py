@@ -27,9 +27,16 @@ def test_openai_adapter_retries_succeeds(monkeypatch):
             return types.SimpleNamespace(choices=[FakeChoices("ok from fake")])
 
     fake_mod = types.SimpleNamespace(ChatCompletion=FakeChat)
-    monkeypatch.setitem(sys.modules, 'openai', fake_mod)
+    monkeypatch.setitem(sys.modules, "openai", fake_mod)
 
-    a = OpenAIAdapter(api_key="x", name="test-openai", model="gpt-test", timeout=1.0, max_retries=3, backoff_base=0.01)
+    a = OpenAIAdapter(
+        api_key="x",
+        name="test-openai",
+        model="gpt-test",
+        timeout=1.0,
+        max_retries=3,
+        backoff_base=0.01,
+    )
     a.load(None)
     out = a.infer("hello")
     assert isinstance(out, dict)
@@ -48,9 +55,16 @@ def test_openai_adapter_retries_exhaust(monkeypatch):
             raise RuntimeError("permanent-error")
 
     fake_mod = types.SimpleNamespace(ChatCompletion=FakeChat)
-    monkeypatch.setitem(sys.modules, 'openai', fake_mod)
+    monkeypatch.setitem(sys.modules, "openai", fake_mod)
 
-    a = OpenAIAdapter(api_key="x", name="test-openai", model="gpt-test", timeout=1.0, max_retries=2, backoff_base=0.01)
+    a = OpenAIAdapter(
+        api_key="x",
+        name="test-openai",
+        model="gpt-test",
+        timeout=1.0,
+        max_retries=2,
+        backoff_base=0.01,
+    )
     a.load(None)
     with pytest.raises(AdapterError):
         a.infer("hello")

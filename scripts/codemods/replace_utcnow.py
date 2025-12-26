@@ -15,6 +15,7 @@ Notes:
    to handle every edge case (e.g., complex aliasing of imports), but it's careful
    about only replacing the `.utcnow()` suffix on tokens containing "datetime".
 """
+
 from __future__ import annotations
 
 import argparse
@@ -22,7 +23,16 @@ import json
 import re
 from pathlib import Path
 
-ROOT_IGNORE = {".git", "node_modules", "third_party", "__pycache__", "tests/deprecation", "tests/codemod", "deprecations", "codemods"}
+ROOT_IGNORE = {
+    ".git",
+    "node_modules",
+    "third_party",
+    "__pycache__",
+    "tests/deprecation",
+    "tests/codemod",
+    "deprecations",
+    "codemods",
+}
 
 PATTERN = re.compile(r"(?P<prefix>\b[\w\.]*datetime)\.utcnow\(\s*\)")
 
@@ -104,9 +114,13 @@ def apply_replacements(root: Path) -> list[Path]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--apply", action="store_true", help="Apply replacements in-place")
-    parser.add_argument("--root", default='.', help="Root directory to scan")
-    parser.add_argument("--report", help="Write a JSON report to the given path (dry-run or apply)")
+    parser.add_argument(
+        "--apply", action="store_true", help="Apply replacements in-place"
+    )
+    parser.add_argument("--root", default=".", help="Root directory to scan")
+    parser.add_argument(
+        "--report", help="Write a JSON report to the given path (dry-run or apply)"
+    )
     args = parser.parse_args(argv)
 
     root = Path(args.root).resolve()
@@ -122,12 +136,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.report:
         report_path = Path(args.report)
-        report = [{"path": str(p), "line": lno, "content": line} for p, lno, line in matches]
+        report = [
+            {"path": str(p), "line": lno, "content": line} for p, lno, line in matches
+        ]
         report_path.write_text(json.dumps(report, indent=2))
         print(f"Wrote report to {report_path}")
 
     if not args.apply:
-        print("\nDry-run: no files modified. Re-run with --apply to update files in-place.")
+        print(
+            "\nDry-run: no files modified. Re-run with --apply to update files in-place."
+        )
         return 0
 
     changed = apply_replacements(root)

@@ -1,4 +1,5 @@
 """Shared Mistral adapter helper for high-accuracy synthesis."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -19,10 +20,17 @@ class SynthesizerMistralAdapter(BaseMistralJSONAdapter):
             adapter_name="mistral_synth_v1",
             system_prompt=SYSTEM_PROMPT,
             disable_env="SYNTHESIZER_DISABLE_MISTRAL",
-            defaults={"max_chars": 10000, "max_new_tokens": 512, "temperature": 0.3, "top_p": 0.9},
+            defaults={
+                "max_chars": 10000,
+                "max_new_tokens": 512,
+                "temperature": 0.3,
+                "top_p": 0.9,
+            },
         )
 
-    def summarize_cluster(self, articles: list[str], context: str | None = None) -> dict[str, Any] | None:
+    def summarize_cluster(
+        self, articles: list[str], context: str | None = None
+    ) -> dict[str, Any] | None:
         snippets = [self._truncate_content(a) for a in articles if a]
         if not snippets:
             return None

@@ -14,6 +14,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 class SecurityLevel(Enum):
     """Security severity levels"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -22,6 +23,7 @@ class SecurityLevel(Enum):
 
 class UserRole(Enum):
     """Standard user roles with hierarchical permissions"""
+
     USER = "user"
     MODERATOR = "moderator"
     ADMIN = "admin"
@@ -29,6 +31,7 @@ class UserRole(Enum):
 
 class ConsentPurpose(Enum):
     """GDPR consent purposes"""
+
     MARKETING = "marketing"
     ANALYTICS = "analytics"
     PERSONALIZATION = "personalization"
@@ -37,6 +40,7 @@ class ConsentPurpose(Enum):
 
 class AlertSeverity(Enum):
     """Security alert severity levels"""
+
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -46,6 +50,7 @@ class AlertSeverity(Enum):
 # User and Authentication Models
 class User(BaseModel):
     """User model for authentication and authorization"""
+
     id: int
     username: str
     email: EmailStr
@@ -62,6 +67,7 @@ class User(BaseModel):
 
 class UserCreate(BaseModel):
     """User creation request model"""
+
     username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
     password: str = Field(..., min_length=12)
@@ -70,6 +76,7 @@ class UserCreate(BaseModel):
 
 class UserUpdate(BaseModel):
     """User update request model"""
+
     email: EmailStr | None = None
     roles: list[str] | None = None
     is_active: bool | None = None
@@ -78,6 +85,7 @@ class UserUpdate(BaseModel):
 
 class LoginRequest(BaseModel):
     """Login request model"""
+
     username: str
     password: str
     mfa_code: str | None = None
@@ -85,6 +93,7 @@ class LoginRequest(BaseModel):
 
 class TokenPair(BaseModel):
     """JWT token pair response"""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -93,11 +102,13 @@ class TokenPair(BaseModel):
 
 class PasswordResetRequest(BaseModel):
     """Password reset request model"""
+
     email: EmailStr
 
 
 class PasswordResetConfirm(BaseModel):
     """Password reset confirmation model"""
+
     token: str
     new_password: str = Field(..., min_length=12)
 
@@ -105,6 +116,7 @@ class PasswordResetConfirm(BaseModel):
 # Authorization Models
 class Role(BaseModel):
     """Role definition with permissions"""
+
     name: str
     description: str
     permissions: list[str] = Field(default_factory=list)
@@ -113,6 +125,7 @@ class Role(BaseModel):
 
 class PermissionCheck(BaseModel):
     """Permission check request"""
+
     user_id: int
     permission: str
     resource_id: str | None = None
@@ -121,6 +134,7 @@ class PermissionCheck(BaseModel):
 # Encryption Models
 class EncryptionKey(BaseModel):
     """Encryption key metadata"""
+
     id: str
     algorithm: str
     created_at: datetime
@@ -130,6 +144,7 @@ class EncryptionKey(BaseModel):
 
 class EncryptedData(BaseModel):
     """Encrypted data container"""
+
     data: str  # Base64 encoded encrypted data
     key_id: str
     algorithm: str
@@ -139,6 +154,7 @@ class EncryptedData(BaseModel):
 # Compliance Models
 class ConsentRecord(BaseModel):
     """GDPR consent record"""
+
     id: str
     user_id: int
     purpose: str
@@ -151,6 +167,7 @@ class ConsentRecord(BaseModel):
 
 class AuditEvent(BaseModel):
     """Audit trail event"""
+
     id: str
     timestamp: datetime
     user_id: int | None = None
@@ -164,6 +181,7 @@ class AuditEvent(BaseModel):
 
 class DataExport(BaseModel):
     """GDPR data export response"""
+
     user_id: int
     exported_at: datetime
     data: dict[str, Any]
@@ -172,6 +190,7 @@ class DataExport(BaseModel):
 # Monitoring Models
 class SecurityEvent(BaseModel):
     """Security event for monitoring"""
+
     id: str
     timestamp: datetime
     event_type: str
@@ -184,6 +203,7 @@ class SecurityEvent(BaseModel):
 
 class MonitoringRule(BaseModel):
     """Security monitoring rule"""
+
     id: str
     name: str
     description: str
@@ -195,6 +215,7 @@ class MonitoringRule(BaseModel):
 
 class SecurityAlert(BaseModel):
     """Security alert notification"""
+
     id: str
     timestamp: datetime
     rule_id: str
@@ -208,6 +229,7 @@ class SecurityAlert(BaseModel):
 
 class SecurityMetrics(BaseModel):
     """Security metrics summary"""
+
     period_start: datetime
     period_end: datetime
     total_events: int
@@ -223,6 +245,7 @@ class SecurityMetrics(BaseModel):
 # Configuration Models
 class SecurityConfig(BaseModel):
     """Security framework configuration"""
+
     # JWT settings
     jwt_secret: str = Field(..., min_length=32)
     jwt_algorithm: str = "HS256"
@@ -270,6 +293,7 @@ class SecurityConfig(BaseModel):
 
 class SecurityContext(BaseModel):
     """Security context for request processing"""
+
     user: User | None = None
     permissions: list[str] = Field(default_factory=list)
     session_id: str | None = None
@@ -281,6 +305,7 @@ class SecurityContext(BaseModel):
 # Exception Classes
 class SecurityError(Exception):
     """Base security exception"""
+
     def __init__(self, message: str, code: str = "SECURITY_ERROR"):
         self.message = message
         self.code = code
@@ -289,29 +314,34 @@ class SecurityError(Exception):
 
 class AuthenticationError(SecurityError):
     """Authentication-related security error"""
+
     def __init__(self, message: str):
         super().__init__(message, "AUTHENTICATION_ERROR")
 
 
 class AuthorizationError(SecurityError):
     """Authorization-related security error"""
+
     def __init__(self, message: str):
         super().__init__(message, "AUTHORIZATION_ERROR")
 
 
 class EncryptionError(SecurityError):
     """Encryption-related security error"""
+
     def __init__(self, message: str):
         super().__init__(message, "ENCRYPTION_ERROR")
 
 
 class ComplianceError(SecurityError):
     """Compliance-related security error"""
+
     def __init__(self, message: str):
         super().__init__(message, "COMPLIANCE_ERROR")
 
 
 class MonitoringError(SecurityError):
     """Monitoring-related security error"""
+
     def __init__(self, message: str):
         super().__init__(message, "MONITORING_ERROR")

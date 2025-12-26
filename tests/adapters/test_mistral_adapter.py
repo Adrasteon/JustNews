@@ -10,7 +10,11 @@ def test_mistral_adapter_dry_run(monkeypatch):
     monkeypatch.setenv("MODEL_STORE_ROOT", ms_root)
     monkeypatch.setenv("MODEL_STORE_DRY_RUN", "1")
 
-    adapter = MistralAdapter(agent="synthesizer", adapter_name="mistral_synth_v1", system_prompt="You are a mock.")
+    adapter = MistralAdapter(
+        agent="synthesizer",
+        adapter_name="mistral_synth_v1",
+        system_prompt="You are a mock.",
+    )
     adapter.load(None)
     health = adapter.health_check()
     assert isinstance(health, dict)
@@ -23,6 +27,8 @@ def test_mistral_adapter_dry_run(monkeypatch):
     assert isinstance(batch, list) and len(batch) == 2
 
     # cluster-level dry-run summary
-    doc = adapter.summarize_cluster(["Article one content", "Article two content"], context="testing")
+    doc = adapter.summarize_cluster(
+        ["Article one content", "Article two content"], context="testing"
+    )
     assert isinstance(doc, dict)
     assert "summary" in doc and isinstance(doc["summary"], str)

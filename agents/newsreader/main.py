@@ -47,6 +47,7 @@ from .tools import (
 # MCP Bus integration
 try:
     from common.mcp_bus_client import MCPBusClient
+
     MCP_AVAILABLE = True
 except ImportError:
     MCPBusClient = None
@@ -57,16 +58,24 @@ logger = get_logger(__name__)
 # Global engine instance
 engine: NewsReaderEngine | None = None
 
+
 # Request/Response Models
 class ProcessURLRequest(BaseModel):
     """Request model for URL processing."""
+
     url: HttpUrl = Field(..., description="News article URL to process")
-    mode: ProcessingMode = Field(default=ProcessingMode.COMPREHENSIVE, description="Processing mode")
+    mode: ProcessingMode = Field(
+        default=ProcessingMode.COMPREHENSIVE, description="Processing mode"
+    )
     custom_prompt: str | None = Field(None, description="Custom analysis prompt")
-    save_screenshot: bool = Field(default=False, description="Whether to save screenshot")
+    save_screenshot: bool = Field(
+        default=False, description="Whether to save screenshot"
+    )
+
 
 class ProcessURLResponse(BaseModel):
     """Response model for URL processing."""
+
     success: bool = Field(..., description="Processing success status")
     url: str = Field(..., description="Processed URL")
     content_type: str = Field(..., description="Content type detected")
@@ -77,20 +86,27 @@ class ProcessURLResponse(BaseModel):
     timestamp: float = Field(..., description="Processing timestamp")
     processing_mode: str = Field(..., description="Processing mode used")
 
+
 class HealthResponse(BaseModel):
     """Response model for health checks."""
+
     timestamp: float = Field(..., description="Health check timestamp")
     overall_status: str = Field(..., description="Overall health status")
     components: dict[str, Any] = Field(..., description="Component health status")
     issues: list[str] = Field(..., description="List of issues found")
 
+
 class StatsResponse(BaseModel):
     """Response model for statistics."""
+
     total_processed: int = Field(..., description="Total URLs processed")
     success_rate: float = Field(..., description="Success rate (0.0-1.0)")
     average_processing_time: float = Field(..., description="Average processing time")
-    memory_stats: dict[str, Any] | None = Field(None, description="Current memory statistics")
+    memory_stats: dict[str, Any] | None = Field(
+        None, description="Current memory statistics"
+    )
     uptime: float = Field(..., description="Service uptime in seconds")
+
 
 # Lifespan management
 @asynccontextmanager
@@ -136,6 +152,7 @@ async def lifespan(app: FastAPI):
 
         logger.info("✅ NewsReader Agent shutdown complete")
 
+
 async def register_with_mcp_bus():
     """Register agent with MCP Bus."""
     if not MCP_AVAILABLE:
@@ -154,8 +171,8 @@ async def register_with_mcp_bus():
             "endpoints": {
                 "process_url": "/process_url",
                 "health": "/health",
-                "stats": "/stats"
-            }
+                "stats": "/stats",
+            },
         }
 
         await client.register_agent(agent_info)
@@ -164,12 +181,13 @@ async def register_with_mcp_bus():
     except Exception as e:
         logger.error(f"❌ MCP Bus registration failed: {e}")
 
+
 # Create FastAPI app
 app = FastAPI(
     title="NewsReader Agent",
     description="Multi-modal news content processing using vision-language models",
     version="2.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -193,6 +211,7 @@ except Exception as exc:
 # Global startup time
 startup_time = time.time()
 
+
 @app.get("/")
 async def root():
     """Root endpoint with basic information."""
@@ -200,13 +219,13 @@ async def root():
         "name": "NewsReader Agent",
         "version": "2.0.0",
         "description": "News content processing with LLaVA vision-language models",
-        "status": "running"
+        "status": "running",
     }
+
 
 @app.post("/process_url", response_model=ProcessURLResponse)
 async def process_url_endpoint(
-    request: ProcessURLRequest,
-    background_tasks: BackgroundTasks
+    request: ProcessURLRequest, background_tasks: BackgroundTasks
 ):
     """
     Process a news article URL for content extraction.
@@ -223,14 +242,18 @@ async def process_url_endpoint(
         logger.info(f"📨 Processing URL request: {request.url}")
 
         # Process the URL
-        screenshot_path = f"temp/screenshot_{int(time.time())}.png" if request.save_screenshot else None
+        screenshot_path = (
+            f"temp/screenshot_{int(time.time())}.png"
+            if request.save_screenshot
+            else None
+        )
 
         result = await process_article_content(
             str(request.url),
             engine,
             request.mode,
             screenshot_path,
-            request.custom_prompt
+            request.custom_prompt,
         )
 
         # Schedule cleanup if screenshot was saved
@@ -243,7 +266,9 @@ async def process_url_endpoint(
             # Don't raise exception for processing failures, just return the result
 
         response = ProcessURLResponse(**result)
-        logger.info(f"✅ URL processing completed: {result.get('processing_time', 0):.2f}s")
+        logger.info(
+            f"✅ URL processing completed: {result.get('processing_time', 0):.2f}s"
+        )
         return response
 
     except ValueError as e:
@@ -251,7 +276,10 @@ async def process_url_endpoint(
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"❌ Processing error: {e}")
-        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Processing failed: {str(e)}"
+        ) from e
+
 
 @app.get("/health", response_model=HealthResponse)
 async def health_endpoint():
@@ -266,7 +294,10 @@ async def health_endpoint():
         return HealthResponse(**health_result)
     except Exception as e:
         logger.error(f"❌ Health check error: {e}")
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Health check failed: {str(e)}"
+        ) from e
+
 
 @app.get("/stats", response_model=StatsResponse)
 async def stats_endpoint():
@@ -280,18 +311,23 @@ async def stats_endpoint():
         uptime = time.time() - startup_time
 
         stats = StatsResponse(
-            total_processed=engine.processing_stats['total_processed'],
-            success_rate=engine.processing_stats['success_rate'],
-            average_processing_time=engine.processing_stats['average_processing_time'],
-            memory_stats=memory_monitor.get_memory_stats()[-1] if memory_monitor.memory_stats else None,
-            uptime=uptime
+            total_processed=engine.processing_stats["total_processed"],
+            success_rate=engine.processing_stats["success_rate"],
+            average_processing_time=engine.processing_stats["average_processing_time"],
+            memory_stats=memory_monitor.get_memory_stats()[-1]
+            if memory_monitor.memory_stats
+            else None,
+            uptime=uptime,
         )
 
         return stats
 
     except Exception as e:
         logger.error(f"❌ Stats retrieval error: {e}")
-        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Stats retrieval failed: {str(e)}"
+        ) from e
+
 
 @app.get("/capabilities")
 async def capabilities_endpoint():
@@ -304,16 +340,14 @@ async def capabilities_endpoint():
             "content_extraction",
             "visual_analysis",
             "screenshot_capture",
-            "llava_integration"
+            "llava_integration",
         ],
         "supported_modes": ["fast", "comprehensive"],
         "supported_formats": ["json", "text", "markdown"],
         "max_url_length": 2048,
-        "rate_limits": {
-            "requests_per_minute": 10,
-            "concurrent_requests": 3
-        }
+        "rate_limits": {"requests_per_minute": 10, "concurrent_requests": 3},
     }
+
 
 @app.get("/metrics")
 async def metrics_endpoint():
@@ -322,9 +356,12 @@ async def metrics_endpoint():
         return Response(
             status_code=503,
             content="# metrics unavailable\n",
-            media_type="text/plain; charset=utf-8"
+            media_type="text/plain; charset=utf-8",
         )
-    return Response(content=metrics.get_metrics(), media_type="text/plain; charset=utf-8")
+    return Response(
+        content=metrics.get_metrics(), media_type="text/plain; charset=utf-8"
+    )
+
 
 # Error handlers
 @app.exception_handler(500)
@@ -333,26 +370,34 @@ async def internal_error_handler(request, exc):
     logger.error(f"500 Internal Server Error: {exc}")
     payload = {
         "error": "Internal server error",
-        "detail": str(exc) if os.getenv("DEBUG", "").lower() == "true" else "An unexpected error occurred"
+        "detail": str(exc)
+        if os.getenv("DEBUG", "").lower() == "true"
+        else "An unexpected error occurred",
     }
     return JSONResponse(status_code=500, content=payload)
+
 
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
     """Handle 404 not found errors."""
-    payload = {
-        "error": "Not found",
-        "detail": f"Endpoint {request.url.path} not found"
-    }
+    payload = {"error": "Not found", "detail": f"Endpoint {request.url.path} not found"}
     return JSONResponse(status_code=404, content=payload)
+
 
 if __name__ == "__main__":
     import uvicorn
 
     host = os.environ.get("NEWSREADER_HOST", "0.0.0.0")
     port = int(os.environ.get("NEWSREADER_PORT", os.environ.get("PORT", "8002")))
-    reload_flag = os.environ.get("UVICORN_RELOAD", os.environ.get("NEWSREADER_RELOAD", "false")).lower() == "true"
-    log_level = os.environ.get("UVICORN_LOG_LEVEL", os.environ.get("NEWSREADER_LOG_LEVEL", "info"))
+    reload_flag = (
+        os.environ.get(
+            "UVICORN_RELOAD", os.environ.get("NEWSREADER_RELOAD", "false")
+        ).lower()
+        == "true"
+    )
+    log_level = os.environ.get(
+        "UVICORN_LOG_LEVEL", os.environ.get("NEWSREADER_LOG_LEVEL", "info")
+    )
 
     target = f"{__package__}.main:app" if __package__ else "main:app"
 

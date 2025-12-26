@@ -20,6 +20,7 @@ Usage:
     python scripts/manage_secrets.py
 """
 
+
 class SecretManagerCLI:
     """Interactive CLI for secret management"""
 
@@ -29,9 +30,9 @@ class SecretManagerCLI:
 
     def print_header(self, title: str):
         """Print a formatted header"""
-        print(f"\n{'='*50}")
+        print(f"\n{'=' * 50}")
         print(f" {title}")
-        print(f"{'='*50}")
+        print(f"{'=' * 50}")
 
     def print_menu(self):
         """Print the main menu"""
@@ -48,7 +49,9 @@ class SecretManagerCLI:
         print("8. Test pre-commit hook")
         print("9. Exit")
 
-        print(f"\nVault Status: {'🔓 Unlocked' if self.vault_unlocked else '🔒 Locked'}")
+        print(
+            f"\nVault Status: {'🔓 Unlocked' if self.vault_unlocked else '🔒 Locked'}"
+        )
         print(f"Vault Path: {self.secret_manager.vault_path}")
 
     def list_secrets(self):
@@ -62,7 +65,7 @@ class SecretManagerCLI:
             return
 
         print("\nEnvironment Variables:")
-        env_secrets = {k: v for k, v in secrets.items() if k.startswith('env:')}
+        env_secrets = {k: v for k, v in secrets.items() if k.startswith("env:")}
         if env_secrets:
             for key, value in env_secrets.items():
                 print(f"  {key}: {value}")
@@ -70,7 +73,7 @@ class SecretManagerCLI:
             print("  None found")
 
         print("\nVault Secrets:")
-        vault_secrets = {k: v for k, v in secrets.items() if k.startswith('vault:')}
+        vault_secrets = {k: v for k, v in secrets.items() if k.startswith("vault:")}
         if vault_secrets:
             for key, value in vault_secrets.items():
                 print(f"  {key}: {value}")
@@ -107,7 +110,7 @@ class SecretManagerCLI:
             return
 
         encrypt = input("Encrypt this secret? (y/n) [y]: ").strip().lower()
-        encrypt = encrypt in ('', 'y', 'yes')
+        encrypt = encrypt in ("", "y", "yes")
 
         try:
             self.secret_manager.set(key, value, encrypt=encrypt)
@@ -140,28 +143,30 @@ class SecretManagerCLI:
 
         validation = self.secret_manager.validate_security()
 
-        if validation['issues']:
+        if validation["issues"]:
             print("\n🚨 Security Issues:")
-            for issue in validation['issues']:
+            for issue in validation["issues"]:
                 print(f"  • {issue}")
 
-        if validation['warnings']:
+        if validation["warnings"]:
             print("\n⚠️ Security Warnings:")
-            for warning in validation['warnings']:
+            for warning in validation["warnings"]:
                 print(f"  • {warning}")
 
         print("\nVault Status:")
         print(f"  • Encrypted: {validation['vault_encrypted']}")
         print(f"  • Exists: {validation['vault_exists']}")
 
-        if validation['sensitive_env_vars']:
-            print(f"\nSensitive Environment Variables: {len(validation['sensitive_env_vars'])}")
-            for var in validation['sensitive_env_vars'][:5]:  # Show first 5
+        if validation["sensitive_env_vars"]:
+            print(
+                f"\nSensitive Environment Variables: {len(validation['sensitive_env_vars'])}"
+            )
+            for var in validation["sensitive_env_vars"][:5]:  # Show first 5
                 print(f"  • {var}")
-            if len(validation['sensitive_env_vars']) > 5:
+            if len(validation["sensitive_env_vars"]) > 5:
                 print(f"  ... and {len(validation['sensitive_env_vars']) - 5} more")
 
-        if not validation['issues'] and not validation['warnings']:
+        if not validation["issues"] and not validation["warnings"]:
             print("\n✅ No security issues found!")
 
     def check_environment(self):
@@ -173,7 +178,10 @@ class SecretManagerCLI:
 
         for key, _value in os.environ.items():
             all_vars.append(key)
-            if any(secret in key.lower() for secret in ['password', 'secret', 'key', 'token']):
+            if any(
+                secret in key.lower()
+                for secret in ["password", "secret", "key", "token"]
+            ):
                 sensitive_vars.append(key)
 
         print(f"Total Environment Variables: {len(all_vars)}")
@@ -189,11 +197,15 @@ class SecretManagerCLI:
         """Generate .env template"""
         self.print_header("Generate .env Template")
 
-        template_path = project_root / '.env.example'
+        template_path = project_root / ".env.example"
 
         if template_path.exists():
-            overwrite = input(".env.example already exists. Overwrite? (y/n) [n]: ").strip().lower()
-            if overwrite not in ('y', 'yes'):
+            overwrite = (
+                input(".env.example already exists. Overwrite? (y/n) [n]: ")
+                .strip()
+                .lower()
+            )
+            if overwrite not in ("y", "yes"):
                 print("❌ Operation cancelled")
                 return
 
@@ -235,7 +247,7 @@ class SecretManagerCLI:
     """
 
         try:
-            with open(template_path, 'w') as f:
+            with open(template_path, "w") as f:
                 f.write(template_content)
             print(f"✅ .env.example generated at {template_path}")
         except Exception as e:
@@ -246,7 +258,7 @@ class SecretManagerCLI:
         self.print_header("Test Pre-commit Hook")
 
         # Create a test file with potential secrets
-        test_file = project_root / 'test_secrets.txt'
+        test_file = project_root / "test_secrets.txt"
         test_content = """
 # This file contains test secrets for pre-commit hook testing
 API_KEY=sk-test123456789012345678901234567890
@@ -255,7 +267,7 @@ TOKEN=abc123def456ghi789jkl012mno345pqr678stu901vwx
 """
 
         try:
-            with open(test_file, 'w') as f:
+            with open(test_file, "w") as f:
                 f.write(test_content)
 
             print("✅ Test file created with sample secrets")
@@ -272,8 +284,8 @@ TOKEN=abc123def456ghi789jkl012mno345pqr678stu901vwx
     def _mask_secret(self, value: str) -> str:
         """Mask a secret value for display"""
         if len(value) <= 4:
-            return '*' * len(value)
-        return value[:2] + '*' * (len(value) - 4) + value[-2:]
+            return "*" * len(value)
+        return value[:2] + "*" * (len(value) - 4) + value[-2:]
 
     def run(self):
         """Main CLI loop"""
@@ -282,23 +294,23 @@ TOKEN=abc123def456ghi789jkl012mno345pqr678stu901vwx
             try:
                 choice = input("\nEnter your choice (1-9): ").strip()
 
-                if choice == '1':
+                if choice == "1":
                     self.list_secrets()
-                elif choice == '2':
+                elif choice == "2":
                     self.get_secret()
-                elif choice == '3':
+                elif choice == "3":
                     self.set_secret()
-                elif choice == '4':
+                elif choice == "4":
                     self.unlock_vault()
-                elif choice == '5':
+                elif choice == "5":
                     self.validate_security()
-                elif choice == '6':
+                elif choice == "6":
                     self.check_environment()
-                elif choice == '7':
+                elif choice == "7":
                     self.generate_env_template()
-                elif choice == '8':
+                elif choice == "8":
                     self.test_precommit_hook()
-                elif choice == '9':
+                elif choice == "9":
                     print("\n👋 Goodbye!")
                     break
                 else:
@@ -313,10 +325,12 @@ TOKEN=abc123def456ghi789jkl012mno345pqr678stu901vwx
                 print(f"❌ Error: {e}")
                 input("\nPress Enter to continue...")
 
+
 def main():
     """Main entry point"""
     cli = SecretManagerCLI()
     cli.run()
+
 
 if __name__ == "__main__":
     main()

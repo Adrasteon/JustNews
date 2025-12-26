@@ -6,6 +6,7 @@ instances).  Downstream services such as the memory agent expect plain JSON
 payloads, so ``make_json_safe`` normalises arbitrarily nested objects into a
 format that ``json.dumps`` can consume without raising errors.
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -25,6 +26,7 @@ def make_json_safe(value: Any, depth: int = 32) -> Any:
     remain lists) but stringifies objects that JSON cannot encode.  A depth cap
     prevents runaway recursion on pathological inputs.
     """
+
     # `depth` is interpreted as the remaining allowed recursion depth.
     # Use a visited set to detect recursive structures and avoid infinite recursion.
     def _inner(val: Any, remaining: int, visited: set[int]) -> Any:
@@ -57,12 +59,16 @@ def make_json_safe(value: Any, depth: int = 32) -> Any:
             # If the mapping directly contains a reference to itself, return
             # a string to avoid producing nested self-referential dicts.
             try:
-                if any(v is val for v in val.values()) or any(k is val for k in val.keys()):
+                if any(v is val for v in val.values()) or any(
+                    k is val for k in val.keys()
+                ):
                     return str(val)
             except Exception:
                 pass
             return {
-                str(_inner(key, remaining - 1, visited)): _inner(val2, remaining - 1, visited)
+                str(_inner(key, remaining - 1, visited)): _inner(
+                    val2, remaining - 1, visited
+                )
                 for key, val2 in val.items()
             }
 

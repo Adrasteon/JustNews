@@ -107,8 +107,11 @@ class GPUOrchestratorClient:
             force_refresh: Ignore cache and fetch from service.
         """
         with self._lock:
-            if (not force_refresh and self._policy_cache and
-                    (time.time() - self._policy_cache_time) < self.policy_ttl):
+            if (
+                not force_refresh
+                and self._policy_cache
+                and (time.time() - self._policy_cache_time) < self.policy_ttl
+            ):
                 return self._policy_cache
 
         url = f"{self.base_url}/policy"
@@ -122,7 +125,9 @@ class GPUOrchestratorClient:
                     self._policy_cache = policy
                     self._policy_cache_time = time.time()
                 return policy
-            self._maybe_log_failure(f"Policy fetch unexpected status {resp.status_code}")
+            self._maybe_log_failure(
+                f"Policy fetch unexpected status {resp.status_code}"
+            )
             return _FALLBACK_POLICY
         except Exception as e:  # noqa: BLE001
             self._maybe_log_failure(f"Policy fetch failed: {e}")

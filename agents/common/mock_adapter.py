@@ -26,7 +26,9 @@ class MockAdapter(BaseAdapter):
         self._responses = dict(responses or {})
         self._failure_prompts = {p for p in (failure_prompts or [])}
         self._latency_seconds = max(0.0, float(latency_seconds))
-        self._token_counter = token_counter or (lambda prompt: max(1, len(prompt.split())))
+        self._token_counter = token_counter or (
+            lambda prompt: max(1, len(prompt.split()))
+        )
         self._metadata = metadata or {"adapter": "mock", "name": name}
         self._model_id: str | None = None
         self._invocation_count = 0
@@ -55,7 +57,9 @@ class MockAdapter(BaseAdapter):
         start = time.time()
         if self._latency_seconds:
             time.sleep(self._latency_seconds)
-        text = text_template.format(prompt=prompt, name=self.name, count=self._invocation_count)
+        text = text_template.format(
+            prompt=prompt, name=self.name, count=self._invocation_count
+        )
         latency = time.time() - start
         tokens = self._token_counter(prompt)
         raw = {

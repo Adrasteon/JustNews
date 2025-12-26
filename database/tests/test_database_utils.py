@@ -21,28 +21,36 @@ class TestDatabaseUtils:
         """Test getting database config from environment variables"""
         config = get_db_config()
 
-        assert config['host'] == 'localhost'
+        assert config["host"] == "localhost"
         # MariaDB is the default backend after Postgres deprecation
-        assert config['port'] == 3306
-        assert config['database'] == 'test_db'
-        assert config['user'] == 'test_user'
-        assert config['password'] == 'test_password'
+        assert config["port"] == 3306
+        assert config["database"] == "test_db"
+        assert config["user"] == "test_user"
+        assert config["password"] == "test_password"
 
     def test_get_db_config_from_url(self):
         """Test getting database config from DATABASE_URL"""
-        with patch.dict('os.environ', {'DATABASE_URL': 'mysql://user:pass@host:3306/db'}):
+        with patch.dict(
+            "os.environ", {"DATABASE_URL": "mysql://user:pass@host:3306/db"}
+        ):
             config = get_db_config()
 
-            assert config['host'] == 'host'
-            assert config['port'] == 3306
-            assert config['database'] == 'db'
-            assert config['user'] == 'user'
-            assert config['password'] == 'pass'
+            assert config["host"] == "host"
+            assert config["port"] == 3306
+            assert config["database"] == "db"
+            assert config["user"] == "user"
+            assert config["password"] == "pass"
 
     def test_create_connection_pool(self, mock_db_config):
         """Test creating connection pool"""
-        with patch('database.refactor.utils.database_utils.DatabaseConnectionPool') as mock_pool_class, \
-             patch('database.refactor.utils.database_utils.check_connection') as mock_check_conn:
+        with (
+            patch(
+                "database.refactor.utils.database_utils.DatabaseConnectionPool"
+            ) as mock_pool_class,
+            patch(
+                "database.refactor.utils.database_utils.check_connection"
+            ) as mock_check_conn,
+        ):
             mock_pool = Mock()
             mock_pool_class.return_value = mock_pool
             mock_check_conn.return_value = True
@@ -56,12 +64,12 @@ class TestDatabaseUtils:
     @pytest.mark.asyncio
     async def test_execute_query_async(self, mock_pool):
         """Test asynchronous query execution"""
-        mock_pool.execute_query.return_value = [{'result': 'test'}]
+        mock_pool.execute_query.return_value = [{"result": "test"}]
 
         result = await execute_query_async(mock_pool, "SELECT 1", (1,))
 
         mock_pool.execute_query.assert_called_once_with("SELECT 1", (1,), True)
-        assert result == [{'result': 'test'}]
+        assert result == [{"result": "test"}]
 
     def test_execute_transaction_success(self, mock_pool):
         """Test successful transaction execution"""
@@ -74,7 +82,7 @@ class TestDatabaseUtils:
         mock_context.__enter__.return_value = mock_conn
 
         queries = ["INSERT INTO test VALUES (1)", "UPDATE test SET name = 'test'"]
-        params_list = [(1,), ('test',)]
+        params_list = [(1,), ("test",)]
 
         result = execute_transaction(mock_pool, queries, params_list)
 
@@ -104,16 +112,26 @@ class TestDatabaseUtils:
     def test_get_database_stats(self, mock_pool):
         """Test getting database statistics"""
         mock_pool.execute_query.side_effect = [
-            [{'tablename': 'test_table', 'inserts': 10, 'updates': 5, 'deletes': 2, 'live_rows': 100, 'dead_rows': 5, 'size': '1 MB'}],
-            [{'db_size': '10 MB'}]
+            [
+                {
+                    "tablename": "test_table",
+                    "inserts": 10,
+                    "updates": 5,
+                    "deletes": 2,
+                    "live_rows": 100,
+                    "dead_rows": 5,
+                    "size": "1 MB",
+                }
+            ],
+            [{"db_size": "10 MB"}],
         ]
-        mock_pool.get_metrics.return_value = {'connections_created': 5}
+        mock_pool.get_metrics.return_value = {"connections_created": 5}
 
         stats = get_database_stats(mock_pool)
 
-        assert 'connection_pool' in stats
-        assert 'tables' in stats
-        assert stats['tables']['test_table']['live_rows'] == 100
+        assert "connection_pool" in stats
+        assert "tables" in stats
+        assert stats["tables"]["test_table"]["live_rows"] == 100
 
     # Deprecated Postgres-specific tests removed after Postgres deprecation.
     # VACUUM ANALYZE, REINDEX, pg_stat queries and pg_terminate_backend logic

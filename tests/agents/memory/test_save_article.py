@@ -25,7 +25,11 @@ class StubEmbeddingModel:
 
 @pytest.fixture(autouse=True)
 def training_system_stub(monkeypatch):
-    monkeypatch.setitem(sys.modules, "training_system", SimpleNamespace(collect_prediction=lambda **_: None))
+    monkeypatch.setitem(
+        sys.modules,
+        "training_system",
+        SimpleNamespace(collect_prediction=lambda **_: None),
+    )
     yield
     sys.modules.pop("training_system", None)
 
@@ -77,7 +81,9 @@ def _install_db_stubs(monkeypatch):
             elif normalized_q.startswith("insert into articles"):
                 new_id = len(stored_rows) + 1
                 metadata_payload = self.params[20] if len(self.params) > 20 else None
-                review_reasons_payload = self.params[16] if len(self.params) > 16 else None
+                review_reasons_payload = (
+                    self.params[16] if len(self.params) > 16 else None
+                )
                 stored_rows.append(
                     {
                         "id": new_id,
@@ -85,11 +91,19 @@ def _install_db_stubs(monkeypatch):
                         "normalized_url": self.params[6],
                         "url_hash": self.params[7],
                         "url_hash_algo": self.params[8],
-                        "metadata": json.loads(metadata_payload) if metadata_payload else {},
+                        "metadata": json.loads(metadata_payload)
+                        if metadata_payload
+                        else {},
                         "embedding": self.params[22] if len(self.params) > 22 else [],
-                        "needs_review": self.params[15] if len(self.params) > 15 else False,
-                        "review_reasons": json.loads(review_reasons_payload) if review_reasons_payload else [],
-                        "collection_timestamp": self.params[21] if len(self.params) > 21 else None,
+                        "needs_review": self.params[15]
+                        if len(self.params) > 15
+                        else False,
+                        "review_reasons": json.loads(review_reasons_payload)
+                        if review_reasons_payload
+                        else [],
+                        "collection_timestamp": self.params[21]
+                        if len(self.params) > 21
+                        else None,
                     }
                 )
                 self._lastrowid = new_id
@@ -129,18 +143,18 @@ def _install_db_stubs(monkeypatch):
 
             def mock_collection_add(**kwargs):
                 # Store the embedding for verification
-                if 'embeddings' in kwargs and kwargs['embeddings']:
-                    embedding = kwargs['embeddings'][0]
-                    article_id = int(kwargs['ids'][0]) if kwargs.get('ids') else len(stored_rows)
+                if "embeddings" in kwargs and kwargs["embeddings"]:
+                    embedding = kwargs["embeddings"][0]
+                    article_id = (
+                        int(kwargs["ids"][0]) if kwargs.get("ids") else len(stored_rows)
+                    )
                     # Update the stored row with the embedding
                     for row in stored_rows:
-                        if row['id'] == article_id:
-                            row['embedding'] = embedding
+                        if row["id"] == article_id:
+                            row["embedding"] = embedding
                             break
 
-            self.collection = SimpleNamespace(
-                add=mock_collection_add
-            )
+            self.collection = SimpleNamespace(add=mock_collection_add)
             self.embedding_model = StubEmbeddingModel()
 
         def close(self):
@@ -155,6 +169,7 @@ def _install_db_stubs(monkeypatch):
 
     # Patch create_database_service in the tools module
     import database.utils.migrated_database_utils as db_utils
+
     monkeypatch.setattr(db_utils, "create_database_service", mock_create_db_service)
     monkeypatch.setattr(tools, "log_feedback", lambda *args, **kwargs: None)
     monkeypatch.setattr(tools, "get_embedding_model", lambda: StubEmbeddingModel())
@@ -176,7 +191,9 @@ def test_save_article_inserts_metadata(monkeypatch, stage_b_metrics):
         "review_reasons": ["word_count_below_threshold"],
     }
 
-    result = tools.save_article("Sample content for embedding", metadata, embedding_model=StubEmbeddingModel())
+    result = tools.save_article(
+        "Sample content for embedding", metadata, embedding_model=StubEmbeddingModel()
+    )
 
     assert result["status"] == "success"
     assert result["article_id"] == 1
@@ -204,8 +221,12 @@ def test_save_article_detects_duplicates(monkeypatch, stage_b_metrics):
         "canonical": "https://example.com/path",
     }
 
-    first = tools.save_article("primary", metadata, embedding_model=StubEmbeddingModel())
-    second = tools.save_article("secondary", metadata, embedding_model=StubEmbeddingModel())
+    first = tools.save_article(
+        "primary", metadata, embedding_model=StubEmbeddingModel()
+    )
+    second = tools.save_article(
+        "secondary", metadata, embedding_model=StubEmbeddingModel()
+    )
 
     assert first["status"] == "success"
     assert second["status"] == "duplicate"
@@ -218,11 +239,18 @@ def test_save_article_detects_duplicates(monkeypatch, stage_b_metrics):
 def test_save_article_normalizes_on_duplicate_variants(monkeypatch, stage_b_metrics):
     stored_rows = _install_db_stubs(monkeypatch)
 
-    meta_one = {"url": "https://example.com/world/story/?utm_campaign=news", "canonical": None}
+    meta_one = {
+        "url": "https://example.com/world/story/?utm_campaign=news",
+        "canonical": None,
+    }
     meta_two = {"url": "https://example.com/world/story/#section"}
 
-    first = tools.save_article("content", meta_one, embedding_model=StubEmbeddingModel())
-    second = tools.save_article("content", meta_two, embedding_model=StubEmbeddingModel())
+    first = tools.save_article(
+        "content", meta_one, embedding_model=StubEmbeddingModel()
+    )
+    second = tools.save_article(
+        "content", meta_two, embedding_model=StubEmbeddingModel()
+    )
 
     assert first["status"] == "success"
     assert second["status"] == "duplicate"
@@ -264,10 +292,10 @@ def test_save_article_uses_per_call_connection(monkeypatch, stage_b_metrics):
             if qn.startswith("insert into articles"):
                 # pretend insert
                 self._lastrowid = len(stored_rows) + 1
-                stored_rows.append({'id': self._lastrowid})
+                stored_rows.append({"id": self._lastrowid})
                 self._result = None
             elif "select last_insert_id" in qn:
-                self._result = ((getattr(self, '_lastrowid', len(stored_rows)),),)
+                self._result = ((getattr(self, "_lastrowid", len(stored_rows)),),)
 
         def fetchone(self):
             if self._result:
@@ -298,14 +326,21 @@ def test_save_article_uses_per_call_connection(monkeypatch, stage_b_metrics):
         return MockDBServiceWithGetter()
 
     import database.utils.migrated_database_utils as db_utils
+
     monkeypatch.setattr(db_utils, "create_database_service", mock_create_db_service)
     monkeypatch.setattr(tools, "get_embedding_model", lambda: StubEmbeddingModel())
 
-    result = tools.save_article("content", {"url": "https://example.com/use-get-conn"}, embedding_model=StubEmbeddingModel())
+    result = tools.save_article(
+        "content",
+        {"url": "https://example.com/use-get-conn"},
+        embedding_model=StubEmbeddingModel(),
+    )
     assert result["status"] == "success"
 
 
-def test_save_article_works_with_shared_connection_buffered(monkeypatch, stage_b_metrics):
+def test_save_article_works_with_shared_connection_buffered(
+    monkeypatch, stage_b_metrics
+):
     """Simulate a shared connection that would raise 'Unread result found' when
     using unbuffered cursors — our code uses buffered cursors so this should succeed.
     """
@@ -319,19 +354,21 @@ def test_save_article_works_with_shared_connection_buffered(monkeypatch, stage_b
         def execute(self, query, params=None):
             qn = " ".join(query.split()).lower()
             # For SELECT queries we set a pending result
-            if qn.startswith("select id from articles where url_hash") or qn.startswith("select id from articles where normalized_url"):
+            if qn.startswith("select id from articles where url_hash") or qn.startswith(
+                "select id from articles where normalized_url"
+            ):
                 self.pending = True
                 # buffered cursor auto-consumes underlying results
                 if self.buffered:
                     self.pending = False
             elif qn.startswith("insert into articles"):
-                stored_rows.append({'id': len(stored_rows) + 1})
+                stored_rows.append({"id": len(stored_rows) + 1})
             elif "select last_insert_id" in qn:
                 self._result = ((len(stored_rows),),)
 
         def fetchone(self):
             # Return an id if available
-            if hasattr(self, '_result') and self._result:
+            if hasattr(self, "_result") and self._result:
                 return self._result[0]
             return None
 
@@ -363,8 +400,13 @@ def test_save_article_works_with_shared_connection_buffered(monkeypatch, stage_b
         return MockDBServiceShared()
 
     import database.utils.migrated_database_utils as db_utils
+
     monkeypatch.setattr(db_utils, "create_database_service", mock_create_db_service)
 
     # Should not raise and should mark success because code uses buffered cursors
-    res = tools.save_article("content", {"url": "https://example.com/shared"}, embedding_model=StubEmbeddingModel())
+    res = tools.save_article(
+        "content",
+        {"url": "https://example.com/shared"},
+        embedding_model=StubEmbeddingModel(),
+    )
     assert res["status"] == "success"

@@ -47,7 +47,9 @@ def test_queue_article_forwarding(monkeypatch):
         recorded["metadata"] = metadata
         return {"status": "success", "article_id": 42}
 
-    monkeypatch.setattr("agents.archive.ingest_pipeline.save_article", fake_save_article)
+    monkeypatch.setattr(
+        "agents.archive.ingest_pipeline.save_article", fake_save_article
+    )
 
     payload = _base_payload()
     result = queue_article(copy.deepcopy(payload))
@@ -71,7 +73,9 @@ def test_queue_article_falls_back_to_extracted_text(monkeypatch):
         captured["content"] = content
         return {"status": "success", "article_id": 77}
 
-    monkeypatch.setattr("agents.archive.ingest_pipeline.save_article", fake_save_article)
+    monkeypatch.setattr(
+        "agents.archive.ingest_pipeline.save_article", fake_save_article
+    )
 
     payload = _base_payload()
     payload.pop("cleaned_text", None)

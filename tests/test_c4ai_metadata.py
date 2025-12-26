@@ -48,6 +48,7 @@ def make_fake_crawl4ai():
     mod.AsyncWebCrawler = AsyncWebCrawler
     # CacheMode and CrawlerRunConfig are not needed by the fake but present for imports
     mod.CacheMode = types.SimpleNamespace(BYPASS=object())
+
     class CrawlerRunConfig:
         def __init__(self, **kwargs):
             pass
@@ -94,7 +95,9 @@ def test_crawl_includes_ua_proxy_and_modal(monkeypatch):
             return Proxy("socks5://1.2.3.4:1080")
 
     proxy_mod.ProxyManager = ProxyManager
-    monkeypatch.setitem(sys.modules, "agents.crawler.enhancements.proxy_manager", proxy_mod)
+    monkeypatch.setitem(
+        sys.modules, "agents.crawler.enhancements.proxy_manager", proxy_mod
+    )
 
     # Provide a fake modal handler that marks HTML as cleaned
     modal_mod = types.SimpleNamespace()
@@ -108,7 +111,9 @@ def test_crawl_includes_ua_proxy_and_modal(monkeypatch):
             return R(cleaned_html=html + "<!--MODAL_CLEANED-->")
 
     modal_mod.ModalHandler = ModalHandler
-    monkeypatch.setitem(sys.modules, "agents.crawler.enhancements.modal_handler", modal_mod)
+    monkeypatch.setitem(
+        sys.modules, "agents.crawler.enhancements.modal_handler", modal_mod
+    )
 
     # Fake paywall detector returning no paywall
     pw_mod = types.SimpleNamespace()
@@ -124,7 +129,9 @@ def test_crawl_includes_ua_proxy_and_modal(monkeypatch):
             return R()
 
     pw_mod.PaywallDetector = PaywallDetector
-    monkeypatch.setitem(sys.modules, "agents.crawler.enhancements.paywall_detector", pw_mod)
+    monkeypatch.setitem(
+        sys.modules, "agents.crawler.enhancements.paywall_detector", pw_mod
+    )
 
     # Provide crawler utils (record_paywall_detection, RobotsChecker, RateLimiter)
     utils_mod = types.SimpleNamespace()
@@ -160,7 +167,14 @@ def test_crawl_includes_ua_proxy_and_modal(monkeypatch):
 
     client = TestClient(server.app)
 
-    resp = client.post("/crawl", json={"urls": ["http://example.com/article"], "mode": "standard", "use_llm": True})
+    resp = client.post(
+        "/crawl",
+        json={
+            "urls": ["http://example.com/article"],
+            "mode": "standard",
+            "use_llm": True,
+        },
+    )
     assert resp.status_code == 200, resp.text
     data = resp.json()
     assert "results" in data and len(data["results"]) == 1

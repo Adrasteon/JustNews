@@ -1,12 +1,18 @@
-
-
-
 def _patch_crawler_init(monkeypatch):
     # Patch heavy or environment-dependent functions used during CrawlerEngine.__init__
-    monkeypatch.setattr('agents.crawler.crawler_engine.initialize_connection_pool', lambda: None)
-    monkeypatch.setattr('agents.crawler.crawler_engine.create_crawling_performance_table', lambda: None)
-    monkeypatch.setattr('agents.crawler.crawler_engine.get_performance_monitor', lambda: None)
-    monkeypatch.setattr('agents.crawler.crawler_engine.start_performance_monitoring', lambda interval_seconds=60: None)
+    monkeypatch.setattr(
+        "agents.crawler.crawler_engine.initialize_connection_pool", lambda: None
+    )
+    monkeypatch.setattr(
+        "agents.crawler.crawler_engine.create_crawling_performance_table", lambda: None
+    )
+    monkeypatch.setattr(
+        "agents.crawler.crawler_engine.get_performance_monitor", lambda: None
+    )
+    monkeypatch.setattr(
+        "agents.crawler.crawler_engine.start_performance_monitoring",
+        lambda interval_seconds=60: None,
+    )
 
 
 def test_build_hitl_payload_validates_against_candidate_event(monkeypatch):

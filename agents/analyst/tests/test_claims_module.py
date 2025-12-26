@@ -6,10 +6,10 @@ def test_extract_claims_heuristic():
     claims = extract_claims(text)
     assert isinstance(claims, list)
     assert len(claims) >= 1
-    assert any('released a new model' in c['claim_text'] for c in claims)
+    assert any("released a new model" in c["claim_text"] for c in claims)
 
 
 def test_extract_claims_empty():
-    claims = extract_claims('')
+    claims = extract_claims("")
     assert isinstance(claims, list)
     assert len(claims) == 0

@@ -17,20 +17,23 @@ def test_claim_job_and_lease_success(monkeypatch):
     # Ensure ALLOCATIONS reset
     ALLOCATIONS.clear()
 
-    cursor = make_cursor_with_status('pending')
+    cursor = make_cursor_with_status("pending")
     conn = MagicMock()
     conn.cursor.return_value = cursor
 
     fake_service = MagicMock()
     fake_service.mb_conn = conn
 
-    with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=fake_service):
+    with patch(
+        "agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service",
+        return_value=fake_service,
+    ):
         engine = GPUOrchestratorEngine(bootstrap_external_services=True)
 
-        res = engine.claim_job_and_lease('job-123', 'agent-test', min_memory_mb=0)
+        res = engine.claim_job_and_lease("job-123", "agent-test", min_memory_mb=0)
 
-        assert res.get('claimed') is True
-        token = res.get('token')
+        assert res.get("claimed") is True
+        token = res.get("token")
         assert token in ALLOCATIONS
 
         # Ensure DB interactions performed a status check and eventually committed.
@@ -39,19 +42,22 @@ def test_claim_job_and_lease_success(monkeypatch):
 
 
 def test_claim_job_and_lease_already_claimed(monkeypatch):
-    cursor = make_cursor_with_status('claimed')
+    cursor = make_cursor_with_status("claimed")
     conn = MagicMock()
     conn.cursor.return_value = cursor
 
     fake_service = MagicMock()
     fake_service.mb_conn = conn
 
-    with patch('agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service', return_value=fake_service):
+    with patch(
+        "agents.gpu_orchestrator.gpu_orchestrator_engine.create_database_service",
+        return_value=fake_service,
+    ):
         engine = GPUOrchestratorEngine(bootstrap_external_services=True)
-        res = engine.claim_job_and_lease('job-xyz', 'agent-test')
+        res = engine.claim_job_and_lease("job-xyz", "agent-test")
 
-        assert res.get('claimed') is False
-        assert res.get('reason') == 'not_pending'
+        assert res.get("claimed") is False
+        assert res.get("reason") == "not_pending"
         # No commit should be attempted when not pending and DB cursor should have been consulted.
         assert cursor.fetchone.called
         assert not conn.commit.called

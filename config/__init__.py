@@ -76,37 +76,61 @@ from .validation import (
 # Re-export key classes and functions for convenience
 __all__ = [
     # Schema / config exports
-    'JustNewsConfig', 'Environment', 'SystemConfig', 'MCPBusConfig',
-    'DatabaseConfig', 'CrawlingConfig', 'GPUConfig', 'AgentsConfig',
-    'TrainingConfig', 'SecurityConfig', 'MonitoringConfig',
-    'DataMinimizationConfig', 'PerformanceConfig', 'ExternalServicesConfig',
-    'create_default_config',
-
+    "JustNewsConfig",
+    "Environment",
+    "SystemConfig",
+    "MCPBusConfig",
+    "DatabaseConfig",
+    "CrawlingConfig",
+    "GPUConfig",
+    "AgentsConfig",
+    "TrainingConfig",
+    "SecurityConfig",
+    "MonitoringConfig",
+    "DataMinimizationConfig",
+    "PerformanceConfig",
+    "ExternalServicesConfig",
+    "create_default_config",
     # loader helpers
-    'load_config_from_file', 'save_config_to_file',
-
+    "load_config_from_file",
+    "save_config_to_file",
     # core manager / helpers
-    'ConfigurationManager', 'ConfigurationError', 'ConfigurationValidationError',
-    'ConfigurationNotFoundError', 'get_config_manager', 'get_config',
-    'get_system_config', 'get_database_config', 'get_gpu_config',
-    'get_crawling_config', 'is_production', 'is_debug_mode',
-
+    "ConfigurationManager",
+    "ConfigurationError",
+    "ConfigurationValidationError",
+    "ConfigurationNotFoundError",
+    "get_config_manager",
+    "get_config",
+    "get_system_config",
+    "get_database_config",
+    "get_gpu_config",
+    "get_crawling_config",
+    "is_production",
+    "is_debug_mode",
     # environments
-    'EnvironmentProfile', 'EnvironmentProfileManager', 'get_profile_manager',
-
+    "EnvironmentProfile",
+    "EnvironmentProfileManager",
+    "get_profile_manager",
     # validation
-    'ValidationResult', 'ConfigurationValidator', 'ConfigurationTester',
-    'ConfigurationMigrationValidator', 'validate_configuration_file',
-    'simulate_system_startup', 'benchmark_configuration',
-
+    "ValidationResult",
+    "ConfigurationValidator",
+    "ConfigurationTester",
+    "ConfigurationMigrationValidator",
+    "validate_configuration_file",
+    "simulate_system_startup",
+    "benchmark_configuration",
     # legacy migration
-    'LegacyConfigFile', 'MigrationPlan', 'LegacyConfigurationMigrator',
-    'discover_and_migrate_configs', 'create_legacy_compatibility_layer'
+    "LegacyConfigFile",
+    "MigrationPlan",
+    "LegacyConfigurationMigrator",
+    "discover_and_migrate_configs",
+    "create_legacy_compatibility_layer",
 ]
 
 # ============================================================================
 # QUICK START HELPERS
 # ============================================================================
+
 
 def quick_start_development() -> ConfigurationManager:
     """
@@ -118,6 +142,7 @@ def quick_start_development() -> ConfigurationManager:
     manager = ConfigurationManager(environment=Environment.DEVELOPMENT)
     return manager
 
+
 def quick_start_production() -> ConfigurationManager:
     """
     Quick start for production environment
@@ -127,6 +152,7 @@ def quick_start_production() -> ConfigurationManager:
     """
     manager = ConfigurationManager(environment=Environment.PRODUCTION)
     return manager
+
 
 def validate_current_setup() -> ValidationResult:
     """
@@ -145,14 +171,18 @@ def validate_current_setup() -> ValidationResult:
             errors=[f"Setup validation failed: {e}"],
             warnings=[],
             info=[],
-            duration_ms=0
+            duration_ms=0,
         )
+
 
 # ============================================================================
 # MIGRATION HELPERS
 # ============================================================================
 
-def migrate_from_legacy(dry_run: bool = True) -> tuple[MigrationPlan, ValidationResult | None]:
+
+def migrate_from_legacy(
+    dry_run: bool = True,
+) -> tuple[MigrationPlan, ValidationResult | None]:
     """
     Migrate from legacy configuration files
 
@@ -163,11 +193,10 @@ def migrate_from_legacy(dry_run: bool = True) -> tuple[MigrationPlan, Validation
         Tuple[MigrationPlan, Optional[ValidationResult]]: Migration plan and execution result
     """
     plan, result = discover_and_migrate_configs(
-        target_environment=Environment.DEVELOPMENT,
-        execute=not dry_run,
-        backup=True
+        target_environment=Environment.DEVELOPMENT, execute=not dry_run, backup=True
     )
     return plan, result
+
 
 # ============================================================================
 # VERSION INFORMATION
@@ -177,6 +206,7 @@ __version__ = "1.0.0"
 __description__ = "Unified Configuration System for JustNews"
 __author__ = "JustNews Team"
 
+
 def get_system_info() -> dict[str, Any]:
     """Get system configuration information"""
     try:
@@ -185,11 +215,10 @@ def get_system_info() -> dict[str, Any]:
             "version": __version__,
             "config_file": str(manager.config_file),
             "environment": manager.environment.value if manager.environment else None,
-            "last_load_time": manager._last_load_time.isoformat() if manager._last_load_time else None,
-            "config_hash": manager._config_hash
+            "last_load_time": manager._last_load_time.isoformat()
+            if manager._last_load_time
+            else None,
+            "config_hash": manager._config_hash,
         }
     except Exception as e:
-        return {
-            "error": f"Failed to get system info: {e}",
-            "version": __version__
-        }
+        return {"error": f"Failed to get system info: {e}", "version": __version__}

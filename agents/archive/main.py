@@ -42,9 +42,7 @@ class MCPBusClient:
         }
         try:
             response = requests.post(
-                f"{self.base_url}/register",
-                json=registration_data,
-                timeout=(2, 5)
+                f"{self.base_url}/register", json=registration_data, timeout=(2, 5)
             )
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
@@ -74,7 +72,7 @@ async def lifespan(app: FastAPI):
                 "queue_article",
                 "get_article_entities",
                 "search_knowledge_graph",
-                "link_entities"
+                "link_entities",
             ],
         )
         logger.info("Registered tools with MCP Bus.")
@@ -92,18 +90,20 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="JustNews Archive Service",
     description="Comprehensive article archiving with knowledge graph integration",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Register common endpoints
 try:
     from agents.common.shutdown import register_shutdown_endpoint
+
     register_shutdown_endpoint(app)
 except Exception:
     logger.debug("Shutdown endpoint not registered for archive")
 
 try:
     from agents.common.reload import register_reload_endpoint
+
     register_reload_endpoint(app)
 except Exception:
     logger.debug("Reload endpoint not registered for archive")
@@ -115,12 +115,14 @@ app.middleware("http")(metrics.request_middleware)
 # Pydantic models
 class ToolCall(BaseModel):
     """Standard MCP tool call format."""
+
     args: list[Any] = []
     kwargs: dict[str, Any] = {}
 
 
 class ArticleData(BaseModel):
     """Article data model."""
+
     url: str
     url_hash: str = ""
     domain: str
@@ -139,6 +141,7 @@ class ArticleData(BaseModel):
 
 class CrawlerResults(BaseModel):
     """Crawler results model."""
+
     multi_site_crawl: bool = False
     sites_crawled: int = 0
     total_articles: int = 0
@@ -164,6 +167,7 @@ def ready_endpoint():
 def get_metrics():
     """Prometheus metrics endpoint."""
     from fastapi.responses import Response
+
     return Response(metrics.get_metrics(), media_type="text/plain")
 
 
@@ -194,7 +198,9 @@ async def retrieve_article_endpoint(call: ToolCall):
 
         article = await retrieve_article(storage_key)
         if article is None:
-            raise HTTPException(status_code=404, detail=f"Article not found: {storage_key}")
+            raise HTTPException(
+                status_code=404, detail=f"Article not found: {storage_key}"
+            )
 
         return {"status": "success", "data": article}
 
@@ -270,7 +276,9 @@ def queue_article_endpoint(call: ToolCall):
             payload = call.kwargs
 
         if not isinstance(payload, dict):
-            raise HTTPException(status_code=400, detail="ingest payload must be provided")
+            raise HTTPException(
+                status_code=400, detail="ingest payload must be provided"
+            )
 
         result = queue_article(payload)
         return {"status": "success", "data": result}
@@ -313,7 +321,10 @@ async def search_knowledge_graph_endpoint(call: ToolCall):
             raise HTTPException(status_code=400, detail="query is required")
 
         results = await search_knowledge_graph(query)
-        return {"status": "success", "data": {"query": query, "results": results, "count": len(results)}}
+        return {
+            "status": "success",
+            "data": {"query": query, "results": results, "count": len(results)},
+        }
 
     except HTTPException:
         raise
@@ -351,7 +362,9 @@ async def api_health():
         return health_data
     except Exception as e:
         logger.error(f"Health check failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Health check failed: {str(e)}"
+        ) from e
 
 
 @app.get("/api/stats")
@@ -362,9 +375,12 @@ def api_stats():
         return stats
     except Exception as e:
         logger.error(f"Stats retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Stats retrieval failed: {str(e)}"
+        ) from e
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=ARCHIVE_AGENT_PORT)

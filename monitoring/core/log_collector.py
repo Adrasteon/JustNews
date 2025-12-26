@@ -20,6 +20,7 @@ from typing import Any
 
 class LogLevel(Enum):
     """Standardized log levels"""
+
     DEBUG = "DEBUG"
     INFO = "INFO"
     WARNING = "WARNING"
@@ -29,6 +30,7 @@ class LogLevel(Enum):
 
 class LogFormat(Enum):
     """Supported log formats"""
+
     JSON = "json"
     TEXT = "text"
     STRUCTURED = "structured"
@@ -37,6 +39,7 @@ class LogFormat(Enum):
 @dataclass
 class LogEntry:
     """Structured log entry"""
+
     timestamp: datetime
     level: LogLevel
     logger_name: str
@@ -64,18 +67,18 @@ class LogEntry:
         """Convert to dictionary for serialization"""
         data = asdict(self)
         # Convert enum to string
-        data['level'] = self.level.value
+        data["level"] = self.level.value
         # Convert datetime to ISO format
-        data['timestamp'] = self.timestamp.isoformat()
+        data["timestamp"] = self.timestamp.isoformat()
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'LogEntry':
+    def from_dict(cls, data: dict[str, Any]) -> "LogEntry":
         """Create from dictionary"""
         # Convert string back to enum
-        data['level'] = LogLevel(data['level'])
+        data["level"] = LogLevel(data["level"])
         # Convert ISO string back to datetime
-        data['timestamp'] = datetime.fromisoformat(data['timestamp'])
+        data["timestamp"] = datetime.fromisoformat(data["timestamp"])
         return cls(**data)
 
 
@@ -104,42 +107,43 @@ class LogCollector:
     def _get_default_config(self) -> dict[str, Any]:
         """Get default logging configuration"""
         return {
-            'log_level': 'INFO',
-            'format': 'json',
-            'console_output': True,
-            'file_output': True,
-            'file_path': f'logs/{self.agent_name}.log',
-            'max_file_size': 100 * 1024 * 1024,  # 100MB
-            'max_files': 5,
-            'buffer_size': 100,
-            'flush_interval': 5.0,
-            'enable_async': True,
-            'structured_fields': True
+            "log_level": "INFO",
+            "format": "json",
+            "console_output": True,
+            "file_output": True,
+            "file_path": f"logs/{self.agent_name}.log",
+            "max_file_size": 100 * 1024 * 1024,  # 100MB
+            "max_files": 5,
+            "buffer_size": 100,
+            "flush_interval": 5.0,
+            "enable_async": True,
+            "structured_fields": True,
         }
 
     def _setup_structured_logger(self) -> logging.Logger:
         """Setup structured logger with appropriate handlers"""
-        logger = logging.getLogger(f'justnews.{self.agent_name}')
-        logger.setLevel(getattr(logging, self.config['log_level']))
+        logger = logging.getLogger(f"justnews.{self.agent_name}")
+        logger.setLevel(getattr(logging, self.config["log_level"]))
 
         # Remove existing handlers to avoid duplicates
         for handler in logger.handlers[:]:
             logger.removeHandler(handler)
 
         # Add console handler if enabled
-        if self.config['console_output']:
+        if self.config["console_output"]:
             console_handler = logging.StreamHandler(sys.stdout)
             console_handler.setFormatter(self._get_formatter())
             logger.addHandler(console_handler)
 
         # Add file handler if enabled
-        if self.config['file_output']:
+        if self.config["file_output"]:
             from logging.handlers import RotatingFileHandler
-            os.makedirs(os.path.dirname(self.config['file_path']), exist_ok=True)
+
+            os.makedirs(os.path.dirname(self.config["file_path"]), exist_ok=True)
             file_handler = RotatingFileHandler(
-                self.config['file_path'],
-                maxBytes=self.config['max_file_size'],
-                backupCount=self.config['max_files']
+                self.config["file_path"],
+                maxBytes=self.config["max_file_size"],
+                backupCount=self.config["max_files"],
             )
             file_handler.setFormatter(self._get_formatter())
             logger.addHandler(file_handler)
@@ -148,18 +152,18 @@ class LogCollector:
 
     def _get_formatter(self) -> logging.Formatter:
         """Get appropriate formatter based on configuration"""
-        if self.config['format'] == 'json':
+        if self.config["format"] == "json":
             return StructuredJSONFormatter()
-        elif self.config['format'] == 'structured':
+        elif self.config["format"] == "structured":
             return StructuredTextFormatter()
         else:
             return logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
             )
 
     async def start(self) -> None:
         """Start the log collector"""
-        if self.config['enable_async']:
+        if self.config["enable_async"]:
             self._processing_task = asyncio.create_task(self._process_log_queue())
             # Schedule periodic flush
             asyncio.create_task(self._periodic_flush())
@@ -179,14 +183,14 @@ class LogCollector:
         entry = LogEntry(
             timestamp=datetime.now(UTC),
             level=level,
-            logger_name=f'justnews.{self.agent_name}',
+            logger_name=f"justnews.{self.agent_name}",
             message=message,
             agent_name=self.agent_name,
             agent_id=self.agent_id,
-            **kwargs
+            **kwargs,
         )
 
-        if self.config['enable_async']:
+        if self.config["enable_async"]:
             # Async logging - add to queue
             try:
                 self._log_queue.put_nowait(entry)
@@ -204,25 +208,24 @@ class LogCollector:
 
         # Create log record with structured data
         extra = entry.to_dict()
-        extra.pop('timestamp')  # Remove timestamp as it's handled by formatter
-        extra.pop('level')      # Remove level as it's handled by logging
-        extra.pop('logger_name')  # Remove logger_name as it's handled by logging
-        extra.pop('message')    # Remove message as it's handled by logging
+        extra.pop("timestamp")  # Remove timestamp as it's handled by formatter
+        extra.pop("level")  # Remove level as it's handled by logging
+        extra.pop("logger_name")  # Remove logger_name as it's handled by logging
+        extra.pop("message")  # Remove message as it's handled by logging
 
         self._structured_logger.log(log_level, entry.message, extra=extra)
 
     async def _process_log_queue(self) -> None:
         """Process log entries from the queue"""
         buffer = []
-        buffer_size = self.config['buffer_size']
+        buffer_size = self.config["buffer_size"]
 
         while not self._shutdown_event.is_set():
             try:
                 # Wait for log entry or timeout
                 try:
                     entry = await asyncio.wait_for(
-                        self._log_queue.get(),
-                        timeout=self.config['flush_interval']
+                        self._log_queue.get(), timeout=self.config["flush_interval"]
                     )
                     buffer.append(entry)
                 except TimeoutError:
@@ -279,7 +282,7 @@ class LogCollector:
     async def _periodic_flush(self) -> None:
         """Periodic flush task"""
         while not self._shutdown_event.is_set():
-            await asyncio.sleep(self.config['flush_interval'])
+            await asyncio.sleep(self.config["flush_interval"])
             await self._flush_logs()
 
     def add_log_handler(self, handler: Callable) -> None:
@@ -312,23 +315,36 @@ class LogCollector:
         """Log critical message"""
         self.log(LogLevel.CRITICAL, message, **kwargs)
 
-    def log_request(self, method: str, endpoint: str, status_code: int,
-                   duration_ms: float, **kwargs) -> None:
+    def log_request(
+        self, method: str, endpoint: str, status_code: int, duration_ms: float, **kwargs
+    ) -> None:
         """Log HTTP request"""
-        level = LogLevel.INFO if status_code < 400 else LogLevel.WARNING if status_code < 500 else LogLevel.ERROR
+        level = (
+            LogLevel.INFO
+            if status_code < 400
+            else LogLevel.WARNING
+            if status_code < 500
+            else LogLevel.ERROR
+        )
         self.log(level, f"{method} {endpoint} {status_code}", **kwargs)
 
     def log_error(self, error: Exception, **kwargs) -> None:
         """Log exception with context"""
-        self.log(LogLevel.ERROR, str(error),
-                error_type=type(error).__name__,
-                stack_trace=self._get_stack_trace(error),
-                **kwargs)
+        self.log(
+            LogLevel.ERROR,
+            str(error),
+            error_type=type(error).__name__,
+            stack_trace=self._get_stack_trace(error),
+            **kwargs,
+        )
 
     def _get_stack_trace(self, error: Exception) -> str:
         """Get formatted stack trace"""
         import traceback
-        return ''.join(traceback.format_exception(type(error), error, error.__traceback__))
+
+        return "".join(
+            traceback.format_exception(type(error), error, error.__traceback__)
+        )
 
 
 class StructuredJSONFormatter(logging.Formatter):
@@ -338,20 +354,38 @@ class StructuredJSONFormatter(logging.Formatter):
         """Format log record as JSON"""
         # Create base log entry
         log_entry = {
-            'timestamp': datetime.now(UTC).isoformat(),
-            'level': record.levelname,
-            'logger': record.name,
-            'message': record.getMessage()
+            "timestamp": datetime.now(UTC).isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
         }
 
         # Add extra fields
-        if hasattr(record, '__dict__'):
+        if hasattr(record, "__dict__"):
             for key, value in record.__dict__.items():
-                if key not in ['name', 'msg', 'args', 'levelname', 'levelno',
-                             'pathname', 'filename', 'module', 'exc_info',
-                             'exc_text', 'stack_info', 'lineno', 'funcName',
-                             'created', 'msecs', 'relativeCreated', 'thread',
-                             'threadName', 'processName', 'process', 'message']:
+                if key not in [
+                    "name",
+                    "msg",
+                    "args",
+                    "levelname",
+                    "levelno",
+                    "pathname",
+                    "filename",
+                    "module",
+                    "exc_info",
+                    "exc_text",
+                    "stack_info",
+                    "lineno",
+                    "funcName",
+                    "created",
+                    "msecs",
+                    "relativeCreated",
+                    "thread",
+                    "threadName",
+                    "processName",
+                    "process",
+                    "message",
+                ]:
                     log_entry[key] = value
 
         return json.dumps(log_entry, default=str)
@@ -372,13 +406,31 @@ class StructuredTextFormatter(logging.Formatter):
 
         # Add extra fields
         extra_fields = []
-        if hasattr(record, '__dict__'):
+        if hasattr(record, "__dict__"):
             for key, value in record.__dict__.items():
-                if key not in ['name', 'msg', 'args', 'levelname', 'levelno',
-                             'pathname', 'filename', 'module', 'exc_info',
-                             'exc_text', 'stack_info', 'lineno', 'funcName',
-                             'created', 'msecs', 'relativeCreated', 'thread',
-                             'threadName', 'processName', 'process', 'message']:
+                if key not in [
+                    "name",
+                    "msg",
+                    "args",
+                    "levelname",
+                    "levelno",
+                    "pathname",
+                    "filename",
+                    "module",
+                    "exc_info",
+                    "exc_text",
+                    "stack_info",
+                    "lineno",
+                    "funcName",
+                    "created",
+                    "msecs",
+                    "relativeCreated",
+                    "thread",
+                    "threadName",
+                    "processName",
+                    "process",
+                    "message",
+                ]:
                     extra_fields.append(f"{key}={value}")
 
         if extra_fields:
@@ -390,6 +442,7 @@ class StructuredTextFormatter(logging.Formatter):
 # Global log collector instance
 _default_collector: LogCollector | None = None
 
+
 def get_log_collector(agent_name: str) -> LogCollector:
     """Get or create log collector for an agent"""
     global _default_collector
@@ -399,7 +452,10 @@ def get_log_collector(agent_name: str) -> LogCollector:
 
     return _default_collector
 
-def init_logging_for_agent(agent_name: str, config: dict[str, Any] | None = None) -> LogCollector:
+
+def init_logging_for_agent(
+    agent_name: str, config: dict[str, Any] | None = None
+) -> LogCollector:
     """Initialize logging for a specific agent"""
     collector = LogCollector(agent_name, config)
     global _default_collector

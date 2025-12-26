@@ -47,11 +47,18 @@ class ClusterFetcher:
             from database.utils.migrated_database_utils import (
                 create_database_service as _create_db,
             )
+
             self.db_service = _create_db()
         else:
             self.db_service = db_service
 
-    def fetch_cluster(self, cluster_id: str | None = None, article_ids: list[str] | None = None, max_results: int = 50, dedupe: bool = True) -> list[ArticleRecord]:
+    def fetch_cluster(
+        self,
+        cluster_id: str | None = None,
+        article_ids: list[str] | None = None,
+        max_results: int = 50,
+        dedupe: bool = True,
+    ) -> list[ArticleRecord]:
         """
         Fetch normalized article records for a cluster id or list of article ids.
 
@@ -72,10 +79,18 @@ class ClusterFetcher:
             try:
                 repo = default_repository()
                 cluster_payload = repo.get_cluster(cluster_id)
-                member_articles = cluster_payload.get("cluster", {}).get("member_articles", [])
-                member_article_ids = [m.get("article_id") for m in member_articles if m.get("article_id")]
+                member_articles = cluster_payload.get("cluster", {}).get(
+                    "member_articles", []
+                )
+                member_article_ids = [
+                    m.get("article_id") for m in member_articles if m.get("article_id")
+                ]
             except Exception:
-                logger.debug("Transparency cluster not found or couldn't be loaded for cluster_id=%s", cluster_id, exc_info=True)
+                logger.debug(
+                    "Transparency cluster not found or couldn't be loaded for cluster_id=%s",
+                    cluster_id,
+                    exc_info=True,
+                )
 
         # If explicit article_ids are provided, they override cluster list
         if article_ids:
@@ -85,7 +100,9 @@ class ClusterFetcher:
 
         # If no ids, return empty list early
         if not id_list:
-            logger.info("No article ids provided or discovered for cluster_id=%s", cluster_id)
+            logger.info(
+                "No article ids provided or discovered for cluster_id=%s", cluster_id
+            )
             return []
 
         # Fetch each article from MariaDB
@@ -94,12 +111,17 @@ class ClusterFetcher:
             for aid in id_list[:max_results]:
                 try:
                     cursor = self.db_service.mb_conn.cursor(dictionary=True)
-                    cursor.execute("SELECT id, url, title, content, metadata FROM articles WHERE id = %s", (aid,))
+                    cursor.execute(
+                        "SELECT id, url, title, content, metadata FROM articles WHERE id = %s",
+                        (aid,),
+                    )
                     row = cursor.fetchone()
                     cursor.close()
                 except Exception:
                     # Fallback: if a DB error occurs, skip this id but continue
-                    logger.warning("Failed to fetch article %s from DB", aid, exc_info=True)
+                    logger.warning(
+                        "Failed to fetch article %s from DB", aid, exc_info=True
+                    )
                     continue
 
                 if not row:
@@ -143,7 +165,10 @@ class ClusterFetcher:
                     # If URL missing, try content dedupe
                     if not url:
                         # naive content-based dedupe using first N chars
-                        if not any((content_key == (ua.content or "").strip()[:512]) for ua in unique_articles):
+                        if not any(
+                            (content_key == (ua.content or "").strip()[:512])
+                            for ua in unique_articles
+                        ):
                             unique_articles.append(a)
             articles = unique_articles
 

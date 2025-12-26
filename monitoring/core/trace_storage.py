@@ -29,9 +29,11 @@ from .trace_collector import TraceData, TraceSpan
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class TraceQuery:
     """Represents a trace query with filters"""
+
     trace_id: str | None = None
     service_name: str | None = None
     agent_name: str | None = None
@@ -48,23 +50,28 @@ class TraceQuery:
     sort_by: str = "start_time"
     sort_order: str = "desc"  # "asc" or "desc"
 
+
 @dataclass
 class TraceQueryResult:
     """Result of a trace query"""
+
     traces: list[TraceData] = field(default_factory=list)
     total_count: int = 0
     query_time_ms: float = 0.0
     has_more: bool = False
 
+
 @dataclass
 class StorageStats:
     """Storage statistics"""
+
     total_traces: int = 0
     total_spans: int = 0
     storage_size_bytes: int = 0
     oldest_trace: datetime | None = None
     newest_trace: datetime | None = None
     retention_days: int = 30
+
 
 class TraceStorageBackend(ABC):
     """Abstract base class for trace storage backends"""
@@ -98,6 +105,7 @@ class TraceStorageBackend(ABC):
     async def cleanup(self, retention_days: int) -> int:
         """Clean up old traces beyond retention period"""
         pass
+
 
 class FileTraceStorage(TraceStorageBackend):
     """File-based trace storage for development and small deployments"""
@@ -135,7 +143,7 @@ class FileTraceStorage(TraceStorageBackend):
         """Save trace index to disk"""
         index_file = self.storage_path / "index.json"
         try:
-            with open(index_file, 'w') as f:
+            with open(index_file, "w") as f:
                 json.dump(self.trace_index, f, indent=2)
         except Exception as e:
             logger.error(f"Failed to save trace index: {e}")
@@ -149,20 +157,22 @@ class FileTraceStorage(TraceStorageBackend):
             trace_dict = trace_data.to_dict()
 
             # Write trace file
-            with open(trace_path, 'w') as f:
+            with open(trace_path, "w") as f:
                 json.dump(trace_dict, f, indent=2, default=str)
 
             # Update index
             self.trace_index[trace_data.trace_id] = {
-                'trace_id': trace_data.trace_id,
-                'start_time': trace_data.start_time.isoformat(),
-                'end_time': trace_data.end_time.isoformat() if trace_data.end_time else None,
-                'duration_ms': trace_data.duration_ms,
-                'service_count': trace_data.service_count,
-                'total_spans': trace_data.total_spans,
-                'error_count': trace_data.error_count,
-                'status': trace_data.status,
-                'file_path': str(trace_path)
+                "trace_id": trace_data.trace_id,
+                "start_time": trace_data.start_time.isoformat(),
+                "end_time": trace_data.end_time.isoformat()
+                if trace_data.end_time
+                else None,
+                "duration_ms": trace_data.duration_ms,
+                "service_count": trace_data.service_count,
+                "total_spans": trace_data.total_spans,
+                "error_count": trace_data.error_count,
+                "status": trace_data.status,
+                "file_path": str(trace_path),
             }
 
             self._save_index()
@@ -178,7 +188,7 @@ class FileTraceStorage(TraceStorageBackend):
             if trace_id not in self.trace_index:
                 return None
 
-            trace_path = Path(self.trace_index[trace_id]['file_path'])
+            trace_path = Path(self.trace_index[trace_id]["file_path"])
             if not trace_path.exists():
                 logger.warning(f"Trace file not found: {trace_path}")
                 return None
@@ -188,36 +198,40 @@ class FileTraceStorage(TraceStorageBackend):
 
             # Reconstruct TraceData from dict
             spans = []
-            for span_dict in trace_dict.get('spans', []):
+            for span_dict in trace_dict.get("spans", []):
                 span = TraceSpan(
-                    span_id=span_dict['span_id'],
-                    trace_id=span_dict['trace_id'],
-                    parent_span_id=span_dict.get('parent_span_id'),
-                    name=span_dict['name'],
-                    kind=span_dict['kind'],
-                    start_time=datetime.fromisoformat(span_dict['start_time']),
-                    end_time=datetime.fromisoformat(span_dict.get('end_time')) if span_dict.get('end_time') else None,
-                    duration_ms=span_dict.get('duration_ms'),
-                    status=span_dict['status'],
-                    attributes=span_dict['attributes'],
-                    events=span_dict['events'],
-                    service_name=span_dict['service_name'],
-                    agent_name=span_dict['agent_name'],
-                    operation=span_dict['operation']
+                    span_id=span_dict["span_id"],
+                    trace_id=span_dict["trace_id"],
+                    parent_span_id=span_dict.get("parent_span_id"),
+                    name=span_dict["name"],
+                    kind=span_dict["kind"],
+                    start_time=datetime.fromisoformat(span_dict["start_time"]),
+                    end_time=datetime.fromisoformat(span_dict.get("end_time"))
+                    if span_dict.get("end_time")
+                    else None,
+                    duration_ms=span_dict.get("duration_ms"),
+                    status=span_dict["status"],
+                    attributes=span_dict["attributes"],
+                    events=span_dict["events"],
+                    service_name=span_dict["service_name"],
+                    agent_name=span_dict["agent_name"],
+                    operation=span_dict["operation"],
                 )
                 spans.append(span)
 
             return TraceData(
-                trace_id=trace_dict['trace_id'],
-                root_span_id=trace_dict['root_span_id'],
+                trace_id=trace_dict["trace_id"],
+                root_span_id=trace_dict["root_span_id"],
                 spans=spans,
-                start_time=datetime.fromisoformat(trace_dict['start_time']),
-                end_time=datetime.fromisoformat(trace_dict.get('end_time')) if trace_dict.get('end_time') else None,
-                duration_ms=trace_dict.get('duration_ms'),
-                service_count=trace_dict['service_count'],
-                total_spans=trace_dict['total_spans'],
-                error_count=trace_dict['error_count'],
-                status=trace_dict['status']
+                start_time=datetime.fromisoformat(trace_dict["start_time"]),
+                end_time=datetime.fromisoformat(trace_dict.get("end_time"))
+                if trace_dict.get("end_time")
+                else None,
+                duration_ms=trace_dict.get("duration_ms"),
+                service_count=trace_dict["service_count"],
+                total_spans=trace_dict["total_spans"],
+                error_count=trace_dict["error_count"],
+                status=trace_dict["status"],
             )
 
         except Exception as e:
@@ -258,7 +272,7 @@ class FileTraceStorage(TraceStorageBackend):
                 traces=traces,
                 total_count=total_count,
                 query_time_ms=query_time,
-                has_more=end_idx < total_count
+                has_more=end_idx < total_count,
             )
 
         except Exception as e:
@@ -268,32 +282,38 @@ class FileTraceStorage(TraceStorageBackend):
     def _matches_query(self, trace_info: dict[str, Any], query: TraceQuery) -> bool:
         """Check if a trace matches the query filters"""
         # Trace ID filter
-        if query.trace_id and trace_info['trace_id'] != query.trace_id:
+        if query.trace_id and trace_info["trace_id"] != query.trace_id:
             return False
 
         # Time range filters
         if query.start_time:
-            trace_start = datetime.fromisoformat(trace_info['start_time'])
+            trace_start = datetime.fromisoformat(trace_info["start_time"])
             if trace_start < query.start_time:
                 return False
 
         if query.end_time:
-            trace_end = trace_info.get('end_time')
+            trace_end = trace_info.get("end_time")
             if trace_end:
                 trace_end = datetime.fromisoformat(trace_end)
                 if trace_end > query.end_time:
                     return False
 
         # Duration filters
-        if query.min_duration_ms and trace_info.get('duration_ms', 0) < query.min_duration_ms:
+        if (
+            query.min_duration_ms
+            and trace_info.get("duration_ms", 0) < query.min_duration_ms
+        ):
             return False
 
-        if query.max_duration_ms and trace_info.get('duration_ms', 0) > query.max_duration_ms:
+        if (
+            query.max_duration_ms
+            and trace_info.get("duration_ms", 0) > query.max_duration_ms
+        ):
             return False
 
         # Error filter
         if query.has_errors is not None:
-            has_errors = trace_info.get('error_count', 0) > 0
+            has_errors = trace_info.get("error_count", 0) > 0
             if has_errors != query.has_errors:
                 return False
 
@@ -305,13 +325,15 @@ class FileTraceStorage(TraceStorageBackend):
         """Sort traces based on query parameters"""
         if query.sort_by == "start_time":
             trace_ids.sort(
-                key=lambda tid: datetime.fromisoformat(self.trace_index[tid]['start_time']),
-                reverse=(query.sort_order == "desc")
+                key=lambda tid: datetime.fromisoformat(
+                    self.trace_index[tid]["start_time"]
+                ),
+                reverse=(query.sort_order == "desc"),
             )
         elif query.sort_by == "duration_ms":
             trace_ids.sort(
-                key=lambda tid: self.trace_index[tid].get('duration_ms', 0),
-                reverse=(query.sort_order == "desc")
+                key=lambda tid: self.trace_index[tid].get("duration_ms", 0),
+                reverse=(query.sort_order == "desc"),
             )
 
         return trace_ids
@@ -320,7 +342,7 @@ class FileTraceStorage(TraceStorageBackend):
         """Delete a trace"""
         try:
             if trace_id in self.trace_index:
-                trace_path = Path(self.trace_index[trace_id]['file_path'])
+                trace_path = Path(self.trace_index[trace_id]["file_path"])
                 if trace_path.exists():
                     os.remove(trace_path)
 
@@ -338,19 +360,21 @@ class FileTraceStorage(TraceStorageBackend):
         """Get storage statistics"""
         try:
             total_traces = len(self.trace_index)
-            total_spans = sum(info.get('total_spans', 0) for info in self.trace_index.values())
+            total_spans = sum(
+                info.get("total_spans", 0) for info in self.trace_index.values()
+            )
 
             # Calculate storage size
             storage_size = 0
             for info in self.trace_index.values():
-                trace_path = Path(info['file_path'])
+                trace_path = Path(info["file_path"])
                 if trace_path.exists():
                     storage_size += trace_path.stat().st_size
 
             # Find oldest/newest traces
             if self.trace_index:
                 start_times = [
-                    datetime.fromisoformat(info['start_time'])
+                    datetime.fromisoformat(info["start_time"])
                     for info in self.trace_index.values()
                 ]
                 oldest_trace = min(start_times)
@@ -364,7 +388,7 @@ class FileTraceStorage(TraceStorageBackend):
                 storage_size_bytes=storage_size,
                 oldest_trace=oldest_trace,
                 newest_trace=newest_trace,
-                retention_days=self.retention_days
+                retention_days=self.retention_days,
             )
 
         except Exception as e:
@@ -378,7 +402,7 @@ class FileTraceStorage(TraceStorageBackend):
             to_delete = []
 
             for trace_id, trace_info in self.trace_index.items():
-                trace_start = datetime.fromisoformat(trace_info['start_time'])
+                trace_start = datetime.fromisoformat(trace_info["start_time"])
                 if trace_start < cutoff_date:
                     to_delete.append(trace_id)
 
@@ -387,12 +411,15 @@ class FileTraceStorage(TraceStorageBackend):
                 if await self.delete_trace(trace_id):
                     deleted_count += 1
 
-            logger.info(f"Cleaned up {deleted_count} traces older than {retention_days} days")
+            logger.info(
+                f"Cleaned up {deleted_count} traces older than {retention_days} days"
+            )
             return deleted_count
 
         except Exception as e:
             logger.error(f"Failed to cleanup traces: {e}")
             return 0
+
 
 class TraceStorage:
     """
@@ -423,7 +450,9 @@ class TraceStorage:
                 if success:
                     return True
             except Exception as e:
-                logger.warning(f"Failed to store trace with backend {type(backend).__name__}: {e}")
+                logger.warning(
+                    f"Failed to store trace with backend {type(backend).__name__}: {e}"
+                )
                 continue
 
         logger.error(f"Failed to store trace {trace_data.trace_id} with any backend")
@@ -465,7 +494,7 @@ class TraceStorage:
             str(query.limit),
             str(query.offset),
             query.sort_by,
-            query.sort_order
+            query.sort_order,
         ]
         return "|".join(key_parts)
 
@@ -477,7 +506,9 @@ class TraceStorage:
                 if await backend.delete_trace(trace_id):
                     success_count += 1
             except Exception as e:
-                logger.warning(f"Failed to delete trace from backend {type(backend).__name__}: {e}")
+                logger.warning(
+                    f"Failed to delete trace from backend {type(backend).__name__}: {e}"
+                )
 
         return success_count > 0
 
@@ -494,7 +525,9 @@ class TraceStorage:
                 deleted = await backend.cleanup(retention)
                 total_deleted += deleted
             except Exception as e:
-                logger.warning(f"Failed to cleanup backend {type(backend).__name__}: {e}")
+                logger.warning(
+                    f"Failed to cleanup backend {type(backend).__name__}: {e}"
+                )
 
         return total_deleted
 
@@ -503,13 +536,17 @@ class TraceStorage:
         for backend in self.backends:
             try:
                 # Backend-specific optimization
-                if hasattr(backend, '_optimize'):
+                if hasattr(backend, "_optimize"):
                     await backend._optimize()
             except Exception as e:
-                logger.warning(f"Failed to optimize backend {type(backend).__name__}: {e}")
+                logger.warning(
+                    f"Failed to optimize backend {type(backend).__name__}: {e}"
+                )
+
 
 # Global storage instance
 _storage = None
+
 
 def get_trace_storage() -> TraceStorage:
     """Get or create global trace storage instance"""

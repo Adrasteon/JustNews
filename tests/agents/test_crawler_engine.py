@@ -22,35 +22,41 @@ class TestCrawlerEngine:
     @pytest.fixture
     def mock_site_config(self):
         """Create a mock SiteConfig for testing"""
-        return SiteConfig({
-            'id': 1,
-            'name': 'Test Site',
-            'domain': 'testsite.com',
-            'url': 'https://testsite.com',
-            'crawling_strategy': 'generic'
-        })
+        return SiteConfig(
+            {
+                "id": 1,
+                "name": "Test Site",
+                "domain": "testsite.com",
+                "url": "https://testsite.com",
+                "crawling_strategy": "generic",
+            }
+        )
 
     @pytest.fixture
     def mock_bbc_config(self):
         """Create a mock BBC SiteConfig for ultra-fast testing"""
-        return SiteConfig({
-            'id': 2,
-            'name': 'BBC News',
-            'domain': 'bbc.co.uk',
-            'url': 'https://bbc.co.uk/news',
-            'crawling_strategy': 'ultra_fast'
-        })
+        return SiteConfig(
+            {
+                "id": 2,
+                "name": "BBC News",
+                "domain": "bbc.co.uk",
+                "url": "https://bbc.co.uk/news",
+                "crawling_strategy": "ultra_fast",
+            }
+        )
 
     @pytest.fixture
     def mock_complex_config(self):
         """Create a mock complex site config for AI-enhanced testing"""
-        return SiteConfig({
-            'id': 3,
-            'name': 'New York Times',
-            'domain': 'nytimes.com',
-            'url': 'https://nytimes.com',
-            'crawling_strategy': 'ai_enhanced'
-        })
+        return SiteConfig(
+            {
+                "id": 3,
+                "name": "New York Times",
+                "domain": "nytimes.com",
+                "url": "https://nytimes.com",
+                "crawling_strategy": "ai_enhanced",
+            }
+        )
 
     @pytest_asyncio.fixture
     async def crawler_engine(self):
@@ -63,10 +69,11 @@ class TestCrawlerEngine:
     @pytest.mark.asyncio
     async def test_initialization(self):
         """Test CrawlerEngine initialization and component setup"""
-        with patch('agents.crawler.crawler_engine.initialize_connection_pool'), \
-             patch('agents.crawler.crawler_engine.create_crawling_performance_table'), \
-             patch('agents.crawler.crawler_engine.start_performance_monitoring'):
-
+        with (
+            patch("agents.crawler.crawler_engine.initialize_connection_pool"),
+            patch("agents.crawler.crawler_engine.create_crawling_performance_table"),
+            patch("agents.crawler.crawler_engine.start_performance_monitoring"),
+        ):
             engine = CrawlerEngine()
 
             # Test core components are initialized
@@ -100,11 +107,14 @@ class TestCrawlerEngine:
     @pytest.mark.asyncio
     async def test_async_context_manager(self):
         """Test async context manager functionality"""
-        with patch('agents.crawler.crawler_engine.initialize_connection_pool'), \
-             patch('agents.crawler.crawler_engine.create_crawling_performance_table'), \
-             patch('agents.crawler.crawler_engine.start_performance_monitoring'), \
-             patch('agents.crawler.crawler_engine.CrawlerEngine._cleanup_orphaned_processes') as mock_cleanup:
-
+        with (
+            patch("agents.crawler.crawler_engine.initialize_connection_pool"),
+            patch("agents.crawler.crawler_engine.create_crawling_performance_table"),
+            patch("agents.crawler.crawler_engine.start_performance_monitoring"),
+            patch(
+                "agents.crawler.crawler_engine.CrawlerEngine._cleanup_orphaned_processes"
+            ) as mock_cleanup,
+        ):
             async with CrawlerEngine() as engine:
                 assert isinstance(engine, CrawlerEngine)
                 # Engine should be usable within context
@@ -114,39 +124,54 @@ class TestCrawlerEngine:
             mock_cleanup.assert_called()
 
     @pytest.mark.asyncio
-    async def test_determine_optimal_strategy_ultra_fast_sites(self, crawler_engine, mock_bbc_config):
+    async def test_determine_optimal_strategy_ultra_fast_sites(
+        self, crawler_engine, mock_bbc_config
+    ):
         """Test strategy determination for ultra-fast sites"""
         # Test BBC domain gets ultra_fast strategy
         strategy = await crawler_engine._determine_optimal_strategy(mock_bbc_config)
         assert strategy == "ultra_fast"
 
     @pytest.mark.asyncio
-    async def test_determine_optimal_strategy_ai_enhanced_sites(self, crawler_engine, mock_complex_config):
+    async def test_determine_optimal_strategy_ai_enhanced_sites(
+        self, crawler_engine, mock_complex_config
+    ):
         """Test strategy determination for complex sites"""
         # Test NYT domain gets ai_enhanced strategy
         strategy = await crawler_engine._determine_optimal_strategy(mock_complex_config)
         assert strategy == "ai_enhanced"
 
     @pytest.mark.asyncio
-    async def test_determine_optimal_strategy_generic_default(self, crawler_engine, mock_site_config):
+    async def test_determine_optimal_strategy_generic_default(
+        self, crawler_engine, mock_site_config
+    ):
         """Test strategy determination defaults to generic"""
         strategy = await crawler_engine._determine_optimal_strategy(mock_site_config)
         assert strategy == "generic"
 
     @pytest.mark.asyncio
-    async def test_determine_optimal_strategy_performance_cache(self, crawler_engine, mock_site_config):
+    async def test_determine_optimal_strategy_performance_cache(
+        self, crawler_engine, mock_site_config
+    ):
         """Test strategy caching functionality"""
         # Mock performance history to trigger caching
-        with patch('agents.crawler.crawler_engine.get_source_performance_history', return_value=[
-            {"strategy_used": "ultra_fast", "articles_per_second": 10.0},
-            {"strategy_used": "generic", "articles_per_second": 2.0}
-        ]):
+        with patch(
+            "agents.crawler.crawler_engine.get_source_performance_history",
+            return_value=[
+                {"strategy_used": "ultra_fast", "articles_per_second": 10.0},
+                {"strategy_used": "generic", "articles_per_second": 2.0},
+            ],
+        ):
             # First call should cache the result
-            strategy1 = await crawler_engine._determine_optimal_strategy(mock_site_config)
+            strategy1 = await crawler_engine._determine_optimal_strategy(
+                mock_site_config
+            )
             assert strategy1 == "ultra_fast"
 
             # Second call should use cache
-            strategy2 = await crawler_engine._determine_optimal_strategy(mock_site_config)
+            strategy2 = await crawler_engine._determine_optimal_strategy(
+                mock_site_config
+            )
             assert strategy2 == "ultra_fast"
 
             # Verify cache was populated
@@ -158,40 +183,68 @@ class TestCrawlerEngine:
     async def test_crawl_ultra_fast_mode_bbc(self, crawler_engine, mock_bbc_config):
         """Test ultra-fast crawling mode for BBC"""
         mock_articles = [
-            {"title": "Test Article 1", "url": "https://bbc.co.uk/article1", "content": "Content 1"},
-            {"title": "Test Article 2", "url": "https://bbc.co.uk/article2", "content": "Content 2"}
+            {
+                "title": "Test Article 1",
+                "url": "https://bbc.co.uk/article1",
+                "content": "Content 1",
+            },
+            {
+                "title": "Test Article 2",
+                "url": "https://bbc.co.uk/article2",
+                "content": "Content 2",
+            },
         ]
 
-        with patch('agents.sites.bbc_crawler.UltraFastBBCCrawler') as mock_crawler_class, \
-             patch.object(crawler_engine, '_cleanup_orphaned_processes'):
-
+        with (
+            patch("agents.sites.bbc_crawler.UltraFastBBCCrawler") as mock_crawler_class,
+            patch.object(crawler_engine, "_cleanup_orphaned_processes"),
+        ):
             from unittest.mock import AsyncMock
+
             mock_crawler = Mock()
-            mock_crawler.run_ultra_fast_crawl = AsyncMock(return_value={"articles": mock_articles})
+            mock_crawler.run_ultra_fast_crawl = AsyncMock(
+                return_value={"articles": mock_articles}
+            )
             mock_crawler_class.return_value = mock_crawler
 
-            result = await crawler_engine._crawl_ultra_fast_mode(mock_bbc_config, max_articles=2)
+            result = await crawler_engine._crawl_ultra_fast_mode(
+                mock_bbc_config, max_articles=2
+            )
 
             assert result == mock_articles
             assert crawler_engine.performance_metrics["mode_usage"]["ultra_fast"] == 1
-            mock_crawler.run_ultra_fast_crawl.assert_called_once_with(2, skip_ingestion=True)
+            mock_crawler.run_ultra_fast_crawl.assert_called_once_with(
+                2, skip_ingestion=True
+            )
 
     @pytest.mark.asyncio
-    async def test_crawl_ultra_fast_mode_fallback(self, crawler_engine, mock_site_config):
+    async def test_crawl_ultra_fast_mode_fallback(
+        self, crawler_engine, mock_site_config
+    ):
         """Test ultra-fast mode fallback to generic for non-BBC sites"""
         mock_articles = [
-            {"title": "Test Article", "url": "https://testsite.com/article", "content": "Content"}
+            {
+                "title": "Test Article",
+                "url": "https://testsite.com/article",
+                "content": "Content",
+            }
         ]
 
-        with patch('agents.crawler.crawler_engine.GenericSiteCrawler') as mock_crawler_class, \
-             patch.object(crawler_engine, '_cleanup_orphaned_processes'):
-
+        with (
+            patch(
+                "agents.crawler.crawler_engine.GenericSiteCrawler"
+            ) as mock_crawler_class,
+            patch.object(crawler_engine, "_cleanup_orphaned_processes"),
+        ):
             from unittest.mock import AsyncMock
+
             mock_crawler = Mock()
             mock_crawler.crawl_site = AsyncMock(return_value=mock_articles)
             mock_crawler_class.return_value = mock_crawler
 
-            result = await crawler_engine._crawl_ultra_fast_mode(mock_site_config, max_articles=1)
+            result = await crawler_engine._crawl_ultra_fast_mode(
+                mock_site_config, max_articles=1
+            )
 
             assert result == mock_articles
             assert crawler_engine.performance_metrics["mode_usage"]["ultra_fast"] == 1
@@ -201,13 +254,22 @@ class TestCrawlerEngine:
     async def test_crawl_ai_enhanced_mode(self, crawler_engine, mock_complex_config):
         """Test AI-enhanced crawling mode"""
         mock_articles = [
-            {"title": "Test Article", "url": "https://nytimes.com/article", "content": "Content"}
+            {
+                "title": "Test Article",
+                "url": "https://nytimes.com/article",
+                "content": "Content",
+            }
         ]
 
-        with patch.object(crawler_engine, '_crawl_generic_mode', return_value=mock_articles) as mock_generic, \
-             patch.object(crawler_engine, '_cleanup_orphaned_processes'):
-
-            result = await crawler_engine._crawl_ai_enhanced_mode(mock_complex_config, max_articles=1)
+        with (
+            patch.object(
+                crawler_engine, "_crawl_generic_mode", return_value=mock_articles
+            ) as mock_generic,
+            patch.object(crawler_engine, "_cleanup_orphaned_processes"),
+        ):
+            result = await crawler_engine._crawl_ai_enhanced_mode(
+                mock_complex_config, max_articles=1
+            )
 
             assert result == mock_articles
             assert crawler_engine.performance_metrics["mode_usage"]["ai_enhanced"] == 1
@@ -217,18 +279,28 @@ class TestCrawlerEngine:
     async def test_crawl_generic_mode(self, crawler_engine, mock_site_config):
         """Test generic crawling mode"""
         mock_articles = [
-            {"title": "Test Article", "url": "https://testsite.com/article", "content": "Content"}
+            {
+                "title": "Test Article",
+                "url": "https://testsite.com/article",
+                "content": "Content",
+            }
         ]
 
-        with patch('agents.crawler.crawler_engine.GenericSiteCrawler') as mock_crawler_class, \
-             patch.object(crawler_engine, '_cleanup_orphaned_processes'):
-
+        with (
+            patch(
+                "agents.crawler.crawler_engine.GenericSiteCrawler"
+            ) as mock_crawler_class,
+            patch.object(crawler_engine, "_cleanup_orphaned_processes"),
+        ):
             from unittest.mock import AsyncMock
+
             mock_crawler = Mock()
             mock_crawler.crawl_site = AsyncMock(return_value=mock_articles)
             mock_crawler_class.return_value = mock_crawler
 
-            result = await crawler_engine._crawl_generic_mode(mock_site_config, max_articles=1)
+            result = await crawler_engine._crawl_generic_mode(
+                mock_site_config, max_articles=1
+            )
 
             assert result == mock_articles
             assert crawler_engine.performance_metrics["mode_usage"]["generic"] == 1
@@ -242,23 +314,36 @@ class TestCrawlerEngine:
         pass
 
     @pytest.mark.asyncio
-    async def test_crawl_with_profile_generic_fallback(self, crawler_engine, mock_site_config):
+    async def test_crawl_with_profile_generic_fallback(
+        self, crawler_engine, mock_site_config
+    ):
         """Test profile crawling falls back to generic"""
         mock_articles = [
-            {"title": "Test Article", "url": "https://testsite.com/article", "content": "Content"}
+            {
+                "title": "Test Article",
+                "url": "https://testsite.com/article",
+                "content": "Content",
+            }
         ]
         profile = {"engine": "generic"}
 
-        with patch.object(crawler_engine, '_crawl_generic_mode', return_value=mock_articles) as mock_generic, \
-             patch.object(crawler_engine, '_cleanup_orphaned_processes'):
-
-            result = await crawler_engine._crawl_with_profile(mock_site_config, profile, 3)
+        with (
+            patch.object(
+                crawler_engine, "_crawl_generic_mode", return_value=mock_articles
+            ) as mock_generic,
+            patch.object(crawler_engine, "_cleanup_orphaned_processes"),
+        ):
+            result = await crawler_engine._crawl_with_profile(
+                mock_site_config, profile, 3
+            )
 
             assert result == mock_articles
             mock_generic.assert_called_once_with(mock_site_config, 3)
 
     @pytest.mark.asyncio
-    async def test_crawl_with_profile_crawl4ai_import_error(self, crawler_engine, mock_site_config):
+    async def test_crawl_with_profile_crawl4ai_import_error(
+        self, crawler_engine, mock_site_config
+    ):
         """Test profile crawling handles Crawl4AI import error"""
         # This test is complex to mock due to relative imports inside functions
         # The fallback behavior is tested in test_crawl_with_profile_unknown_engine
@@ -270,10 +355,10 @@ class TestCrawlerEngine:
         article = {
             "title": "Test Article",
             "content": "This is a test article with substantial content for analysis that is definitely longer than 100 characters to trigger the AI analysis functionality properly.",
-            "url": "https://testsite.com/article"
+            "url": "https://testsite.com/article",
         }
 
-        with patch('agents.crawler.crawler_engine.call_analyst_tool') as mock_call:
+        with patch("agents.crawler.crawler_engine.call_analyst_tool") as mock_call:
             mock_call.side_effect = [
                 0.8,  # sentiment score
                 ["politics", "economy"],  # topics
@@ -286,8 +371,8 @@ class TestCrawlerEngine:
             assert result["ai_analysis_applied"] is True
 
             assert mock_call.call_count == 2
-            mock_call.assert_any_call('score_sentiment', article["content"])
-            mock_call.assert_any_call('extract_topics', article["content"])
+            mock_call.assert_any_call("score_sentiment", article["content"])
+            mock_call.assert_any_call("extract_topics", article["content"])
 
     @pytest.mark.asyncio
     async def test_apply_ai_analysis_short_content(self, crawler_engine):
@@ -295,10 +380,10 @@ class TestCrawlerEngine:
         article = {
             "title": "Test Article",
             "content": "Short",
-            "url": "https://testsite.com/article"
+            "url": "https://testsite.com/article",
         }
 
-        with patch('agents.crawler.crawler_engine.call_analyst_tool') as mock_call:
+        with patch("agents.crawler.crawler_engine.call_analyst_tool") as mock_call:
             result = await crawler_engine._apply_ai_analysis(article)
 
             # Should return article unchanged
@@ -311,10 +396,13 @@ class TestCrawlerEngine:
         article = {
             "title": "Test Article",
             "content": "This is a test article with substantial content for analysis.",
-            "url": "https://testsite.com/article"
+            "url": "https://testsite.com/article",
         }
 
-        with patch('agents.crawler.crawler_engine.call_analyst_tool', side_effect=Exception("Analysis failed")):
+        with patch(
+            "agents.crawler.crawler_engine.call_analyst_tool",
+            side_effect=Exception("Analysis failed"),
+        ):
             result = await crawler_engine._apply_ai_analysis(article)
 
             # Should return article without AI analysis
@@ -327,12 +415,21 @@ class TestCrawlerEngine:
     async def test_crawl_site_ultra_fast(self, crawler_engine, mock_bbc_config):
         """Test crawl_site with ultra_fast strategy"""
         mock_articles = [
-            {"title": "Test Article", "url": "https://bbc.co.uk/article", "content": "Content"}
+            {
+                "title": "Test Article",
+                "url": "https://bbc.co.uk/article",
+                "content": "Content",
+            }
         ]
 
-        with patch.object(crawler_engine, '_crawl_ultra_fast_mode', return_value=mock_articles) as mock_ultra_fast, \
-             patch.object(crawler_engine, '_determine_optimal_strategy', return_value='ultra_fast'):
-
+        with (
+            patch.object(
+                crawler_engine, "_crawl_ultra_fast_mode", return_value=mock_articles
+            ) as mock_ultra_fast,
+            patch.object(
+                crawler_engine, "_determine_optimal_strategy", return_value="ultra_fast"
+            ),
+        ):
             result = await crawler_engine.crawl_site(mock_bbc_config, max_articles=1)
 
             assert result == mock_articles
@@ -342,13 +439,26 @@ class TestCrawlerEngine:
     async def test_crawl_site_ai_enhanced(self, crawler_engine, mock_complex_config):
         """Test crawl_site with ai_enhanced strategy"""
         mock_articles = [
-            {"title": "Test Article", "url": "https://nytimes.com/article", "content": "Content"}
+            {
+                "title": "Test Article",
+                "url": "https://nytimes.com/article",
+                "content": "Content",
+            }
         ]
 
-        with patch.object(crawler_engine, '_crawl_ai_enhanced_mode', return_value=mock_articles) as mock_ai_enhanced, \
-             patch.object(crawler_engine, '_determine_optimal_strategy', return_value='ai_enhanced'):
-
-            result = await crawler_engine.crawl_site(mock_complex_config, max_articles=1)
+        with (
+            patch.object(
+                crawler_engine, "_crawl_ai_enhanced_mode", return_value=mock_articles
+            ) as mock_ai_enhanced,
+            patch.object(
+                crawler_engine,
+                "_determine_optimal_strategy",
+                return_value="ai_enhanced",
+            ),
+        ):
+            result = await crawler_engine.crawl_site(
+                mock_complex_config, max_articles=1
+            )
 
             assert result == mock_articles
             mock_ai_enhanced.assert_called_once_with(mock_complex_config, 1)
@@ -357,12 +467,21 @@ class TestCrawlerEngine:
     async def test_crawl_site_generic(self, crawler_engine, mock_site_config):
         """Test crawl_site with generic strategy"""
         mock_articles = [
-            {"title": "Test Article", "url": "https://testsite.com/article", "content": "Content"}
+            {
+                "title": "Test Article",
+                "url": "https://testsite.com/article",
+                "content": "Content",
+            }
         ]
 
-        with patch.object(crawler_engine, '_crawl_generic_mode', return_value=mock_articles) as mock_generic, \
-             patch.object(crawler_engine, '_determine_optimal_strategy', return_value='generic'):
-
+        with (
+            patch.object(
+                crawler_engine, "_crawl_generic_mode", return_value=mock_articles
+            ) as mock_generic,
+            patch.object(
+                crawler_engine, "_determine_optimal_strategy", return_value="generic"
+            ),
+        ):
             result = await crawler_engine.crawl_site(mock_site_config, max_articles=1)
 
             assert result == mock_articles
@@ -373,21 +492,30 @@ class TestCrawlerEngine:
         """Test basic multi-site crawling functionality"""
         site_configs = [mock_site_config]
         mock_articles = [
-            {"title": "Test Article", "url": "https://testsite.com/article", "content": "Content"}
+            {
+                "title": "Test Article",
+                "url": "https://testsite.com/article",
+                "content": "Content",
+            }
         ]
 
-        with patch.object(crawler_engine, 'crawl_site', return_value=mock_articles) as _mock_crawl_site, \
-             patch.object(crawler_engine, '_ingest_articles') as mock_ingest, \
-             patch.object(crawler_engine, '_cleanup_orphaned_processes'):
-
+        with (
+            patch.object(
+                crawler_engine, "crawl_site", return_value=mock_articles
+            ) as _mock_crawl_site,
+            patch.object(crawler_engine, "_ingest_articles") as mock_ingest,
+            patch.object(crawler_engine, "_cleanup_orphaned_processes"),
+        ):
             mock_ingest.return_value = {
-                'new_articles': 1,
-                'duplicates': 0,
-                'errors': 0,
-                'details': [{'url': 'https://testsite.com/article', 'status': 'new'}]
+                "new_articles": 1,
+                "duplicates": 0,
+                "errors": 0,
+                "details": [{"url": "https://testsite.com/article", "status": "new"}],
             }
 
-            result = await crawler_engine.crawl_multiple_sites(site_configs, max_articles_per_site=1)
+            result = await crawler_engine.crawl_multiple_sites(
+                site_configs, max_articles_per_site=1
+            )
 
             # Verify basic structure
             assert result["unified_crawl"] is True
@@ -409,49 +537,87 @@ class TestCrawlerEngine:
     async def test_crawl_multiple_sites_concurrent(self, crawler_engine):
         """Test concurrent multi-site crawling with semaphore"""
         site_configs = [
-            SiteConfig({'id': 1, 'name': 'Site 1', 'domain': 'site1.com', 'url': 'https://site1.com'}),
-            SiteConfig({'id': 2, 'name': 'Site 2', 'domain': 'site2.com', 'url': 'https://site2.com'}),
+            SiteConfig(
+                {
+                    "id": 1,
+                    "name": "Site 1",
+                    "domain": "site1.com",
+                    "url": "https://site1.com",
+                }
+            ),
+            SiteConfig(
+                {
+                    "id": 2,
+                    "name": "Site 2",
+                    "domain": "site2.com",
+                    "url": "https://site2.com",
+                }
+            ),
         ]
 
-        with patch.object(crawler_engine, 'crawl_site', return_value=[
-            {"title": "Article 1", "url": "https://site1.com/article", "content": "Content 1"}
-            ]) as mock_crawl_site, \
-             patch.object(crawler_engine, '_ingest_articles') as mock_ingest, \
-             patch.object(crawler_engine, '_cleanup_orphaned_processes'):
-
+        with (
+            patch.object(
+                crawler_engine,
+                "crawl_site",
+                return_value=[
+                    {
+                        "title": "Article 1",
+                        "url": "https://site1.com/article",
+                        "content": "Content 1",
+                    }
+                ],
+            ) as mock_crawl_site,
+            patch.object(crawler_engine, "_ingest_articles") as mock_ingest,
+            patch.object(crawler_engine, "_cleanup_orphaned_processes"),
+        ):
             mock_ingest.return_value = {
-                'new_articles': 1,
-                'duplicates': 0,
-                'errors': 0,
-                'details': [{'url': 'https://site1.com/article', 'status': 'new'}]
+                "new_articles": 1,
+                "duplicates": 0,
+                "errors": 0,
+                "details": [{"url": "https://site1.com/article", "status": "new"}],
             }
 
-            result = await crawler_engine.crawl_multiple_sites(site_configs, max_articles_per_site=1, concurrent_sites=2)
+            result = await crawler_engine.crawl_multiple_sites(
+                site_configs, max_articles_per_site=1, concurrent_sites=2
+            )
 
             assert result["sites_crawled"] == 2
             assert result["total_articles"] == 2
             assert mock_crawl_site.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_crawl_multiple_sites_with_duplicates(self, crawler_engine, mock_site_config):
+    async def test_crawl_multiple_sites_with_duplicates(
+        self, crawler_engine, mock_site_config
+    ):
         """Test handling of duplicate articles in multi-site crawling"""
         site_configs = [mock_site_config]
         mock_articles = [
-            {"title": "Test Article", "url": "https://testsite.com/article", "content": "Content"}
+            {
+                "title": "Test Article",
+                "url": "https://testsite.com/article",
+                "content": "Content",
+            }
         ]
 
-        with patch.object(crawler_engine, 'crawl_site', return_value=mock_articles) as _mock_crawl_site, \
-             patch.object(crawler_engine, '_ingest_articles') as mock_ingest, \
-             patch.object(crawler_engine, '_cleanup_orphaned_processes'):
-
+        with (
+            patch.object(
+                crawler_engine, "crawl_site", return_value=mock_articles
+            ) as _mock_crawl_site,
+            patch.object(crawler_engine, "_ingest_articles") as mock_ingest,
+            patch.object(crawler_engine, "_cleanup_orphaned_processes"),
+        ):
             mock_ingest.return_value = {
-                'new_articles': 0,
-                'duplicates': 1,
-                'errors': 0,
-                'details': [{'url': 'https://testsite.com/article', 'status': 'duplicate'}]
+                "new_articles": 0,
+                "duplicates": 1,
+                "errors": 0,
+                "details": [
+                    {"url": "https://testsite.com/article", "status": "duplicate"}
+                ],
             }
 
-            result = await crawler_engine.crawl_multiple_sites(site_configs, max_articles_per_site=1)
+            result = await crawler_engine.crawl_multiple_sites(
+                site_configs, max_articles_per_site=1
+            )
 
             assert result["total_articles"] == 0
             assert result["duplicates_skipped"] == 1
@@ -465,26 +631,32 @@ class TestCrawlerEngine:
                 "url": "https://testsite.com/article1",
                 "title": "Test Article 1",
                 "content": "Content 1",
-                "domain": "testsite.com"
+                "domain": "testsite.com",
             },
             {
                 "url": "https://testsite.com/article2",
                 "title": "Test Article 2",
                 "content": "Content 2",
-                "domain": "testsite.com"
-            }
+                "domain": "testsite.com",
+            },
         ]
 
         mock_response = Mock()
         mock_response.json.return_value = {
             "status": "ok",
-            "data": {"status": "ok", "duplicate": False}
+            "data": {"status": "ok", "duplicate": False},
         }
         mock_response.raise_for_status.return_value = None
 
-        with patch('agents.crawler.crawler_engine.requests.post', return_value=mock_response) as mock_post, \
-             patch('agents.crawler.crawler_engine.make_json_safe', side_effect=lambda x: x):
-
+        with (
+            patch(
+                "agents.crawler.crawler_engine.requests.post",
+                return_value=mock_response,
+            ) as mock_post,
+            patch(
+                "agents.crawler.crawler_engine.make_json_safe", side_effect=lambda x: x
+            ),
+        ):
             result = await crawler_engine._ingest_articles(articles)
 
             assert result["new_articles"] == 2
@@ -509,20 +681,26 @@ class TestCrawlerEngine:
                 "url": "https://testsite.com/article1",
                 "title": "Test Article 1",
                 "content": "Content 1",
-                "domain": "testsite.com"
+                "domain": "testsite.com",
             }
         ]
 
         mock_response = Mock()
         mock_response.json.return_value = {
             "status": "ok",
-            "data": {"status": "ok", "duplicate": True}
+            "data": {"status": "ok", "duplicate": True},
         }
         mock_response.raise_for_status.return_value = None
 
-        with patch('agents.crawler.crawler_engine.requests.post', return_value=mock_response) as _mock_post, \
-             patch('agents.crawler.crawler_engine.make_json_safe', side_effect=lambda x: x):
-
+        with (
+            patch(
+                "agents.crawler.crawler_engine.requests.post",
+                return_value=mock_response,
+            ) as _mock_post,
+            patch(
+                "agents.crawler.crawler_engine.make_json_safe", side_effect=lambda x: x
+            ),
+        ):
             result = await crawler_engine._ingest_articles(articles)
 
             assert result["new_articles"] == 0
@@ -538,13 +716,19 @@ class TestCrawlerEngine:
                 "url": "https://testsite.com/article1",
                 "title": "Test Article 1",
                 "content": "Content 1",
-                "domain": "testsite.com"
+                "domain": "testsite.com",
             }
         ]
 
-        with patch('agents.crawler.crawler_engine.requests.post', side_effect=Exception("Network error")) as _mock_post, \
-             patch('agents.crawler.crawler_engine.make_json_safe', side_effect=lambda x: x):
-
+        with (
+            patch(
+                "agents.crawler.crawler_engine.requests.post",
+                side_effect=Exception("Network error"),
+            ) as _mock_post,
+            patch(
+                "agents.crawler.crawler_engine.make_json_safe", side_effect=lambda x: x
+            ),
+        ):
             result = await crawler_engine._ingest_articles(articles)
 
             assert result["new_articles"] == 0
@@ -558,22 +742,37 @@ class TestCrawlerEngine:
         """Test run_unified_crawl main entry point"""
         domains = ["testsite.com"]
         mock_articles = [
-            {"title": "Test Article", "url": "https://testsite.com/article", "content": "Content"}
+            {
+                "title": "Test Article",
+                "url": "https://testsite.com/article",
+                "content": "Content",
+            }
         ]
 
-        with patch('agents.crawler.crawler_engine.get_sources_by_domain', return_value=[
-            {"id": 1, "name": "Test Site", "domain": "testsite.com", "url": "https://testsite.com"}
-        ]) as mock_get_sources, \
-             patch.object(crawler_engine, 'crawl_multiple_sites') as mock_crawl_multiple:
-
+        with (
+            patch(
+                "agents.crawler.crawler_engine.get_sources_by_domain",
+                return_value=[
+                    {
+                        "id": 1,
+                        "name": "Test Site",
+                        "domain": "testsite.com",
+                        "url": "https://testsite.com",
+                    }
+                ],
+            ) as mock_get_sources,
+            patch.object(crawler_engine, "crawl_multiple_sites") as mock_crawl_multiple,
+        ):
             mock_crawl_multiple.return_value = {
                 "unified_crawl": True,
                 "sites_crawled": 1,
                 "total_articles": 1,
-                "articles": mock_articles
+                "articles": mock_articles,
             }
 
-            result = await crawler_engine.run_unified_crawl(domains, max_articles_per_site=1)
+            result = await crawler_engine.run_unified_crawl(
+                domains, max_articles_per_site=1
+            )
 
             assert result["unified_crawl"] is True
             assert result["sites_crawled"] == 1
@@ -585,17 +784,22 @@ class TestCrawlerEngine:
         """Test run_unified_crawl with unknown domain creates basic config"""
         domains = ["unknownsite.com"]
 
-        with patch('agents.crawler.crawler_engine.get_sources_by_domain', return_value=[]) as mock_get_sources, \
-             patch.object(crawler_engine, 'crawl_multiple_sites') as mock_crawl_multiple:
-
+        with (
+            patch(
+                "agents.crawler.crawler_engine.get_sources_by_domain", return_value=[]
+            ) as mock_get_sources,
+            patch.object(crawler_engine, "crawl_multiple_sites") as mock_crawl_multiple,
+        ):
             mock_crawl_multiple.return_value = {
                 "unified_crawl": True,
                 "sites_crawled": 1,
                 "total_articles": 0,
-                "articles": []
+                "articles": [],
             }
 
-            result = await crawler_engine.run_unified_crawl(domains, max_articles_per_site=1)
+            result = await crawler_engine.run_unified_crawl(
+                domains, max_articles_per_site=1
+            )
 
             assert result["unified_crawl"] is True
             mock_get_sources.assert_called_once_with(["unknownsite.com"])
@@ -641,16 +845,23 @@ class TestCrawlerEngine:
     @pytest.mark.asyncio
     async def test_error_handling_crawl_failure(self, crawler_engine, mock_site_config):
         """Test error handling when crawling fails"""
-        with patch.object(crawler_engine, 'crawl_site', side_effect=Exception("Crawl failed")) as _mock_crawl_site, \
-             patch.object(crawler_engine, '_cleanup_orphaned_processes'):
-
-            result = await crawler_engine.crawl_multiple_sites([mock_site_config], max_articles_per_site=1)
+        with (
+            patch.object(
+                crawler_engine, "crawl_site", side_effect=Exception("Crawl failed")
+            ) as _mock_crawl_site,
+            patch.object(crawler_engine, "_cleanup_orphaned_processes"),
+        ):
+            result = await crawler_engine.crawl_multiple_sites(
+                [mock_site_config], max_articles_per_site=1
+            )
 
             # Should still return valid structure despite errors
             assert result["unified_crawl"] is True
             assert result["sites_crawled"] == 1
             assert result["total_articles"] == 0
-            assert result["ingestion_errors"] == 1  # Crawl failure is counted as ingestion error
+            assert (
+                result["ingestion_errors"] == 1
+            )  # Crawl failure is counted as ingestion error
             assert result["site_error_breakdown"]["testsite.com"] == 1
 
             # Performance metrics should reflect the error
@@ -659,18 +870,19 @@ class TestCrawlerEngine:
     @pytest.mark.asyncio
     async def test_cleanup_orphaned_processes(self, crawler_engine):
         """Test orphaned process cleanup functionality"""
-        with patch('subprocess.run') as mock_subprocess, \
-             patch('os.kill') as mock_kill, \
-             patch('time.sleep'):  # Prevent actual sleep
-
+        with (
+            patch("subprocess.run") as mock_subprocess,
+            patch("os.kill") as mock_kill,
+            patch("time.sleep"),
+        ):  # Prevent actual sleep
             # Mock pgrep finding processes and ps showing old processes
             def mock_run(*args, **kwargs):
-                if 'pgrep' in str(args[0]):
+                if "pgrep" in str(args[0]):
                     result = Mock()
                     result.returncode = 0
                     result.stdout = "1234\n5678\n"
                     return result
-                elif 'ps' in str(args[0]):
+                elif "ps" in str(args[0]):
                     result = Mock()
                     result.returncode = 0
                     result.stdout = "700"  # 700 seconds = 11+ minutes
@@ -685,48 +897,69 @@ class TestCrawlerEngine:
             assert mock_kill.call_count >= 2  # At least Chrome and Playwright processes
 
     @pytest.mark.asyncio
-    async def test_determine_strategy_with_performance_history(self, crawler_engine, mock_site_config):
+    async def test_determine_strategy_with_performance_history(
+        self, crawler_engine, mock_site_config
+    ):
         """Test strategy determination using performance history"""
         # Mock performance history with good ultra_fast performance
         crawler_engine.performance_history[mock_site_config.domain] = [
             {"strategy_used": "ultra_fast", "articles_per_second": 10.0},
-            {"strategy_used": "generic", "articles_per_second": 2.0}
+            {"strategy_used": "generic", "articles_per_second": 2.0},
         ]
 
-        with patch('agents.crawler.crawler_engine.get_source_performance_history', return_value=[
-            {"strategy_used": "ultra_fast", "articles_per_second": 10.0},
-            {"strategy_used": "generic", "articles_per_second": 2.0}
-        ]):
-
-            strategy = await crawler_engine._determine_optimal_strategy(mock_site_config)
+        with patch(
+            "agents.crawler.crawler_engine.get_source_performance_history",
+            return_value=[
+                {"strategy_used": "ultra_fast", "articles_per_second": 10.0},
+                {"strategy_used": "generic", "articles_per_second": 2.0},
+            ],
+        ):
+            strategy = await crawler_engine._determine_optimal_strategy(
+                mock_site_config
+            )
 
             # Should choose ultra_fast due to better performance
             assert strategy == "ultra_fast"
-            assert crawler_engine.strategy_cache[f"{mock_site_config.domain}_{mock_site_config.source_id}"] == "ultra_fast"
+            assert (
+                crawler_engine.strategy_cache[
+                    f"{mock_site_config.domain}_{mock_site_config.source_id}"
+                ]
+                == "ultra_fast"
+            )
 
     @pytest.mark.asyncio
-    async def test_crawl_with_profile_unknown_engine(self, crawler_engine, mock_site_config):
+    async def test_crawl_with_profile_unknown_engine(
+        self, crawler_engine, mock_site_config
+    ):
         """Test crawling with unknown profile engine falls back to generic"""
         profile = {"engine": "unknown_engine"}
 
-        with patch.object(crawler_engine, '_crawl_generic_mode') as mock_generic, \
-             patch.object(crawler_engine, '_cleanup_orphaned_processes'):
-
+        with (
+            patch.object(crawler_engine, "_crawl_generic_mode") as mock_generic,
+            patch.object(crawler_engine, "_cleanup_orphaned_processes"),
+        ):
             await crawler_engine._crawl_with_profile(mock_site_config, profile, 5)
 
             mock_generic.assert_called_once_with(mock_site_config, 5)
 
     @pytest.mark.asyncio
-    async def test_crawl_generic_mode_error_handling(self, crawler_engine, mock_site_config):
+    async def test_crawl_generic_mode_error_handling(
+        self, crawler_engine, mock_site_config
+    ):
         """Test generic mode handles crawling errors gracefully"""
-        with patch('agents.crawler.crawler_engine.GenericSiteCrawler') as mock_crawler_class, \
-             patch.object(crawler_engine, '_cleanup_orphaned_processes'):
-
+        with (
+            patch(
+                "agents.crawler.crawler_engine.GenericSiteCrawler"
+            ) as mock_crawler_class,
+            patch.object(crawler_engine, "_cleanup_orphaned_processes"),
+        ):
             mock_crawler = Mock()
             mock_crawler.crawl_site.side_effect = Exception("Crawling failed")
             mock_crawler_class.return_value = mock_crawler
 
-            result = await crawler_engine._crawl_generic_mode(mock_site_config, max_articles=5)
+            result = await crawler_engine._crawl_generic_mode(
+                mock_site_config, max_articles=5
+            )
 
             assert result == []  # Should return empty list on error
             # Performance metrics are not updated on error

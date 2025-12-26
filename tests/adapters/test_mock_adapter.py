@@ -29,7 +29,9 @@ def test_mock_adapter_custom_responses_and_config():
         default_text="Default:{prompt}:{count}",
         latency_seconds=0,
     )
-    adapter.load("model-x", config={"responses": {"bye": "Goodbye"}, "failure_prompts": ["fail"]})
+    adapter.load(
+        "model-x", config={"responses": {"bye": "Goodbye"}, "failure_prompts": ["fail"]}
+    )
     assert adapter.infer("hi")["text"] == "Hello hi"
     assert adapter.infer("bye")["text"] == "Goodbye"
     assert adapter.infer("unknown")["text"].startswith("Default:unknown")

@@ -13,6 +13,7 @@ class TestBaseModel:
 
     def test_base_model_initialization(self, mock_base_model):
         """Test BaseModel initialization"""
+
         # Create a test model class
         class TestModel(BaseModel):
             __tablename__ = "test_table"
@@ -33,6 +34,7 @@ class TestBaseModel:
 
     def test_create_table_sql(self, mock_base_model):
         """Test table creation SQL generation"""
+
         class TestModel(BaseModel):
             __tablename__ = "test_table"
 
@@ -52,6 +54,7 @@ class TestBaseModel:
 
     def test_save_method(self, mock_base_model, mock_pool):
         """Test save method"""
+
         class TestModel(BaseModel):
             __tablename__ = "test_table"
 
@@ -69,6 +72,7 @@ class TestBaseModel:
 
     def test_delete_method(self, mock_base_model, mock_pool):
         """Test delete method"""
+
         class TestModel(BaseModel):
             __tablename__ = "test_table"
 
@@ -85,6 +89,7 @@ class TestBaseModel:
 
     def test_filter_method(self, mock_base_model, mock_pool):
         """Test filter method"""
+
         class TestModel(BaseModel):
             __tablename__ = "test_table"
 
@@ -92,7 +97,9 @@ class TestBaseModel:
             name: str
 
         # Mock the execute_query method
-        mock_pool.execute_query = Mock(return_value=[{'id': 1, 'name': 'test1'}, {'id': 2, 'name': 'test2'}])
+        mock_pool.execute_query = Mock(
+            return_value=[{"id": 1, "name": "test1"}, {"id": 2, "name": "test2"}]
+        )
 
         results = TestModel.filter(name="test")
 
@@ -104,6 +111,7 @@ class TestBaseModel:
 
     def test_get_method(self, mock_base_model, mock_pool):
         """Test get method"""
+
         class TestModel(BaseModel):
             __tablename__ = "test_table"
 
@@ -111,7 +119,7 @@ class TestBaseModel:
             name: str
 
         # Mock the execute_query method
-        mock_pool.execute_query = Mock(return_value=[{'id': 1, 'name': 'test'}])
+        mock_pool.execute_query = Mock(return_value=[{"id": 1, "name": "test"}])
 
         result = TestModel.get(id=1)
 
@@ -123,6 +131,7 @@ class TestBaseModel:
 
     def test_get_method_not_found(self, mock_base_model, mock_pool):
         """Test get method when record not found"""
+
         class TestModel(BaseModel):
             __tablename__ = "test_table"
 
@@ -139,6 +148,7 @@ class TestBaseModel:
 
     def test_all_method(self, mock_base_model, mock_pool):
         """Test all method"""
+
         class TestModel(BaseModel):
             __tablename__ = "test_table"
 
@@ -146,7 +156,9 @@ class TestBaseModel:
             name: str
 
         # Mock the execute_query method
-        mock_pool.execute_query = Mock(return_value=[{'id': 1, 'name': 'test1'}, {'id': 2, 'name': 'test2'}])
+        mock_pool.execute_query = Mock(
+            return_value=[{"id": 1, "name": "test1"}, {"id": 2, "name": "test2"}]
+        )
 
         results = TestModel.all()
 
@@ -156,6 +168,7 @@ class TestBaseModel:
 
     def test_count_method(self, mock_base_model, mock_pool):
         """Test count method"""
+
         class TestModel(BaseModel):
             __tablename__ = "test_table"
 
@@ -163,7 +176,7 @@ class TestBaseModel:
             name: str
 
         # Mock the execute_query method
-        mock_pool.execute_query = Mock(return_value=[{'count': 42}])
+        mock_pool.execute_query = Mock(return_value=[{"count": 42}])
 
         count = TestModel.count()
 
@@ -172,6 +185,7 @@ class TestBaseModel:
 
     def test_exists_method(self, mock_base_model, mock_pool):
         """Test exists method"""
+
         class TestModel(BaseModel):
             __tablename__ = "test_table"
 
@@ -179,7 +193,7 @@ class TestBaseModel:
             name: str
 
         # Mock the execute_query method
-        mock_pool.execute_query = Mock(return_value=[{'id': 1}])
+        mock_pool.execute_query = Mock(return_value=[{"id": 1}])
 
         exists = TestModel.exists(id=1)
 
@@ -188,6 +202,7 @@ class TestBaseModel:
 
     def test_field_type_mapping(self, mock_base_model):
         """Test field type mapping"""
+
         class TestModel(BaseModel):
             __tablename__ = "test_table"
 
@@ -199,14 +214,15 @@ class TestBaseModel:
 
         # Test the type mapping
         mapping = TestModel._get_field_types()
-        assert mapping['int_field'] == 'INTEGER'
-        assert mapping['str_field'] == 'VARCHAR(255)'
-        assert mapping['bool_field'] == 'BOOLEAN'
-        assert mapping['float_field'] == 'DECIMAL(10,2)'
-        assert 'datetime_field' in mapping  # Should be TIMESTAMP
+        assert mapping["int_field"] == "INTEGER"
+        assert mapping["str_field"] == "VARCHAR(255)"
+        assert mapping["bool_field"] == "BOOLEAN"
+        assert mapping["float_field"] == "DECIMAL(10,2)"
+        assert "datetime_field" in mapping  # Should be TIMESTAMP
 
     def test_unique_constraints(self, mock_base_model):
         """Test unique constraints"""
+
         class TestModel(BaseModel):
             __tablename__ = "test_table"
 
@@ -221,6 +237,7 @@ class TestBaseModel:
 
     def test_primary_key_field(self, mock_base_model):
         """Test primary key field detection"""
+
         class TestModel(BaseModel):
             __tablename__ = "test_table"
 

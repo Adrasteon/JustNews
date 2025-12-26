@@ -4,6 +4,7 @@
 Reads draft JSON files from `output/canary_drafts/` and writes a published JSON
 to `output/canary_published/` including the final public URL (simulated).
 """
+
 from __future__ import annotations
 
 import hashlib

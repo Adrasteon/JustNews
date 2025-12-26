@@ -31,7 +31,7 @@ def get_fact(fact_id: str) -> dict:
         if payload["missing_assets"]:
             payload["integrity"] = {
                 "status": "degraded",
-                "missing_assets": payload["missing_assets"]
+                "missing_assets": payload["missing_assets"],
             }
         else:
             payload["integrity"] = {"status": "ok"}
@@ -48,7 +48,7 @@ def get_cluster(cluster_id: str) -> dict:
         if payload["missing_facts"]:
             payload["integrity"] = {
                 "status": "degraded",
-                "missing_facts": payload["missing_facts"]
+                "missing_facts": payload["missing_facts"],
             }
         else:
             payload["integrity"] = {"status": "ok"}

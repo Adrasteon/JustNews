@@ -44,7 +44,9 @@ def _build_stats(values: list[float]) -> dict[str, Any]:
     return stats
 
 
-def summarise_adaptive_articles(articles: Iterable[Mapping[str, Any]]) -> dict[str, Any] | None:
+def summarise_adaptive_articles(
+    articles: Iterable[Mapping[str, Any]],
+) -> dict[str, Any] | None:
     """Aggregate adaptive crawl telemetry from a sequence of articles.
 
     Parameters

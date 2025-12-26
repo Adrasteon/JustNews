@@ -4,6 +4,7 @@
 This is a convenience runner for local dev: it executes crawl -> normalize -> parse -> editorial -> publish
 and prints a short summary of metrics found in `output/metrics/canary_metrics.json`.
 """
+
 from __future__ import annotations
 
 from scripts.dev.canary_metrics import read_metrics, reset
@@ -16,7 +17,9 @@ from scripts.dev.publish_canary import main as publish_main
 
 def main():
     reset()
-    print("Starting canary full-run: crawl -> normalize -> parse -> editorial -> publish")
+    print(
+        "Starting canary full-run: crawl -> normalize -> parse -> editorial -> publish"
+    )
     c = crawl_main()
     print(f"Crawl results: {len(c)} items")
     n = normalize_main()

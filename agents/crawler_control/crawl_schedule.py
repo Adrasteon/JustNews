@@ -5,6 +5,7 @@ This module centralises validation and runtime helper logic for the
 so that the governance metadata can be inspected without duplicating YAML
 parsing logic across different entry-points.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -143,7 +144,9 @@ def _parse_run(item: dict[str, Any], defaults: GlobalScheduleConfig) -> CrawlRun
     cadence = _parse_cadence(cadence_data)
 
     priority = int(item.get("priority", 100))
-    max_articles = item.get("max_articles_per_site", defaults.default_max_articles_per_site)
+    max_articles = item.get(
+        "max_articles_per_site", defaults.default_max_articles_per_site
+    )
     concurrent_sites = item.get("concurrent_sites", defaults.default_concurrent_sites)
 
     return CrawlRun(
@@ -168,7 +171,9 @@ def load_crawl_schedule(path: Path) -> CrawlSchedule:
 
     defaults = GlobalScheduleConfig(
         target_articles_per_hour=int(global_data.get("target_articles_per_hour", 500)),
-        default_max_articles_per_site=int(global_data.get("default_max_articles_per_site", 25)),
+        default_max_articles_per_site=int(
+            global_data.get("default_max_articles_per_site", 25)
+        ),
         default_concurrent_sites=int(global_data.get("default_concurrent_sites", 3)),
         default_timeout_seconds=int(global_data.get("default_timeout_seconds", 480)),
         strategy=str(global_data.get("strategy", "auto")),
@@ -236,7 +241,9 @@ def load_crawl_schedule_from_sources(
     overrides = global_overrides or {}
     global_config = GlobalScheduleConfig(
         target_articles_per_hour=int(overrides.get("target_articles_per_hour", 500)),
-        default_max_articles_per_site=int(overrides.get("default_max_articles_per_site", 25)),
+        default_max_articles_per_site=int(
+            overrides.get("default_max_articles_per_site", 25)
+        ),
         default_concurrent_sites=int(overrides.get("default_concurrent_sites", 3)),
         default_timeout_seconds=int(overrides.get("default_timeout_seconds", 480)),
         strategy=str(overrides.get("strategy", "auto")),
@@ -249,7 +256,9 @@ def load_crawl_schedule_from_sources(
     minute_step = max(1, 60 // num_runs)
     for index in range(0, len(domains), chunk_size):
         chunk = domains[index : index + chunk_size]
-        cadence = CrawlCadence(every_hours=1, minute_offset=(index // chunk_size * minute_step) % 60)
+        cadence = CrawlCadence(
+            every_hours=1, minute_offset=(index // chunk_size * minute_step) % 60
+        )
         run = CrawlRun(
             name=f"database_sources_{index // chunk_size + 1}",
             domains=chunk,

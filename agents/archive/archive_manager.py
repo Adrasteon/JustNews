@@ -54,7 +54,9 @@ class _MetadataIndex:
     def __init__(self, storage_manager: _StorageManager):
         self._storage_manager = storage_manager
 
-    async def search_articles(self, query: str, filters: dict[str, Any] | None) -> list[str]:
+    async def search_articles(
+        self, query: str, filters: dict[str, Any] | None
+    ) -> list[str]:
         query = (query or "").strip().lower()
         filters = filters or {}
         if not query and not filters:
@@ -69,10 +71,14 @@ class _MetadataIndex:
         matches: list[str] = []
         file_paths = list(self._storage_manager.storage_path.glob("*.json"))
         for file_path in file_paths:
-            article = await asyncio.to_thread(self._storage_manager._read_json, file_path)
+            article = await asyncio.to_thread(
+                self._storage_manager._read_json, file_path
+            )
             if filters and not matches_filters(article):
                 continue
-            haystack = f"{article.get('title', '')} {article.get('content', '')}".lower()
+            haystack = (
+                f"{article.get('title', '')} {article.get('content', '')}".lower()
+            )
             if query and query not in haystack:
                 continue
             matches.append(file_path.stem)
@@ -85,9 +91,13 @@ class ArchiveManager:
     def __init__(self, storage_config: dict[str, Any]):
         self.storage_manager = _StorageManager(storage_config)
         self.metadata_index = _MetadataIndex(self.storage_manager)
-        logger.info("ArchiveManager ready; storage path: %s", self.storage_manager.storage_path)
+        logger.info(
+            "ArchiveManager ready; storage path: %s", self.storage_manager.storage_path
+        )
 
-    async def archive_from_crawler(self, crawler_results: dict[str, Any]) -> dict[str, Any]:
+    async def archive_from_crawler(
+        self, crawler_results: dict[str, Any]
+    ) -> dict[str, Any]:
         articles = crawler_results.get("articles") or []
         storage_keys: list[str] = []
         for article in articles:
@@ -101,7 +111,9 @@ class ArchiveManager:
                 "multi_site_crawl": crawler_results.get("multi_site_crawl", False),
                 "sites_crawled": crawler_results.get("sites_crawled", 0),
                 "total_articles": crawler_results.get("total_articles", len(articles)),
-                "processing_time_seconds": crawler_results.get("processing_time_seconds", 0.0),
+                "processing_time_seconds": crawler_results.get(
+                    "processing_time_seconds", 0.0
+                ),
                 "articles_per_second": crawler_results.get("articles_per_second", 0.0),
             },
         }

@@ -11,15 +11,20 @@ def _make_chroma_metadata_safe(metadata: dict[str, Any]) -> dict[str, Any]:
     # Minimal sanitize helper, reuse from other agents if needed
     safe = metadata.copy() if metadata is not None else {}
     # Add a marker for synthesized
-    safe.setdefault('is_synthesized', True)
+    safe.setdefault("is_synthesized", True)
     # Add embedding model metadata for traceability
     import os
-    model = os.environ.get('EMBEDDING_MODEL') or os.environ.get('SENTENCE_TRANSFORMER_MODEL') or 'all-MiniLM-L6-v2'
-    dims = os.environ.get('EMBEDDING_DIMENSIONS')
-    safe.setdefault('embedding_model', model)
+
+    model = (
+        os.environ.get("EMBEDDING_MODEL")
+        or os.environ.get("SENTENCE_TRANSFORMER_MODEL")
+        or "all-MiniLM-L6-v2"
+    )
+    dims = os.environ.get("EMBEDDING_DIMENSIONS")
+    safe.setdefault("embedding_model", model)
     if dims:
         try:
-            safe.setdefault('embedding_dimensions', int(dims))
+            safe.setdefault("embedding_dimensions", int(dims))
         except Exception:
             pass
     return safe
@@ -32,7 +37,7 @@ def save_synthesized_draft(
     summary: str | None = None,
     analysis_summary: dict[str, Any] | None = None,
     synth_metadata: dict[str, Any] | None = None,
-    persistence_mode: str = 'extend',
+    persistence_mode: str = "extend",
     embedding: list[float] | None = None,
 ) -> dict[str, Any]:
     """Persist synthesized draft either by extending articles (Option A) or as a SynthesizedArticle (Option B).
@@ -48,7 +53,7 @@ def save_synthesized_draft(
         conn = db_service.get_connection()
         cursor = conn.cursor()
 
-        if persistence_mode == 'extend':
+        if persistence_mode == "extend":
             # Create a new article row as a synthesized article
             insert_query = (
                 "INSERT INTO articles (title, content, summary, is_synthesized, metadata, created_at, updated_at)"
@@ -60,17 +65,21 @@ def save_synthesized_draft(
             last_id = cursor.lastrowid
             # Add to Chroma if embedding provided
             try:
-                if getattr(db_service, 'collection', None) and embedding is not None:
+                if getattr(db_service, "collection", None) and embedding is not None:
                     db_service.collection.add(
                         ids=[str(last_id)],
                         embeddings=[list(map(float, embedding))],
-                        metadatas=[_make_chroma_metadata_safe({'story_id': story_id, 'title': title})],
-                        documents=[body]
+                        metadatas=[
+                            _make_chroma_metadata_safe(
+                                {"story_id": story_id, "title": title}
+                            )
+                        ],
+                        documents=[body],
                     )
             except Exception:
                 logger.exception("Chroma add failed for synthesized article")
 
-            return {'status': 'success', 'id': last_id, 'mode': 'extend'}
+            return {"status": "success", "id": last_id, "mode": "extend"}
 
         else:
             # Option B: insert into synthesized_articles table
@@ -98,21 +107,25 @@ def save_synthesized_draft(
             last_id = cursor.lastrowid
 
             try:
-                if getattr(db_service, 'collection', None) and embedding is not None:
+                if getattr(db_service, "collection", None) and embedding is not None:
                     db_service.collection.add(
                         ids=[str(last_id)],
                         embeddings=[list(map(float, embedding))],
-                        metadatas=[_make_chroma_metadata_safe({'story_id': story_id, 'title': title})],
-                        documents=[body]
+                        metadatas=[
+                            _make_chroma_metadata_safe(
+                                {"story_id": story_id, "title": title}
+                            )
+                        ],
+                        documents=[body],
                     )
             except Exception:
                 logger.exception("Chroma add failed for synthesized article (option B)")
 
-            return {'status': 'success', 'id': last_id, 'mode': 'synthesized_articles'}
+            return {"status": "success", "id": last_id, "mode": "synthesized_articles"}
 
     except Exception as e:
         logger.exception("Failed to save synthesized draft: %s", e)
-        return {'status': 'error', 'error': str(e)}
+        return {"status": "error", "error": str(e)}
     finally:
         try:
             if cursor:

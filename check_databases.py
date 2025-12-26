@@ -12,6 +12,7 @@ import chromadb
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
+
 def check_mariadb():
     """Check MariaDB for ingested articles"""
     print("🔍 Checking MariaDB...")
@@ -26,8 +27,8 @@ def check_mariadb():
         service = create_database_service()
         stats = get_database_stats(service)
 
-        article_count = stats.get('mariadb', {}).get('articles', 0)
-        source_count = stats.get('mariadb', {}).get('sources', 0)
+        article_count = stats.get("mariadb", {}).get("articles", 0)
+        source_count = stats.get("mariadb", {}).get("sources", 0)
 
         print(f"📊 Articles in MariaDB: {article_count}")
         print(f"📰 Sources in MariaDB: {source_count}")
@@ -38,11 +39,11 @@ def check_mariadb():
 
             print("\n📝 Recent Articles:")
             for article in recent_articles:
-                article_id = article.get('id')
-                title = article.get('title', 'N/A')
-                url = article.get('url', 'N/A')
-                created_at = article.get('created_at')
-                analyzed = article.get('analyzed', False)
+                article_id = article.get("id")
+                title = article.get("title", "N/A")
+                url = article.get("url", "N/A")
+                created_at = article.get("created_at")
+                analyzed = article.get("analyzed", False)
                 status = "✅ Analyzed" if analyzed else "⏳ Pending"
                 print(f"  ID: {article_id}")
                 print(f"  Title: {title[:80]}{'...' if len(title) > 80 else ''}")
@@ -75,6 +76,7 @@ def check_mariadb():
         print(f"❌ MariaDB Error: {e}")
         return 0
 
+
 def check_chromadb():
     """Check ChromaDB for embeddings"""
     print("\n🔍 Checking ChromaDB...")
@@ -97,27 +99,37 @@ def check_chromadb():
 
             if count > 0:
                 # Get sample embeddings
-                results = coll.get(limit=3, include=['metadatas', 'documents'])
+                results = coll.get(limit=3, include=["metadatas", "documents"])
 
                 print("  Sample Documents:")
-                for i, (doc_id, metadata, document) in enumerate(zip(
-                    results['ids'],
-                    results['metadatas'],
-                    results['documents'],
-                    strict=True
-                )):
-                    print(f"    Document {i+1}:")
+                for i, (doc_id, metadata, document) in enumerate(
+                    zip(
+                        results["ids"],
+                        results["metadatas"],
+                        results["documents"],
+                        strict=True,
+                    )
+                ):
+                    print(f"    Document {i + 1}:")
                     print(f"      ID: {doc_id}")
-                    print(f"      Title: {metadata.get('title', 'N/A')[:60]}{'...' if len(metadata.get('title', '')) > 60 else ''}")
+                    print(
+                        f"      Title: {metadata.get('title', 'N/A')[:60]}{'...' if len(metadata.get('title', '')) > 60 else ''}"
+                    )
                     print(f"      URL: {metadata.get('url', 'N/A')}")
-                    print(f"      Content preview: {document[:100] if document else 'N/A'}...")
+                    print(
+                        f"      Content preview: {document[:100] if document else 'N/A'}..."
+                    )
                     print()
 
-        return len(collections), sum(coll.count() for coll in [client.get_collection(c.name) for c in collections])
+        return len(collections), sum(
+            coll.count()
+            for coll in [client.get_collection(c.name) for c in collections]
+        )
 
     except Exception as e:
         print(f"❌ ChromaDB Error: {e}")
         return 0, 0
+
 
 def cross_check_databases(mariadb_count, chroma_collections, chroma_docs):
     """Cross-check data between databases"""
@@ -146,6 +158,7 @@ def cross_check_databases(mariadb_count, chroma_collections, chroma_docs):
     else:
         print("❌ FAILURE: One or both databases empty")
 
+
 def main():
     """Main verification function"""
     print("🚀 JustNews Database Verification")
@@ -161,6 +174,7 @@ def main():
     cross_check_databases(mariadb_count, chroma_collections, chroma_docs)
 
     print("\n✨ Verification Complete!")
+
 
 if __name__ == "__main__":
     main()

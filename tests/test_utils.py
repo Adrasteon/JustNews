@@ -31,14 +31,13 @@ import pytest
 # ASYNC TESTING UTILITIES
 # ============================================================================
 
+
 class AsyncTestHelper:
     """Helper class for async testing patterns"""
 
     @staticmethod
     async def wait_for_condition(
-        condition_func: Callable[[], bool],
-        timeout: float = 5.0,
-        interval: float = 0.1
+        condition_func: Callable[[], bool], timeout: float = 5.0, interval: float = 0.1
     ) -> bool:
         """Wait for a condition to become true"""
         start_time = asyncio.get_event_loop().time()
@@ -52,7 +51,7 @@ class AsyncTestHelper:
     async def assert_eventually_true(
         condition_func: Callable[[], bool],
         timeout: float = 5.0,
-        message: str = "Condition never became true"
+        message: str = "Condition never became true",
     ):
         """Assert that a condition eventually becomes true"""
         result = await AsyncTestHelper.wait_for_condition(condition_func, timeout)
@@ -60,7 +59,7 @@ class AsyncTestHelper:
 
     @staticmethod
     async def measure_async_execution_time(
-        coro: Callable[[], Any]
+        coro: Callable[[], Any],
     ) -> tuple[Any, float]:
         """Measure execution time of an async function"""
         start_time = asyncio.get_event_loop().time()
@@ -82,6 +81,7 @@ async def async_test_timeout(timeout_seconds: float = 30.0):
 # MOCKING UTILITIES
 # ============================================================================
 
+
 class MockFactory:
     """Factory for creating comprehensive mocks"""
 
@@ -89,7 +89,7 @@ class MockFactory:
     def create_mock_agent(
         name: str,
         tools: list[str] | None = None,
-        responses: dict[str, Any] | None = None
+        responses: dict[str, Any] | None = None,
     ):
         """Create a mock agent for testing"""
 
@@ -118,23 +118,28 @@ class MockFactory:
                 self.agents = agents or {
                     "analyst": "http://localhost:8004",
                     "fact_checker": "http://localhost:8003",
-                    "synthesizer": "http://localhost:8005"
+                    "synthesizer": "http://localhost:8005",
                 }
                 self.calls = []
 
             def register_agent(self, registration: dict[str, Any]):
                 """Register an agent with minimal validation for integration tests."""
                 agent = registration.get("agent")
-                address = registration.get("address") or f"http://localhost:{registration.get('port', 0)}"
+                address = (
+                    registration.get("address")
+                    or f"http://localhost:{registration.get('port', 0)}"
+                )
                 if not agent:
                     return False
                 self.agents[agent] = address
-                self.calls.append({
-                    "action": "register_agent",
-                    "agent": agent,
-                    "address": address,
-                    "timestamp": time.time()
-                })
+                self.calls.append(
+                    {
+                        "action": "register_agent",
+                        "agent": agent,
+                        "address": address,
+                        "timestamp": time.time(),
+                    }
+                )
                 return True
 
             async def call_agent(self, agent: str, tool: str, **kwargs):
@@ -142,7 +147,7 @@ class MockFactory:
                     "agent": agent,
                     "tool": tool,
                     "kwargs": kwargs,
-                    "timestamp": time.time()
+                    "timestamp": time.time(),
                 }
                 self.calls.append(call_record)
 
@@ -153,10 +158,14 @@ class MockFactory:
                         "data": {
                             "sentiment": "neutral",
                             "confidence": 0.85,
-                            "scores": {"positive": 0.3, "neutral": 0.5, "negative": 0.2},
-                            "result": "mock_analyst_analyze_sentiment_result"
+                            "scores": {
+                                "positive": 0.3,
+                                "neutral": 0.5,
+                                "negative": 0.2,
+                            },
+                            "result": "mock_analyst_analyze_sentiment_result",
                         },
-                        "processing_time": 0.1
+                        "processing_time": 0.1,
                     }
                 elif agent == "analyst" and tool == "extract_entities":
                     return {
@@ -165,9 +174,9 @@ class MockFactory:
                             "entities": ["technology", "advancements", "innovation"],
                             "confidence": 0.88,
                             "entity_types": ["NOUN", "NOUN", "NOUN"],
-                            "result": "mock_analyst_extract_entities_result"
+                            "result": "mock_analyst_extract_entities_result",
                         },
-                        "processing_time": 0.12
+                        "processing_time": 0.12,
                     }
                 elif agent == "fact_checker" and tool == "verify_facts":
                     return {
@@ -176,9 +185,9 @@ class MockFactory:
                             "verdict": "verified",
                             "confidence": 0.92,
                             "sources_checked": 3,
-                            "result": "mock_fact_checker_verify_facts_result"
+                            "result": "mock_fact_checker_verify_facts_result",
                         },
-                        "processing_time": 0.15
+                        "processing_time": 0.15,
                     }
                 elif agent == "fact_checker" and tool == "assess_credibility":
                     return {
@@ -187,9 +196,9 @@ class MockFactory:
                             "credibility_score": 0.85,
                             "rating": "high",
                             "factors": ["reputable_source", "fact_checking_history"],
-                            "result": "mock_fact_checker_assess_credibility_result"
+                            "result": "mock_fact_checker_assess_credibility_result",
                         },
-                        "processing_time": 0.08
+                        "processing_time": 0.08,
                     }
                 elif agent == "synthesizer" and tool == "synthesize_summary":
                     return {
@@ -198,9 +207,9 @@ class MockFactory:
                             "summary": "This is a mock synthesized summary of the provided articles.",
                             "word_count": 12,
                             "topics_covered": ["technology", "news"],
-                            "result": "mock_synthesizer_synthesize_summary_result"
+                            "result": "mock_synthesizer_synthesize_summary_result",
                         },
-                        "processing_time": 0.2
+                        "processing_time": 0.2,
                     }
                 elif agent == "synthesizer" and tool == "extract_topics":
                     return {
@@ -209,19 +218,24 @@ class MockFactory:
                             "topics": ["technology", "innovation", "advancements"],
                             "topic_weights": [0.4, 0.3, 0.3],
                             "confidence": 0.76,
-                            "result": "mock_synthesizer_extract_topics_result"
+                            "result": "mock_synthesizer_extract_topics_result",
                         },
-                        "processing_time": 0.18
+                        "processing_time": 0.18,
                     }
                 elif agent == "mcp_bus" and tool == "list_agents":
                     return {
                         "status": "success",
                         "data": {
-                            "agents": ["analyst", "fact_checker", "synthesizer", "memory"],
+                            "agents": [
+                                "analyst",
+                                "fact_checker",
+                                "synthesizer",
+                                "memory",
+                            ],
                             "total_count": 4,
-                            "active_count": 4
+                            "active_count": 4,
                         },
-                        "processing_time": 0.05
+                        "processing_time": 0.05,
                     }
                 elif agent == "mcp_bus" and tool == "register_agent":
                     # Handle agent registration
@@ -234,22 +248,22 @@ class MockFactory:
                             "data": {
                                 "registered": True,
                                 "agent": name,
-                                "address": address
+                                "address": address,
                             },
-                            "processing_time": 0.02
+                            "processing_time": 0.02,
                         }
                     else:
                         return {
                             "status": "error",
                             "data": {"error": "Missing name or address"},
-                            "processing_time": 0.01
+                            "processing_time": 0.01,
                         }
                 else:
                     # Generic response
                     return {
                         "status": "success",
                         "data": {"result": f"mock_{agent}_{tool}_result"},
-                        "processing_time": 0.1
+                        "processing_time": 0.1,
                     }
 
             def get_call_history(self):
@@ -286,7 +300,7 @@ class MockFactory:
             async def fetch_all(self, query: str, *args):
                 return [
                     {"id": 1, "content": "article 1", "meta": {}},
-                    {"id": 2, "content": "article 2", "meta": {}}
+                    {"id": 2, "content": "article 2", "meta": {}},
                 ]
 
     @staticmethod
@@ -342,11 +356,14 @@ class MockFactory:
                 record = {"query": query, "params": params}
                 self.executed_queries.append(record)
                 # Return mock primary key if INSERT detected to satisfy integration tests
-                if isinstance(query, str) and query.strip().lower().startswith("insert"):
+                if isinstance(query, str) and query.strip().lower().startswith(
+                    "insert"
+                ):
                     return {"article_id": len(self.executed_queries)}
                 return {"status": "ok"}
 
         return MockDatabaseService()
+
 
 class TestDataGenerator:
     """Generate test data for various scenarios"""
@@ -357,21 +374,27 @@ class TestDataGenerator:
         articles = []
         sentiments = {
             "positive": ["great news", "excellent results", "successful outcome"],
-            "negative": ["concerning development", "serious issues", "problematic situation"],
-            "neutral": ["news update", "information release", "current events"]
+            "negative": [
+                "concerning development",
+                "serious issues",
+                "problematic situation",
+            ],
+            "neutral": ["news update", "information release", "current events"],
         }
 
         for i in range(count):
-            content = f"This is {sentiments[sentiment][i % len(sentiments[sentiment])]} article number {i+1}."
-            articles.append({
-                "id": f"article-{i+1}",
-                "content": content,
-                "meta": {
-                    "source": f"source-{i+1}",
-                    "timestamp": f"2024-01-{i+1:02d}T00:00:00Z",
-                    "sentiment": sentiment
+            content = f"This is {sentiments[sentiment][i % len(sentiments[sentiment])]} article number {i + 1}."
+            articles.append(
+                {
+                    "id": f"article-{i + 1}",
+                    "content": content,
+                    "meta": {
+                        "source": f"source-{i + 1}",
+                        "timestamp": f"2024-01-{i + 1:02d}T00:00:00Z",
+                        "sentiment": sentiment,
+                    },
                 }
-            })
+            )
 
         return articles
 
@@ -383,12 +406,14 @@ class TestDataGenerator:
         tools = ["analyze_sentiment", "verify_facts", "synthesize_summary"]
 
         for i in range(count):
-            payloads.append({
-                "agent": agents[i % len(agents)],
-                "tool": tools[i % len(tools)],
-                "args": ["test content"],
-                "kwargs": {"options": {"detailed": True}}
-            })
+            payloads.append(
+                {
+                    "agent": agents[i % len(agents)],
+                    "tool": tools[i % len(tools)],
+                    "args": ["test content"],
+                    "kwargs": {"options": {"detailed": True}},
+                }
+            )
 
         return payloads
 
@@ -396,6 +421,7 @@ class TestDataGenerator:
     def generate_performance_data(samples: int = 100) -> list[float]:
         """Generate performance timing data"""
         import random
+
         return [random.uniform(0.001, 0.1) for _ in range(samples)]
 
 
@@ -403,9 +429,11 @@ class TestDataGenerator:
 # PERFORMANCE TESTING
 # ============================================================================
 
+
 @dataclass
 class PerformanceMetrics:
     """Container for performance test results"""
+
     operation_name: str
     execution_times: list[float] = field(default_factory=list)
     memory_usage: list[float] = field(default_factory=list)
@@ -413,15 +441,19 @@ class PerformanceMetrics:
 
     @property
     def average_time(self) -> float:
-        return sum(self.execution_times) / len(self.execution_times) if self.execution_times else 0
+        return (
+            sum(self.execution_times) / len(self.execution_times)
+            if self.execution_times
+            else 0
+        )
 
     @property
     def median_time(self) -> float:
         sorted_times = sorted(self.execution_times)
         n = len(sorted_times)
         if n % 2 == 0:
-            return (sorted_times[n//2 - 1] + sorted_times[n//2]) / 2
-        return sorted_times[n//2]
+            return (sorted_times[n // 2 - 1] + sorted_times[n // 2]) / 2
+        return sorted_times[n // 2]
 
     @property
     def p95_time(self) -> float:
@@ -435,19 +467,22 @@ class PerformanceMetrics:
         self,
         max_average_time: float | None = None,
         max_p95_time: float | None = None,
-        min_success_rate: float = 0.95
+        min_success_rate: float = 0.95,
     ):
         """Assert that performance requirements are met"""
         if max_average_time:
-            assert self.average_time <= max_average_time, \
+            assert self.average_time <= max_average_time, (
                 f"Average time {self.average_time:.3f}s exceeds limit {max_average_time}s"
+            )
 
         if max_p95_time:
-            assert self.p95_time <= max_p95_time, \
+            assert self.p95_time <= max_p95_time, (
                 f"P95 time {self.p95_time:.3f}s exceeds limit {max_p95_time}s"
+            )
 
-        assert self.success_rate >= min_success_rate, \
+        assert self.success_rate >= min_success_rate, (
             f"Success rate {self.success_rate:.2%} below minimum {min_success_rate:.2%}"
+        )
 
 
 class PerformanceTester:
@@ -458,9 +493,7 @@ class PerformanceTester:
         self.metrics = PerformanceMetrics(operation_name)
 
     async def measure_async_operation(
-        self,
-        operation: Callable[[], Any],
-        iterations: int = 10
+        self, operation: Callable[[], Any], iterations: int = 10
     ) -> PerformanceMetrics:
         """Measure performance of async operation"""
         import time
@@ -473,14 +506,14 @@ class PerformanceTester:
                 self.metrics.execution_times.append(end_time - start_time)
             except Exception:
                 # Track failures
-                self.metrics.success_rate = (len(self.metrics.execution_times) / iterations)
+                self.metrics.success_rate = (
+                    len(self.metrics.execution_times) / iterations
+                )
 
         return self.metrics
 
     def measure_sync_operation(
-        self,
-        operation: Callable[[], Any],
-        iterations: int = 10
+        self, operation: Callable[[], Any], iterations: int = 10
     ) -> PerformanceMetrics:
         """Measure performance of sync operation"""
         import time
@@ -493,13 +526,15 @@ class PerformanceTester:
                 self.metrics.execution_times.append(end_time - start_time)
             except Exception:
                 # Track failures
-                self.metrics.success_rate = (len(self.metrics.execution_times) / iterations)
+                self.metrics.success_rate = (
+                    len(self.metrics.execution_times) / iterations
+                )
 
         return self.metrics
 
     def record_metric(self, name: str, value: float):
         """Record a custom metric"""
-        if not hasattr(self.metrics, 'custom_metrics'):
+        if not hasattr(self.metrics, "custom_metrics"):
             self.metrics.custom_metrics = {}
         if name not in self.metrics.custom_metrics:
             self.metrics.custom_metrics[name] = []
@@ -508,6 +543,7 @@ class PerformanceTester:
     async def start_monitoring(self):
         """Start a simple monitoring session (async)."""
         import time
+
         # reset metrics for a new monitoring session
         self.metrics.execution_times = []
         self._monitor_start = time.perf_counter()
@@ -515,14 +551,15 @@ class PerformanceTester:
     async def stop_monitoring(self) -> dict:
         """Stop monitoring and return a simple metrics summary."""
         # If we don't have any recorded times, provide conservative dummy metrics
-        exec_times = getattr(self.metrics, 'execution_times', [])
+        exec_times = getattr(self.metrics, "execution_times", [])
         if not exec_times:
             # Return reasonable defaults for tests (fast and high-throughput)
-            return {'avg_inference_time': 0.05, 'throughput': 10.0}
+            return {"avg_inference_time": 0.05, "throughput": 10.0}
 
         avg = sum(exec_times) / len(exec_times)
         throughput = len(exec_times) / (sum(exec_times) if sum(exec_times) > 0 else 1)
-        return {'avg_inference_time': avg, 'throughput': throughput}
+        return {"avg_inference_time": avg, "throughput": throughput}
+
 
 @contextmanager
 def temporary_directory():
@@ -537,7 +574,7 @@ def temporary_directory():
 @contextmanager
 def temporary_file(content: str = "", suffix: str = ".txt"):
     """Create a temporary file for testing"""
-    with tempfile.NamedTemporaryFile(mode='w', suffix=suffix, delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=suffix, delete=False) as f:
         f.write(content)
         temp_path = Path(f.name)
 
@@ -551,6 +588,7 @@ def temporary_file(content: str = "", suffix: str = ".txt"):
 # ASSERTION HELPERS
 # ============================================================================
 
+
 class CustomAssertions:
     """Custom assertion helpers for domain-specific testing"""
 
@@ -561,8 +599,9 @@ class CustomAssertions:
         for _field in required_fields:
             assert _field in response, f"MCP response missing required field: {_field}"
 
-        assert response["status"] in ["success", "error"], \
+        assert response["status"] in ["success", "error"], (
             f"Invalid status: {response['status']}"
+        )
 
     @staticmethod
     def assert_article_structure(article: dict):
@@ -576,37 +615,43 @@ class CustomAssertions:
 
     @staticmethod
     def assert_agent_call_recorded(
-        mock_bus,
-        agent: str,
-        tool: str,
-        expected_calls: int = 1
+        mock_bus, agent: str, tool: str, expected_calls: int = 1
     ):
         """Assert that agent call was recorded"""
-        calls = [call for call in mock_bus.calls
-                if call["agent"] == agent and call["tool"] == tool]
-        assert len(calls) == expected_calls, \
+        calls = [
+            call
+            for call in mock_bus.calls
+            if call["agent"] == agent and call["tool"] == tool
+        ]
+        assert len(calls) == expected_calls, (
             f"Expected {expected_calls} calls to {agent}.{tool}, got {len(calls)}"
+        )
 
     @staticmethod
     def assert_performance_within_limits(
-        execution_time: float,
-        max_time: float,
-        operation_name: str = "operation"
+        execution_time: float, max_time: float, operation_name: str = "operation"
     ):
         """Assert that execution time is within limits"""
-        assert execution_time <= max_time, \
+        assert execution_time <= max_time, (
             f"{operation_name} took {execution_time:.3f}s, limit was {max_time}s"
+        )
 
     @staticmethod
     def assert_valid_agent_registration(registration_data: dict):
         """Assert that agent registration data is valid"""
         required_fields = ["agent", "port", "capabilities"]
         for _field in required_fields:
-            assert _field in registration_data, f"Registration missing required field: {_field}"
+            assert _field in registration_data, (
+                f"Registration missing required field: {_field}"
+            )
 
         assert isinstance(registration_data["port"], int), "Port must be integer"
-        assert isinstance(registration_data["capabilities"], list), "Capabilities must be list"
-        assert len(registration_data["capabilities"]) > 0, "Must have at least one capability"
+        assert isinstance(registration_data["capabilities"], list), (
+            "Capabilities must be list"
+        )
+        assert len(registration_data["capabilities"]) > 0, (
+            "Must have at least one capability"
+        )
 
     @staticmethod
     def assert_valid_news_processing_result(result: dict[str, Any]):
@@ -623,8 +668,9 @@ class CustomAssertions:
 
         for _field, expected_type in required_fields.items():
             assert _field in result, f"Result missing required field: {_field}"
-            assert isinstance(result[_field], expected_type), \
+            assert isinstance(result[_field], expected_type), (
                 f"Field {_field} expected type {expected_type}, got {type(result[_field])}"
+            )
 
         assert result["summary"].strip(), "Summary cannot be empty"
         assert result["processing_time"] >= 0, "Processing time must be non-negative"
@@ -633,6 +679,7 @@ class CustomAssertions:
 # ============================================================================
 # INTEGRATION TESTING HELPERS
 # ============================================================================
+
 
 class IntegrationTestHelper:
     """Helpers for integration testing"""
@@ -646,10 +693,7 @@ class IntegrationTestHelper:
         yield
 
     @staticmethod
-    async def wait_for_service_ready(
-        service_url: str,
-        timeout: float = 10.0
-    ) -> bool:
+    async def wait_for_service_ready(service_url: str, timeout: float = 10.0) -> bool:
         """Wait for a service to be ready"""
         import aiohttp
 
@@ -675,6 +719,7 @@ class IntegrationTestHelper:
 # ============================================================================
 # TEST CONFIGURATION
 # ============================================================================
+
 
 class TestConfig:
     """Centralized test configuration"""
@@ -704,7 +749,7 @@ class TestConfig:
         timeouts = {
             "async": cls.ASYNC_TIMEOUT,
             "service": cls.SERVICE_READY_TIMEOUT,
-            "default": cls.DEFAULT_TIMEOUT
+            "default": cls.DEFAULT_TIMEOUT,
         }
         return timeouts.get(test_type, cls.DEFAULT_TIMEOUT)
 
@@ -712,4 +757,5 @@ class TestConfig:
     def is_gpu_available(cls) -> bool:
         """Check if GPU is available for testing"""
         import os
+
         return os.environ.get(cls.GPU_AVAILABLE, "false").lower() == "true"

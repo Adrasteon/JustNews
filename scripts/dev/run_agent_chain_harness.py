@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run the editorial agent-chain harness against normalized articles stored in MariaDB."""
+
 from __future__ import annotations
 
 import argparse
@@ -63,7 +64,11 @@ def main() -> None:
         "evaluated": len(results),
         "accepted": sum(not r.needs_followup for r in results),
         "needs_followup": sum(r.needs_followup for r in results),
-        "avg_acceptance": round(sum(r.acceptance_score for r in results) / len(results), 3) if results else 0.0,
+        "avg_acceptance": round(
+            sum(r.acceptance_score for r in results) / len(results), 3
+        )
+        if results
+        else 0.0,
     }
     print(json.dumps(summary, indent=2))
 

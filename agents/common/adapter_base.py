@@ -15,7 +15,9 @@ def _env_flag(name: str) -> bool:
 class AdapterError(RuntimeError):
     """Raised when an adapter encounters a fatal/handled error."""
 
-    def __init__(self, message: str, *, code: str | None = None, extra: dict | None = None) -> None:
+    def __init__(
+        self, message: str, *, code: str | None = None, extra: dict | None = None
+    ) -> None:
         super().__init__(message)
         self.code = code or message.split(":", 1)[0]
         self.extra = extra or {}
@@ -79,7 +81,11 @@ class BaseAdapter:
         # Avoid clobbering subclasses that do not call super().__init__ by using getattr defaults
         if not hasattr(self, "_loaded"):
             self._loaded = False
-        self._dry_run = bool(dry_run) if dry_run is not None else (_env_flag("MODEL_STORE_DRY_RUN") or _env_flag("DRY_RUN"))
+        self._dry_run = (
+            bool(dry_run)
+            if dry_run is not None
+            else (_env_flag("MODEL_STORE_DRY_RUN") or _env_flag("DRY_RUN"))
+        )
 
     # ------------------------------------------------------------------
     # Lifecycle helpers
@@ -102,9 +108,17 @@ class BaseAdapter:
 
     # ------------------------------------------------------------------
     # Result helpers
-    def build_result(self, *, text: str, tokens: int | dict[str, int] | None = None,
-                     latency: float | None = None, raw: Any | None = None) -> dict:
-        return AdapterResult(text=text, tokens=tokens, latency=latency, raw=raw).as_dict()
+    def build_result(
+        self,
+        *,
+        text: str,
+        tokens: int | dict[str, int] | None = None,
+        latency: float | None = None,
+        raw: Any | None = None,
+    ) -> dict:
+        return AdapterResult(
+            text=text, tokens=tokens, latency=latency, raw=raw
+        ).as_dict()
 
     # ------------------------------------------------------------------
     # Abstract contract -------------------------------------------------
@@ -123,7 +137,9 @@ class BaseAdapter:
         except NotImplementedError:
             meta = {}
         details = meta if isinstance(meta, dict) else {}
-        return AdapterHealth(loaded=self.is_loaded(), name=self.name, details=details).as_dict()
+        return AdapterHealth(
+            loaded=self.is_loaded(), name=self.name, details=details
+        ).as_dict()
 
     def unload(self) -> None:
         raise NotImplementedError()

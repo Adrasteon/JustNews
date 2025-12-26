@@ -63,8 +63,12 @@ logger = get_logger(__name__)
 SYNTHESIZER_AGENT_PORT: int = int(os.environ.get("SYNTHESIZER_AGENT_PORT", 8005))
 MCP_BUS_URL: str = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 EVIDENCE_AUDIT_BASE_URL: str | None = os.environ.get("EVIDENCE_AUDIT_BASE_URL")
-TRANSPARENCY_HEALTH_TIMEOUT: float = float(os.environ.get("TRANSPARENCY_HEALTH_TIMEOUT", "3.0"))
-TRANSPARENCY_AUDIT_REQUIRED: bool = os.environ.get("REQUIRE_TRANSPARENCY_AUDIT", "1") != "0"
+TRANSPARENCY_HEALTH_TIMEOUT: float = float(
+    os.environ.get("TRANSPARENCY_HEALTH_TIMEOUT", "3.0")
+)
+TRANSPARENCY_AUDIT_REQUIRED: bool = (
+    os.environ.get("REQUIRE_TRANSPARENCY_AUDIT", "1") != "0"
+)
 
 # Global engine instance
 synthesizer_engine: SynthesizerEngine | None = None
@@ -89,10 +93,7 @@ def generate_summary(text: str, max_length: int = 256) -> dict[str, Any]:
     # helper usable from both async and sync contexts. The detailed synthesis
     # endpoints provide richer summaries; this helper simply returns a trimmed
     # preview that callers can patch in tests.
-    return {
-        "summary": preview,
-        "truncated": len(text) > len(preview)
-    }
+    return {"summary": preview, "truncated": len(text) > len(preview)}
 
 
 class MCPBusClient:
@@ -101,14 +102,16 @@ class MCPBusClient:
     def __init__(self, base_url: str = MCP_BUS_URL) -> None:
         self.base_url = base_url
 
-    def register_agent(self, agent_name: str, agent_address: str, tools: list[str]) -> None:
+    def register_agent(
+        self, agent_name: str, agent_address: str, tools: list[str]
+    ) -> None:
         """Register an agent with the MCP bus."""
         import requests
 
         registration_data = {
             "name": agent_name,
             "address": agent_address,
-            "tools": tools
+            "tools": tools,
         }
         try:
             response = requests.post(
@@ -141,7 +144,9 @@ def check_transparency_gateway(
         response = requests.get(status_url, timeout=timeout)
         response.raise_for_status()
         payload: dict[str, Any] = response.json()
-    except Exception as exc:  # pragma: no cover - exercised in unit tests via monkeypatch
+    except (
+        Exception
+    ) as exc:  # pragma: no cover - exercised in unit tests via monkeypatch
         if required:
             raise RuntimeError(f"Transparency status request failed: {exc}") from exc
         logger.warning("Transparency status request failed: %s", exc)
@@ -188,9 +193,13 @@ async def lifespan(app: FastAPI):
             required=TRANSPARENCY_AUDIT_REQUIRED,
         )
         if transparency_gate_passed:
-            logger.info("🔍 Transparency gate satisfied; proceeding with synthesizer startup")
+            logger.info(
+                "🔍 Transparency gate satisfied; proceeding with synthesizer startup"
+            )
         else:
-            logger.warning("⚠️ Transparency gate not satisfied but audit requirement disabled; synthesizer will remain not-ready")
+            logger.warning(
+                "⚠️ Transparency gate not satisfied but audit requirement disabled; synthesizer will remain not-ready"
+            )
     except RuntimeError as exc:
         logger.error("Transparency audit check failed: %s", exc)
         synthesizer_engine = None
@@ -233,7 +242,7 @@ app = FastAPI(
     title="Synthesizer Agent",
     description="GPU-accelerated news article synthesis and clustering",
     version="3.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Initialize metrics
@@ -243,12 +252,14 @@ app.middleware("http")(metrics.request_middleware)
 # Register common endpoints
 try:
     from agents.common.shutdown import register_shutdown_endpoint
+
     register_shutdown_endpoint(app)
 except Exception:
     logger.debug("Shutdown endpoint not registered")
 
 try:
     from agents.common.reload import register_reload_endpoint
+
     register_reload_endpoint(app)
 except Exception:
     logger.debug("Reload endpoint not registered")
@@ -256,12 +267,14 @@ except Exception:
 
 class ToolCall(BaseModel):
     """Standard MCP tool call format."""
+
     args: list[Any] = []
     kwargs: dict[str, Any] = {}
 
 
 class SynthesisRequest(BaseModel):
     """Request model for synthesis operations."""
+
     articles: list[dict[str, Any]]
     max_clusters: int | None = 5
     context: str | None = "news analysis"
@@ -277,7 +290,9 @@ def health() -> dict[str, str]:
     if synthesizer_engine is None:
         raise HTTPException(status_code=503, detail="Engine not initialized")
     if not transparency_gate_passed:
-        raise HTTPException(status_code=503, detail="Transparency audit gateway not satisfied")
+        raise HTTPException(
+            status_code=503, detail="Transparency audit gateway not satisfied"
+        )
     return {"status": "ok", "engine": "ready", "transparency": "verified"}
 
 
@@ -316,22 +331,30 @@ async def cluster_articles_endpoint(call: ToolCall) -> Any:
 
     try:
         # Extract parameters
-        article_texts = call.args[0] if call.args else call.kwargs.get("article_texts", [])
+        article_texts = (
+            call.args[0] if call.args else call.kwargs.get("article_texts", [])
+        )
         n_clusters = call.kwargs.get("n_clusters", 2)
 
         if not article_texts:
             raise HTTPException(status_code=400, detail="No articles provided")
 
-        logger.info(f"🎯 Clustering {len(article_texts)} articles into {n_clusters} clusters")
+        logger.info(
+            f"🎯 Clustering {len(article_texts)} articles into {n_clusters} clusters"
+        )
 
-        result = await cluster_articles_tool(synthesizer_engine, article_texts, n_clusters)
+        result = await cluster_articles_tool(
+            synthesizer_engine, article_texts, n_clusters
+        )
         return result
 
     except HTTPException:
         raise
     except Exception as e:
         logger.exception("❌ Cluster articles failed")
-        raise HTTPException(status_code=500, detail=f"Clustering failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Clustering failed: {str(e)}"
+        ) from e
 
 
 @app.post("/neutralize_text")
@@ -355,7 +378,9 @@ async def neutralize_text_endpoint(call: ToolCall) -> Any:
         raise
     except Exception as e:
         logger.exception("❌ Neutralize text failed")
-        raise HTTPException(status_code=500, detail=f"Neutralization failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Neutralization failed: {str(e)}"
+        ) from e
 
 
 @app.post("/aggregate_cluster")
@@ -365,7 +390,9 @@ async def aggregate_cluster_endpoint(call: ToolCall) -> Any:
         raise HTTPException(status_code=503, detail="Engine not initialized")
 
     try:
-        article_texts = call.args[0] if call.args else call.kwargs.get("article_texts", [])
+        article_texts = (
+            call.args[0] if call.args else call.kwargs.get("article_texts", [])
+        )
 
         if not article_texts:
             raise HTTPException(status_code=400, detail="No articles provided")
@@ -379,11 +406,15 @@ async def aggregate_cluster_endpoint(call: ToolCall) -> Any:
         raise
     except Exception as e:
         logger.exception("❌ Aggregate cluster failed")
-        raise HTTPException(status_code=500, detail=f"Aggregation failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Aggregation failed: {str(e)}"
+        ) from e
 
 
 @app.post("/synthesize_news_articles_gpu")
-async def synthesize_news_articles_gpu_endpoint(request: SynthesisRequest) -> dict[str, Any]:
+async def synthesize_news_articles_gpu_endpoint(
+    request: SynthesisRequest,
+) -> dict[str, Any]:
     """GPU-accelerated news article synthesis endpoint."""
     if synthesizer_engine is None:
         raise HTTPException(status_code=503, detail="Engine not initialized")
@@ -392,14 +423,16 @@ async def synthesize_news_articles_gpu_endpoint(request: SynthesisRequest) -> di
         if not request.articles:
             raise HTTPException(status_code=400, detail="No articles provided")
 
-        logger.info(f"🚀 GPU synthesis: {len(request.articles)} articles, max_clusters={request.max_clusters}")
+        logger.info(
+            f"🚀 GPU synthesis: {len(request.articles)} articles, max_clusters={request.max_clusters}"
+        )
 
         result = await synthesize_gpu_tool(
             synthesizer_engine,
             request.articles,
             request.max_clusters,
             request.context,
-            cluster_id=request.cluster_id
+            cluster_id=request.cluster_id,
         )
         return result
 
@@ -407,7 +440,9 @@ async def synthesize_news_articles_gpu_endpoint(request: SynthesisRequest) -> di
         raise
     except Exception as e:
         logger.exception("❌ GPU synthesis failed")
-        raise HTTPException(status_code=500, detail=f"GPU synthesis failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"GPU synthesis failed: {str(e)}"
+        ) from e
 
 
 @app.post("/synthesize_and_publish")
@@ -426,21 +461,31 @@ async def synthesize_and_publish(request: SynthesisRequest) -> dict[str, Any]:
         cluster_id=request.cluster_id,
     )
 
-    if not result or not result.get('success'):
+    if not result or not result.get("success"):
         return {"status": "error", "error": "synthesis_failed", "details": result}
 
     # Critic check
     try:
         # Critic supports a sync API; use the async wrapper for thread-safety
         from agents.critic.tools import process_critique_request
-        critic_result = await process_critique_request(result.get('synthesis', ''), "synthesis")
+
+        critic_result = await process_critique_request(
+            result.get("synthesis", ""), "synthesis"
+        )
     except Exception:
         critic_result = {"error": "critic_failed"}
 
     # Draft fact-check (run always; publishing gate will decide enforcement)
     try:
         import agents.analyst.tools as _analyst_tools
-        draft_report = getattr(_analyst_tools, 'generate_analysis_report', lambda *a, **k: None)([result.get('synthesis', '')], article_ids=None, cluster_id=request.cluster_id)
+
+        draft_report = getattr(
+            _analyst_tools, "generate_analysis_report", lambda *a, **k: None
+        )(
+            [result.get("synthesis", "")],
+            article_ids=None,
+            cluster_id=request.cluster_id,
+        )
     except Exception:
         draft_report = None
 
@@ -448,47 +493,71 @@ async def synthesize_and_publish(request: SynthesisRequest) -> dict[str, Any]:
     cfg = get_config()
     # If system has a persistence preference, honor it.
     try:
-        persistence_mode = cfg.system.get('persistence', {}).get('synthesized_article_storage', 'extend')
+        persistence_mode = cfg.system.get("persistence", {}).get(
+            "synthesized_article_storage", "extend"
+        )
     except Exception:
-        persistence_mode = 'extend'
+        persistence_mode = "extend"
     publish_cfg = cfg.agents.publishing
     require_pass = bool(publish_cfg.require_draft_fact_check_pass_for_publish)
 
     # Determine draft fact-check status
     fact_status = None
     if isinstance(draft_report, dict):
-        per_article = draft_report.get('per_article', [])
+        per_article = draft_report.get("per_article", [])
         if per_article and isinstance(per_article, list):
-            sa = per_article[0].get('source_fact_check') if isinstance(per_article[0], dict) else None
-            fact_status = sa.get('fact_check_status') if isinstance(sa, dict) else None
+            sa = (
+                per_article[0].get("source_fact_check")
+                if isinstance(per_article[0], dict)
+                else None
+            )
+            fact_status = sa.get("fact_check_status") if isinstance(sa, dict) else None
         if not fact_status:
-            sfc = draft_report.get('source_fact_checks', [])
+            sfc = draft_report.get("source_fact_checks", [])
             if sfc and isinstance(sfc, list) and isinstance(sfc[0], dict):
-                fact_status = sfc[0].get('fact_check_status')
+                fact_status = sfc[0].get("fact_check_status")
 
     # Gate on fact-check pass if required
-    if require_pass and fact_status != 'passed':
-        return {"status": "error", "error": "draft_fact_check_failed", "analysis_report": draft_report, "critic_result": critic_result}
+    if require_pass and fact_status != "passed":
+        return {
+            "status": "error",
+            "error": "draft_fact_check_failed",
+            "analysis_report": draft_report,
+            "critic_result": critic_result,
+        }
 
     # Persist synthesized draft depending on persistence mode (best-effort)
     try:
         from .persistence import save_synthesized_draft
+
         # If we can compute an embedding, pass it; otherwise let save function handle None
         embedding = None
         try:
-            if synthesizer_engine and getattr(synthesizer_engine, 'embedding_model', None):
+            if synthesizer_engine and getattr(
+                synthesizer_engine, "embedding_model", None
+            ):
                 # compute embedding via sentence-transformers model
-                embedding = list(map(float, synthesizer_engine.embedding_model.encode(result.get('synthesis', ''))))
+                embedding = list(
+                    map(
+                        float,
+                        synthesizer_engine.embedding_model.encode(
+                            result.get("synthesis", "")
+                        ),
+                    )
+                )
         except Exception:
             embedding = None
 
         save_synthesized_draft(
-            story_id=request.story_id or f"synth_{request.cluster_id or 'manual'}_{int(datetime.now().timestamp())}",
-            title=result.get('title') or result.get('synthesis', '')[:200],
-            body=result.get('synthesis', ''),
-            summary=result.get('summary'),
-            analysis_summary=getattr(draft_report, 'analysis_summary', None) if draft_report else None,
-            synth_metadata={'critique': critic_result},
+            story_id=request.story_id
+            or f"synth_{request.cluster_id or 'manual'}_{int(datetime.now().timestamp())}",
+            title=result.get("title") or result.get("synthesis", "")[:200],
+            body=result.get("synthesis", ""),
+            summary=result.get("summary"),
+            analysis_summary=getattr(draft_report, "analysis_summary", None)
+            if draft_report
+            else None,
+            synth_metadata={"critique": critic_result},
             persistence_mode=persistence_mode,
             embedding=embedding,
         )
@@ -498,14 +567,27 @@ async def synthesize_and_publish(request: SynthesisRequest) -> dict[str, Any]:
 
     # Decide whether we need chief editor review
     if publish_cfg.chief_editor_review_required and not request.publish:
-        return {"status": "queued_for_review", "analysis_report": draft_report, "critic_result": critic_result}
+        return {
+            "status": "queued_for_review",
+            "analysis_report": draft_report,
+            "critic_result": critic_result,
+        }
 
     # Auto-publish via chief editor tool
     try:
         from agents.chief_editor.tools import publish_story
-        story_id = request.story_id or f"synth_{request.cluster_id or 'manual'}_{int(datetime.now().timestamp())}"
+
+        story_id = (
+            request.story_id
+            or f"synth_{request.cluster_id or 'manual'}_{int(datetime.now().timestamp())}"
+        )
         publish_result = publish_story(story_id)
-        return {"status": publish_result.get('status', 'published'), "story_id": publish_result.get('story_id', story_id), "analysis_report": draft_report, "critic_result": critic_result}
+        return {
+            "status": publish_result.get("status", "published"),
+            "story_id": publish_result.get("story_id", story_id),
+            "analysis_report": draft_report,
+            "critic_result": critic_result,
+        }
     except Exception as e:
         logger.exception("Publish failed")
         return {"status": "error", "error": "publish_failed", "details": str(e)}
@@ -526,13 +608,16 @@ async def get_synthesizer_performance_endpoint(call: ToolCall) -> dict[str, Any]
         return result
     except Exception as e:
         logger.exception("❌ Performance stats failed")
-        raise HTTPException(status_code=500, detail=f"Performance stats failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Performance stats failed: {str(e)}"
+        ) from e
 
 
 @app.post("/api/v1/articles/synthesize")
 async def synthesize_article_job(request: SynthesisRequest):
     """Kick off an asynchronous synthesis job and return a job_id for status checks."""
     import uuid
+
     if synthesizer_engine is None:
         raise HTTPException(status_code=503, detail="Engine not initialized")
     job_id = str(uuid.uuid4())
@@ -554,6 +639,7 @@ async def synthesize_article_job(request: SynthesisRequest):
 
     # Fire-and-forget background task
     import asyncio
+
     asyncio.create_task(_run_job(job_id))
     return {"job_id": job_id}
 
@@ -564,7 +650,6 @@ async def get_synthesis_job(job_id: str):
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
-
 
 
 # Health and stats endpoints

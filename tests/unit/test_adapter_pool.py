@@ -3,9 +3,11 @@ import importlib.util
 
 def test_adapter_pool_spawn(tmp_path, monkeypatch):
     # run workers in test mode for a very short hold time to ensure script path is sound
-    monkeypatch.setenv('RE_RANKER_TEST_MODE', '1')
+    monkeypatch.setenv("RE_RANKER_TEST_MODE", "1")
 
-    spec = importlib.util.spec_from_file_location('pool', 'scripts/ops/adapter_worker_pool.py')
+    spec = importlib.util.spec_from_file_location(
+        "pool", "scripts/ops/adapter_worker_pool.py"
+    )
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
 

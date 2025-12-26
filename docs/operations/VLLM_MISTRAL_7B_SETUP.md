@@ -80,44 +80,42 @@ VLLM_PORT=7060
 
 ### vLLM Config File
 
-`config/vllm_qwen2_32b.yaml` contains:
+`config/legacy/vllm_qwen2_32b.yaml` (ARCHIVED) contains historical Qwen2 settings. The authoritative, current configuration is `config/vllm_mistral_7b.yaml` which should be used for production.
 - Endpoint settings (host, port, base URL)
-- Per-agent adapter paths (for vLLM LoRA hot-swap)
-- Training settings (QLoRA parameters for 24GB 3090)
-- Fallback config (Mistral-7B + adapters)
+- Per-agent adapter names (for vLLM LoRA hot-swap)
+- Training settings (QLoRA parameters for 24GB 3090, when training Mistral adapters)
+- Fallback config (Mistral-7B + adapters) - use `config/vllm_mistral_7b.yaml` for runtime fallbacks
 
 ### Agent Model Mappings
 
 #### AGENT_MODEL_MAP.json
 
-- **base_models**: Added `qwen2-32b-awq` entry with vLLM endpoint.
-- **vllm_agents**: Separate section for Qwen2-32B + adapter mappings per agent.
-  - Each agent (synthesizer, critic, etc.) has a `qwen2_<agent>_v1` adapter.
-  - `inference_mode: "vllm"` flag routes to vLLM.
+- **base_models**: Historical Qwen2 entries have been archived (see `config/legacy/vllm_qwen2_32b.yaml`).
+- **vllm_agents**: The project now uses Mistral-7B by default; per-agent adapter mappings use `mistral_<agent>_v1` adapters and `inference_mode: "vllm"` routes to vLLM.
 
 #### AGENT_MODEL_RECOMMENDED.json
 
 - Each agent now has:
-  - `default`: Mistral-7B-Instruct-v0.3 (fallback)
-  - `vllm_default`: Qwen/Qwen2-32B-Instruct-AWQ (when `VLLM_ENABLED=true`)
-- Comment at top documents the toggle.
+  - `default`: mistralai/Mistral-7B-Instruct-v0.3 (fallback)
+  - `vllm_default`: mistralai/Mistral-7B-Instruct-v0.3 (when `VLLM_ENABLED=true`)
+- Comment at top documents the toggle and notes that legacy Qwen2 adapters are archived.
 
 ## Training Per-Agent Adapters
 
 ### QLoRA Training on 24GB 3090
 
-Use `scripts/train_qwen2_qlora.py` (historical Qwen2 adapters) or your own adapter training scripts for Mistral adapters. If you have Mistral adapter training scripts, prefer those and set `--model_name_or_path mistralai/Mistral-7B-Instruct-v0.3`.
+Use `scripts/train_qlora.py` (recommended) to train Mistral adapters. Historical Qwen2 training scripts are archived at `scripts/legacy/train_qwen2_qlora.py`.
 
 ```bash
 conda activate justnews-py312
 
-# Example: train synthesizer adapter
-python scripts/train_qwen2_qlora.py \
-  --model_name_or_path Qwen/Qwen2-32B-Instruct \
-  --config_path config/vllm_qwen2_32b.yaml \
+# Example: train synthesizer adapter (Mistral)
+python scripts/train_qlora.py \
+  --model_name_or_path mistralai/Mistral-7B-Instruct \
+  --config_path config/vllm_mistral_7b.yaml \
   --train_file data/synth_finetune.jsonl \
   --agent_name synthesizer \
-  --adapter_name qwen2_synth_v1 \
+  --adapter_name mistral_synth_v1 \
   --output_dir output/adapters \
   --max_steps 1000 \
   --per_device_train_batch_size 1 \
@@ -159,11 +157,50 @@ vLLM supports LoRA hot-swapping. To enable:
 1. Set `VLLM_ENABLE_LORA=true` in launch script env.
 2. Pass `VLLM_LORA_MODULES` as comma-separated `name=path` pairs:
    ```bash
-   VLLM_LORA_MODULES="synthesizer=/home/adra/JustNews/model_store/adapters/synthesizer/qwen2_synth_v1,critic=/home/adra/JustNews/model_store/adapters/critic/qwen2_critic_v1"
+   VLLM_LORA_MODULES="synthesizer=/home/adra/JustNews/model_store/adapters/synthesizer/mistral_synth_v1,critic=/home/adra/JustNews/model_store/adapters/critic/mistral_critic_v1"
    ```
 3. Restart vLLM server with `./scripts/launch_vllm_mistral_7b.sh`.
 
 Client code can request a specific adapter via the `model` field in the OpenAI API call (if vLLM is configured to route by adapter name).
+
+---
+
+## Environment & Troubleshooting 🔧
+
+Recommended canonical environment: `justnews-py312` (see `environment.yml`). Key runtime requirements for vLLM Mistral-7B:
+
+- Python: 3.12 (conda env `justnews-py312`) ✅
+- PyTorch: **2.9.0** built for CUDA 12.8 (installed via PyTorch wheels)
+  - Install via pip wheel: `pip install --upgrade --force-reinstall "torch==2.9.0+cu128" -f https://download.pytorch.org/whl/torch_stable.html` ✅
+- bitsandbytes: **0.47.0** — build from source so the CUDA backend binary matches the toolchain:
+  - `pip install --no-binary :all: bitsandbytes==0.47.0` ✅
+- torch-c-dlpack-ext: improves dlpack/FP8 interop; install via pip: `pip install torch-c-dlpack-ext` ✅
+- vLLM: **0.12.0** (pip) and FlashInfer **0.5.3** for FP8 kernels if used
+- Numba + NumPy: numba **0.61.2** requires **numpy <= 2.2.x** (we recommend `numpy==2.2.4`) — mismatched NumPy will cause engine init errors.
+
+Common startup troubleshooting:
+- If vLLM aborts with import or custom-op errors, check:
+  - `python -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.is_available())"`
+  - `python -c "import bitsandbytes; print(bitsandbytes.__file__)"` (verify binary present)
+  - `python -c "import numba, numpy; print(numba.__version__, numpy.__version__)"` (numba needs numpy<=2.2)
+- If you see `Port 7060 is already in use` the launcher will try the next port (7061) automatically; check which port the API binds to in `run/vllm_mistral_7b.log`.
+- If model downloads fail due to gated HF access, set `HF_TOKEN` in `global.env` (or export it in your shell) before starting vLLM.
+
+Quick reproducible fix I used locally (inside `justnews-py312`):
+
+```bash
+# Install torch wheel for CUDA 12.8
+pip install --upgrade --force-reinstall "torch==2.9.0+cu128" -f https://download.pytorch.org/whl/torch_stable.html
+pip install torch-c-dlpack-ext
+# Build bitsandbytes to match CUDA
+pip install --no-binary :all: bitsandbytes==0.47.0
+# Ensure numpy/numba compatibility
+pip install --upgrade --force-reinstall numpy==2.2.4 numba==0.61.2
+# Then start vLLM
+./scripts/launch_vllm_mistral_7b.sh
+```
+
+If you'd like, I can add a short CHANGELOG entry documenting these env pins and the exact pip commands used.
 
 ## VRAM Budget
 
@@ -186,7 +223,7 @@ If vLLM is unavailable (server down, OOM, etc.), agents fall back to:
 - **Base**: `mistralai/Mistral-7B-Instruct-v0.3`
 - **Adapters**: `mistral_<agent>_v1` from ModelStore
 
-Set `fallback.enabled: true` in `config/vllm_qwen2_32b.yaml` (default).
+Set `fallback.enabled: true` in `config/vllm_mistral_7b.yaml` (default).
 
 ## Troubleshooting
 

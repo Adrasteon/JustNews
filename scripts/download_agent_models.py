@@ -119,7 +119,7 @@ def main():
     base = repo_root / "agents"
 
     # If ONLY=SMALL, we will skip models that look large (heuristic)
-    large_keywords = ["large", "7b", "13b", "llava", "qwen", "vicuna"]
+    large_keywords = ["large", "7b", "13b", "llava", "vicuna"]
 
     to_download = []
     for agent, models in AGENT_MODEL_MAP.items():

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch vLLM server for Mistral-7B-Instruct (fallback) - optimized launcher (historical Qwen2 launcher retained)
+# Launch vLLM server for Mistral-7B-Instruct (optimized launcher; historical Qwen2 artifacts archived)
 # Port: 7060 (separate from agent services 8000-8030)
 set -euo pipefail
 
@@ -42,7 +42,7 @@ VLLM_ENABLE_PREFIX_CACHING="${VLLM_ENABLE_PREFIX_CACHING:-true}"
 # Compilation optimization (disable if causing issues)
 VLLM_DISABLE_COMPILE="${VLLM_DISABLE_COMPILE:-true}"  # Disabled to save memory
 
-echo "===== vLLM Qwen2-14B Optimized Launcher ====="
+echo "===== vLLM Mistral-7B Optimized Launcher ====="
 echo "Model: $VLLM_MODEL"
 echo "Port: $VLLM_PORT"
 echo "Host: $VLLM_HOST"

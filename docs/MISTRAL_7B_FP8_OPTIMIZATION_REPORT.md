@@ -1,4 +1,4 @@
-# (Historical) Qwen2.5-32B-Instruct-AWQ FP8 KV Cache Optimization Attempt - Report
+# ARCHIVED: Qwen2.5-32B-Instruct-AWQ FP8 KV Cache Optimization Attempt - Report (historical)
 
 > **Note:** This report documents historical efforts to optimize Qwen2.5 deployment. The project now uses **Mistral‑7B** as the default vLLM model; the notes below are retained for reference.
 

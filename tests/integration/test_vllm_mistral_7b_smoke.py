@@ -12,9 +12,36 @@ import yaml
 
 
 def load_vllm_config(config_path: str = "config/vllm_mistral_7b.yaml") -> dict:
-    """Load vLLM config."""
+    """Load vLLM config and normalize into a runtime dict with `base_url` and `api_key`.
+
+    This helper supports both the legacy Qwen-style `endpoint: {host,port,base_url}`
+    and the current Mistral config which places endpoint under `base_models.mistral-7b.endpoint`.
+    It prefers `VLLM_BASE_URL` / `VLLM_API_KEY` from the environment if present.
+    """
     with open(config_path, "r") as f:
-        return yaml.safe_load(f)
+        cfg = yaml.safe_load(f)
+
+    # Prefer env vars if set (useful for CI/local overrides)
+    env_base = os.environ.get("VLLM_BASE_URL")
+    env_api_key = os.environ.get("VLLM_API_KEY")
+    if env_base:
+        return {"base_url": env_base.rstrip('/'), "api_key": env_api_key or "dummy"}
+
+    # Legacy flat endpoint
+    if isinstance(cfg, dict) and "endpoint" in cfg:
+        ep = cfg["endpoint"]
+        base = ep.get("base_url") or f"http://{ep.get('host', '127.0.0.1')}:{ep.get('port', 7060)}"
+        return {"base_url": base.rstrip('/'), "api_key": ep.get("api_key", "dummy")}
+
+    # New structured config (vllm_mistral_7b.yaml)
+    bm = (cfg or {}).get("base_models", {})
+    m = bm.get("mistral-7b") or bm.get("mistral-7b", {})
+    if isinstance(m, dict) and "endpoint" in m:
+        base = m.get("endpoint")
+        return {"base_url": base.rstrip('/'), "api_key": env_api_key or os.environ.get("VLLM_API_KEY", "dummy")}
+
+    # Fallback to localhost
+    return {"base_url": os.environ.get("VLLM_BASE_URL", "http://127.0.0.1:7060/v1").rstrip('/'), "api_key": os.environ.get("VLLM_API_KEY", "dummy")}
 
 
 def test_health(base_url: str):
@@ -25,10 +52,11 @@ def test_health(base_url: str):
     print("✅ Health check passed")
 
 
-def test_models(base_url: str):
+def test_models(base_url: str, api_key: str = "dummy"):
     """Test /v1/models endpoint."""
     print(f"Testing models endpoint: {base_url}/v1/models")
-    resp = requests.get(f"{base_url}/v1/models", timeout=5)
+    headers = {"Authorization": f"Bearer {api_key}"}
+    resp = requests.get(f"{base_url}/v1/models", timeout=5, headers=headers)
     resp.raise_for_status()
     models = resp.json()
     print(f"✅ Models: {[m['id'] for m in models.get('data', [])]}")
@@ -57,12 +85,11 @@ def test_chat_completion(base_url: str, api_key: str = "dummy"):
 
 
 def main():
-    config = load_vllm_config()
-    endpoint = config["endpoint"]
-    base_url = endpoint["base_url"]
-    api_key = endpoint.get("api_key", "dummy")
+    cfg = load_vllm_config()
+    base_url = cfg["base_url"]
+    api_key = cfg.get("api_key", "dummy")
 
-    print("===== vLLM Qwen2-32B Smoke Test =====")
+    print("===== vLLM Mistral-7B Smoke Test =====")
     print(f"Base URL: {base_url}")
 
     try:

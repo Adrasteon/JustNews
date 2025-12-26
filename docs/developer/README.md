@@ -9,31 +9,50 @@ JustNews is a distributed multi-agent system for automated news analysis, featur
 ### Core Components
 
 #### MCP Bus (Model Context Protocol Bus)
+
 - **Role**: Central communication hub coordinating all agents
+
 - **Technology**: FastAPI with async message passing
+
 - **Port**: 8000
+
 - **Responsibilities**:
+
   - Agent registration and discovery
+
   - Inter-agent communication routing
+
   - Health monitoring and load balancing
+
   - Message queuing and reliability
 
 #### Specialized Agents
 Each agent is a microservice with specific responsibilities:
 
 - **Chief Editor (Port 8001)**: Workflow orchestration and system coordination
+
 - **Scout (Port 8002)**: Content discovery and web crawling
+
 - **Fact Checker (Port 8003)**: Source verification and fact-checking
+
 - **Analyst (Port 8004)**: GPU-accelerated sentiment and bias analysis
+
 - **Synthesizer (Port 8005)**: Content synthesis and summarization
+
 - **Critic (Port 8006)**: Quality assessment and review
+
 - **Memory (Port 8007)**: Data persistence and vector search
+
 - **Reasoning (Port 8008)**: Symbolic logic and reasoning
 
 #### Supporting Services
+
 - **Dashboard (Port 8013)**: Web interface and real-time monitoring
+
 - **Public API (Port 8014)**: External API for news data access
+
 - **Archive API (Port 8021)**: RESTful archive with legal compliance
+
 - **GraphQL API (Port 8020)**: Advanced query interface
 
 ### Data Flow Architecture
@@ -64,28 +83,45 @@ Each agent is a microservice with specific responsibilities:
 ### Technology Stack
 
 #### Core Framework
+
 - **FastAPI**: High-performance async web framework
+
 - **Pydantic V2**: Type-safe data validation and serialization
+
 - **SQLAlchemy**: Database ORM with async support
+
 - **Redis**: Caching and session management
 
 #### AI/ML Stack
+
 - **PyTorch 2.6+**: Deep learning framework with CUDA 12.4
+
 - **Transformers**: Pre-trained models and tokenizers
+
 - **Sentence Transformers**: Text embedding and similarity
+
 - **TensorRT**: GPU inference optimization
+
 - **NVIDIA MPS**: GPU memory sharing and isolation
 
 #### Data Processing
+
 - **MariaDB**: Primary relational data storage
+
 - **ChromaDB**: Vector similarity search and embeddings
+
 - **Pandas/Polars**: Data manipulation and analysis
+
 - **NumPy**: Numerical computing
 
 #### Infrastructure
+
 - **Docker**: Containerization
+
 - **Kubernetes**: Container orchestration
+
 - **Prometheus/Grafana**: Monitoring and alerting
+
 - **Nginx**: Reverse proxy and load balancing
 
 ## Agent Development Guide
@@ -111,7 +147,8 @@ agents/{agent_name}/
 ### Agent Implementation Template
 
 ```python
-# agents/my_agent/main.py
+
+## agents/my_agent/main.py
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
@@ -122,17 +159,17 @@ from common.mcp_client import MCPBusClient
 from common.metrics import JustNewsMetrics
 from common.config import get_config
 
-# Configure logging
+## Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize components
+## Initialize components
 app = FastAPI(title="My Agent", version="1.0.0")
 config = get_config()
 metrics = JustNewsMetrics(agent="my_agent")
 mcp_client = MCPBusClient()
 
-# Pydantic models
+## Pydantic models
 class ToolCall(BaseModel):
     """Standard MCP tool call format"""
     args: List[Any] = []
@@ -143,7 +180,7 @@ class HealthResponse(BaseModel):
     version: str
     uptime: float
 
-# Global state
+## Global state
 start_time = asyncio.get_event_loop().time()
 
 @app.on_event("startup")
@@ -199,7 +236,7 @@ async def my_tool_endpoint(call: ToolCall):
             detail=f"Tool execution failed: {str(e)}"
         )
 
-# Tool implementation
+## Tool implementation
 async def my_tool_function(param1: str, param2: int = 0) -> Dict[str, Any]:
     """Implement your tool logic here"""
     # Example implementation
@@ -227,7 +264,7 @@ from common.mcp_client import MCPBusClient
 
 mcp_client = MCPBusClient()
 
-# Register agent
+## Register agent
 await mcp_client.register_agent(
     name="my_agent",
     endpoint="http://localhost:8009",
@@ -237,4 +274,5 @@ await mcp_client.register_agent(
 
 #### Inter-Agent Communication
 ```python
-# Call another agent
+
+## Call another agent

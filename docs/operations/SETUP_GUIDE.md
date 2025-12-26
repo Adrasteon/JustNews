@@ -10,8 +10,11 @@ This guide covers the complete setup process for a new JustNews installation on 
 ## Prerequisites
 
 - **OS**: Ubuntu 22.04+ (or compatible Linux)
+
 - **Python**: 3.10+ (3.12 recommended)
+
 - **Resources**: 4+ GB RAM, 20 GB disk space
+
 - **Privileges**: sudo access for system-level configuration
 
 ## Phase 1: Python & Conda Environment
@@ -19,7 +22,8 @@ This guide covers the complete setup process for a new JustNews installation on 
 ### 1.1 Install Miniconda
 
 ```bash
-# Download and install Miniconda
+
+## Download and install Miniconda
 curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 bash Miniconda3-latest-Linux-x86_64.sh -b -p ~/miniconda3
 source ~/miniconda3/bin/activate
@@ -45,11 +49,12 @@ python --version  # Should be 3.12.x
 ### 2.1 Create System-Wide Global Environment
 
 ```bash
-# Create directory for system config
+
+## Create directory for system config
 sudo mkdir -p /etc/justnews
 sudo chown root:root /etc/justnews
 
-# Copy repository global.env as template
+## Copy repository global.env as template
 sudo cp global.env /etc/justnews/global.env
 sudo chmod 644 /etc/justnews/global.env
 ```
@@ -59,25 +64,26 @@ sudo chmod 644 /etc/justnews/global.env
 Edit `/etc/justnews/global.env` and set:
 
 ```bash
-# Python paths
+
+## Python paths
 CANONICAL_ENV=justnews-py312
 PYTHON_BIN=/home/$(whoami)/miniconda3/envs/justnews-py312/bin/python
 JUSTNEWS_PYTHON=$PYTHON_BIN
 CANONICAL_PYTHON_PATH=$PYTHON_BIN
 
-# Data mount (adjust to your setup)
+## Data mount (adjust to your setup)
 MODEL_STORE_ROOT=/home/adra/JustNews/model_store
 BASE_MODEL_DIR=/home/adra/JustNews/model_store/base_models
 DATA_MOUNT=/media/$(whoami)/Data
 
-# MariaDB (set later after DB setup)
+## MariaDB (set later after DB setup)
 MARIADB_HOST=127.0.0.1
 MARIADB_PORT=3306
 MARIADB_DB=justnews
 MARIADB_USER=justnews
 MARIADB_PASSWORD=<set-via-vault>
 
-# ChromaDB
+## ChromaDB
 CHROMADB_HOST=localhost
 CHROMADB_PORT=3307
 CHROMADB_COLLECTION=articles
@@ -134,43 +140,46 @@ EOF
 ### 3.3 Start Vault Service
 
 ```bash
-# Enable and start Vault as systemd service
+
+## Enable and start Vault as systemd service
 sudo systemctl enable vault
 sudo systemctl start vault
 sudo systemctl status vault
 
-# Set environment for CLI
+## Set environment for CLI
 export VAULT_ADDR="http://127.0.0.1:8200"
 ```
 
 ### 3.4 Initialize and Unseal Vault
 
 ```bash
-# Initialize (generates unseal key and root token)
+
+## Initialize (generates unseal key and root token)
 vault operator init -key-shares=1 -key-threshold=1 -format=json | tee /tmp/vault-init.json
 
-# Extract credentials
+## Extract credentials
 UNSEAL_KEY=$(jq -r '.unseal_keys_hex[0]' /tmp/vault-init.json)
 ROOT_TOKEN=$(jq -r '.root_token' /tmp/vault-init.json)
 
-# Unseal
+## Unseal
 vault operator unseal "$UNSEAL_KEY"
 
-# Store init file securely
+## Store init file securely
 sudo cp /tmp/vault-init.json /etc/justnews/vault-init.json
 sudo chmod 600 /etc/justnews/vault-init.json
 
-# Verify
+## Verify
 vault status
 ```
 
 ### 3.5 Create AppRole and Policy
 
 ```bash
-# Export root token for setup
+
+## Export root token for setup
 export VAULT_TOKEN="$ROOT_TOKEN"
 
-# Create read-only policy
+## Create read-only policy
 vault policy write justnews-read - <<'EOF'
 path "secret/data/justnews" {
   capabilities = ["read", "list"]
@@ -183,24 +192,24 @@ path "sys/internal/ui/mounts/secret/*" {
 }
 EOF
 
-# Enable KV v2
+## Enable KV v2
 vault secrets enable -version=2 -path=secret kv
 
-# Enable AppRole
+## Enable AppRole
 vault auth enable approle
 
-# Create role
+## Create role
 vault write auth/approle/role/justnews \
   token_num_uses=0 \
   token_ttl=3600 \
   token_max_ttl=86400 \
   policies="justnews-read"
 
-# Generate credentials
+## Generate credentials
 ROLE_ID=$(vault read -field=role_id auth/approle/role/justnews/role-id)
 SECRET_ID=$(vault write -field=secret_id -f auth/approle/role/justnews/secret-id)
 
-# Store with restricted permissions
+## Store with restricted permissions
 sudo bash -c "echo '$ROLE_ID' > /etc/justnews/approle_role_id"
 sudo bash -c "echo '$SECRET_ID' > /etc/justnews/approle_secret_id"
 sudo chmod 640 /etc/justnews/approle_*
@@ -209,7 +218,8 @@ sudo chmod 640 /etc/justnews/approle_*
 ### 3.6 Seed Initial Secrets
 
 ```bash
-# Login with root token
+
+## Login with root token
 vault kv put secret/justnews \
   MARIADB_PASSWORD="secure_mariadb_password_here" \
   PIA_SOCKS5_HOST="proxy.example.com" \
@@ -218,17 +228,18 @@ vault kv put secret/justnews \
   PIA_SOCKS5_PASS="pia_password" \
   ADMIN_API_KEY="secure_admin_key_here"
 
-# Verify
+## Verify
 vault kv get secret/justnews
 ```
 
 ### 3.7 Fetch Secrets to Environment
 
 ```bash
-# Run fetch script to populate /run/justnews/secrets.env
+
+## Run fetch script to populate /run/justnews/secrets.env
 bash scripts/fetch_secrets_to_env.sh
 
-# Verify
+## Verify
 sudo cat /run/justnews/secrets.env
 ```
 
@@ -259,17 +270,19 @@ EOF
 ### 4.3 Initialize Schema
 
 ```bash
-# Load init SQL
+
+## Load init SQL
 sudo mysql -u justnews -pjustnews_password_2024 justnews < infrastructure/docker/init-mariadb.sql
 
-# Verify tables
+## Verify tables
 sudo mysql -u justnews -pjustnews_password_2024 -D justnews -e "SHOW TABLES;"
 ```
 
 ### 4.4 Apply Migrations
 
 ```bash
-# Apply migrations 001-008 in order
+
+## Apply migrations 001-008 in order
 for migration in database/migrations/{001,002,003,004,005,006,007,008}*.sql; do
   if [ -f "$migration" ]; then
     echo "Applying $(basename $migration)..."
@@ -283,7 +296,8 @@ done
 ### 5.1 Install ChromaDB
 
 ```bash
-# Install via pip in conda environment
+
+## Install via pip in conda environment
 source ~/miniconda3/bin/activate justnews-py312
 pip install chromadb
 ```
@@ -341,14 +355,16 @@ PYTHON
 ### 6.1 Test Environment Wrapper
 
 ```bash
-# Test environment overlay with secrets
+
+## Test environment overlay with secrets
 bash scripts/run_with_env.sh env | grep -E "MARIADB_|CHROMADB_|ADMIN_API_KEY"
 ```
 
 ### 6.2 Test Database Connectivity
 
 ```bash
-# Test both MariaDB and ChromaDB
+
+## Test both MariaDB and ChromaDB
 bash scripts/run_with_env.sh python check_databases.py
 ```
 
@@ -394,17 +410,19 @@ ExecStartPre=/bin/bash -c 'bash /path/to/JustNews/scripts/fetch_secrets_to_env.s
 ### Regular Backups
 
 ```bash
-# Backup MariaDB
+
+## Backup MariaDB
 sudo mysqldump -u justnews -pjustnews_password_2024 --all-databases > backup.sql
 
-# Backup ChromaDB data (if persistent)
+## Backup ChromaDB data (if persistent)
 sudo cp -r /tmp/chroma backup-chroma/
 ```
 
 ### Vault Rekey/Rotate
 
 ```bash
-# Rotate AppRole secret ID
+
+## Rotate AppRole secret ID
 vault write -f auth/approle/role/justnews/secret-id
 ```
 
@@ -417,7 +435,7 @@ export VAULT_TOKEN=$(vault write -field=token auth/approle/login \
 
 vault kv patch secret/justnews NEW_KEY=new_value
 
-# Refresh local env
+## Refresh local env
 bash scripts/fetch_secrets_to_env.sh
 ```
 
@@ -426,20 +444,22 @@ bash scripts/fetch_secrets_to_env.sh
 ### Vault Won't Start
 
 ```bash
-# Check config syntax
+
+## Check config syntax
 sudo vault config validate -config=/etc/vault.d/vault.hcl
 
-# View logs
+## View logs
 sudo journalctl -u vault -n 50 --no-pager
 ```
 
 ### MariaDB Connection Issues
 
 ```bash
-# Test connection
+
+## Test connection
 mysql -h 127.0.0.1 -u justnews -pjustnews_password_2024 -e "SELECT 1;"
 
-# Check service
+## Check service
 sudo systemctl status mariadb
 sudo journalctl -u mariadb -n 20 --no-pager
 ```
@@ -447,10 +467,11 @@ sudo journalctl -u mariadb -n 20 --no-pager
 ### ChromaDB Port Conflict
 
 ```bash
-# Check if port 3307 is in use
+
+## Check if port 3307 is in use
 sudo lsof -i :3307
 
-# Use alternative port in global.env
+## Use alternative port in global.env
 CHROMADB_PORT=3308
 ```
 
@@ -459,8 +480,11 @@ CHROMADB_PORT=3308
 Once setup is complete:
 
 1. **Configure crawlers**: Update `config/crawl_schedule.yaml`
+
 2. **Start agents**: `sudo systemctl enable --now justnews@scout`
+
 3. **Monitor**: Check `/var/log/justnews/` and dashboard at `http://localhost:8000`
+
 4. **Ingest articles**: Run crawler to populate databases
 
 See `infrastructure/systemd/README.md` for agent startup procedures.

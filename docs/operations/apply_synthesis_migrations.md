@@ -5,15 +5,19 @@ Use `scripts/ops/apply_synthesis_migration.sh` to safely apply the `004_add_synt
 Checklist:
 
 1. Backup the database snapshot.
+
 2. Run the script:
 
 ```bash
-# Example for MariaDB
+
+## Example for MariaDB
 JUSTNEWS_DB_URL="mysql://user:pass@host:3306/justnews" scripts/ops/apply_synthesis_migration.sh
 ```
 
 3. Verify `articles` table has new columns (Option A) or `synthesized_articles` table exists (Option B).
+
 4. Run smoke tests: `justnews/tests/integration/test_article_creation_flow.py` (integration test) and check the dashboard health.
+
 5. Record the migration evidence in `logs/operations/migrations`.
 
 Rollbacks: use the down migration or manually drop the columns/tables after careful inspection.

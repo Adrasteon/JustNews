@@ -133,8 +133,10 @@ TRANSPARENCY_PORTAL_BASE_URL=http://localhost:8013/transparency
 EVIDENCE_AUDIT_BASE_URL=http://localhost:8013/transparency
 TRANSPARENCY_DATA_DIR=/var/lib/justnews/transparency-archive
 REQUIRE_TRANSPARENCY_AUDIT=1
-# Optional: override Prometheus textfile output for the crawl scheduler
-# CRAWL_SCHEDULER_METRICS=/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom
+
+## Optional: override Prometheus textfile output for the crawl scheduler
+
+## CRAWL_SCHEDULER_METRICS=/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom
 ```
 
 Per-instance (example `/etc/justnews/analyst.env`):
@@ -161,7 +163,9 @@ ls -la /tmp/nvidia-mps/
 ```
 
 3. **Environment Configuration**:
+
    - Set `ENABLE_MPS=true` in `/etc/justnews/global.env`
+
    - Set `ENABLE_MPS=true` and `ENABLE_NVML=true` in `/etc/justnews/gpu_orchestrator.env`
 
 4. **Check MPS Allocation**:
@@ -195,8 +199,11 @@ sudo ./infrastructure/systemd/scripts/enable_all.sh stop
 ```
 
 Notes:
+
 - Stops all JustNews instances in reverse dependency order.
+
 - Does not stop MariaDB (managed separately by your OS/service).
+
 - To also stop the orchestrator explicitly:
 
 ```
@@ -204,7 +211,9 @@ sudo systemctl stop justnews@gpu_orchestrator
 ```
 
 Troubleshooting:
+
 - If ports remain in use, run: `sudo ./infrastructure/systemd/preflight.sh --stop`.
+
 - Inspect logs: `journalctl -u justnews@<name> -e -n 200`.
 
 ## Optional: PATH wrappers (run from any directory)
@@ -240,24 +249,37 @@ sudo health_check.sh --panel
 ```
 
 Options:
+
 - `--refresh SEC` to change interval (default: 2)
+
 - `--host HOST` and `-t/--timeout SEC` respected
+
 - Limit to specific services, e.g.: `sudo health_check.sh --panel mcp_bus analyst`
 
 Notes:
+
 - Tries to launch a new terminal (x-terminal-emulator/gnome-terminal/konsole/xterm).
+
 - Falls back to tmux (new window) if available; otherwise runs inline via `watch`.
+
 - Ensure `watch` (procps) is installed on servers.
 
 ## Troubleshooting first-run issues
 
 - Many services “failed/inactive” immediately:
+
 	- Ensure orchestrator is running and READY (see startup order above).
+
 - Preflight shows “run as root” and exit 1 under systemd:
+
 	- Expected for ExecStartPre limited checks; continue with orchestrator-first.
+
 - Ports already in use:
+
 	- `sudo ./infrastructure/systemd/preflight.sh --stop` to free conflicting services.
+
 - DB connectivity (Memory):
+
 	- Set `JUSTNEWS_DB_URL` in `global.env` and run `helpers/db-check.sh`.
 
 ## Install helpers (optional)
@@ -277,12 +299,15 @@ Once Stage A is healthy, enable the Stage B1 ingestion scheduler to execute the 
 sudo cp infrastructure/systemd/scripts/run_crawl_schedule.sh /usr/local/bin/
 sudo chmod +x /usr/local/bin/run_crawl_schedule.sh
 ```
+
 2. Install the service/timer units:
 ```
 sudo cp infrastructure/systemd/units/justnews-crawl-scheduler.* /etc/systemd/system/
 sudo systemctl daemon-reload
 ```
+
 3. Provide optional overrides in `/etc/justnews/crawl_scheduler.env` (paths, crawler URL, Prometheus textfile location). Include `CRAWL_PROFILE_PATH` if the crawl profile directory lives outside the repo checkout. The loader accepts a directory path or a single YAML file.
+
 4. Enable the hourly timer:
 ```
 sudo systemctl enable --now justnews-crawl-scheduler.timer
@@ -296,9 +321,13 @@ journalctl -u justnews-crawl-scheduler.service -e -n 200 -f
 ```
 
 Outputs:
+
 - Scheduler state JSON: `${CRAWL_SCHEDULER_STATE:-$SERVICE_DIR/logs/analytics/crawl_scheduler_state.json}`
+
 - Success log (rolling): `${CRAWL_SCHEDULER_SUCCESS:-$SERVICE_DIR/logs/analytics/crawl_scheduler_success.json}`
+
 - Prometheus textfile (node_exporter): `${CRAWL_SCHEDULER_METRICS:-$SERVICE_DIR/logs/analytics/crawl_scheduler.prom}`
+
 - Governance log template: `logs/governance/crawl_terms_audit.md`
 
 Dry-run (no crawler calls):
@@ -306,4 +335,3 @@ Dry-run (no crawler calls):
 sudo conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/ops/run_crawl_schedule.py --dry-run --profiles config/crawl_profiles
 ```
 ```
-

@@ -3,6 +3,7 @@
 This directory ships the reference configuration for deploying OpenTelemetry Collectors alongside the JustNews GPU stack. Two roles are supported:
 
 1. **Node collector** – runs on every GPU/agent host, scrapes exporters that run locally (DCGM, node exporter), tails kernel/NVIDIA logs, and forwards data upstream.
+
 2. **Central collector** – runs once per environment (or as an HA pair) and fans the aggregated OTLP stream into Prometheus, Tempo/Jaeger, and Loki/Elastic.
 
 The configs rely heavily on environment variables so operators can reuse the same file across staging/prod. Every referenced variable has a documented default in the installer scripts.
@@ -19,10 +20,11 @@ The configs rely heavily on environment variables so operators can reuse the sam
 Run the helper scripts (requires sudo):
 
 ```bash
-# On every GPU/agent node
+
+## On every GPU/agent node
 sudo scripts/ops/install_otel_node_collector.sh
 
-# On monitoring/ops nodes hosting the aggregation tier
+## On monitoring/ops nodes hosting the aggregation tier
 sudo scripts/ops/install_otel_central_collector.sh
 ```
 
@@ -33,13 +35,17 @@ Both scripts download the requested `otelcol-contrib` release, install it under 
 Environment overrides live in:
 
 - `/etc/justnews/monitoring/otel/node.env`
+
 - `/etc/justnews/monitoring/otel/central.env`
 
 The most useful variables include:
 
 - `OTEL_SERVICE_NAME` – logical name that ends up on every span/log.
+
 - `OTEL_UPSTREAM_ENDPOINT` – where node collectors forward OTLP data (defaults to `127.0.0.1:4317`).
+
 - `TEMPO_ENDPOINT` / `JAEGER_ENDPOINT` – optional OTLP HTTP endpoints for traces.
+
 - `LOKI_ENDPOINT` – log aggregation endpoint.
 
 > **Note:** Prometheus remote_write knobs remain in the historical env files but are unused until we re-enable the OTEL metrics pipelines.

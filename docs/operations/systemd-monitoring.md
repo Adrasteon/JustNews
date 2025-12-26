@@ -16,7 +16,9 @@ Dashboards are provisioned automatically from `monitoring/dashboards/generated/`
 ## Prerequisites
 
 - `justnews` system user (created during systemd setup)
+
 - Internet access to download official release archives
+
 - `curl` and `tar` installed on the host
 
 ## First-time installation
@@ -33,9 +35,13 @@ sudo ./infrastructure/systemd/scripts/install_monitoring_stack.sh \
 This performs the following actions:
 
 1. Downloads Prometheus, Grafana, and node_exporter into `/opt/justnews/monitoring`
+
 2. Creates `/etc/justnews/monitoring.env` (with sensible defaults)
+
 3. Copies Prometheus/Grafana configs and dashboards to `/etc/justnews/monitoring/`
+
 4. Installs systemd units under `/etc/systemd/system/`
+
 5. Enables and starts `justnews-node-exporter`, `justnews-prometheus`, and `justnews-grafana`
 
 > **Note:** If binaries already exist, omit `--install-binaries`. Use `--force` to overwrite config files with timestamped backups.
@@ -69,7 +75,9 @@ The monitoring stack includes comprehensive NVIDIA GPU monitoring capabilities.
 ### Automatic GPU Metrics Collection
 
 1. **GPU Exporter**: A custom Python-based exporter (`gpu_metrics_exporter.py`) automatically collects GPU metrics using `nvidia-smi`
+
 2. **Prometheus Integration**: GPU metrics are automatically scraped every 15 seconds
+
 3. **Dashboard Integration**: GPU panels are included in the JustNews Operations Dashboard
 
 ### GPU Metrics Available
@@ -94,14 +102,15 @@ The system monitors 10 comprehensive GPU metrics:
 The GPU exporter runs as a background Python process. To manage it:
 
 ```bash
-# Check if GPU exporter is running
+
+## Check if GPU exporter is running
 ps aux | grep gpu_metrics_exporter
 
-# Start GPU exporter manually (if needed)
+## Start GPU exporter manually (if needed)
 cd /home/adra
 python3 gpu_metrics_exporter.py &
 
-# The exporter runs on port 9400 by default
+## The exporter runs on port 9400 by default
 curl http://localhost:9400/health
 curl http://localhost:9400/metrics
 ```
@@ -111,9 +120,13 @@ curl http://localhost:9400/metrics
 Dashboards are placed under `/etc/justnews/monitoring/grafana/dashboards/` and are automatically picked up by Grafana. The generated bundle currently includes:
 
 - **JustNews Operations Dashboard** – Comprehensive monitoring with 19 panels covering:
+
   - **Content Processing**: Domains crawled, articles accepted, adaptive articles, scheduler lag
+
   - **Application Health**: Active connections, total errors, request duration, crawler requests (time series)
+
   - **System Resources**: CPU usage, memory usage, disk usage, network I/O
+
   - **GPU Monitoring**: GPU utilization, memory usage, temperature, power draw, memory details, utilization trends
 
 To add custom dashboards, drop JSON exports into the same directory and restart Grafana.
@@ -126,8 +139,11 @@ To add custom dashboards, drop JSON exports into the same directory and restart 
    ```
 
 2. Check Prometheus targets at `http://localhost:9090/targets` - should show:
+
    - `nvidia-gpu-exporter` (port 9400) - GPU metrics
+
    - `justnews-node-exporter` (port 9100) - System metrics
+
    - Various JustNews agent endpoints
 
 3. Log into Grafana at `http://localhost:3000/` (change the default password immediately)
@@ -136,8 +152,11 @@ To add custom dashboards, drop JSON exports into the same directory and restart 
    `http://localhost:3000/d/ef37elu2756o0e/justnews-operations-dashboard`
 
 5. Verify GPU metrics are displaying:
+
    - GPU Utilization gauge should show current usage
+
    - GPU Temperature should display current temperature
+
    - GPU Memory panels should show memory information
 
 6. Validate crawl scheduler metrics appear under the dashboard's content processing panels
@@ -145,8 +164,11 @@ To add custom dashboards, drop JSON exports into the same directory and restart 
 ## Maintenance
 
 - **Upgrade binaries:** re-run the installer with `--install-binaries --force` to download newer versions. Adjust `--prometheus-version`, `--grafana-version`, or `--node-exporter-version` if needed.
+
 - **Rotate data:** adjust `PROMETHEUS_RETENTION` in `monitoring.env` to control TSDB retention (default: 30 days).
+
 - **Backups:** include `/var/lib/justnews/prometheus` and `/var/lib/justnews/grafana` in your backup plan.
+
 - **Textfile metrics:** scheduler metrics are exported to `/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom`. Additional custom exporters can drop Prometheus-formatted files into this directory.
 
 ## Troubleshooting

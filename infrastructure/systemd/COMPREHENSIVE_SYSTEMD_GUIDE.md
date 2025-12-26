@@ -12,11 +12,15 @@ This guide explains how the native systemd deployment works, with special focus 
 ## Gating model preload (why orchestrator-first)
 
 - Units use `ExecStartPre` to run `preflight.sh --gate-only <instance>`.
+
 - In gate-only mode, the script waits for the GPU Orchestrator on `127.0.0.1:8014` and ensures `/models/preload` completes (or is already “all_ready”).
+
 - Therefore, start `justnews@gpu_orchestrator` first; once READY, other services start cleanly.
 
 Relevant env/tuning:
+
 - `GATE_TIMEOUT` (seconds): how long to wait for orchestrator and preload.
+
 - `REQUIRE_BUS=0` to bypass bus wait in `wait_for_mcp.sh` (rarely needed).
 
 ## Environment files
@@ -45,8 +49,10 @@ TRANSPARENCY_PORTAL_BASE_URL=http://localhost:8013/transparency
 EVIDENCE_AUDIT_BASE_URL=http://localhost:8013/transparency
 TRANSPARENCY_DATA_DIR=/var/lib/justnews/transparency-archive
 REQUIRE_TRANSPARENCY_AUDIT=1
-# Optional Prometheus textfile target for the crawl scheduler
-# CRAWL_SCHEDULER_METRICS=/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom
+
+## Optional Prometheus textfile target for the crawl scheduler
+
+## CRAWL_SCHEDULER_METRICS=/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom
 ```
 
 Minimum governance/observability keys (recommended additions as the transparency stack comes online):
@@ -62,8 +68,10 @@ Per-instance overrides (e.g., `/etc/justnews/analyst.env`):
 
 ```
 CUDA_VISIBLE_DEVICES=0
-# EXEC_START can override the module if necessary
-# EXEC_START="$JUSTNEWS_PYTHON -m agents.analyst.main"
+
+## EXEC_START can override the module if necessary
+
+## EXEC_START="$JUSTNEWS_PYTHON -m agents.analyst.main"
 ```
 
 ## NVIDIA MPS Configuration (Enterprise GPU Isolation)
@@ -84,7 +92,9 @@ ls -la /tmp/nvidia-mps/
 ```
 
 3. **Environment Configuration**:
+
    - Global: `ENABLE_MPS=true` in `/etc/justnews/global.env`
+
    - GPU Orchestrator: `ENABLE_MPS=true` and `ENABLE_NVML=true` in `/etc/justnews/gpu_orchestrator.env`
 
 4. **Validate Configuration**:
@@ -96,8 +106,11 @@ curl -s http://127.0.0.1:8014/gpu/info | jq '{mps_enabled, mps}'
 ### MPS Troubleshooting
 
 - **MPS daemon not running**: `sudo nvidia-cuda-mps-control -d`
+
 - **Pipe directory missing**: Check `/tmp/nvidia-mps/` permissions
+
 - **GPU isolation issues**: Verify MPS control process and client connections
+
 - **Memory limits**: Check `config/gpu/mps_allocation_config.json` and restart services
 
 ## Unit drop-ins
@@ -107,13 +120,14 @@ Place per-instance overrides in `/etc/systemd/system/justnews@<name>.service.d/`
 Templates provided under `units/drop-ins/`:
 
 - `05-gate-timeout.conf` – adjust `Environment=GATE_TIMEOUT=180`
+
 - `10-preflight-gating.conf` – enforce gate-only ExecStartPre
+
 - `20-restart-policy.conf` – tune `Restart=` and `RestartSec=`
 
 After changes: `sudo systemctl daemon-reload`.
 
 ## Operations scripts
-
 
 PATH wrappers (optional): small shims installed to `/usr/local/bin` so operators can run commands from any CWD:
 
@@ -124,9 +138,13 @@ enable_all.sh, health_check.sh, reset_and_start.sh, cold_start.sh
 Install examples are in the Quick Reference.
 
 Helpers (optional):
+
 - `helpers/orchestrator-ready.sh` – poll 8014 `/ready` with backoff.
+
 - `helpers/tail-logs.sh` – multi-service log follow with labels.
+
 - `helpers/diag-dump.sh` – capture status/logs/ports and optional `nvidia-smi`.
+
 - `helpers/db-check.sh` – assert DB connectivity based on `JUSTNEWS_DB_URL`.
 
 ## Logs and troubleshooting
@@ -146,10 +164,15 @@ If many services fail on first boot, verify `justnews@gpu_orchestrator` is READY
 ## Transparency and governance checks
 
 - Transparency status (served by dashboard agent): `curl -fsS http://127.0.0.1:8013/transparency/status | jq '.integrity.status'`
+
 - Evidence audit API trail lookup: `curl -fsS "$EVIDENCE_AUDIT_BASE_URL/facts/<id>/trail" | jq`
+
 - Analytics service: `curl -fsS http://127.0.0.1:8011/health` should return `{"status":"healthy"}`; the FastAPI wrapper now aliases the underlying engine to keep the status fresh.
+
 - Governance dashboard heartbeat: `curl -fsS "$GOVERNANCE_DASHBOARD_URL/api/health"`
+
 - QA sampling reminders: ensure `/etc/justnews/playbooks/extraction-qa.md` exists and is referenced in weekly ops review notes.
+
 - Verify synthesizer gate: `curl -fsS http://127.0.0.1:8005/ready` should report `true` only when `/transparency/status` returns `integrity.status` of `ok` or `degraded`.
 
 If transparency endpoints return non-200 responses, pause automated publishing (`sudo systemctl stop justnews@synthesis`) until evidence trails are restored.
@@ -163,8 +186,11 @@ sudo ./infrastructure/systemd/scripts/enable_all.sh stop
 ```
 
 Behavior:
+
 - Stops all configured `justnews@<instance>` services in reverse dependency order.
+
 - Leaves PostgreSQL running (database is managed separately).
+
 - Respectful timeouts; emits summary and exit code suitable for automation.
 
 Per-instance stop (alternative):
@@ -181,8 +207,11 @@ sudo systemctl stop justnews@gpu_orchestrator
 ```
 
 Troubleshooting:
+
 - If a service hangs, check logs: `journalctl -u justnews@<name> -e -n 200 -f`.
+
 - Free ports and dangling processes: `sudo ./infrastructure/systemd/preflight.sh --stop`.
+
 - After changes, confirm all ports are free with `infrastructure/systemd/scripts/health_check.sh` (it reports port usage).
 
 ## Status panel (auto-refresh)
@@ -194,8 +223,11 @@ sudo health_check.sh --panel
 ```
 
 Behavior:
+
 - Opens a new terminal window when available; otherwise uses tmux or runs inline with `watch`.
+
 - Refresh interval is configurable with `--refresh SEC` (default 2).
+
 - Honors `--host`, `-t/--timeout`, and optional service filters.
 
 Examples:
@@ -206,7 +238,9 @@ sudo health_check.sh --panel mcp_bus analyst
 ```
 
 Requirements:
+
 - `watch` (procps) must be installed on headless servers.
+
 - For GUI terminals, one of x-terminal-emulator/gnome-terminal/konsole/xfce4-terminal/xterm.
 
 ## Orchestrator-first and single-command restart
@@ -220,10 +254,15 @@ sudo ./infrastructure/systemd/reset_and_start.sh
 ```
 
 What it does:
+
 - Stops and disables all services, frees ports in the canonical range
+
 - Optionally reinstalls unit template and helper scripts (see flags in the script)
+
 - Ensures `justnews@gpu_orchestrator` is started and `/ready` reports ready
+
 - Starts MCP Bus, then the rest of the agents in dependency order
+
 - Runs `health_check.sh` and exits non-zero on failure
 
 2) Manual sequence (more control)
@@ -236,14 +275,21 @@ sudo ./infrastructure/systemd/scripts/health_check.sh
 ```
 
 Notes and tuning:
+
 - `enable_all.sh` now starts `gpu_orchestrator` first and waits on `/ready` (up to 120s), then MCP Bus, then all remaining services. It accepts `fresh` and the alias `--fresh`.
+
 - `preflight.sh --gate-only <instance>` is invoked by unit drop-ins; it will wait up to `GATE_TIMEOUT` seconds (default 180) for orchestrator and model preload.
+
 - If you must bypass bus wait (e.g., maintenance), set `REQUIRE_BUS=0` in the environment for `wait_for_mcp.sh` (rare).
+
 - Increase timeouts for cold-start scenarios or slow disks/GPUs by setting a drop-in with `Environment=GATE_TIMEOUT=300`.
 
 Failure handling:
+
 - If the orchestrator `READY` probe doesn’t succeed within the timeout, `enable_all.sh` aborts with a clear message. Check `journalctl -u justnews@gpu_orchestrator -f`.
+
 - If MCP Bus health isn’t ready, the script logs a warning and continues; subsequent services will still start due to systemd gating.
+
 - Always run `sudo ./infrastructure/systemd/scripts/health_check.sh -v` after changes to confirm all agents are healthy.
 
 ## Cold start (machine reboot)
@@ -255,15 +301,23 @@ sudo ./infrastructure/systemd/cold_start.sh
 ```
 
 What it does:
+
 - Enables unit template instances (idempotent)
+
 - Starts PostgreSQL if present (best-effort)
+
 - Ensures GPU Orchestrator is up and `/ready` before starting other agents
+
 - Starts MCP Bus, then all remaining services in order
+
 - Runs `health_check.sh` and returns non-zero on failures
 
 Notes:
+
 - If your installation manages PostgreSQL externally, the script skips it safely.
+
 - If helper scripts or unit template are missing, the script installs them from this repository path when available.
+
 - For slow cold GPU initialization, consider increasing `GATE_TIMEOUT` via a systemd drop-in.
 
 ### Auto-start at boot (timer)
@@ -305,7 +359,9 @@ journalctl -u justnews-boot-smoke.service -e -n 200
 ```
 
 Tuning (optional):
+
 - `SMOKE_TIMEOUT_SEC`, `SMOKE_RETRIES`, `SMOKE_SLEEP_BETWEEN` can be exported in the environment or set via a systemd drop-in for `justnews-boot-smoke.service`.
+
 - To delay further, increase `OnBootSec` in the timer unit.
 
 ## Stage B1 crawl scheduler
@@ -348,4 +404,3 @@ conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/ops/run_crawl_sched
 ```
 
 Governance notes and rate-limit reviews belong in `logs/governance/crawl_terms_audit.md`.
-

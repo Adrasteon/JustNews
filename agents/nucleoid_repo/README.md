@@ -22,7 +22,9 @@
 Nucleoid is a declarative, logic-based, contextual runtime for Neuro-Symbolic AI. Nucleoid runtime tracks each statement in [IPL-inspired](https://en.wikipedia.org/wiki/Information_Processing_Language) declarative syntax and dynamically creates relationships between both logic and data statements in the knowledge graph to used in decision-making and problem-solving process.
 
 - **Adaptive Reasoning:** Combines symbolic logic with contextual information to analyze relationships, draw conclusions and incorporating new information and adjusting its conclusions accordingly.
+
 - **Logic Graph:** Specialized knowledge graph that captures relationships between both logic and data statements based on formal logic, facilitating complex deductions and adapting to new information.
+
 - **Explainability:** The Logic Graph provides a transparent representation of the reasoning process, making it easier to understand how decisions are reached and potential biases are identified.
 
 Echoing to the idea of ["thinking, fast and slow"](https://kahneman.scholar.princeton.edu/publications), AI system should provide fast, “intuitive” ideas, and the other, more deliberate, rational decision-making. D(L)RE enables both intuitive decisions based on contextual information and deliberate, well-reasoned decisions based on logical deductions.
@@ -136,7 +138,9 @@ By integrating Nucleoid into Neuro-Symbolic AI, the system benefits from enhance
 In the realm of Neuro-Symbolic AI, *Plasticity* is an important element for the system's ability to modify and optimize its connections in response to new information. This concept is inspired by neuroplasticity in biological brains, where neurons can strengthen or weaken their connections based on activity, enabling learning and memory.
 
 1. **Dynamic Knowledge Base**: Neuro-Symbolic AI systems dynamically update their knowledge base as they encounter new scenarios or corrections to their previous knowledge. This continuous updating process allows the systems to remain relevant and accurate over time.
+
 2. **Adaptive Logic and Reasoning**: The AI system can modify its symbolic rules and reasoning strategies to better match observed data or outcomes, enhancing its decision-making and problem-solving abilities.
+
 3. **Generalization and Specialization**: Through plasticity, the system can generalize from learned experiences to new, unseen scenarios or specialize in certain domains by fine-tuning its parameters or rules based on specific data inputs.
 
 The idea of plasticity in AI, especially in logic-based systems like those in Neuro-Symbolic AI, enhances the capability of machines to not only perform tasks based on fixed rules but also to evolve those rules and adapt their reasoning over time, much like the cognitive flexibility of living things.
@@ -264,11 +268,17 @@ This does not necessary mean Nucleoid runtime is faster than MySQL or Postgres, 
 Track at [Trello](https://trello.com/b/TZ73H1Fk/nucleoid)
 
 - [x] [Beta](https://www.npmjs.com/package/nucleoidai) is out
+
 - [x] ES6 support
+
 - [ ] ES2018 support
+
 - [ ] ES2020 support
+
 - [ ] TypeScript
+
 - [ ] [IDE](https://github.com/NucleoidAI/IDE) (WiP)
+
 - [ ] Production-ready
 
 Please report an [issue](https://github.com/NucleoidAI/Nucleoid/issues) or ask a question at [Discussions](https://github.com/NucleoidAI/Nucleoid/discussions)

@@ -5,7 +5,9 @@
 **Start here**: [STARTUP_SUMMARY.md](./STARTUP_SUMMARY.md) — 2 minute overview of the plan
 
 **Then choose your role**:
+
 - 👨‍💻 **I want to execute commands**: Use [SYSTEM_STARTUP_CHECKLIST.md](./SYSTEM_STARTUP_CHECKLIST.md) ← copy-paste approach
+
 - 📖 **I want to understand everything**: Use [ACTION_PLAN_GET_SYSTEM_RUNNING.md](./ACTION_PLAN_GET_SYSTEM_RUNNING.md) ← detailed guide
 
 ---
@@ -23,10 +25,15 @@
 ## The Plan in 30 Seconds
 
 1. **Create `global.env`** with MariaDB + ChromaDB connection details (5 min)
+
 2. **Start MariaDB + ChromaDB** (Docker or native) (20 min)
+
 3. **Initialize database schema**: `python scripts/init_database.py` (5 min)
+
 4. **Start MCP Bus** → **GPU Orchestrator** → **Crawler agents** (30 min)
+
 5. **Run crawl test**: `python live_crawl_test.py --sites 3 --articles 5` (20 min)
+
 6. **Verify**: Articles in MariaDB + embeddings in ChromaDB
 
 **Total**: ~90 minutes for full production-ready system
@@ -105,19 +112,27 @@
 ## Key Constraints to Remember
 
 1. **GPU Orchestrator must reach `/ready` before crawlers start**
+
    - Crawlers check this and fail silently if not ready
+
    - The plan explicitly waits for this in Phase 3.2
 
 2. **Database schema must exist before crawlers can insert articles**
+
    - Run `init_database.py` in Phase 2
+
    - This is checked by crawler at runtime
 
 3. **ChromaDB collection must exist or embeddings fail silently**
+
    - Run `chroma_diagnose.py --autocreate` in Phase 1.3
+
    - Crawler won't retry if this fails
 
 4. **All env vars in `global.env` are read at service startup**
+
    - Changes require service restart
+
    - Good to validate early (Phase 1.1)
 
 ---
@@ -125,14 +140,21 @@
 ## Success Metrics
 
 ✅ **System Running**:
+
 - All `/health` endpoints return 200 OK
+
 - `/ready` endpoint on orchestrator returns 200 OK
+
 - All systemd units show `active (running)`
 
 ✅ **Data Flowing**:
+
 - MariaDB `articles` table has rows
+
 - ChromaDB `articles` collection has embeddings
+
 - No ERROR-level logs in past 5 minutes
+
 - Crawler completes jobs in <60 seconds per site
 
 ---
@@ -140,22 +162,23 @@
 ## Troubleshooting Cheat Sheet
 
 ```bash
-# Check all services
+
+## Check all services
 ./infrastructure/systemd/scripts/health_check.sh
 
-# View logs for a specific agent
+## View logs for a specific agent
 journalctl -u justnews@crawler -f
 
-# Check database connectivity
+## Check database connectivity
 mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -h $MARIADB_HOST -e "SELECT COUNT(*) FROM articles;"
 
-# Check ChromaDB
+## Check ChromaDB
 curl -s http://localhost:8000/api/v1/heartbeat
 
-# Restart a specific service
+## Restart a specific service
 sudo systemctl restart justnews@crawler
 
-# Stop all services (coordinated)
+## Stop all services (coordinated)
 sudo ./infrastructure/systemd/canonical_system_startup.sh stop
 ```
 
@@ -187,10 +210,15 @@ Provided in repo (already there):
 ### Path A: Quick Test (30 min)
 Just want to see if system works?
 ```
+
 1. Create global.env (5 min)
+
 2. Start MariaDB + ChromaDB (15 min)
+
 3. Run init_database.py (5 min)
+
 4. Start crawler services manually (15 min)
+
 5. Run live_crawl_test.py with --sites 1 --articles 3
 ```
 Result: 10-15 articles in database, proof of concept
@@ -205,10 +233,15 @@ Result: 500+ articles/hour via scheduler, full pipeline
 ### Path C: Just the Crawler (45 min)
 Only want to test crawling without full orchestration?
 ```
+
 1. Create global.env
+
 2. Start MariaDB + ChromaDB
+
 3. Run init_database.py
+
 4. python -m agents.crawler.main (direct, no MCP)
+
 5. POST http://localhost:8015/start_crawl with manual payload
 ```
 Result: Direct crawler testing, no scheduling
@@ -217,19 +250,19 @@ Result: Direct crawler testing, no scheduling
 
 ## Important: You Already Have
 
-✅ **vLLM Mistral-7B** on port 7060 is running and tested  
-✅ **GPU setup** at 300W power cap (stable)  
-✅ **All source code** already in place  
-✅ **Conda environment** `justnews-py312` ready  
-✅ **Configuration files** in `config/`  
-✅ **Database initialization scripts** ready to run  
+✅ **vLLM Mistral-7B** on port 7060 is running and tested
+✅ **GPU setup** at 300W power cap (stable)
+✅ **All source code** already in place
+✅ **Conda environment** `justnews-py312` ready
+✅ **Configuration files** in `config/`
+✅ **Database initialization scripts** ready to run
 
 **You just need to:**
-❌ Create `global.env`  
-❌ Start MariaDB + ChromaDB  
-❌ Initialize schema  
-❌ Start agents  
-❌ Start crawling  
+❌ Create `global.env`
+❌ Start MariaDB + ChromaDB
+❌ Initialize schema
+❌ Start agents
+❌ Start crawling
 
 **Total setup time: ~90 minutes**
 
@@ -248,6 +281,6 @@ Result: Direct crawler testing, no scheduling
 
 ---
 
-**Created**: December 18, 2025  
-**Last Updated**: December 18, 2025  
+**Created**: December 18, 2025
+**Last Updated**: December 18, 2025
 **Status**: Ready for execution

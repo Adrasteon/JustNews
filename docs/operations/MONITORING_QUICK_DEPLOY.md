@@ -10,13 +10,21 @@ description: Step-by-step guide to deploy Prometheus and Grafana using the autom
 The `scripts/deploy_monitoring.sh` script automates the complete deployment of the Prometheus and Grafana monitoring stack from your USB drive. It handles:
 
 - ✅ Package installation (Prometheus, Grafana, Node Exporter)
+
 - ✅ Copying configurations from USB drive
+
 - ✅ Creating directory structure and setting permissions
+
 - ✅ Creating systemd units for all services
+
 - ✅ Enabling services for auto-start
+
 - ✅ Starting services and waiting for readiness
+
 - ✅ Verifying deployment
+
 - ✅ Configuring Grafana security
+
 - ✅ Displaying access information
 
 **Time to Deploy**: 5-10 minutes (fully automated)
@@ -24,23 +32,31 @@ The `scripts/deploy_monitoring.sh` script automates the complete deployment of t
 ## Prerequisites
 
 ### Required
+
 - **Root/sudo access**: Script must run as root
+
 - **USB drive mounted**: At `/media/adra/37f1914d-e5fd-48ca-8c24-22d5f4e2e9dd`
+
   - Contains monitoring configs at `etc/justnews/monitoring/`
+
 - **Internet connection**: To download and install packages
+
 - **Ubuntu/Debian Linux**: Script uses apt-get package manager
 
 ### Optional
+
 - **GRAFANA_PASSWORD environment variable**: Set a strong password before running
+
   - If not set, a random password will be generated
 
 ## Quick Start (One Command)
 
 ```bash
-# Deploy with automatic password generation
+
+## Deploy with automatic password generation
 sudo bash scripts/deploy_monitoring.sh
 
-# Or specify a custom Grafana password
+## Or specify a custom Grafana password
 GRAFANA_PASSWORD="your-strong-password" sudo bash scripts/deploy_monitoring.sh
 ```
 
@@ -159,14 +175,21 @@ Default: `/media/adra/37f1914d-e5fd-48ca-8c24-22d5f4e2e9dd`
 ### Access Dashboards
 
 **Grafana** (Dashboards and Visualization)
+
 - URL: `http://localhost:3000`
+
 - Default User: `admin`
+
 - Password: (displayed after deployment)
+
 - Dashboards: 5 pre-configured dashboards available
 
 **Prometheus** (Metrics and Targets)
+
 - URL: `http://localhost:9090`
+
 - Metrics: `http://localhost:9090/metrics`
+
 - Targets: `http://localhost:9090/targets`
 
 ### Change Grafana Password
@@ -179,33 +202,36 @@ sudo grafana-cli admin reset-admin-password "new-strong-password"
 ### View Service Logs
 
 ```bash
-# View Prometheus logs
+
+## View Prometheus logs
 sudo journalctl -u prometheus -f
 
-# View Grafana logs
+## View Grafana logs
 sudo journalctl -u grafana-server -f
 
-# View Node Exporter logs
+## View Node Exporter logs
 sudo journalctl -u prometheus-node-exporter -f
 ```
 
 ### Check Service Status
 
 ```bash
-# Check all monitoring services
+
+## Check all monitoring services
 sudo systemctl status prometheus grafana-server prometheus-node-exporter
 
-# Check individual service
+## Check individual service
 sudo systemctl status prometheus
 ```
 
 ### Restart Services
 
 ```bash
-# Restart all services
+
+## Restart all services
 sudo systemctl restart prometheus grafana-server prometheus-node-exporter
 
-# Restart individual service
+## Restart individual service
 sudo systemctl restart prometheus
 ```
 
@@ -213,88 +239,109 @@ sudo systemctl restart prometheus
 
 ### Script Won't Run - Permission Denied
 ```bash
-# Make script executable
+
+## Make script executable
 chmod +x scripts/deploy_monitoring.sh
 
-# Run with sudo
+## Run with sudo
 sudo bash scripts/deploy_monitoring.sh
 ```
 
 ### USB Not Found
 ```bash
-# Check if USB is mounted
+
+## Check if USB is mounted
 ls -la /media/adra/37f1914d-e5fd-48ca-8c24-22d5f4e2e9dd
 
-# If not mounted, mount it
+## If not mounted, mount it
 sudo mount /dev/sdX1 /media/adra/37f1914d-e5fd-48ca-8c24-22d5f4e2e9dd
 
-# Specify custom path
+## Specify custom path
 USB_PATH="/your/usb/path" sudo bash scripts/deploy_monitoring.sh
 ```
 
 ### Prometheus Won't Start
 ```bash
-# Check logs
+
+## Check logs
 sudo journalctl -u prometheus -n 50
 
-# Check config syntax
+## Check config syntax
 promtool check config /etc/justnews/monitoring/prometheus.yml
 
-# Check if port 9090 is available
+## Check if port 9090 is available
 sudo ss -tlnp | grep 9090
 ```
 
 ### Grafana Won't Start
 ```bash
-# Check logs
+
+## Check logs
 sudo journalctl -u grafana-server -n 50
 
-# Check if port 3000 is available
+## Check if port 3000 is available
 sudo ss -tlnp | grep 3000
 
-# Check permissions
+## Check permissions
 ls -la /var/lib/justnews/grafana
 ls -la /var/log/justnews/grafana
 ```
 
 ### Dashboards Not Loading Data
 This is normal! Dashboards may take 1-2 minutes to show data as Prometheus:
+
 1. Scrapes service targets (every 15 seconds)
+
 2. Stores metrics in time series database
+
 3. Grafana queries and displays data
 
 To speed this up:
+
 1. Access Prometheus targets page: http://localhost:9090/targets
+
 2. Verify all targets show green (up)
+
 3. Wait 2-3 scrape cycles for data to accumulate
+
 4. Refresh Grafana dashboards
 
 ### Port Already in Use
 If ports are already in use (9090 Prometheus, 3000 Grafana):
 ```bash
-# Find what's using the port
+
+## Find what's using the port
 sudo lsof -i :9090
 sudo lsof -i :3000
 
-# Stop the conflicting service
+## Stop the conflicting service
 sudo systemctl stop <service-name>
 
-# Or change port in configuration files
-# Edit /etc/justnews/monitoring/prometheus.yml for web.listen-address
-# Edit /etc/justnews/monitoring/grafana.ini for http_port
+## Or change port in configuration files
+
+## Edit /etc/justnews/monitoring/prometheus.yml for web.listen-address
+
+## Edit /etc/justnews/monitoring/grafana.ini for http_port
 ```
 
 ## Security Considerations
 
 ### Passwords
+
 - ✅ Default Grafana password is changed during deployment
+
 - ✅ Password is displayed and should be saved securely
+
 - ⚠️ Change password immediately if default is used
 
 ### Network Access
+
 - ✅ Prometheus listens on localhost only (127.0.0.1:9090)
+
 - ✅ Node Exporter listens on localhost only (127.0.0.1:9100)
+
 - ⚠️ Grafana listens on all interfaces (0.0.0.0:3000)
+
   - Restrict with firewall if needed:
     ```bash
     sudo ufw allow from <your-ip> to any port 3000
@@ -302,8 +349,11 @@ sudo systemctl stop <service-name>
     ```
 
 ### Data Protection
+
 - ✅ Prometheus stores data in `/var/lib/prometheus/`
+
 - ✅ Data retention is 30 days (configurable)
+
 - ✅ Consider backup strategy for production
 
 ## Configuration Files Location
@@ -347,38 +397,52 @@ After deployment, configurations are at:
 ## Next Steps
 
 ### Verify Deployment
+
 1. Open Grafana: http://localhost:3000
+
 2. Login with admin / (generated password)
+
 3. Check System Overview dashboard
+
 4. Verify data is being collected
 
 ### Configure Alerts (Optional)
+
 1. Review `docs/operations/ALERTING.md` (future doc)
+
 2. Deploy AlertManager
+
 3. Configure notification channels
 
 ### Monitor System Health
+
 1. Check dashboards regularly
+
 2. Set up alerts for critical metrics
+
 3. Monitor logs: `sudo journalctl -u prometheus -f`
 
 ### Backup Configuration
 ```bash
-# Backup Prometheus configs
+
+## Backup Prometheus configs
 sudo cp -r /etc/justnews/monitoring /backup/monitoring.backup
 
-# Backup Prometheus data
+## Backup Prometheus data
 sudo cp -r /var/lib/prometheus /backup/prometheus.backup
 
-# Backup Grafana data
+## Backup Grafana data
 sudo cp -r /var/lib/justnews/grafana /backup/grafana.backup
 ```
 
 ## Support and Documentation
 
 For more information, see:
+
 - **Setup Details**: `docs/operations/MONITORING_INFRASTRUCTURE.md`
+
 - **Troubleshooting**: `docs/operations/TROUBLESHOOTING.md` (Monitoring section)
+
 - **All Documentation**: `docs/DOCUMENTATION_INDEX.md`
 
 ---

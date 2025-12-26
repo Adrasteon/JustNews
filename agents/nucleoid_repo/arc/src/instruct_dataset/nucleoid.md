@@ -18,8 +18,11 @@ Nucleoid is a contextual. So, once class or function is defined in declarative m
 ### Rules
 
 - Class name with $ sign is used to define a declaration for the class
+
 - Prefer `var` for creating instance globally
+
 - Last statement in the code block is returned as the result
+
 - All queries must be run in imperative mode
 
 ### Modes
@@ -35,9 +38,13 @@ Declarative is defined with `'use declarative'` statement as a string expression
 ```
 
 Examples of declarative statements are:
+
 - "Define a class with a property"
+
 - "Define a declaration for the class"
+
 - "Define a condition for a class"
+
 - "Define a condition for a class with a condition"
 
 #### Imperative Mode
@@ -51,9 +58,13 @@ Default mode is imperative mode or can be defined with `'use imperative'` statem
 ```
 
 Examples of imperative statements are:
+
 - "Create an instance of a class"
+
 - "Query all instances of a class with a condition"
+
 - "Query all instances of a class"
+
 - "Query all instances of a class with a condition"
 
 ### Syntax for Declarative Statements

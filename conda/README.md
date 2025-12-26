@@ -14,11 +14,14 @@ Purpose: build a python `protobuf` package compatible with Python 3.12 in
 environments where conda-forge does not provide a matching Python wheel.
 
 How to use (locally)
+
 1. Ensure `conda-build` or `mamba` (and `conda-build`) are installed in your
    base environment.
+
 2. From this repo root run:
 
 ```bash
+
 # build into /tmp/conda-bld (or the conda-build configured output dir)
 conda build conda/recipes/protobuf
 ```
@@ -36,8 +39,10 @@ of dependencies, etc.) before the final recipe is accepted into conda-forge.
 
 Notes
 -----
+
 - The recipe intentionally tries to use the upstream PyPI sdist as the source
   and uses pip to build the wheel inside the conda-build environment so the
   compiled extension matches the local Python ABI.
+
 - Building protobuf can require a non-trivial build toolchain; CI or developer
   machines must have the appropriate compilers and dependencies available.

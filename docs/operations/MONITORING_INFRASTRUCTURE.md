@@ -19,22 +19,36 @@ The USB drive contains a **complete Grafana and Prometheus monitoring stack** wi
 
 #### 1. **grafana.ini** (537 bytes)
 Grafana server configuration with:
+
 - HTTP server on `0.0.0.0:3000` (all interfaces)
+
 - Data storage: `/var/lib/justnews/grafana`
+
 - Provisioning from: `/etc/justnews/monitoring/grafana/provisioning/`
+
 - Default credentials: `admin:admin` (⚠️ **CHANGE THESE IN PRODUCTION**)
+
 - Security: Anonymous access disabled, gravatar disabled
 
 #### 2. **prometheus.yml** (1.1 KB)
 Prometheus server configuration with:
+
 - Scrape interval: 15 seconds
+
 - Global labels: `deployment=systemd`
+
 - Targets configured for:
+
   - **Prometheus itself** (9090)
+
   - **MCP Bus** (8000)
+
   - **Crawler** (8015, 10s scrape)
+
   - **Dashboard** (8013)
+
   - **Agents** (8001-8008, 8012) — 9 agent ports
+
   - **Node Exporter** (9100) — System metrics
 
 #### 3. **Grafana Dashboards** (5 total, 1,312 lines JSON)
@@ -48,16 +62,24 @@ Prometheus server configuration with:
 | `parity_dashboard.json` | Extraction parity and quality metrics | 60 |
 
 **System Overview Dashboard includes**:
+
 - Fleet availability (number of justnews services up)
+
 - GPU utilization and memory
+
 - Network throughput
+
 - Service dependencies
+
 - Error rate tracking
 
 #### 4. **Datasource Configuration**
 Grafana datasource provisioning configured to auto-connect to:
+
 - Prometheus at `http://127.0.0.1:9090`
+
 - Auto-refresh every 15 seconds
+
 - Marked as default datasource
 
 ## What We Have in the Repo
@@ -85,9 +107,13 @@ monitoring/
 ```
 
 ### Status Summary
+
 - ✅ **Centralized Logging**: COMPLETED (full structured logging, aggregation, storage, analysis)
+
 - ✅ **Distributed Tracing**: COMPLETED (Oct 22, 2025) with OpenTelemetry integration
+
 - ⚠️ **Metrics & Dashboards**: Design exists, but **Grafana/Prometheus not deployed to systemd yet**
+
 - ⚠️ **Alerting**: Rules exist, but **AlertManager not deployed yet**
 
 ## Recommendations
@@ -95,6 +121,7 @@ monitoring/
 ### Phase 1: Integrate Existing Grafana/Prometheus Configuration ✅ **DO THIS**
 
 **What to do**:
+
 1. Copy configuration files from USB to `/etc/justnews/monitoring/`:
    ```bash
    sudo mkdir -p /etc/justnews/monitoring/grafana/provisioning
@@ -116,10 +143,14 @@ monitoring/
 
 4. Update Prometheus to point to actual service ports (verify ports match your deployment)
 
-**Why**: 
+**Why**:
+
 - Pre-built dashboards save development time
+
 - Immediate visibility into system health
+
 - Integration already configured for your service architecture
+
 - Low effort, high value
 
 **Time to deploy**: ~30 minutes
@@ -127,13 +158,16 @@ monitoring/
 ### Phase 2: Deploy Prometheus & Grafana as Systemd Services ✅ **RECOMMENDED**
 
 **What to do**:
+
 1. Install Prometheus:
    ```bash
    sudo apt-get install -y prometheus grafana-server prometheus-node-exporter
    ```
 
 2. Create systemd units:
+
    - `/etc/systemd/system/prometheus.service` (use config from USB)
+
    - `/etc/systemd/system/grafana.service` (use config from USB)
 
 3. Update configuration paths to match system locations
@@ -144,9 +178,13 @@ monitoring/
    ```
 
 **Benefits**:
+
 - Auto-start on boot (matching your Vault/MariaDB/ChromaDB pattern)
+
 - Service restart on failure
+
 - Standard systemd logging integration
+
 - Easy to manage alongside other JustNews services
 
 **Time to deploy**: ~45 minutes
@@ -154,6 +192,7 @@ monitoring/
 ### Phase 3: Deploy Node Exporter for System Metrics
 
 **What to do**:
+
 1. Install Node Exporter:
    ```bash
    sudo apt-get install -y prometheus-node-exporter
@@ -167,8 +206,11 @@ monitoring/
    ```
 
 **Benefits**:
+
 - Track CPU, memory, disk, network metrics
+
 - Required for system_overview_dashboard
+
 - Low overhead
 
 **Time to deploy**: ~15 minutes
@@ -176,13 +218,19 @@ monitoring/
 ### Phase 4: Integrate Application Metrics
 
 **What to do**:
+
 1. Uncomment `prometheus-client>=0.19.0` in `requirements.txt`
+
 2. Implement metrics collection in agents using `common/metrics.py`
+
 3. Ensure agents expose Prometheus endpoints on configured ports (8001-8008, 8015)
 
-**Current State**: 
+**Current State**:
+
 - Code is partially ready (`common/metrics.py` exists but may need updates)
+
 - Agent ports are already defined
+
 - Just needs activation
 
 **Time to deploy**: ~1-2 hours (depends on agent implementation)
@@ -214,88 +262,123 @@ Backup files (.bak.* files) - can skip these
 ## Integration Path Forward
 
 ### Immediate (Next 1-2 Days)
+
 1. ✅ Document monitoring infrastructure (THIS FILE)
+
 2. ⬜ Copy USB monitoring configs to `/etc/justnews/monitoring/`
+
 3. ⬜ Create systemd units for Prometheus and Grafana
+
 4. ⬜ Update configuration with actual service ports
+
 5. ⬜ Deploy and test dashboard access
 
 ### Short Term (Next Week)
+
 1. ⬜ Deploy Node Exporter for system metrics
+
 2. ⬜ Activate `prometheus-client` in requirements
+
 3. ⬜ Update agent code to emit Prometheus metrics
+
 4. ⬜ Test dashboard data population
 
 ### Medium Term (Next Month)
+
 1. ⬜ Deploy AlertManager with alert rules
+
 2. ⬜ Configure alert notifications (email, Slack, etc.)
+
 3. ⬜ Train team on dashboard usage and alerting
+
 4. ⬜ Document runbook for common alerts
 
 ## Security Considerations
 
 ### Changes Needed
+
 1. **Change Grafana admin password** from default `admin:admin`
    ```bash
    sudo grafana-cli admin reset-admin-password <new-password>
    ```
 
 2. **Enable authentication** for Prometheus API (optional but recommended)
+
    - Add reverse proxy (nginx) in front of Prometheus
+
    - Require API token authentication
 
 3. **Secure metric collection** endpoints
+
    - Run Prometheus on localhost only: `127.0.0.1:9090`
+
    - Use firewall rules to restrict access
 
 4. **Protect Grafana credentials**
+
    - Store in Vault alongside other secrets
+
    - Use strong password (16+ chars, mixed case, symbols, numbers)
 
 ### Already Handled
+
 - ✅ Anonymous Grafana access disabled
+
 - ✅ Gravatar disabled (privacy)
+
 - ✅ Console logging only (no file logs with secrets)
+
 - ✅ `reporting_enabled=false` (no telemetry)
+
 - ✅ `check_for_updates=false` (no external calls)
 
 ## Documentation to Create
 
 ### Create These New Docs
+
 1. **docs/operations/MONITORING_SETUP.md** — How to deploy Prometheus/Grafana
+
 2. **docs/operations/DASHBOARDS.md** — Guide to using the 5 dashboards
+
 3. **docs/operations/ALERTING.md** — Setting up and managing alerts
 
 ### Update Existing Docs
+
 1. **README.md** — Add link to monitoring in quick start
+
 2. **docs/operations/README.md** — Add monitoring to quick links
+
 3. **docs/operations/TROUBLESHOOTING.md** — Add monitoring section
 
 ## Quick Start (If You Decide to Deploy Now)
 
 ```bash
-# 1. Copy monitoring configs from USB
+
+## 1. Copy monitoring configs from USB
 sudo mkdir -p /etc/justnews/monitoring/grafana/provisioning/{datasources,dashboards}
 sudo cp /media/adra/.../monitoring/* /etc/justnews/monitoring/
 
-# 2. Install Prometheus and Grafana
+## 2. Install Prometheus and Grafana
 sudo apt-get update
 sudo apt-get install -y prometheus grafana-server prometheus-node-exporter
 
-# 3. Update config symlinks (optional)
+## 3. Update config symlinks (optional)
 sudo ln -sf /etc/justnews/monitoring/prometheus.yml /etc/prometheus/prometheus.yml
 sudo ln -sf /etc/justnews/monitoring/grafana.ini /etc/grafana/grafana.ini
 
-# 4. Start services
+## 4. Start services
 sudo systemctl daemon-reload
 sudo systemctl enable --now prometheus grafana-server prometheus-node-exporter
 
-# 5. Access dashboards
-# Open browser to: http://localhost:3000/
-# Default credentials: admin / admin (CHANGE IMMEDIATELY)
+## 5. Access dashboards
 
-# 6. Verify Prometheus targets
-# Open browser to: http://localhost:9090/targets
+## Open browser to: http://localhost:3000/
+
+## Default credentials: admin / admin (CHANGE IMMEDIATELY)
+
+## 6. Verify Prometheus targets
+
+## Open browser to: http://localhost:9090/targets
 ```
 
 ## Verdict
@@ -311,8 +394,11 @@ sudo systemctl enable --now prometheus grafana-server prometheus-node-exporter
 ## Next Steps
 
 1. **Decision**: Decide if you want monitoring deployed now or in 1-2 weeks
+
 2. **If YES**: Follow "Quick Start" section above
+
 3. **If LATER**: Save this document and USB path for reference
+
 4. **Either way**: Create documentation for monitoring setup (for team consistency)
 
 ---

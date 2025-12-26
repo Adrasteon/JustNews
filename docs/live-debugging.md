@@ -3,17 +3,25 @@
 This runbook explains recommended workflows for running JustNews in "live" mode (full system) while still giving developers safe, effective debugging and real-time observability.
 
 Goals
+
 - Start and supervise the full system without risking unstable desktop GPU usage.
+
 - Capture logs & traces centrally for triage (OTel + Loki/Tempo / local aggregator).
+
 - Allow a developer to attach VS Code to a single service for step-through debugging.
 
 Overview
+
 - Use systemd or docker-compose to start background services (MariaDB, Redis, Chroma, MCP Bus, agents).
+
 - Run OpenTelemetry node + central collectors (or use the dev telemetry docker-compose included in the repo) to capture kernel / NVIDIA logs plus application OTLP.
+
 - When debugging a service interactively, attach VS Code to the service using debugpy (see `.vscode/launch.json`). Avoid attaching debuggers to multiple heavy services simultaneously.
 
 Safety & GPU guidance
+
 - Never run a broad full-suite test or the entire production agent set on your development desktop with GPUs enabled. Use `CUDA_VISIBLE_DEVICES` and container device limits to isolate GPU access.
+
 - Prefer dedicated GPU hosts or CI runners when stressing models or running large e2e workloads.
 
 Quick developer recipes
@@ -23,10 +31,11 @@ Quick developer recipes
 Use the recommended systemd units (if installed) or helper compose scripts in `scripts/dev/` to start the system. Example:
 
 ```bash
-# start services with systemd (operators)
+
+## start services with systemd (operators)
 sudo systemctl start justnews@*
 
-# or, use the project's dev docker compose for local stacks (services only)
+## or, use the project's dev docker compose for local stacks (services only)
 docker compose -f scripts/dev/docker-compose.e2e.yml up -d
 ```
 
@@ -36,7 +45,8 @@ The repo includes a small compose file to start a local telemetry stack (Loki + 
 
 ```bash
  docker compose -f infrastructure/monitoring/dev-docker-compose.yaml up -d
-# Validate OTEL node collector health
+
+## Validate OTEL node collector health
 curl -s http://localhost:8889/metrics | head -n 10
 ```
 
@@ -81,10 +91,13 @@ Then attach the VS Code 'Python: Attach to GPU Orchestrator' configuration and s
 4) Inspecting logs and traces
 
 - Use the node collector UI and Loki (or `docker logs` / `journalctl -u justnews@<service>`) to tail logs for real-time errors.
+
 - Use Grafana or Tempo UI to view traces and correlate span IDs with logs.
 
 Backups & troubleshooting
+
 - If the collector fails to start, run the `--dry-run` check using the installed `otelcol-contrib` binary and watch `journalctl -u justnews-otel-*.service`.
+
 - If you encounter desktop instability when running heavy workloads, confirm GPU isolation (`nvidia-smi`) and consider limiting GPU access to a dedicated host.
 
 If you'd like, I can also add step-by-step guided scripts to automate the above. Want me to add a `scripts/dev/dev-telemetry-up.sh` helper next?

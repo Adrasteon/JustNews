@@ -3,8 +3,11 @@
 This guide consolidates the historical documentation from the `justnews/maint/cleanup` branch into a single reference for designing, operating, and extending the shared model store that backs JustNews agents.
 
 ## Purpose
+
 - Provide atomic, versioned delivery of per-agent model artifacts.
+
 - Ensure readers never observe partially written models.
+
 - Keep deployment and permissions simple enough for bare-metal and systemd based installations.
 
 ## Canonical Layout
@@ -16,14 +19,21 @@ MODEL_STORE_ROOT/
       <version>.tmp/          # Temporary staging location
     current -> versions/<version>
 ```
+
 - Default on-prem path: `/opt/justnews/models`.
+
 - All operations must occur on the same filesystem to preserve atomic rename and symlink semantics.
+
 - In legacy environments you may still encounter alias symlinks such as `news-cleaner-agent -> synthesizer`. Keep the canonical `<agent>/…` layout authoritative; if those aliases exist, treat them as read-only compatibility shims rather than the source of truth.
 
 ## Lifecycle
+
 1. **Stage** – Writers obtain a temporary directory via `ModelStore.stage_new(agent, version)` and populate the full model payload inside `<version>.tmp`.
+
 2. **Validate & Manifest** – `ModelStore.finalize(...)` computes a deterministic SHA-256 checksum, writes `manifest.json`, and renames the directory to `<version>`.
+
 3. **Publish** – Finalize atomically updates the `current` symlink (`os.replace`) so running agents immediately see the new version.
+
 4. **Read** – Consumers resolve the current version with `ModelStore.get_current(agent)` and load models directly from the returned directory.
 
 ### Manifest Structure (`versions/<version>/manifest.json`)
@@ -37,19 +47,26 @@ MODEL_STORE_ROOT/
 Populate `metadata` with any training context that auditors might require.
 
 ## Permissions & Environment
+
 - Ensure writers and readers share a Unix group (for example `justnews`).
+
 - Recommended commands (run as root):
   ```bash
   mkdir -p /opt/justnews/models
   chgrp -R justnews /opt/justnews/models
   chmod -R g+rwX /opt/justnews/models
   ```
+
 - Set `MODEL_STORE_ROOT=/opt/justnews/models` in `/etc/justnews/global.env` (systemd guide).
+
 - Set `STRICT_MODEL_STORE=1` to force agents to fail when the model store is unavailable.
 
 ## Operational Tasks
+
 - **Backups** – Include the entire `MODEL_STORE_ROOT` in nightly rsync/backup jobs.
+
 - **Restore** – `rsync -av <backup>/model_store/ /opt/justnews/models/` followed by service restart.
+
 - **Retention** – Keep only a small number of historical versions (for example the latest 3) once new versions are validated.
 
 ## Helper Scripts & Tooling
@@ -64,20 +81,31 @@ Copies of the primary helpers are available in this repository under `models/` f
 | `create_toy_model_store.py` | `scripts/create_toy_model_store.py` | Utility for generating a miniature store layout for local testing and demos. |
 
 Additional integration points worth reviewing (not copied here):
+
 - `agents/common/embedding.py` – Loads sentence transformers with ModelStore fallbacks.
+
 - `agents/synthesizer/tools.py` – Prefers the store when retrieving synthesizer artifacts.
+
 - `deploy/systemd/examples/justnews.env.example` – Contains environment variable templates.
 
 ## Deployment Touchpoints
+
 - **Systemd Native Deployment** (`markdown_docs/agent_documentation/systemd/DEPLOYMENT.md`): documents directory creation and environment configuration.
+
 - **Backup & Recovery** (`markdown_docs/agent_documentation/deployment_procedures_guide.md`): includes a model store restore snippet.
+
 - **GPU Action Plans** (`markdown_docs/development_reports/full_gpu_implementation_action_plan.md`): mandates storing ONNX/TRT engines via the ModelStore helpers.
 
 ## Onboarding Checklist
+
 1. Export `MODEL_STORE_ROOT` and ensure permissions are correct.
+
 2. Use `create_toy_model_store.py` to verify the process end-to-end on a staging machine.
+
 3. Integrate training pipelines with `ModelStore.stage_new` / `finalize`.
+
 4. Update agent configuration to enforce `STRICT_MODEL_STORE=1` in production.
+
 5. Add the store to backup, monitoring, and capacity planning inventories.
 
 ## Quick Start Snippets
@@ -102,7 +130,8 @@ model = load_sentence_transformer(
 ```
 
 ```bash
-# Build and publish a TensorRT engine to the store
+
+## Build and publish a TensorRT engine to the store
 python models/build_engine.py \
   --agent analyst \
   --model-id meta-llama/Meta-Llama-3-8B-Instruct \

@@ -8,7 +8,8 @@ Print this page or keep it open while executing the startup plan.
 
 ### 1.1 Create global.env
 ```bash
-# Create /etc/justnews/global.env or ./global.env with:
+
+## Create /etc/justnews/global.env or ./global.env with:
 JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-py312/bin/python
 SERVICE_DIR=/home/adra/JustNews
 MARIADB_HOST=localhost
@@ -20,25 +21,27 @@ CHROMA_HOST=localhost
 CHROMA_PORT=8000
 CANONICAL_ENV=justnews-py312
 
-# Verify:
+## Verify:
 source global.env && echo "✅ $MARIADB_HOST"
 ```
 
 ### 1.2 Start MariaDB
 ```bash
-# Docker (simplest)
+
+## Docker (simplest)
 docker-compose -f scripts/dev/docker-compose.e2e.yml up -d mariadb
 
-# Or verify if running:
+## Or verify if running:
 mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -h $MARIADB_HOST -e "SELECT 1;"
 ```
 
 ### 1.3 Start ChromaDB
 ```bash
-# Docker
+
+## Docker
 docker run -d --name chromadb -p 8000:8000 chromadb/chroma:latest
 
-# Auto-create collection
+## Auto-create collection
 python scripts/chroma_diagnose.py --autocreate
 ```
 
@@ -47,12 +50,13 @@ python scripts/chroma_diagnose.py --autocreate
 ## Phase 2: Database Schema (5 min)
 
 ```bash
-# Initialize schema
+
+## Initialize schema
 ./scripts/run_with_env.sh python scripts/init_database.py
 
-# Should output: ✅ Database initialization completed successfully!
+## Should output: ✅ Database initialization completed successfully!
 
-# Verify
+## Verify
 mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -D $MARIADB_DB \
   -e "SHOW TABLES;" | grep -c articles
 ```
@@ -63,25 +67,27 @@ mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -D $MARIADB_DB \
 
 ### 3.1 MCP Bus
 ```bash
-# Option A: systemd
+
+## Option A: systemd
 sudo systemctl enable --now justnews@mcp_bus
 
-# Option B: Direct Python
+## Option B: Direct Python
 ./scripts/run_with_env.sh python -m agents.mcp_bus.main &
 
-# Verify
+## Verify
 curl -s http://localhost:8017/health && echo "✅ MCP Bus"
 ```
 
 ### 3.2 GPU Orchestrator (WAIT for READY)
 ```bash
-# Option A: systemd
+
+## Option A: systemd
 sudo systemctl enable --now justnews@gpu_orchestrator
 
-# Option B: Direct Python
+## Option B: Direct Python
 ./scripts/run_with_env.sh python -m agents.gpu_orchestrator.main &
 
-# WAIT for ready (try every 5 seconds):
+## WAIT for ready (try every 5 seconds):
 for i in {1..30}; do
   curl -fsS http://127.0.0.1:8014/ready && echo "✅ GPU Orchestrator READY" && break
   sleep 5
@@ -90,16 +96,17 @@ done
 
 ### 3.3 Crawler Agents
 ```bash
-# Option A: systemd (all services)
+
+## Option A: systemd (all services)
 sudo ./infrastructure/systemd/scripts/enable_all.sh start
 
-# Option B: Individual services
+## Option B: Individual services
 ./scripts/run_with_env.sh python -m agents.crawler.main &
 ./scripts/run_with_env.sh python -m agents.crawler_control.main &
 ./scripts/run_with_env.sh python -m agents.analyst.main &
 ./scripts/run_with_env.sh python -m agents.memory.main &
 
-# Verify all ports
+## Verify all ports
 for port in 8015 8016 8004 8007; do
   echo -n "Port $port: "
   curl -s http://localhost:$port/health | jq -r '.status'
@@ -123,21 +130,23 @@ ls -la config/crawl_profiles/
 
 ### 4.3 Check Results
 ```bash
-# Articles in database
+
+## Articles in database
 mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -D $MARIADB_DB \
   -e "SELECT COUNT(*) AS count FROM articles;"
 
-# Embeddings in ChromaDB
+## Embeddings in ChromaDB
 curl -s -X POST http://localhost:8000/api/v1/collections/articles/count \
   -H "Content-Type: application/json" -d '{}' | jq '.count'
 ```
 
 ### 4.4 Full Scheduler (500 articles/hour)
 ```bash
-# Dry-run first
+
+## Dry-run first
 ./scripts/run_with_env.sh python scripts/ops/run_crawl_schedule.py --dry-run
 
-# Execute one cycle
+## Execute one cycle
 ./scripts/run_with_env.sh python scripts/ops/run_crawl_schedule.py
 ```
 
@@ -146,7 +155,8 @@ curl -s -X POST http://localhost:8000/api/v1/collections/articles/count \
 ## Health Check (Copy-Paste)
 
 ```bash
-# Quick health check of all services
+
+## Quick health check of all services
 echo "MCP Bus:"
 curl -s http://localhost:8017/health | jq '.status'
 
@@ -206,26 +216,27 @@ curl -s http://localhost:8000/api/v1/heartbeat | grep -q '{}' && echo "OK" || ec
 ## Key Commands (Copy-Paste Ready)
 
 ```bash
-# Full health status
+
+## Full health status
 ./infrastructure/systemd/scripts/health_check.sh
 
-# Start all services (systemd)
+## Start all services (systemd)
 sudo ./infrastructure/systemd/scripts/enable_all.sh start
 
-# Stop all services (coordinated)
+## Stop all services (coordinated)
 sudo ./infrastructure/systemd/canonical_system_startup.sh stop
 
-# View logs for a service
+## View logs for a service
 journalctl -u justnews@crawler -f
 
-# Kill and restart a service
+## Kill and restart a service
 sudo systemctl restart justnews@crawler
 
-# Database query (article count)
+## Database query (article count)
 mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -D $MARIADB_DB \
   -e "SELECT COUNT(*) FROM articles; SELECT COUNT(*) FROM entities;"
 
-# ChromaDB collection count
+## ChromaDB collection count
 curl -s -X POST http://localhost:8000/api/v1/collections/articles/count \
   -H "Content-Type: application/json" -d '{}' | jq '.count'
 ```
@@ -235,14 +246,23 @@ curl -s -X POST http://localhost:8000/api/v1/collections/articles/count \
 ## Success Checklist
 
 - [ ] vLLM 7060 responding
+
 - [ ] global.env created and sourced
+
 - [ ] MariaDB connection OK
+
 - [ ] ChromaDB running
+
 - [ ] Schema initialized (tables created)
+
 - [ ] MCP Bus healthy
+
 - [ ] GPU Orchestrator ready
+
 - [ ] All agent services healthy
+
 - [ ] Live crawl test succeeded (articles in DB)
+
 - [ ] Embeddings in ChromaDB
 
 If all checked: ✅ **System ready for production data ingestion**

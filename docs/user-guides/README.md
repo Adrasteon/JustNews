@@ -130,25 +130,27 @@ If you're developing or extending JustNews:
 
 #### Health Monitoring
 ```bash
-# Check all services
+
+## Check all services
 make health-check
 
-# View dashboard
+## View dashboard
 open http://localhost:8013
 
-# Check logs
+## Check logs
 make logs
 ```
 
 #### Performance Monitoring
 ```bash
-# GPU utilization
+
+## GPU utilization
 nvidia-smi
 
-# System metrics
+## System metrics
 make metrics
 
-# Performance benchmarks
+## Performance benchmarks
 make benchmark
 ```
 
@@ -156,25 +158,27 @@ make benchmark
 
 #### Database Maintenance
 ```bash
-# Backup database
+
+## Backup database
 make db-backup
 
-# Optimize indices
+## Optimize indices
 make db-optimize
 
-# Cleanup old data
+## Cleanup old data
 make db-cleanup
 ```
 
 #### Model Updates
 ```bash
-# Update ML models
+
+## Update ML models
 make update-models
 
-# Validate model performance
+## Validate model performance
 make validate-models
 
-# Rollback if needed
+## Rollback if needed
 make rollback-models
 ```
 
@@ -184,37 +188,40 @@ make rollback-models
 
 **Service Not Starting**
 ```bash
-# Check service status
+
+## Check service status
 systemctl status justnews-*
 
-# View service logs
+## View service logs
 journalctl -u justnews-mcp-bus -f
 
-# Restart service
+## Restart service
 systemctl restart justnews-mcp-bus
 ```
 
 **GPU Memory Issues**
 ```bash
-# Check GPU memory
+
+## Check GPU memory
 nvidia-smi
 
-# Reset GPU memory
+## Reset GPU memory
 make gpu-reset
 
-# Check MPS status
+## Check MPS status
 make mps-status
 ```
 
 **Database Connection Issues**
 ```bash
-# Test database connection
+
+## Test database connection
 make db-test
 
-# Check connection pool
+## Check connection pool
 make db-pool-status
 
-# Restart database service
+## Restart database service
 make db-restart
 ```
 
@@ -222,7 +229,8 @@ make db-restart
 
 ### Authentication
 ```python
-# API Key authentication
+
+## API Key authentication
 import requests
 
 headers = {
@@ -237,10 +245,11 @@ response = requests.get('http://localhost:8014/articles', headers=headers)
 
 #### Article Search
 ```python
-# Simple search
+
+## Simple search
 articles = client.search_articles("artificial intelligence")
 
-# Advanced search with filters
+## Advanced search with filters
 articles = client.search_articles(
     query="machine learning",
     sources=["techcrunch", "wired"],
@@ -252,10 +261,11 @@ articles = client.search_articles(
 
 #### Article Retrieval
 ```python
-# Get specific article
+
+## Get specific article
 article = client.get_article("article_id_123")
 
-# Get article with analysis
+## Get article with analysis
 article = client.get_article(
     "article_id_123",
     include_sentiment=True,
@@ -266,11 +276,12 @@ article = client.get_article(
 
 #### Batch Operations
 ```python
-# Bulk article retrieval
+
+## Bulk article retrieval
 article_ids = ["id1", "id2", "id3"]
 articles = client.get_articles_batch(article_ids)
 
-# Bulk analysis request
+## Bulk analysis request
 analyses = client.analyze_articles_batch(article_ids, analysis_type="sentiment")
 ```
 
@@ -278,14 +289,15 @@ analyses = client.analyze_articles_batch(article_ids, analysis_type="sentiment")
 
 #### Vector Search
 ```python
-# Semantic search
+
+## Semantic search
 results = client.vector_search(
     query="climate change impact on economy",
     limit=20,
     similarity_threshold=0.7
 )
 
-# Search with filters
+## Search with filters
 results = client.vector_search(
     query="renewable energy",
     sources=["bbc", "reuters"],
@@ -296,13 +308,14 @@ results = client.vector_search(
 
 #### Real-time Monitoring
 ```python
-# Subscribe to new articles
+
+## Subscribe to new articles
 client.subscribe_to_feed(
     query="breaking news",
     callback=my_callback_function
 )
 
-# Monitor sentiment trends
+## Monitor sentiment trends
 trends = client.get_sentiment_trends(
     topic="election",
     timeframe="24h"
@@ -341,13 +354,13 @@ def my_tool_endpoint(call: ToolCall):
 ```python
 from common.mcp_client import MCPBusClient
 
-# Initialize MCP client
+## Initialize MCP client
 mcp_client = MCPBusClient()
 
-# Register with bus
+## Register with bus
 mcp_client.register_agent("my_agent", "http://localhost:8009")
 
-# Call other agents
+## Call other agents
 result = mcp_client.call_agent(
     agent="memory",
     tool="save_article",
@@ -393,17 +406,20 @@ def test_agent_integration(mcp_server):
 
 #### Local Development
 ```bash
-# Run agent locally
+
+## Run agent locally
 python -m agents.my_agent.main
 
-# Run with hot reload
+## Run with hot reload
 uvicorn agents.my_agent.main:app --reload --port 8009
 ```
 
 #### Production Deployment
 ```bash
-# Build and deploy as systemd unit (package your code and create a systemd service)
-# Example: copy service file and start
+
+## Build and deploy as systemd unit (package your code and create a systemd service)
+
+## Example: copy service file and start
 sudo cp infrastructure/systemd/units/my-agent.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now my-agent
@@ -412,21 +428,33 @@ sudo systemctl enable --now my-agent
 ## Best Practices
 
 ### Performance
+
 - Use async/await for I/O operations
+
 - Implement proper error handling and retries
+
 - Monitor resource usage (CPU, memory, GPU)
+
 - Use connection pooling for databases
 
 ### Security
+
 - Validate all input data
+
 - Use parameterized queries
+
 - Implement rate limiting
+
 - Log security events
 
 ### Reliability
+
 - Implement health checks
+
 - Use circuit breakers for external calls
+
 - Monitor error rates and latency
+
 - Have rollback procedures ready
 
 ---

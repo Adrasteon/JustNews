@@ -9,9 +9,13 @@ Important: this is not a required workflow for most development — your existin
 ## Current Status
 
 The systemd-nspawn test infrastructure has proven to be awkward and time-consuming to set up reliably, particularly around:
+
 - DNS resolution inside containers
+
 - Network veth configuration and host NAT setup
+
 - Cross-distribution compatibility (debootstrap suite versions)
+
 - iptables/firewall rule coordination
 
 This needs further work to become a robust, reproducible developer and CI workflow. For now, prefer using Docker or other container solutions for E2E testing with real services — note that the docker-compose PoC is intended for lightweight testing and CI only. In typical developer and production setups MariaDB is expected to run on the host (outside Docker) or as a managed DB service.
@@ -23,7 +27,9 @@ scripts/dev/run_systemd_nspawn_env.sh
 ## Prerequisites
 
 - Linux host with systemd
+
 - `systemd-nspawn` / `machinectl` available (provides systemd-nspawn on most systemd-enabled systems)
+
 - `debootstrap` (used to bootstrap the container filesystem). Install on Debian/Ubuntu hosts with:
 
   sudo apt-get update && sudo apt-get install -y debootstrap
@@ -56,7 +62,9 @@ Note: You will typically need to run the script as root (sudo) since it manipula
 ## Notes & tips
 
 - Exposing ports to host: the helper does not automatically forward ports. Use `machinectl shell <container>` to work inside the container, or configure `systemd-nspawn` with networking options or use `lxc`/LXD if you prefer bridged networking.
+
 - Containers created with systemd-nspawn rely on the host kernel — they are lightweight and fast to start but don't give hypervisor-level isolation.
+
 - This workflow is useful for reproducing systemd-service unit issues, DB service start ordering, or interactions between system units.
 If you want me to extend this script to provide automatic port forward rules (e.g., expose 3306 and 6379 on localhost) or to include an automated test-runner that executes the test suite inside the container, I can add that next.
 

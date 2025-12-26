@@ -5,10 +5,15 @@ A production-ready multi-agent news analysis system featuring GPU-accelerated pr
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Python 3.10+ (via conda environment)
+
 - MariaDB 10.11+ and ChromaDB (for vector operations)
+
 - systemd (Docker Compose and Kubernetes deprecated)
+
 - GPU with CUDA support (recommended)
+
 - Miniconda or Anaconda installed
 
 ### Installation
@@ -21,51 +26,67 @@ cd JustNews
 
 2. Set up conda environment:
 ```bash
-# Create conda environment (if not already created)
+
+## Create conda environment (if not already created)
 conda env create -f environment.yml
 
-# Activate the environment
+## Activate the environment
 conda activate ${CANONICAL_ENV:-justnews-py312}
 ```
 
 3. Install dependencies (prefer conda-forge for the crawler extraction stack):
 ```bash
 mamba install -c conda-forge --file requirements.txt
-# or, if mamba is unavailable
+
+## or, if mamba is unavailable
 conda install -c conda-forge --file requirements.txt
 ```
 
 4. Initialize the database:
 ```bash
-# Activate environment first
+
+## Activate environment first
 conda activate ${CANONICAL_ENV:-justnews-py312}
 
-# Initialize DB schema
+## Initialize DB schema
 ./scripts/run_with_env.sh python scripts/init_database.py
 ```
 
 5. Start the system:
 ```bash
-# Must run as root for systemd service management
+
+## Must run as root for systemd service management
 sudo infrastructure/systemd/canonical_system_startup.sh
 ```
 
 ## 📋 System Architecture
 
 ### Core Components
+
 - **18 AI Agents**: Specialized agents for news analysis, fact-checking, synthesis
+
 - **MCP Bus**: Model Context Protocol for inter-agent communication
+
 - **Consumer Platform**: Website and APIs for end-user access
+
 - **Training System**: Continuous learning with MCP integration
+
 - **Monitoring**: Centralized logging, metrics, and distributed tracing
 
 ### Key Features
+
 - **GPU Acceleration**: TensorRT-optimized models for performance
+
 - **High-Precision Extraction**: Trafilatura-first crawler cascade with readability/jusText fallbacks, structured metadata, raw HTML archival, and quality heuristics
+
 - **Enterprise Security**: JWT authentication, RBAC, GDPR compliance
+
 - **Multi-Platform Deployment**: systemd (Kubernetes and Docker Compose deprecated)
+
 - **Comprehensive Testing**: 41% test coverage with pytest-cov, comprehensive unit tests for utilities, agents, integration, operations, monitoring, and configuration
+
 - **Production Monitoring**: Real-time dashboards and alerting
+
 - **Advanced Crawler Resilience**: Modal handling, paywall detection, user-agent rotation, proxy pools, and stealth headers for robust web scraping
 
 ## 🛠️ Development
@@ -106,37 +127,40 @@ Environment variables:
 
 ### Conda Environment Management
 ```bash
-# Activate environment
+
+## Activate environment
 conda activate ${CANONICAL_ENV:-justnews-py312}
 Note: the canonical project conda environment is `${CANONICAL_ENV:-justnews-py312}`. When running scripts from documentation or CI, prefer:
 
 ```bash
-# Run via conda-run
+
+## Run via conda-run
 conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/your_script.py
 
-# Or use PYTHON_BIN to force a known interpreter
+## Or use PYTHON_BIN to force a known interpreter
 PYTHON_BIN=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python python scripts/your_script.py
 ```
 
 This ensures scripts are executed with the same environment and binary used by deployment & startup helpers.
 
-# Deactivate environment
+## Deactivate environment
 conda deactivate
 
-# Update environment
+## Update environment
 conda env update -f environment.yml
 
-# List installed packages
+## List installed packages
 conda list
 
-# Export environment (for backup)
+## Export environment (for backup)
 conda env export > environment_backup.yml
 ```
 
 ### Crawler Extraction Regression Tests
 Prefer running tests using the project's conda environment to ensure third-party compiled extensions and dependencies are available.
 ```bash
-# Either set `PYTHONPATH` and run pytest using the activated conda env:
+
+## Either set `PYTHONPATH` and run pytest using the activated conda env:
 PYTHONPATH=$(pwd) conda run -n ${CANONICAL_ENV:-justnews-py312} pytest tests/agents/crawler -q
 
 Tip: To ensure you always run pytest inside the project's conda environment, use the helper:
@@ -151,7 +175,8 @@ Install hooks with:
 
 ```bash
 conda activate ${CANONICAL_ENV:-justnews-py312}
-# Optional strict mode: run quick tests on pre-push
+
+## Optional strict mode: run quick tests on pre-push
 export GIT_STRICT_TEST_HOOK=1
 ```
 
@@ -159,7 +184,7 @@ CI note: GitHub Actions workflows were updated to create and use the `${CANONICA
 
 Self-hosted E2E tests: The repo now includes a self-hosted workflow (systemd-nspawn) for high-fidelity E2E tests that run MariaDB + Redis inside a systemd-nspawn container. See `.github/workflows/e2e-systemd-nspawn.yml` and `docs/dev/self-hosted-runners.md` for required runner configuration and security notes.
 
-# Or set the `PYTHON_BIN` environment variable to the conda python executable:
+## Or set the `PYTHON_BIN` environment variable to the conda python executable:
 PYTHONPATH=$(pwd) PYTHON_BIN=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python pytest tests/agents/crawler -q
 ```
 
@@ -195,15 +220,25 @@ conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/your_script.py
 ## 📚 Documentation
 
 - [API Documentation](./docs/api/)
+
 - [User Guides](./docs/user-guides/)
+
 - [Operations Guide](./docs/operations/)
+
   - [Systemd (Native) Operations](/infrastructure/systemd/README.md)
+
   - [Setup Guide](./docs/operations/SETUP_GUIDE.md)
+
   - [Vault Administration](./docs/operations/VAULT_SETUP.md)
+
   - [Environment Configuration](./docs/operations/ENVIRONMENT_CONFIG.md)
+
   - [Monitoring Quick Deploy](./docs/operations/MONITORING_QUICK_DEPLOY.md) — **One-command deployment**
+
   - [Monitoring Infrastructure](./docs/operations/MONITORING_INFRASTRUCTURE.md)
+
   - [Troubleshooting](./docs/operations/TROUBLESHOOTING.md)
+
 - [Developer Documentation](./docs/developer/)
 
 ## 🤝 Contributing
@@ -219,16 +254,27 @@ See [LICENCE](./LICENCE) for licensing information.
 ## 🏆 Refactoring Status
 
 ✅ **ALL 11 MAJOR REFACTORING AREAS COMPLETE**
+
 - Agent System: 18 standardized agents operational
+
 - Consumer Platform: Website, APIs, authentication complete
+
 - Configuration: Pydantic V2 unified system
+
 - Database: Advanced ORM with connection pooling
+
 - Monitoring: Centralized logging, metrics, tracing
+
 - Security: Enterprise-grade auth and compliance
+
 - Testing: Comprehensive framework with 80%+ coverage
+
 - Build/CI: Unified automation with containerization
+
 - Deployment: systemd (Kubernetes and Docker Compose deprecated)
+
 - Documentation: Unified platform with latest patterns
+
 - Training: MCP-integrated continuous learning
 
 **Status**: Production-ready enterprise system
@@ -261,7 +307,9 @@ See `docs/chroma_setup.md` for advanced guidance and troubleshooting.
 The repository's `infrastructure/systemd/canonical_system_startup.sh` includes an optional startup probe that checks host MariaDB connectivity. This is intended for operator-managed hosts (the repository's Docker E2E is test-only) and can be controlled from `/etc/justnews/global.env`:
 
 - `MARIADB_HOST` / `MARIADB_PORT` / `MARIADB_USER` / `MARIADB_PASSWORD` / `MARIADB_DB` — used by the probe if present
+
 - `SKIP_MARIADB_CHECK=true` — skip the probe (useful for developer machines or CI dry-runs)
+
 - `MARIADB_CHECK_REQUIRED=true` — if set, startup will abort when the probe fails (recommended for production)
 
 The check prefers the `mysql` client and falls back to a small `PYTHON_BIN` + `pymysql` probe. Operators should ensure `mysql-client` or `pymysql` is available to get deterministic preflight checks.
@@ -273,42 +321,51 @@ This repository uses **Vault OSS (open-source)** for local secrets management in
 ### Setup Overview
 
 1. **Vault Instance**: Single-node Vault with Raft storage (persistent, local)
+
 2. **AppRole Auth**: Service role for programmatic secret access
+
 3. **Secret Storage**: KV v2 at `secret/justnews` with database and API credentials
+
 4. **Fetch Script**: `scripts/fetch_secrets_to_env.sh` retrieves secrets → `/run/justnews/secrets.env`
+
 5. **Environment Overlay**: `scripts/run_with_env.sh` layers secrets atop global.env for any command
 
 ### Quick Start
 
 ```bash
-# 1. Vault is auto-started via systemd (enabled during setup)
+
+## 1. Vault is auto-started via systemd (enabled during setup)
 sudo systemctl status vault
 
-# 2. Fetch secrets to runtime environment
+## 2. Fetch secrets to runtime environment
 bash scripts/fetch_secrets_to_env.sh
 
-# 3. Run commands with secrets overlay
+## 3. Run commands with secrets overlay
 bash scripts/run_with_env.sh python check_databases.py
 ```
 
 ### Configuration Files
 
 - **System-wide**: `/etc/justnews/global.env` (non-secret defaults)
+
 - **Secrets**: `/run/justnews/secrets.env` (ephemeral, mode 0640, fetched from Vault)
+
 - **AppRole IDs**: `/etc/justnews/approle_role_id` and `approle_secret_id` (mode 0640)
+
 - **Vault Init**: `/etc/justnews/vault-init.json` (mode 0600, contains root token & unseal key)
 
 ### Managing Secrets
 
 ```bash
-# View all secrets
+
+## View all secrets
 export VAULT_TOKEN="$(cat /etc/justnews/vault-init.json | jq -r .root_token)"
 vault kv get secret/justnews
 
-# Add/update a secret
+## Add/update a secret
 vault kv patch secret/justnews NEW_SECRET="new_value"
 
-# Refresh runtime environment
+## Refresh runtime environment
 bash scripts/fetch_secrets_to_env.sh
 ```
 
@@ -319,51 +376,70 @@ See `docs/operations/VAULT_SETUP.md` for detailed Vault administration and troub
 ### MariaDB (Relational Database)
 
 - **Purpose**: Primary storage for articles, entities, metadata, and system state
+
 - **Version**: 10.11+ (Ubuntu packages)
+
 - **Port**: 3306
+
 - **Status**: Systemd service (auto-start enabled)
-- **Databases**: 
+
+- **Databases**:
+
   - `justnews`: Main application database
+
   - `justnews_analytics`: Analytics and aggregated data
 
 **Tables**:
+
 - `articles` — Article content, metadata, sentiment scores
+
 - `entities` — Named entities (persons, organizations, locations)
+
 - `article_entities` — Article-entity relationships with relevance scores
+
 - `sentiment_analysis` — Detailed sentiment analysis results
+
 - `training_examples` — ML training data
+
 - `model_metrics` — Model performance tracking
+
 - `bias_analysis` — Content bias detection results
 
 **Setup**:
 ```bash
-# Verify status
+
+## Verify status
 sudo systemctl status mariadb
 
-# Test connection
+## Test connection
 mysql -h 127.0.0.1 -u justnews -p -e "SELECT 1;"
 
-# View schema
+## View schema
 mysql -u justnews -p -D justnews -e "SHOW TABLES;"
 ```
 
 ### ChromaDB (Vector Database)
 
 - **Purpose**: Vector embeddings and semantic search
+
 - **Version**: 1.3.7+ (Python package)
+
 - **Port**: 3307
+
 - **Status**: Systemd service (auto-start enabled)
+
 - **Collection**: `articles` (article embeddings, auto-created)
 
 **Setup**:
 ```bash
-# Verify status
+
+## Verify status
 sudo systemctl status chromadb
 
-# Test connectivity
+## Test connectivity
 curl http://localhost:3307/api/v2/heartbeat
 
-# Check collections
+## Check collections
 python -c "
 import chromadb
 client = chromadb.HttpClient(host='localhost', port=3307)
@@ -374,14 +450,15 @@ print(f'Collections: {[c.name for c in client.list_collections()]}')
 ### Environment Variables
 
 ```bash
-# MariaDB
+
+## MariaDB
 MARIADB_HOST=127.0.0.1
 MARIADB_PORT=3306
 MARIADB_DB=justnews
 MARIADB_USER=justnews
 MARIADB_PASSWORD=<from-vault>
 
-# ChromaDB
+## ChromaDB
 CHROMADB_HOST=localhost
 CHROMADB_PORT=3307
 CHROMADB_COLLECTION=articles

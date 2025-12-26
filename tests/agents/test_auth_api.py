@@ -78,6 +78,7 @@ def test_login_user_success_sync(monkeypatch):
         "status": auth_api.UserStatus.ACTIVE.value,
         "full_name": "Bob",
         "last_login": None,
+        "role": auth_api.UserRole.RESEARCHER.value if hasattr(auth_api, "UserRole") else "researcher",
     }
 
     monkeypatch.setattr(auth_api, "get_user_by_username_or_email", lambda u: fake_user)

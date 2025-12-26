@@ -7,7 +7,9 @@ The JustNews Operations Dashboard provides comprehensive monitoring of the entir
 ## Dashboard Access
 
 - **URL**: `http://127.0.0.1:3000/d/ef37elu2756o0e/justnews-operations-dashboard`
+
 - **Refresh Rate**: 30 seconds
+
 - **Time Range**: Last 1 hour (configurable)
 
 ## Dashboard Layout
@@ -60,32 +62,47 @@ The JustNews Operations Dashboard provides comprehensive monitoring of the entir
 ## Panel Types
 
 - **Stat**: Single value with optional sparkline
+
 - **Gauge**: Circular gauge with thresholds (green/yellow/red)
+
 - **Table**: Tabular data display
+
 - **Time Series**: Line graphs over time with legends
 
 ## Color Coding
 
 - **Green**: Normal operation
+
 - **Yellow**: Warning threshold (typically 70-80%)
+
 - **Red**: Critical threshold (typically >80-90%)
 
 ## Common Issues & Solutions
 
 ### No Data Showing
+
 - Check Prometheus: `http://localhost:9090/targets`
+
 - Verify services: `systemctl status justnews-prometheus justnews-grafana`
+
 - Check GPU exporter: `curl http://localhost:9400/health`
 
 ### GPU Metrics Missing
+
 - Verify GPU exporter running: `ps aux | grep gpu_metrics_exporter`
+
 - Check NVIDIA drivers: `nvidia-smi`
+
 - Restart exporter: `cd /home/adra && python3 gpu_metrics_exporter.py &`
 
 ### High Resource Usage
+
 - **CPU > 80%**: Check system load, consider scaling
+
 - **Memory > 85%**: Monitor for memory leaks, check swap usage
+
 - **GPU > 90%**: May indicate processing bottleneck or overload
+
 - **Disk > 90%**: Clean up logs/data, consider expansion
 
 ## Alert Thresholds
@@ -102,28 +119,39 @@ The JustNews Operations Dashboard provides comprehensive monitoring of the entir
 ## Customization
 
 ### Time Range
+
 - Click time picker in top-right
+
 - Common ranges: Last 1 hour, 6 hours, 24 hours, 7 days
 
 ### Panel Refresh
+
 - Auto-refresh every 30 seconds
+
 - Manual refresh with 🔄 button
+
 - Pause auto-refresh for detailed analysis
 
 ### Panel Zoom
+
 - Click panel title to view full screen
+
 - Use time brush to zoom into specific time ranges
 
 ## Export & Sharing
 
 - **Export Dashboard**: Dashboard settings → Export
+
 - **Share Panel**: Panel menu → Share → Link
+
 - **Snapshot**: Dashboard settings → Snapshot (static view)
 
 ## Related Documentation
 
 - [Systemd Monitoring Setup](systemd-monitoring.md)
+
 - [GPU Monitoring Guide](gpu-monitoring.md)
+
 - [Monitoring Architecture](../../monitoring/README.md)
 
 ---

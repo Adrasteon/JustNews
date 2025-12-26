@@ -9,8 +9,11 @@ last_updated: 2025-10-18
 # Release Process
 
 ## Version Numbering
+
 - **0.x.y**: Pre-release versions (development)
+
 - **1.x.y**: Production releases
+
 - **x.y.z**: Semantic versioning (MAJOR.MINOR.PATCH)
 
 ## Current Version: 0.8.0 (Beta Release Candidate)
@@ -18,13 +21,19 @@ last_updated: 2025-10-18
 ## Release Checklist
 
 ### Pre-Release
+
 - [ ] Run full test suite: `pytest`
+
 - [ ] Update CHANGELOG.md with release notes
+
 - [ ] Update version in `justnews/__init__.py`
+
 - [ ] Update README.md version badges
+
 - [ ] Validate version: `python scripts/check_version.py`
 
 ### Release Steps
+
 1. **Create release branch:**
    ```bash
    git checkout -b release/0.8.0
@@ -48,9 +57,13 @@ last_updated: 2025-10-18
    git tag -a v0.8.0 -m "Version 0.8.0 - Beta Release Candidate
 
    Unified startup system with enterprise GPU orchestration
+
    - Complete systemd integration
+
    - MPS resource allocation
+
    - Production deployment capabilities
+
    - Comprehensive monitoring and recovery"
    ```
 
@@ -68,9 +81,13 @@ last_updated: 2025-10-18
    ```
 
 ### Post-Release
+
 - [ ] Create GitHub release with release notes
+
 - [ ] Update documentation links
+
 - [ ] Notify stakeholders
+
 - [ ] Monitor for issues
 
 ## Version Validation

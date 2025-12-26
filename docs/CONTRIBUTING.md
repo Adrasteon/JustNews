@@ -19,11 +19,17 @@ Welcome to the JustNews V4 documentation team! These guidelines ensure our docum
 ## 📋 Table of Contents
 
 1. [Quality Standards](#quality-standards)
+
 2. [Documentation Structure](#documentation-structure)
+
 3. [Writing Guidelines](#writing-guidelines)
+
 4. [Technical Requirements](#technical-requirements)
+
 5. [Review Process](#review-process)
+
 6. [Tools and Automation](#tools-and-automation)
+
 7. [Version Control](#version-control)
 
 ---
@@ -42,19 +48,29 @@ Welcome to the JustNews V4 documentation team! These guidelines ensure our docum
 ### Quality Score Components
 
 1. **Description Score (50%)**: Based on average description length
+
    - 200+ characters = 100 points
+
    - 150-199 characters = 75 points
+
    - 100-149 characters = 50 points
+
    - <100 characters = 0 points
 
 2. **Tagging Score (50%)**: Based on percentage of tagged documents
+
    - 100% tagged = 100 points
+
    - 90-99% tagged = 90 points
+
    - <90% tagged = penalty applied
 
 3. **Issue Penalty**: -5 points per quality issue
+
    - Missing description (<50 chars)
+
    - Missing tags
+
    - Missing word count
 
 ---
@@ -82,20 +98,29 @@ JustNews/
 ### Document Categories
 
 1. **Main Documentation** (Critical Priority)
+
    - README.md, CHANGELOG.md
+
    - Installation and deployment guides
 
 2. **Agent Documentation** (High Priority)
+
    - Individual agent specifications
+
    - API documentation and endpoints
 
 3. **Technical Reports** (Medium Priority)
+
    - Performance analysis
+
    - Architecture documentation
+
    - Development reports
 
 4. **Maintenance Documentation** (Low Priority)
+
    - Troubleshooting guides
+
    - Backup and recovery procedures
 
 ---
@@ -105,9 +130,13 @@ JustNews/
 ### Content Standards
 
 #### 1. Descriptions
+
 - **Minimum Length**: 150 characters
+
 - **Target Length**: 200+ characters
+
 - **Structure**: Problem → Solution → Benefits
+
 - **Keywords**: Include relevant technical terms
 
 **Example:**
@@ -117,32 +146,49 @@ JustNews/
 ```
 
 #### 2. Titles
+
 - **Clear and Descriptive**: Explain document purpose
+
 - **Consistent Format**: Use title case
+
 - **Include Key Terms**: GPU, AI, agents, etc.
 
 #### 3. Tags
+
 - **Required**: Every document must have tags
+
 - **Relevant**: Use specific, searchable terms
+
 - **Consistent**: Follow established tag conventions
 
 **Tag Categories:**
+
 - **Technical**: `gpu`, `tensorrt`, `api`, `database`
+
 - **Functional**: `installation`, `deployment`, `monitoring`
+
 - **Content**: `guide`, `report`, `documentation`, `tutorial`
 
 ### Style Guidelines
 
 #### Language and Tone
+
 - **Professional**: Use formal, technical language
+
 - **Clear**: Avoid jargon without explanation
+
 - **Concise**: Be comprehensive but not verbose
+
 - **Active Voice**: Prefer active voice over passive
 
 #### Formatting Standards
+
 - **Markdown**: Use consistent Markdown formatting
+
 - **Headers**: Use proper hierarchy (H1 → H2 → H3)
+
 - **Code Blocks**: Use syntax highlighting
+
 - **Lists**: Use bullet points for items, numbered lists for sequences
 
 ---
@@ -170,19 +216,29 @@ Every document entry must include:
 ### File Standards
 
 #### Naming Conventions
+
 - **Lowercase**: Use lowercase with underscores
+
 - **Descriptive**: Include key terms in filename
+
 - **Extensions**: Use `.md` for Markdown files
 
 **Examples:**
+
 - ✅ `gpu_acceleration_guide.md`
+
 - ✅ `agent_communication_protocol.md`
+
 - ❌ `GPU_GUIDE.md`
+
 - ❌ `doc1.md`
 
 #### Version Control
+
 - **Commits**: Use descriptive commit messages
+
 - **Branches**: Create feature branches for changes
+
 - **Pull Requests**: Required for all changes
 
 ---
@@ -194,8 +250,11 @@ Every document entry must include:
 Before committing changes:
 
 - [ ] **Quality Check**: Run quality monitor
+
 - [ ] **Validation**: Ensure all required fields present
+
 - [ ] **Consistency**: Follow established patterns
+
 - [ ] **Testing**: Verify changes don't break automation
 
 ### Automated Quality Checks
@@ -203,15 +262,21 @@ Before committing changes:
 The system automatically validates:
 
 1. **Description Length**: Minimum 150 characters
+
 2. **Tag Coverage**: 100% of documents tagged
+
 3. **Metadata Completeness**: All required fields present
+
 4. **Format Consistency**: Proper JSON structure
 
 ### Manual Review Process
 
 1. **Self-Review**: Author reviews their changes
+
 2. **Peer Review**: Team member reviews changes
+
 3. **Quality Validation**: Automated quality scoring
+
 4. **Approval**: Changes approved and merged
 
 ---
@@ -221,23 +286,25 @@ The system automatically validates:
 ### Quality Monitoring
 
 ```bash
-# Run quality check
+
+## Run quality check
 python docs/quality_monitor.py
 
-# Continuous monitoring
+## Continuous monitoring
 python docs/quality_monitor.py --continuous --interval 24
 ```
 
 ### Version Control
 
 ```bash
-# Create version snapshot
+
+## Create version snapshot
 python docs/version_control.py snapshot --author "Your Name"
 
-# Generate change report
+## Generate change report
 python docs/version_control.py report --days 7
 
-# View document history
+## View document history
 python docs/version_control.py history --document "doc_id"
 ```
 
@@ -276,12 +343,19 @@ type(scope): description
 ```
 
 **Types:**
+
 - `feat`: New feature
+
 - `fix`: Bug fix
+
 - `docs`: Documentation changes
+
 - `style`: Formatting changes
+
 - `refactor`: Code refactoring
+
 - `test`: Testing changes
+
 - `chore`: Maintenance changes
 
 **Examples:**
@@ -289,7 +363,9 @@ type(scope): description
 docs(catalogue): enhance GPU documentation descriptions
 
 - Added detailed GPU acceleration guides
+
 - Improved TensorRT integration documentation
+
 - Updated performance metrics
 
 Closes #123
@@ -307,10 +383,15 @@ hotfix/critical-fix
 ### Pull Request Process
 
 1. **Create Branch**: From `main` or appropriate base
+
 2. **Make Changes**: Follow quality guidelines
+
 3. **Test Changes**: Run quality monitoring
+
 4. **Create PR**: Descriptive title and body
+
 5. **Code Review**: Address reviewer feedback
+
 6. **Merge**: Squash merge with descriptive message
 
 ---
@@ -320,22 +401,33 @@ hotfix/critical-fix
 ### Alert Thresholds
 
 - **Critical**: <85% quality score
+
 - **Warning**: 85-89% quality score
+
 - **Good**: 90-94% quality score
+
 - **Excellent**: 95-100% quality score
 
 ### Response Procedures
 
 #### Critical Alert Response
+
 1. **Immediate Action**: Stop all documentation work
+
 2. **Root Cause Analysis**: Identify quality issues
+
 3. **Fix Issues**: Address all critical problems
+
 4. **Quality Verification**: Confirm score >90%
+
 5. **Resume Normal Operations**
 
 #### Warning Alert Response
+
 1. **Monitor Closely**: Track quality trends
+
 2. **Address Issues**: Fix identified problems
+
 3. **Prevent Degradation**: Implement preventive measures
 
 ---
@@ -345,15 +437,21 @@ hotfix/critical-fix
 ### Key Performance Indicators
 
 1. **Quality Score Trend**: Track over time
+
 2. **Issue Resolution Time**: Time to fix quality issues
+
 3. **Documentation Coverage**: Percentage of features documented
+
 4. **Update Frequency**: How often documentation is updated
 
 ### Reporting
 
 - **Daily Reports**: Automated quality summaries
+
 - **Weekly Reports**: Detailed analysis and trends
+
 - **Monthly Reports**: Comprehensive quality assessment
+
 - **Quarterly Reviews**: Strategic improvements
 
 ---
@@ -363,31 +461,47 @@ hotfix/critical-fix
 ### Documentation Excellence
 
 1. **Write for Multiple Audiences**
+
    - Technical experts
+
    - System administrators
+
    - Developers
+
    - End users
 
 2. **Maintain Consistency**
+
    - Use consistent terminology
+
    - Follow established patterns
+
    - Maintain formatting standards
 
 3. **Keep Documentation Current**
+
    - Update with code changes
+
    - Review regularly for accuracy
+
    - Archive outdated content
 
 4. **Focus on User Experience**
+
    - Clear navigation and structure
+
    - Searchable and findable content
+
    - Practical examples and use cases
 
 ### Quality Maintenance
 
 1. **Regular Audits**: Monthly quality reviews
+
 2. **Automated Monitoring**: Continuous quality checks
+
 3. **Team Training**: Regular guideline updates
+
 4. **Feedback Integration**: User feedback incorporation
 
 ---
@@ -397,15 +511,21 @@ hotfix/critical-fix
 ### Getting Help
 
 - **Quality Issues**: Run quality monitor and review reports
+
 - **Technical Questions**: Check existing documentation first
+
 - **Process Questions**: Review this contributing guide
+
 - **Tool Issues**: Check automation script documentation
 
 ### Resources
 
 - **Quality Monitor**: `docs/quality_monitor.py`
+
 - **Version Control**: `docs/version_control.py`
+
 - **Automation Tools**: `docs/automation_tools.py`
+
 - **Quality Reports**: `docs/quality_reports/`
 
 ---
@@ -415,16 +535,23 @@ hotfix/critical-fix
 ### Quality Goals
 
 **2025 Q4 Goals:**
+
 - Maintain 95%+ quality score consistently
+
 - Achieve 100% documentation coverage
+
 - Implement advanced automation features
+
 - Establish documentation metrics dashboard
 
 ### Innovation Areas
 
 1. **AI-Powered Quality Enhancement**
+
 2. **Automated Content Generation**
+
 3. **Smart Tagging and Categorization**
+
 4. **Real-time Quality Monitoring**
 
 ---
@@ -432,27 +559,43 @@ hotfix/critical-fix
 ## ✅ Checklist for Contributors
 
 ### Before Starting Work
+
 - [ ] Review current quality score
+
 - [ ] Understand documentation structure
+
 - [ ] Check existing similar documents
+
 - [ ] Plan changes with quality impact in mind
 
 ### During Development
+
 - [ ] Follow writing guidelines
+
 - [ ] Include all required metadata
+
 - [ ] Test changes with quality monitor
+
 - [ ] Validate JSON structure
 
 ### Before Committing
+
 - [ ] Run quality check
+
 - [ ] Verify all fields complete
+
 - [ ] Check formatting consistency
+
 - [ ] Review change impact
 
 ### After Committing
+
 - [ ] Monitor quality score
+
 - [ ] Address any alerts promptly
+
 - [ ] Update related documentation
+
 - [ ] Share improvements with team
 
 ---
@@ -464,5 +607,5 @@ hotfix/critical-fix
 ## See also
 
 - Technical Architecture: markdown_docs/TECHNICAL_ARCHITECTURE.md
-- Documentation Catalogue: docs/DOCUMENTATION_CATALOGUE.md
 
+- Documentation Catalogue: docs/DOCUMENTATION_CATALOGUE.md

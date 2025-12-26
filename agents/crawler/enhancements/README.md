@@ -7,17 +7,25 @@ This package provides modular, configurable enhancements for the JustNews crawle
 The crawler enhancements include five main components:
 
 1. **Modal Handler** - Detects and removes consent overlays, cookie banners, and sign-in modals
+
 2. **Paywall Detector** - Identifies paywalled content and provides metadata for filtering
+
 3. **User Agent Rotation** - Rotates user agents for browser fingerprinting evasion
+
 4. **Proxy Manager** - Manages proxy pools for IP diversity and anti-detection
+
 5. **Stealth Browser** - Applies stealth headers and browser simulation techniques
 
 ## Architecture
 
 All enhancements are designed to be:
+
 - **Optional**: Default to disabled for backward compatibility
+
 - **Modular**: Independent components that can be used separately
+
 - **Configurable**: Full configuration through the system config schema
+
 - **Resilient**: Graceful error handling with fallback behavior
 
 ## Configuration
@@ -76,9 +84,13 @@ Enhancements are configured through the `crawling.enhancements` section of `conf
 **Purpose**: Detects and removes consent overlays, cookie banners, and sign-in modals that interfere with content extraction.
 
 **Features**:
+
 - Pattern-based modal detection
+
 - Synthetic consent cookie injection
+
 - HTML cleaning before extraction
+
 - Modal detection logging
 
 **Usage**:
@@ -88,7 +100,8 @@ from agents.crawler.enhancements import ModalHandler
 handler = ModalHandler(consent_cookie={"name": "cookie_consent", "value": "accepted"})
 result = handler.process(html_content)
 clean_html = result.cleaned_html
-# Apply cookies to session
+
+## Apply cookies to session
 session.cookies.update(result.applied_cookies)
 ```
 
@@ -97,9 +110,13 @@ session.cookies.update(result.applied_cookies)
 **Purpose**: Identifies paywalled content and provides metadata for filtering decisions.
 
 **Features**:
+
 - Heuristic paywall detection
+
 - Optional MCP-based remote analysis
+
 - Confidence scoring and reasoning
+
 - Article metadata annotation
 
 **Usage**:
@@ -122,9 +139,13 @@ if result.should_skip:
 **Purpose**: Rotates user agents to avoid browser fingerprinting detection.
 
 **Features**:
+
 - Domain-specific user agent pools
+
 - Deterministic rotation strategies
+
 - Configurable pool management
+
 - Fallback to default user agents
 
 **Usage**:
@@ -144,9 +165,13 @@ ua = provider.choose(domain="example.com")
 **Purpose**: Manages proxy pools for IP diversity and anti-detection.
 
 **Features**:
+
 - Round-robin proxy rotation
+
 - Proxy health monitoring
+
 - HTTP/HTTPS proxy support
+
 - Automatic failure recovery
 
 **Usage**:
@@ -155,7 +180,8 @@ from agents.crawler.enhancements import ProxyManager
 
 manager = ProxyManager(["http://proxy1:8080", "http://proxy2:8080"])
 proxy = manager.next_proxy()
-# Use with requests
+
+## Use with requests
 response = requests.get(url, proxies={"http": proxy.url, "https": proxy.url})
 ```
 
@@ -164,9 +190,13 @@ response = requests.get(url, proxies={"http": proxy.url, "https": proxy.url})
 **Purpose**: Applies stealth headers and browser simulation techniques.
 
 **Features**:
+
 - Configurable header profiles
+
 - Accept-Language customization
+
 - Browser fingerprinting evasion
+
 - Profile-based header injection
 
 **Usage**:
@@ -181,7 +211,8 @@ factory = StealthBrowserFactory(profiles=[{
 }])
 
 profile = factory.random_profile()
-# Apply to request headers
+
+## Apply to request headers
 headers = profile.headers.copy()
 headers["User-Agent"] = profile.user_agent
 ```
@@ -204,7 +235,7 @@ from config import get_crawling_config
 config = get_crawling_config()
 enhancements = config.enhancements
 
-# Instantiate helpers conditionally
+## Instantiate helpers conditionally
 helpers = {}
 if enhancements.enable_modal_handler:
     helpers['modal_handler'] = ModalHandler(consent_cookie=enhancements.consent_cookie)
@@ -213,9 +244,10 @@ if enhancements.enable_paywall_detector:
         enable_remote=enhancements.paywall_detector.enable_remote_analysis,
         max_remote_chars=enhancements.paywall_detector.max_remote_chars
     )
-# ... other helpers
 
-# Use in crawler logic
+## ... other helpers
+
+## Use in crawler logic
 if 'modal_handler' in helpers:
     result = helpers['modal_handler'].process(html)
     html = result.cleaned_html
@@ -224,16 +256,23 @@ if 'modal_handler' in helpers:
 ## Error Handling
 
 All enhancements include comprehensive error handling:
+
 - Exceptions are logged but don't crash the crawler
+
 - Features degrade gracefully when components fail
+
 - Fallback behavior ensures crawler continues operating
+
 - Optional features can be disabled individually
 
 ## Performance Considerations
 
 - **Memory**: Minimal overhead when disabled, small memory footprint when enabled
+
 - **Network**: Proxy rotation and remote paywall analysis add network requests
+
 - **CPU**: Modal processing and paywall detection add minor CPU overhead
+
 - **Configuration**: Enable only needed enhancements for optimal performance
 
 ## Testing
@@ -253,8 +292,11 @@ python -m pytest tests/agents/crawler/test_generic_site_crawler.py -v
 ### Common Issues
 
 1. **Modal handler not working**: Check consent cookie configuration matches site requirements
+
 2. **Paywall detection false positives**: Adjust confidence thresholds or disable remote analysis
+
 3. **Proxy failures**: Verify proxy URLs are accessible and properly formatted
+
 4. **User agent issues**: Ensure user agents are current and site-compatible
 
 ### Debugging

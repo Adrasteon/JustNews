@@ -7,25 +7,43 @@ JustNews provides multiple REST APIs for different system components and user in
 ## API Architecture
 
 ### Service Ports
+
 - **MCP Bus**: Port 8000 - Central communication hub for inter-agent communication
+
 - **Chief Editor**: Port 8001 - Workflow orchestration and system coordination
+
 - **Scout**: Port 8002 - Content discovery and web crawling
+
 - **Fact Checker**: Port 8003 - Source verification and fact-checking
+
 - **Analyst**: Port 8004 - GPU-accelerated sentiment and bias analysis
+
 - **Synthesizer**: Port 8005 - Content synthesis and summarization
+
 - **Critic**: Port 8006 - Quality assessment and review
+
 - **Memory**: Port 8007 - Data persistence and vector search
+
 - **Reasoning**: Port 8008 - Symbolic logic and reasoning
+
 - **Dashboard**: Port 8013 - Web interface and monitoring
+
 - **Public API**: Port 8014 - External API for news data access
+
 - **Archive API**: Port 8021 - RESTful archive access with legal compliance
+
 - **GraphQL API**: Port 8020 - Advanced query interface
 
 ### Authentication & Security
+
 - **API Keys**: Required for external API access in some research or legacy flows
+
 - **JWT Tokens**: Used for authenticated sessions; `agents/common/auth_api` issues tokens. Admin endpoints accept a valid JWT with `role=admin` when `ADMIN_API_KEY` is not configured.
+
 - **ADMIN API Key (legacy)**: For simple single-host deployments or scripted operations a static `ADMIN_API_KEY` may be set; admin endpoints accept it via `Authorization: Bearer <ADMIN_API_KEY>` or `X-Admin-API-Key: <key>`. Use JWTs for multi-user production setups.
+
 - **Rate Limiting**: Implemented on public endpoints; production deployments should set `REDIS_URL` to use a Redis-backed limiter across replicas.
+
 - **CORS**: Configured for web application access
 
 ### Response Format
@@ -46,21 +64,28 @@ All APIs return JSON responses with consistent error handling:
 Central communication hub for inter-agent messaging.
 
 #### Endpoints
+
 - `POST /register` - Register a new agent with the bus
+
 - `POST /call` - Send a message to an agent
+
 - `GET /agents` - List all registered agents
+
 - `GET /health` - Health check endpoint
+
 - `GET /ready` - Readiness check endpoint
+
 - `GET /metrics` - Prometheus metrics endpoint
 
 #### Example Usage
 ```bash
-# Register an agent
+
+## Register an agent
 curl -X POST http://localhost:8000/register \
   -H "Content-Type: application/json" \
   -d '{"agent": "scout", "endpoint": "http://localhost:8002"}'
 
-# Call an agent
+## Call an agent
 curl -X POST http://localhost:8000/call \
   -H "Content-Type: application/json" \
   -d '{"agent": "memory", "tool": "save_article", "args": ["article_data"]}'
@@ -70,16 +95,23 @@ curl -X POST http://localhost:8000/call \
 Data persistence and retrieval with vector search capabilities.
 
 #### Endpoints
+
 - `POST /save_article` - Store an article with metadata
+
 - `POST /get_article` - Retrieve article by ID
+
 - `POST /vector_search_articles` - Semantic search through articles
+
 - `POST /get_recent_articles` - Get recently processed articles
+
 - `GET /get_article_count` - Get total article count
+
 - `POST /get_sources` - Get available news sources
 
 #### Example Usage
 ```bash
-# Save an article
+
+## Save an article
 curl -X POST http://localhost:8007/save_article \
   -H "Content-Type: application/json" \
   -d '{
@@ -89,7 +121,7 @@ curl -X POST http://localhost:8007/save_article \
     "published_date": "2025-10-22T10:00:00Z"
   }'
 
-# Vector search
+## Vector search
 curl -X POST http://localhost:8007/vector_search_articles \
   -H "Content-Type: application/json" \
   -d '{"query": "climate change", "limit": 10}'
@@ -99,10 +131,15 @@ curl -X POST http://localhost:8007/vector_search_articles \
 External API for accessing processed news data.
 
 #### Endpoints
+
 - `GET /articles` - Search and filter articles
+
 - `GET /articles/{id}` - Get specific article
+
 - `GET /sources` - List available sources
+
 - `GET /categories` - Get content categories
+
 - `POST /search` - Advanced search with filters
 
 #### Authentication
@@ -115,10 +152,15 @@ curl -H "Authorization: Bearer YOUR_API_KEY" \
 RESTful API for archive access with legal compliance features.
 
 #### Endpoints
+
 - `GET /articles` - GDPR-compliant article access
+
 - `POST /consent` - Manage user consent
+
 - `DELETE /data` - Right to be forgotten implementation
+
 - `GET /export` - Data export functionality
+
 - `GET /audit` - Compliance audit logs
 
 ### GraphQL API (Port 8020)
@@ -150,33 +192,47 @@ type Article {
 Content discovery and web crawling.
 
 - `POST /crawl` - Initiate content crawling
+
 - `GET /status` - Crawling status and progress
+
 - `POST /sources` - Manage news sources
 
 ### Analyst Agent (Port 8004)
 GPU-accelerated analysis.
 
 - `POST /analyze` - Sentiment and bias analysis
+
 - `GET /models` - Available analysis models
+
 - `GET /gpu_status` - GPU utilization metrics
 
 ### Synthesizer Agent (Port 8005)
 Content synthesis and summarization.
 
 - `POST /summarize` - Generate article summaries
+
 - `POST /topics` - Topic modeling and clustering
+
 - `GET /models` - Available synthesis models
 
 ## Error Handling
 
 ### HTTP Status Codes
+
 - `200` - Success
+
 - `400` - Bad Request (invalid parameters)
+
 - `401` - Unauthorized (missing/invalid authentication)
+
 - `403` - Forbidden (insufficient permissions)
+
 - `404` - Not Found
+
 - `429` - Too Many Requests (rate limited)
+
 - `500` - Internal Server Error
+
 - `503` - Service Unavailable
 
 ### Error Response Format
@@ -193,8 +249,11 @@ Content synthesis and summarization.
 ## Rate Limiting
 
 ### Limits
+
 - **Public API**: 1000 requests/hour per API key
+
 - **Archive API**: 100 requests/hour per user
+
 - **GraphQL API**: 5000 queries/hour per user
 
 ### Headers
@@ -231,8 +290,11 @@ const articles = await client.search('climate change');
 ## Versioning
 
 API versioning follows semantic versioning:
+
 - **v1** - Current stable version
+
 - **Breaking Changes** - New major version
+
 - **Backwards Compatible** - Minor version increments
 
 ---

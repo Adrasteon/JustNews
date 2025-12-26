@@ -5,6 +5,7 @@ This document helps you configure and troubleshoot ChromaDB for the JustNews sta
 
 1) Environment variables
 -------------------------
+
 - Set CHROMADB_HOST and CHROMADB_PORT to point to your ChromaDB server. For example:
 
     export CHROMADB_HOST=localhost
@@ -26,6 +27,7 @@ If the script reports that the root endpoint appears to be another service (for 
 
 3) Common issues
 ----------------
+
 - Wrong port: If `CHROMADB_PORT` points to `8000` or another agent such as the MCP Bus, Chroma clients may fail to connect or list collections; your logs may show root endpoints or versions for a different service.
 
 - Tenant missing: If a server requires a tenant but it doesn't exist, some Chroma endpoints may return an error like `Could not connect to tenant default_tenant`. Use the script `--autocreate` attempt to create the default tenant (if your server supports tenant creation via HTTP).
@@ -34,7 +36,9 @@ If the script reports that the root endpoint appears to be another service (for 
 
 4) Logs and diagnostics
 -----------------------
+
 - To see the server type root info: use `curl -s http://CHROMADB_HOST:CHROMADB_PORT/` which should show a JSON with a server name/version.
+
 - To list collections via Python client:
     import chromadb
     client = chromadb.HttpClient(host='CHROMADB_HOST', port=CHROMADB_PORT, tenant='default_tenant')
@@ -42,7 +46,9 @@ If the script reports that the root endpoint appears to be another service (for 
 
 5) Notes
 --------
+
 - Our code now respects `CHROMADB_TENANT` and will optionally try to auto-create a default tenant and `articles` collection if `CHROMADB_AUTO_CREATE_TENANT` is set to 1.
+
 - If you use `system_config.json` and want to override, set environment variables: `CHROMADB_HOST` and `CHROMADB_PORT`. Environment variables will take precedence over `system_config.json` values.
 
 If you still face issues after following these steps, share the outputs of `python scripts/chroma_diagnose.py --autocreate` and the memory agent logs for further debugging.

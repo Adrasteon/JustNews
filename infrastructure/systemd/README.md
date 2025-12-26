@@ -10,13 +10,17 @@ This directory contains the native (no Docker/K8s) deployment scaffold for runni
 ## Quick operator flow (5 minutes)
 
 1) Start GPU Orchestrator first (satisfies ExecStartPre model gating):
+
 	 - `sudo systemctl enable --now justnews@gpu_orchestrator`
+
 	 - Wait for READY: `curl -fsS http://127.0.0.1:8014/ready` → HTTP 200
 
 2) Start the rest in order:
+
 	 - `sudo ./infrastructure/systemd/scripts/enable_all.sh start`
 
 3) Check health:
+
 	 - `sudo ./infrastructure/systemd/scripts/health_check.sh`
 
 Troubleshooting? See the Quick Reference and Comprehensive guide below.
@@ -27,57 +31,88 @@ If the synthesizer service remains degraded, confirm the dashboard-hosted transp
 ## Documents
 
 - Quick Reference (copy-paste commands, port map, troubleshooting)
+
 	- `./QUICK_REFERENCE.md`
+
 - Comprehensive systemd guide (gating internals, drop-ins, tuning)
+
 	- `./COMPREHENSIVE_SYSTEMD_GUIDE.md`
+
 - MariaDB integration guide (DB URL and checks)
+
 	- `./mariadb_integration.md`
 
 Incident reference:
+
 - Systemd Orchestrator Incident Report — Sept 13, 2025
+
 	- `../../markdown_docs/development_reports/systemd_operational_incident_report_2025-09-13.md`
 
 ## Scripts
 
 - `enable_all.sh` – enable/disable/start/stop/restart/fresh for all services
+
 - `health_check.sh` – table view of systemd/port/HTTP/READY status
+
 - `preflight.sh` – validation and ExecStartPre gating (with `--gate-only`)
+
 - `canonical_system_startup.sh` – verifies env + data mount + database, then runs a full reset/start with health summary (use `sudo ./infrastructure/systemd/canonical_system_startup.sh stop` for a coordinated shutdown)
+
 - `install_monitoring_stack.sh` – installs Prometheus, Grafana, and node_exporter (plus dashboards) and wires up their systemd units
+
 - `wait_for_mcp.sh` – helper used by unit template to gate on the MCP bus
+
 - `justnews-start-agent.sh` – unit ExecStart wrapper
 
 Helpers (optional, recommended):
+
 - `helpers/orchestrator-ready.sh` – poll /ready on 8014 with backoff
+
 - `helpers/tail-logs.sh` – follow multiple `journalctl` streams with labels
+
 - `helpers/diag-dump.sh` – capture statuses, logs, ports into a bundle
+
 - `helpers/db-check.sh` – quick DB reachability check
+
 - `run_crawl_schedule.sh` – Stage B1 hourly crawl scheduler entry point (copy to `/usr/local/bin/` and ensure executable)
 
 ### Crawl scheduler service (Stage B1)
 
 - Unit: `units/justnews-crawl-scheduler.service` (oneshot wrapper around `run_crawl_schedule.sh`)
+
 - Timer: `units/justnews-crawl-scheduler.timer` (hourly with a 5-minute jitter window)
+
 - Enable sequence:
 	1. `sudo cp infrastructure/systemd/scripts/run_crawl_schedule.sh /usr/local/bin/run_crawl_schedule.sh`
 	2. `sudo chmod +x /usr/local/bin/run_crawl_schedule.sh`
 	3. `sudo cp infrastructure/systemd/units/justnews-crawl-scheduler.* /etc/systemd/system/`
 	4. `sudo systemctl daemon-reload`
 	5. `sudo systemctl enable --now justnews-crawl-scheduler.timer`
+
 - Optional overrides: `/etc/justnews/crawl_scheduler.env`
+
 	- `CRAWLER_AGENT_URL=http://127.0.0.1:8015`
+
 	- `CRAWL_SCHEDULE_PATH=/etc/justnews/crawl_schedule.yaml` (if relocating config)
+
 	- `CRAWL_PROFILE_PATH=/etc/justnews/crawl_profiles.yaml` (optional path to the Crawl4AI profile registry)
+
 	- `CRAWL_SCHEDULER_METRICS=/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom`
+
 	- `CRAWL_SCHEDULER_STATE=/var/log/justnews/crawl_scheduler_state.json`
+
 	- `CRAWL_SCHEDULER_SUCCESS=/var/log/justnews/crawl_scheduler_success.json`
 
 ## Unit template and drop-ins
 
 - Template: `units/justnews@.service` → create instances like `justnews@scout`
+
 - Drop-in templates: `units/drop-ins/` (copy into `/etc/systemd/system/justnews@<name>.service.d/`)
+
 	- `05-gate-timeout.conf` – tune model gate timeout
+
 	- `10-preflight-gating.conf` – run preflight in `--gate-only` mode
+
 	- `20-restart-policy.conf` – restart policy knobs
 
 ## Minimal environment files (examples)
@@ -85,7 +120,8 @@ Helpers (optional, recommended):
 Global: `/etc/justnews/global.env`
 
 ```
-# absolute python for agents
+
+## absolute python for agents
 JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python
 
 Helpers & validation
@@ -94,14 +130,15 @@ This repository includes two helper scripts to ensure and validate that the syst
 has a canonical runtime configured in `/etc/justnews/global.env`:
 
 - `infrastructure/systemd/scripts/ensure_global_python_bin.sh` — idempotent helper which will create or add `PYTHON_BIN` to `/etc/justnews/global.env` (invoked by canonical startup flow). Requires root to write `/etc/justnews/global.env`.
+
 - `infrastructure/scripts/validate-global-env.sh` — CI-friendly validation helper that checks for `PYTHON_BIN` in `/etc/justnews/global.env` and, as a fallback, checks the repository example `infrastructure/systemd/examples/justnews.env.example`.
 
 Use `make check-global-env` in the repository to run the validation script (CI-friendly). The canonical startup flow runs the ensure helper so hosts booted with the repository's deployment scripts will have `PYTHON_BIN` set when possible.
 
-# optional: default working directory
+## optional: default working directory
 SERVICE_DIR=/home/adra/JustNews
 
-# database URL for Memory agent (adjust as needed)
+## database URL for Memory agent (adjust as needed)
 JUSTNEWS_DB_URL=mysql://user:pass@localhost:3306/justnews
 ```
 
@@ -109,8 +146,10 @@ Per-instance: `/etc/justnews/analyst.env`
 
 ```
 CUDA_VISIBLE_DEVICES=0
-# override exec if needed
-# EXEC_START="$JUSTNEWS_PYTHON -m agents.analyst.main"
+
+## override exec if needed
+
+## EXEC_START="$JUSTNEWS_PYTHON -m agents.analyst.main"
 ```
 
 See Quick Reference for the full port map and more examples.
@@ -126,14 +165,19 @@ sudo ./infrastructure/systemd/scripts/install_monitoring_stack.sh --install-bina
 This command downloads the official Prometheus, Grafana, and node_exporter builds into `/opt/justnews/monitoring`, lays down `/etc/justnews/monitoring.env`, publishes dashboards, and enables the following services:
 
 - `justnews-node-exporter.service`
+
 - `justnews-prometheus.service`
+
 - `justnews-grafana.service`
 
 Key paths:
 
 - Prometheus config: `/etc/justnews/monitoring/prometheus.yml`
+
 - Grafana config: `/etc/justnews/monitoring/grafana.ini`
+
 - Dashboards: `/etc/justnews/monitoring/grafana/dashboards`
+
 - Textfile collector: `/var/lib/node_exporter/textfile_collector`
 
 Routine operations:
@@ -173,16 +217,23 @@ host collector is already running.
 Default dev host port mapping (host -> container):
 
 - ${LOKI_PORT:-13100} -> 3100 (Loki)
+
 - ${TEMPO_HTTP_PORT:-24268} -> 14268 (Tempo HTTP)
+
 - ${TEMPO_JAEGER_PORT:-19411} -> 9411 (Tempo/Jaeger)
+
 - ${OTEL_GRPC_PORT:-24317} -> 4317 (OTLP gRPC)
+
 - ${OTEL_HTTP_PORT:-24318} -> 4318 (OTLP HTTP)
+
 - ${NODE_METRICS_PORT:-18889} -> 8889 (node collector metrics)
+
 - ${DEMO_PORT:-18080} -> 8080 (demo emitter)
 
 ```bash
-# Force-start dev telemetry even if canonical ports are already in use
-ENABLE_DEV_TELEMETRY_FORCE=1 ENABLE_DEV_TELEMETRY=true \ 
+
+## Force-start dev telemetry even if canonical ports are already in use
+ENABLE_DEV_TELEMETRY_FORCE=1 ENABLE_DEV_TELEMETRY=true \
 	/path/to/infrastructure/systemd/scripts/dev-telemetry-manager.sh up
 ```
 
@@ -191,8 +242,9 @@ networking exactly) you can override individual host ports by exporting the
 appropriate environment variable when starting the stack. Example:
 
 ```bash
-# Launch dev telemetry but map Loki to canonical 3100 and OTLP gRPC to 4317
-LOKI_PORT=3100 OTEL_GRPC_PORT=4317 ENABLE_DEV_TELEMETRY=true \ 
+
+## Launch dev telemetry but map Loki to canonical 3100 and OTLP gRPC to 4317
+LOKI_PORT=3100 OTEL_GRPC_PORT=4317 ENABLE_DEV_TELEMETRY=true \
 	/path/to/infrastructure/systemd/scripts/dev-telemetry-manager.sh up
 ```
 
@@ -215,7 +267,6 @@ Operator playbook, automation & checks
 
 We included a detailed operator playbook at `infrastructure/systemd/operators/dev-telemetry-playbook.md`, an example Ansible playbook at `infrastructure/ansible/playbooks/enable_dev_telemetry.yml`, and a host check script at `scripts/ops/check_dev_telemetry_status.sh` to help run a consistent enable/verify workflow across many hosts.
 
-
 Grafana defaults to `http://localhost:3000/` with `admin / change_me`. Update credentials via the UI after first login.
 
 ## Optional preflight checks (DB / Vector store / SQLite)
@@ -223,8 +274,11 @@ Grafana defaults to `http://localhost:3000/` with `admin / change_me`. Update cr
 This section documents the existing helpers and how to perform simple operator checks for MariaDB/Postgres, Chroma (vector database), and local SQLite use by the HITL and crawler paywall aggregator components.
 
 ### MariaDB/Postgres (Memory DB)
+
 - Helper: `infrastructure/systemd/helpers/db-check.sh` — reads `/etc/justnews/global.env` and tries a minimal `SELECT 1;` using `mysql` or `psql`.
+
 - Example usage: `sudo ./infrastructure/systemd/helpers/db-check.sh` or if installed: `sudo /usr/local/bin/db-check.sh`.
+
 - If this fails, confirm `JUSTNEWS_DB_URL` (or `DATABASE_URL`) in `/etc/justnews/global.env` or use the native client: `mysql --user=... --host=... -p -e 'SELECT 1;'` or `psql "$DATABASE_URL" -c 'SELECT 1;'`.
 
 #### MariaDB startup probe (new)
@@ -232,7 +286,9 @@ This section documents the existing helpers and how to perform simple operator c
 The `canonical_system_startup.sh` script includes an optional MariaDB probe which can be enabled for operator safety. The probe is designed to be lightweight and environment-driven. Relevant environment variables in `/etc/justnews/global.env`:
 
 - `MARIADB_HOST` / `MARIADB_PORT` / `MARIADB_USER` / `MARIADB_PASSWORD` / `MARIADB_DB` — used by the probe.
+
 - `SKIP_MARIADB_CHECK=true` — skip the probe entirely (handy for dev machines).
+
 - `MARIADB_CHECK_REQUIRED=true` — require a successful probe and abort startup on failure (recommended for production).
 
 The probe prefers the `mysql` client when installed. If the client is missing it will attempt a small Python check using the `PYTHON_BIN` runtime and `pymysql` (if available). If neither is available the probe will be skipped unless `MARIADB_CHECK_REQUIRED` is set.
@@ -240,7 +296,9 @@ The probe prefers the `mysql` client when installed. If the client is missing it
 Recommendation: Install `mysql-client` on host deployments, or ensure the `PYTHON_BIN` referenced by `/etc/justnews/global.env` has `pymysql` installed to get deterministic health checks during startup.
 
 ### Chroma (vector store)
+
 - Config vars: `CHROMADB_HOST`, `CHROMADB_PORT` in `/etc/justnews/global.env` (defaults to `localhost:3307`).
+
 - Quick probe (Python):
 	```bash
 	CHROMA_HOST=${CHROMADB_HOST:-localhost}
@@ -256,7 +314,9 @@ Recommendation: Install `mysql-client` on host deployments, or ensure the `PYTHO
 	```
 
 ### Local SQLite checks (HITL and Paywall aggregator)
+
 - Env vars: `HITL_DB_PATH`, `CRAWL4AI_PAYWALL_AGG_DB`.
+
 - Quick probe (Python):
 	```bash
 	python3 - <<'PY'
@@ -298,4 +358,3 @@ Note: Gating failures cause `systemd` to mark the unit as failed. Use gating onl
 ---
 
 If you'd like, we can add small `chroma-probe.sh` and `sqlite-writable-check.sh` helpers to the `infrastructure/systemd/helpers/` directory for easier integration with `ExecStartPre` in a follow-up change.
-

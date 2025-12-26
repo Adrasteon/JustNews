@@ -147,7 +147,6 @@ This benchmark demonstrates how LLMs respond to different prompting methods for 
 
 ![3aa6fb7a_nuc](https://github.com/user-attachments/assets/98c5147e-d1b9-4a09-8c38-0c803d99ea55)
 
-
 **ChatGPT o-1**
 
 ![3aa6fb7a_chatgpt-o1](https://github.com/user-attachments/assets/84febfe8-4c6d-4390-91f0-0bdca35edab0)

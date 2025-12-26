@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-# Create FastAPI application with metadata
+## Create FastAPI application with metadata
 app = FastAPI(
     title="JustNews API",
     description="Multi-agent news analysis system",
@@ -22,7 +22,7 @@ app = FastAPI(
     openapi_url="/openapi.json"
 )
 
-# Add middleware
+## Add middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Configure for production
@@ -149,7 +149,7 @@ Comment.update_forward_refs()  # Required for self-referencing models
 from fastapi import Depends, HTTPException
 from typing import Generator
 
-# Database dependency
+## Database dependency
 def get_db() -> Generator:
     db = create_database_session()
     try:
@@ -220,7 +220,7 @@ async def custom_exception_handler(request: Request, exc: CustomException):
         content={"detail": exc.message}
     )
 
-# Usage
+## Usage
 @app.get("/items/{item_id}")
 async def read_item(item_id: int):
     item = get_item(item_id)
@@ -326,7 +326,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
         return response
 
-# Add to app
+## Add to app
 app.add_middleware(LoggingMiddleware)
 ```
 
@@ -535,7 +535,7 @@ async def get_cached_data(key: str):
 from sqlalchemy.orm import selectinload
 from fastapi import Depends
 
-# Optimized query with eager loading
+## Optimized query with eager loading
 @app.get("/articles/with-authors/")
 async def get_articles_with_authors(db = Depends(get_db)):
     """Get articles with authors (optimized)"""
@@ -574,13 +574,13 @@ class SecureUserInput(BaseModel):
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-# Force HTTPS
+## Force HTTPS
 app.add_middleware(HTTPSRedirectMiddleware)
 
-# GZip compression
+## GZip compression
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# Security headers
+## Security headers
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -595,7 +595,8 @@ async def add_security_headers(request: Request, call_next):
 
 ### Production Server
 ```python
-# For production, use a production ASGI server
+
+## For production, use a production ASGI server
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(

@@ -2,12 +2,16 @@
 
 Symptoms
 --------
+
 - Intermittent ingestion responses with "content_save_error": "Unread result found".
+
 - Reproduced when the memory agent or other agents run concurrent DB operations on a single shared mysql connector object.
 
 Root cause
 ----------
+
 - The Python mysql-connector driver returns an unbuffered cursor by default and will raise "Unread result found" if a new query is executed against a connection while a previous resultset has not been completely consumed.
+
 - This error is more likely when a single shared connection object is reused concurrently by multiple callers.
 
 Fix applied
@@ -15,15 +19,19 @@ Fix applied
 Applied changes in this repo:
 
 - Added `MigratedDatabaseService.get_connection()` — a helper to create a fresh MariaDB connection for short-lived / per-request work.
+
 - Updated memory agent save path (agents/memory/tools.py) to use per-request connections when available and to use buffered cursors. This reduces contention and prevents unconsumed resultsets from causing the exception.
+
 - Hardened memory engine cursors to use buffered=true in a few places where unbuffered cursors could lead to the same error.
 
 How to verify (local dev)
 -------------------------
+
 1. Restart the memory agent process so it reloads the updated code:
 
 ```bash
-# example: if you run agents with systemd or a local start script, restart the service
+
+## example: if you run agents with systemd or a local start script, restart the service
 sudo systemctl restart justnews-memory-agent || ./scripts/start-memory-agent.sh
 ```
 
@@ -37,8 +45,11 @@ conda run -n justnews-py312 python scripts/ops/diagnose_ingestion_samples.py --s
 
 Next steps (recommended)
 ------------------------
+
 - Consider switching to a connection pool for high-throughput components (mysql.connector.pooling.MySQLConnectionPool) if the workload is very concurrent.
+
 - Audit other agents that use `mb_conn` directly and prefer using `get_connection()` or a connection helper/context manager to ensure per-request connections.
+
 - Add runtime health metrics to detect elevated rates of database errors and retry conditions.
 
 ---

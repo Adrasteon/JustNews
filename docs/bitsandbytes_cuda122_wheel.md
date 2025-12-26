@@ -10,19 +10,22 @@ apply if future rebuilds encounter the same issues.
 - Upstream `bitsandbytes` wheels currently publish CUDA binaries for 12.1, 12.2, 12.3,
   and 12.8+, but **not** for the exact combination we run locally (PyTorch reports
   CUDA 12.4 while the driver stack exposes CUDA 12.2 runtime bits).
+
 - All attempts to run int8 inference with the stock wheels ended in nvlink
   "`Uncompress failed`" errors during device linking.
+
 - Rebuilding from source with a CUDA 12.2 toolchain avoids the nvlink crash and lets
   us pin `BNB_CUDA_VERSION=122` at runtime so the correct binary is loaded.
 
 ## Environment recipe
 
 ```bash
-# Fresh toolchain with NVIDIA's CUDA 12.2.2 label
+
+## Fresh toolchain with NVIDIA's CUDA 12.2.2 label
 conda create -n bnb122lab -c "nvidia/label/cuda-12.2.2" -c defaults -y \
    python=3.12 cuda-toolkit=12.2.2 cuda-nvcc=12.2.140 cmake ninja pip
 
-# Ensure nvcc uses a supported host compiler (nvcc 12.2 requires GCC <=12)
+## Ensure nvcc uses a supported host compiler (nvcc 12.2 requires GCC <=12)
 conda install -n bnb122lab -c conda-forge -y gcc_linux-64=12.3.0 gxx_linux-64=12.3.0
 ```
 
@@ -83,12 +86,14 @@ this path as `CUDA_HOME` in the commands below.
    ```bash
    conda run -n bnb122lab nvcc --version  # should print release 12.2, V12.2.140
    ```
+
 2. **Diagnostics after install**
    ```bash
   conda run -n ${CANONICAL_ENV:-justnews-py312} env BNB_CUDA_VERSION=122 python -m bitsandbytes
    ```
    Expect the tool to print "SUCCESS!" and explicitly state that it is loading
    `libbitsandbytes_cuda122.so`.
+
 3. **Performance smoke test** – run the real-model perf helper:
    ```bash
    RE_RANKER_TEST_MODE=0 RE_RANKER_MODEL=mistralai/Mistral-7B-Instruct-v0.3 \
@@ -101,12 +106,15 @@ this path as `CUDA_HOME` in the commands below.
 
 - Keep `BNB_CUDA_VERSION=122` in every service environment until we either upgrade
   the system CUDA stack or rebuild the wheel for a new toolkit.
+
 - Use `BNB_DISABLE=1` (supported by `scripts/perf/simulate_concurrent_inference.py`
   and our agent loaders) to force a float16 path when you need a quick comparison
   or when bitsandbytes is temporarily unavailable.
+
 - When regenerating the wheel for a new bitsandbytes release, re-run the exact
   commands above but bump the source checkout version under `.build/bitsandbytes`
   and re-test the diagnostics before publishing.
+
 - Store the wheel artifact (or checksum) somewhere durable if other hosts need to
   reinstall it; otherwise repeat this recipe verbatim on the target machine.
 
@@ -130,6 +138,7 @@ attempt to install a prebuilt bnb wheel automatically before falling back to pip
 
 - CI finds the latest `bitsandbytes-wheel-<short-cuda>` artifact produced by
    `.github/workflows/build-bnb-wheels.yml` and installs the wheel from that artifact.
+
 - If no artifact is available the workflow will continue and fall back to `pip install -r requirements.txt`.
 
 This keeps CI fast and repeatable when an approved wheel exists, while still being resilient when a wheel isn't available.
@@ -141,4 +150,3 @@ Publishing artifacts:
 Notes: The workflow expects runners with GPU access (or access to nvidia-docker) and
 is therefore scoped to self-hosted infrastructure. Use the workflow dispatch entrypoint
 to trigger ad-hoc rebuilds, or schedule it (the workflow includes a weekly schedule).
-

@@ -26,6 +26,7 @@ Scripts for administrative tasks and system configuration.
 Scripts for deployment, database setup, and infrastructure provisioning.
 
 - `setup_mariadb.sh` - MariaDB installation and configuration
+
 - `init_database.py` - Database schema initialization and user setup
 
 ### dev/
@@ -42,7 +43,9 @@ Scripts for system maintenance, monitoring, and health checks.
 Scripts for operational tasks and service management.
 
 - `start_services_daemon.sh` - Start all JustNews services
+
 - `stop_services.sh` - Stop all JustNews services
+
 - `download_agent_models.py` - Download and setup AI models
 
 ### common/
@@ -56,49 +59,65 @@ All scripts follow consistent patterns:
 
 ### Python Scripts
 ```bash
-# Basic usage
+
+## Basic usage
 python scripts/refactor/category/script.py
 
-# With options
+## With options
 python scripts/refactor/category/script.py --verbose --log-level DEBUG
 
-# Dry run mode (where supported)
+## Dry run mode (where supported)
 python scripts/refactor/category/script.py --dry-run
 ```
 
 ### Shell Scripts
 ```bash
-# Basic usage
+
+## Basic usage
 ./scripts/refactor/category/script.sh
 
-# With options (varies by script)
+## With options (varies by script)
 ./scripts/refactor/category/script.sh --help
 ```
 
 ## Common Options
 
 All Python scripts support these standard options:
+
 - `--log-level {DEBUG,INFO,WARNING,ERROR}` - Set logging verbosity
+
 - `--log-file FILE` - Log to file in addition to console
+
 - `--dry-run` - Show what would be done without making changes
+
 - `--verbose/-v` - Enable verbose output
+
 - `--quiet/-q` - Suppress non-error output
 
 ## Environment Variables
 
 Scripts use these common environment variables:
+
 - `MYSQL_HOST`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD` - MariaDB configuration
+
 - `CHROMA_HOST`, `CHROMA_PORT` - ChromaDB configuration
+
 - `MODEL_STORE_ROOT` - Model storage directory
+
 - `BASE_MODEL_DIR` - Agent model cache directory
+
 - `CONDA_DEFAULT_ENV` - Conda environment name
 
 ## Error Handling
 
 All scripts include comprehensive error handling:
+
 - Standardized logging with timestamps and levels
+
 - Graceful failure with informative error messages
+
 - Environment validation before execution
+
 - Keyboard interrupt handling (Ctrl+C)
 
 ## Development Guidelines
@@ -106,10 +125,15 @@ All scripts include comprehensive error handling:
 When adding new scripts:
 
 1. **Categorize properly** - Place scripts in the appropriate category directory
+
 2. **Use the framework** - Python scripts should use `ScriptFramework` from `common/script_framework.py`
+
 3. **Document thoroughly** - Include docstrings and usage examples
+
 4. **Handle errors** - Implement proper error handling and logging
+
 5. **Test scripts** - Add automated tests for critical functionality
+
 6. **Follow conventions** - Use consistent naming and option patterns
 
 ## Migration Notes
@@ -117,7 +141,9 @@ When adding new scripts:
 This organized structure replaces the previous flat `scripts/` directory. Legacy scripts have been:
 
 - **Moved**: Essential scripts moved to appropriate categories
+
 - **Archived**: Obsolete/experimental scripts moved to `archive/`
+
 - **Removed**: Duplicate or undocumented scripts removed entirely
 
 For legacy script references, check the `archive/` directory or git history.

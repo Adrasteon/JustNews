@@ -27,16 +27,19 @@ The following table lists the configurable parameters of the JustNews chart and 
 Each agent can be configured individually. The chart supports 15 agents:
 
 - analyst
+
 - analytics
+
 - archive
+
 - auth
+
 - chief_editor
 DEPRECATED: This directory previously contained the Helm chart for JustNews.
 
 The full chart content has been archived at: `infrastructure/archives/helm/justnews/`.
 
 If you need to work with the original chart for historical reasons, consult the archive, or git history for a full copy.
-
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
@@ -70,10 +73,12 @@ justnews:
   gpu:
     enabled: true
   agents:
+
   - name: analyst
     port: 8001
     replicas: 2
     gpuRequired: true
+
   - name: crawler
     port: 8002
     replicas: 3
@@ -86,8 +91,10 @@ mariadb:
 ingress:
   enabled: true
   hosts:
+
   - host: justnews.example.com
     paths:
+
     - path: /
       pathType: Prefix
       service:
@@ -100,8 +107,11 @@ ingress:
 The chart includes comprehensive GPU support:
 
 - Automatic node selection for GPU-required agents
+
 - NVIDIA GPU resource allocation
+
 - GPU memory fraction configuration
+
 - Taints and tolerations for GPU nodes
 
 ## Monitoring and Observability
@@ -109,15 +119,21 @@ The chart includes comprehensive GPU support:
 The chart includes:
 
 - **Prometheus**: Metrics collection from all services
+
 - **Grafana**: Visualization dashboards
+
 - **Health checks**: Liveness and readiness probes for all services
+
 - **Auto-scaling**: Horizontal Pod Autoscalers based on CPU/memory usage
 
 ## Security Features
 
 - **Network Policies**: Traffic isolation between components
+
 - **RBAC**: Role-based access control
+
 - **Secrets Management**: Secure storage of sensitive data
+
 - **Service Accounts**: Minimal privilege service accounts
 
 ## Scaling
@@ -125,7 +141,9 @@ The chart includes:
 The chart supports:
 
 - **Horizontal Pod Autoscaling**: Automatic scaling based on resource usage
+
 - **Manual scaling**: Configure replica counts per component
+
 - **GPU-aware scaling**: Different scaling policies for GPU vs CPU agents
 
 ## Persistence
@@ -133,9 +151,13 @@ The chart supports:
 All stateful components include persistent volume claims:
 
 - MariaDB data
+
 - ChromaDB data
+
 - Redis data
+
 - Prometheus metrics
+
 - Grafana dashboards and configuration
 
 ## Testing
@@ -165,8 +187,11 @@ Note: See `infrastructure/README.md` for systemd deployment instructions.
 ### Common Issues
 
 1. **GPU not available**: Ensure NVIDIA GPU Operator is installed
+
 2. **Storage issues**: Check StorageClass availability
+
 3. **Network connectivity**: Verify NetworkPolicies allow required traffic
+
 4. **Resource constraints**: Check resource limits and requests
 
 ### Logs

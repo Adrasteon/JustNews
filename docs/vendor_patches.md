@@ -12,8 +12,10 @@ runtime deprecation warning on Python 3.12 and later.
 - The installed module `google/rpc/__init__.py` is rewritten to use the
   standard-library `pkgutil.extend_path` helper. This avoids importing
   `pkg_resources` entirely and eliminates the warning during startup.
+
 - `googleapis-common-protos>=1.59.1` is pinned in `requirements.txt` and
   `environment.yml` to keep the dependency explicit.
+
 - A helper script `scripts/vendor_patches/apply_google_rpc_namespace_patch.py`
   automates rewriting the installed file.
 
@@ -32,6 +34,7 @@ idempotent and safe to re-execute.
 ### Upstream tracking
 
 - Upstream package: `googleapis-common-protos`
+
 - Patch availability: pending upstream migration away from `pkg_resources`.
   Remove this vendor patch once the upstream module adopts implicit namespace
   packages.

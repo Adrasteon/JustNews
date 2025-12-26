@@ -7,8 +7,11 @@ tags: ["stage-b", "ops", "evidence"]
 # Stage B Validation Evidence Log
 
 ## 2025-10-26 — Initial Capture
+
 - **Operator**: GitHub Copilot (automation assist)
+
 - **Environment**: Stage B development host (`conda env ${CANONICAL_ENV:-justnews-py312}`)
+
 - **Ticket Template**: `docs/operations/stage_b_ticket_template.md`
 
 ### Evidence Summary
@@ -27,17 +30,27 @@ tags: ["stage-b", "ops", "evidence"]
 | Test artifacts stored | Complete | Pytest command executed 2025-10-26; results 8 passed. | Terminal session (`tests/agents/...`)
 
 ### Follow-Up Actions
+
 - 2025-10-26T18:53:44Z — Migration 003 applied via `bash scripts/ops/apply_stage_b_migration.sh postgresql://postgres@localhost/justnews --record`; transcript stored under `logs/operations/migrations/migration_003_20251026T185331Z.log`.
+
 - 2025-10-26T19:12:18Z — Scheduler timer run completed; see `journalctl` excerpt and state/success JSON under `logs/analytics/` plus Prometheus textfile `crawl_scheduler.prom`.
+
 - 2025-10-26T19:21:21Z — Scheduler metrics redirected to node exporter textfile collector (`/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom`).
+
 - 2025-10-26T19:25:00Z — QA sampling log initialized in `logs/governance/crawl_terms_audit.md` covering Stage B smoke check.
+
 - Dashboard snapshot capture deferred pending Grafana GUI export by ops (metrics validated in Prometheus textfile).
+
 - 2025-10-26T19:41:35Z — Migration 003 reapplied via `bash scripts/ops/apply_stage_b_migration.sh postgresql://postgres@localhost/justnews --record`; transcript stored under `logs/operations/migrations/migration_003_20251026T194119Z.log`.
+
 - 2025-10-26T19:43:10Z — Duplicate suppression query executed; results archived under `logs/operations/evidence/dedupe_query_20251026.txt`.
 
 ## 2025-11-02 — BBC profile verification
+
 - **Operator**: GitHub Copilot (automation assist)
+
 - **Environment**: systemd baseline host after canonical restart (`conda env ${CANONICAL_ENV:-justnews-py312}`)
+
 - **Scope**: validate BBC Crawl4AI profile after JSON sanitization fixes
 
 ### Evidence Summary
@@ -50,6 +63,9 @@ tags: ["stage-b", "ops", "evidence"]
 | Metrics check | Complete | Stage B counters show success-only increments post-run. | `logs/analytics/crawl_scheduler.prom`
 
 ### Follow-Up Actions
+
 - 2025-11-02T16:18Z — Canonical restart executed to load shared `make_json_safe` logic across crawler and memory agents.
+
 - 2025-11-02T16:31Z — BBC scheduler test run completed (`--testrun`), producing all-new ingestion entries with zero serialization errors.
+
 - 2025-11-02T16:34Z — Random sample script recorded titles/text snippets for audit; attached to bring-up ticket and stored under `logs/operations/evidence/sample_bbc_articles_20251102.txt`.

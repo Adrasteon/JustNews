@@ -7,32 +7,53 @@ tags: ["stage-b", "ops", "ticket-template"]
 # Stage B Validation Ticket Template
 
 ## Summary
+
 - **Objective**: `Stage B validation for <environment>`
+
 - **Change window**: `<start-end>`
+
 - **Owner(s)**: `<ops-oncall>`
+
 - **Related artifacts**: `docs/operations/stage_b_validation.md`
 
 ## Preconditions
+
 - Stage A bring-up verified ✅
+
 - Required migrations reviewed (`database/migrations/003_stage_b_ingestion.sql`)
+
 - Scheduler configuration confirmed (`config/crawl_schedule.yaml`)
 
 ## Execution Plan
+
 1. Apply migration 003 to target database.
+
 2. Enable `justnews-crawl-scheduler.timer` and monitor first live run.
+
 3. Register Prometheus textfile exporter path for scheduler metrics.
+
 4. Validate embedding counters/histogram in Prometheus scrape.
+
 5. Run targeted pytest suites (crawler + memory + scheduler integration).
+
 6. Capture QA sampling notes for needs_review cohorts.
 
 ## Validation Checklist
+
 - [ ] Migration applied; schema inspected with `SELECT` sample.
+
 - [ ] Scheduler timer active; last run timestamp recorded.
+
 - [ ] `logs/analytics/crawl_scheduler_state.json` archived.
+
 - [ ] Prometheus scrape shows Stage B embedding counters and latency histogram.
+
 - [ ] Dashboard panels updated for Stage B metrics (extraction, ingestion, embeddings, scheduler lag).
+
 - [ ] QA sampling log updated in `logs/governance/crawl_terms_audit.md`.
+
 - [ ] Duplicate suppression sample query executed and result captured.
+
 - [ ] Test outputs attached (commands + timestamps).
 
 ## Evidence Log
@@ -45,10 +66,15 @@ tags: ["stage-b", "ops", "ticket-template"]
 | QA Sampling | `logs/governance/crawl_terms_audit.md` entry | Pending |
 
 ## Rollback Plan
+
 - Disable scheduler timer: `sudo systemctl disable --now justnews-crawl-scheduler.timer`.
+
 - Revert migration if necessary using `database/migrations/003_stage_b_ingestion.sql` down script.
+
 - Restore previous metrics or dashboard configuration snapshots.
 
 ## Notes
+
 - Attach relevant screenshots/logs as ticket attachments.
+
 - Reference the `docs/operations/stage_b_validation.md` playbook for detailed steps and thresholds.

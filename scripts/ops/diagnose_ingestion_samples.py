@@ -44,9 +44,6 @@ try:
 except Exception:
     mysql = None
     _MYSQL_AVAILABLE = False
-import json
-
-import requests
 
 HREF_RE = re.compile(r'href=["\'](https?://[^"\']+)["\']', re.I)
 

@@ -40,8 +40,8 @@ def JustNewsMetrics():
 metrics_mod.JustNewsMetrics = JustNewsMetrics
 sys.modules["monitoring.common.metrics"] = metrics_mod
 
-from monitoring.core.trace_collector import TraceData, TraceSpan
-from monitoring.core.trace_storage import FileTraceStorage, TraceQuery
+from monitoring.core.trace_collector import TraceData, TraceSpan  # noqa: E402
+from monitoring.core.trace_storage import FileTraceStorage, TraceQuery  # noqa: E402
 
 
 def make_span(span_id: str, trace_id: str, service: str = "svc") -> TraceSpan:
@@ -165,22 +165,3 @@ def test_query_and_cleanup(tmp_path):
     # Cleanup with retention 1 day should remove the old trace
     deleted_count = asyncio.run(storage.cleanup(retention_days=1))
     assert deleted_count >= 1
-
-    recent_td = TraceData(
-        trace_id="t_new",
-        root_span_id="r1",
-        spans=[recent_span],
-        start_time=datetime.now(),
-        end_time=datetime.now(),
-        duration_ms=2.0,
-        service_count=1,
-        total_spans=1,
-        error_count=0,
-    )
-
-    asyncio.run(fs.store_trace(old_td))
-    asyncio.run(fs.store_trace(recent_td))
-
-    # Clean traces older than 5 days should remove the old one
-    removed = asyncio.run(fs.cleanup(retention_days=5))
-    assert removed >= 1

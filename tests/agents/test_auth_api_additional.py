@@ -252,7 +252,7 @@ def test_data_minimization_admin_status(monkeypatch):
     assert res["status"] == "success"
 
 
-from agents.common import auth_api as api
+from agents.common import auth_api as api  # noqa: E402
 
 
 def test_get_current_user_invalid_token(monkeypatch):

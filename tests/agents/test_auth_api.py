@@ -97,11 +97,11 @@ def test_login_user_success_sync(monkeypatch):
     assert res.refresh_token == "RTOKEN"
 
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta  # noqa: E402
 
-from fastapi import HTTPException
+from fastapi import HTTPException  # noqa: E402
 
-from agents.common.auth_models import UserCreate, UserLogin, UserStatus
+from agents.common.auth_models import UserCreate, UserLogin, UserStatus  # noqa: E402
 
 
 @pytest.mark.asyncio

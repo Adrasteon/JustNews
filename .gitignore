@@ -99,3 +99,9 @@ model_store/**
 output/
 
 global.env
+
+# Archived Qwen2 artifacts (legacy)
+/config/legacy/
+/scripts/legacy/
+# Ignore any legacy Qwen2 adapter artifacts in model_store
+model_store/adapters/**/qwen2_*

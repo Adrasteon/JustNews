@@ -2,7 +2,9 @@ Continuation Plan — HITL Access & Crawler Integration
 
 Summary:
 
-- Goal: Ensure the Human-in-the-Loop (HITL) annotator UI is available, seeded with candidates from the crawler, monitored, and safe to roll out into staging/production.
+- Goal: Ensure the Human-in-the-Loop (HITL) annotator UI is available, seeded with
+  candidates from the crawler, monitored, and safe to roll out into
+  staging/production.
 
 - Current state: HITL API serves the static UI at `/` and `/static/*`. The crawler builds candidate payloads and posts them to `/api/candidates`. Recent changes applied: `CandidateEvent.id` now defaults to `None` (prevents 422), crawler payload builder implemented, and automated tests added and passing.
 

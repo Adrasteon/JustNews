@@ -17,9 +17,11 @@ All notable changes to this project will be documented in this file.
 
 - **✅** Archived and removed legacy Qwen2 artifacts; added archive patterns to `.gitignore`.
 
-- **✅** Updated `environment.yml` pins: `torch==2.9.0+cu128`, `numpy==2.2.4`, `numba==0.61.2`. `bitsandbytes==0.47.0` should be built from source for CUDA compatibility.
+- **✅** Updated `environment.yml` pins: `torch==2.9.0+cu128`, `numpy==2.2.4`,
+  `numba==0.61.2`. `bitsandbytes==0.47.0` should be built from source for
+  CUDA compatibility.
 
-- **✅** vLLM (0.12.0) server starts correctly under `justnews-py312`; smoke tests pass.
+- **✅** vLLM (0.12.0) server starts correctly under `${CANONICAL_ENV:-justnews-py312}`; smoke tests pass.
 
 Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 

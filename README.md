@@ -104,7 +104,9 @@ When you need the standard `global.env` variables outside the full system startu
 scripts/run_with_env.sh python -m pytest tests/e2e/test_orchestrator_real_e2e.py -s -v
 ```
 
-The helper looks for `/etc/justnews/global.env` first and falls back to the repo copy, exporting every variable (MariaDB, ChromaDB, model paths, etc.) before exec-ing your command.
+The helper looks for `/etc/justnews/global.env` first and falls back to
+the repo copy. It exports every variable (MariaDB, ChromaDB, model paths,
+etc.) before exec-ing your command.
 
 ### Running optional / infra-dependent tests 🔧
 Some tests are skipped by default when required infra or optional dependencies aren't available (GPU, ChromaDB, vLLM, Playwright, Docker). Use `scripts/run_tests_with_env.sh` to flip common toggles and run pytest with sensible defaults.

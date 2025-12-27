@@ -10,7 +10,7 @@ Print this page or keep it open while executing the startup plan.
 ```bash
 
 ## Create /etc/justnews/global.env or ./global.env with:
-JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-py312/bin/python
+JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python
 SERVICE_DIR=/home/adra/JustNews
 MARIADB_HOST=localhost
 MARIADB_PORT=3306
@@ -189,7 +189,7 @@ curl -s http://localhost:8000/api/v1/heartbeat | grep -q '{}' && echo "OK" || ec
 
 | Symptom | Check | Fix |
 |---------|-------|-----|
-| "command not found: source" | Global env | `export MARIADB_HOST=localhost` (direct) or use `./scripts/run_with_env.sh` |
+| "command not found: source" | Global env | Use `./scripts/run_with_env.sh` or run `export MARIADB_HOST=localhost` |
 | Port 8015 refused | GPU Orchestrator ready? | `curl -fsS http://127.0.0.1:8014/ready` – wait until 200 |
 | No ChromaDB at 8000 | Docker running? | `docker ps | grep chromadb` – if missing, run Docker start command |
 | Articles count = 0 | Database schema? | Run `scripts/init_database.py` again |

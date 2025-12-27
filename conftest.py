@@ -105,9 +105,12 @@ if os.environ.get("SKIP_PREFLIGHT", "0") != "1":
             import warnings as _warnings
 
             # Include stacklevel so the warning points to the caller in test runs
+            # Emit a non-fatal UserWarning for third-party compiled extension
+            # deprecation notices so tests don't fail due to external packages
+            # while still alerting maintainers to upgrade compiled wheels.
             _warnings.warn(
                 "Deprecation warnings detected from third-party compiled extensions (e.g. google._upb._message); please upgrade your environment and reinstall compiled wheels for affected packages.",
-                DeprecationWarning,
+                UserWarning,
                 stacklevel=2,
             )
     except FileNotFoundError:

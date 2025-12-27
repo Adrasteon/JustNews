@@ -134,14 +134,16 @@ scripts/run_tests_with_env.sh chroma-live -- -q tests/integration/test_chromadb_
 - Run vLLM smoke tests (point `VLLM_BASE_URL` to your running server first):
 
 ```bash
-# Ensure VLLM_BASE_URL is set in your env or /etc/justnews/global.env
+
+## Ensure VLLM_BASE_URL is set in your env or /etc/justnews/global.env
 scripts/run_tests_with_env.sh vllm -- -q tests/integration/test_vllm_mistral_7b_smoke.py -k chat_completion
 ```
 
 - Run Redis-dependent E2E tests (point `REDIS_URL` to your Redis instance if needed):
 
 ```bash
-# Uses REDIS_URL (default: redis://127.0.0.1:6379)
+
+## Uses REDIS_URL (default: redis://127.0.0.1:6379)
 scripts/run_tests_with_env.sh redis -- -q tests/e2e/test_docker_poc_representative.py -k redis
 ```
 

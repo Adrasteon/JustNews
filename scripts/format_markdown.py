@@ -88,6 +88,39 @@ def fix_content(text: str) -> str:
         i += 1
     text = '\n'.join(out_lines)
 
+    # Normalize hard tabs and list indentation (outside code blocks)
+    lines = text.split('\n')
+    out_lines = []
+    in_code = False
+    for line in lines:
+        if re.match(r"^```", line):
+            in_code = not in_code
+            out_lines.append(line)
+            continue
+        if in_code:
+            out_lines.append(line)
+            continue
+        # Replace hard tabs with two spaces
+        if '\t' in line:
+            line = line.replace('\t', '  ')
+        # Normalize leading space counts for list markers to even numbers (0,2,4...)
+        m = re.match(r"^(\s+)([-*+]\s+)(.*)", line)
+        if m:
+            spaces = m.group(1)
+            count = len(spaces)
+            desired = count if count % 2 == 0 else max(0, count - 1)
+            line = (' ' * desired) + m.group(2) + m.group(3)
+        else:
+            # ordered lists
+            m2 = re.match(r"^(\s+)(\d+\.\s+)(.*)", line)
+            if m2:
+                spaces = m2.group(1)
+                count = len(spaces)
+                desired = count if count % 2 == 0 else max(0, count - 1)
+                line = (' ' * desired) + m2.group(2) + m2.group(3)
+        out_lines.append(line)
+    text = '\n'.join(out_lines)
+
     # Wrap long paragraph lines (outside code blocks) to 80 chars
     wrapped = []
     in_code = False

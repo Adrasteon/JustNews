@@ -44,22 +44,22 @@
 
 1. Add or update the appropriate YAML file under `config/crawl_profiles/` (one profile file per site).
 
-2. Run the scheduler in dry-run mode to validate payload expansion:
-	```bash
-	JUSTNEWS_PYTHON scripts/ops/run_crawl_schedule.py --dry-run --profiles config/crawl_profiles
-	```
+1. Run the scheduler in dry-run mode to validate payload expansion:
 
-3. Deploy profile updates by syncing the directory to the scheduler host; no Python code changes required.
+```bash JUSTNEWS_PYTHON scripts/ops/run_crawl_schedule.py --dry-run --profiles
+config/crawl_profiles ```
+
+1. Deploy profile updates by syncing the directory to the scheduler host; no Python code changes required.
 
 ## 5. Incremental Migration Plan
 
 1. **Prototype wrapper:** ✅ Complete – scheduler/adapter path in place for selected domains.
 
-2. **Profile definitions:** Continue migrating remaining sources into YAML profiles; capture per-cohort defaults (`start_urls`, `link_preview`).
+1. **Profile definitions:** Continue migrating remaining sources into YAML profiles; capture per-cohort defaults (`start_urls`, `link_preview`).
 
-3. **Rollout & metrics:** Expand coverage once metrics confirm parity or improvement. Track extraction success, coverage, and performance to catch regressions early.
+1. **Rollout & metrics:** Expand coverage once metrics confirm parity or improvement. Track extraction success, coverage, and performance to catch regressions early.
 
-4. **Clean-up legacy paths:** Once Crawl4AI covers all production sites, retire unused playwright/browser helpers to reduce maintenance.
+1. **Clean-up legacy paths:** Once Crawl4AI covers all production sites, retire unused playwright/browser helpers to reduce maintenance.
 
 ## 6. Guiding Principles
 
@@ -69,4 +69,7 @@
 
 - **Observability baked in:** Continue Stage B metrics, plus log Crawl4AI `CrawlResult` stats to inform profile tuning.
 
-Following this plan keeps the stack manageable, avoids bespoke crawler rewrites, and lets us scale depth or precision per site without accumulating fragile code. Trafilatura remains the extraction workhorse while Crawl4AI handles navigation, link discovery, and controlled expansion.
+Following this plan keeps the stack manageable, avoids bespoke crawler rewrites,
+and lets us scale depth or precision per site without accumulating fragile code.
+Trafilatura remains the extraction workhorse while Crawl4AI handles navigation,
+link discovery, and controlled expansion.

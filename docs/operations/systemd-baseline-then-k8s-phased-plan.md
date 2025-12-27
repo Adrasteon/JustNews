@@ -1,12 +1,12 @@
----
-title: "JustNews bring-up plan: systemd baseline and intelligence pipeline"
-description: "Authoritative action plan to restore a fully working systemd deployment, harden ingestion quality, and stage fact-verification capabilities."
-tags: ["runbook", "systemd", "gpu", "bring-up", "refactor-validation", "news-ingestion", "fact-checking"]
----
+--- title: "JustNews bring-up plan: systemd baseline and intelligence pipeline" description: "Authoritative action plan
+to restore a fully working systemd deployment, harden ingestion quality, and stage fact-verification capabilities."
+tags: ["runbook", "systemd", "gpu", "bring-up", "refactor-validation", "news- ingestion", "fact-checking"] ---
 
 # JustNews bring-up plan: systemd baseline → intelligence pipeline
 
-This plan restores the proven systemd deployment first, validates the refactor under known-good conditions, then layers the ingestion, deduplication, and fact-verification capabilities required for the JustNews workflow. Each stage has clear acceptance checks and rollback guidance.
+This plan restores the proven systemd deployment first, validates the refactor under known-good conditions, then layers
+the ingestion, deduplication, and fact- verification capabilities required for the JustNews workflow. Each stage has
+clear acceptance checks and rollback guidance.
 
 > Repo note: This repo keeps systemd assets under `infrastructure/systemd/`. If documentation elsewhere refers to `deploy/systemd/`, use the `infrastructure/systemd/` path here.
 
@@ -48,7 +48,8 @@ This plan restores the proven systemd deployment first, validates the refactor u
 
 - Content tooling: ensure packages for extraction and embeddings are available (`trafilatura`, `readability-lxml`, `jusText`, `extruct`, `langdetect`, `sentence-transformers`, `chromadb`). Pin versions in `requirements.txt` before deployment.
 
-Required: NVIDIA MPS. MPS is an essential part of the design to protect GPU stability under concurrent workloads, reduce memory fragmentation, and mitigate hard GPU crashes from OOM conditions and memory leaks.
+Required: NVIDIA MPS. MPS is an essential part of the design to protect GPU stability under concurrent workloads, reduce
+memory fragmentation, and mitigate hard GPU crashes from OOM conditions and memory leaks.
 
 ## Stage A — Restore systemd baseline (authoritative path)
 

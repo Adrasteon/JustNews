@@ -1,6 +1,7 @@
 # Adapter Specification — JustNews
 
-This document defines the minimal adapter contract, best-practices and test guidance for adapters in the JustNews codebase.
+This document defines the minimal adapter contract, best-practices and test guidance for adapters in the JustNews
+codebase.
 
 Purpose
 
@@ -65,6 +66,7 @@ Testing guidance
 - CI: include adapter unit tests and dry-run adapter smoke tests in PR jobs. For real-provider tests (OpenAI/HF), gate them behind environment variables/secrets and run them in a separate gated CI job.
 
 Example minimal mock adapter (pseudocode)
+
 ```py
 class MockAdapter(BaseAdapter):
     def load(self, model_id, config=None):
@@ -84,15 +86,16 @@ class MockAdapter(BaseAdapter):
 
     def metadata(self):
         return {'adapter': 'mock'}
+
 ```
 
 CI checklist for adapter PRs
 
 1. Add/update unit tests covering the BaseAdapter and MockAdapter.
 
-2. Add dry-run tests for the adapter's JSON shapes and edge-cases (empty input, truncated content, missing fields).
+1. Add dry-run tests for the adapter's JSON shapes and edge-cases (empty input, truncated content, missing fields).
 
-3. If introducing a real provider adapter, add a gated CI matrix entry that runs one or two example queries with secrets.
+1. If introducing a real provider adapter, add a gated CI matrix entry that runs one or two example queries with secrets.
 
 Where to start
 
@@ -114,15 +117,15 @@ Repository templates
 
 1. **Copy the base template** — Start from `agents/common/openai_adapter.py` (hosted provider) or `agents/common/hf_adapter.py` (local/HF). Keep imports lazy and respect `BaseAdapter.dry_run`.
 
-2. **Implement the contract** — Provide `load`, `infer`, and (optionally) override `batch_infer` if batching needs optimized paths. Use `mark_loaded`, `ensure_loaded`, and `build_result` helpers.
+1. **Implement the contract** — Provide `load`, `infer`, and (optionally) override `batch_infer` if batching needs optimized paths. Use `mark_loaded`, `ensure_loaded`, and `build_result` helpers.
 
-3. **Handle dry-run + ModelStore** — Short-circuit or return deterministic placeholders when `self.dry_run` is true or when handles from ModelStore are dicts.
+1. **Handle dry-run + ModelStore** — Short-circuit or return deterministic placeholders when `self.dry_run` is true or when handles from ModelStore are dicts.
 
-4. **Emit metrics** — Use `common.metrics.get_metrics` to produce latency/success/error data as described in the playbook. Guard metric calls so tests work without Prometheus.
+1. **Emit metrics** — Use `common.metrics.get_metrics` to produce latency/success/error data as described in the playbook. Guard metric calls so tests work without Prometheus.
 
-5. **Expose metadata & health** — Return concise dictionaries describing adapter name, version, device, and include useful `health_check` details (loaded status, errors, provider hints).
+1. **Expose metadata & health** — Return concise dictionaries describing adapter name, version, device, and include useful `health_check` details (loaded status, errors, provider hints).
 
-6. **Write tests** — Add/update files under `tests/adapters/` to cover:
+1. **Write tests** — Add/update files under `tests/adapters/` to cover:
 
   - Base behavior (`test_adapter_base.py`, `test_mock_adapter.py` already exist).
 
@@ -130,9 +133,9 @@ Repository templates
 
   - Provider-specific retry/backoff logic gated behind feature flags or env vars.
 
-7. **Document + register** — Update `docs/model-adapter-playbook.md` (status + next steps) and this spec if the new adapter introduces fresh patterns or requirements.
+1. **Document + register** — Update `docs/model-adapter-playbook.md` (status + next steps) and this spec if the new adapter introduces fresh patterns or requirements.
 
-8. **Run canonical tests** — Use `./scripts/dev/run_pytest_conda.sh tests/adapters/*` so the canonical `${CANONICAL_ENV:-justnews-py312}` env validates your changes before opening a PR.
+1. **Run canonical tests** — Use `./scripts/dev/run_pytest_conda.sh tests/adapters/*` so the canonical `${CANONICAL_ENV:-justnews-py312}` env validates your changes before opening a PR.
 
 Following this recipe keeps adapters testable, dry-run friendly, and aligned with the shared BaseAdapter utilities.
 

@@ -1,6 +1,7 @@
 # Evaluation Framework
 
-This folder contains a lightweight evaluation framework for common acceptance tests and metrics used by the JustNews project.
+This folder contains a lightweight evaluation framework for common acceptance tests and metrics used by the JustNews
+project.
 
 Features
 
@@ -20,9 +21,11 @@ Usage
 
 1. Install the project environment (use `environment.yml` or `requirements.txt`).
 
-2. Run a parity evaluation:
+1. Run a parity evaluation:
+
 ```bash
 JUSTNEWS_PYTHON evaluation/run_evaluation.py --mode extraction_parity --dataset evaluation/datasets/bbc
+
 ```
 
 The runner will look for paired files in the dataset directory with `.html` and `.txt` (ground truth) suffixes.

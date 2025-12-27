@@ -1,6 +1,8 @@
 # Testing the GPU Orchestrator (developer & CI guide)
 
-This doc covers the recommended testing strategies for the GPU orchestrator: quick local unit/integration tests using in-memory emulators, deeper systemd-based containers for system-level testing, and CI configuration that runs tests in the canonical conda environment used by developers.
+This doc covers the recommended testing strategies for the GPU orchestrator: quick local unit/integration tests using
+in-memory emulators, deeper systemd- based containers for system-level testing, and CI configuration that runs tests in
+the canonical conda environment used by developers.
 
 Why this matters
 
@@ -16,11 +18,11 @@ Test tiers
 
    - Use the pytest helper script to ensure you run tests inside the project's conda environment:
 
-       ./scripts/dev/pytest.sh [pytest args]
+./scripts/dev/pytest.sh [pytest args]
 
    - The tests include helpers that map MySQL `%s` placeholders to sqlite `?` for compatibility in CI and developer runs.
 
-2. Systemd-level local tests — optional, opt-in, higher fidelity
+1. Systemd-level local tests — optional, opt-in, higher fidelity
 
    - Use the repository-provided systemd-nspawn helper `scripts/dev/run_systemd_nspawn_env.sh` to create an Ubuntu-based systemd container and install `mariadb-server` and `redis-server` inside it.
 
@@ -28,14 +30,13 @@ Test tiers
 
    - Steps (example):
 
-       sudo scripts/dev/run_systemd_nspawn_env.sh create
-       sudo scripts/dev/run_systemd_nspawn_env.sh start
-       sudo scripts/dev/run_systemd_nspawn_env.sh install
-       sudo scripts/dev/run_systemd_nspawn_env.sh shell  # to inspect and run tests in the container
+sudo scripts/dev/run_systemd_nspawn_env.sh create sudo scripts/dev/run_systemd_nspawn_env.sh start sudo
+scripts/dev/run_systemd_nspawn_env.sh install sudo scripts/dev/run_systemd_nspawn_env.sh shell  # to inspect and run
+tests in the container
 
    - The helper is intentionally opt-in and requires root or privilege. For teams that want easier management and clustering of system containers, consider LXD on developer machines or on self-hosted runners.
 
-3. CI-level fidelity tests
+1. CI-level fidelity tests
 
       - The repository CI workflow has been updated to use Miniconda and create a `${CANONICAL_ENV:-justnews-py312}` conda environment in CI, matching local dev setups; CI now runs `pytest` inside that environment.
 
@@ -43,8 +44,8 @@ Test tiers
 
       - Docker-based E2E PoC (test/CI only): We added a lightweight Docker Compose-based PoC which boots a pre-seeded MariaDB and Redis for faster E2E verification without requiring systemd-nspawn privileges. This PoC is intended for testing/CI only — the canonical MariaDB deployment in developer and production workflows runs on the host (outside Docker) or as a managed service. See `scripts/dev/docker-compose.e2e.yml`, `scripts/dev/run_e2e_docker.sh` and `.github/workflows/e2e-docker.yml`.
 
-Developer ergonomics & helpers
--- `scripts/dev/pytest.sh` — wrapper which runs pytest inside `${CANONICAL_ENV:-justnews-py312}` conda env and sets `PYTHONPATH` to the repo root. Use it for consistent local runs.
+Developer ergonomics & helpers -- `scripts/dev/pytest.sh` — wrapper which runs pytest inside `${CANONICAL_ENV:-justnews-
+py312}` conda env and sets `PYTHONPATH` to the repo root. Use it for consistent local runs.
 
 - `scripts/dev/install_hooks.sh` — installs local git hooks (from `scripts/dev/git-hooks/`) into `.git/hooks` (opt-in). The `pre-push` hook prints guidance and can optionally run a quick smoke test when `GIT_STRICT_TEST_HOOK=1`.
 
@@ -54,29 +55,33 @@ Practical commands
 
 - Run all unit tests quickly:
 
-      ./scripts/dev/pytest.sh -q -k "not integration"
+./scripts/dev/pytest.sh -q -k "not integration"
 
 - Run integration tests (fast in-memory harness):
 
-      ./scripts/dev/pytest.sh -q tests/integration -q
+./scripts/dev/pytest.sh -q tests/integration -q
 
 - Run worker flow integration test specifically (smoke):
 
-      ./scripts/dev/pytest.sh -q tests/integration/test_worker_flow.py::test_worker_claims_lease_runs_and_updates_db -q -s
+./scripts/dev/pytest.sh -q tests/integration/test_worker_flow.py::test_worker_cl aims_lease_runs_and_updates_db -q -s
 
 Running full, real E2E tests inside a systemd-nspawn container (self-hosted runner)
 --------------------------------------------------------------------------
 
-Once you have a self-hosted runner prepared (see `scripts/dev/setup_selfhosted_runner.sh`) and a running systemd-nspawn container bootstrapped (the CI workflow covers this), you can run the full E2E suite inside the container with:
+Once you have a self-hosted runner prepared (see `scripts/dev/setup_selfhosted_runner.sh`) and a running systemd-nspawn
+container bootstrapped (the CI workflow covers this), you can run the full E2E suite inside the container with:
 
 ```bash
 
 ## from the runner or inside the container shell
+
 cd /root/justnews
 E2E_REAL=1 PYTEST_RUNNING=1 PYTHONPATH=/root/justnews python3.11 -m pytest tests/e2e -q -s
+
 ```
 
-The E2E tests are gated by the `E2E_REAL=1` environment variable so they won't run in standard CI or local developer runs unless explicitly enabled.
+The E2E tests are gated by the `E2E_REAL=1` environment variable so they won't run in standard CI or local developer
+runs unless explicitly enabled.
 
 Tips & gotchas
 
@@ -89,9 +94,9 @@ Tips & gotchas
   - Spawning a systemd-nspawn container and running the engine against a real MariaDB inside the container to identify behaviour differences between sqlite and MariaDB
 
  - Running the Docker-based PoC locally (for testing/CI debugging only):
-      1) Start services: `docker-compose -f scripts/dev/docker-compose.e2e.yml up -d --build`
-       2) Run the smoke tests: `scripts/dev/e2e_smoke.sh`
-       3) Run full E2E: set the env vars described in `scripts/dev/run_e2e_docker.sh` and run `pytest -q tests/e2e -q -s`
+1) Start services: `docker-compose -f scripts/dev/docker-compose.e2e.yml up -d --build` 2) Run the smoke tests:
+`scripts/dev/e2e_smoke.sh` 3) Run full E2E: set the env vars described in `scripts/dev/run_e2e_docker.sh` and run
+`pytest -q tests/e2e -q -s`
 
 Where to add tests
 

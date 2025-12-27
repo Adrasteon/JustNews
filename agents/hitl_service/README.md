@@ -1,12 +1,11 @@
 # HITL Service (agents/hitl_service)
 
-Short guide for the Human-in-the-Loop (HITL) annotator service used by the
-JustNews system.
+Short guide for the Human-in-the-Loop (HITL) annotator service used by the JustNews system.
 
 Purpose
 
 - Provides a FastAPI-based annotator UI and a small staging DB for candidate
-  review and programmatic labeling.
+review and programmatic labeling.
 
 Run locally
 
@@ -33,13 +32,12 @@ Important environment variables
 - Forwarding knobs:
 
   - `HITL_FORWARD_AGENT` / `HITL_FORWARD_TOOL` — configure to enable automatic
-    ingest-forwarding of labeled items via the MCP Bus.
+ingest-forwarding of labeled items via the MCP Bus.
 
 DB notes
 
 - The default staging DB is local and ignored by git. For production or shared
-  environments, set `HITL_DB_PATH` to an accessible location and ensure the
-  service has write permissions.
+environments, set `HITL_DB_PATH` to an accessible location and ensure the service has write permissions.
 
 Tests
 
@@ -50,19 +48,20 @@ Tests
 Troubleshooting
 
 - 422 validation errors: ensure incoming candidate payloads match the
-  `CandidateEvent` schema (the `id` field is optional).
+`CandidateEvent` schema (the `id` field is optional).
 
 - If the crawler reports repeated submission failures, check `HITL_SERVICE_ADDRESS`
-  and `HITL_FAILURE_BACKOFF_SECONDS`.
+and `HITL_FAILURE_BACKOFF_SECONDS`.
 
 Contact
 
 - For operational questions, contact the engineering team maintaining the
-  JustNews HITL integration.
+JustNews HITL integration.
 
 ## HITL Service
 
-Human-in-the-loop ingestion service that stores annotator decisions in SQLite and integrates with the shared MCP Bus for ingest dispatch.
+Human-in-the-loop ingestion service that stores annotator decisions in SQLite and integrates with the shared MCP Bus for
+ingest dispatch.
 
 Run locally using your project Conda environment (recommended):
 
@@ -70,13 +69,17 @@ Run locally using your project Conda environment (recommended):
 conda activate ${CANONICAL_ENV:-justnews-py312}
 
 ## install minimal runtime deps (conda-first, fallback to pip if needed)
+
 conda install -c conda-forge fastapi uvicorn
 
 ## if a package is unavailable via conda, use pip inside the activated env:
+
 pip install -r agents/hitl_service/requirements.txt
 
 ## run the service from the repository root (use an unused port; 8040 is open)
+
 uvicorn agents.hitl_service.app:app --reload --port 8040
+
 ```
 
 Open the annotator UI at http://localhost:8040/static/index.html

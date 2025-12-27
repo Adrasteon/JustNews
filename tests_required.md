@@ -1,6 +1,7 @@
 # Tests Required — prioritized list to improve coverage
 
-This document summarizes the top source files with little or no test coverage (sorted by uncovered lines). Each entry explains why it matters and gives suggested tests / next actions to increase coverage quickly.
+This document summarizes the top source files with little or no test coverage (sorted by uncovered lines). Each entry
+explains why it matters and gives suggested tests / next actions to increase coverage quickly.
 
 > Note: These results were extracted from `coverage.xml` (current line coverage ~42.3%). The list prioritizes absolute uncovered lines and then low coverage rates.
 
@@ -14,87 +15,87 @@ This document summarizes the top source files with little or no test coverage (s
 
    - Tests to add: unit tests for request parsing/validation, error paths, and endpoints. Mock external services (token stores, DB).
 
-2. agents/fact_checker/fact_checker_engine.py — 389 total, 345 uncovered, line-rate 0.1131
+1. agents/fact_checker/fact_checker_engine.py — 389 total, 345 uncovered, line-rate 0.1131
 
    - Why: Core engine logic has many untested branches.
 
    - Tests to add: unit tests for rule evaluation, edge cases, and integration tests with sample inputs.
 
-3. agents/common/gpu_manager_production.py — 426 total, 324 uncovered, line-rate 0.2394
+1. agents/common/gpu_manager_production.py — 426 total, 324 uncovered, line-rate 0.2394
 
    - Why: Production GPU orchestration code paths untested.
 
    - Tests to add: unit tests for pool lifecycle, leader election, DB resilience (mock DB + GPU responses).
 
-4. agents/common/embedding.py — 454 total, 319 uncovered, line-rate 0.2974
+1. agents/common/embedding.py — 454 total, 319 uncovered, line-rate 0.2974
 
    - Why: Embedding/model-loading and error handling paths not covered.
 
    - Tests to add: unit tests around model loading, embeddings pipeline, and fallback/error flows (mock models).
 
-5. monitoring/core/metrics_collector.py — 305 total, 305 uncovered, line-rate 0.0
+1. monitoring/core/metrics_collector.py — 305 total, 305 uncovered, line-rate 0.0
 
    - Why: Zero coverage; critical to observability.
 
    - Tests to add: unit tests for metric parsing, aggregation, formatting, and mocking backend integration.
 
-6. monitoring/core/performance_monitor.py — 305 total, 305 uncovered, line-rate 0.0
+1. monitoring/core/performance_monitor.py — 305 total, 305 uncovered, line-rate 0.0
 
    - Tests to add: thresholds, trigger behaviors, and scheduled checks. Use small unit tests and a lightweight integration harness.
 
-7. config/legacy/__init__.py — 349 total, 292 uncovered, line-rate 0.1633
+1. config/legacy/__init__.py — 349 total, 292 uncovered, line-rate 0.1633
 
    - Tests to add: config parsing, migration helpers, and backward compatibility scenarios.
 
-8. monitoring/core/log_storage.py — 287 total, 287 uncovered, line-rate 0.0
+1. monitoring/core/log_storage.py — 287 total, 287 uncovered, line-rate 0.0
 
    - Tests to add: storage write/read flows (mock store), pruning, retention policies.
 
-9. monitoring/core/trace_storage.py — 283 total, 283 uncovered, line-rate 0.0
+1. monitoring/core/trace_storage.py — 283 total, 283 uncovered, line-rate 0.0
 
    - Tests to add: trace ingestion, lookup/index behaviours.
 
-10. monitoring/core/trace_analyzer.py — 274 total, 274 uncovered, line-rate 0.0
+1. monitoring/core/trace_analyzer.py — 274 total, 274 uncovered, line-rate 0.0
 
     - Tests to add: trace analysis logic, heuristics, and outputs.
 
-11. security/compliance/service.py — 274 total, 274 uncovered, line-rate 0.0
+1. security/compliance/service.py — 274 total, 274 uncovered, line-rate 0.0
 
     - Tests to add: compliance rule checks, policy decision unit tests.
 
-12. security/encryption/service.py — 266 total, 266 uncovered, line-rate 0.0
+1. security/encryption/service.py — 266 total, 266 uncovered, line-rate 0.0
 
     - Tests to add: encryption/decryption paths, key handling with test keys.
 
-13. security/monitoring/service.py — 266 total, 266 uncovered, line-rate 0.0
+1. security/monitoring/service.py — 266 total, 266 uncovered, line-rate 0.0
 
     - Tests to add: alerting and policy-monitoring tests.
 
-14. monitoring/core/log_analyzer.py — 260 total, 260 uncovered, line-rate 0.0
+1. monitoring/core/log_analyzer.py — 260 total, 260 uncovered, line-rate 0.0
 
     - Tests to add: log pattern detection, statistical checks.
 
-15. training_system/core/training_coordinator.py — 368 total, 258 uncovered, line-rate 0.2989
+1. training_system/core/training_coordinator.py — 368 total, 258 uncovered, line-rate 0.2989
 
     - Tests to add: training task lifecycle, DB interactions (mock DB), error/retry flows.
 
-16. config/test_config_system.py — 256 total, 256 uncovered, line-rate 0.0
+1. config/test_config_system.py — 256 total, 256 uncovered, line-rate 0.0
 
     - Tests to add: unit tests for config helpers, schema checks.
 
-17. agents/sites/generic_site_crawler.py — 353 total, 254 uncovered, line-rate 0.2805
+1. agents/sites/generic_site_crawler.py — 353 total, 254 uncovered, line-rate 0.2805
 
     - Tests to add: parsing edge-cases, fallback scraping flows and error handling.
 
-18. config/validation/__init__.py — 290 total, 244 uncovered, line-rate 0.1586
+1. config/validation/__init__.py — 290 total, 244 uncovered, line-rate 0.1586
 
     - Tests to add: validation chains and error messages.
 
-19. agents/hitl_service/app.py — 563 total, 244 uncovered, line-rate 0.5666
+1. agents/hitl_service/app.py — 563 total, 244 uncovered, line-rate 0.5666
 
     - Tests to add: API endpoint tests for HITL ingest/QA/training paths.
 
-20. monitoring/core/trace_processor.py — 242 total, 242 uncovered, line-rate 0.0
+1. monitoring/core/trace_processor.py — 242 total, 242 uncovered, line-rate 0.0
 
     - Tests to add: trace processing unit tests, correctness of transforms.
 
@@ -110,19 +111,19 @@ This document summarizes the top source files with little or no test coverage (s
 
    - Add tests for `agents/common/embedding.py` focusing on model loading and error handling.
 
-2. High impact (2–4 days each)
+1. High impact (2–4 days each)
 
    - Add unit+integration tests for `agents/fact_checker/fact_checker_engine.py` and `training_system/core/training_coordinator.py` to cover core logic and DB interaction paths (mock DB).
 
    - Add tests for `agents/sites/generic_site_crawler.py` parsing, using small HTML fixtures.
 
-3. Monitoring + security coverage push (longer effort, 1–2 weeks)
+1. Monitoring + security coverage push (longer effort, 1–2 weeks)
 
    - Monitoring files under `monitoring/core/` are mostly untested — create a test harness mocking backends and produce coverage across `metrics_collector`, `log_*`, `trace_*` modules.
 
    - Security service modules (authentication, encryption, compliance) need unit tests for safe handling of secrets and policy logic; use test-only keys and mocks.
 
-4. Coverage tooling
+1. Coverage tooling
 
    - Run coverage with branch coverage enabled: `coverage run --branch -m pytest` and analyze misses.
 

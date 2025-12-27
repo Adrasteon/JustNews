@@ -1,6 +1,7 @@
 # JustNews V4.0.0
 
-A production-ready multi-agent news analysis system featuring GPU-accelerated processing, continuous learning, and distributed architecture.
+A production-ready multi-agent news analysis system featuring GPU-accelerated processing, continuous learning, and
+distributed architecture.
 
 ## 🚀 Quick Start
 
@@ -19,44 +20,60 @@ A production-ready multi-agent news analysis system featuring GPU-accelerated pr
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd JustNews
-```
 
-2. Set up conda environment:
+```bash
+
+1. Set up conda environment:
+
 ```bash
 
 ## Create conda environment (if not already created)
+
 conda env create -f environment.yml
 
 ## Activate the environment
+
 conda activate ${CANONICAL_ENV:-justnews-py312}
+
 ```
 
-3. Install dependencies (prefer conda-forge for the crawler extraction stack):
+1. Install dependencies (prefer conda-forge for the crawler extraction stack):
+
 ```bash
 mamba install -c conda-forge --file requirements.txt
 
 ## or, if mamba is unavailable
+
 conda install -c conda-forge --file requirements.txt
+
 ```
 
-4. Initialize the database:
+1. Initialize the database:
+
 ```bash
 
 ## Activate environment first
+
 conda activate ${CANONICAL_ENV:-justnews-py312}
 
 ## Initialize DB schema
+
 ./scripts/run_with_env.sh python scripts/init_database.py
+
 ```
 
-5. Start the system:
+1. Start the system:
+
 ```bash
 
 ## Must run as root for systemd service management
+
 sudo infrastructure/systemd/canonical_system_startup.sh
+
 ```
 
 ## 📋 System Architecture
@@ -92,24 +109,31 @@ sudo infrastructure/systemd/canonical_system_startup.sh
 ## 🛠️ Development
 
 ### Environment Setup
+
 Before running any development commands, always activate the conda environment:
+
 ```bash
 conda activate ${CANONICAL_ENV:-justnews-py312}
+
 ```
 
 #### Environment wrapper for ad-hoc commands
-When you need the standard `global.env` variables outside the full system startup, wrap your command with `scripts/run_with_env.sh`:
+
+When you need the standard `global.env` variables outside the full system startup, wrap your command with
+`scripts/run_with_env.sh`:
 
 ```bash
 scripts/run_with_env.sh python -m pytest tests/e2e/test_orchestrator_real_e2e.py -s -v
+
 ```
 
-The helper looks for `/etc/justnews/global.env` first and falls back to
-the repo copy. It exports every variable (MariaDB, ChromaDB, model paths,
-etc.) before exec-ing your command.
+The helper looks for `/etc/justnews/global.env` first and falls back to the repo copy. It exports every variable
+(MariaDB, ChromaDB, model paths, etc.) before exec-ing your command.
 
 ### Running optional / infra-dependent tests 🔧
-Some tests are skipped by default when required infra or optional dependencies aren't available (GPU, ChromaDB, vLLM, Playwright, Docker). Use `scripts/run_tests_with_env.sh` to flip common toggles and run pytest with sensible defaults.
+
+Some tests are skipped by default when required infra or optional dependencies aren't available (GPU, ChromaDB, vLLM,
+Playwright, Docker). Use `scripts/run_tests_with_env.sh` to flip common toggles and run pytest with sensible defaults.
 
 Examples:
 
@@ -117,18 +141,21 @@ Examples:
 
 ```bash
 scripts/run_tests_with_env.sh local -- -k "not integration" -q
+
 ```
 
 - Run GPU tests (enable GPU toggles):
 
 ```bash
 scripts/run_tests_with_env.sh gpu -- -q
+
 ```
 
 - Run live ChromaDB integration smoke tests (requires `MODEL_STORE_ROOT` and a running ChromaDB):
 
 ```bash
 scripts/run_tests_with_env.sh chroma-live -- -q tests/integration/test_chromadb_live.py -k chroma
+
 ```
 
 - Run vLLM smoke tests (point `VLLM_BASE_URL` to your running server first):
@@ -136,7 +163,9 @@ scripts/run_tests_with_env.sh chroma-live -- -q tests/integration/test_chromadb_
 ```bash
 
 ## Ensure VLLM_BASE_URL is set in your env or /etc/justnews/global.env
+
 scripts/run_tests_with_env.sh vllm -- -q tests/integration/test_vllm_mistral_7b_smoke.py -k chat_completion
+
 ```
 
 - Run Redis-dependent E2E tests (point `REDIS_URL` to your Redis instance if needed):
@@ -144,18 +173,23 @@ scripts/run_tests_with_env.sh vllm -- -q tests/integration/test_vllm_mistral_7b_
 ```bash
 
 ## Uses REDIS_URL (default: redis://127.0.0.1:6379)
+
 scripts/run_tests_with_env.sh redis -- -q tests/e2e/test_docker_poc_representative.py -k redis
+
 ```
 
 - Run all optional tests (GPU, Chroma, Playwright, strict deprecation checks):
 
 ```bash
 scripts/run_tests_with_env.sh all -- -q
+
 ```
 
-If you prefer to flip env vars manually, see the `# --- Tests & toggles ---` section in `/etc/justnews/global.env` for the available toggles.
+If you prefer to flip env vars manually, see the `# --- Tests & toggles ---` section in `/etc/justnews/global.env` for
+the available toggles.
 
 ### Available Commands
+
 ```bash
 make help          # Show all available commands
 make test          # Run test suite with coverage
@@ -172,51 +206,68 @@ Environment variables:
   ENV         Target environment (development/staging/production)
   VERSION     Release version (for release target)
   # DOCKER_TAG is deprecated and ignored. Use systemd package versioning instead.
+
 ```
 
 ### Conda Environment Management
+
 ```bash
 
 ## Activate environment
+
 conda activate ${CANONICAL_ENV:-justnews-py312}
 Note: the canonical project conda environment is `${CANONICAL_ENV:-justnews-py312}`. When running scripts from documentation or CI, prefer:
 
 ```bash
 
 ## Run via conda-run
+
 conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/your_script.py
 
 ## Or use PYTHON_BIN to force a known interpreter
-PYTHON_BIN=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python python scripts/your_script.py
+
+PYTHON_BIN=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews- py312}/bin/python python scripts/your_script.py
+
 ```
 
 This ensures scripts are executed with the same environment and binary used by deployment & startup helpers.
 
 ## Deactivate environment
+
 conda deactivate
 
 ## Update environment
+
 conda env update -f environment.yml
 
 ## List installed packages
+
 conda list
 
 ## Export environment (for backup)
+
 conda env export > environment_backup.yml
+
 ```
 
 ### Crawler Extraction Regression Tests
-Prefer running tests using the project's conda environment to ensure third-party compiled extensions and dependencies are available.
+
+Prefer running tests using the project's conda environment to ensure third-party compiled extensions and dependencies
+are available.
+
 ```bash
 
 ## Either set `PYTHONPATH` and run pytest using the activated conda env:
+
 PYTHONPATH=$(pwd) conda run -n ${CANONICAL_ENV:-justnews-py312} pytest tests/agents/crawler -q
 
 Tip: To ensure you always run pytest inside the project's conda environment, use the helper:
 
 ```bash
 scripts/dev/pytest.sh [pytest args]
+
 ```
+
 This wrapper runs pytest via the `CANONICAL_ENV` (defaults to `${CANONICAL_ENV:-justnews-py312}`) environment (recommended for local dev).
 
 Git hooks: We ship a simple pre-push hook that encourages use of the pytest wrapper and can run quick unit smoke tests.
@@ -226,31 +277,42 @@ Install hooks with:
 conda activate ${CANONICAL_ENV:-justnews-py312}
 
 ## Optional strict mode: run quick tests on pre-push
+
 export GIT_STRICT_TEST_HOOK=1
-```
+
+```bash
 
 CI note: GitHub Actions workflows were updated to create and use the `${CANONICAL_ENV:-justnews-py312}` conda environment during CI test runs (uses Miniconda). This keeps CI consistent with local dev.
 
 Self-hosted E2E tests: The repo now includes a self-hosted workflow (systemd-nspawn) for high-fidelity E2E tests that run MariaDB + Redis inside a systemd-nspawn container. See `.github/workflows/e2e-systemd-nspawn.yml` and `docs/dev/self-hosted-runners.md` for required runner configuration and security notes.
 
 ## Or set the `PYTHON_BIN` environment variable to the conda python executable:
+
 PYTHONPATH=$(pwd) PYTHON_BIN=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python pytest tests/agents/crawler -q
+
 ```
 
-This suite covers the Stage B2 extraction pipeline, including the Trafilatura/readability/jusText cascade, raw HTML persistence, and ingestion metadata enrichment.
+This suite covers the Stage B2 extraction pipeline, including the Trafilatura/readability/jusText cascade, raw HTML
+persistence, and ingestion metadata enrichment.
 
 ### Live ChromaDB + ModelStore Tests
-Optional integration coverage for MariaDB + ChromaDB lives in `tests/integration/test_chromadb_live.py`. These tests expect access to the canonical ModelStore and real Chroma instance, so run them via the environment wrapper:
+
+Optional integration coverage for MariaDB + ChromaDB lives in `tests/integration/test_chromadb_live.py`. These tests
+expect access to the canonical ModelStore and real Chroma instance, so run them via the environment wrapper:
 
 ```bash
 ENABLE_CHROMADB_LIVE_TESTS=1 scripts/run_with_env.sh \
   python -m pytest tests/integration/test_chromadb_live.py -s -v
+
 ```
 
-The wrapper loads `/etc/justnews/global.env` (or the repo copy) so `MODEL_STORE_ROOT`, `CHROMADB_*`, and database credentials mirror the production startup sequence.
+The wrapper loads `/etc/justnews/global.env` (or the repo copy) so `MODEL_STORE_ROOT`, `CHROMADB_*`, and database
+credentials mirror the production startup sequence.
 
 ### Project Structure
+
 ```
+
 JustNews/
 ├── agents/           # 18 specialized AI agents
 ├── config/           # Unified configuration system
@@ -335,18 +397,18 @@ This repository relies on a single canonical ChromaDB instance for vector storag
 Set the required environment variables in `/etc/justnews/global.env` or your deployment environment. For example:
 
 ```dotenv
-CHROMADB_HOST=localhost
-CHROMADB_PORT=3307
-CHROMADB_COLLECTION=articles
-CHROMADB_REQUIRE_CANONICAL=1
-CHROMADB_CANONICAL_HOST=localhost
-CHROMADB_CANONICAL_PORT=3307
+CHROMADB_HOST=localhost CHROMADB_PORT=3307 CHROMADB_COLLECTION=articles CHROMADB_REQUIRE_CANONICAL=1
+CHROMADB_CANONICAL_HOST=localhost CHROMADB_CANONICAL_PORT=3307
+
 ```
 
 Operational commands to inspect and bootstrap Chroma: run the diagnostic and bootstrap helpers.
+
 ```bash
-PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_diagnose.py --host <host> --port <port> --autocreate
-PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_bootstrap.py --host <host> --port <port> --tenant default_tenant --collection articles
+PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_diagnose.py --host <host> --port <port>
+--autocreate PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_bootstrap.py --host <host>
+--port <port> --tenant default_tenant --collection articles
+
 ```
 
 See `docs/chroma_setup.md` for advanced guidance and troubleshooting.
@@ -371,26 +433,30 @@ This repository uses **Vault OSS (open-source)** for local secrets management in
 
 1. **Vault Instance**: Single-node Vault with Raft storage (persistent, local)
 
-2. **AppRole Auth**: Service role for programmatic secret access
+1. **AppRole Auth**: Service role for programmatic secret access
 
-3. **Secret Storage**: KV v2 at `secret/justnews` with database and API credentials
+1. **Secret Storage**: KV v2 at `secret/justnews` with database and API credentials
 
-4. **Fetch Script**: `scripts/fetch_secrets_to_env.sh` retrieves secrets → `/run/justnews/secrets.env`
+1. **Fetch Script**: `scripts/fetch_secrets_to_env.sh` retrieves secrets → `/run/justnews/secrets.env`
 
-5. **Environment Overlay**: `scripts/run_with_env.sh` layers secrets atop global.env for any command
+1. **Environment Overlay**: `scripts/run_with_env.sh` layers secrets atop global.env for any command
 
 ### Quick Start
 
 ```bash
 
 ## 1. Vault is auto-started via systemd (enabled during setup)
+
 sudo systemctl status vault
 
 ## 2. Fetch secrets to runtime environment
+
 bash scripts/fetch_secrets_to_env.sh
 
 ## 3. Run commands with secrets overlay
+
 bash scripts/run_with_env.sh python check_databases.py
+
 ```
 
 ### Configuration Files
@@ -408,14 +474,17 @@ bash scripts/run_with_env.sh python check_databases.py
 ```bash
 
 ## View all secrets
-export VAULT_TOKEN="$(cat /etc/justnews/vault-init.json | jq -r .root_token)"
-vault kv get secret/justnews
+
+export VAULT_TOKEN="$(cat /etc/justnews/vault-init.json | jq -r .root_token)" vault kv get secret/justnews
 
 ## Add/update a secret
+
 vault kv patch secret/justnews NEW_SECRET="new_value"
 
 ## Refresh runtime environment
+
 bash scripts/fetch_secrets_to_env.sh
+
 ```
 
 See `docs/operations/VAULT_SETUP.md` for detailed Vault administration and troubleshooting.
@@ -455,16 +524,21 @@ See `docs/operations/VAULT_SETUP.md` for detailed Vault administration and troub
 - `bias_analysis` — Content bias detection results
 
 **Setup**:
+
 ```bash
 
 ## Verify status
+
 sudo systemctl status mariadb
 
 ## Test connection
+
 mysql -h 127.0.0.1 -u justnews -p -e "SELECT 1;"
 
 ## View schema
+
 mysql -u justnews -p -D justnews -e "SHOW TABLES;"
+
 ```
 
 ### ChromaDB (Vector Database)
@@ -480,20 +554,22 @@ mysql -u justnews -p -D justnews -e "SHOW TABLES;"
 - **Collection**: `articles` (article embeddings, auto-created)
 
 **Setup**:
+
 ```bash
 
 ## Verify status
+
 sudo systemctl status chromadb
 
 ## Test connectivity
+
 curl http://localhost:3307/api/v2/heartbeat
 
 ## Check collections
-python -c "
-import chromadb
-client = chromadb.HttpClient(host='localhost', port=3307)
-print(f'Collections: {[c.name for c in client.list_collections()]}')
-"
+
+python -c " import chromadb client = chromadb.HttpClient(host='localhost', port=3307) print(f'Collections: {[c.name for
+c in client.list_collections()]}') "
+
 ```
 
 ### Environment Variables
@@ -501,19 +577,14 @@ print(f'Collections: {[c.name for c in client.list_collections()]}')
 ```bash
 
 ## MariaDB
-MARIADB_HOST=127.0.0.1
-MARIADB_PORT=3306
-MARIADB_DB=justnews
-MARIADB_USER=justnews
-MARIADB_PASSWORD=<from-vault>
+
+MARIADB_HOST=127.0.0.1 MARIADB_PORT=3306 MARIADB_DB=justnews MARIADB_USER=justnews MARIADB_PASSWORD=<from-vault>
 
 ## ChromaDB
-CHROMADB_HOST=localhost
-CHROMADB_PORT=3307
-CHROMADB_COLLECTION=articles
-CHROMADB_REQUIRE_CANONICAL=1
-CHROMADB_CANONICAL_HOST=localhost
-CHROMADB_CANONICAL_PORT=3307
+
+CHROMADB_HOST=localhost CHROMADB_PORT=3307 CHROMADB_COLLECTION=articles CHROMADB_REQUIRE_CANONICAL=1
+CHROMADB_CANONICAL_HOST=localhost CHROMADB_CANONICAL_PORT=3307
+
 ```
 
 See `docs/operations/SETUP_GUIDE.md` for complete installation instructions.

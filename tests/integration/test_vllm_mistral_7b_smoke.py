@@ -9,6 +9,7 @@ import sys
 
 import requests
 import yaml
+import pytest
 
 
 def load_vllm_config(config_path: str = "config/vllm_mistral_7b.yaml") -> dict:
@@ -55,27 +56,41 @@ def load_vllm_config(config_path: str = "config/vllm_mistral_7b.yaml") -> dict:
     }
 
 
-def test_health(base_url: str):
+def test_health():
     """Test /health endpoint."""
+    cfg = load_vllm_config()
+    base_url = cfg["base_url"]
     print(f"Testing health endpoint: {base_url}/health")
-    resp = requests.get(f"{base_url}/health", timeout=5)
+    try:
+        resp = requests.get(f"{base_url}/health", timeout=5)
+    except requests.exceptions.ConnectionError:
+        pytest.skip("vLLM server not running; set VLLM_BASE_URL or start server to run smoke tests")
     resp.raise_for_status()
     print("✅ Health check passed")
 
 
-def test_models(base_url: str, api_key: str = "dummy"):
+def test_models():
     """Test /v1/models endpoint."""
+    cfg = load_vllm_config()
+    base_url = cfg["base_url"]
+    api_key = cfg.get("api_key", "dummy")
     print(f"Testing models endpoint: {base_url}/v1/models")
     headers = {"Authorization": f"Bearer {api_key}"}
-    resp = requests.get(f"{base_url}/v1/models", timeout=5, headers=headers)
+    try:
+        resp = requests.get(f"{base_url}/v1/models", timeout=5, headers=headers)
+    except requests.exceptions.ConnectionError:
+        pytest.skip("vLLM server not running; set VLLM_BASE_URL or start server to run smoke tests")
     resp.raise_for_status()
     models = resp.json()
     print(f"✅ Models: {[m['id'] for m in models.get('data', [])]}")
     return models
 
 
-def test_chat_completion(base_url: str, api_key: str = "dummy"):
+def test_chat_completion():
     """Test /v1/chat/completions."""
+    cfg = load_vllm_config()
+    base_url = cfg["base_url"]
+    api_key = cfg.get("api_key", "dummy")
     print(f"Testing chat completion: {base_url}/v1/chat/completions")
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
@@ -87,9 +102,12 @@ def test_chat_completion(base_url: str, api_key: str = "dummy"):
         "max_tokens": 10,
         "temperature": 0.0,
     }
-    resp = requests.post(
-        f"{base_url}/v1/chat/completions", json=payload, headers=headers, timeout=30
-    )
+    try:
+        resp = requests.post(
+            f"{base_url}/v1/chat/completions", json=payload, headers=headers, timeout=30
+        )
+    except requests.exceptions.ConnectionError:
+        pytest.skip("vLLM server not running; set VLLM_BASE_URL or start server to run smoke tests")
     resp.raise_for_status()
     result = resp.json()
     answer = result["choices"][0]["message"]["content"].strip()

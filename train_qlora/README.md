@@ -1,6 +1,7 @@
 # QLoRA Adapter Training Guide
 
-This guide explains how to run `scripts/train_qlora.py` to produce per-agent LoRA/QLoRA adapters for the Mistral rollout.
+This guide explains how to run `scripts/train_qlora.py` to produce per-agent LoRA/QLoRA adapters for the Mistral
+rollout.
 
 ## Dependencies
 
@@ -13,9 +14,12 @@ This guide explains how to run `scripts/train_qlora.py` to produce per-agent LoR
 - Optional: `MODEL_STORE_ROOT` for publishing adapters directly after training
 
 Install (conda env example):
+
 ```bash
 conda run -n ${CANONICAL_ENV:-justnews-py312} pip install -r training_system/requirements-qlora.txt
+
 ```
+
 (Or install the packages listed above manually.)
 
 ## Data expectations
@@ -31,7 +35,9 @@ conda run -n ${CANONICAL_ENV:-justnews-py312} pip install -r training_system/req
 - Use `--max-train-samples` for smoke tests before longer runs.
 
 ## Common command patterns
+
 Dry-run sanity check (no training, creates stub output directory):
+
 ```bash
 conda run -n ${CANONICAL_ENV:-justnews-py312} \
   python scripts/train_qlora.py \
@@ -41,9 +47,11 @@ conda run -n ${CANONICAL_ENV:-justnews-py312} \
     --train-files data/synth_samples.jsonl \
     --output_dir output/adapters/mistral_synth_v1 \
     --dry-run
+
 ```
 
 Full training run with ModelStore publish:
+
 ```bash
 MODEL_STORE_ROOT=/opt/justnews/model_store HF_TOKEN=$HF_TOKEN \
 conda run -n ${CANONICAL_ENV:-justnews-py312} \
@@ -59,6 +67,7 @@ conda run -n ${CANONICAL_ENV:-justnews-py312} \
     --adapter-r 64 \
     --adapter-alpha 16 \
     --publish
+
 ```
 
 ## Publishing workflow

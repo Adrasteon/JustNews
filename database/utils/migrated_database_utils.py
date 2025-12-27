@@ -298,15 +298,25 @@ def ensure_service_compat(service: Any | None) -> Any:
             return service
 
         try:
-            service.get_connection = _get_connection
+            # Use object.__setattr__ so assignment works for MagicMock test doubles
+            object.__setattr__(service, "get_connection", _get_connection)
         except Exception:
-            # Best-effort: don't fail if we cannot attach attribute
-            pass
+            # Best-effort: fall back to direct assignment if the above fails
+            try:
+                service.get_connection = _get_connection
+            except Exception:
+                pass
 
     # Connection wrapper to tolerate cursors that don't accept buffered/dictionary kwargs
     class _ConnWrapper:
         def __init__(self, inner):
             self._inner = inner
+            # Keep compatibility for tests that access underlying connector via _conn
+            self._conn = inner
+
+        def __getattr__(self, name):
+            # Delegate attribute access to underlying connection
+            return getattr(self._inner, name)
 
         def cursor(self, *args, **kwargs):
             # Attempt to call with kwargs where supported, otherwise fall back to positional/no-kwargs
@@ -350,9 +360,13 @@ def ensure_service_compat(service: Any | None) -> Any:
                 return False
 
         try:
-            service.ensure_conn = _ensure_conn
+            # Ensure assignment works with MagicMock by using object.__setattr__
+            object.__setattr__(service, "ensure_conn", _ensure_conn)
         except Exception:
-            pass
+            try:
+                service.ensure_conn = _ensure_conn
+            except Exception:
+                pass
 
     # Wrap mb_conn/get_connection to use _ConnWrapper where appropriate so callers
     # using conn.cursor(buffered=True) succeed against simple test fakes.
@@ -410,9 +424,13 @@ def ensure_service_compat(service: Any | None) -> Any:
                     return c
 
             try:
-                service.get_connection = _get_conn_wrapped
+                # Use object.__setattr__ so this override works for MagicMock test doubles
+                object.__setattr__(service, "get_connection", _get_conn_wrapped)
             except Exception:
-                pass
+                try:
+                    service.get_connection = _get_conn_wrapped
+                except Exception:
+                    pass
 
         # Provide a default Chroma collection object when missing so code that
         # expects `service.collection.name` doesn't fail in minimal test fakes.
@@ -481,21 +499,21 @@ def ensure_service_compat(service: Any | None) -> Any:
                 except Exception:
                     cursor = conn.cursor()
 
-            try:
-                logger.debug(
-                    "get_safe_cursor resolved conn=%s cursor=%s",
-                    type(conn),
-                    type(cursor),
-                )
-            except Exception:
-                pass
+            # Suppress debug logging here to avoid race conditions where background
+            # threads attempt to write to stderr during test teardown and cause
+            # "I/O operation on closed file" errors from the logging subsystem.
+            pass
 
             return cursor, conn
 
         try:
-            service.get_safe_cursor = _get_safe_cursor
+            # Use object.__setattr__ to ensure assignment works even for MagicMock test doubles
+            object.__setattr__(service, "get_safe_cursor", _get_safe_cursor)
         except Exception:
-            pass
+            try:
+                service.get_safe_cursor = _get_safe_cursor
+            except Exception:
+                pass
 
     # Install close() helper if missing
     if not hasattr(service, "close"):
@@ -517,9 +535,63 @@ def ensure_service_compat(service: Any | None) -> Any:
                 pass
 
         try:
-            service.close = _close
+            # Use object.__setattr__ so this works for MagicMock test doubles
+            object.__setattr__(service, "close", _close)
         except Exception:
-            pass
+            try:
+                service.close = _close
+            except Exception:
+                pass
+
+    # Final safety: ensure get_connection and get_safe_cursor are callable functions that behave sensibly
+    try:
+        if not callable(getattr(service, "get_connection", None)):
+            def _final_get_connection():
+                try:
+                    if hasattr(service, "mb_conn"):
+                        return service.mb_conn
+                except Exception:
+                    pass
+                return service
+
+            try:
+                object.__setattr__(service, "get_connection", _final_get_connection)
+            except Exception:
+                try:
+                    service.get_connection = _final_get_connection
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    try:
+        if not callable(getattr(service, "get_safe_cursor", None)):
+            def _final_get_safe_cursor(per_call: bool = False, dictionary: bool | None = None, buffered: bool = False):
+                conn = getattr(service, "mb_conn", None) or service
+                try:
+                    if dictionary is None:
+                        cursor = conn.cursor(buffered=buffered)
+                    else:
+                        cursor = conn.cursor(dictionary=bool(dictionary), buffered=buffered)
+                except TypeError:
+                    try:
+                        if dictionary is None:
+                            cursor = conn.cursor()
+                        else:
+                            cursor = conn.cursor(dictionary=bool(dictionary))
+                    except Exception:
+                        cursor = conn.cursor()
+                return cursor, conn
+
+            try:
+                object.__setattr__(service, "get_safe_cursor", _final_get_safe_cursor)
+            except Exception:
+                try:
+                    service.get_safe_cursor = _final_get_safe_cursor
+                except Exception:
+                    pass
+    except Exception:
+        pass
 
     return service
 

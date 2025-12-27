@@ -12,19 +12,19 @@
 
 1. Remove legacy YAML/schema generation scripts and outputs.
 
-2. Pin Crawl4AI and model dependencies in `environment.yml`/`requirements.txt` and document installation prerequisites.
+1. Pin Crawl4AI and model dependencies in `environment.yml`/`requirements.txt` and document installation prerequisites.
 
-3. Capture a "golden path" for running a single Crawl4AI job (CLI invocation plus agent entrypoint) for onboarding.
+1. Capture a "golden path" for running a single Crawl4AI job (CLI invocation plus agent entrypoint) for onboarding.
 
 ## Phase 1 – Crawler Core
 
 1. Wrap Crawl4AI `AdaptiveCrawler` with per-site configuration profiles (confidence thresholds, `min_gain_threshold`, `top_k_links`).
 
-2. Add content filters (e.g., `BM25ContentFilter`, `CosineStrategy`, table scoring) based on site archetypes.
+1. Add content filters (e.g., `BM25ContentFilter`, `CosineStrategy`, table scoring) based on site archetypes.
 
-3. Enforce HTML length/size limits before extraction and define retry/fallback policy for fetch failures.
+1. Enforce HTML length/size limits before extraction and define retry/fallback policy for fetch failures.
 
-4. Persist raw HTML, Markdown, and structured artifacts with lineage metadata (run id, config, confidence).
+1. Persist raw HTML, Markdown, and structured artifacts with lineage metadata (run id, config, confidence).
 
 ### Progress update (2025-11-01)
 
@@ -52,31 +52,32 @@ Next immediate steps (short):
 
 - Dashboard verification: once the scheduler emits the expected state JSON/metrics, validate the dashboard agent `/api/crawl/scheduler` responses and ensure the Grafana panels surface the new fields as intended.
 
-These updates implement the highest-priority fix from the audit (restore the summariser) and prepare us to validate end-to-end telemetry.
+These updates implement the highest-priority fix from the audit (restore the summariser) and prepare us to validate end-
+to-end telemetry.
 
 ## Phase 2 – Crawler Control
 
 1. Define a crawl job spec (start URL, query, site profile, priority) and integrate with the existing balancer/orchestrator.
 
-2. Track adaptive metrics (confidence, pages crawled, stop reason) in the metrics store.
+1. Track adaptive metrics (confidence, pages crawled, stop reason) in the metrics store.
 
-3. Emit alerts or automatic escalations when confidence falls below target or saturation is not achieved within budget.
+1. Emit alerts or automatic escalations when confidence falls below target or saturation is not achieved within budget.
 
 ## Phase 3 – Scout Integration
 
 1. Extend the scout agent to request crawl jobs through the control plane and consume canonicalized outputs.
 
-2. Trigger multi-model validation only for high-priority stories or low-confidence crawls.
+1. Trigger multi-model validation only for high-priority stories or low-confidence crawls.
 
-3. Cache recent crawl summaries for downstream analyst/fact-checker agents.
+1. Cache recent crawl summaries for downstream analyst/fact-checker agents.
 
 ## Phase 4 – Observability & QA
 
 1. Build a regression suite comparing legacy outputs to Crawl4AI across representative domains.
 
-2. Add tracing spans/instrumentation around crawl stages and dashboard summaries (throughput, failures, confidence trends).
+1. Add tracing spans/instrumentation around crawl stages and dashboard summaries (throughput, failures, confidence trends).
 
-3. Schedule periodic reviews to tune profiles and validate coverage/quality metrics.
+1. Schedule periodic reviews to tune profiles and validate coverage/quality metrics.
 
 ## Future Enhancements
 
@@ -98,7 +99,7 @@ These updates implement the highest-priority fix from the audit (restore the sum
 
    - Configurable consent cookie values and modal detection patterns
 
-2. **Paywall Detection**: Multi-layered paywall analysis and content filtering
+1. **Paywall Detection**: Multi-layered paywall analysis and content filtering
 
    - Heuristic detection based on content patterns and access restrictions
 
@@ -108,7 +109,7 @@ These updates implement the highest-priority fix from the audit (restore the sum
 
    - Configurable detection thresholds and analysis depth
 
-3. **User Agent Rotation**: Intelligent browser fingerprinting management
+1. **User Agent Rotation**: Intelligent browser fingerprinting management
 
    - Domain-specific user agent pools for targeted site compatibility
 
@@ -116,7 +117,7 @@ These updates implement the highest-priority fix from the audit (restore the sum
 
    - Fallback mechanisms for unsupported or problematic user agents
 
-4. **Proxy Pool Management**: IP diversity and anti-detection through proxy rotation
+1. **Proxy Pool Management**: IP diversity and anti-detection through proxy rotation
 
    - Round-robin proxy selection with configurable pool management
 
@@ -124,7 +125,7 @@ These updates implement the highest-priority fix from the audit (restore the sum
 
    - Support for HTTP/HTTPS proxies with authentication
 
-5. **Stealth Headers**: Browser simulation and fingerprinting evasion
+1. **Stealth Headers**: Browser simulation and fingerprinting evasion
 
    - Configurable header profiles mimicking real browser behavior
 
@@ -145,6 +146,7 @@ These updates implement the highest-priority fix from the audit (restore the sum
 - **Error Resilience**: Comprehensive exception handling with graceful degradation
 
 ### Configuration Schema
+
 ```json
 {
   "crawling": {
@@ -163,6 +165,7 @@ These updates implement the highest-priority fix from the audit (restore the sum
     }
   }
 }
+
 ```
 
 ### Production Benefits

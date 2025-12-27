@@ -1,17 +1,19 @@
 # Systemd Monitoring Stack
 
-This guide explains how to install and operate the JustNews monitoring stack (Prometheus, Grafana, and node_exporter) when running the platform with native systemd services.
+This guide explains how to install and operate the JustNews monitoring stack (Prometheus, Grafana, and node_exporter)
+when running the platform with native systemd services.
 
 ## Components
 
 | Component       | Purpose                                               | Service name                     |
-|-----------------|--------------------------------------------------------|----------------------------------|
-| node_exporter   | Exposes host metrics and textfile collectors           | `justnews-node-exporter.service` |
-| Prometheus      | Scrapes agent endpoints and textfile collectors        | `justnews-prometheus.service`    |
-| Grafana         | Renders dashboards and surfaces alerts (if enabled)    | `justnews-grafana.service`       |
-| GPU Exporter    | Custom NVIDIA GPU metrics exporter                     | Manual (Python script)           |
+|-----------------|-------------------------- ------------------------------|----------------------------------| |
+node_exporter   | Exposes host metrics and textfile collectors           | `justnews-node-exporter.service` | |
+Prometheus      | Scrapes agent endpoints and textfile collectors        | `justnews-prometheus.service`    | | Grafana
+| Renders dashboards and surfaces alerts (if enabled)    | `justnews- grafana.service`       | | GPU Exporter    |
+Custom NVIDIA GPU metrics exporter | Manual (Python script)           |
 
-Dashboards are provisioned automatically from `monitoring/dashboards/generated/` and appear in Grafana after installation.
+Dashboards are provisioned automatically from `monitoring/dashboards/generated/` and appear in Grafana after
+installation.
 
 ## Prerequisites
 
@@ -30,19 +32,20 @@ sudo ./infrastructure/systemd/scripts/install_monitoring_stack.sh \
   --install-binaries \
   --enable \
   --start
+
 ```
 
 This performs the following actions:
 
 1. Downloads Prometheus, Grafana, and node_exporter into `/opt/justnews/monitoring`
 
-2. Creates `/etc/justnews/monitoring.env` (with sensible defaults)
+1. Creates `/etc/justnews/monitoring.env` (with sensible defaults)
 
-3. Copies Prometheus/Grafana configs and dashboards to `/etc/justnews/monitoring/`
+1. Copies Prometheus/Grafana configs and dashboards to `/etc/justnews/monitoring/`
 
-4. Installs systemd units under `/etc/systemd/system/`
+1. Installs systemd units under `/etc/systemd/system/`
 
-5. Enables and starts `justnews-node-exporter`, `justnews-prometheus`, and `justnews-grafana`
+1. Enables and starts `justnews-node-exporter`, `justnews-prometheus`, and `justnews-grafana`
 
 > **Note:** If binaries already exist, omit `--install-binaries`. Use `--force` to overwrite config files with timestamped backups.
 
@@ -58,6 +61,7 @@ GF_SERVER_HTTP_PORT=3000
 GF_SECURITY_ADMIN_USER=admin
 GF_SECURITY_ADMIN_PASSWORD=change_me
 NODE_EXPORTER_TEXTFILE_DIR=/var/lib/node_exporter/textfile_collector
+
 ```
 
 After editing the file, reload services:
@@ -66,6 +70,7 @@ After editing the file, reload services:
 sudo systemctl restart justnews-node-exporter.service
 sudo systemctl restart justnews-prometheus.service
 sudo systemctl restart justnews-grafana.service
+
 ```
 
 ## GPU Monitoring Setup
@@ -76,26 +81,20 @@ The monitoring stack includes comprehensive NVIDIA GPU monitoring capabilities.
 
 1. **GPU Exporter**: A custom Python-based exporter (`gpu_metrics_exporter.py`) automatically collects GPU metrics using `nvidia-smi`
 
-2. **Prometheus Integration**: GPU metrics are automatically scraped every 15 seconds
+1. **Prometheus Integration**: GPU metrics are automatically scraped every 15 seconds
 
-3. **Dashboard Integration**: GPU panels are included in the JustNews Operations Dashboard
+1. **Dashboard Integration**: GPU panels are included in the JustNews Operations Dashboard
 
 ### GPU Metrics Available
 
 The system monitors 10 comprehensive GPU metrics:
 
-| Metric | Description |
-|--------|-------------|
-| `nvidia_gpu_count` | Number of GPUs detected |
-| `nvidia_gpu_utilization_ratio` | GPU utilization (0-1 ratio) |
-| `nvidia_gpu_memory_utilization_ratio` | Memory utilization (0-1 ratio) |
-| `nvidia_gpu_temperature_celsius` | GPU temperature in Celsius |
-| `nvidia_gpu_power_draw_watts` | Current power consumption |
-| `nvidia_gpu_power_limit_watts` | Power limit setting |
-| `nvidia_gpu_fan_speed_ratio` | Fan speed (0-1 ratio) |
-| `nvidia_gpu_memory_total_bytes` | Total GPU memory |
-| `nvidia_gpu_memory_used_bytes` | Used GPU memory |
-| `nvidia_gpu_memory_free_bytes` | Free GPU memory |
+| Metric | Description | |--------|-------------| | `nvidia_gpu_count` | Number of GPUs detected | |
+`nvidia_gpu_utilization_ratio` | GPU utilization (0-1 ratio) | | `nvidia_gpu_memory_utilization_ratio` | Memory
+utilization (0-1 ratio) | | `nvidia_gpu_temperature_celsius` | GPU temperature in Celsius | |
+`nvidia_gpu_power_draw_watts` | Current power consumption | | `nvidia_gpu_power_limit_watts` | Power limit setting | |
+`nvidia_gpu_fan_speed_ratio` | Fan speed (0-1 ratio) | | `nvidia_gpu_memory_total_bytes` | Total GPU memory | |
+`nvidia_gpu_memory_used_bytes` | Used GPU memory | | `nvidia_gpu_memory_free_bytes` | Free GPU memory |
 
 ### GPU Exporter Management
 
@@ -104,20 +103,25 @@ The GPU exporter runs as a background Python process. To manage it:
 ```bash
 
 ## Check if GPU exporter is running
+
 ps aux | grep gpu_metrics_exporter
 
 ## Start GPU exporter manually (if needed)
+
 cd /home/adra
 python3 gpu_metrics_exporter.py &
 
 ## The exporter runs on port 9400 by default
+
 curl http://localhost:9400/health
 curl http://localhost:9400/metrics
+
 ```
 
 ## Dashboards
 
-Dashboards are placed under `/etc/justnews/monitoring/grafana/dashboards/` and are automatically picked up by Grafana. The generated bundle currently includes:
+Dashboards are placed under `/etc/justnews/monitoring/grafana/dashboards/` and are automatically picked up by Grafana.
+The generated bundle currently includes:
 
 - **JustNews Operations Dashboard** – Comprehensive monitoring with 19 panels covering:
 
@@ -134,11 +138,11 @@ To add custom dashboards, drop JSON exports into the same directory and restart 
 ## Verification
 
 1. Confirm services are active:
-   ```bash
-   systemctl status justnews-node-exporter.service justnews-prometheus.service justnews-grafana.service
-   ```
 
-2. Check Prometheus targets at `http://localhost:9090/targets` - should show:
+```bash systemctl status justnews-node-exporter.service justnews-
+prometheus.service justnews-grafana.service ```
+
+1. Check Prometheus targets at `http://localhost:9090/targets` - should show:
 
    - `nvidia-gpu-exporter` (port 9400) - GPU metrics
 
@@ -146,12 +150,12 @@ To add custom dashboards, drop JSON exports into the same directory and restart 
 
    - Various JustNews agent endpoints
 
-3. Log into Grafana at `http://localhost:3000/` (change the default password immediately)
+1. Log into Grafana at `http://localhost:3000/` (change the default password immediately)
 
-4. Access the JustNews Operations Dashboard at:
-   `http://localhost:3000/d/ef37elu2756o0e/justnews-operations-dashboard`
+1. Access the JustNews Operations Dashboard at:
+`http://localhost:3000/d/ef37elu2756o0e/justnews-operations-dashboard`
 
-5. Verify GPU metrics are displaying:
+1. Verify GPU metrics are displaying:
 
    - GPU Utilization gauge should show current usage
 
@@ -159,7 +163,7 @@ To add custom dashboards, drop JSON exports into the same directory and restart 
 
    - GPU Memory panels should show memory information
 
-6. Validate crawl scheduler metrics appear under the dashboard's content processing panels
+1. Validate crawl scheduler metrics appear under the dashboard's content processing panels
 
 ## Maintenance
 
@@ -174,14 +178,24 @@ To add custom dashboards, drop JSON exports into the same directory and restart 
 ## Troubleshooting
 
 | Symptom                                      | Resolution |
-|---------------------------------------------|------------|
-| Services fail with exit code 127            | Binaries missing/not executable. Re-run installer with `--install-binaries` or update paths in `monitoring.env` |
-| Grafana shows provisioning errors           | Ensure files under `/etc/justnews/monitoring/grafana/provisioning` are readable by the `justnews` user |
-| Prometheus target down for an agent         | Check the agent's `/metrics` endpoint and confirm it is running (`systemctl status justnews@<agent>`) |
-| node_exporter permission denied on textfile | Verify `/var/lib/node_exporter/textfile_collector` owner is `justnews:justnews` and mode `0775` |
-| GPU metrics not appearing                   | Check GPU exporter is running: `ps aux \| grep gpu_metrics_exporter`. Restart with `cd /home/adra && python3 gpu_metrics_exporter.py &` |
-| GPU exporter shows "unknown" health         | Wait 15-30 seconds for initial scrape, then check `http://localhost:9090/targets` |
-| GPU temperature shows [Not Supported]       | Some GPU models don't report temperature via nvidia-smi. Check with `nvidia-smi --query-gpu=temperature.gpu --format=csv` |
-| Dashboard shows "No data" for GPU panels    | Verify Prometheus can reach GPU exporter: `curl http://localhost:9400/metrics` |
+|---------------------------------------------|------------| | Services fail
+with exit code 127            | Binaries missing/not executable. Re-run
+installer with `--install-binaries` or update paths in `monitoring.env` | |
+Grafana shows provisioning errors           | Ensure files under
+`/etc/justnews/monitoring/grafana/provisioning` are readable by the `justnews`
+user | | Prometheus target down for an agent         | Check the agent's
+`/metrics` endpoint and confirm it is running (`systemctl status
+justnews@<agent>`) | | node_exporter permission denied on textfile | Verify
+`/var/lib/node_exporter/textfile_collector` owner is `justnews:justnews` and
+mode `0775` | | GPU metrics not appearing                   | Check GPU exporter
+is running: `ps aux \| grep gpu_metrics_exporter`. Restart with `cd /home/adra
+&& python3 gpu_metrics_exporter.py &` | | GPU exporter shows "unknown" health
+| Wait 15-30 seconds for initial scrape, then check
+`http://localhost:9090/targets` | | GPU temperature shows [Not Supported]
+| Some GPU models don't report temperature via nvidia-smi. Check with `nvidia-
+smi --query-gpu=temperature.gpu --format=csv` | | Dashboard shows "No data" for
+GPU panels    | Verify Prometheus can reach GPU exporter: `curl
+http://localhost:9400/metrics` |
 
-For full context, see `infrastructure/systemd/README.md` and `infrastructure/systemd/QUICK_REFERENCE.md`.
+For full context, see `infrastructure/systemd/README.md` and
+`infrastructure/systemd/QUICK_REFERENCE.md`.

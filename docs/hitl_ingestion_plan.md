@@ -1,6 +1,9 @@
 # HITL Ingestion Plan (Throughput-first)
 
-This document captures the design and operational policy for the Human-In-The-Loop (HITL) ingestion point in the JustNews crawler pipeline. The goal is to maximize the number of quality articles placed into the database quickly while maintaining traceability and auditability. This plan is intentionally throughput-first: human annotators make a simple decision (Not news / Messy news / Valid news) and the system optimistically ingests when appropriate.
+This document captures the design and operational policy for the Human-In-The- Loop (HITL) ingestion point in the
+JustNews crawler pipeline. The goal is to maximize the number of quality articles placed into the database quickly while
+maintaining traceability and auditability. This plan is intentionally throughput-first: human annotators make a simple
+decision (Not news / Messy news / Valid news) and the system optimistically ingests when appropriate.
 
 ## Purpose & scope
 
@@ -159,13 +162,17 @@ Use JSONB fields where useful to avoid schema churn. Index by status and candida
 CandidateEvent (example fields):
 
 ```
+
 id, url, site_id, extracted_title, extracted_text, raw_html_path, features, crawler_ts, crawler_job_id
+
 ```
 
 LabelEvent (example fields):
 
 ```
+
 candidate_id, label, cleaned_text, annotator_id, created_at, source, treat_as_valid, needs_cleanup, qa_sampled, extra
+
 ```
 
 ## Ingestion policy (throughput-first)
@@ -364,13 +371,13 @@ Service integration details:
 
 1. Deploy HITL service + UI in staging. Annotators label until 10k labeled examples are obtained.
 
-2. Start with `messy_news` -> optimistic ingest policy and QA sampling at 5%.
+1. Start with `messy_news` -> optimistic ingest policy and QA sampling at 5%.
 
-3. Monitor QA sample failure rate and throughput metrics. If QA failure > threshold (e.g., 2%) reduce optimism for `messy_news`.
+1. Monitor QA sample failure rate and throughput metrics. If QA failure > threshold (e.g., 2%) reduce optimism for `messy_news`.
 
-4. Train model after initial dataset and enable auto-labeling at high confidence. Use prefill suggestions for borderline candidates.
+1. Train model after initial dataset and enable auto-labeling at high confidence. Use prefill suggestions for borderline candidates.
 
-5. Gradually raise auto-labeling coverage while keeping QA sampling until model performance is acceptable.
+1. Gradually raise auto-labeling coverage while keeping QA sampling until model performance is acceptable.
 
 ## Low-risk immediate implementation items
 
@@ -388,10 +395,10 @@ Service integration details:
 
 1. Enable `HITL_TRAINING_FORWARD_*` in staging and validate the `receive_hitl_label` pipeline with Prometheus metrics before production rollout.
 
-2. Integrate the reviewer dashboard with the new QA listing and export endpoints; add automated coverage to prevent regressions.
+1. Integrate the reviewer dashboard with the new QA listing and export endpoints; add automated coverage to prevent regressions.
 
-3. Expand monitoring dashboards/alerts to include new Prometheus gauges and ingest dispatch counters; validate thresholds in staging before production rollout.
+1. Expand monitoring dashboards/alerts to include new Prometheus gauges and ingest dispatch counters; validate thresholds in staging before production rollout.
 
-4. Continue tuning annotator UI throughput (batch sizing, hotkeys) based on live telemetry and QA outcomes.
+1. Continue tuning annotator UI throughput (batch sizing, hotkeys) based on live telemetry and QA outcomes.
 
 ---

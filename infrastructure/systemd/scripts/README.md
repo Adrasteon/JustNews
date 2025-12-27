@@ -1,29 +1,24 @@
-check_db_services.sh — diagnostic helper
-======================================
+check_db_services.sh — diagnostic helper ======================================
 
-Purpose
--------
-Small, read-only helper that inspects systemd and connectivity for MariaDB and
-ChromaDB using the host's `/etc/justnews/global.env` (or an alternative file
-passed via --env). Useful during deploy/startup troubleshooting when
+Purpose ------- Small, read-only helper that inspects systemd and connectivity for MariaDB and ChromaDB using the host's
+`/etc/justnews/global.env` (or an alternative file passed via --env). Useful during deploy/startup troubleshooting when
 `canonical_system_startup.sh` reports DB or Chroma connectivity failures.
 
-Quick usage
------------
-From the repository root:
+Quick usage ----------- From the repository root:
 
 ```bash
 sudo infrastructure/systemd/scripts/check_db_services.sh
+
 ```
 
 Or point to a different environment file:
 
 ```bash
 sudo infrastructure/systemd/scripts/check_db_services.sh --env /etc/justnews/global.env
+
 ```
 
-What it checks
---------------
+What it checks --------------
 
 - existence and enabled/active state of `mariadb` and `chromadb` systemd units
 
@@ -33,11 +28,10 @@ What it checks
 
  - Chroma probe via `curl /api/v2/auth/identity` (preferred) with fallbacks to `/api/v1/health`, `/api/v1/heartbeat` or `/` — or scripts/chroma_diagnose.py fallback
 
-Notes
------
+Notes -----
 
 - The script is intentionally non-destructive and should be safe to run on
-  production or dev hosts.
+production or dev hosts.
 
 - If you see failures, common fixes include:
 

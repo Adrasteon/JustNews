@@ -482,7 +482,13 @@ class MigratedDatabaseService:
         # Controlled by CHROMADB_MODEL_SCOPED_COLLECTION (default enabled).
         collection_name = base_collection_name
         try:
-            enable_scoped = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION', '1') == '1'
+            # Default behaviour: scoped collection enabled unless explicitly disabled.
+            # Treat unset or empty env values as enabled for backward compatibility.
+            _scoped_env = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION')
+            if _scoped_env is None or _scoped_env == "" or str(_scoped_env).lower() in ('1', 'true', 'yes', 'on'):
+                enable_scoped = True
+            else:
+                enable_scoped = False
             if enable_scoped and base_collection_name:
                 emb_model = self.config['database']['embedding'].get('model', '')
                 emb_dims = str(self.config['database']['embedding'].get('dimensions', ''))
@@ -492,36 +498,84 @@ class MigratedDatabaseService:
         except Exception:
             collection_name = base_collection_name
         if self.chroma_client and collection_name:
-            try:
-                self.collection = self.chroma_client.get_collection(collection_name)
-                logger.info(f"Connected to existing ChromaDB collection: {collection_name}")
-            except Exception as e:
-                logger.info(f"Collection {collection_name} doesn't exist or could not be fetched: {e}")
+            # If possible, try scoped collection name first (better traceability), fall back to base name
+            tried_names = []
+            def try_get_or_create(name: str):
                 try:
-                    self.collection = self.chroma_client.create_collection(
-                        name=collection_name,
-                        metadata={"description": "Article embeddings for semantic search"}
-                    )
-                    logger.info(f"Created new ChromaDB collection: {collection_name}")
-                except Exception as create_err:
-                    logger.warning(f"Failed to create ChromaDB collection '{collection_name}': {create_err}")
-                    # If we failed due to tenant missing or API mismatch, try to auto-create using HTTP helper
+                    c = self.chroma_client.get_collection(name)
+                    logger.info(f"Connected to existing ChromaDB collection: {name}")
+                    return c
+                except Exception as e:
+                    logger.info(f"Collection {name} doesn't exist or could not be fetched: {e}")
                     try:
-                        from database.utils.chromadb_utils import ensure_collection_exists_using_http, create_tenant
-                        tenant_create_enabled = os.environ.get('CHROMADB_AUTO_CREATE_TENANT', '0') == '1'
-                        if tenant_create_enabled:
-                            if create_tenant(host, port, tenant='default_tenant'):
-                                logger.info("Created default tenant 'default_tenant' for ChromaDB server")
-                            else:
-                                logger.warning("Could not auto-create default tenant for ChromaDB server")
-                        # Try collection creation via HTTP API (best-effort)
-                        if ensure_collection_exists_using_http(host, port, collection_name):
-                            logger.info(f"Ensured collection {collection_name} exists via HTTP API")
+                        c = self.chroma_client.create_collection(
+                            name=name,
+                            metadata={"description": "Article embeddings for semantic search"}
+                        )
+                        logger.info(f"Created new ChromaDB collection: {name}")
+                        return c
+                    except Exception as create_err:
+                        logger.warning(f"Failed to create ChromaDB collection '{name}': {create_err}")
+                        return None
+
+            # Attempt scoped collection name first (when enabled and embedding config present), then fall back to base
+            collection_candidates = [collection_name]
+            try:
+                _scoped_env = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION')
+                if _scoped_env is None or _scoped_env == "" or str(_scoped_env).lower() in ('1', 'true', 'yes', 'on'):
+                    enable_scoped_flag = True
+                else:
+                    enable_scoped_flag = False
+            except Exception:
+                enable_scoped_flag = False
+
+            if enable_scoped_flag:
+                try:
+                    emb_model = self.config['database']['embedding'].get('model', '')
+                    emb_dims = str(self.config['database']['embedding'].get('dimensions', ''))
+                    safe_model = ''.join(c if c.isalnum() or c in ('-', '_') else '_' for c in emb_model)
+                    scoped_candidate = f"{base_collection_name}__{safe_model}__{emb_dims}"
+                    if scoped_candidate and scoped_candidate != base_collection_name:
+                        collection_candidates = [scoped_candidate, base_collection_name]
+                    else:
+                        collection_candidates = [base_collection_name]
+                except Exception:
+                    collection_candidates = [collection_name]
+            else:
+                collection_candidates = [base_collection_name]
+
+            logger.debug(f"CHROMADB scoping enabled=%s; candidates=%s", enable_scoped_flag, collection_candidates)
+            for candidate in collection_candidates:
+                tried_names.append(candidate)
+                c = try_get_or_create(candidate)
+                if c is not None:
+                    self.collection = c
+                    break
+
+            if self.collection is None:
+                # If all attempts failed, try HTTP helper auto-provisioning as a last resort
+                try:
+                    from database.utils.chromadb_utils import ensure_collection_exists_using_http, create_tenant
+                    tenant_create_enabled = os.environ.get('CHROMADB_AUTO_CREATE_TENANT', '0') == '1'
+                    if tenant_create_enabled:
+                        if create_tenant(host, port, tenant='default_tenant'):
+                            logger.info("Created default tenant 'default_tenant' for ChromaDB server")
                         else:
-                            logger.warning(f"Failed to ensure collection {collection_name} exists via HTTP API")
-                    except Exception:
-                        logger.debug("Failed to attempt auto-provision of ChromaDB tenant/collection via HTTP (skipping)")
-                    # Ensure service continues to operate without ChromaDB
+                            logger.warning("Could not auto-create default tenant for ChromaDB server")
+                    for candidate in tried_names:
+                        if ensure_collection_exists_using_http(host, port, candidate):
+                            logger.info(f"Ensured collection {candidate} exists via HTTP API")
+                            try:
+                                self.collection = self.chroma_client.get_collection(candidate)
+                                break
+                            except Exception:
+                                continue
+                        else:
+                            logger.warning(f"Failed to ensure collection {candidate} exists via HTTP API")
+                except Exception:
+                    logger.debug("ChromaDB extra diagnostics/auto-provision not available (skipping)")
+                # Ensure service continues to operate without ChromaDB if all methods failed
+                if self.collection is None:
                     self.collection = None
         else:
             logger.warning("ChromaDB client not initialized; operating without embeddings support.")

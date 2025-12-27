@@ -1,6 +1,7 @@
 # JustNews Database Layer - Advanced Implementation
 
-Enterprise-grade database layer with connection pooling, migrations, and performance optimization for the JustNews system.
+Enterprise-grade database layer with connection pooling, migrations, and performance optimization for the JustNews
+system.
 
 ## ✅ **Latest Status - October 23, 2025**
 
@@ -95,16 +96,21 @@ from database.refactor.core.migration_engine import MigrationEngine
 from database.refactor.utils.database_utils import get_db_config, create_connection_pool
 
 ## Get database configuration
+
 config = get_db_config()
 
 ## Create connection pool
+
 pool = create_connection_pool(config)
 
 ## Initialize schema manager
+
 schema_manager = SchemaManager(pool)
 
 ## Initialize migration engine
+
 migration_engine = MigrationEngine(pool)
+
 ```
 
 ### 2. Run Migrations
@@ -112,12 +118,14 @@ migration_engine = MigrationEngine(pool)
 ```python
 
 ## Apply all pending migrations
+
 results = migration_engine.apply_migrations()
 
 if results['success']:
     print(f"Applied {len(results['applied_migrations'])} migrations")
 else:
     print(f"Migration failed: {results['errors']}")
+
 ```
 
 ### 3. Use ORM Models
@@ -135,12 +143,15 @@ class Article(BaseModel):
     published_at: datetime
 
 ## Set connection pool for models
+
 BaseModel.set_connection_pool(pool)
 
 ## Create table
+
 pool.execute_query(Article.create_table_sql(), fetch=False)
 
 ## Create new article
+
 article = Article.create(
     title="Breaking News",
     content="Important story content",
@@ -148,7 +159,9 @@ article = Article.create(
 )
 
 ## Query articles
+
 articles = Article.filter(author="Journalist")
+
 ```
 
 ### 4. Query Optimization
@@ -159,6 +172,7 @@ from database.refactor.core.query_optimizer import QueryOptimizer
 optimizer = QueryOptimizer(pool)
 
 ## Execute optimized query with caching
+
 results = optimizer.execute_optimized_query(
     "SELECT * FROM articles WHERE author = %s",
     ("Journalist",),
@@ -167,6 +181,7 @@ results = optimizer.execute_optimized_query(
 )
 
 ## Analyze query performance
+
 analysis = optimizer.analyze_query_performance(
     "SELECT * FROM articles WHERE published_at > %s",
     (datetime.now() - timedelta(days=1),)
@@ -174,6 +189,7 @@ analysis = optimizer.analyze_query_performance(
 
 print(f"Estimated cost: {analysis['estimated_cost']}")
 print(f"Recommendations: {analysis['recommendations']}")
+
 ```
 
 ### 5. Backup Management
@@ -197,6 +213,7 @@ backup_config = {
 backup_manager = BackupManager(pool, backup_config)
 
 ## Create backup
+
 backup_result = backup_manager.create_backup(
     backup_type='full',
     compress=True,
@@ -204,12 +221,15 @@ backup_result = backup_manager.create_backup(
 )
 
 ## List backups
+
 backups = backup_manager.list_backups()
+
 ```
 
 ## Architecture
 
 ```
+
 database/refactor/
 ├── __init__.py              # Main exports
 ├── core/                    # Core components
@@ -223,6 +243,7 @@ database/refactor/
 ├── utils/                   # Utilities
 │   └── database_utils.py    # Helper functions
 └── migrations/              # Migration files
+
 ```
 
 ## Configuration
@@ -232,6 +253,7 @@ database/refactor/
 ```bash
 
 ## MariaDB Connection
+
 MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_DATABASE=justnews
@@ -239,10 +261,12 @@ MYSQL_USER=justnews
 MYSQL_PASSWORD=your_password
 
 ## ChromaDB Connection
+
 CHROMA_HOST=localhost
 CHROMA_PORT=3307
 
 ## Connection Pool
+
 DB_MIN_CONNECTIONS=1
 DB_MAX_CONNECTIONS=20
 DB_HEALTH_CHECK_INTERVAL=30
@@ -250,7 +274,9 @@ DB_MAX_RETRIES=3
 DB_RETRY_DELAY=1.0
 
 ## Alternative DATABASE_URL format
+
 DATABASE_URL=mysql://user:password@localhost:3306/justnews
+
 ```
 
 ### Backup Configuration
@@ -269,6 +295,7 @@ backup_config = {
         }
     ]
 }
+
 ```
 
 ## Migration Files
@@ -276,9 +303,11 @@ backup_config = {
 Migration files should be placed in the `migrations/` directory with the format:
 
 ```
+
 001_create_articles_table.sql
 002_add_author_index.sql
 003_create_comments_table.sql
+
 ```
 
 Each migration file should contain both UP and DOWN SQL:
@@ -295,6 +324,7 @@ CREATE TABLE articles (
 
 -- DOWN
 DROP TABLE articles;
+
 ```
 
 ## Performance Monitoring
@@ -305,6 +335,7 @@ DROP TABLE articles;
 metrics = pool.get_metrics()
 print(f"Active connections: {metrics['used_connections']}")
 print(f"Cache hit rate: {metrics['cache_hit_rate']}%")
+
 ```
 
 ### Query Performance
@@ -312,10 +343,13 @@ print(f"Cache hit rate: {metrics['cache_hit_rate']}%")
 ```python
 
 ## Get slow queries
+
 slow_queries = get_slow_queries(pool, limit=10, min_duration=5.0)
 
 ## Get performance recommendations
+
 recommendations = optimizer.get_index_recommendations()
+
 ```
 
 ### Database Statistics
@@ -326,6 +360,7 @@ from database.refactor.utils.database_utils import get_database_stats
 stats = get_database_stats(pool)
 print(f"Database size: {stats['total_size']}")
 print(f"Total rows: {stats['total_rows']}")
+
 ```
 
 ## Best Practices
@@ -380,7 +415,7 @@ print(f"Total rows: {stats['total_rows']}")
 
    - Monitor connection pool metrics
 
-2. **Migration Failures**
+1. **Migration Failures**
 
    - Verify migration SQL syntax
 
@@ -388,7 +423,7 @@ print(f"Total rows: {stats['total_rows']}")
 
    - Test migrations on development environment first
 
-3. **Slow Queries**
+1. **Slow Queries**
 
    - Analyze query execution plans
 
@@ -396,7 +431,7 @@ print(f"Total rows: {stats['total_rows']}")
 
    - Consider query optimization or caching
 
-4. **Backup Failures**
+1. **Backup Failures**
 
    - Verify storage backend credentials
 
@@ -409,6 +444,7 @@ print(f"Total rows: {stats['total_rows']}")
 ```python
 
 ## Test database connectivity
+
 from database.refactor.utils.database_utils import test_connection
 
 if test_connection(pool):
@@ -417,11 +453,13 @@ else:
     print("Database connection failed")
 
 ## Validate schema
+
 validation = schema_manager.validate_schema()
 if validation['is_valid']:
     print("Schema validation passed")
 else:
     print(f"Schema issues: {validation['errors']}")
+
 ```
 
 ## Integration with JustNews
@@ -443,6 +481,7 @@ The database layer integrates seamlessly with the JustNews system:
 ```bash
 cd database/refactor/tests
 python -m pytest
+
 ```
 
 ### Adding New Models
@@ -460,6 +499,7 @@ class YourModel(BaseModel):
     @classmethod
     def _get_unique_constraints(cls) -> List[str]:
         return ["UNIQUE(name)"]
+
 ```
 
 ### Creating Migrations
@@ -467,14 +507,17 @@ class YourModel(BaseModel):
 ```bash
 
 ## Create new migration file
+
 touch database/refactor/migrations/004_add_new_feature.sql
 
 ## Add migration SQL
+
 -- UP: Add new column
 ALTER TABLE articles ADD COLUMN tags TEXT[];
 
 -- DOWN: Remove column
 ALTER TABLE articles DROP COLUMN tags;
+
 ```
 
 ## Security Considerations
@@ -505,10 +548,11 @@ For issues or questions:
 
 1. Check database connection and configuration
 
-2. Review logs for error messages
+1. Review logs for error messages
 
-3. Validate migration files and permissions
+1. Validate migration files and permissions
 
-4. Test with minimal reproduction case
+1. Test with minimal reproduction case
 
-The advanced database layer provides enterprise-grade reliability and performance for the JustNews production environment.
+The advanced database layer provides enterprise-grade reliability and performance for the JustNews production
+environment.

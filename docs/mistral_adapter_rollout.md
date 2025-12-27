@@ -1,9 +1,7 @@
-Mistral‑7B adapter rollout & perf testing
-=========================================
+Mistral‑7B adapter rollout & perf testing =========================================
 
-This document describes the test & rollout flow for adopting a single base
-Mistral‑7B model with per‑task adapters (LoRA/QLoRA) and how to experiment with
-worker pool sizing and performance on RTX‑3090 nodes.
+This document describes the test & rollout flow for adopting a single base Mistral‑7B model with per‑task adapters
+(LoRA/QLoRA) and how to experiment with worker pool sizing and performance on RTX‑3090 nodes.
 
 Files added
 
@@ -13,11 +11,11 @@ Files added
 
 Quick smoke tests (developer machine or GPU node)
 
-1) Dry-run mode (no heavy downloads). This uses the stub scorer so you can
-   exercise concurrency safely:
+1) Dry-run mode (no heavy downloads). This uses the stub scorer so you can exercise concurrency safely:
 
 ```bash
 RE_RANKER_TEST_MODE=1 python scripts/perf/simulate_concurrent_inference.py --workers 4 --requests 400
+
 ```
 
 2) Spawn a warm pool using the stub (good to estimate concurrency patterns):
@@ -26,6 +24,7 @@ RE_RANKER_TEST_MODE=1 python scripts/perf/simulate_concurrent_inference.py --wor
 RE_RANKER_TEST_MODE=1 python scripts/ops/adapter_worker_pool.py --workers 3 --hold 300
 
 # watch 'nvidia-smi' and observe memory/compute while the pool is warm
+
 ```
 
 3) Real model test (ONLY on GPU node with CUDA + bitsandbytes):
@@ -35,15 +34,17 @@ export RE_RANKER_TEST_MODE=0
 export RE_RANKER_MODEL=mistralai/Mistral-7B-Instruct
 
 ## simulate 3 slow workers each doing 30 requests
+
 python scripts/perf/simulate_concurrent_inference.py --workers 3 --requests 30 --model $RE_RANKER_MODEL
 
 ## or warm a pool with an adapter
+
 python scripts/ops/adapter_worker_pool.py --workers 2 --model $RE_RANKER_MODEL --adapter modelstore/agents/synthesizer/adapters/mistral_synth_v1 --hold 600
+
 ```
 
-4) Orchestrator-managed warm pool (recommended on shared nodes). Delegate pool
-    lifecycle to the GPU orchestrator so the same policy/monitoring applies as in
-    production:
+4) Orchestrator-managed warm pool (recommended on shared nodes). Delegate pool lifecycle to the GPU orchestrator so the
+same policy/monitoring applies as in production:
 
 ```bash
 export GPU_ORCHESTRATOR_URL=http://localhost:8008
@@ -57,8 +58,10 @@ python scripts/ops/adapter_worker_pool.py \
    --hold 600
 
 ## Inspect or tear down remote pools when finished
+
 python scripts/ops/adapter_worker_pool.py --list-remote
 python scripts/ops/adapter_worker_pool.py --stop-remote synthesizer
+
 ```
 
 Interpreting the numbers
@@ -77,8 +80,7 @@ Next ops to add
 
 - Add monitoring/alerts (prometheus metrics) for adapter load, p95 latency, and OOM events.
 
-Latest rollout updates — Fact Checker & Critic
-----------------------------------------------
+Latest rollout updates — Fact Checker & Critic ----------------------------------------------
 
 - ModelStore now hosts accuracy-critical adapters at `fact_checker/adapters/mistral_fact_checker_v1` and `critic/adapters/mistral_critic_v1`; both entries are wired through `AGENT_MODEL_MAP.json` so the orchestrator preloads them alongside the existing synthesizer/summarization adapters.
 
@@ -93,6 +95,7 @@ MODEL_STORE_ROOT=/opt/justnews/model_store RE_RANKER_TEST_MODE=0 \
       --model base_models/versions/v20251123-mistral-v0.3 \
       --adapter critic/adapters/mistral_critic_v1 \
       --hold 240
+
 ```
 
 - Keep legacy DistilRoBERTa/Flan weights in `AGENT_MODEL_RECOMMENDED.json` as retrieval fallbacks until the new adapters clear sustained production burn-in. Update the manifest `training_summary.json` whenever we retrain either adapter so we can track provenance and align monitoring alerts with exact versions.
@@ -102,9 +105,15 @@ Latest rollout updates — Journalist, Chief Editor, Reasoning, Synthesizer
 
 - Shared adapter helpers now live in `agents/common/base_mistral_json_adapter.py` and the higher-level wrapper `agents/common/mistral_adapter.py`. Per-agent wrappers remain in `agents/<agent>/mistral_adapter.py`.
 
-Important: `agents/common/mistral_adapter.py` is the canonical wrapper used by agent engines (synthesizer, analyst, fact_checker, critic, journalist, reasoning, chief_editor, etc.). It provides a consistent integration surface — per-agent delegation, dry-run short-circuiting, convenience helpers (`summarize_cluster`, `classify`, `review`, `evaluate_claim`, `generate_story_brief`, `analyze`, `review_content`) and safety checks so tests/CI do not accidentally invoke heavy tokenizers or real model loads.
+Important: `agents/common/mistral_adapter.py` is the canonical wrapper used by agent engines (synthesizer, analyst,
+fact_checker, critic, journalist, reasoning, chief_editor, etc.). It provides a consistent integration surface — per-
+agent delegation, dry-run short-circuiting, convenience helpers (`summarize_cluster`, `classify`, `review`,
+`evaluate_claim`, `generate_story_brief`, `analyze`, `review_content`) and safety checks so tests/CI do not accidentally
+invoke heavy tokenizers or real model loads.
 
-When adding a new per-agent adapter, prefer wiring it via the shared `MistralAdapter` wrapper rather than instantiating tokenizers or transformers inside the engine — this keeps engines dry-run friendly and compatible with the CI smoke suite.
+When adding a new per-agent adapter, prefer wiring it via the shared `MistralAdapter` wrapper rather than instantiating
+tokenizers or transformers inside the engine — this keeps engines dry-run friendly and compatible with the CI smoke
+suite.
 
 - `AGENT_MODEL_MAP.json` entries for these agents include `variant_preference` hints (int8 vs fp16) so the GPU orchestrator and `start_agent_worker_pool()` automatically preload the right model+adapter pair. Use `python -m agents.gpu_orchestrator.gpu_orchestrator_engine --dry-run` to verify metadata parsing before shipping new adapters.
 
@@ -116,8 +125,7 @@ When adding a new per-agent adapter, prefer wiring it via the shared `MistralAda
 
 - For ModelStore validation without GPU downloads, set `MODEL_STORE_DRY_RUN=1` (or `DRY_RUN=1`). The loader will verify base + adapter paths and manifes ts without invoking transformers/Peft. CI uses `tests/common/test_model_store_dry_run.py` to exercise this path.
 
-Latest rollout updates — Analyst & Re-ranker
---------------------------------------------
+Latest rollout updates — Analyst & Re-ranker --------------------------------------------
 
 - Analyst sentiment/bias judgments now use the shared adapter wrapper while preserving the existing RoBERTa heuristics as fallback paths. The adapter normalizes JSON responses into the long-lived `AdapterResult` structure so `analyst_engine` caching stays intact.
 

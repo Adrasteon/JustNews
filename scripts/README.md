@@ -5,6 +5,7 @@ This directory contains the organized script ecosystem for JustNews operations, 
 ## Directory Structure
 
 ```
+
 scripts/refactor/
 ├── admin/           # Administrative scripts (secrets, user management)
 ├── deploy/          # Deployment and infrastructure setup scripts
@@ -13,16 +14,19 @@ scripts/refactor/
 ├── ops/             # Operational scripts (service management, model handling)
 ├── archive/         # Archived legacy scripts (for reference only)
 └── common/          # Shared utilities and frameworks
+
 ```
 
 ## Categories
 
 ### admin/
+
 Scripts for administrative tasks and system configuration.
 
 - `manage_secrets.py` - Manage application secrets and credentials
 
 ### deploy/
+
 Scripts for deployment, database setup, and infrastructure provisioning.
 
 - `setup_mariadb.sh` - MariaDB installation and configuration
@@ -30,16 +34,19 @@ Scripts for deployment, database setup, and infrastructure provisioning.
 - `init_database.py` - Database schema initialization and user setup
 
 ### dev/
+
 Scripts for development environment setup and tooling.
 
 - `setup_dev_environment.sh` - Development environment configuration
 
 ### maintenance/
+
 Scripts for system maintenance, monitoring, and health checks.
 
 - `validate_versions.py` - Version validation and compliance checking
 
 ### ops/
+
 Scripts for operational tasks and service management.
 
 - `start_services_daemon.sh` - Start all JustNews services
@@ -49,6 +56,7 @@ Scripts for operational tasks and service management.
 - `download_agent_models.py` - Download and setup AI models
 
 ### common/
+
 Shared utilities and frameworks used by all scripts.
 
 - `script_framework.py` - Common script framework with logging, error handling, and configuration
@@ -58,26 +66,35 @@ Shared utilities and frameworks used by all scripts.
 All scripts follow consistent patterns:
 
 ### Python Scripts
+
 ```bash
 
 ## Basic usage
+
 python scripts/refactor/category/script.py
 
 ## With options
+
 python scripts/refactor/category/script.py --verbose --log-level DEBUG
 
 ## Dry run mode (where supported)
+
 python scripts/refactor/category/script.py --dry-run
+
 ```
 
 ### Shell Scripts
+
 ```bash
 
 ## Basic usage
+
 ./scripts/refactor/category/script.sh
 
 ## With options (varies by script)
+
 ./scripts/refactor/category/script.sh --help
+
 ```
 
 ## Common Options
@@ -126,15 +143,15 @@ When adding new scripts:
 
 1. **Categorize properly** - Place scripts in the appropriate category directory
 
-2. **Use the framework** - Python scripts should use `ScriptFramework` from `common/script_framework.py`
+1. **Use the framework** - Python scripts should use `ScriptFramework` from `common/script_framework.py`
 
-3. **Document thoroughly** - Include docstrings and usage examples
+1. **Document thoroughly** - Include docstrings and usage examples
 
-4. **Handle errors** - Implement proper error handling and logging
+1. **Handle errors** - Implement proper error handling and logging
 
-5. **Test scripts** - Add automated tests for critical functionality
+1. **Test scripts** - Add automated tests for critical functionality
 
-6. **Follow conventions** - Use consistent naming and option patterns
+1. **Follow conventions** - Use consistent naming and option patterns
 
 ## Migration Notes
 

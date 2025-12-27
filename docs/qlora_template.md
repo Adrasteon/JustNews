@@ -1,7 +1,7 @@
-QLoRA / PEFT training template
-================================
+QLoRA / PEFT training template ================================
 
-This document explains the `scripts/train_qlora.py` template in this repository. It is designed to be a safe starting point for finetuning 7B-class open-source models (Mistral, MPT, Pythia, Falcon) on a single RTX 3090 (24GB).
+This document explains the `scripts/train_qlora.py` template in this repository. It is designed to be a safe starting
+point for finetuning 7B-class open-source models (Mistral, MPT, Pythia, Falcon) on a single RTX 3090 (24GB).
 
 Key points
 
@@ -20,15 +20,17 @@ conda create -n qlora python=3.11 -y
 conda activate qlora
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 pip install transformers accelerate bitsandbytes peft datasets
+
 ```
 
-2. Run a dry-run to check everything:
+1. Run a dry-run to check everything:
 
 ```bash
 ./scripts/train_qlora.py --dry-run
+
 ```
 
-3. To run a very small local test on a tiny dataset, set `--dataset` to a small HF dataset and run with `--epochs 1` and `--train_batch_size 1`.
+1. To run a very small local test on a tiny dataset, set `--dataset` to a small HF dataset and run with `--epochs 1` and `--train_batch_size 1`.
 
 Notes on training
 

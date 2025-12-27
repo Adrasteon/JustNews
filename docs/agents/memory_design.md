@@ -28,11 +28,11 @@ Processing steps
 
 1. Validate and normalise payload (ensure `site_id` is string, truncate extreme fields).
 
-2. Compute or fetch embeddings for `cleaned_text` and persist to vector DB.
+1. Compute or fetch embeddings for `cleaned_text` and persist to vector DB.
 
-3. Persist structured metadata and pointers to archive storage in MariaDB.
+1. Persist structured metadata and pointers to archive storage in MariaDB.
 
-4. Return ingest result including `article_id` and status.
+1. Return ingest result including `article_id` and status.
 
 Idempotency
 

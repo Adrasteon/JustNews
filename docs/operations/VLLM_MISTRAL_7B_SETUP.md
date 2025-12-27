@@ -19,6 +19,7 @@ This guide covers the integration of a vLLM-served model on a 24GB RTX 3090. The
 ```bash
 conda activate justnews-py312
 pip install vllm
+
 ```text
 
 ### 2. Launch vLLM Server
@@ -26,7 +27,9 @@ pip install vllm
 ```bash
 
 ## Port 7060 (outside agent range)
+
 ./scripts/launch_vllm_mistral_7b.sh
+
 ```text
 
 The script reads `global.env` for `HF_TOKEN` and launches vLLM with:
@@ -46,6 +49,7 @@ The script reads `global.env` for `HF_TOKEN` and launches vLLM with:
 ```bash
 conda activate justnews-py312
 python tests/integration/test_vllm_mistral_7b_smoke.py
+
 ```text
 
 Expected output:
@@ -59,6 +63,7 @@ Testing chat completion: <http://127.0.0.1:7060/v1/chat/completions>
 ✅ Chat completion result: 4
 
 ✅ All tests passed!
+
 ```text
 
 ### 4. Enable vLLM for Agents
@@ -68,7 +73,9 @@ Set `VLLM_ENABLED=true` in `global.env`:
 ```bash
 
 ## In global.env
+
 VLLM_ENABLED=true
+
 ```text
 
 Agents will now route inference to the vLLM endpoint (`<http://127.0.0.1:7060/v1>`) instead of local transformers.
@@ -82,16 +89,19 @@ Key variables in `global.env`:
 ```bash
 
 ## vLLM Mistral-7B Inference Endpoint
+
 VLLM_ENABLED=false           # Set to true to enable
 VLLM_BASE_URL=<http://127.0.0.1:7060/v1>
 VLLM_API_KEY=dummy           # vLLM doesn't require auth
 VLLM_MODEL=mistralai/Mistral-7B-Instruct-v0.3
 VLLM_PORT=7060
+
 ```text
 
 ### vLLM Config File
 
-`config/legacy/vllm_qwen2_32b.yaml` (ARCHIVED) contains historical Qwen2 settings. The authoritative, current configuration is `config/vllm_mistral_7b.yaml` which should be used for production.
+`config/legacy/vllm_qwen2_32b.yaml` (ARCHIVED) contains historical Qwen2 settings. The authoritative, current
+configuration is `config/vllm_mistral_7b.yaml` which should be used for production.
 
 - Endpoint settings (host, port, base URL)
 
@@ -123,12 +133,14 @@ VLLM_PORT=7060
 
 ### QLoRA Training on 24GB 3090
 
-Use `scripts/train_qlora.py` (recommended) to train Mistral adapters. Historical Qwen2 training scripts are archived at `scripts/legacy/train_qwen2_qlora.py`.
+Use `scripts/train_qlora.py` (recommended) to train Mistral adapters. Historical Qwen2 training scripts are archived at
+`scripts/legacy/train_qwen2_qlora.py`.
 
 ```bash
 conda activate justnews-py312
 
 ## Example: train synthesizer adapter (Mistral)
+
 python scripts/train_qlora.py \
   --model_name_or_path mistralai/Mistral-7B-Instruct \
   --config_path config/vllm_mistral_7b.yaml \
@@ -142,6 +154,7 @@ python scripts/train_qlora.py \
   --learning_rate 2e-4 \
   --bf16 \
   --publish
+
 ```text
 
 Key parameters (optimized for 24GB):
@@ -192,19 +205,21 @@ vLLM supports LoRA hot-swapping. To enable:
 
 1. Pass `VLLM_LORA_MODULES` as comma-separated `name=path` pairs:
 
-   ```bash
-   VLLM_LORA_MODULES="synthesizer=/home/adra/JustNews/model_store/adapters/synthesizer/mistral_synth_v1,critic=/home/adra/JustNews/model_store/adapters/critic/mistral_critic_v1"
-   ```
+```bash VLLM_LORA_MODULES="synthesizer=/home/adra/JustNews/model_store/adapters/
+synthesizer/mistral_synth_v1,critic=/home/adra/JustNews/model_store/adapters/cri
+tic/mistral_critic_v1" ```
 
 1. Restart vLLM server with `./scripts/launch_vllm_mistral_7b.sh`.
 
-Client code can request a specific adapter via the `model` field in the OpenAI API call (if vLLM is configured to route by adapter name).
+Client code can request a specific adapter via the `model` field in the OpenAI
+API call (if vLLM is configured to route by adapter name).
 
 ---
 
 ## Environment & Troubleshooting 🔧
 
-Recommended canonical environment: `justnews-py312` (see `environment.yml`). Key runtime requirements for vLLM Mistral-7B:
+Recommended canonical environment: `justnews-py312` (see `environment.yml`). Key
+runtime requirements for vLLM Mistral-7B:
 
 - Python: 3.12 (conda env `justnews-py312`) ✅
 
@@ -241,20 +256,26 @@ Quick reproducible fix I used locally (inside `justnews-py312`):
 ```bash
 
 ## Install torch wheel for CUDA 12.8
-pip install --upgrade --force-reinstall "torch==2.9.0+cu128" -f <https://download.pytorch.org/whl/torch_stable.html>
-pip install torch-c-dlpack-ext
+
+pip install --upgrade --force-reinstall "torch==2.9.0+cu128" -f <https://download.pytorch.org/whl/torch_stable.html> pip
+install torch-c-dlpack-ext
 
 ## Build bitsandbytes to match CUDA
+
 pip install --no-binary :all: bitsandbytes==0.47.0
 
 ## Ensure numpy/numba compatibility
+
 pip install --upgrade --force-reinstall numpy==2.2.4 numba==0.61.2
 
 ## Then start vLLM
+
 ./scripts/launch_vllm_mistral_7b.sh
+
 ```text
 
-If you'd like, I can add a short CHANGELOG entry documenting these env pins and the exact pip commands used.
+If you'd like, I can add a short CHANGELOG entry documenting these env pins and
+the exact pip commands used.
 
 ## VRAM Budget
 
@@ -318,13 +339,13 @@ Set `fallback.enabled: true` in `config/vllm_mistral_7b.yaml` (default).
 
 1. **Train pilot adapter**: Start with one agent (e.g., synthesizer) to validate VRAM fit and quality.
 
-2. **Benchmark latency**: Compare inference time vs. Mistral-7B+adapters.
+1. **Benchmark latency**: Compare inference time vs. Mistral-7B+adapters.
 
-3. **Quality eval**: Run evals on Qwen2-32B vs. Mistral-7B to quantify quality gain.
+1. **Quality eval**: Run evals on Qwen2-32B vs. Mistral-7B to quantify quality gain.
 
-4. **Scale adapters**: Train remaining 7 adapters and publish to ModelStore.
+1. **Scale adapters**: Train remaining 7 adapters and publish to ModelStore.
 
-5. **Production toggle**: Keep `VLLM_ENABLED=false` for now; enable after validation.
+1. **Production toggle**: Keep `VLLM_ENABLED=false` for now; enable after validation.
 
 ## References
 

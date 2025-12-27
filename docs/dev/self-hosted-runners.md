@@ -1,8 +1,10 @@
 # Self-hosted runner requirements for systemd-nspawn E2E
 
-This repository includes a GitHub Actions job (.github/workflows/e2e-systemd-nspawn.yml) which performs a real E2E run against MariaDB and Redis inside a systemd-nspawn container.
+This repository includes a GitHub Actions job (.github/workflows/e2e-systemd- nspawn.yml) which performs a real E2E run
+against MariaDB and Redis inside a systemd-nspawn container.
 
-This job runs exclusively on self-hosted runners — it will not run on GitHub's hosted runners. The job expects the runner to meet a number of system-level prerequisites.
+This job runs exclusively on self-hosted runners — it will not run on GitHub's hosted runners. The job expects the
+runner to meet a number of system-level prerequisites.
 
 Runner requirements
 

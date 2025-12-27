@@ -97,7 +97,9 @@ def fix_content(text: str) -> str:
         if not p:
             return []
         s = ' '.join(l.strip() for l in p)
-        wrapped_text = textwrap.fill(s, width=80)
+        # Wrap paragraphs to 120 columns to keep lines readable while allowing
+        # longer documentation lines for planning/ops files.
+        wrapped_text = textwrap.fill(s, width=120)
         return wrapped_text.split('\n')
 
     for line in text.split('\n'):

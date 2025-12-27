@@ -1,6 +1,7 @@
 # Git hooks for JustNews (local developer helpers)
 
-The repository includes a small set of optional git hooks that are intended as developer helpers. They are intentionally non-mandatory and opt-in.
+The repository includes a small set of optional git hooks that are intended as developer helpers. They are intentionally
+non-mandatory and opt-in.
 
 Why use them?
 
@@ -14,6 +15,7 @@ From the repository root run:
 
 ```bash
 ./scripts/dev/install_hooks.sh
+
 ```
 
 The installer copies scripts from `scripts/dev/git-hooks/` into `.git/hooks` and marks them executable.

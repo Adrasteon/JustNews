@@ -1,6 +1,7 @@
 # Conda Environment Backup & Restore
 
-This document explains how to back up and restore the `${CANONICAL_ENV:-justnews-py312}` conda environment used by the project.
+This document explains how to back up and restore the `${CANONICAL_ENV:-justnews-py312}` conda environment used by the
+project.
 
 ## Why back up the environment
 
@@ -41,17 +42,21 @@ This document explains how to back up and restore the `${CANONICAL_ENV:-justnews
 ## - ${CANONICAL_ENV:-justnews-py312}.pip.txt
 
 ## - ${CANONICAL_ENV:-justnews-py312}-YYYYMMDD.pip.txt
+
 ./scripts/backup_conda_env.sh ${CANONICAL_ENV:-justnews-py312} artifacts
 
 ## Optionally provide an explicit date (UTC) to the script instead of using today's
 
 ## date -- useful when scripting: e.g. $(date -u +%Y%m%d)
+
 ./scripts/backup_conda_env.sh ${CANONICAL_ENV:-justnews-py312} artifacts $(date -u +%Y%m%d)
 
 ## For CI/tests where conda may not be available, use a dry-run to validate outputs
 
 ## without running conda: the script will print the files it would create.
+
 DRY_RUN=1 ./scripts/backup_conda_env.sh ${CANONICAL_ENV:-justnews-py312} artifacts 20251123
+
 ```
 
 - To restore from YAML:
@@ -60,12 +65,14 @@ DRY_RUN=1 ./scripts/backup_conda_env.sh ${CANONICAL_ENV:-justnews-py312} artifac
 conda env create -f artifacts/${CANONICAL_ENV:-justnews-py312}.yml -n ${CANONICAL_ENV:-justnews-py312}-restored
 
 ## Optionally: pip install -r artifacts/${CANONICAL_ENV:-justnews-py312}.pip.txt
+
 ```
 
 - To restore from explicit spec (exact binary builds):
 
 ```bash
 conda create --name ${CANONICAL_ENV:-justnews-py312}-restored --file artifacts/${CANONICAL_ENV:-justnews-py312}.explicit.txt
+
 ```
 
 - To unpack the condapack tarball:
@@ -74,6 +81,7 @@ conda create --name ${CANONICAL_ENV:-justnews-py312}-restored --file artifacts/$
 mkdir -p ~/envs/${CANONICAL_ENV:-justnews-py312}-unpacked
 tar -xzf artifacts/${CANONICAL_ENV:-justnews-py312}.tar.gz -C ~/envs/${CANONICAL_ENV:-justnews-py312}-unpacked
 ~/envs/${CANONICAL_ENV:-justnews-py312}-unpacked/bin/conda-unpack
+
 ```
 
 - Re-run preflight checks and tests after restoring:
@@ -81,6 +89,7 @@ tar -xzf artifacts/${CANONICAL_ENV:-justnews-py312}.tar.gz -C ~/envs/${CANONICAL
 ```bash
 conda run -n ${CANONICAL_ENV:-justnews-py312}-restored python scripts/check_protobuf_version.py
 conda run -n ${CANONICAL_ENV:-justnews-py312}-restored python scripts/check_deprecation_warnings.py
+
 ```
 
 ## Notes

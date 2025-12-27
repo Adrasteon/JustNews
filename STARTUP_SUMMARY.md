@@ -1,23 +1,23 @@
 # System Startup Summary
 
-**Status**: Evidence-based action plan created
-**Date**: December 18, 2025
+**Status**: Evidence-based action plan created **Date**: December 18, 2025
 
 ---
 
 ## What I Did
 
-I reviewed the codebase systematically to create a **comprehensive, evidence-based action plan** for getting JustNews up and running with database ingestion. This wasn't just a summary—I:
+I reviewed the codebase systematically to create a **comprehensive, evidence- based action plan** for getting JustNews
+up and running with database ingestion. This wasn't just a summary—I:
 
 1. **Read key initialization scripts**: `scripts/init_database.py`, `scripts/ops/run_crawl_schedule.py`, crawler engine code
 
-2. **Analyzed configuration files**: `config/system_config.json`, `config/crawl_schedule.yaml`, crawl profiles
+1. **Analyzed configuration files**: `config/system_config.json`, `config/crawl_schedule.yaml`, crawl profiles
 
-3. **Examined infrastructure code**: systemd scripts, database setup, docker-compose configurations
+1. **Examined infrastructure code**: systemd scripts, database setup, docker-compose configurations
 
-4. **Traced data flow**: From crawler → database → embeddings → scheduler
+1. **Traced data flow**: From crawler → database → embeddings → scheduler
 
-5. **Identified actual code dependencies**: Not just docs, but the real implementation
+1. **Identified actual code dependencies**: Not just docs, but the real implementation
 
 ---
 
@@ -35,17 +35,18 @@ I reviewed the codebase systematically to create a **comprehensive, evidence-bas
 
 1. **Global environment** (`global.env`) – all services read this
 
-2. **MariaDB** – core persistence layer (articles, entities, crawl state)
+1. **MariaDB** – core persistence layer (articles, entities, crawl state)
 
-3. **ChromaDB** – vector embeddings for article search
+1. **ChromaDB** – vector embeddings for article search
 
-4. **MCP Bus** – inter-agent communication backbone
+1. **MCP Bus** – inter-agent communication backbone
 
-5. **GPU Orchestrator** – gates model availability for all downstream agents
+1. **GPU Orchestrator** – gates model availability for all downstream agents
 
-6. **Crawler agents** – performs actual crawling
+1. **Crawler agents** – performs actual crawling
 
 ### The Real Challenge
+
 **Services must start in a specific order.** For example:
 
 - Crawler agents won't work until GPU Orchestrator reports READY (not just up)
@@ -91,6 +92,7 @@ I created **2 detailed execution documents**:
 ## What's in the Plans
 
 ### Environment & Infrastructure (Phase 1)
+
 ```bash
 
 ## 1. Create global.env with MariaDB/ChromaDB connection details
@@ -100,9 +102,11 @@ I created **2 detailed execution documents**:
 ## 3. Start ChromaDB (Docker)
 
 ## Total: ~30 min
+
 ```
 
 ### Database Initialization (Phase 2)
+
 ```bash
 
 ## Run: python scripts/init_database.py
@@ -110,9 +114,11 @@ I created **2 detailed execution documents**:
 ## Creates: articles, entities, users, orchestrator tables
 
 ## Total: ~5 min
+
 ```
 
 ### Agent Services (Phase 3)
+
 ```bash
 
 ## Start in order:
@@ -126,15 +132,19 @@ I created **2 detailed execution documents**:
 ## 4. Optional: Analyst, Memory agents
 
 ## Total: ~30 min
+
 ```
 
 ### Data Ingestion (Phase 4)
+
 ```bash
 
 ## Option A: Small test
+
 python live_crawl_test.py --sites 3 --articles 5  # ~15 articles
 
 ## Option B: Full scheduler
+
 python scripts/ops/run_crawl_schedule.py  # ~500 articles/hour
 
 ## Verify:
@@ -142,39 +152,37 @@ python scripts/ops/run_crawl_schedule.py  # ~500 articles/hour
 ## - Articles appear in MariaDB
 
 ## - Embeddings stored in ChromaDB
+
 ```
 
 ### Training Data (Phase 5 - Optional)
+
 ```bash
 
 ## Generate clusters from articles
 
 ## Validate data quality with tests
+
 ```
 
 ---
 
 ## Why This Plan Works
 
-✅ **Evidence-Based**: Every step references actual code (not just docs)
-✅ **Incremental**: Each phase builds on previous; can test/verify at each step
-✅ **Production-Ready**: Includes both dev (direct Python) and production (systemd) approaches
-✅ **Troubleshooting**: Includes 10+ common issues with fixes
-✅ **Dependency-Aware**: Respects the orchestration constraints (GPU Orchestrator gates everything)
-✅ **Minimal Assumptions**: Only assumes MariaDB + ChromaDB availability (can be Docker)
+✅ **Evidence-Based**: Every step references actual code (not just docs) ✅ **Incremental**: Each phase builds on
+previous; can test/verify at each step ✅ **Production-Ready**: Includes both dev (direct Python) and production
+(systemd) approaches ✅ **Troubleshooting**: Includes 10+ common issues with fixes ✅ **Dependency-Aware**: Respects the
+orchestration constraints (GPU Orchestrator gates everything) ✅ **Minimal Assumptions**: Only assumes MariaDB + ChromaDB
+availability (can be Docker)
 
 ---
 
 ## Time Breakdown
 
-| Phase | Time | What |
-|-------|------|------|
-| Pre-Flight | 2 min | Verify conda + vLLM |
-| Env + Infra | 30 min | MariaDB + ChromaDB + global.env |
-| Database Schema | 5 min | Run init_database.py |
-| Agent Services | 30 min | MCP Bus → Orchestrator → Crawlers |
-| Data Ingestion | 20–60 min | Run crawl test / scheduler |
-| **TOTAL** | **~90–120 min** | Full system live + filling DB |
+| Phase | Time | What | |-------|------|------| | Pre-Flight | 2 min | Verify conda + vLLM | | Env + Infra | 30 min |
+MariaDB + ChromaDB + global.env | | Database Schema | 5 min | Run init_database.py | | Agent Services | 30 min | MCP Bus
+→ Orchestrator → Crawlers | | Data Ingestion | 20–60 min | Run crawl test / scheduler | | **TOTAL** | **~90–120 min** |
+Full system live + filling DB |
 
 ---
 
@@ -182,33 +190,36 @@ python scripts/ops/run_crawl_schedule.py  # ~500 articles/hour
 
 1. **Review** the full ACTION_PLAN document
 
-2. **Reference** the SYSTEM_STARTUP_CHECKLIST while executing
+1. **Reference** the SYSTEM_STARTUP_CHECKLIST while executing
 
-3. **Execute** Phase 1 (environment setup) – easiest, can't break anything
+1. **Execute** Phase 1 (environment setup) – easiest, can't break anything
 
-4. **Execute** Phase 2–3 (database + agents) – requires some monitoring
+1. **Execute** Phase 2–3 (database + agents) – requires some monitoring
 
-5. **Test** Phase 4 (crawling) with small test first (3 sites, 5 articles)
+1. **Test** Phase 4 (crawling) with small test first (3 sites, 5 articles)
 
-6. **Scale** to full scheduler once small test succeeds
+1. **Scale** to full scheduler once small test succeeds
 
 ---
 
 ## Files Created
 
 ```
+
 /home/adra/JustNews/
 ├── ACTION_PLAN_GET_SYSTEM_RUNNING.md       (Full guide, 400+ lines)
 └── SYSTEM_STARTUP_CHECKLIST.md             (Quick checklist, 200+ lines)
+
 ```
 
-Both are ready to use now. Start with the **CHECKLIST** if you want copy-paste commands, or the **ACTION PLAN** if you want full context and reasoning.
+Both are ready to use now. Start with the **CHECKLIST** if you want copy-paste commands, or the **ACTION PLAN** if you
+want full context and reasoning.
 
 ---
 
 ## Key Insight: The Orchestration Constraint
 
-The system has a **hard ordering requirement** that wasn't obvious from high-level docs:
+The system has a **hard ordering requirement** that wasn't obvious from high- level docs:
 
 **GPU Orchestrator must reach "READY" status before crawler agents can function.**
 
@@ -220,8 +231,8 @@ This is enforced via:
 
 - `infrastructure/systemd/units/` – ExecStartPre gates on `/ready`
 
-**Missing this** = crawlers start but can't load models = silent failures.
-**The plan accounts for this** = explicit wait-for-ready checks in Phase 3.2
+**Missing this** = crawlers start but can't load models = silent failures. **The plan accounts for this** = explicit
+wait-for-ready checks in Phase 3.2
 
 ---
 
@@ -267,11 +278,11 @@ The plans are detailed enough that you can:
 
 1. **Execute independently** without asking me for clarification
 
-2. **Diagnose issues** using the troubleshooting tables
+1. **Diagnose issues** using the troubleshooting tables
 
-3. **Scale** from small test (15 articles) to production (500/hour)
+1. **Scale** from small test (15 articles) to production (500/hour)
 
-4. **Monitor** health with provided curl commands
+1. **Monitor** health with provided curl commands
 
 **Start with Phase 1 (environment setup).** It's the lowest-risk way to validate the plan.
 

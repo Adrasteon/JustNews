@@ -1,6 +1,8 @@
 # GPU Orchestrator — Developer Guide
 
-This document explains the `GPU Orchestrator` implementation and how to run and test it locally. The implementation lives under `agents/gpu_orchestrator` and includes the core engine (`gpu_orchestrator_engine.py`), a FastAPI front-end (`main.py`), a Redis stream consumer skeleton (`job_consumer.py`), and a `Worker` process implementation (`worker.py`).
+This document explains the `GPU Orchestrator` implementation and how to run and test it locally. The implementation
+lives under `agents/gpu_orchestrator` and includes the core engine (`gpu_orchestrator_engine.py`), a FastAPI front-end
+(`main.py`), a Redis stream consumer skeleton (`job_consumer.py`), and a `Worker` process implementation (`worker.py`).
 
 Purpose
 
@@ -24,7 +26,7 @@ Local quickstart
 
 1. Unit & integration tests default to in-memory sqlite and in-memory Redis emulators — these are the recommended quick path during development. See `tests/integration` for samples.
 
-2. To spin the engine locally using the persisted DB (MariaDB) and a real Redis, set appropriate `JUSTNEWS_GLOBAL_ENV` or environment variables so `create_database_service()` returns a real connection.
+1. To spin the engine locally using the persisted DB (MariaDB) and a real Redis, set appropriate `JUSTNEWS_GLOBAL_ENV` or environment variables so `create_database_service()` returns a real connection.
 
 FastAPI endpoints (developer view)
 
@@ -64,4 +66,5 @@ Operational notes
 
 - Monitor `gpu_orchestrator_lease_expired_total` and `gpu_orchestrator_job_queue_depth` metrics exposed in the engine for autoscaling and safety.
 
-If you need a deeper guide for manually bringing a MariaDB+Redis dev environment up without Docker, see `docs/dev/systemd-nspawn.md` (systemd container helper) and the `scripts/dev/run_systemd_nspawn_env.sh` script.
+If you need a deeper guide for manually bringing a MariaDB+Redis dev environment up without Docker, see
+`docs/dev/systemd-nspawn.md` (systemd container helper) and the `scripts/dev/run_systemd_nspawn_env.sh` script.

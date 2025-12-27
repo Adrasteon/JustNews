@@ -1,6 +1,7 @@
 # JustNews Diagrams
 
-This folder contains a set of focused C4 diagrams that represent the JustNews agent architecture. Each diagram is intentionally scoped to reduce cross-edge clutter and make relationships easier to reason about.
+This folder contains a set of focused C4 diagrams that represent the JustNews agent architecture. Each diagram is
+intentionally scoped to reduce cross-edge clutter and make relationships easier to reason about.
 
 Files
 

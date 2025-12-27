@@ -1,6 +1,7 @@
 # Sentry integration example
 
-This document shows a minimal Sentry integration pattern for JustNews services to capture uncaught exceptions and release-level error tracking.
+This document shows a minimal Sentry integration pattern for JustNews services to capture uncaught exceptions and
+release-level error tracking.
 
 Requirements
 
@@ -12,15 +13,17 @@ Example usage (Python application)
 
 ```bash
 pip install sentry-sdk
+
 ```
 
-2. Initialize in your service startup (safe minimal example):
+1. Initialize in your service startup (safe minimal example):
 
 ```python
 import sentry_sdk
 from sentry_sdk.integrations.logging import LoggingIntegration
 
 ## Capture logging errors (ERROR+), and warnings
+
 sentry_logging = LoggingIntegration(level=None, event_level="ERROR")
 
 sentry_sdk.init(
@@ -43,9 +46,11 @@ Notes & operational guidance
 
 - Combine Sentry events with OTEL traces by propagating trace IDs when applicable.
 
-CI and sandbox projects
------------------------
+CI and sandbox projects -----------------------
 
-We provide an optional GitHub Actions workflow (`.github/workflows/sentry-sandbox.yml`) that will send a single demo event to a Sentry project when you manually dispatch it and the `SENTRY_DSN` secret is configured. This is useful for validating integration with a sandbox project without enabling Sentry globally in CI.
+We provide an optional GitHub Actions workflow (`.github/workflows/sentry- sandbox.yml`) that will send a single demo
+event to a Sentry project when you manually dispatch it and the `SENTRY_DSN` secret is configured. This is useful for
+validating integration with a sandbox project without enabling Sentry globally in CI.
 
-Ensure `SENTRY_DSN` is not set by default in `/etc/justnews/global.env` and only add it to your CI secrets for sandbox validation.
+Ensure `SENTRY_DSN` is not set by default in `/etc/justnews/global.env` and only add it to your CI secrets for sandbox
+validation.

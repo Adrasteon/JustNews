@@ -1,6 +1,7 @@
 # Draft Raptor Agents Inventory
 
-This document summarizes each agent in the `agents/` directory, the agent's intended function, key responsibilities, and current stage of development based on code inspection.
+This document summarizes each agent in the `agents/` directory, the agent's intended function, key responsibilities, and
+current stage of development based on code inspection.
 
 Notes on methodology:
 

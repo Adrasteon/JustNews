@@ -6,21 +6,22 @@
 
 1. ✅ Examined USB drive monitoring directory structure
 
-2. ✅ Reviewed Grafana configuration (grafana.ini)
+1. ✅ Reviewed Grafana configuration (grafana.ini)
 
-3. ✅ Reviewed Prometheus configuration (prometheus.yml)
+1. ✅ Reviewed Prometheus configuration (prometheus.yml)
 
-4. ✅ Analyzed all 5 Grafana dashboards (1,312 lines JSON)
+1. ✅ Analyzed all 5 Grafana dashboards (1,312 lines JSON)
 
-5. ✅ Reviewed datasource and provisioning configurations
+1. ✅ Reviewed datasource and provisioning configurations
 
-6. ✅ Cross-referenced with existing repo monitoring module
+1. ✅ Cross-referenced with existing repo monitoring module
 
-7. ✅ Created comprehensive integration documentation
+1. ✅ Created comprehensive integration documentation
 
 ### Documentation Created (3 new files)
 
 #### 1. **docs/operations/MONITORING_INFRASTRUCTURE.md** (12 KB)
+
 **Complete guide including**:
 
 - USB drive contents inventory
@@ -40,6 +41,7 @@
 - File locations and preservation strategy
 
 #### 2. **docs/MONITORING_ANALYSIS_SUMMARY.md** (11 KB)
+
 **Executive summary including**:
 
 - Key findings (what you have, what's missing, what's needed)
@@ -61,6 +63,7 @@
 - USB drive preservation advice
 
 #### 3. **docs/DOCUMENTATION_INDEX.md** (Updated)
+
 **Added monitoring references**:
 
 - Monitoring Infrastructure link in "Getting Started"
@@ -82,13 +85,10 @@
 ## Key Findings
 
 ### What's on the USB Drive
-| Item | Count | Size | Status |
-|------|-------|------|--------|
-| Configuration files | 2 | 1.6 KB | ✅ Ready |
-| Backup configs | 4 | - | ℹ️ Optional |
-| Grafana dashboards | 5 | 1,312 lines | ✅ Complete |
-| Datasource configs | 1 | - | ✅ Ready |
-| Provisioning configs | 2 | - | ✅ Ready |
+
+| Item | Count | Size | Status | |------|-------|------|--------| | Configuration files | 2 | 1.6 KB | ✅ Ready | |
+Backup configs | 4 | - | ℹ️ Optional | | Grafana dashboards | 5 | 1,312 lines | ✅ Complete | | Datasource configs | 1 |
+- | ✅ Ready | | Provisioning configs | 2 | - | ✅ Ready |
 
 ### Dashboard Summary
 
@@ -96,19 +96,19 @@
 
    - Fleet health, GPU usage, network, errors
 
-2. **JustNews Operations** (489 lines)
+1. **JustNews Operations** (489 lines)
 
    - Service health, crawler, agents, performance
 
-3. **Business Metrics** (253 lines)
+1. **Business Metrics** (253 lines)
 
    - Processing rates, crawl quality, ingestion
 
-4. **Ingest/Archive** (49 lines)
+1. **Ingest/Archive** (49 lines)
 
    - Pipeline metrics
 
-5. **Parity Analysis** (60 lines)
+1. **Parity Analysis** (60 lines)
 
    - Extraction quality
 
@@ -142,17 +142,17 @@
 
 1. Complete, pre-configured stack (saves 4-8 hours)
 
-2. 5 production-ready dashboards
+1. 5 production-ready dashboards
 
-3. Service targets already mapped
+1. Service targets already mapped
 
-4. Low deployment effort (~1-2 hours)
+1. Low deployment effort (~1-2 hours)
 
-5. High operational value
+1. High operational value
 
-6. Matches your systemd pattern
+1. Matches your systemd pattern
 
-7. Zero configuration changes needed (except password)
+1. Zero configuration changes needed (except password)
 
 **Risk Level**: ✅ **LOW**
 
@@ -175,25 +175,33 @@
 ## Deployment Quick Reference
 
 ### Install packages
+
 ```bash
 sudo apt-get install -y prometheus grafana-server prometheus-node-exporter
+
 ```
 
 ### Copy configuration
+
 ```bash
 sudo mkdir -p /etc/justnews/monitoring/grafana/provisioning/{datasources,dashboards}
 sudo cp -r /media/adra/37f1914d-e5fd-48ca-8c24-22d5f4e2e9dd/etc/justnews/monitoring/* \
   /etc/justnews/monitoring/
+
 ```
 
 ### Start services
+
 ```bash
 sudo systemctl enable --now prometheus grafana-server prometheus-node-exporter
+
 ```
 
 ### Secure Grafana
+
 ```bash
 sudo grafana-cli admin reset-admin-password <new-strong-password>
+
 ```
 
 ### Access dashboards
@@ -204,17 +212,10 @@ sudo grafana-cli admin reset-admin-password <new-strong-password>
 
 ## Effort Estimate
 
-| Task | Time | Difficulty |
-|------|------|------------|
-| Copy USB configs | 5 min | ⭐ Easy |
-| Install packages | 10 min | ⭐ Easy |
-| Create systemd units | 15 min | ⭐ Easy |
-| Start services | 5 min | ⭐ Easy |
-| Change Grafana password | 5 min | ⭐ Easy |
-| Verify dashboard access | 10 min | ⭐ Easy |
-| Update Prometheus targets (if needed) | 10 min | ⭐⭐ Moderate |
-| Document service endpoints | 10 min | ⭐ Easy |
-| **TOTAL** | **~1-1.5 hours** | ⭐ **Easy** |
+| Task | Time | Difficulty | |------|------|------------| | Copy USB configs | 5 min | ⭐ Easy | | Install packages | 10
+min | ⭐ Easy | | Create systemd units | 15 min | ⭐ Easy | | Start services | 5 min | ⭐ Easy | | Change Grafana password
+| 5 min | ⭐ Easy | | Verify dashboard access | 10 min | ⭐ Easy | | Update Prometheus targets (if needed) | 10 min | ⭐⭐
+Moderate | | Document service endpoints | 10 min | ⭐ Easy | | **TOTAL** | **~1-1.5 hours** | ⭐ **Easy** |
 
 ## Repository Impact
 
@@ -254,15 +255,15 @@ sudo grafana-cli admin reset-admin-password <new-strong-password>
 
 1. [ ] Copy USB configs to `/etc/justnews/monitoring/`
 
-2. [ ] Install packages (prometheus, grafana, node-exporter)
+1. [ ] Install packages (prometheus, grafana, node-exporter)
 
-3. [ ] Create systemd units
+1. [ ] Create systemd units
 
-4. [ ] Start services
+1. [ ] Start services
 
-5. [ ] Change Grafana password
+1. [ ] Change Grafana password
 
-6. [ ] Verify dashboard access
+1. [ ] Verify dashboard access
 
 ### Option B: Deploy Later
 
@@ -288,15 +289,13 @@ If you need help deploying:
 
 1. Reference the "Quick Deploy Command" in `docs/operations/MONITORING_INFRASTRUCTURE.md`
 
-2. Check the troubleshooting section for common issues
+1. Check the troubleshooting section for common issues
 
-3. Review the security section for hardening steps
+1. Review the security section for hardening steps
 
-4. See the integration checklist for step-by-step guidance
+1. See the integration checklist for step-by-step guidance
 
 ---
 
-**Analysis Date**: December 15, 2024
-**Status**: ✅ **Complete**
-**Recommendation**: ✅ **Deploy Within 2 Weeks**
+**Analysis Date**: December 15, 2024 **Status**: ✅ **Complete** **Recommendation**: ✅ **Deploy Within 2 Weeks**
 **Value**: ⭐⭐⭐⭐⭐ (Critical for production operations)

@@ -1,14 +1,12 @@
---- title: 📚 JustNews V4 Documentation Contributor Guidelines description: Auto-
-generated description for 📚 JustNews V4 Documentation Contributor Guidelines
-tags: [documentation] status: current last_updated: 2025-09-12 ---
+--- title: 📚 JustNews V4 Documentation Contributor Guidelines description: Auto- generated description for 📚 JustNews V4
+Documentation Contributor Guidelines tags: [documentation] status: current last_updated: 2025-09-12 ---
 
 # 📚 JustNews V4 Documentation Contributor Guidelines
 
 ## 🎯 Overview
 
-Welcome to the JustNews V4 documentation team! These guidelines ensure our
-documentation maintains the highest quality standards and exceeds industry
-benchmarks. Our target is **>90% quality score** across all documentation.
+Welcome to the JustNews V4 documentation team! These guidelines ensure our documentation maintains the highest quality
+standards and exceeds industry benchmarks. Our target is **>90% quality score** across all documentation.
 
 **Current Status:** ✅ **100.0/100 Quality Score Achieved**
 
@@ -36,10 +34,9 @@ benchmarks. Our target is **>90% quality score** across all documentation.
 
 ### Minimum Quality Thresholds
 
-| Metric | Target | Current Status | |--------|--------|----------------| |
-**Overall Quality Score** | >90% | ✅ 100.0/100 | | **Description Length** | 150+
-characters | ✅ 201.5 avg | | **Tagging Coverage** | 100% | ✅ 100% | | **Quality
-Issues** | 0 | ✅ 0 |
+| Metric | Target | Current Status | |--------|--------|----------------| | **Overall Quality Score** | >90% | ✅
+100.0/100 | | **Description Length** | 150+ characters | ✅ 201.5 avg | | **Tagging Coverage** | 100% | ✅ 100% | |
+**Quality Issues** | 0 | ✅ 0 |
 
 ### Quality Score Components
 
@@ -348,9 +345,7 @@ python docs/version_control.py history --document "doc_id"
 ```python
 from docs.quality_enhancement import QualityEnhancer
 
-enhancer = QualityEnhancer()
-enhancer.analyze_quality_issues()
-enhancer.enhance_short_descriptions()
+enhancer = QualityEnhancer() enhancer.analyze_quality_issues() enhancer.enhance_short_descriptions()
 
 ```
 
@@ -359,9 +354,7 @@ enhancer.enhance_short_descriptions()
 ```python
 from docs.automation_tools import DocumentationAutomation
 
-automation = DocumentationAutomation()
-automation.generate_quality_dashboard()
-automation.validate_cross_references()
+automation = DocumentationAutomation() automation.generate_quality_dashboard() automation.validate_cross_references()
 
 ```
 
@@ -417,10 +410,7 @@ Closes #123
 
 ```
 
-feature/description-of-feature
-bugfix/issue-description
-docs/documentation-update
-hotfix/critical-fix
+feature/description-of-feature bugfix/issue-description docs/documentation-update hotfix/critical-fix
 
 ```
 

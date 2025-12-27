@@ -1,6 +1,7 @@
 # Crawler Enhancements Package
 
-This package provides modular, configurable enhancements for the JustNews crawler to improve resilience against anti-scraping measures and access restricted content.
+This package provides modular, configurable enhancements for the JustNews crawler to improve resilience against anti-
+scraping measures and access restricted content.
 
 ## Overview
 
@@ -8,13 +9,13 @@ The crawler enhancements include five main components:
 
 1. **Modal Handler** - Detects and removes consent overlays, cookie banners, and sign-in modals
 
-2. **Paywall Detector** - Identifies paywalled content and provides metadata for filtering
+1. **Paywall Detector** - Identifies paywalled content and provides metadata for filtering
 
-3. **User Agent Rotation** - Rotates user agents for browser fingerprinting evasion
+1. **User Agent Rotation** - Rotates user agents for browser fingerprinting evasion
 
-4. **Proxy Manager** - Manages proxy pools for IP diversity and anti-detection
+1. **Proxy Manager** - Manages proxy pools for IP diversity and anti-detection
 
-5. **Stealth Browser** - Applies stealth headers and browser simulation techniques
+1. **Stealth Browser** - Applies stealth headers and browser simulation techniques
 
 ## Architecture
 
@@ -75,13 +76,15 @@ Enhancements are configured through the `crawling.enhancements` section of `conf
     }
   }
 }
+
 ```
 
 ## Components
 
 ### Modal Handler
 
-**Purpose**: Detects and removes consent overlays, cookie banners, and sign-in modals that interfere with content extraction.
+**Purpose**: Detects and removes consent overlays, cookie banners, and sign-in modals that interfere with content
+extraction.
 
 **Features**:
 
@@ -94,6 +97,7 @@ Enhancements are configured through the `crawling.enhancements` section of `conf
 - Modal detection logging
 
 **Usage**:
+
 ```python
 from agents.crawler.enhancements import ModalHandler
 
@@ -102,7 +106,9 @@ result = handler.process(html_content)
 clean_html = result.cleaned_html
 
 ## Apply cookies to session
+
 session.cookies.update(result.applied_cookies)
+
 ```
 
 ### Paywall Detector
@@ -120,6 +126,7 @@ session.cookies.update(result.applied_cookies)
 - Article metadata annotation
 
 **Usage**:
+
 ```python
 from agents.crawler.enhancements import PaywallDetector
 
@@ -132,6 +139,7 @@ result = await detector.analyze(
 
 if result.should_skip:
     print(f"Skipping paywalled article: {result.reasons}")
+
 ```
 
 ### User Agent Rotation
@@ -149,6 +157,7 @@ if result.should_skip:
 - Fallback to default user agents
 
 **Usage**:
+
 ```python
 from agents.crawler.enhancements import UserAgentProvider
 
@@ -158,6 +167,7 @@ provider = UserAgentProvider(
 )
 
 ua = provider.choose(domain="example.com")
+
 ```
 
 ### Proxy Manager
@@ -175,6 +185,7 @@ ua = provider.choose(domain="example.com")
 - Automatic failure recovery
 
 **Usage**:
+
 ```python
 from agents.crawler.enhancements import ProxyManager
 
@@ -182,7 +193,9 @@ manager = ProxyManager(["http://proxy1:8080", "http://proxy2:8080"])
 proxy = manager.next_proxy()
 
 ## Use with requests
+
 response = requests.get(url, proxies={"http": proxy.url, "https": proxy.url})
+
 ```
 
 ### Stealth Browser
@@ -200,6 +213,7 @@ response = requests.get(url, proxies={"http": proxy.url, "https": proxy.url})
 - Profile-based header injection
 
 **Usage**:
+
 ```python
 from agents.crawler.enhancements import StealthBrowserFactory
 
@@ -213,13 +227,16 @@ factory = StealthBrowserFactory(profiles=[{
 profile = factory.random_profile()
 
 ## Apply to request headers
+
 headers = profile.headers.copy()
 headers["User-Agent"] = profile.user_agent
+
 ```
 
 ## Integration
 
-Enhancements are automatically integrated into the `CrawlerEngine` and `GenericSiteCrawler` when enabled in configuration. The crawler engine instantiates helpers based on config and passes them to crawlers.
+Enhancements are automatically integrated into the `CrawlerEngine` and `GenericSiteCrawler` when enabled in
+configuration. The crawler engine instantiates helpers based on config and passes them to crawlers.
 
 ### Manual Integration
 
@@ -236,6 +253,7 @@ config = get_crawling_config()
 enhancements = config.enhancements
 
 ## Instantiate helpers conditionally
+
 helpers = {}
 if enhancements.enable_modal_handler:
     helpers['modal_handler'] = ModalHandler(consent_cookie=enhancements.consent_cookie)
@@ -248,9 +266,11 @@ if enhancements.enable_paywall_detector:
 ## ... other helpers
 
 ## Use in crawler logic
+
 if 'modal_handler' in helpers:
     result = helpers['modal_handler'].process(html)
     html = result.cleaned_html
+
 ```
 
 ## Error Handling
@@ -278,13 +298,17 @@ All enhancements include comprehensive error handling:
 ## Testing
 
 Run enhancement tests:
+
 ```bash
 python -m pytest tests/agents/crawler/test_enhancements.py -v
+
 ```
 
 Test crawler integration:
+
 ```bash
 python -m pytest tests/agents/crawler/test_generic_site_crawler.py -v
+
 ```
 
 ## Troubleshooting
@@ -293,21 +317,25 @@ python -m pytest tests/agents/crawler/test_generic_site_crawler.py -v
 
 1. **Modal handler not working**: Check consent cookie configuration matches site requirements
 
-2. **Paywall detection false positives**: Adjust confidence thresholds or disable remote analysis
+1. **Paywall detection false positives**: Adjust confidence thresholds or disable remote analysis
 
-3. **Proxy failures**: Verify proxy URLs are accessible and properly formatted
+1. **Proxy failures**: Verify proxy URLs are accessible and properly formatted
 
-4. **User agent issues**: Ensure user agents are current and site-compatible
+1. **User agent issues**: Ensure user agents are current and site-compatible
 
 ### Debugging
 
 Enable debug logging:
+
 ```bash
 export LOG_LEVEL=DEBUG
+
 ```
 
 Check crawler logs for enhancement-specific messages:
+
 ```bash
 tail -f agents/crawler/crawler_engine.log | grep -i enhancement
+
 ```</content>
-<parameter name="filePath">/home/adra/JustNewsAgent-Clean/agents/crawler/enhancements/README.md
+<parameter name="filePath">/home/adra/JustNewsAgent- Clean/agents/crawler/enhancements/README.md

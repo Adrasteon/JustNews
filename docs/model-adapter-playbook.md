@@ -2,15 +2,27 @@
 
 This document captures the design, implementation checklist, and rollout plan for model adapters in the JustNews stack.
 
-Status (short): a shared Mistral adapter wrapper and per-agent adapters are implemented, engines have been wired to use the shared wrapper, dry-run friendly tests have been added, and a PR-level CI workflow now runs the adapter dry-run tests inside the canonical conda environment (${CANONICAL_ENV:-justnews-py312}). Adapter unit tests were recently hardened to assert on behavior (rather than backend-specific SQL traces) so that future adapters stay backend-agnostic. Option A kicked off: `agents/common/adapter_base.py` now exposes helper dataclasses/utilities (`AdapterResult`, `AdapterMetadata`, `AdapterHealth`, `AdapterError`) plus lifecycle helpers, and `agents/common/mock_adapter.py` is the canonical configurable mock used by new/legacy tests. Option C landed: `agents/common/hf_adapter.py` now loads ModelStore or local checkpoints, supports optional int8/int4 quantization, device-map selection, and dry-run safe generation defaults. Option B landed: `agents/common/openai_adapter.py` now exposes configurable prompts, temperature/max token controls, retries/backoff, dry-run short-circuiting, and health/metadata wiring consistent with BaseAdapter.
+Status (short): a shared Mistral adapter wrapper and per-agent adapters are implemented, engines have been wired to use
+the shared wrapper, dry-run friendly tests have been added, and a PR-level CI workflow now runs the adapter dry-run
+tests inside the canonical conda environment (${CANONICAL_ENV:-justnews-py312}). Adapter unit tests were recently
+hardened to assert on behavior (rather than backend-specific SQL traces) so that future adapters stay backend-agnostic.
+Option A kicked off: `agents/common/adapter_base.py` now exposes helper dataclasses/utilities (`AdapterResult`,
+`AdapterMetadata`, `AdapterHealth`, `AdapterError`) plus lifecycle helpers, and `agents/common/mock_adapter.py` is the
+canonical configurable mock used by new/legacy tests. Option C landed: `agents/common/hf_adapter.py` now loads
+ModelStore or local checkpoints, supports optional int8/int4 quantization, device-map selection, and dry-run safe
+generation defaults. Option B landed: `agents/common/openai_adapter.py` now exposes configurable prompts,
+temperature/max token controls, retries/backoff, dry-run short-circuiting, and health/metadata wiring consistent with
+BaseAdapter.
 
-It was recorded from an interactive plan created while working in branch `dev/live-run-tests` and includes a recommended minimal spec, templates, testing and CI suggestions, runtime considerations and next-step options.
+It was recorded from an interactive plan created while working in branch `dev/live-run-tests` and includes a recommended
+minimal spec, templates, testing and CI suggestions, runtime considerations and next-step options.
 
 ---
 
 ## 1) What an adapter is
 
-An *adapter* is a small, well-tested component that abstracts a model provider implementation behind a stable interface. It should:
+An *adapter* is a small, well-tested component that abstracts a model provider implementation behind a stable interface.
+It should:
 
 - hide provider-specific plumbing (OpenAI, HF, local onnx, bitsandbytes)
 
@@ -40,7 +52,10 @@ Implement a BaseAdapter with these methods (minimal contract):
 
 - metadata(self) -> dict  # name, version, device, capacity
 
-Notes for Mistral-style / JSON-centric adapters: per-agent Mistral helpers in this repo also expose convenience methods (summarize_cluster, classify, review, evaluate_claim, generate_story_brief, analyze, review_content) which standardize JSON responses for downstream engines. Those extra methods are optional for the generic BaseAdapter, but recommended for agent adapters that produce structured JSON.
+Notes for Mistral-style / JSON-centric adapters: per-agent Mistral helpers in this repo also expose convenience methods
+(summarize_cluster, classify, review, evaluate_claim, generate_story_brief, analyze, review_content) which standardize
+JSON responses for downstream engines. Those extra methods are optional for the generic BaseAdapter, but recommended for
+agent adapters that produce structured JSON.
 
 Behavioral details:
 
@@ -76,11 +91,11 @@ Where the repo stands now (examples):
 
    - Add `agents/common/adapter_base.py` and `docs/adapter_spec.md` with the lifecycle and config.
 
-2. Template & Mock
+1. Template & Mock
 
    - Create `MockAdapter` that returns deterministic outputs and supports simulated latency/failures. The repo already contains dry-run test helpers and per-agent mocks for JSON shapes; make `agents/common/mock_adapter.py` a canonical mock implementation to reuse across agent tests and CI if you pick option A below.
 
-3. Implement one real adapter
+1. Implement one real adapter
 
    - Option A: OpenAI (fastest — needs API key)
 
@@ -88,7 +103,7 @@ Where the repo stands now (examples):
 
    - Option C: litellm or other hosted adapters already in the stack
 
-4. Testing (what's in place and what to add)
+1. Testing (what's in place and what to add)
 
    - Already added: dry-run focused adapter tests in `tests/adapters/test_mistral_adapter.py` and per-agent dry-run engine tests (e.g. `tests/agents/test_*_mistral_engine.py`). These run safely inside the canonical conda env using the project wrapper `scripts/dev/run_pytest_conda.sh`.
 
@@ -96,13 +111,13 @@ Where the repo stands now (examples):
 
    - Additional recommendations: add `tests/adapters/test_mock_adapter.py` and `tests/adapters/test_base.py` for the BaseAdapter + MockAdapter once created, and include smoke fixtures that exercise JSON schema stability so prompt-schema drift is caught by CI.
 
-5. Integrate with orchestrator
+1. Integrate with orchestrator
 
    - Update `AGENT_MODEL_MAP.json` for mapping
 
    - Add orchestrator logic to schedule adapter.load/unload per GPU plan
 
-6. CI & Canary flows
+1. CI & Canary flows
 
    - Add GH job running adapter unit tests and mock smoke-suite.
 
@@ -122,11 +137,14 @@ class BaseAdapter:
         raise NotImplementedError
     def unload(self) -> None:
         raise NotImplementedError
+
 ```
 
-OpenAI adapter (brief): wrap the official SDK, add retry/backoff and timeouts, return normalized dicts containing text, tokens and raw response.
+OpenAI adapter (brief): wrap the official SDK, add retry/backoff and timeouts, return normalized dicts containing text,
+tokens and raw response.
 
-HuggingFace adapter (brief): use transformers + accelerate + bitsandbytes optionally; support load/unload to/from GPU; provide batch_infer and streaming options if needed.
+HuggingFace adapter (brief): use transformers + accelerate + bitsandbytes optionally; support load/unload to/from GPU;
+provide batch_infer and streaming options if needed.
 
 ## 5) Testing & CI plan
 
@@ -167,7 +185,8 @@ Adapter telemetry — recommendations
 
   - `<adapter>_infer_errors` (counter) — inference error counts
 
-  In this repo we expose these through the existing metrics helper by using `metrics.timing("<name>", value)` and `metrics.increment("<name>")`. The metrics helper prefixes them with `justnews_custom_*` in Prometheus.
+In this repo we expose these through the existing metrics helper by using `metrics.timing("<name>", value)` and
+`metrics.increment("<name>")`. The metrics helper prefixes them with `justnews_custom_*` in Prometheus.
 
 - Grafana dashboard (included): `docs/grafana/adapters-dashboard.json` — import this into Grafana (or use the dashboard UID `justnews-adapter-telemetry`) to visualize adapter latency p95, success/error rates and latency distributions across adapters.
 
@@ -185,9 +204,9 @@ How to wire into monitoring:
 
 1. Add the `docs/monitoring/adapter-alert-rules.yml` group into your Prometheus configuration (additional rule files) and reload Prometheus or restart the server.
 
-2. Import `docs/grafana/adapters-dashboard.json` into Grafana (Dashboard -> Import -> Upload JSON, or use provisioning).
+1. Import `docs/grafana/adapters-dashboard.json` into Grafana (Dashboard -> Import -> Upload JSON, or use provisioning).
 
-3. Tune thresholds as needed for your environment (p95 thresholds are a starting point — heavy models may require higher thresholds). Consider adding per-environment overrides (staging vs production).
+1. Tune thresholds as needed for your environment (p95 thresholds are a starting point — heavy models may require higher thresholds). Consider adding per-environment overrides (staging vs production).
 
 Suggested on-call actions for alerts:
 
@@ -201,17 +220,18 @@ Suggested on-call actions for alerts:
 
 1. Mock adapter + CI tests
 
-2. OpenAI adapter POC for rapid validation
+1. OpenAI adapter POC for rapid validation
 
-3. HF-local adapter for cost control (quantized bnb) + orchestrator integration
+1. HF-local adapter for cost control (quantized bnb) + orchestrator integration
 
-4. Integration tests & canary e2e runs
+1. Integration tests & canary e2e runs
 
-5. Production gating and human-in-loop + rollout
+1. Production gating and human-in-loop + rollout
 
 ## 9) Next immediate steps (pick one)
 
-Notes: a lot of the Mistral-focused infra is implemented already (shared wrapper, per-agent helpers, dry-run tests, CI hook). The most valuable next small projects are:
+Notes: a lot of the Mistral-focused infra is implemented already (shared wrapper, per-agent helpers, dry-run tests, CI
+hook). The most valuable next small projects are:
 
 - A — Create `agents/common/adapter_base.py` & `agents/common/mock_adapter.py`, add `tests/adapters/test_base.py` and `tests/adapters/test_mock_adapter.py`. This will make adapter testing and cross-agent unit tests simpler and more consistent. (Recommended / quick win.)
 
@@ -237,20 +257,20 @@ Other nice-to-have follow-ups:
 
 - Document the adapter spec in `docs/adapter_spec.md` and add a quick developer recipe for adding/validating a new per-agent adapter (how to stub JSON shapes, how to wire `AGENT_MODEL_MAP.json`, how to test in dry-run + canonical conda env).
 
----
-If you'd like I can start with A (base + mock + tests) immediately on branch `dev/live-run-tests` and push the initial artifacts.
-If you'd like I can start with A (base + mock + tests) immediately on branch `dev/live-run-tests` and push the initial artifacts.
+--- If you'd like I can start with A (base + mock + tests) immediately on branch `dev/live-run-tests` and push the
+initial artifacts. If you'd like I can start with A (base + mock + tests) immediately on branch `dev/live-run-tests` and
+push the initial artifacts.
 
 ## 10) Near-term execution checklist (Dec 2025 refresh)
 
 1. ✅ **Finalize adapter base & mock (Option A)** — done Dec 2, 2025. `agents/common/adapter_base.py` now includes helper dataclasses, lifecycle utilities, and behavior-focused defaults; `agents/common/mock_adapter.py` exposes deterministic responses, forced-failure hooks, and richer health metadata. Corresponding tests live in `tests/adapters/test_adapter_base.py` and `tests/adapters/test_mock_adapter.py`.
 
-2. ✅ **Document adapter spec** — updated `docs/adapter_spec.md` with a developer recipe detailing how to add adapters (templates, dry-run guidance, testing, CI steps) so contributors follow the shared contract.
+1. ✅ **Document adapter spec** — updated `docs/adapter_spec.md` with a developer recipe detailing how to add adapters (templates, dry-run guidance, testing, CI steps) so contributors follow the shared contract.
 
-3. ✅ **Broaden CI coverage** — `.github/workflows/mistral-dryrun-tests.yml` now executes the entire `tests/adapters/` suite (plus the existing Mistral agent dry-run tests) inside `${CANONICAL_ENV:-justnews-py312}` ensuring new adapters are automatically covered.
+1. ✅ **Broaden CI coverage** — `.github/workflows/mistral-dryrun-tests.yml` now executes the entire `tests/adapters/` suite (plus the existing Mistral agent dry-run tests) inside `${CANONICAL_ENV:-justnews-py312}` ensuring new adapters are automatically covered.
 
-4. ✅ **Provider expansion (Option C)** — `agents/common/hf_adapter.py` now loads HF/ModelStore checkpoints, handles dry-run placeholders, supports optional int8/int4 quantization, exposes configurable generation defaults, and is covered by `tests/adapters/test_hf_adapter*.py` plus integration smoke tests.
+1. ✅ **Provider expansion (Option C)** — `agents/common/hf_adapter.py` now loads HF/ModelStore checkpoints, handles dry-run placeholders, supports optional int8/int4 quantization, exposes configurable generation defaults, and is covered by `tests/adapters/test_hf_adapter*.py` plus integration smoke tests.
 
-5. ✅ **Provider expansion (Option B)** — `agents/common/openai_adapter.py` now wraps hosted OpenAI calls with configurable system prompt/temperature/max tokens, dry-run simulation, retries/backoff, metrics hooks, and is exercised by `tests/adapters/test_openai_adapter*.py` plus gated integration tests.
+1. ✅ **Provider expansion (Option B)** — `agents/common/openai_adapter.py` now wraps hosted OpenAI calls with configurable system prompt/temperature/max tokens, dry-run simulation, retries/backoff, metrics hooks, and is exercised by `tests/adapters/test_openai_adapter*.py` plus gated integration tests.
 
 This ordering keeps the focus on testability first, then documentation, then provider breadth.

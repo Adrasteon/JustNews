@@ -20,9 +20,13 @@
 
 ## Summary
 
-This document defines the workflow, implementation plan, and acceptance criteria for the `feat/article_creation` branch. The goal is to implement a robust pipeline that synthesizes unbiased, traceable articles from clustered articles, runs the result through a Critic and Fact-checker, optionally performs HITL review, and publishes approved articles to the JustNews website.
+This document defines the workflow, implementation plan, and acceptance criteria for the `feat/article_creation` branch.
+The goal is to implement a robust pipeline that synthesizes unbiased, traceable articles from clustered articles, runs
+the result through a Critic and Fact-checker, optionally performs HITL review, and publishes approved articles to the
+JustNews website.
 
-We aim to implement an MVP with safe defaults and meaningful tests, followed by incremental improvements and additional integrations.
+We aim to implement an MVP with safe defaults and meaningful tests, followed by incremental improvements and additional
+integrations.
 
 ---
 
@@ -36,7 +40,8 @@ We aim to implement an MVP with safe defaults and meaningful tests, followed by 
 
 - Feature flags to prevent automatic publishing in production by default.
 
-Out of scope (for this branch): full HITL UX polishing, advanced retraining integrations, or complex multi-agent coordination beyond the basic flow.
+Out of scope (for this branch): full HITL UX polishing, advanced retraining integrations, or complex multi-agent
+coordination beyond the basic flow.
 
 ---
 
@@ -44,21 +49,21 @@ Out of scope (for this branch): full HITL UX polishing, advanced retraining inte
 
 1. (Trigger) A `SYNTHESIZE_CLUSTER` job is created (API, scheduled job, or agent event).
 
-2. `ClusterFetcher` queries Chroma and MariaDB to collect and deduplicate the articles for the cluster.
+1. `ClusterFetcher` queries Chroma and MariaDB to collect and deduplicate the articles for the cluster.
 
-3. `Analyst` agent analyzes the fetched articles and the cluster for language, sentiment, bias, entity extraction, and other scoring metadata used to influence synthesis and for traceability.
+1. `Analyst` agent analyzes the fetched articles and the cluster for language, sentiment, bias, entity extraction, and other scoring metadata used to influence synthesis and for traceability.
 
-4. Per-article Fact-check (MANDATORY): For each article in the cluster, run a per-article fact-check to validate claims, collect evidence, and store a `source_fact_check` result. These results are stored in `source_fact_checks` and are used to influence further planning.
+1. Per-article Fact-check (MANDATORY): For each article in the cluster, run a per-article fact-check to validate claims, collect evidence, and store a `source_fact_check` result. These results are stored in `source_fact_checks` and are used to influence further planning.
 
-5. `Reasoning` agent builds a `reasoning_plan` from the `AnalysisReport` and `source_fact_checks`. The plan prioritizes sources/claims, proposes a structure and sections for inclusion, and identifies excluded or flagged content.
+1. `Reasoning` agent builds a `reasoning_plan` from the `AnalysisReport` and `source_fact_checks`. The plan prioritizes sources/claims, proposes a structure and sections for inclusion, and identifies excluded or flagged content.
 
-6. `SynthesisService` synthesizes a draft article using a model/prompt template and the `reasoning_plan`, and returns a structured `DraftArticle` object containing: `title`, `body`, `summary`, `quotes`, `source_ids`, `trace`, and an `analysis_summary`.
+1. `SynthesisService` synthesizes a draft article using a model/prompt template and the `reasoning_plan`, and returns a structured `DraftArticle` object containing: `title`, `body`, `summary`, `quotes`, `source_ids`, `trace`, and an `analysis_summary`.
 
-7. Save draft to MariaDB (or `synthesized_articles` table); generate embedding and store in Chroma.
+1. Save draft to MariaDB (or `synthesized_articles` table); generate embedding and store in Chroma.
 
-8. Send draft to `Critic` agent for assertions and policy checks; capture `critic_result`.
+1. Send draft to `Critic` agent for assertions and policy checks; capture `critic_result`.
 
-9. Post-synthesis Draft Fact-check (MANDATORY): Run the fact-checker against the synthesized draft to validate any newly generated claims or paraphrased claims. Capture a `draft_fact_check_status` and `draft_fact_check_trace` for the synthesized content. Draft-level `failed` blocks publishing; `needs_review` requires HITL.
+1. Post-synthesis Draft Fact-check (MANDATORY): Run the fact-checker against the synthesized draft to validate any newly generated claims or paraphrased claims. Capture a `draft_fact_check_status` and `draft_fact_check_trace` for the synthesized content. Draft-level `failed` blocks publishing; `needs_review` requires HITL.
 
 - Implementation note (new): The `SynthesisService` now calls `Analyst.generate_analysis_report()` on the synthesized draft immediately after synthesis. If the returned `source_fact_check.fact_check_status` is `failed`, the synthesis call returns an error `draft_fact_check_failed` and includes the `analysis_report` for auditing. If the status is `needs_review`, the call returns `draft_fact_check_needs_review` to force HITL intervention.
 
@@ -95,11 +100,16 @@ The Dashboard provides a small admin UI for runtime control over publishing and 
 Example payload for `POST /admin/set_publishing_config`:
 
 ```
+
 POST /admin/set_publishing_config
 { "require_draft_fact_check_pass_for_publish": true, "chief_editor_review_required": false, "synthesized_article_storage": "extend" }
+
 ```
 
-Security: This admin API writes to runtime configuration; in production you must restrict access (API key or internal network only) since it toggles what articles can be auto-published. The Dashboard supports `ADMIN_API_KEY` for legacy deployments but prefers JWTs issued by `agents/common/auth_api` (set `role=admin`). See `tests/agents/dashboard/test_admin_jwt_auth.py` for automated checks.
+Security: This admin API writes to runtime configuration; in production you must restrict access (API key or internal
+network only) since it toggles what articles can be auto-published. The Dashboard supports `ADMIN_API_KEY` for legacy
+deployments but prefers JWTs issued by `agents/common/auth_api` (set `role=admin`). See
+`tests/agents/dashboard/test_admin_jwt_auth.py` for automated checks.
 
 Tests were added/updated:
 
@@ -109,13 +119,17 @@ Tests were added/updated:
 
 - `tests/agents/dashboard/test_public_website_template.py` — updated to ensure the new UI elements are present
 
-UI visibility: The Dashboard page is served from `/` in the dashboard agent. When running locally in tests, `JUSTNEWS_ENABLE_PUBLIC_API=1` is set to expose the public website helpers. For production deployments you should evaluate whether the admin UI should remain accessible publicly. If you need to protect runtime operations in a multi-replica environment prefer per-user role-based JWTs and short-lived service tokens rather than a long-lived `ADMIN_API_KEY`.
+UI visibility: The Dashboard page is served from `/` in the dashboard agent. When running locally in tests,
+`JUSTNEWS_ENABLE_PUBLIC_API=1` is set to expose the public website helpers. For production deployments you should
+evaluate whether the admin UI should remain accessible publicly. If you need to protect runtime operations in a multi-
+replica environment prefer per-user role-based JWTs and short-lived service tokens rather than a long-lived
+`ADMIN_API_KEY`.
 
-10. If the Critic or draft-level FactChecker returns `failed` or a `needs_review` result, escalate to HITL or mark `needs_revision` and update metadata. No auto-publish on `failed`.
+1. If the Critic or draft-level FactChecker returns `failed` or a `needs_review` result, escalate to HITL or mark `needs_revision` and update metadata. No auto-publish on `failed`.
 
-11. When the draft passes Critic and draft FactChecker and `CHIEF_EDITOR_REVIEW_REQUIRED` is `false`, auto-publish; otherwise enqueue for Chief Editor review in the `chief_editor` agent workflow.
+1. When the draft passes Critic and draft FactChecker and `CHIEF_EDITOR_REVIEW_REQUIRED` is `false`, auto-publish; otherwise enqueue for Chief Editor review in the `chief_editor` agent workflow.
 
-12. On publishing: set `is_published=true`, record `published_at` and `published_by`, and update Chroma and the content hosting index.
+1. On publishing: set `is_published=true`, record `published_at` and `published_by`, and update Chroma and the content hosting index.
 
 ---
 
@@ -141,7 +155,9 @@ Migrations (implemented):
 
 - `database/migrations/005_create_synthesized_articles_table.sql` — creates a dedicated `synthesized_articles` table for Option B.
 
-Why both? Support both models in the codebase for flexibility — the `SynthesisService` will select a persistence strategy via `SYSTEM_CONFIG` (feature flag) so operators can choose "extend" vs "new table" when deploying. Tests validate both models (see tests under `tests/database/`).
+Why both? Support both models in the codebase for flexibility — the `SynthesisService` will select a persistence
+strategy via `SYSTEM_CONFIG` (feature flag) so operators can choose "extend" vs "new table" when deploying. Tests
+validate both models (see tests under `tests/database/`).
 
 MVP Recommendation: Extend the `articles` table with the following new fields to keep minimal migration surface.
 
@@ -452,7 +468,10 @@ Acceptance criteria for Reasoning:
 - If Critic indicates `block` severity, set `status=needs_revision` and optionally escalate to HITL.
 ## Fact-Checker: Implementation & Challenges (MANDATORY)
 
-Fact-checking is mandatory and is the most critical and technically challenging component in this workflow. The fact-checker validates claims in the synthesized draft and verifies any content that would materially affect the reader’s understanding. This component must be robust, auditable, and tuned for a low false-positive rate while prioritizing safety and correctness.
+Fact-checking is mandatory and is the most critical and technically challenging component in this workflow. The fact-
+checker validates claims in the synthesized draft and verifies any content that would materially affect the reader’s
+understanding. This component must be robust, auditable, and tuned for a low false-positive rate while prioritizing
+safety and correctness.
 
 Responsibilities:
 

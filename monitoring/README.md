@@ -2,7 +2,9 @@
 
 ## Executive Summary
 
-This document outlines the design for a comprehensive observability platform that will replace the current fragmented monitoring setup with a unified, production-ready system supporting centralized logging, advanced metrics collection, distributed tracing, and real-time monitoring dashboards.
+This document outlines the design for a comprehensive observability platform that will replace the current fragmented
+monitoring setup with a unified, production-ready system supporting centralized logging, advanced metrics collection,
+distributed tracing, and real-time monitoring dashboards.
 
 ## Current State Assessment
 
@@ -39,6 +41,7 @@ This document outlines the design for a comprehensive observability platform tha
 ### Core Components
 
 #### 1. Centralized Logging System (`core/`) - **✅ COMPLETED**
+
 **Purpose**: Structured logging aggregation with search, retention, and compliance features
 
 **Components**:
@@ -74,6 +77,7 @@ This document outlines the design for a comprehensive observability platform tha
 - ✅ Automated baseline updates and alerting
 
 #### 2. Enhanced Metrics Collection (`metrics/`)
+
 **Purpose**: Comprehensive metrics collection with custom metrics and performance monitoring
 
 **Components**:
@@ -101,6 +105,7 @@ This document outlines the design for a comprehensive observability platform tha
 - Automated alerting based on metric thresholds
 
 #### Distributed Tracing System (`monitoring/refactor/core/`)
+
 **Status**: **FULLY IMPLEMENTED** - October 22, 2025
 
 **Files Created**:
@@ -150,6 +155,7 @@ This document outlines the design for a comprehensive observability platform tha
 - Scalability: Supports 1000+ concurrent traces
 
 #### 4. Advanced Dashboards (`dashboards/`)
+
 **Purpose**: Real-time monitoring dashboards with advanced visualization and alerting
 
 **Components**:
@@ -177,6 +183,7 @@ This document outlines the design for a comprehensive observability platform tha
 - Integration with incident management systems
 
 #### 5. Performance Profiling (`profiling/`)
+
 **Purpose**: Detailed performance analysis and bottleneck identification
 
 **Components**:
@@ -204,6 +211,7 @@ This document outlines the design for a comprehensive observability platform tha
 - Capacity planning and scaling recommendations
 
 #### 6. Compliance Monitoring (`compliance/`)
+
 **Purpose**: Regulatory compliance monitoring and audit logging
 
 **Components**:
@@ -243,12 +251,15 @@ This document outlines the design for a comprehensive observability platform tha
 - **Traffic Monitoring**: Request routing and load balancing observability
 
 #### Data Flow Architecture
+
 ```
+
 Agents → Metrics Collectors → Prometheus → Grafana Dashboards
     ↓         ↓                    ↓
 Logs → Log Aggregator → Elasticsearch → Kibana Dashboards
     ↓         ↓                    ↓
 Traces → Trace Collector → Jaeger → Trace Analysis Tools
+
 ```
 
 #### Storage Architecture
@@ -267,37 +278,38 @@ Traces → Trace Collector → Jaeger → Trace Analysis Tools
 
 1. **✅ Centralized Logging**: Implement structured logging and basic aggregation - **COMPLETED**
 
-2. **✅ Enhanced Metrics**: Extend metrics collection with custom business metrics - **COMPLETED**
+1. **✅ Enhanced Metrics**: Extend metrics collection with custom business metrics - **COMPLETED**
 
-3. **✅ Distributed Tracing**: Implement OpenTelemetry tracing foundation - **COMPLETED**
+1. **✅ Distributed Tracing**: Implement OpenTelemetry tracing foundation - **COMPLETED**
 
-4. **Advanced Dashboards**: Upgrade existing dashboards with real-time features
+1. **Advanced Dashboards**: Upgrade existing dashboards with real-time features
 
 ### Phase 2: Advanced Features (Weeks 3-4)
 
 1. **✅ Distributed Tracing**: Full end-to-end tracing implementation - **COMPLETED**
 
-2. **Advanced Dashboards**: Create executive and operational dashboards
+1. **Advanced Dashboards**: Create executive and operational dashboards
 
-3. **Performance Profiling**: Implement profiling tools and bottleneck analysis
+1. **Performance Profiling**: Implement profiling tools and bottleneck analysis
 
-4. **Compliance Monitoring**: Add compliance logging and monitoring
+1. **Compliance Monitoring**: Add compliance logging and monitoring
 
 ### Phase 3: Production Optimization (Weeks 5-6)
 
 1. **Service Mesh Integration**: Implement Istio service mesh
 
-2. **Automated Alerting**: Implement predictive and anomaly-based alerting
+1. **Automated Alerting**: Implement predictive and anomaly-based alerting
 
-3. **Performance Optimization**: Automated performance monitoring and optimization
+1. **Performance Optimization**: Automated performance monitoring and optimization
 
-4. **Compliance Automation**: Full compliance automation and reporting
+1. **Compliance Automation**: Full compliance automation and reporting
 
 ## Current Implementation Status
 
 ### ✅ **Completed Components**
 
 #### Centralized Logging System (`monitoring/refactor/core/`)
+
 **Status**: **FULLY IMPLEMENTED AND TESTED** - October 22, 2025
 
 **Files Created**:
@@ -347,6 +359,7 @@ Traces → Trace Collector → Jaeger → Trace Analysis Tools
 - Memory usage: Configurable buffering with automatic cleanup
 
 #### Enhanced Metrics Collection System (`monitoring/refactor/core/`)
+
 **Status**: **FULLY IMPLEMENTED AND TESTED** - October 22, 2025
 
 **Files Created**:
@@ -396,6 +409,7 @@ Traces → Trace Collector → Jaeger → Trace Analysis Tools
 - Scalability: Supports 1000+ concurrent metric streams
 
 #### GPU Monitoring System
+
 **Status**: **FULLY IMPLEMENTED AND OPERATIONAL** - November 5, 2025
 
 **Components**:
@@ -453,6 +467,7 @@ Traces → Trace Collector → Jaeger → Trace Analysis Tools
 - Update frequency: Real-time (5-second intervals)
 
 #### Advanced JustNews Operations Dashboard
+
 **Status**: **FULLY IMPLEMENTED AND ENHANCED** - November 5, 2025
 
 **Dashboard Features**:
@@ -479,12 +494,15 @@ Traces → Trace Collector → Jaeger → Trace Analysis Tools
 
 - **Application Health**: Active connections, errors, request duration
 
-**Dashboard URL**: `http://127.0.0.1:3000/d/ef37elu2756o0e/justnews-operations-dashboard`
+**Dashboard URL**: `http://127.0.0.1:3000/d/ef37elu2756o0e/justnews-operations- dashboard`
 
 #### OpenTelemetry Collectors Dashboard
+
 **Status**: **Paused - November 26, 2025**
 
-The dedicated OTEL collector dashboard has been removed from the Grafana provisioning bundle while we disable OTLP metrics forwarding (pending a revised remote_write plan). Re-enable the OTEL metrics pipelines and regenerate the dashboard when we're ready to revisit collector telemetry.
+The dedicated OTEL collector dashboard has been removed from the Grafana provisioning bundle while we disable OTLP
+metrics forwarding (pending a revised remote_write plan). Re-enable the OTEL metrics pipelines and regenerate the
+dashboard when we're ready to revisit collector telemetry.
 
 ### 🔄 **Next Priority: Advanced Dashboards & Visualization**
 
@@ -570,21 +588,21 @@ The dedicated OTEL collector dashboard has been removed from the Grafana provisi
 
 1. **Parallel Operation**: Run new and old systems in parallel during migration
 
-2. **Incremental Rollout**: Migrate one agent/service at a time
+1. **Incremental Rollout**: Migrate one agent/service at a time
 
-3. **Feature Flags**: Use feature flags to enable new observability features
+1. **Feature Flags**: Use feature flags to enable new observability features
 
-4. **Rollback Plan**: Maintain ability to rollback to old system if needed
+1. **Rollback Plan**: Maintain ability to rollback to old system if needed
 
 ### Data Migration
 
 1. **Metrics Migration**: Export existing Prometheus metrics and import into new system
 
-2. **Log Migration**: Migrate existing logs to new centralized logging system
+1. **Log Migration**: Migrate existing logs to new centralized logging system
 
-3. **Configuration Migration**: Migrate alert rules and dashboard configurations
+1. **Configuration Migration**: Migrate alert rules and dashboard configurations
 
-4. **Validation**: Comprehensive testing to ensure data integrity during migration
+1. **Validation**: Comprehensive testing to ensure data integrity during migration
 
 ## Risk Assessment
 
@@ -608,6 +626,10 @@ The dedicated OTEL collector dashboard has been removed from the Grafana provisi
 
 ## Conclusion
 
-The unified observability platform will transform JustNews monitoring from basic service health checks to comprehensive, real-time observability with advanced analytics, automated alerting, and compliance monitoring. This platform will enable proactive issue detection, faster debugging, and data-driven performance optimization while ensuring regulatory compliance.
+The unified observability platform will transform JustNews monitoring from basic service health checks to comprehensive,
+real-time observability with advanced analytics, automated alerting, and compliance monitoring. This platform will
+enable proactive issue detection, faster debugging, and data-driven performance optimization while ensuring regulatory
+compliance.
 
-The phased implementation approach ensures minimal disruption while building a robust, scalable observability foundation for production operations.
+The phased implementation approach ensures minimal disruption while building a robust, scalable observability foundation
+for production operations.

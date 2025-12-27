@@ -1,8 +1,5 @@
----
-title: "Stage B Validation Ticket Template"
-description: "Template for tracking Stage B ingestion validation in the ops ticketing system."
-tags: ["stage-b", "ops", "ticket-template"]
----
+--- title: "Stage B Validation Ticket Template" description: "Template for tracking Stage B ingestion validation in the
+ops ticketing system." tags: ["stage-b", "ops", "ticket-template"] ---
 
 # Stage B Validation Ticket Template
 
@@ -28,15 +25,15 @@ tags: ["stage-b", "ops", "ticket-template"]
 
 1. Apply migration 003 to target database.
 
-2. Enable `justnews-crawl-scheduler.timer` and monitor first live run.
+1. Enable `justnews-crawl-scheduler.timer` and monitor first live run.
 
-3. Register Prometheus textfile exporter path for scheduler metrics.
+1. Register Prometheus textfile exporter path for scheduler metrics.
 
-4. Validate embedding counters/histogram in Prometheus scrape.
+1. Validate embedding counters/histogram in Prometheus scrape.
 
-5. Run targeted pytest suites (crawler + memory + scheduler integration).
+1. Run targeted pytest suites (crawler + memory + scheduler integration).
 
-6. Capture QA sampling notes for needs_review cohorts.
+1. Capture QA sampling notes for needs_review cohorts.
 
 ## Validation Checklist
 
@@ -57,13 +54,11 @@ tags: ["stage-b", "ops", "ticket-template"]
 - [ ] Test outputs attached (commands + timestamps).
 
 ## Evidence Log
-| Item | Evidence | Status |
-| --- | --- | --- |
-| Migration 003 | `<psql output or screenshot>` | Pending |
-| Scheduler | `journalctl -u justnews-crawl-scheduler.service -n 200` | Pending |
-| Metrics | `conda run -n ${CANONICAL_ENV:-justnews-py312} python -m pytest ...` | Pending |
-| Dashboard | `<Grafana panel link>` | Pending |
-| QA Sampling | `logs/governance/crawl_terms_audit.md` entry | Pending |
+
+| Item | Evidence | Status | | --- | --- | --- | | Migration 003 | `<psql output or screenshot>` | Pending | | Scheduler
+| `journalctl -u justnews-crawl- scheduler.service -n 200` | Pending | | Metrics | `conda run -n
+${CANONICAL_ENV:-justnews-py312} python -m pytest ...` | Pending | | Dashboard | `<Grafana panel link>` | Pending | | QA
+Sampling | `logs/governance/crawl_terms_audit.md` entry | Pending |
 
 ## Rollback Plan
 

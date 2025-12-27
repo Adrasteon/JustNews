@@ -1,6 +1,7 @@
 # Crawler Agent — Design and Interfaces
 
-This document expands the `Crawler` agent responsibilities, internal components, configuration, and sequence flows. It is intended for engineers implementing or extending crawl behavior.
+This document expands the `Crawler` agent responsibilities, internal components, configuration, and sequence flows. It
+is intended for engineers implementing or extending crawl behavior.
 
 Files of interest
 
@@ -58,13 +59,13 @@ Sequence: Crawl → HITL → Ingest (summary)
 
 1. Scheduler posts job with profile.
 
-2. `crawler_engine` determines strategy and calls adapter/runner.
+1. `crawler_engine` determines strategy and calls adapter/runner.
 
-3. Runner fetches pages; extraction pipeline produces `article` dicts.
+1. Runner fetches pages; extraction pipeline produces `article` dicts.
 
-4. For candidates, engine calls HITL service with payloads.
+1. For candidates, engine calls HITL service with payloads.
 
-5. HITL labels and (if forwarded) engine calls `memory.ingest_article` for ingestion.
+1. HITL labels and (if forwarded) engine calls `memory.ingest_article` for ingestion.
 
 Testing & acceptance
 

@@ -1,23 +1,24 @@
----
-title: Monitoring Infrastructure Analysis
-description: Analysis of Grafana/Prometheus configuration files and recommendations
-date: 2024-12-15
----
+--- title: Monitoring Infrastructure Analysis description: Analysis of Grafana/Prometheus configuration files and
+recommendations date: 2024-12-15 ---
 
 # Monitoring Infrastructure Analysis
 
 ## Summary
 
-The USB drive contains a **complete Grafana and Prometheus monitoring stack** with 5 pre-configured dashboards and integration with JustNews services. This monitoring infrastructure is **highly relevant and should be integrated** into the production systemd setup.
+The USB drive contains a **complete Grafana and Prometheus monitoring stack** with 5 pre-configured dashboards and
+integration with JustNews services. This monitoring infrastructure is **highly relevant and should be integrated** into
+the production systemd setup.
 
 ## What's on the USB Drive
 
 ### Location
+
 `/media/adra/37f1914d-e5fd-48ca-8c24-22d5f4e2e9dd/etc/justnews/monitoring/`
 
 ### Configuration Files
 
 #### 1. **grafana.ini** (537 bytes)
+
 Grafana server configuration with:
 
 - HTTP server on `0.0.0.0:3000` (all interfaces)
@@ -31,6 +32,7 @@ Grafana server configuration with:
 - Security: Anonymous access disabled, gravatar disabled
 
 #### 2. **prometheus.yml** (1.1 KB)
+
 Prometheus server configuration with:
 
 - Scrape interval: 15 seconds
@@ -53,13 +55,11 @@ Prometheus server configuration with:
 
 #### 3. **Grafana Dashboards** (5 total, 1,312 lines JSON)
 
-| Dashboard | Purpose | Lines |
-|-----------|---------|-------|
-| `system_overview_dashboard.json` | Infrastructure health (CPU, memory, network, GPU) | 461 |
-| `justnews_operations_dashboard.json` | Service health and operational metrics | 489 |
-| `business_metrics_dashboard.json` | Content processing, crawl rates, ingestion | 253 |
-| `ingest_archive_dashboard.json` | Article ingestion pipeline | 49 |
-| `parity_dashboard.json` | Extraction parity and quality metrics | 60 |
+| Dashboard | Purpose | Lines | |-----------|---------|-------| | `system_overview_dashboard.json` | Infrastructure
+health (CPU, memory, network, GPU) | 461 | | `justnews_operations_dashboard.json` | Service health and operational
+metrics | 489 | | `business_metrics_dashboard.json` | Content processing, crawl rates, ingestion | 253 | |
+`ingest_archive_dashboard.json` | Article ingestion pipeline | 49 | | `parity_dashboard.json` | Extraction parity and
+quality metrics | 60 |
 
 **System Overview Dashboard includes**:
 
@@ -74,6 +74,7 @@ Prometheus server configuration with:
 - Error rate tracking
 
 #### 4. **Datasource Configuration**
+
 Grafana datasource provisioning configured to auto-connect to:
 
 - Prometheus at `http://127.0.0.1:9090`
@@ -87,7 +88,9 @@ Grafana datasource provisioning configured to auto-connect to:
 The repository already contains a comprehensive **monitoring module** at `/home/adra/JustNews/monitoring/`:
 
 ### Monitoring Module Contents
+
 ```
+
 monitoring/
 ├── README.md                    # Observability platform design doc
 ├── core/                        # Logging system (COMPLETED)
@@ -104,6 +107,7 @@ monitoring/
 ├── dashboards/                 # Dashboard definitions
 ├── alerts/                     # Alert rule definitions
 └── ops/                        # Operational tools
+
 ```
 
 ### Status Summary
@@ -123,25 +127,22 @@ monitoring/
 **What to do**:
 
 1. Copy configuration files from USB to `/etc/justnews/monitoring/`:
-   ```bash
-   sudo mkdir -p /etc/justnews/monitoring/grafana/provisioning
-   sudo cp -r /media/adra/.../etc/justnews/monitoring/* /etc/justnews/monitoring/
-   ```
 
-2. Create systemd units for Prometheus and Grafana:
-   ```bash
-   sudo systemctl enable --now prometheus
-   sudo systemctl enable --now grafana-server
-   ```
+```bash sudo mkdir -p /etc/justnews/monitoring/grafana/provisioning sudo cp -r
+/media/adra/.../etc/justnews/monitoring/* /etc/justnews/monitoring/ ```
 
-3. Update password security in `/etc/justnews/monitoring/grafana.ini`:
-   ```ini
-   [security]
-   admin_user = admin
-   admin_password = <strong-random-password>
-   ```
+1. Create systemd units for Prometheus and Grafana:
 
-4. Update Prometheus to point to actual service ports (verify ports match your deployment)
+```bash sudo systemctl enable --now prometheus sudo systemctl enable --now
+grafana-server ```
+
+1. Update password security in `/etc/justnews/monitoring/grafana.ini`:
+
+```ini [security] admin_user = admin admin_password = <strong-random-password>
+
+```
+
+1. Update Prometheus to point to actual service ports (verify ports match your deployment)
 
 **Why**:
 
@@ -160,22 +161,21 @@ monitoring/
 **What to do**:
 
 1. Install Prometheus:
-   ```bash
-   sudo apt-get install -y prometheus grafana-server prometheus-node-exporter
-   ```
 
-2. Create systemd units:
+```bash sudo apt-get install -y prometheus grafana-server prometheus-node-
+exporter ```
+
+1. Create systemd units:
 
    - `/etc/systemd/system/prometheus.service` (use config from USB)
 
    - `/etc/systemd/system/grafana.service` (use config from USB)
 
-3. Update configuration paths to match system locations
+1. Update configuration paths to match system locations
 
-4. Enable and start services:
-   ```bash
-   sudo systemctl enable --now prometheus grafana-server
-   ```
+1. Enable and start services:
+
+```bash sudo systemctl enable --now prometheus grafana-server ```
 
 **Benefits**:
 
@@ -194,16 +194,14 @@ monitoring/
 **What to do**:
 
 1. Install Node Exporter:
-   ```bash
-   sudo apt-get install -y prometheus-node-exporter
-   ```
 
-2. Configure to listen on `127.0.0.1:9100`
+```bash sudo apt-get install -y prometheus-node-exporter ```
 
-3. Enable and start:
-   ```bash
-   sudo systemctl enable --now prometheus-node-exporter
-   ```
+1. Configure to listen on `127.0.0.1:9100`
+
+1. Enable and start:
+
+```bash sudo systemctl enable --now prometheus-node-exporter ```
 
 **Benefits**:
 
@@ -221,9 +219,9 @@ monitoring/
 
 1. Uncomment `prometheus-client>=0.19.0` in `requirements.txt`
 
-2. Implement metrics collection in agents using `common/metrics.py`
+1. Implement metrics collection in agents using `common/metrics.py`
 
-3. Ensure agents expose Prometheus endpoints on configured ports (8001-8008, 8015)
+1. Ensure agents expose Prometheus endpoints on configured ports (8001-8008, 8015)
 
 **Current State**:
 
@@ -238,7 +236,9 @@ monitoring/
 ## Files Needed from USB
 
 ### Essential (Copy These First)
+
 ```
+
 /etc/justnews/monitoring/
 ├── grafana.ini                                          [537 bytes]
 ├── prometheus.yml                                       [1.1 KB]
@@ -252,11 +252,15 @@ monitoring/
         ├── business_metrics_dashboard.json             [253 lines]
         ├── ingest_archive_dashboard.json               [49 lines]
         └── parity_dashboard.json                       [60 lines]
+
 ```
 
 ### Optional (For Future Expansion)
+
 ```
+
 Backup files (.bak.* files) - can skip these
+
 ```
 
 ## Integration Path Forward
@@ -265,56 +269,55 @@ Backup files (.bak.* files) - can skip these
 
 1. ✅ Document monitoring infrastructure (THIS FILE)
 
-2. ⬜ Copy USB monitoring configs to `/etc/justnews/monitoring/`
+1. ⬜ Copy USB monitoring configs to `/etc/justnews/monitoring/`
 
-3. ⬜ Create systemd units for Prometheus and Grafana
+1. ⬜ Create systemd units for Prometheus and Grafana
 
-4. ⬜ Update configuration with actual service ports
+1. ⬜ Update configuration with actual service ports
 
-5. ⬜ Deploy and test dashboard access
+1. ⬜ Deploy and test dashboard access
 
 ### Short Term (Next Week)
 
 1. ⬜ Deploy Node Exporter for system metrics
 
-2. ⬜ Activate `prometheus-client` in requirements
+1. ⬜ Activate `prometheus-client` in requirements
 
-3. ⬜ Update agent code to emit Prometheus metrics
+1. ⬜ Update agent code to emit Prometheus metrics
 
-4. ⬜ Test dashboard data population
+1. ⬜ Test dashboard data population
 
 ### Medium Term (Next Month)
 
 1. ⬜ Deploy AlertManager with alert rules
 
-2. ⬜ Configure alert notifications (email, Slack, etc.)
+1. ⬜ Configure alert notifications (email, Slack, etc.)
 
-3. ⬜ Train team on dashboard usage and alerting
+1. ⬜ Train team on dashboard usage and alerting
 
-4. ⬜ Document runbook for common alerts
+1. ⬜ Document runbook for common alerts
 
 ## Security Considerations
 
 ### Changes Needed
 
 1. **Change Grafana admin password** from default `admin:admin`
-   ```bash
-   sudo grafana-cli admin reset-admin-password <new-password>
-   ```
 
-2. **Enable authentication** for Prometheus API (optional but recommended)
+```bash sudo grafana-cli admin reset-admin-password <new-password> ```
+
+1. **Enable authentication** for Prometheus API (optional but recommended)
 
    - Add reverse proxy (nginx) in front of Prometheus
 
    - Require API token authentication
 
-3. **Secure metric collection** endpoints
+1. **Secure metric collection** endpoints
 
    - Run Prometheus on localhost only: `127.0.0.1:9090`
 
    - Use firewall rules to restrict access
 
-4. **Protect Grafana credentials**
+1. **Protect Grafana credentials**
 
    - Store in Vault alongside other secrets
 
@@ -338,37 +341,39 @@ Backup files (.bak.* files) - can skip these
 
 1. **docs/operations/MONITORING_SETUP.md** — How to deploy Prometheus/Grafana
 
-2. **docs/operations/DASHBOARDS.md** — Guide to using the 5 dashboards
+1. **docs/operations/DASHBOARDS.md** — Guide to using the 5 dashboards
 
-3. **docs/operations/ALERTING.md** — Setting up and managing alerts
+1. **docs/operations/ALERTING.md** — Setting up and managing alerts
 
 ### Update Existing Docs
 
 1. **README.md** — Add link to monitoring in quick start
 
-2. **docs/operations/README.md** — Add monitoring to quick links
+1. **docs/operations/README.md** — Add monitoring to quick links
 
-3. **docs/operations/TROUBLESHOOTING.md** — Add monitoring section
+1. **docs/operations/TROUBLESHOOTING.md** — Add monitoring section
 
 ## Quick Start (If You Decide to Deploy Now)
 
 ```bash
 
 ## 1. Copy monitoring configs from USB
-sudo mkdir -p /etc/justnews/monitoring/grafana/provisioning/{datasources,dashboards}
-sudo cp /media/adra/.../monitoring/* /etc/justnews/monitoring/
+
+sudo mkdir -p /etc/justnews/monitoring/grafana/provisioning/{datasources,dashboards} sudo cp
+/media/adra/.../monitoring/* /etc/justnews/monitoring/
 
 ## 2. Install Prometheus and Grafana
-sudo apt-get update
-sudo apt-get install -y prometheus grafana-server prometheus-node-exporter
+
+sudo apt-get update sudo apt-get install -y prometheus grafana-server prometheus-node-exporter
 
 ## 3. Update config symlinks (optional)
-sudo ln -sf /etc/justnews/monitoring/prometheus.yml /etc/prometheus/prometheus.yml
-sudo ln -sf /etc/justnews/monitoring/grafana.ini /etc/grafana/grafana.ini
+
+sudo ln -sf /etc/justnews/monitoring/prometheus.yml /etc/prometheus/prometheus.yml sudo ln -sf
+/etc/justnews/monitoring/grafana.ini /etc/grafana/grafana.ini
 
 ## 4. Start services
-sudo systemctl daemon-reload
-sudo systemctl enable --now prometheus grafana-server prometheus-node-exporter
+
+sudo systemctl daemon-reload sudo systemctl enable --now prometheus grafana-server prometheus-node-exporter
 
 ## 5. Access dashboards
 
@@ -379,32 +384,35 @@ sudo systemctl enable --now prometheus grafana-server prometheus-node-exporter
 ## 6. Verify Prometheus targets
 
 ## Open browser to: http://localhost:9090/targets
+
 ```
 
 ## Verdict
 
-| Aspect | Decision | Rationale |
-|--------|----------|-----------|
-| **Needed?** | ✅ YES | Production system requires monitoring |
-| **Use USB configs?** | ✅ YES | Pre-built, tested, matches architecture |
-| **Deploy now?** | ⚠️ OPTIONAL | Can wait 1-2 weeks if system works fine |
-| **Deploy eventually?** | ✅ YES | Essential for production reliability |
-| **Priority** | MEDIUM-HIGH | After core services (Vault, MariaDB, ChromaDB) stable |
+| Aspect | Decision | Rationale | |--------|----------|-----------| |
+**Needed?** | ✅ YES | Production system requires monitoring | | **Use USB
+configs?** | ✅ YES | Pre-built, tested, matches architecture | | **Deploy now?**
+| ⚠️ OPTIONAL | Can wait 1-2 weeks if system works fine | | **Deploy
+eventually?** | ✅ YES | Essential for production reliability | | **Priority** |
+MEDIUM-HIGH | After core services (Vault, MariaDB, ChromaDB) stable |
 
 ## Next Steps
 
 1. **Decision**: Decide if you want monitoring deployed now or in 1-2 weeks
 
-2. **If YES**: Follow "Quick Start" section above
+1. **If YES**: Follow "Quick Start" section above
 
-3. **If LATER**: Save this document and USB path for reference
+1. **If LATER**: Save this document and USB path for reference
 
-4. **Either way**: Create documentation for monitoring setup (for team consistency)
+1. **Either way**: Create documentation for monitoring setup (for team consistency)
 
 ---
 
-**USB Drive Location**: `/media/adra/37f1914d-e5fd-48ca-8c24-22d5f4e2e9dd/etc/justnews/monitoring/`
+**USB Drive Location**:
+`/media/adra/37f1914d-e5fd-48ca-8c24-22d5f4e2e9dd/etc/justnews/monitoring/`
 
-**Documentation**: See `docs/operations/systemd-monitoring.md` (existing) and `docs/DOCUMENTATION_INDEX.md` (updated)
+**Documentation**: See `docs/operations/systemd-monitoring.md` (existing) and
+`docs/DOCUMENTATION_INDEX.md` (updated)
 
-**Recommendation**: Integrate Prometheus/Grafana **within next 1-2 weeks** for production observability.
+**Recommendation**: Integrate Prometheus/Grafana **within next 1-2 weeks** for
+production observability.

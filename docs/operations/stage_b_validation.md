@@ -1,12 +1,10 @@
----
-title: "Stage B Validation Playbook"
-description: "Checklist and evidence collection steps to close out Stage B ingestion quality work."
-tags: ["stage-b", "operations", "metrics", "governance", "validation"]
----
+--- title: "Stage B Validation Playbook" description: "Checklist and evidence collection steps to close out Stage B
+ingestion quality work." tags: ["stage-b", "operations", "metrics", "governance", "validation"] ---
 
 # Stage B Validation Playbook
 
-This playbook captures the operational steps required to consider Stage B complete. Use it to track database migrations, scheduler deployment, observability roll-out, QA cadences, and the proofs needed for exit criteria.
+This playbook captures the operational steps required to consider Stage B complete. Use it to track database migrations,
+scheduler deployment, observability roll-out, QA cadences, and the proofs needed for exit criteria.
 
 ## 1. Database and Ingestion Plumbing
 
@@ -53,13 +51,15 @@ This playbook captures the operational steps required to consider Stage B comple
 ## 3. Observability Roll-Out
 
 - Prometheus textfile metrics are written to `logs/analytics/crawl_scheduler.prom`. Register (or symlink) this file with your node exporter textfile collector; on systemd hosts run:
-  ```bash
-  sudo mkdir -p /var/lib/node_exporter/textfile_collector
-  sudo chown adra:adra /var/lib/node_exporter/textfile_collector
-  sudo sed -i 's|^CRAWL_SCHEDULER_METRICS=.*|CRAWL_SCHEDULER_METRICS=/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom|' /etc/justnews/global.env
-  sudo systemctl daemon-reload && sudo systemctl restart justnews-crawl-scheduler.service
-  ```
-  Confirm `crawl_scheduler.prom` appears under `/var/lib/node_exporter/textfile_collector/` and that Prometheus scrapes the new target.
+
+```bash sudo mkdir -p /var/lib/node_exporter/textfile_collector sudo chown
+adra:adra /var/lib/node_exporter/textfile_collector sudo sed -i 's|^CRAWL_SCHEDU
+LER_METRICS=.*|CRAWL_SCHEDULER_METRICS=/var/lib/node_exporter/textfile_collector
+/crawl_scheduler.prom|' /etc/justnews/global.env sudo systemctl daemon-reload &&
+sudo systemctl restart justnews-crawl-scheduler.service ``` Confirm
+`crawl_scheduler.prom` appears under
+`/var/lib/node_exporter/textfile_collector/` and that Prometheus scrapes the new
+target.
 
 - Stage B embedding metrics:
 
@@ -119,4 +119,5 @@ Collect the following artifacts before declaring Stage B complete:
 
 - [ ] Test suite outputs attached to the change record.
 
-Maintain this document alongside change requests so future operators can rapidly revalidate Stage B after upgrades or incident recoveries.
+Maintain this document alongside change requests so future operators can rapidly
+revalidate Stage B after upgrades or incident recoveries.

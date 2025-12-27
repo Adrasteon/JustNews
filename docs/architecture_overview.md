@@ -1,10 +1,12 @@
  # JustNews — Project Architecture Overview
 
- This document provides a concise architecture overview for the JustNews project: per-agent responsibilities, functional intent and completion status, common workflow patterns, and training patterns used by the system. It is intended as a developer-facing reference to help plan work, reviews, and operational rollouts.
+This document provides a concise architecture overview for the JustNews project: per-agent responsibilities, functional
+intent and completion status, common workflow patterns, and training patterns used by the system. It is intended as a
+developer-facing reference to help plan work, reviews, and operational rollouts.
 
  ## Executive summary
 
- JustNews is an agent-driven news ingestion and processing platform built around a few core ideas:
+JustNews is an agent-driven news ingestion and processing platform built around a few core ideas:
 
  - Agent-oriented design: independent agents encapsulate responsibilities (crawler, hitl, memory, archive, fact-checker, synthesizer, etc.).
 
@@ -16,7 +18,8 @@
 
  - Observability and evaluation are first-class: adaptive metrics, Prometheus exporters, parity evaluations and acceptance runbooks.
 
- Current branch: `dev/crawl_scrape` contains the recent Crawl4AI enforcement docs, evaluation harness, and HITL service improvements.
+Current branch: `dev/crawl_scrape` contains the recent Crawl4AI enforcement docs, evaluation harness, and HITL service
+improvements.
 
  ## System map (high level)
 
@@ -62,7 +65,8 @@
 
  ## Per-agent functional responsibilities and completion status
 
- The table below lists agents, their functional intent, and current level of implementation (Done / Partial / Stub / Planned).
+The table below lists agents, their functional intent, and current level of implementation (Done / Partial / Stub /
+Planned).
 
  - Crawler Engine — `agents/crawler/crawler_engine.py` — Done/Partial
 
@@ -128,7 +132,7 @@
 
     - Crawl4AI returns pages or adaptive docs; these are converted into article dicts and passed to extraction pipeline.
 
- 2. HITL & Labeling
+ 1. HITL & Labeling
 
     - Shortlisting: articles that meet candidate criteria are packaged and sent to HITL via `_submit_hitl_candidates`.
 
@@ -136,17 +140,17 @@
 
     - Forwarding: labels are forwarded to downstream ingestion (`memory.ingest_article`) with retry/backoff logic and ingestion-status transitions.
 
- 3. Ingestion & Persistence
+ 1. Ingestion & Persistence
 
     - `memory.ingest_article` handles content normalization, stores metadata in MariaDB, persists embeddings (Chroma/other), and signals archive storage.
 
     - Audit and raw_html storage allow re-extraction and verification.
 
- 4. Downstream Processing
+ 1. Downstream Processing
 
    - Agents like `fact_checker`, `synthesizer` and `chief_editor` run asynchronously on ingested articles, producing derived artifacts (checks, summaries, editor suggestions). Fact Checker and Critic now lean on the shared Mistral adapter stack for long-form reasoning while retaining lightweight retrieval models for evidence gathering.
 
- 5. Metrics & Observability
+ 1. Metrics & Observability
 
     - `crawl4ai_adapter._record_adaptive_metrics` emits adaptive metrics: `adaptive_runs_total`, `adaptive_confidence`, `adaptive_pages_crawled`, `adaptive_articles_emitted`.
 
@@ -181,10 +185,10 @@
  ## Recommended next priorities (short term)
 
  1. Enforce Crawl4AI availability in CI and runtime, add smoke tests (import + small adaptive run) — reduces drift between code and design.
- 2. Implement script registry for `js_code` reuse (`config/crawl_scripts/` + `agents/crawler/scripts_registry.py`).
- 3. Expand profile coverage: migrate remaining sites to per-site YAML in `config/crawl_profiles/`.
- 4. Harden HITL forwarding with deterministic retry/backoff and add staging acceptance tests verifying `ingestion_status='forwarded'`.
- 5. Provision dashboards and Prometheus job for adaptive metrics in `infrastructure/` and add parity evaluation CI job against stored fixtures.
+ 1. Implement script registry for `js_code` reuse (`config/crawl_scripts/` + `agents/crawler/scripts_registry.py`).
+ 1. Expand profile coverage: migrate remaining sites to per-site YAML in `config/crawl_profiles/`.
+ 1. Harden HITL forwarding with deterministic retry/backoff and add staging acceptance tests verifying `ingestion_status='forwarded'`.
+ 1. Provision dashboards and Prometheus job for adaptive metrics in `infrastructure/` and add parity evaluation CI job against stored fixtures.
 
  ## References and useful files
 
@@ -204,5 +208,5 @@
 
  - CI: `.github/workflows/pytest.yml` (CI uses `environment.yml` via micromamba in workflows)
 
- ---
- This document is intended to evolve. To update it, edit `docs/architecture_overview.md` on your working branch and submit a PR with context and test/CI changes as appropriate.
+--- This document is intended to evolve. To update it, edit `docs/architecture_overview.md` on your working branch and
+submit a PR with context and test/CI changes as appropriate.

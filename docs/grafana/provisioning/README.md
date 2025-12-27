@@ -1,19 +1,18 @@
-Grafana provisioning (docs)
----------------------------------
+Grafana provisioning (docs) ---------------------------------
 
-This folder contains example Grafana provisioning files that can be used to auto-provision
-dashboards and datasources in a Grafana instance. These are documentation examples and must
-be wired into your Grafana container or server (for example by copying them into /etc/grafana/provisioning/)
+This folder contains example Grafana provisioning files that can be used to auto-provision dashboards and datasources in
+a Grafana instance. These are documentation examples and must be wired into your Grafana container or server (for
+example by copying them into /etc/grafana/provisioning/)
 
 How to use
 
 1. Copy `datasources.yml` to Grafana `/etc/grafana/provisioning/datasources/` and adjust the Prometheus URL or authentication block to match your deployment.
 
-2. Copy `dashboards.yml` to `/etc/grafana/provisioning/dashboards/` and copy the `dashboards/` folder contents (for example, `docs/grafana/editorial-harness-dashboard.json`) to the configured path.
+1. Copy `dashboards.yml` to `/etc/grafana/provisioning/dashboards/` and copy the `dashboards/` folder contents (for example, `docs/grafana/editorial-harness-dashboard.json`) to the configured path.
 
-3. Restart Grafana or reload provisioning to pick up the new dashboards and datasources.
+1. Restart Grafana or reload provisioning to pick up the new dashboards and datasources.
 
-4. For the Stage 4 harness specifically, see `docs/grafana/editorial-harness-wiring.md` for scrape job requirements and alert suggestions.
+1. For the Stage 4 harness specifically, see `docs/grafana/editorial-harness-wiring.md` for scrape job requirements and alert suggestions.
 
 ## JustNews production specifics
 

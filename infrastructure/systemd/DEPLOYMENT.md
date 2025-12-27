@@ -1,14 +1,14 @@
----
-title: Systemd Deployment Overview
-description: Canonical entry-point for deploying and restarting JustNews with systemd
----
+--- title: Systemd Deployment Overview description: Canonical entry-point for deploying and restarting JustNews with
+systemd ---
 
 # Systemd Deployment – Quick Start
 
 ## TL;DR: One-command fresh restart (recommended)
 
-```
+```bash
+
 sudo ./infrastructure/systemd/reset_and_start.sh
+
 ```
 
 What it does:
@@ -21,11 +21,13 @@ What it does:
 
 ## Manual sequence (orchestrator-first)
 
-```
+```bash
+
 sudo systemctl enable --now justnews@gpu_orchestrator
 curl -fsS http://127.0.0.1:8014/ready
 sudo ./infrastructure/systemd/scripts/enable_all.sh start
 sudo ./infrastructure/systemd/scripts/health_check.sh
+
 ```
 
 Notes:
@@ -33,19 +35,26 @@ Notes:
 - `enable_all.sh` supports `fresh` and `--fresh` alias and now starts `gpu_orchestrator` first, waiting for `/ready`.
 
 - Adjust gating timeout via drop-in: `Environment=GATE_TIMEOUT=300`.
-Content ingestion automation (`justnews-crawl-scheduler.timer`, `justnews@cluster_pipeline.service`, `justnews@fact_intel.service`) remains disabled by default; enable each only after verifying Stage A health:
+Content ingestion automation (`justnews-crawl-scheduler.timer`, `justnews@cluster_pipeline.service`,
+`justnews@fact_intel.service`) remains disabled by default; enable each only after verifying Stage A health:
 
-```
+```bash
+
 sudo systemctl enable --now justnews-crawl-scheduler.timer
 sudo systemctl enable --now justnews@cluster_pipeline
 sudo systemctl enable --now justnews@fact_intel
+
 ```
 
-Enable `justnews@cluster_pipeline` only after fact intelligence services (e.g., `justnews@fact_intel`) have run successfully; the clustering stage consumes Grounded Truth scores emitted by the fact pipeline.
+Enable `justnews@cluster_pipeline` only after fact intelligence services (e.g., `justnews@fact_intel`) have run
+successfully; the clustering stage consumes Grounded Truth scores emitted by the fact pipeline.
 
-The crawl scheduler service (`justnews-crawl-scheduler.service`) is a oneshot wrapper around `scripts/ops/run_crawl_schedule.py`. Override paths or crawler URL via `/etc/justnews/crawl_scheduler.env`; include `CRAWL_PROFILE_PATH` if Crawl4AI profiles live outside the repo checkout. Prometheus textfile metrics default to `logs/analytics/crawl_scheduler.prom` unless `CRAWL_SCHEDULER_METRICS` is set.
+The crawl scheduler service (`justnews-crawl-scheduler.service`) is a oneshot wrapper around
+`scripts/ops/run_crawl_schedule.py`. Override paths or crawler URL via `/etc/justnews/crawl_scheduler.env`; include
+`CRAWL_PROFILE_PATH` if Crawl4AI profiles live outside the repo checkout. Prometheus textfile metrics default to
+`logs/analytics/crawl_scheduler.prom` unless `CRAWL_SCHEDULER_METRICS` is set.
 
-These services rely on the configuration described in `docs/operations/systemd-baseline-then-k8s-phased-plan.md`.
+These services rely on the configuration described in `docs/operations/systemd- baseline-then-k8s-phased-plan.md`.
 
 ## Related documentation
 
@@ -57,7 +66,8 @@ These services rely on the configuration described in `docs/operations/systemd-b
 
 ## Crawl4AI bridge (managed agent)
 
-The Crawl4AI bridge is managed as a normal JustNews agent via the instance template `justnews@.service` and is available as `justnews@crawl4ai`.
+The Crawl4AI bridge is managed as a normal JustNews agent via the instance template `justnews@.service` and is available
+as `justnews@crawl4ai`.
 
 Deployment notes:
 
@@ -75,11 +85,14 @@ Deployment notes:
 
 	- CRAWL4AI_MODEL_CACHE_DIR (local model cache directory)
 
-If you previously used the standalone unit `infrastructure/systemd/crawl4ai-bridge.service`, switch to `justnews@crawl4ai` to avoid duplication. The repository includes an agent wrapper at `agents/crawl4ai/main.py` which launches the FastAPI bridge (`agents.c4ai.server:app`) under the configured Python runtime.
+If you previously used the standalone unit `infrastructure/systemd/crawl4ai- bridge.service`, switch to
+`justnews@crawl4ai` to avoid duplication. The repository includes an agent wrapper at `agents/crawl4ai/main.py` which
+launches the FastAPI bridge (`agents.c4ai.server:app`) under the configured Python runtime.
 
 ## Migration: Repository rename and systemd service root path
 
-If the repository root on your machine was renamed (for example, from `JustNewsAgent-Clean` to `JustNews`), systemd unit files and the global environment file may still point to the old path. To avoid UIDs/WORKDIR/ExecStart issues:
+If the repository root on your machine was renamed (for example, from `JustNewsAgent-Clean` to `JustNews`), systemd unit
+files and the global environment file may still point to the old path. To avoid UIDs/WORKDIR/ExecStart issues:
 
 - Ensure `/etc/justnews/global.env` either sets `SERVICE_DIR` to the new location or is updated during deployment.
 

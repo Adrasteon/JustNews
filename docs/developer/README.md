@@ -2,7 +2,8 @@
 
 ## Architecture Overview
 
-JustNews is a distributed multi-agent system for automated news analysis, featuring GPU acceleration, continuous learning, and comprehensive monitoring.
+JustNews is a distributed multi-agent system for automated news analysis, featuring GPU acceleration, continuous
+learning, and comprehensive monitoring.
 
 ## System Architecture
 
@@ -27,6 +28,7 @@ JustNews is a distributed multi-agent system for automated news analysis, featur
   - Message queuing and reliability
 
 #### Specialized Agents
+
 Each agent is a microservice with specific responsibilities:
 
 - **Chief Editor (Port 8001)**: Workflow orchestration and system coordination
@@ -58,6 +60,7 @@ Each agent is a microservice with specific responsibilities:
 ### Data Flow Architecture
 
 ```
+
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   News Sources  │───▶│     Scout       │───▶│    Fact Checker │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
@@ -78,6 +81,7 @@ Each agent is a microservice with specific responsibilities:
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Public APIs   │    │   Dashboard     │    │   Monitoring    │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
+
 ```
 
 ### Technology Stack
@@ -131,6 +135,7 @@ Each agent is a microservice with specific responsibilities:
 All agents follow a consistent structure:
 
 ```
+
 agents/{agent_name}/
 ├── __init__.py
 ├── main.py              # FastAPI application
@@ -142,6 +147,7 @@ agents/{agent_name}/
     ├── __init__.py
     ├── test_main.py
     └── test_tools.py
+
 ```
 
 ### Agent Implementation Template
@@ -149,6 +155,7 @@ agents/{agent_name}/
 ```python
 
 ## agents/my_agent/main.py
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
@@ -160,16 +167,19 @@ from common.metrics import JustNewsMetrics
 from common.config import get_config
 
 ## Configure logging
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 ## Initialize components
+
 app = FastAPI(title="My Agent", version="1.0.0")
 config = get_config()
 metrics = JustNewsMetrics(agent="my_agent")
 mcp_client = MCPBusClient()
 
 ## Pydantic models
+
 class ToolCall(BaseModel):
     """Standard MCP tool call format"""
     args: List[Any] = []
@@ -181,6 +191,7 @@ class HealthResponse(BaseModel):
     uptime: float
 
 ## Global state
+
 start_time = asyncio.get_event_loop().time()
 
 @app.on_event("startup")
@@ -237,6 +248,7 @@ async def my_tool_endpoint(call: ToolCall):
         )
 
 ## Tool implementation
+
 async def my_tool_function(param1: str, param2: int = 0) -> Dict[str, Any]:
     """Implement your tool logic here"""
     # Example implementation
@@ -254,25 +266,30 @@ if __name__ == "__main__":
         port=config.port,
         reload=config.debug
     )
+
 ```
 
 ### MCP Bus Integration
 
 #### Agent Registration
+
 ```python
 from common.mcp_client import MCPBusClient
 
 mcp_client = MCPBusClient()
 
 ## Register agent
+
 await mcp_client.register_agent(
     name="my_agent",
     endpoint="http://localhost:8009",
     capabilities=["tool1", "tool2"]
 )
+
 ```
 
 #### Inter-Agent Communication
+
 ```python
 
 ## Call another agent

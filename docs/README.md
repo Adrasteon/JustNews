@@ -1,16 +1,13 @@
----
-title: JustNews Documentation Catalogue System
-description: Auto-generated description for JustNews Documentation Catalogue System
-tags: [documentation]
-status: current
-last_updated: 2025-10-23
----
+--- title: JustNews Documentation Catalogue System description: Auto-generated description for JustNews Documentation
+Catalogue System tags: [documentation] status: current last_updated: 2025-10-23 ---
 
 # JustNews Documentation Catalogue System
 
 ## 🎯 Overview
 
-The JustNews Documentation Catalogue System is a comprehensive, industry-standard solution for managing and accessing the project's extensive documentation. This system provides automated discovery, advanced search capabilities, cross-referencing, and maintenance tools for all 140+ markdown documents across the codebase.
+The JustNews Documentation Catalogue System is a comprehensive, industry- standard solution for managing and accessing
+the project's extensive documentation. This system provides automated discovery, advanced search capabilities, cross-
+referencing, and maintenance tools for all 140+ markdown documents across the codebase.
 
 ## 📊 System Status
 
@@ -38,7 +35,7 @@ The JustNews Documentation Catalogue System is a comprehensive, industry-standar
 
    - Incremental updates to avoid rebuilds
 
-2. **Machine-Readable Catalogue** (`docs_catalogue_v2.json`)
+1. **Machine-Readable Catalogue** (`docs_catalogue_v2.json`)
 
    - JSON format for programmatic access
 
@@ -48,7 +45,7 @@ The JustNews Documentation Catalogue System is a comprehensive, industry-standar
 
    - Cross-reference mapping
 
-3. **Human-Readable Catalogue** (`DOCUMENTATION_CATALOGUE.md`)
+1. **Human-Readable Catalogue** (`DOCUMENTATION_CATALOGUE.md`)
 
    - Markdown format for easy browsing
 
@@ -58,7 +55,7 @@ The JustNews Documentation Catalogue System is a comprehensive, industry-standar
 
    - Search and filtering capabilities
 
-4. **Maintenance Tools** (`catalogue_maintenance.py`)
+1. **Maintenance Tools** (`catalogue_maintenance.py`)
 
    - Health monitoring and validation
 
@@ -68,7 +65,7 @@ The JustNews Documentation Catalogue System is a comprehensive, industry-standar
 
    - Performance reporting
 
-5. **Interactive Navigator** (`docs_navigator.py`)
+1. **Interactive Navigator** (`docs_navigator.py`)
 
    - Command-line interface for exploration
 
@@ -79,103 +76,126 @@ The JustNews Documentation Catalogue System is a comprehensive, industry-standar
 ## 🚀 Quick Start
 
 ### 1. Health Check
+
 ```bash
 cd /home/adra/JustNews
 python docs/catalogue_maintenance.py --health-check
+
 ```
 
 ### 2. Search Documentation
+
 ```bash
 
 ## Search for GPU-related documents
+
 python docs/catalogue_maintenance.py --search "gpu"
 
 ## Search in specific category
+
 python docs/catalogue_maintenance.py --search "tensorrt" --category "agent_documentation"
 
 ## Search with tags
+
 python docs/catalogue_maintenance.py --search "production" --tags "deployment" "performance"
+
 ```
 
 ### 3. Interactive Navigation
+
 ```bash
 python docs/docs_navigator.py
+
 ```
 
 ### 4. Performance Analysis
+
 ```bash
 python docs/catalogue_maintenance.py --performance-report
+
 ```
 
 ### 5. Cross-Reference Analysis
+
 ```bash
 python docs/catalogue_maintenance.py --cross-references
+
 ```
 
 ---
 
 ## � Document Categories
 
-| Category | Documents | Description |
-|----------|-----------|-------------|
-| **Main Documentation** | 7 | Core project docs, README, CHANGELOG |
-| **Architecture & Design** | 4 | System architecture and technical specs |
-| **Agent Documentation** | 36 | Individual agent implementations |
-| **GPU Configuration** | 4 | GPU setup and optimization guides |
-| **Production & Deployment** | 4 | Production deployment and monitoring |
-| **API & Integration** | 3 | API specs and external interfaces |
-| **Training & Learning** | 2 | ML training and continuous learning |
-| **Monitoring & Analytics** | 2 | System monitoring and analytics |
-| **Compliance & Security** | 1 | Legal compliance and security |
-| **Development Reports** | 53 | Technical reports and analysis |
-| **Scripts & Tools** | 4 | Utility scripts and tools |
-| **System Documentation** | 3 | System configuration and deployment |
-| **General Documentation** | 17 | Miscellaneous documentation |
+| Category | Documents | Description | |----------|-----------|-------------| | **Main Documentation** | 7 | Core
+project docs, README, CHANGELOG | | **Architecture & Design** | 4 | System architecture and technical specs | | **Agent
+Documentation** | 36 | Individual agent implementations | | **GPU Configuration** | 4 | GPU setup and optimization
+guides | | **Production & Deployment** | 4 | Production deployment and monitoring | | **API & Integration** | 3 | API
+specs and external interfaces | | **Training & Learning** | 2 | ML training and continuous learning | | **Monitoring &
+Analytics** | 2 | System monitoring and analytics | | **Compliance & Security** | 1 | Legal compliance and security | |
+**Development Reports** | 53 | Technical reports and analysis | | **Scripts & Tools** | 4 | Utility scripts and tools |
+| **System Documentation** | 3 | System configuration and deployment | | **General Documentation** | 17 | Miscellaneous
+documentation |
 
 ---
 
 ## 🔍 **Search & Discovery**
 
 ### **Search by Topic**
+
 ```bash
 
 ## GPU-related documentation
+
 python docs/docs_navigator.py search gpu
 
 ## Agent-related documentation
+
 python docs/docs_navigator.py search agent
 
 ## API documentation
+
 python docs/docs_navigator.py search api
 
 ## Training and learning
+
 python docs/docs_navigator.py search training
+
 ```
 
 ### **Search by Technology**
+
 ```bash
 
 ## PyTorch documentation
+
 python docs/docs_navigator.py search pytorch
 
 ## RAPIDS documentation
+
 python docs/docs_navigator.py search rapids
 
 ## Docker/Model Runner
+
 python docs/docs_navigator.py search docker
+
 ```
 
 ### **Search by Status**
+
 ```bash
 
 ## Production-ready documents
+
 python docs/docs_navigator.py search production
 
 ## Currently being updated
+
 python docs/docs_navigator.py search current
 
 ## Planning phase
+
 python docs/docs_navigator.py search planning
+
 ```
 
 ---
@@ -186,31 +206,31 @@ python docs/docs_navigator.py search planning
 
 1. **[README.md](archive/release_preview/release_beta_minimal_preview/README.md)** - Project overview and setup
 
-2. **[Technical Architecture](markdown_docs/TECHNICAL_ARCHITECTURE.md)** - System understanding
+1. **[Technical Architecture](markdown_docs/TECHNICAL_ARCHITECTURE.md)** - System understanding
 
-3. **[GPU Setup Guide](docs/gpu_runner_README.md)** - Environment configuration
+1. **[GPU Setup Guide](docs/gpu_runner_README.md)** - Environment configuration
 
-4. **[Project Status](docs/PROJECT_STATUS.md)** - Current development state
+1. **[Project Status](docs/PROJECT_STATUS.md)** - Current development state
 
 ### **Development Path**
 
 1. **[Implementation Plan](docs/IMPLEMENTATION_PLAN.md)** - Development roadmap
 
-2. **[Agent Model Map](markdown_docs/agent_documentation/AGENT_MODEL_MAP.md)** - Agent architecture
+1. **[Agent Model Map](markdown_docs/agent_documentation/AGENT_MODEL_MAP.md)** - Agent architecture
 
-3. **[Training System](markdown_docs/development_reports/TRAINING_SYSTEM_DOCUMENTATION.md)** - ML training
+1. **[Training System](markdown_docs/development_reports/TRAINING_SYSTEM_DOCUMENTATION.md)** - ML training
 
-4. **[Changelog](CHANGELOG.md)** - Version history
+1. **[Changelog](CHANGELOG.md)** - Version history
 
 ### **Production Path**
 
 1. **[Production Status](markdown_docs/production_status/PRODUCTION_DEPLOYMENT_STATUS.md)** - Operational status
 
-2. **[Port Mapping](docs/canonical_port_mapping.md)** - Service configuration
+1. **[Port Mapping](docs/canonical_port_mapping.md)** - Service configuration
 
-3. **[GPU Audit](docs/GPU_Audit_Report.md)** - Performance optimization
+1. **[GPU Audit](docs/GPU_Audit_Report.md)** - Performance optimization
 
-4. **[Legal Compliance](docs/LEGAL_COMPLIANCE_FRAMEWORK.md)** - Compliance framework
+1. **[Legal Compliance](docs/LEGAL_COMPLIANCE_FRAMEWORK.md)** - Compliance framework
 
 ---
 
@@ -241,16 +261,20 @@ python docs/docs_navigator.py search planning
 ## 🛠️ **Advanced Usage**
 
 ### **Programmatic Access**
+
 ```python
 from docs.docs_navigator import DocsNavigator
 
 ## Initialize navigator
+
 navigator = DocsNavigator()
 
 ## Get all documents in a category
+
 gpu_docs = navigator.catalogue['categories'][3]['documents']  # GPU category
 
 ## Search programmatically
+
 results = []
 for category in navigator.catalogue['categories']:
     for doc in category['documents']:
@@ -258,34 +282,46 @@ for category in navigator.catalogue['categories']:
             results.append(doc)
 
 ## Access metadata
+
 metadata = navigator.catalogue['catalogue_metadata']
 print(f"Last updated: {metadata['last_updated']}")
+
 ```
 
 ### **Integration with CI/CD**
+
 ```bash
 
 ## Validate documentation in CI pipeline
+
 python docs/docs_navigator.py validate
 
 ## Check for outdated documents
+
 python docs/docs_navigator.py status
 
 ## Generate documentation reports
+
 python docs/docs_navigator.py list > docs_report.txt
+
 ```
 
 ### **Custom Search Scripts**
+
 ```bash
 
 ## Find all documents with specific tags
+
 python docs/docs_navigator.py search "tag:production"
 
 ## Find documents by author or maintainer
+
 python docs/docs_navigator.py search "maintainer:gpu"
 
 ## Find documents by date range
+
 python docs/docs_navigator.py search "updated:2025-09"
+
 ```
 
 ---
@@ -293,42 +329,57 @@ python docs/docs_navigator.py search "updated:2025-09"
 ## 🔧 Maintenance Operations
 
 ### Automated Expansion
+
 ```bash
 
 ## Expand catalogue with new documents
+
 python docs/catalogue_expansion.py --phase development_reports
 
 ## Full comprehensive update
+
 python docs/catalogue_expansion.py --phase all
+
 ```
 
 ### Validation
+
 ```bash
 
 ## Validate catalogue integrity
+
 python docs/catalogue_expansion.py --validate
 
 ## Comprehensive health check
+
 python docs/catalogue_maintenance.py --health-check
+
 ```
 
 ### Updates
+
 ```bash
 
 ## Update human-readable catalogue
+
 python docs/catalogue_expansion.py --phase all
 
 ## This automatically updates both JSON and Markdown formats
+
 ```
 
 ### Linting and Index Generation
+
 ```bash
 
 ## Lint all markdown docs and auto-fix safe issues
+
 python docs/doc_management_tools/doc_linter.py --report --fix
 
 ## Regenerate docs_index.json from frontmatter
+
 python docs/doc_management_tools/generate_docs_index.py --write
+
 ```
 
 ---
@@ -348,6 +399,7 @@ python docs/doc_management_tools/generate_docs_index.py --write
 - **Status Accuracy**: Maintain accurate status indicators
 
 ### **Adding Cross-References**
+
 ```markdown
 <!-- In document headers -->
 See also: [Technical Architecture](markdown_docs/TECHNICAL_ARCHITECTURE.md)
@@ -359,6 +411,7 @@ Related: [GPU Setup](docs/gpu_runner_README.md)
   "gpu_runner_readme",
   "project_status"
 ]
+
 ```
 
 ---
@@ -422,7 +475,9 @@ Related: [GPU Setup](docs/gpu_runner_README.md)
 ## 📁 **File Structure**
 
 ### **Core Catalogue Files**
+
 ```
+
 docs/
 ├── docs_catalogue_v2.json          # Machine-readable catalogue (140 documents)
 ├── DOCUMENTATION_CATALOGUE.md      # Human-readable master catalogue
@@ -430,9 +485,11 @@ docs/
 ├── catalogue_maintenance.py        # Maintenance and analysis tools
 ├── docs_navigator.py               # Interactive navigation CLI
 └── README.md                       # This documentation
+
 ```
 
 ### **Catalogue Data Structure**
+
 ```json
 {
   "catalogue_metadata": {
@@ -462,6 +519,7 @@ docs/
     "production": ["gpu_implementation_complete", "project_status"]
   }
 }
+
 ```
 
 ### **Integration Points**
@@ -481,79 +539,101 @@ docs/
 ### **Common Issues**
 
 #### **Catalogue Validation Errors**
+
 ```bash
 
 ## Check for validation errors
+
 python docs/catalogue_maintenance.py --health-check
 
 ## Fix broken paths automatically
+
 python docs/catalogue_maintenance.py --fix-paths
 
 ## Rebuild search index
+
 python docs/catalogue_maintenance.py --rebuild-index
+
 ```
 
 #### **Search Not Working**
+
 ```bash
 
 ## Check search index health
+
 python docs/catalogue_maintenance.py --search-health
 
 ## Rebuild search index
+
 python docs/catalogue_maintenance.py --rebuild-index
 
 ## Validate search functionality
+
 python docs/docs_navigator.py search "test query"
+
 ```
 
 #### **Missing Documents**
+
 ```bash
 
 ## Run comprehensive discovery
+
 python docs/catalogue_expansion.py --phase all
 
 ## Check for new files in workspace
+
 python docs/catalogue_expansion.py --validate
 
 ## Update human-readable catalogue
+
 python docs/catalogue_expansion.py --update-markdown
+
 ```
 
 #### **Performance Issues**
+
 ```bash
 
 ## Generate performance report
+
 python docs/catalogue_maintenance.py --performance-report
 
 ## Check memory usage
+
 python docs/catalogue_maintenance.py --memory-usage
 
 ## Optimize search index
+
 python docs/catalogue_maintenance.py --optimize-index
+
 ```
 
 ### **Error Messages & Solutions**
 
-| Error Message | Cause | Solution |
-|---------------|-------|----------|
-| `Path not found` | Document moved/renamed | Run `--fix-paths` |
-| `Invalid JSON` | Catalogue corruption | Run `--validate` and rebuild |
-| `Search index empty` | Index corruption | Run `--rebuild-index` |
-| `Memory limit exceeded` | Large catalogue | Run `--optimize-index` |
-| `Cross-reference broken` | Document deleted | Run `--health-check` |
+| Error Message | Cause | Solution | |---------------|-------|----------| | `Path not found` | Document moved/renamed |
+Run `--fix-paths` | | `Invalid JSON` | Catalogue corruption | Run `--validate` and rebuild | | `Search index empty` |
+Index corruption | Run `--rebuild-index` | | `Memory limit exceeded` | Large catalogue | Run `--optimize-index` | |
+`Cross-reference broken` | Document deleted | Run `--health-check` |
 
 ### **Debug Mode**
+
 ```bash
 
 ## Enable debug logging
+
 export CATALOGUE_DEBUG=1
 python docs/catalogue_maintenance.py --health-check
 
 ## Verbose validation
+
 python docs/catalogue_expansion.py --validate --verbose
 
 ## Performance profiling
+
 python docs/catalogue_maintenance.py --performance-report --profile
+
 ```
 
 ---
@@ -610,7 +690,9 @@ python docs/catalogue_maintenance.py --performance-report --profile
 
 ---
 
-**🎯 This centralized documentation system ensures that all JustNews documentation is discoverable, current, and properly interconnected. For the latest updates, check the [Project Status](docs/PROJECT_STATUS.md) or run `python docs/docs_navigator.py status`.**
+**🎯 This centralized documentation system ensures that all JustNews documentation is discoverable, current, and properly
+interconnected. For the latest updates, check the [Project Status](docs/PROJECT_STATUS.md) or run `python
+docs/docs_navigator.py status`.**
 
 *Documentation Catalogue Version: 2.0 | Last Updated: September 7, 2025 | Documents Indexed: 140*
 

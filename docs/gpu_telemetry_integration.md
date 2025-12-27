@@ -1,11 +1,16 @@
-Orchestrator integration
-------------------------
-The `gpu_orchestrator`/GPU manager can optionally trigger host-level telemetry automatically when an allocation is created and stop it when allocations are released. Enable this behavior on orchestrator hosts with the environment variable:
-```
-export GPU_TELEMETRY_AUTOSTART=true
+Orchestrator integration ------------------------ The `gpu_orchestrator`/GPU manager can optionally trigger host-level
+telemetry automatically when an allocation is created and stop it when allocations are released. Enable this behavior on
+orchestrator hosts with the environment variable:
+
 ```
 
-When enabled the GPU allocation path will attempt to start system telemetry (via systemd service or fallback to the local agent script) and stop it when no active allocations remain. This is recommended on dedicated GPU worker nodes so telemetry is always captured during model runtimes.
+export GPU_TELEMETRY_AUTOSTART=true
+
+```
+
+When enabled the GPU allocation path will attempt to start system telemetry (via systemd service or fallback to the
+local agent script) and stop it when no active allocations remain. This is recommended on dedicated GPU worker nodes so
+telemetry is always captured during model runtimes.
 
 # GPU Telemetry & Activity Monitoring — integration guide
 
@@ -31,7 +36,7 @@ How it works
 
 1. The GPU activity agent polls nvidia-smi every second (configurable). When it observes sustained GPU utilization above a configured threshold the agent starts the CSV collector and the Prometheus exporter.
 
-2. When GPU utilization drops and remains below a configured threshold for a configurable period, the agent stops both services.
+1. When GPU utilization drops and remains below a configured threshold for a configurable period, the agent stops both services.
 
 Deployment modes
 
@@ -40,7 +45,9 @@ Deployment modes
 - Orchestrator-integrated (advanced) — the `gpu_orchestrator` can call (or listen to) the agent's start/stop events to co-ordinate telemetry capture with job allocation.
 
 Recommended systemd service (example)
+
 ```
+
 [Unit]
 Description=JustNews GPU activity monitor
 After=network.target
@@ -53,6 +60,7 @@ Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
+
 ```
 
 Notes & Security
@@ -69,25 +77,30 @@ Next steps
 
 - Integrate the agent into your GPU node provisioning (systemd, container) and add a Prometheus scrape job for the exporter port. Optionally, add alerts (high GPU temp, sudden drop in CPU/RAPL readings) to the monitoring stack.
 
-Installation notes
-------------------
-We've included helper scripts to install the service and logrotate policy into the host system. On a target GPU host run (requires sudo):
+Installation notes ------------------ We've included helper scripts to install the service and logrotate policy into the
+host system. On a target GPU host run (requires sudo):
 
 ```bash
 
 ## Install logrotate and the systemd unit + defaults (installs /etc/logrotate.d/justnews-perf and /etc/default/justnews-gpu-telemetry)
+
 sudo scripts/perf/install_all.sh
 
 ## Or do the steps individually if you want finer control
+
 sudo scripts/perf/install_logrotate.sh
 sudo scripts/perf/install_service.sh
+
 ```
 
-The installer writes a runtime configuration file at `/etc/default/justnews-gpu-telemetry` with values the service reads at startup. Edit this file to change the service user, working directory, log directory, exporter port, and the start/stop thresholds.
+The installer writes a runtime configuration file at `/etc/default/justnews-gpu- telemetry` with values the service
+reads at startup. Edit this file to change the service user, working directory, log directory, exporter port, and the
+start/stop thresholds.
 
 Example entries you can tune in `/etc/default/justnews-gpu-telemetry`:
 
 ```
+
 JN_USER=justnews
 JN_GROUP=syslog
 JN_WORKDIR=/home/justnews/JustNews
@@ -97,45 +110,48 @@ JN_START_UTIL=20
 JN_START_SECONDS=5
 JN_STOP_UTIL=10
 JN_STOP_SECONDS=15
+
 ```
 
 After editing `/etc/default/justnews-gpu-telemetry` restart the service to apply changes:
 
 ```bash
 sudo systemctl restart justnews-gpu-telemetry.service
+
 ```
 
-OpenTelemetry collectors
-------------------------
-To tie GPU telemetry, kernel logs, and distributed traces together use the OpenTelemetry collector assets added in `infrastructure/monitoring/otel/`.
+OpenTelemetry collectors ------------------------ To tie GPU telemetry, kernel logs, and distributed traces together use
+the OpenTelemetry collector assets added in `infrastructure/monitoring/otel/`.
 
 ### Node collectors (per GPU host)
 
 1. Install the collector:
-  ```bash
-  sudo scripts/ops/install_otel_node_collector.sh
-  ```
 
-2. Override any defaults in `/etc/justnews/monitoring/otel/node.env` (OTLP upstream endpoint, DCGM scrape target, etc.).
+```bash sudo scripts/ops/install_otel_node_collector.sh ```
 
-3. Validate the config: `sudo /usr/local/bin/otelcol-contrib --config /etc/justnews/monitoring/otel/node-collector-config.yaml --dry-run`.
+1. Override any defaults in `/etc/justnews/monitoring/otel/node.env` (OTLP upstream endpoint, DCGM scrape target, etc.).
 
-4. Ensure `justnews-otel-node.service` is active before starting GPU workloads (`systemctl status justnews-otel-node.service`).
+1. Validate the config: `sudo /usr/local/bin/otelcol-contrib --config /etc/justnews/monitoring/otel/node-collector-config.yaml --dry-run`.
 
-The node config tails `/var/log/kern.log` plus NVIDIA driver logs, ingests OTLP spans/logs from agents, and forwards everything upstream over OTLP. DCGM/node exporter scraping + Prometheus remote_write fan-out are paused (2025-11) until we finish reworking the metrics story.
+1. Ensure `justnews-otel-node.service` is active before starting GPU workloads (`systemctl status justnews-otel-node.service`).
+
+The node config tails `/var/log/kern.log` plus NVIDIA driver logs, ingests OTLP
+spans/logs from agents, and forwards everything upstream over OTLP. DCGM/node
+exporter scraping + Prometheus remote_write fan-out are paused (2025-11) until
+we finish reworking the metrics story.
 
 ### Central collectors (fan-out tier)
 
 1. Install on the monitoring/observability host:
-  ```bash
-  sudo scripts/ops/install_otel_central_collector.sh
-  ```
 
-2. Populate `/etc/justnews/monitoring/otel/central.env` with the Tempo/Loki endpoints for your environment. Prometheus remote_write inputs are currently ignored while metrics are disabled.
+```bash sudo scripts/ops/install_otel_central_collector.sh ```
 
-3. Start and enable `justnews-otel-central.service`.
+1. Populate `/etc/justnews/monitoring/otel/central.env` with the Tempo/Loki endpoints for your environment. Prometheus remote_write inputs are currently ignored while metrics are disabled.
 
-The central collector receives OTLP from the nodes and fans traces to Tempo/Jaeger plus logs to Loki/Elastic. Metrics forwarding is temporarily disabled.
+1. Start and enable `justnews-otel-central.service`.
+
+The central collector receives OTLP from the nodes and fans traces to Tempo/Jaeger plus logs to Loki/Elastic. Metrics
+forwarding is temporarily disabled.
 
 ### Application instrumentation
 

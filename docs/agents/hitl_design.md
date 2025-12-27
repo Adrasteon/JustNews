@@ -42,9 +42,9 @@ Forwarding workflow
 
 1. On label creation, the service attempts to forward to the configured downstream endpoint (MCP or HTTP RPC) if `forward_on_label` enabled.
 
-2. Forwarding uses staged backoff: immediate attempt, then exponential backoff with jitter, limited retries.
+1. Forwarding uses staged backoff: immediate attempt, then exponential backoff with jitter, limited retries.
 
-3. On success, `ingestion_status` is set to `forwarded`. On repeated failure, set to `error` and surface to QA.
+1. On success, `ingestion_status` is set to `forwarded`. On repeated failure, set to `error` and surface to QA.
 
 Operational notes
 

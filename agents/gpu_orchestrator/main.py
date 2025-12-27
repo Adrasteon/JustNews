@@ -425,24 +425,26 @@ def list_leases(request: Request):
         # Add persistent rows when DB accessible
         if getattr(engine, "db_service", None):
             try:
-                cursor, conn = engine.db_service.get_safe_cursor(
-                    per_call=True, dictionary=True, buffered=True
-                )
                 try:
-                    cursor.execute(
-                        "SELECT token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata FROM orchestrator_leases"
-                    )
-                    rows = cursor.fetchall()
-                finally:
+                    cursor, conn = engine._get_safe_cursor(per_call=True, dictionary=True, buffered=True)
                     try:
-                        cursor.close()
-                    except Exception:
-                        pass
-                    try:
-                        conn.close()
-                    except Exception:
-                        pass
-                resp["persistent"] = rows
+                        cursor.execute(
+                            "SELECT token, agent_name, gpu_index, mode, created_at, expires_at, last_heartbeat, metadata FROM orchestrator_leases"
+                        )
+                        rows = cursor.fetchall()
+                    finally:
+                        try:
+                            cursor.close()
+                        except Exception:
+                            pass
+                        try:
+                            if conn is not None:
+                                conn.close()
+                        except Exception:
+                            pass
+                    resp["persistent"] = rows
+                except Exception:
+                    resp["persistent"] = None
             except Exception:
                 resp["persistent"] = None
 

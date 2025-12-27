@@ -12,11 +12,11 @@ Pipeline stages
 
 1. Raw HTML normalization and quick heuristics (language detection, word-count checks).
 
-2. Primary extractor: Trafilatura — returns main text, title, and metadata.
+1. Primary extractor: Trafilatura — returns main text, title, and metadata.
 
-3. Secondary extractor: Readability/JusText for cases where primary fails.
+1. Secondary extractor: Readability/JusText for cases where primary fails.
 
-4. Plain sanitizer fallback: strip tags, basic heuristics to create a usable text.
+1. Plain sanitizer fallback: strip tags, basic heuristics to create a usable text.
 
 Outputs
 

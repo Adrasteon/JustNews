@@ -1,6 +1,7 @@
 # Agent API Signatures and Payload Contracts
 
-This file summarizes key API endpoints, MCP call signatures, and payload shapes used across agents. Use this as a reference when implementing tests, forwarders, or new integrations.
+This file summarizes key API endpoints, MCP call signatures, and payload shapes used across agents. Use this as a
+reference when implementing tests, forwarders, or new integrations.
 
 1) HITL Service (HTTP API)
 

@@ -12,22 +12,26 @@ This runbook provides operational procedures for managing the GPU Orchestrator i
 
 1. Identify the problematic pool ID from metrics or logs
 
-2. Use the API endpoint: `POST /pools/{pool_id}/stop`
+1. Use the API endpoint: `POST /pools/{pool_id}/stop`
 
-3. Or via direct engine call: `engine.stop_worker_pool(pool_id)`
+1. Or via direct engine call: `engine.stop_worker_pool(pool_id)`
 
-4. Monitor logs for cleanup confirmation
+1. Monitor logs for cleanup confirmation
 
-5. Check metrics to confirm pool removal
+1. Check metrics to confirm pool removal
 
 **Fallback (if API unavailable):**
+
 ```bash
 
 ## Connect to orchestrator process
+
 kill -TERM <pool_worker_pid>  # Graceful shutdown
 
 ## Wait 30s, then force kill if needed
+
 kill -KILL <pool_worker_pid>
+
 ```
 
 ### Drain Cluster
@@ -38,27 +42,32 @@ kill -KILL <pool_worker_pid>
 
 1. Set orchestrator to maintenance mode (if available)
 
-2. Stop accepting new jobs: Update Redis stream consumer group to pause
+1. Stop accepting new jobs: Update Redis stream consumer group to pause
 
-3. Wait for active jobs to complete (monitor pending count → 0)
+1. Wait for active jobs to complete (monitor pending count → 0)
 
-4. Stop all worker pools: `POST /pools/stop-all`
+1. Stop all worker pools: `POST /pools/stop-all`
 
-5. Verify no running processes remain
+1. Verify no running processes remain
 
-6. Shutdown orchestrator service
+1. Shutdown orchestrator service
 
 **Drain command sequence:**
+
 ```bash
 
 ## Pause consumer group
+
 redis-cli XGROUP SETID stream:orchestrator:inference_jobs cg:inference 0
 
 ## Stop all pools via API
+
 curl -X POST http://localhost:8008/pools/stop-all
 
 ## Verify cleanup
+
 redis-cli XPENDING stream:orchestrator:inference_jobs cg:inference
+
 ```
 
 ### Recover from Dead Leader
@@ -77,17 +86,17 @@ redis-cli XPENDING stream:orchestrator:inference_jobs cg:inference
 
 1. Check current leader status: `GET /status/leader`
 
-2. Force leader election: Restart orchestrator process
+1. Force leader election: Restart orchestrator process
 
-3. Verify leader lock in database:
-   ```sql
-   SELECT * FROM mysql.locks WHERE lock_name = 'gpu_orchestrator_leader';
-   ```
+1. Verify leader lock in database:
 
-4. If lock stuck, manually release:
-   ```sql
-   SELECT RELEASE_LOCK('gpu_orchestrator_leader');
-   ```
+```sql SELECT * FROM mysql.locks WHERE lock_name = 'gpu_orchestrator_leader';
+
+```
+
+1. If lock stuck, manually release:
+
+```sql SELECT RELEASE_LOCK('gpu_orchestrator_leader'); ```
 
 **Symptoms of dead leader:**
 
@@ -107,19 +116,21 @@ redis-cli XPENDING stream:orchestrator:inference_jobs cg:inference
 
 1. **Identify culprit:** Check GPU memory usage via `nvidia-smi`
 
-2. **Stop largest pools first:**
-   ```bash
-   # Find pools by memory usage (requires custom metric)
-   curl http://localhost:8008/metrics | grep worker_pool
-   ```
+1. **Stop largest pools first:**
 
-3. **Force evict high-memory pools:**
-   ```python
+```bash
+   # Find pools by memory usage (requires custom metric)
+curl http://localhost:8008/metrics | grep worker_pool ```
+
+1. **Force evict high-memory pools:**
+
+```python
    # Via Python console
-   from agents.gpu_orchestrator.gpu_orchestrator_engine import engine
-   pools = engine.list_worker_pools()
+from agents.gpu_orchestrator.gpu_orchestrator_engine import engine pools =
+engine.list_worker_pools()
    # Sort by estimated memory and evict largest
-   ```
+
+```
 
 **OOM Prevention:**
 
@@ -133,9 +144,9 @@ redis-cli XPENDING stream:orchestrator:inference_jobs cg:inference
 
 1. Clear any stuck processes
 
-2. Restart orchestrator with reduced pool limits
+1. Restart orchestrator with reduced pool limits
 
-3. Monitor for memory leaks in worker processes
+1. Monitor for memory leaks in worker processes
 
 ## Monitoring and Alerts
 
@@ -151,7 +162,8 @@ redis-cli XPENDING stream:orchestrator:inference_jobs cg:inference
 
 - Leader election failures
 
-Also ensure Prometheus alert rules from `monitoring/alerts/gpu_orchestrator_reclaimer_rules.yml` are loaded into the monitoring stack. These rules notify on reclaimer errors, DLQ growth and elevated job retries.
+Also ensure Prometheus alert rules from `monitoring/alerts/gpu_orchestrator_reclaimer_rules.yml` are loaded into the
+monitoring stack. These rules notify on reclaimer errors, DLQ growth and elevated job retries.
 
 ### Log Patterns to Watch
 
@@ -166,13 +178,17 @@ Also ensure Prometheus alert rules from `monitoring/alerts/gpu_orchestrator_recl
 ## Maintenance Procedures
 
 ### Regular Cleanup
+
 ```bash
 
 ## Clean old completed jobs (older than 7 days)
+
 DELETE FROM orchestrator_jobs WHERE status IN ('done', 'dead_letter') AND updated_at < DATE_SUB(NOW(), INTERVAL 7 DAY);
 
 ## Clean empty streams
+
 redis-cli DEL stream:orchestrator:inference_jobs:dlq  # Only if empty
+
 ```
 
 ### Health Checks
@@ -195,11 +211,13 @@ redis-cli DEL stream:orchestrator:inference_jobs:dlq  # Only if empty
 
 ## Operator Playbooks — step-by-step (for drills and incidents)
 
-Below are concise playbooks intended for on-call operators. Each playbook is explicit about checks, commands, and verification so teams can run drills and follow consistent procedures.
+Below are concise playbooks intended for on-call operators. Each playbook is explicit about checks, commands, and
+verification so teams can run drills and follow consistent procedures.
 
 ### Playbook: Safe drain + rolling upgrade (no data loss)
 
-Purpose: gracefully drain workloads, perform a rolling upgrade of orchestrator or worker pools, then bring services back online.
+Purpose: gracefully drain workloads, perform a rolling upgrade of orchestrator or worker pools, then bring services back
+online.
 
 Pre-checks:
 
@@ -215,25 +233,25 @@ Steps:
 
    - POST /control/maintenance {"mode": "drain"}
 
-2. Pause new consumer reads while allowing in-flight jobs to complete.
+1. Pause new consumer reads while allowing in-flight jobs to complete.
 
    - redis-cli XGROUP SETID stream:orchestrator:inference_jobs cg:inference >
 
-3. Monitor pending jobs and leases until the running/pending counts drop to 0.
+1. Monitor pending jobs and leases until the running/pending counts drop to 0.
 
    - curl http://localhost:8008/metrics | grep gpu_orchestrator_pending_jobs
 
-4. Stop worker pools cleanly via API: POST /pools/stop-all
+1. Stop worker pools cleanly via API: POST /pools/stop-all
 
-5. Verify all pools are stopped: GET /pools -> should return empty or status=stopped
+1. Verify all pools are stopped: GET /pools -> should return empty or status=stopped
 
-6. Upgrade orchestrator binary or configuration.
+1. Upgrade orchestrator binary or configuration.
 
-7. Start orchestrator & ensure leader election completed: GET /status/leader
+1. Start orchestrator & ensure leader election completed: GET /status/leader
 
-8. Bring worker pools back up gradually and monitor metrics for stability.
+1. Bring worker pools back up gradually and monitor metrics for stability.
 
-9. Clear maintenance mode: POST /control/maintenance {"mode":"normal"}
+1. Clear maintenance mode: POST /control/maintenance {"mode":"normal"}
 
 Verification:
 
@@ -249,15 +267,15 @@ Steps:
 
 1. Identify pool_id and affected hosts via dashboard / metrics
 
-2. Attempt API graceful stop: POST /pools/{pool_id}/stop
+1. Attempt API graceful stop: POST /pools/{pool_id}/stop
 
-3. If pool does not stop within configured grace period, force-stop via orchestrator process:
+1. If pool does not stop within configured grace period, force-stop via orchestrator process:
 
    - engine.stop_worker_pool(pool_id)
 
    - Optionally SSH to host and kill process PID
 
-4. Confirm pool removed and leases released: GET /leases (no entries for pool_id)
+1. Confirm pool removed and leases released: GET /leases (no entries for pool_id)
 
 Post-incident:
 
@@ -273,15 +291,15 @@ Steps (manual & with caution):
 
 1. Confirm leader is dead: GET /status/leader OR inspect logs
 
-2. Attempt graceful takeover by restarting orchestrator service on another host
+1. Attempt graceful takeover by restarting orchestrator service on another host
 
-3. If takeover fails and DB lock persists, inspect lock table using DB client and TTL
+1. If takeover fails and DB lock persists, inspect lock table using DB client and TTL
 
-4. If lock is stale and safe to remove, run: SELECT RELEASE_LOCK('gpu_orchestrator_leader');
+1. If lock is stale and safe to remove, run: SELECT RELEASE_LOCK('gpu_orchestrator_leader');
 
    - Do NOT release live locks unless you have confirmed the previous leader has fully stopped.
 
-5. Start orchestrator and confirm it becomes leader and rehydrates pools
+1. Start orchestrator and confirm it becomes leader and rehydrates pools
 
 ### Playbook: Recover from DLQ storm
 
@@ -289,13 +307,13 @@ If DLQ grows unexpectedly (many jobs failing), follow:
 
 1. Pause processing: set maintenance mode and pause consumers
 
-2. Inspect sample DLQ messages (XREAD) to find root cause
+1. Inspect sample DLQ messages (XREAD) to find root cause
 
-3. Fix the underlying issue (e.g., missing artifacts, model pull failure)
+1. Fix the underlying issue (e.g., missing artifacts, model pull failure)
 
-4. Reprocess a small sample from DLQ: XADD to main stream and observe correct processing
+1. Reprocess a small sample from DLQ: XADD to main stream and observe correct processing
 
-5. Resume normal processing after confidence
+1. Resume normal processing after confidence
 
 ---
 
@@ -305,14 +323,16 @@ Use this checklist to validate runbook readiness with an operator drill.
 
 1. Execute a safe drain/upgrade in staging and confirm no data loss.
 
-2. Force-evict a test pool and confirm the cluster recovers and restarts other pools.
+1. Force-evict a test pool and confirm the cluster recovers and restarts other pools.
 
-3. Trigger a reclaimer run and simulate a set of stale messages (make sure DLQ policy works as expected).
+1. Trigger a reclaimer run and simulate a set of stale messages (make sure DLQ policy works as expected).
 
-4. Simulate leader failure and verify we can succeed in a manual takeover and that worker pools are rehydrated.
+1. Simulate leader failure and verify we can succeed in a manual takeover and that worker pools are rehydrated.
 
-5. Validate alerts fire for pending_jobs and lease saturations; confirm on-call receives notification.
+1. Validate alerts fire for pending_jobs and lease saturations; confirm on-call receives notification.
 
 ### Soak / performance tests
 
-We use `scripts/perf/orchestrator_soak.sh` and the CI workflow `.github/workflows/perf-orchestrator-soak.yml` to run manual soak tests on self-hosted GPU runners. These runs should be executed in staging before any large production changes — collect artifacts and review CSV results for latency, retry rates, and DLQ behaviour.
+We use `scripts/perf/orchestrator_soak.sh` and the CI workflow `.github/workflows/perf-orchestrator-soak.yml` to run
+manual soak tests on self- hosted GPU runners. These runs should be executed in staging before any large production
+changes — collect artifacts and review CSV results for latency, retry rates, and DLQ behaviour.

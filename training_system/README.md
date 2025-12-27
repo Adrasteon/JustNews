@@ -1,17 +1,14 @@
----
-title: JustNews Online Training System
-description: Auto-generated description for JustNews Online Training System
-tags: [documentation]
-status: current
-last_updated: 2025-09-12
----
+--- title: JustNews Online Training System description: Auto-generated description for JustNews Online Training System
+tags: [documentation] status: current last_updated: 2025-09-12 ---
 
 # JustNews Online Training System
+
 ## "Training On The Fly" - Continuous Model Improvement
 
 ### 🎯 Overview
 
-The JustNews Online Training System enables continuous model improvement across all V2 agents using real-time news data processing. The system provides:
+The JustNews Online Training System enables continuous model improvement across all V2 agents using real-time news data
+processing. The system provides:
 
 - **Active Learning**: Intelligent selection of valuable training examples
 
@@ -26,6 +23,7 @@ The JustNews Online Training System enables continuous model improvement across 
 ### 📁 Directory Structure
 
 ```
+
 training_system/
 ├── __init__.py                 # Main module imports and exports
 ├── README.md                   # This documentation
@@ -38,6 +36,7 @@ training_system/
 │   └── web_interface.py        # Dashboard placeholder
 └── utils/                      # Helper functions
     └── helpers.py               # Utility functions
+
 ```
 
 ### 🚀 Quick Start
@@ -48,10 +47,13 @@ training_system/
 from training_system import initialize_online_training, get_system_training_manager
 
 ## Initialize training coordinator
+
 coordinator = initialize_online_training(update_threshold=50)
 
 ## Get system manager
+
 manager = get_system_training_manager()
+
 ```
 
 #### 2. Collect Training Data (Automatic)
@@ -60,6 +62,7 @@ manager = get_system_training_manager()
 from training_system import collect_prediction
 
 ## Called automatically by agents during predictions
+
 collect_prediction(
     agent_name="scout",
     task_type="news_classification",
@@ -67,6 +70,7 @@ collect_prediction(
     prediction="news",
     confidence=0.85
 )
+
 ```
 
 #### 3. Submit User Corrections
@@ -75,6 +79,7 @@ collect_prediction(
 from training_system import submit_correction
 
 ## Submit user correction for immediate improvement
+
 result = submit_correction(
     agent_name="fact_checker",
     task_type="fact_verification",
@@ -84,6 +89,7 @@ result = submit_correction(
     priority=3,  # Critical priority = immediate update
     explanation="Scientific consensus disagrees"
 )
+
 ```
 
 #### 4. Monitor Training Status
@@ -92,17 +98,20 @@ result = submit_correction(
 from training_system import get_training_dashboard
 
 ## Get comprehensive system status
+
 dashboard = get_training_dashboard()
 
 print(f"Training Active: {dashboard['system_status']['online_training_active']}")
 print(f"Total Examples: {dashboard['system_status']['total_training_examples']}")
 
 ## Check agent status
+
 for agent, status in dashboard['agent_status'].items():
     buffer_size = status['buffer_size']
     threshold = status['update_threshold']
     ready = status['update_ready']
     print(f"{agent}: {buffer_size}/{threshold} ({'READY' if ready else 'COLLECTING'})")
+
 ```
 
 ### 🔧 Core Components
@@ -132,9 +141,11 @@ for agent, status in dashboard['agent_status'].items():
 - **Performance History**: Agent improvement tracking
 
 #### Key Functions
+
 ```python
 
 ## Core training functions
+
 initialize_online_training(update_threshold=50)
 get_training_coordinator()
 add_training_feedback(agent, task, input, prediction, actual, confidence)
@@ -142,24 +153,23 @@ add_user_correction(agent, task, input, incorrect, correct, priority)
 get_online_training_status()
 
 ## System management functions
+
 get_system_training_manager()
 collect_prediction(agent, task, input, prediction, confidence)
 submit_correction(agent, task, input, incorrect, correct, priority)
 get_training_dashboard()
 force_update(agent_name)
+
 ```
 
 ### 📊 Agent Integration Status
 
 | Agent | Status | Update Threshold | Models | Integration |
-|-------|--------|------------------|---------|-------------|
-| **Scout V2** | ✅ Active | 40 examples | 5 AI models | Full |
-| **Fact Checker V2** | ✅ Active | 30 examples | 5 AI models | Full |
-| **Analyst V2** | ✅ Active | 35 examples | 2 models | Full |
-| **Critic V2** | ⏳ Ready | 25 examples | 2 models | Planned |
-| **Synthesizer** | ⏳ Ready | 45 examples | 5 models | Planned |
-| **Chief Editor** | ⏳ Ready | 20 examples | 5 models | Planned |
-| **Memory** | ⏳ Ready | 50 examples | 5 models | Planned |
+|-------|--------|------------------|---------|-------------| | **Scout V2** | ✅ Active | 40 examples | 5 AI models |
+Full | | **Fact Checker V2** | ✅ Active | 30 examples | 5 AI models | Full | | **Analyst V2** | ✅ Active | 35 examples |
+2 models | Full | | **Critic V2** | ⏳ Ready | 25 examples | 2 models | Planned | | **Synthesizer** | ⏳ Ready | 45
+examples | 5 models | Planned | | **Chief Editor** | ⏳ Ready | 20 examples | 5 models | Planned | | **Memory** | ⏳ Ready
+| 50 examples | 5 models | Planned |
 
 ### 🎯 Performance Metrics
 
@@ -187,21 +197,22 @@ force_update(agent_name)
 
 1. **Data Collection**: Agents automatically collect prediction data during normal operations
 
-2. **Active Learning**: System selects high-uncertainty and high-importance examples
+1. **Active Learning**: System selects high-uncertainty and high-importance examples
 
-3. **Buffer Management**: Training examples accumulate in agent-specific buffers
+1. **Buffer Management**: Training examples accumulate in agent-specific buffers
 
-4. **Update Triggers**: Model updates trigger when thresholds are reached
+1. **Update Triggers**: Model updates trigger when thresholds are reached
 
-5. **Incremental Training**: EWC-based updates prevent catastrophic forgetting
+1. **Incremental Training**: EWC-based updates prevent catastrophic forgetting
 
-6. **Performance Monitoring**: Automatic evaluation and rollback if needed
+1. **Performance Monitoring**: Automatic evaluation and rollback if needed
 
-7. **User Corrections**: Immediate high-priority updates for critical feedback
+1. **User Corrections**: Immediate high-priority updates for critical feedback
 
 ### ⚙️ Configuration
 
 #### Update Thresholds
+
 ```python
 AGENT_THRESHOLDS = {
     "scout": 40,          # ~50 minutes at current rate
@@ -212,9 +223,11 @@ AGENT_THRESHOLDS = {
     "chief_editor": 20,   # ~25 minutes at current rate
     "memory": 50          # ~62 minutes at current rate
 }
+
 ```
 
 #### Performance Settings
+
 ```python
 TRAINING_CONFIG = {
     "rollback_threshold": 0.05,    # 5% accuracy drop triggers rollback
@@ -222,18 +235,23 @@ TRAINING_CONFIG = {
     "max_buffer_size": 1000,       # Maximum examples in memory
     "update_batch_size": 200,      # Examples per training batch
 }
+
 ```
 
 ### 🧪 Testing
 
 #### Run System Validation
+
 ```bash
 cd training_system/tests
 python validate_system.py
+
 ```
 
 #### Expected Output
+
 ```
+
 🎓 === ONLINE TRAINING SYSTEM VALIDATION ===
 
 📦 Testing Core Training Coordinator...
@@ -252,6 +270,7 @@ python validate_system.py
    ✅ analyst/entity_extraction
 
 🚀 Online Training System is PRODUCTION READY!
+
 ```
 
 ### 📈 Dashboard (Coming Soon)
@@ -275,9 +294,11 @@ The training dashboard will provide:
 ### 🔗 Integration Guide
 
 #### Agent Integration Pattern
+
 ```python
 
 ## In agent tools.py
+
 from training_system import collect_prediction, get_system_training_manager
 
 def my_agent_prediction(input_text):
@@ -295,12 +316,15 @@ def my_agent_prediction(input_text):
     )
 
     return result
+
 ```
 
 #### User Correction Functions
+
 ```python
 
 ## In agent tools.py
+
 from training_system import submit_correction
 
 def correct_my_prediction(input_text, incorrect_output, correct_output, priority=2):
@@ -313,6 +337,7 @@ def correct_my_prediction(input_text, incorrect_output, correct_output, priority
         correct_output=correct_output,
         priority=priority
     )
+
 ```
 
 ### 📚 API Reference
@@ -359,13 +384,14 @@ For questions or issues:
 
 1. Check system validation: `python training_system/tests/validate_system.py`
 
-2. Review training dashboard: `get_training_dashboard()`
+1. Review training dashboard: `get_training_dashboard()`
 
-3. Check agent integration status above
+1. Check agent integration status above
 
-4. Refer to production deployment documentation
+1. Refer to production deployment documentation
 
-The **"Training On The Fly"** system enables your AI agents to continuously improve from every news article processed, providing unprecedented adaptability and performance enhancement in production environments.
+The **"Training On The Fly"** system enables your AI agents to continuously improve from every news article processed,
+providing unprecedented adaptability and performance enhancement in production environments.
 
 ## See also
 

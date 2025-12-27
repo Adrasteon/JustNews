@@ -1,10 +1,9 @@
----
-title: ChromaDB Canonical Configuration and Bootstrap
----
+--- title: ChromaDB Canonical Configuration and Bootstrap ---
 
 # ChromaDB Canonical Configuration and Bootstrap
 
-This document describes how to ensure that your environment is configured to use a single canonical ChromaDB instance and how to bootstrap a collection and tenant for the `JustNews` system.
+This document describes how to ensure that your environment is configured to use a single canonical ChromaDB instance
+and how to bootstrap a collection and tenant for the `JustNews` system.
 
 ## Goals
 
@@ -15,6 +14,7 @@ This document describes how to ensure that your environment is configured to use
 - Provide tools and scripts for operators to bootstrap and diagnose Chroma.
 
 ## Environment Variables
+
 Set the following variables (recommended in `/etc/justnews/global.env`):
 
 - `CHROMADB_HOST` — runtime Chroma host your agents will use (e.g., `localhost`)
@@ -36,14 +36,18 @@ Run the following to check and bootstrap your Chroma instance:
 ```bash
 
 ## Show configured DB / Chroma values
+
 PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/print_db_config.py
 
 ## Diagnose Chroma endpoints and canonical settings
+
 PYTHONPATH=. CHROMADB_REQUIRE_CANONICAL=1 CHROMADB_CANONICAL_HOST=localhost CHROMADB_CANONICAL_PORT=3307 \
   conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_diagnose.py --host localhost --port 3307 --autocreate
 
 ## If diagnosis shows missing tenant or collection, attempt to create them
+
 PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_bootstrap.py --host localhost --port 3307 --tenant default_tenant --collection articles
+
 ```
 
 ## Troubleshooting
@@ -53,4 +57,7 @@ PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma
 - If the bootstrap script fails due to permissions or API version, contact your Chroma host operator to create the tenant/collection.
 
 ## Production Note
-For production, set `CHROMADB_REQUIRE_CANONICAL=1` and configure `CHROMADB_CANONICAL_HOST` and `CHROMADB_CANONICAL_PORT` in `/etc/justnews/global.env`. System startup scripts and agents will validate these settings and will abort with actionable logs if something is misconfigured.
+
+For production, set `CHROMADB_REQUIRE_CANONICAL=1` and configure `CHROMADB_CANONICAL_HOST` and `CHROMADB_CANONICAL_PORT`
+in `/etc/justnews/global.env`. System startup scripts and agents will validate these settings and will abort with
+actionable logs if something is misconfigured.

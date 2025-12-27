@@ -1,6 +1,7 @@
 # JustNews Security Framework
 
-A comprehensive, production-ready security framework for JustNews providing authentication, authorization, encryption, compliance monitoring, and security event tracking.
+A comprehensive, production-ready security framework for JustNews providing authentication, authorization, encryption,
+compliance monitoring, and security event tracking.
 
 ## Features
 
@@ -23,6 +24,7 @@ A comprehensive, production-ready security framework for JustNews providing auth
 ```bash
 cd security/refactor
 pip install -r requirements.txt
+
 ```
 
 ### Basic Usage
@@ -31,6 +33,7 @@ pip install -r requirements.txt
 from security.refactor import SecurityManager, SecurityConfig
 
 ## Configure security
+
 config = SecurityConfig(
     jwt_secret="your-secret-key",
     jwt_expiration_hours=24,
@@ -38,10 +41,12 @@ config = SecurityConfig(
 )
 
 ## Initialize security framework
+
 security = SecurityManager(config)
 await security.initialize()
 
 ## Create user
+
 user_id = await security.auth_service.create_user(
     username="john_doe",
     email="john@example.com",
@@ -49,16 +54,21 @@ user_id = await security.auth_service.create_user(
 )
 
 ## Authenticate user
+
 tokens = await security.authenticate_user("john_doe", "SecurePass123!")
 
 ## Check permissions
+
 can_read = await security.check_permission(user_id, "articles:read")
 
 ## Encrypt sensitive data
+
 encrypted = await security.encrypt_data("sensitive information")
 
 ## Cleanup
+
 await security.shutdown()
+
 ```
 
 ## Architecture
@@ -66,6 +76,7 @@ await security.shutdown()
 ### Core Components
 
 #### SecurityManager
+
 Central orchestrator coordinating all security operations.
 
 #### AuthenticationService
@@ -146,6 +157,7 @@ config = SecurityConfig(
     # Monitoring
     enable_mfa=True
 )
+
 ```
 
 ## API Reference
@@ -155,16 +167,21 @@ config = SecurityConfig(
 ```python
 
 ## Create user
+
 user_id = await auth_service.create_user(username, email, password, roles)
 
 ## Authenticate
+
 tokens = await auth_service.authenticate(username, password)
 
 ## Validate token
+
 payload = await auth_service.validate_token(access_token)
 
 ## Refresh token
+
 new_tokens = await auth_service.refresh_access_token(refresh_token)
+
 ```
 
 ### Authorization
@@ -172,20 +189,25 @@ new_tokens = await auth_service.refresh_access_token(refresh_token)
 ```python
 
 ## Check permission
+
 allowed = await authz_service.check_permission(user_id, "articles:read")
 
 ## Get user roles
+
 roles = await authz_service.get_user_roles(user_id)
 
 ## Assign role
+
 await authz_service.assign_role(user_id, "moderator")
 
 ## Create custom role
+
 await authz_service.create_role(Role(
     name="editor",
     description="Content editor",
     permissions=["articles:write", "comments:moderate"]
 ))
+
 ```
 
 ### Encryption
@@ -193,19 +215,25 @@ await authz_service.create_role(Role(
 ```python
 
 ## Encrypt data
+
 encrypted = await encrypt_service.encrypt_data(data, key_id)
 
 ## Decrypt data
+
 decrypted = await encrypt_service.decrypt_data(encrypted_data, key_id)
 
 ## Generate key pair
+
 key_pair = await encrypt_service.generate_key_pair()
 
 ## Sign data
+
 signature = await encrypt_service.sign_data(data, private_key_id)
 
 ## Verify signature
+
 valid = await encrypt_service.verify_signature(data, signature, public_key_id)
+
 ```
 
 ### Compliance
@@ -213,21 +241,27 @@ valid = await encrypt_service.verify_signature(data, signature, public_key_id)
 ```python
 
 ## Record consent
+
 consent_id = await compliance_service.record_consent(
     user_id, "marketing", "consent text"
 )
 
 ## Check consent
+
 status = await compliance_service.check_consent(user_id, "marketing")
 
 ## Export user data (GDPR Article 15)
+
 data = await compliance_service.export_user_data(user_id)
 
 ## Delete user data (GDPR Article 17)
+
 await compliance_service.delete_user_data(user_id)
 
 ## Generate compliance report
+
 report = await compliance_service.get_compliance_report("gdpr")
+
 ```
 
 ### Monitoring
@@ -235,6 +269,7 @@ report = await compliance_service.get_compliance_report("gdpr")
 ```python
 
 ## Log security event
+
 await monitor.log_security_event(
     "authentication_failure",
     user_id,
@@ -242,13 +277,17 @@ await monitor.log_security_event(
 )
 
 ## Get security metrics
+
 metrics = await monitor.get_security_metrics(hours=24)
 
 ## Get active alerts
+
 alerts = await monitor.get_active_alerts()
 
 ## Resolve alert
+
 await monitor.resolve_alert(alert_id, "Issue resolved")
+
 ```
 
 ## Security Policies
@@ -313,6 +352,7 @@ async def create_article(
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     return await create_article_logic(article, current_user)
+
 ```
 
 ### Database Integration
@@ -335,6 +375,7 @@ class SecureDatabase:
             user_id,
             {"data_types": list(profile_data.keys())}
         )
+
 ```
 
 ## Testing
@@ -343,12 +384,14 @@ Run the integration tests:
 
 ```bash
 pytest security/refactor/tests_integration.py -v
+
 ```
 
 Run the demo:
 
 ```bash
 python security/refactor/demo.py
+
 ```
 
 ## Security Best Practices
@@ -396,6 +439,7 @@ python security/refactor/demo.py
 - **Compliance Violations**: GDPR/CCPA violations
 
 ### Custom Rules
+
 ```python
 await monitor.add_monitoring_rule(MonitoringRule(
     id="custom_rule",
@@ -405,6 +449,7 @@ await monitor.add_monitoring_rule(MonitoringRule(
     condition="event.get('severity', 0) > 8",
     severity=AlertSeverity.HIGH
 ))
+
 ```
 
 ## Performance Considerations
@@ -452,17 +497,18 @@ Enable debug logging:
 ```python
 import logging
 logging.basicConfig(level=logging.DEBUG)
+
 ```
 
 ## Contributing
 
 1. Follow PEP 8 style guidelines
 
-2. Add comprehensive tests for new features
+1. Add comprehensive tests for new features
 
-3. Update documentation for API changes
+1. Update documentation for API changes
 
-4. Ensure compliance with security policies
+1. Ensure compliance with security policies
 
 ## License
 
@@ -470,6 +516,4 @@ This security framework is part of JustNews and follows the same licensing terms
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: October 22, 2025
-**Contact**: security@justnews.com
+**Version**: 1.0.0 **Last Updated**: October 22, 2025 **Contact**: security@justnews.com

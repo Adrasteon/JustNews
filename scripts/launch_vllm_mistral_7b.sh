@@ -37,12 +37,12 @@ echo "LoRA modules: ${VLLM_LORA_MODULES:-(none configured)}"
 echo "==================================================="
 
 # Activate conda environment
-if [[ -n "${CONDA_PREFIX:-}" ]] && [[ "$CONDA_PREFIX" == *"justnews-py312"* ]]; then
-    echo "Already in justnews-py312 environment."
+if [[ -n "${CONDA_PREFIX:-}" ]] && [[ "$CONDA_PREFIX" == *"${CANONICAL_ENV:-justnews-py312}"* ]]; then
+    echo "Already in ${CANONICAL_ENV:-justnews-py312} environment."
 else
-    echo "Activating conda environment: justnews-py312"
+    echo "Activating conda environment: ${CANONICAL_ENV:-justnews-py312}"
     eval "$(conda shell.bash hook)"
-    conda activate justnews-py312
+    conda activate "${CANONICAL_ENV:-justnews-py312}"
 fi
 
 # Check vLLM is installed

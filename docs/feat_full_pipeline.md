@@ -2,9 +2,13 @@
 
 ## Overview
 
-This feature unifies the full end-to-end article pipeline into a single documented flow and includes the runtime configuration, gating, and observability required to safely synthesize and publish articles. It builds on the `feat/article_creation` work (ClusterFetcher, Analyst, Fact-Checker, Reasoning, Synthesizer, Critic, Chief Editor) and extends it with operational guidance, integration tests, and deployment considerations.
+This feature unifies the full end-to-end article pipeline into a single documented flow and includes the runtime
+configuration, gating, and observability required to safely synthesize and publish articles. It builds on the
+`feat/article_creation` work (ClusterFetcher, Analyst, Fact-Checker, Reasoning, Synthesizer, Critic, Chief Editor) and
+extends it with operational guidance, integration tests, and deployment considerations.
 
-This document is intended to be the canonical reference for the full pipeline delivered on the `feat/full_pipeline` branch.
+This document is intended to be the canonical reference for the full pipeline delivered on the `feat/full_pipeline`
+branch.
 
 ---
 
@@ -26,22 +30,26 @@ This document is intended to be the canonical reference for the full pipeline de
 
 1. Trigger (API, scheduled job, or orbit event) begins a `SYNTHESIZE_CLUSTER` job.
 
-0. Pre-flight: Web crawl & scrape — the pipeline starts here. `CrawlerEngine` (`agents/crawler/crawler_engine.py`) or the `GenericSiteCrawler` discovers article URLs, applies paywall detection and initial heuristics, then calls the `memory` agent (`/ingest_article`) to persist candidate articles. The earliest decision is whether a page qualifies as a valid article via `agents/crawler/extraction.extract_article_content()` (word count, text/html ratio), `skip_ingest` (paywalled), and `needs_review` flags.
-0.5. Scheduling & budgets: Crawls are orchestrated by the scheduler script `scripts/ops/run_crawl_schedule.py` which builds crawl windows from `config/crawl_schedule.yaml` and optionally loads per-site `config/crawl_profiles`. The scheduler manages budgets, target articles per hour, and adaptive Crawl4AI runs; it emits Prometheus metrics (e.g., `justnews_crawler_scheduler_*`). This is the canonical production entrypoint for scheduled crawling and influences pre-flight gating and ingestion volumes.
+1. Pre-flight: Web crawl & scrape — the pipeline starts here. `CrawlerEngine` (`agents/crawler/crawler_engine.py`) or the `GenericSiteCrawler` discovers article URLs, applies paywall detection and initial heuristics, then calls the `memory` agent (`/ingest_article`) to persist candidate articles. The earliest decision is whether a page qualifies as a valid article via `agents/crawler/extraction.extract_article_content()` (word count, text/html ratio), `skip_ingest` (paywalled), and `needs_review` flags.
+0.5. Scheduling & budgets: Crawls are orchestrated by the scheduler script `scripts/ops/run_crawl_schedule.py` which
+builds crawl windows from `config/crawl_schedule.yaml` and optionally loads per-site `config/crawl_profiles`. The
+scheduler manages budgets, target articles per hour, and adaptive Crawl4AI runs; it emits Prometheus metrics (e.g.,
+`justnews_crawler_scheduler_*`). This is the canonical production entrypoint for scheduled crawling and influences pre-
+flight gating and ingestion volumes.
 
-2. `ClusterFetcher` collects deduplicated articles for the given cluster.
+1. `ClusterFetcher` collects deduplicated articles for the given cluster.
 
-3. `Analyst` runs per-article claim extraction and a per-article `source_fact_check` using `FactCheckerEngine`.
+1. `Analyst` runs per-article claim extraction and a per-article `source_fact_check` using `FactCheckerEngine`.
 
-4. `Reasoning` agent receives the `AnalysisReport` and produces a `reasoning_plan` with prioritized sources, outline, and claims.
+1. `Reasoning` agent receives the `AnalysisReport` and produces a `reasoning_plan` with prioritized sources, outline, and claims.
 
-5. `Synthesizer` constructs a draft using the `reasoning_plan` and `Analyst` outputs and returns a `DraftArticle` structure.
+1. `Synthesizer` constructs a draft using the `reasoning_plan` and `Analyst` outputs and returns a `DraftArticle` structure.
 
-6. `Critic` reviews the draft for policy and style; the draft is then sent through a mandatory draft-level fact-check.
+1. `Critic` reviews the draft for policy and style; the draft is then sent through a mandatory draft-level fact-check.
 
-7. If the draft passes fact-check and Critic constraints, and publishing gates allow, the article is auto-published or queued for Chief Editor review.
+1. If the draft passes fact-check and Critic constraints, and publishing gates allow, the article is auto-published or queued for Chief Editor review.
 
-8. On publish the system records `is_published`, `published_at`, updates Chroma embeddings, and logs tracing/metrics.
+1. On publish the system records `is_published`, `published_at`, updates Chroma embeddings, and logs tracing/metrics.
 
 Notes:
 
@@ -95,9 +103,12 @@ Endpoints:
 
  - Authentication: `GET` and `POST` admin endpoints support two modes and will accept either:
 	 1. A legacy static API key via `Authorization: Bearer <ADMIN_API_KEY>` or `X-Admin-API-Key: <key>` (suitable for simple/local deployments), or
-	 2. A role-based JWT Bearer token (when `ADMIN_API_KEY` is not set). The token must validate (`verify_token`) and the user must have `role=admin`.
+	 1. A role-based JWT Bearer token (when `ADMIN_API_KEY` is not set). The token must validate (`verify_token`) and the user must have `role=admin`.
 
-	Implementation note: the dashboard uses a runtime import of `agents.common.auth_models` so tests can monkeypatch `verify_token` and `get_user_by_id`. A recent fix ensures the `GET /admin/get_publishing_config` codepath properly extracts and verifies JWTs — invalid tokens now correctly return HTTP 401 (the behaviour asserted by `tests/agents/dashboard/test_admin_jwt_auth.py`).
+Implementation note: the dashboard uses a runtime import of `agents.common.auth_models` so tests can monkeypatch
+`verify_token` and `get_user_by_id`. A recent fix ensures the `GET /admin/get_publishing_config` codepath properly
+extracts and verifies JWTs — invalid tokens now correctly return HTTP 401 (the behaviour asserted by
+`tests/agents/dashboard/test_admin_jwt_auth.py`).
 
  - Audit log: admin changes are appended to `logs/audit/publishing_config_changes.jsonl` for traceability. When admin JWTs are used those admin actions include `user_id`/`username` in the audit entry; we recommend extending audit entries to capture requestor identity and IP address for richer traceability (tracked as a follow-up).
 
@@ -125,13 +136,21 @@ Public-facing products:
 
 ## Persisted Data & Traceability
 
-Modeling choices are documented in `feat_article_creation.md`, but the pipeline enforces full traceability: every synthesized article draft stores metadata like `synth_trace`, `critic_result`, `analysis_summary`, `source_fact_checks`, `reasoning_plan_id`, and `fact_check_trace`.
+Modeling choices are documented in `feat_article_creation.md`, but the pipeline enforces full traceability: every
+synthesized article draft stores metadata like `synth_trace`, `critic_result`, `analysis_summary`, `source_fact_checks`,
+`reasoning_plan_id`, and `fact_check_trace`.
 
-Knowledge Graph (KG) storage: The system now uses a DB-backed Knowledge Graph by default (MariaDB tables `entities` and `article_entities` created in migration 007). The `agents/archive` code will persist extracted entities and article->entity links to MariaDB for scale, queryability and auditing. A file-backed KG (legacy) remains available as a fallback if `KG_BACKEND=file` is set — this is intended only for lightweight local development or when MariaDB is temporarily unavailable.
+Knowledge Graph (KG) storage: The system now uses a DB-backed Knowledge Graph by default (MariaDB tables `entities` and
+`article_entities` created in migration 007). The `agents/archive` code will persist extracted entities and
+article->entity links to MariaDB for scale, queryability and auditing. A file- backed KG (legacy) remains available as a
+fallback if `KG_BACKEND=file` is set — this is intended only for lightweight local development or when MariaDB is
+temporarily unavailable.
 
 Chroma: store `is_synthesized` metadata on embeddings to help retrieval & housekeeping.
 
-Raw HTML archive & retention: The extractor (`agents/crawler/extraction.py`) saves raw HTML artefacts to `archive_storage/raw_html/` for forensic analysis, re-extraction, and model/data backfills. Ensure retention & backfill policies are documented and a clear reprocessing path exists: crawl -> raw_html -> extraction -> ingest.
+Raw HTML archive & retention: The extractor (`agents/crawler/extraction.py`) saves raw HTML artefacts to
+`archive_storage/raw_html/` for forensic analysis, re-extraction, and model/data backfills. Ensure retention & backfill
+policies are documented and a clear reprocessing path exists: crawl -> raw_html -> extraction -> ingest.
 
 Migration summary:
 
@@ -161,7 +180,8 @@ Migration summary:
 
 ## Crawl & Ingest Details (Where the pipeline starts) 🔎
 
-The very beginning of the pipeline is the web crawl and scrape stage — this is where candidate pages are accepted, rejected, or flagged for review.
+The very beginning of the pipeline is the web crawl and scrape stage — this is where candidate pages are accepted,
+rejected, or flagged for review.
 
 - Crawler: `agents/crawler/crawler_engine.py` coordinates site-specific strategies (`ultra_fast`, `ai_enhanced`, `generic`) and optionally delegates to `crawl4ai` crawlers. `GenericSiteCrawler` fetches homepages, extracts article links with `_extract_article_links()`, fetches article HTML and runs `_build_article()`.
 
@@ -173,7 +193,8 @@ The very beginning of the pipeline is the web crawl and scrape stage — this is
 
 - Ingestion: `_ingest_articles()` in `CrawlerEngine` calls the `memory` agent's `ingest_article` tool (`POST /ingest_article` in `agents/memory/main.py`). The memory agent handles upserts into the `sources` table and finalizes `articles` insertion; it also sets `ingestion_status` as `new`, `duplicate`, or `error` and includes `extraction_metadata` for downstream analysers.
 
-These early decisions - whether a page is valid, paywalled, or a candidate for review - strongly influence which articles become available for downstream clustering, analysis, fact-check, and ultimately synthesis.
+These early decisions - whether a page is valid, paywalled, or a candidate for review - strongly influence which
+articles become available for downstream clustering, analysis, fact-check, and ultimately synthesis.
 
 ---
 

@@ -1,10 +1,13 @@
 # GPU Monitoring Guide
 
-This guide provides comprehensive information about the NVIDIA GPU monitoring capabilities integrated into the JustNews monitoring stack.
+This guide provides comprehensive information about the NVIDIA GPU monitoring capabilities integrated into the JustNews
+monitoring stack.
 
 ## Overview
 
-The JustNews platform includes advanced GPU monitoring that provides real-time insights into NVIDIA GPU performance, utilization, and health metrics. This enables proactive monitoring of GPU workloads, early detection of performance issues, and optimization of GPU resource usage.
+The JustNews platform includes advanced GPU monitoring that provides real-time insights into NVIDIA GPU performance,
+utilization, and health metrics. This enables proactive monitoring of GPU workloads, early detection of performance
+issues, and optimization of GPU resource usage.
 
 ## Architecture
 
@@ -18,7 +21,7 @@ The JustNews platform includes advanced GPU monitoring that provides real-time i
 
    - Automatic background operation with health checks
 
-2. **Prometheus Integration**
+1. **Prometheus Integration**
 
    - GPU exporter added to scrape targets
 
@@ -26,7 +29,7 @@ The JustNews platform includes advanced GPU monitoring that provides real-time i
 
    - Metrics stored with full retention policy
 
-3. **Grafana Visualization**
+1. **Grafana Visualization**
 
    - 6 dedicated GPU panels in JustNews Operations Dashboard
 
@@ -38,18 +41,14 @@ The JustNews platform includes advanced GPU monitoring that provides real-time i
 
 ### Core Metrics
 
-| Metric Name | Type | Description | Units |
-|-------------|------|-------------|-------|
-| `nvidia_gpu_count` | Gauge | Number of GPUs detected in the system | count |
-| `nvidia_gpu_utilization_ratio` | Gauge | GPU utilization as a ratio | 0-1 |
-| `nvidia_gpu_memory_utilization_ratio` | Gauge | GPU memory utilization as a ratio | 0-1 |
-| `nvidia_gpu_temperature_celsius` | Gauge | GPU temperature | Celsius |
-| `nvidia_gpu_power_draw_watts` | Gauge | Current power consumption | Watts |
-| `nvidia_gpu_power_limit_watts` | Gauge | Configured power limit | Watts |
-| `nvidia_gpu_fan_speed_ratio` | Gauge | Fan speed as a ratio | 0-1 |
-| `nvidia_gpu_memory_total_bytes` | Gauge | Total GPU memory | Bytes |
-| `nvidia_gpu_memory_used_bytes` | Gauge | Used GPU memory | Bytes |
-| `nvidia_gpu_memory_free_bytes` | Gauge | Free GPU memory | Bytes |
+| Metric Name | Type | Description | Units | |-------------|------|-------------|-------| | `nvidia_gpu_count` | Gauge |
+Number of GPUs detected in the system | count | | `nvidia_gpu_utilization_ratio` | Gauge | GPU utilization as a ratio |
+0-1 | | `nvidia_gpu_memory_utilization_ratio` | Gauge | GPU memory utilization as a ratio | 0-1 | |
+`nvidia_gpu_temperature_celsius` | Gauge | GPU temperature | Celsius | | `nvidia_gpu_power_draw_watts` | Gauge | Current
+power consumption | Watts | | `nvidia_gpu_power_limit_watts` | Gauge | Configured power limit | Watts | |
+`nvidia_gpu_fan_speed_ratio` | Gauge | Fan speed as a ratio | 0-1 | | `nvidia_gpu_memory_total_bytes` | Gauge | Total
+GPU memory | Bytes | | `nvidia_gpu_memory_used_bytes` | Gauge | Used GPU memory | Bytes | |
+`nvidia_gpu_memory_free_bytes` | Gauge | Free GPU memory | Bytes |
 
 ### Derived Metrics
 
@@ -58,16 +57,21 @@ Additional metrics can be calculated from the core metrics:
 ```promql
 
 ## GPU utilization percentage
+
 nvidia_gpu_utilization_ratio * 100
 
 ## Memory usage percentage
+
 nvidia_gpu_memory_utilization_ratio * 100
 
 ## Memory used in GB
+
 nvidia_gpu_memory_used_bytes / (1024*1024*1024)
 
 ## Power efficiency (utilization vs power draw)
+
 nvidia_gpu_utilization_ratio / nvidia_gpu_power_draw_watts
+
 ```
 
 ## Dashboard Panels
@@ -151,22 +155,20 @@ The JustNews Operations Dashboard includes 6 GPU monitoring panels:
 The GPU monitoring is automatically configured when the monitoring stack is installed. The setup includes:
 
 1. **GPU Exporter Deployment**
-   ```bash
-   cd /home/adra
-   python3 gpu_metrics_exporter.py &
-   ```
 
-2. **Prometheus Configuration**
-   ```yaml
+```bash cd /home/adra python3 gpu_metrics_exporter.py & ```
+
+1. **Prometheus Configuration**
+
+```yaml
 
    - job_name: nvidia-gpu-exporter
-     static_configs:
+static_configs:
 
        - targets: ['127.0.0.1:9400']
-     metrics_path: /metrics
-   ```
+metrics_path: /metrics ```
 
-3. **Grafana Dashboard**
+1. **Grafana Dashboard**
 
    - Automatically provisioned from `monitoring/dashboards/generated/`
 
@@ -177,16 +179,21 @@ The GPU monitoring is automatically configured when the monitoring stack is inst
 ```bash
 
 ## Check GPU exporter health
+
 curl http://localhost:9400/health
 
 ## View raw GPU metrics
+
 curl http://localhost:9400/metrics | head -20
 
 ## Verify Prometheus scraping
+
 curl http://localhost:9090/api/v1/query?query=nvidia_gpu_count
 
 ## Access dashboard
+
 open http://localhost:3000/d/ef37elu2756o0e/justnews-operations-dashboard
+
 ```
 
 ## Performance Characteristics
@@ -216,16 +223,21 @@ open http://localhost:3000/d/ef37elu2756o0e/justnews-operations-dashboard
 ### Common Issues
 
 #### GPU Exporter Not Starting
+
 ```bash
 
 ## Check NVIDIA drivers
+
 nvidia-smi --query-gpu=name --format=csv,noheader
 
 ## Verify Python environment
+
 python3 --version
 
 ## Check for port conflicts
+
 netstat -tlnp | grep 9400
+
 ```
 
 #### Metrics Showing "No Data"
@@ -233,13 +245,17 @@ netstat -tlnp | grep 9400
 ```bash
 
 ## Check exporter health
+
 curl http://localhost:9400/health
 
 ## Verify metrics endpoint
+
 curl http://localhost:9400/metrics | grep nvidia_gpu
 
 ## Check Prometheus targets
+
 curl http://localhost:9090/api/v1/targets | jq '.data.activeTargets[] | select(.labels.job == "nvidia-gpu-exporter")'
+
 ```
 
 #### GPU Temperature Not Available
@@ -249,10 +265,13 @@ Some GPU models don't report temperature via nvidia-smi:
 ```bash
 
 ## Check what metrics are available
+
 nvidia-smi --query-gpu=temperature.gpu --format=csv
 
 ## Alternative: Use NVML if available (install the maintained nvidia-ml-py package)
+
 pip install nvidia-ml-py
+
 ```
 
 #### High Memory Usage
@@ -262,10 +281,13 @@ The exporter is lightweight, but monitor system resources:
 ```bash
 
 ## Check exporter process
+
 ps aux | grep gpu_metrics_exporter
 
 ## Monitor memory usage
+
 free -h
+
 ```
 
 ### Log Analysis
@@ -273,11 +295,14 @@ free -h
 ```bash
 
 ## Check exporter logs (if running in foreground)
+
 python3 gpu_metrics_exporter.py
 
 ## System logs for GPU issues
+
 dmesg | grep -i nvidia
 journalctl -u nvidia-persistenced
+
 ```
 
 ## Advanced Configuration
@@ -289,7 +314,9 @@ Modify `gpu_metrics_exporter.py` to add custom metrics:
 ```python
 
 ## Add custom metric
+
 output.append(f'custom_gpu_metric{{{labels}}} {custom_value}')
+
 ```
 
 ### Alerting Rules
@@ -319,6 +346,7 @@ groups:
         annotations:
           summary: "GPU temperature is critical"
           description: "GPU temperature is {{ $value }}°C"
+
 ```
 
 ### Multi-GPU Support
@@ -328,10 +356,13 @@ The exporter automatically detects and monitors all GPUs:
 ```bash
 
 ## Check number of GPUs
+
 curl http://localhost:9090/api/v1/query?query=nvidia_gpu_count
 
 ## Query specific GPU (if multiple)
+
 curl http://localhost:9090/api/v1/query?query=nvidia_gpu_utilization_ratio{gpu="1"}
+
 ```
 
 ## Integration with JustNews Agents
@@ -388,5 +419,4 @@ Create specialized GPU dashboards for different use cases:
 
 ---
 
-*Last updated: November 5, 2025*
-*GPU Monitoring Version: 1.0*
+*Last updated: November 5, 2025* *GPU Monitoring Version: 1.0*

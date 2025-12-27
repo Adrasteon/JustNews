@@ -91,39 +91,26 @@
 ## Command Samples
 
 - Inspect available CLI defaults quickly:
-  ```bash
-  crwl config list | head
-  ```
+
+```bash crwl config list | head ```
 
 - Dry-run the Stage B scheduler against the finance cohort while loading explicit profile overrides:
-  ```bash
-  CRAWL_PROFILE_PATH=config/crawl_profiles python scripts/ops/run_crawl_schedule.py \
-    --dry-run \
-    --testrun \
-    --profiles config/crawl_profiles \
-    --schedule config/crawl_schedule.yaml
-  ```
+
+```bash CRAWL_PROFILE_PATH=config/crawl_profiles python
+scripts/ops/run_crawl_schedule.py \ --dry-run \ --testrun \ --profiles config/crawl_profiles \ --schedule
+config/crawl_schedule.yaml ```
 
 - Trigger a background crawl job directly against the agent API with a profile override for `markets.example.com`:
-  ```bash
-  curl -X POST http://127.0.0.1:8015/unified_production_crawl \
-    -H 'Content-Type: application/json' \
-    -d '{
-      "args": [["markets.example.com"]],
-      "kwargs": {
-        "max_articles_per_site": 8,
-        "concurrent_sites": 1,
-        "profile_overrides": {
-          "markets.example.com": {"profile_slug": "finance-default"}
-        }
-      }
-    }'
-  ```
+
+```bash curl -X POST http://127.0.0.1:8015/unified_production_crawl \ -H
+'Content-Type: application/json' \ -d '{ "args": [["markets.example.com"]],
+"kwargs": { "max_articles_per_site": 8, "concurrent_sites": 1,
+"profile_overrides": { "markets.example.com": {"profile_slug": "finance-
+default"} } } }' ```
 
 - Launch the crawler agent with live reloading during local development:
-  ```bash
-  uvicorn agents.crawler.main:app --host 0.0.0.0 --port 8015 --reload
-  ```
+
+```bash uvicorn agents.crawler.main:app --host 0.0.0.0 --port 8015 --reload ```
 
 ## Output Structures & Metrics
 
@@ -137,15 +124,15 @@
 
 1. Discover candidate URLs with `SeedingConfig`.
 
-2. Crawl via `AsyncWebCrawler.arun/arun_many`, optionally wrap in `AdaptiveCrawler` for deeper coverage.
+1. Crawl via `AsyncWebCrawler.arun/arun_many`, optionally wrap in `AdaptiveCrawler` for deeper coverage.
 
-3. Attach extraction strategy (regex, schema, LLM, cosine) or markdown filter to shape output.
+1. Attach extraction strategy (regex, schema, LLM, cosine) or markdown filter to shape output.
 
-4. Use chunking strategies for long-form content before LLM-based extraction.
+1. Use chunking strategies for long-form content before LLM-based extraction.
 
-5. Combine PDF or JS automation (C4A-script, `execute_js`) for non-HTML sources.
+1. Combine PDF or JS automation (C4A-script, `execute_js`) for non-HTML sources.
 
-6. Integrate with services through REST endpoints, streaming responses, or embed C4A scripts for deterministic DOM workflows.
+1. Integrate with services through REST endpoints, streaming responses, or embed C4A scripts for deterministic DOM workflows.
 
 ## Internal Integration (JustNews)
 

@@ -558,6 +558,31 @@ class TestMigratedDatabaseService:
                         expected_collection
                     )
 
+    def test_collection_scoping_disabled(self, mock_config, monkeypatch):
+        """When CHROMADB_MODEL_SCOPED_COLLECTION is false the base collection should be used."""
+        monkeypatch.setenv("CHROMADB_MODEL_SCOPED_COLLECTION", "0")
+        with patch("mysql.connector.connect") as mock_mb_connect:
+            with patch("chromadb.HttpClient") as mock_chroma_client:
+                with patch(
+                    "sentence_transformers.SentenceTransformer"
+                ) as mock_embedding:
+                    mock_conn = MagicMock()
+                    mock_mb_connect.return_value = mock_conn
+
+                    mock_client = MagicMock()
+                    mock_collection = MagicMock()
+                    mock_client.get_collection.return_value = mock_collection
+                    mock_chroma_client.return_value = mock_client
+
+                    mock_model = MagicMock()
+                    mock_embedding.return_value = mock_model
+
+                    service = MigratedDatabaseService(mock_config)
+
+                    # scoping disabled -> should use base collection name
+                    mock_client.get_collection.assert_called_once_with("articles")
+
+
     def test_close(self, mock_service):
         """Test closing database connections"""
         mock_service.close()

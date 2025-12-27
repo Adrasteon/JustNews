@@ -147,6 +147,9 @@ os.environ["PYTEST_RUNNING"] = "1"
 # explicitly sets CHROMADB_REQUIRE_CANONICAL via monkeypatch. This prevents
 # unrelated unit tests from failing due to environment-level canonical settings.
 os.environ.setdefault("CHROMADB_REQUIRE_CANONICAL", "0")
+# Ensure model-scoped ChromaDB collections are enabled by default in tests
+# unless a test explicitly disables them using monkeypatch.setenv(...).
+os.environ.setdefault("CHROMADB_MODEL_SCOPED_COLLECTION", "1")
 # Disable the embedding module's suppression of upstream warnings during tests so
 # our stricter 'no warnings' CI policy can detect and fail on them.
 os.environ.setdefault("EMBEDDING_SUPPRESS_WARNINGS", "0")

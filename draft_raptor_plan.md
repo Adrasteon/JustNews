@@ -130,19 +130,19 @@ Goals:
 
 1. Crawl → candidate creation (Crawler / Crawl4AI).
 
-2. Extract & normalize (crawler extraction tooling or `journalist` / extraction agent).
+1. Extract & normalize (crawler extraction tooling or `journalist` / extraction agent).
 
-3. Store candidate (HITL candidate store and `raw_html_ref`).
+1. Store candidate (HITL candidate store and `raw_html_ref`).
 
-4. Memory ingest: store article in MariaDB and compute embeddings; return `ingest_job_id`.
+1. Memory ingest: store article in MariaDB and compute embeddings; return `ingest_job_id`.
 
-5. Analysis: compute `sentiment`, `bias_vector`, `persuasion_score`.
+1. Analysis: compute `sentiment`, `bias_vector`, `persuasion_score`.
 
-6. Clustering: compute `cluster_id` and store it with article metadata.
+1. Clustering: compute `cluster_id` and store it with article metadata.
 
-7. HITL flow: label, QA, optional re-ingest forward.
+1. HITL flow: label, QA, optional re-ingest forward.
 
-8. Publish/Archive: `journalist` / `archive_agent` publishes and stores archives.
+1. Publish/Archive: `journalist` / `archive_agent` publishes and stores archives.
 
 ---
 
@@ -312,19 +312,19 @@ Goals:
 
 1. Create `agents/analysis` scaffold with endpoints; add unit tests for `compute_sentiment`, `detect_bias`, and `persuasion_score`.
 
-2. Create `agents/common/model_provider.py` and integrate with `analysis` and `memory` agents.
+1. Create `agents/common/model_provider.py` and integrate with `analysis` and `memory` agents.
 
-3. Add DB migration `XXX_job_traces.sql` and update `scripts/init_database.py`.
+1. Add DB migration `XXX_job_traces.sql` and update `scripts/init_database.py`.
 
-4. Add unit tests for cluster and integration test that runs the pipeline in-process.
+1. Add unit tests for cluster and integration test that runs the pipeline in-process.
 
-5. Add metrics & detection for system faults.
+1. Add metrics & detection for system faults.
 
-6. Add `AGENT_MODEL_RECOMMENDED.json` to the repo (covers default & fallback models per-agent) and implement orchestrator checks to fall back to quantized variants or CPU-only when GPU resources are insufficient.
+1. Add `AGENT_MODEL_RECOMMENDED.json` to the repo (covers default & fallback models per-agent) and implement orchestrator checks to fall back to quantized variants or CPU-only when GPU resources are insufficient.
 
-7. Implement model metadata additions and a `model_vram` registry in `config/gpu/mps_allocation_config.json` to assist preloading.
+1. Implement model metadata additions and a `model_vram` registry in `config/gpu/mps_allocation_config.json` to assist preloading.
 
-8. Add `model_health` probes and a quantized-parity test in CI that uses `bitsandbytes` and `PEFT` wrappers to confirm inference correctness.
+1. Add `model_health` probes and a quantized-parity test in CI that uses `bitsandbytes` and `PEFT` wrappers to confirm inference correctness.
 
 ---
 

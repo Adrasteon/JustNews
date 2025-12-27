@@ -4,7 +4,7 @@
 
 - [ ] Mistral-7B vLLM running on 7060: `curl -s http://localhost:7060/health`
 
-- [ ] Conda environment activated: `echo $CONDA_PREFIX | grep justnews-py312`
+- [ ] Conda environment activated: `echo $CONDA_PREFIX | grep ${CANONICAL_ENV:-justnews-py312}`
 
 - [ ] Project directory accessible: `cd /home/adra/JustNews && pwd`
 
@@ -22,7 +22,7 @@
 
   - `CANONICAL_ENV=justnews-py312`
 
-  - `JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/justnews-py312/bin/python`
+  - `JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python`
 
   - `SERVICE_DIR=/home/adra/JustNews`
 
@@ -31,22 +31,22 @@
 ### 1.2 MariaDB
 
 - [ ] Start MariaDB:
-  ```bash
+
+```bash
   # Option A: Docker
-  docker-compose -f scripts/dev/docker-compose.e2e.yml up -d mariadb
+docker-compose -f scripts/dev/docker-compose.e2e.yml up -d mariadb
 
   # Option B: Native (if not running)
-  sudo ./infrastructure/systemd/setup_mariadb.sh --user justnews_user --password [password]
-  ```
+sudo ./infrastructure/systemd/setup_mariadb.sh --user justnews_user --password
+[password] ```
 
 - [ ] Verify connection: `mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -h $MARIADB_HOST -e "SELECT 1;"`
 
 ### 1.3 ChromaDB
 
 - [ ] Start ChromaDB:
-  ```bash
-  docker run -d --name chromadb -p 8000:8000 chromadb/chroma:latest
-  ```
+
+```bash docker run -d --name chromadb -p 8000:8000 chromadb/chroma:latest ```
 
 - [ ] Auto-create articles collection: `python scripts/chroma_diagnose.py --autocreate`
 
@@ -57,17 +57,14 @@
 ## Phase 2: Database Schema (5 min)
 
 - [ ] Initialize schema:
-  ```bash
-  ./scripts/run_with_env.sh python scripts/init_database.py
-  ```
-  Should print: `✅ Database initialization completed successfully!`
+
+```bash ./scripts/run_with_env.sh python scripts/init_database.py ``` Should
+print: `✅ Database initialization completed successfully!`
 
 - [ ] Verify tables exist:
-  ```bash
-  mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -D $MARIADB_DB \
-    -e "SHOW TABLES;" | grep -c articles
-  ```
-  Should print: `1` (or higher if tables exist)
+
+```bash mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -D $MARIADB_DB \ -e "SHOW
+TABLES;" | grep -c articles ``` Should print: `1` (or higher if tables exist)
 
 ---
 
@@ -76,50 +73,47 @@
 ### 3.1 MCP Bus
 
 - [ ] Start:
-  ```bash
+
+```bash
   # Option A: systemd
-  sudo systemctl enable --now justnews@mcp_bus
+sudo systemctl enable --now justnews@mcp_bus
 
   # Option B: Direct
-  ./scripts/run_with_env.sh python -m agents.mcp_bus.main &
-  ```
+./scripts/run_with_env.sh python -m agents.mcp_bus.main & ```
 
 - [ ] Verify: `curl -s http://localhost:8017/health && echo "✅ MCP Bus"`
 
 ### 3.2 GPU Orchestrator
 
 - [ ] Start:
-  ```bash
+
+```bash
   # Option A: systemd
-  sudo systemctl enable --now justnews@gpu_orchestrator
+sudo systemctl enable --now justnews@gpu_orchestrator
 
   # Option B: Direct
-  ./scripts/run_with_env.sh python -m agents.gpu_orchestrator.main &
-  ```
+./scripts/run_with_env.sh python -m agents.gpu_orchestrator.main & ```
 
 - [ ] Wait for READY status: `curl -fsS http://127.0.0.1:8014/ready && echo "✅ GPU Orchestrator READY"`
 
 ### 3.3 Crawler & Crawler Control
 
 - [ ] Start all agents:
-  ```bash
+
+```bash
   # Option A: systemd
-  sudo ./infrastructure/systemd/scripts/enable_all.sh start
+sudo ./infrastructure/systemd/scripts/enable_all.sh start
 
   # Option B: Individual services
-  ./scripts/run_with_env.sh python -m agents.crawler.main &
-  ./scripts/run_with_env.sh python -m agents.crawler_control.main &
-  ./scripts/run_with_env.sh python -m agents.analyst.main &
-  ./scripts/run_with_env.sh python -m agents.memory.main &
-  ```
+./scripts/run_with_env.sh python -m agents.crawler.main &
+./scripts/run_with_env.sh python -m agents.crawler_control.main &
+./scripts/run_with_env.sh python -m agents.analyst.main &
+./scripts/run_with_env.sh python -m agents.memory.main & ```
 
 - [ ] Verify health (should all return 200):
-  ```bash
-  for port in 8015 8016 8004 8007; do
-    echo -n "Port $port: "
-    curl -s http://localhost:$port/health | jq -r '.status'
-  done
-  ```
+
+```bash for port in 8015 8016 8004 8007; do echo -n "Port $port: " curl -s
+http://localhost:$port/health | jq -r '.status' done ```
 
 ---
 
@@ -134,22 +128,19 @@
 ### 4.2 Live Crawl Test
 
 - [ ] Run small test (3 sites × 5 articles):
-  ```bash
-  ./scripts/run_with_env.sh python live_crawl_test.py --sites 3 --articles 5
-  ```
-  Should fetch ~15 articles and store them
+
+```bash ./scripts/run_with_env.sh python live_crawl_test.py --sites 3 --articles
+5 ``` Should fetch ~15 articles and store them
 
 - [ ] Verify articles in database:
-  ```bash
-  mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -D $MARIADB_DB \
-    -e "SELECT COUNT(*) AS count FROM articles;"
-  ```
+
+```bash mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -D $MARIADB_DB \ -e "SELECT
+COUNT(*) AS count FROM articles;" ```
 
 - [ ] Verify ChromaDB embeddings:
-  ```bash
-  curl -s -X POST http://localhost:8000/api/v1/collections/articles/count \
-    -H "Content-Type: application/json" -d '{}' | jq '.count'
-  ```
+
+```bash curl -s -X POST http://localhost:8000/api/v1/collections/articles/count
+\ -H "Content-Type: application/json" -d '{}' | jq '.count' ```
 
 ### 4.3 Schedule Hourly Crawls (Optional)
 
@@ -158,34 +149,31 @@
 - [ ] Execute one schedule cycle: `./scripts/run_with_env.sh python scripts/ops/run_crawl_schedule.py`
 
 - [ ] Setup systemd timer (production):
-  ```bash
-  sudo cp infrastructure/systemd/units/justnews-crawl-scheduler.* /etc/systemd/system/
-  sudo systemctl daemon-reload
-  sudo systemctl enable --now justnews-crawl-scheduler.timer
-  ```
+
+```bash sudo cp infrastructure/systemd/units/justnews-crawl-scheduler.*
+/etc/systemd/system/ sudo systemctl daemon-reload sudo systemctl enable --now justnews-crawl-scheduler.timer ```
 
 ---
 
 ## Phase 5: Validation & Monitoring
 
 - [ ] Run health check:
-  ```bash
-  ./infrastructure/systemd/scripts/health_check.sh
-  ```
+
+```bash ./infrastructure/systemd/scripts/health_check.sh ```
 
 - [ ] Test full pipeline (optional training data prep):
-  ```bash
-  ./scripts/run_with_env.sh pytest tests/integration/test_persistence_schema.py -v
-  ```
+
+```bash ./scripts/run_with_env.sh pytest
+tests/integration/test_persistence_schema.py -v ```
 
 - [ ] Monitor logs in real-time:
-  ```bash
+
+```bash
   # MCP Bus
-  journalctl -u justnews@mcp_bus -f
+journalctl -u justnews@mcp_bus -f
 
   # Or if running direct Python:
-  tail -f /var/log/justnews/*.log 2>/dev/null || echo "No logs yet"
-  ```
+tail -f /var/log/justnews/*.log 2>/dev/null || echo "No logs yet" ```
 
 ---
 
@@ -195,48 +183,48 @@
 
 1. `curl -s http://localhost:8014/ready` returns HTTP 200
 
-2. `curl -s http://localhost:8015/health` returns 200 (crawler)
+1. `curl -s http://localhost:8015/health` returns 200 (crawler)
 
-3. `curl -s http://localhost:8016/health` returns 200 (crawler control)
+1. `curl -s http://localhost:8016/health` returns 200 (crawler control)
 
-4. Database articles count > 0
+1. Database articles count > 0
 
-5. ChromaDB collection count > 0
+1. ChromaDB collection count > 0
 
-6. No ERROR-level logs in past 5 minutes
+1. No ERROR-level logs in past 5 minutes
 
 ✅ **Data Pipeline Working When**:
 
 1. Running crawl produces articles without errors
 
-2. Articles appear in database within 30 seconds
+1. Articles appear in database within 30 seconds
 
-3. Articles get embeddings in ChromaDB
+1. Articles get embeddings in ChromaDB
 
 ---
 
 ## Troubleshooting Quick Fixes
 
-| Symptom | Command to Try |
-|---------|---|
-| "MARIADB_HOST: command not found" | `source global.env` (if using file) or `export MARIADB_HOST=localhost` |
-| Port 8015 refused | `curl -s http://localhost:8014/ready` – GPU Orchestrator must be READY first |
-| ChromaDB not found | `docker ps | grep chromadb` – start it: `docker run -d --name chromadb -p 8000:8000 chromadb/chroma:latest` |
-| No articles after crawl | Check MariaDB: `mysql -u $MARIADB_USER ... -e "SHOW TABLES;"` – run `init_database.py` if needed |
-| vLLM 7060 not responding | `curl -v http://localhost:7060/health` – relaunch: `./scripts/launch_vllm_mistral_7b.sh` |
+| Symptom | Command to Try | |---------|---| | "MARIADB_HOST: command not found"
+| `source global.env` (if using file) or `export MARIADB_HOST=localhost` | |
+Port 8015 refused | `curl -s http://localhost:8014/ready` – GPU Orchestrator
+must be READY first | | ChromaDB not found | `docker ps | grep chromadb` – start
+it: `docker run -d --name chromadb -p 8000:8000 chromadb/chroma:latest` | | No
+articles after crawl | Check MariaDB: `mysql -u $MARIADB_USER ... -e "SHOW
+TABLES;"` – run `init_database.py` if needed | | vLLM 7060 not responding |
+`curl -v http://localhost:7060/health` – relaunch:
+`./scripts/launch_vllm_mistral_7b.sh` |
 
 ---
 
 ## Time Estimate
 
-| Phase | Est. Time | Notes |
-|-------|-----------|-------|
-| Pre-Flight | 2 min | Verify conda + vLLM |
-| Phase 1 (Env + Infra) | 30 min | MariaDB + ChromaDB setup |
-| Phase 2 (Schema) | 5 min | Database initialization |
-| Phase 3 (Agents) | 30 min | MCP + Orchestrator + Crawlers |
-| Phase 4 (Data) | 20–60 min | Depends on test size |
-| **TOTAL** | **~90–120 min** | Full production-ready system |
+| Phase | Est. Time | Notes | |-------|-----------|-------| | Pre-Flight | 2 min
+| Verify conda + vLLM | | Phase 1 (Env + Infra) | 30 min | MariaDB + ChromaDB
+setup | | Phase 2 (Schema) | 5 min | Database initialization | | Phase 3
+(Agents) | 30 min | MCP + Orchestrator + Crawlers | | Phase 4 (Data) | 20–60 min
+| Depends on test size | | **TOTAL** | **~90–120 min** | Full production-ready
+system |
 
 ---
 
@@ -245,7 +233,9 @@
 ```bash
 
 ## Run this to auto-check most items (requires running agents):
+
 ./infrastructure/systemd/scripts/health_check.sh
+
 ```
 
 ---

@@ -1,4 +1,8 @@
-Nice — I understand the constraint: the new model must be fully open-source and have good support for refining/fine‑tuning (not just inference). Given the need for task-specific training without cross-task weight conflicts, the recommended approach is to use a single stable base model (e.g. Mistral‑7B) and keep separate, per‑task adapters (LoRA / PEFT / QLoRA). Below are OSS 7B candidates that meet that requirement, the adapter-first workflow, quantization & training compatibility notes, and concrete next steps you can pick.
+Nice — I understand the constraint: the new model must be fully open-source and have good support for
+refining/fine‑tuning (not just inference). Given the need for task-specific training without cross-task weight
+conflicts, the recommended approach is to use a single stable base model (e.g. Mistral‑7B) and keep separate, per‑task
+adapters (LoRA / PEFT / QLoRA). Below are OSS 7B candidates that meet that requirement, the adapter-first workflow,
+quantization & training compatibility notes, and concrete next steps you can pick.
 
 ## Best fully-OSS 7B models for refining + int8 inference (short list)
 
@@ -10,7 +14,7 @@ Nice — I understand the constraint: the new model must be fully open-source an
 
    - Quantization: Works well with bitsandbytes (int8) for inference; performs robustly after quantization.
 
-2. MPT-7B / MPT-7B-Instruct (very training-friendly)
+1. MPT-7B / MPT-7B-Instruct (very training-friendly)
 
    - Pros: Apache-licensed, designed for training & fine-tuning; great transparency & reproducibility for refinement workflows.
 
@@ -18,7 +22,7 @@ Nice — I understand the constraint: the new model must be fully open-source an
 
    - Quantization: Works for int8 inference; training/QLoRA pipelines supported.
 
-3. Pythia-7B (research-first, fully OSS)
+1. Pythia-7B (research-first, fully OSS)
 
    - Pros: Full open research lineage, easy to retrain or refine; great for reproducible fine-tuning/evaluation.
 
@@ -26,7 +30,7 @@ Nice — I understand the constraint: the new model must be fully open-source an
 
    - Quantization: Quantizable with GPTQ/bitsandbytes; good baseline for experiments.
 
-4. Falcon-7B-Instruct (solid, widely used)
+1. Falcon-7B-Instruct (solid, widely used)
 
    - Pros: Great inference quality and mature GPTQ / bitsandbytes support.
 
@@ -34,7 +38,8 @@ Nice — I understand the constraint: the new model must be fully open-source an
 
    - License: Check the specific checkpoint’s license to ensure “fully OSS” for your use.
 
-Notes about “fully OSS”: confirm the exact checkpoint / tag (HF model card) for licensing — MPT / Pythia are unambiguously permissive; Mistral/Falcon are community-first but check their model cards for usage restrictions.
+Notes about “fully OSS”: confirm the exact checkpoint / tag (HF model card) for licensing — MPT / Pythia are
+unambiguously permissive; Mistral/Falcon are community-first but check their model cards for usage restrictions.
 
 ---
 
@@ -73,25 +78,22 @@ Notes about “fully OSS”: confirm the exact checkpoint / tag (HF model card) 
 - Required libs: transformers, accelerate, bitsandbytes, peft, evaluate/datasets, (optionally) auto-gptq for GPTQ conversions.
 
 - Sample inference load (int8 with bitsandbytes):
-  ```py
-  from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-  import torch
 
-  bnb = BitsAndBytesConfig(
-    load_in_8bit=True,
-    bnb_8bit_compute_dtype=torch.float16,
-    bnb_8bit_use_double_quant=True
-  )
+```py from transformers import AutoTokenizer, AutoModelForCausalLM,
+BitsAndBytesConfig import torch
 
-  model_id = "mistralai/Mistral-7B-Instruct"   # example - pick repo with OSS license
-  tok = AutoTokenizer.from_pretrained(model_id)
-  model = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb, device_map="auto")
+bnb = BitsAndBytesConfig( load_in_8bit=True,
+bnb_8bit_compute_dtype=torch.float16, bnb_8bit_use_double_quant=True )
+
+model_id = "mistralai/Mistral-7B-Instruct"   # example - pick repo with OSS
+license tok = AutoTokenizer.from_pretrained(model_id) model =
+AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb,
+device_map="auto")
 
   # Example: load a small per-task adapter at runtime (PEFT/LoRA)
-  from peft import PeftModel
-  adapter_path = "modelstore/agents/synthesizer/adapters/mistral_synth_v1"
-  model = PeftModel.from_pretrained(model, adapter_path)
-  ```
+from peft import PeftModel adapter_path =
+"modelstore/agents/synthesizer/adapters/mistral_synth_v1" model =
+PeftModel.from_pretrained(model, adapter_path) ```
 
 - Quick QLoRA starter (finetuning adapters):
 
@@ -108,23 +110,31 @@ Notes about “fully OSS”: confirm the exact checkpoint / tag (HF model card) 
 ---
 
 ## Next actions I can take for you (pick one)
-1) Prototype integration: add a small `agents/tools/7b_re_ranker.py` script in the repo that:
+
+1) Prototype integration: add a small `agents/tools/7b_re_ranker.py` script in
+the repo that:
 
    - Loads an OSS 7B int8 model (bnb),
 
    - Scores candidate (top-k) outputs,
 
    - Provides a small test using existing dataset/fixtures.
-2) Add a training/refinement template (QLoRA + PEFT) to the repo with a runnable example that works on RTX 3090. The template will produce small per-task adapters and store them in the ModelStore so each agent can load their adapter at runtime.
-3) Run a short local experiment right now (on your machine) testing one chosen model’s int8 memory + latency and produce a short report.
+2) Add a training/refinement template (QLoRA + PEFT) to the repo with a runnable
+example that works on RTX 3090. The template will produce small per-task
+adapters and store them in the ModelStore so each agent can load their adapter
+at runtime. 3) Run a short local experiment right now (on your machine) testing
+one chosen model’s int8 memory + latency and produce a short report.
 
-Which one do you want me to implement next? (If you pick 1 or 2, tell me which model from the shortlist to use: Mistral, MPT, Pythia, or Falcon.)
+Which one do you want me to implement next? (If you pick 1 or 2, tell me which
+model from the shortlist to use: Mistral, MPT, Pythia, or Falcon.)
 
 ---
 
 ## Validation experiment — short real-mode perf sweep (what I ran)
 
-I ran a short, reproducible experiment on your RTX 3090 to verify bitsandbytes (CUDA 12.8) + Mistral-7B-v0.3 int8 inference and to collect latency and memory numbers that you can use to size orchestrator pools.
+I ran a short, reproducible experiment on your RTX 3090 to verify bitsandbytes
+(CUDA 12.8) + Mistral-7B-v0.3 int8 inference and to collect latency and memory
+numbers that you can use to size orchestrator pools.
 
 - Environment: conda env `justnews-gpu-py310` (PyTorch 2.9.1+cu128), CUDA 12.8 toolkit installed on host.
 
@@ -135,12 +145,10 @@ I ran a short, reproducible experiment on your RTX 3090 to verify bitsandbytes (
 - Command run (this produced CSV/JSON under scripts/perf/results):
 
 ```bash
-conda run -n justnews-gpu-py310 \
-  RE_RANKER_TEST_MODE=0 RE_RANKER_MODEL=mistralai/Mistral-7B-v0.3 \
-  python scripts/perf/simulate_concurrent_inference.py \
-    --sweep --sweep-max 6 --repeat 3 --requests 30 \
-    --output-csv scripts/perf/results/mistral_v0.3_int8_sweep.csv \
-    --output-json scripts/perf/results/mistral_v0.3_int8_sweep.json
+conda run -n justnews-gpu-py310 \ RE_RANKER_TEST_MODE=0 RE_RANKER_MODEL=mistralai/Mistral-7B-v0.3 \ python
+scripts/perf/simulate_concurrent_inference.py \ --sweep --sweep-max 6 --repeat 3 --requests 30 \ --output-csv
+scripts/perf/results/mistral_v0.3_int8_sweep.csv \ --output-json scripts/perf/results/mistral_v0.3_int8_sweep.json
+
 ```
 
 Files produced in the repo (copied to canonical path):
@@ -151,7 +159,8 @@ Files produced in the repo (copied to canonical path):
 
 ### Key numbers (RTX 3090, single GPU, 8-bit weights)
 
-The CSV aggregates 3 repeats for each worker count (1..6). Representative p50 averages across repeats:
+The CSV aggregates 3 repeats for each worker count (1..6). Representative p50
+averages across repeats:
 
 - workers=1 → p50 ≈ 165 ms
 
@@ -165,7 +174,9 @@ The CSV aggregates 3 repeats for each worker count (1..6). Representative p50 av
 
 - workers=6 → p50 ≈ 879 ms
 
-GPU memory footprint observed: model + activations ~12.2 GB (varies slightly across runs) — this fits comfortably on a 24GB RTX 3090 and leaves headroom for multiple activations/work items.
+GPU memory footprint observed: model + activations ~12.2 GB (varies slightly
+across runs) — this fits comfortably on a 24GB RTX 3090 and leaves headroom for
+multiple activations/work items.
 
 ### Immediate interpretation & recommendation
 
@@ -183,13 +194,16 @@ If you want next I can:
 
 - Automate running these per-candidate model (Mistral / MPT / Pythia / Falcon) and save a comparative CSV so you have a data-driven model selection matrix.
 
-If you'd like me to add benchmarking graphs (PNG/SVG) to the repo and a short notebook to visualise the CSV, I can do that next.
+If you'd like me to add benchmarking graphs (PNG/SVG) to the repo and a short
+notebook to visualise the CSV, I can do that next.
 
 ---
 
 ## Comparative benchmark: Mistral / MPT / Pythia / Falcon (summary)
 
-I ran the same sweep (workers 1..6, 3 repeats, 30 requests each) for the four candidate fully-OSS 7B models and saved the results and plots. These are in `scripts/perf/results` and `scripts/perf/results/plots`.
+I ran the same sweep (workers 1..6, 3 repeats, 30 requests each) for the four
+candidate fully-OSS 7B models and saved the results and plots. These are in
+`scripts/perf/results` and `scripts/perf/results/plots`.
 
 - Combined CSV (median per workers): `scripts/perf/results/plots/combined_summary.csv`
 
@@ -245,8 +259,10 @@ GPU footprint (median observed across runs):
 
 Pick what you want next:
 
-1) Automate a comparative notebook + plots for these models and include them in `docs`.
-2) Run extended steady-state tests per model (larger request counts and longer runs) to measure throughput and tail latency more accurately.
-3) Use the CSV to tune the orchestrator pool sizes and configure cluster-level policy recommendations.
+1) Automate a comparative notebook + plots for these models and include them in
+`docs`. 2) Run extended steady-state tests per model (larger request counts and
+longer runs) to measure throughput and tail latency more accurately. 3) Use the
+CSV to tune the orchestrator pool sizes and configure cluster-level policy
+recommendations.
 
 Tell me which of these you'd like me to do next (I can implement any or all).

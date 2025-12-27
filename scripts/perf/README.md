@@ -48,25 +48,31 @@ Example runs
 mkdir -p /var/log/justnews-perf
 chown $USER:$USER /var/log/justnews-perf
 ./scripts/perf/gpu_telemetry.sh /var/log/justnews-perf
-```
+
+```bash
 
 - Run with cpu package power (passwordless sudo required for automated runs):
 
 ```bash
 sudo -n true  # ensure passwordless sudo works
 sudo ./scripts/perf/gpu_telemetry.sh /var/log/justnews-perf
-```
 
-If you prefer not to use sudo for a long-running process, ask your system administrator to allow read access to the RAPL energy_uj file for the telemetry user or group:
+```bash
+
+If you prefer not to use sudo for a long-running process, ask your system administrator to allow read access to the RAPL
+energy_uj file for the telemetry user or group:
 
 ```bash
 
 # as root
+
 chown root:system_power /sys/class/powercap/intel-rapl:0/energy_uj
 chmod 440 /sys/class/powercap/intel-rapl:0/energy_uj
 
 ## add telemetry user to system_power group
+
 usermod -aG system_power $USER
+
 ```
 
 Limitations
@@ -76,17 +82,16 @@ Limitations
 - `sensors` CLI (lm-sensors) is not required — the script reads hwmon/sysfs directly and prefers label matching.
 
 - `system_total_w` is an estimate (GPU + CPU) and does not include PSU inefficiency, disk, network, fans, or other devices.
-Automatic telemetry agent
-------------------------
+Automatic telemetry agent ------------------------
 
-To ensure telemetry is captured whenever the GPU is under load we provide a lightweight
-GPU activity monitor agent `scripts/perf/gpu_activity_agent.py` which will automatically
-start the CSV collector and Prometheus exporter when the GPU utilization exceeds a
-threshold for a configurable period, and stop them once the GPU becomes idle.
+To ensure telemetry is captured whenever the GPU is under load we provide a lightweight GPU activity monitor agent
+`scripts/perf/gpu_activity_agent.py` which will automatically start the CSV collector and Prometheus exporter when the
+GPU utilization exceeds a threshold for a configurable period, and stop them once the GPU becomes idle.
 
-NVML dropout watchdog
----------------------
-`scripts/perf/nvml_dropout_watchdog.py` uses the `pynvml` bindings to stream NVML samples, register XID/event callbacks, and dump the last N seconds of context whenever NVML throws (for example `NVML_ERROR_GPU_IS_LOST`). Run it next to any medium-load scenario so you capture the exact state leading up to the drop-out:
+NVML dropout watchdog --------------------- `scripts/perf/nvml_dropout_watchdog.py` uses the `pynvml` bindings to stream
+NVML samples, register XID/event callbacks, and dump the last N seconds of context whenever NVML throws (for example
+`NVML_ERROR_GPU_IS_LOST`). Run it next to any medium-load scenario so you capture the exact state leading up to the
+drop-out:
 
 ```bash
 mkdir -p /var/log/justnews-perf
@@ -99,15 +104,18 @@ WATCHDOG_PID=$!
 ## run the medium load scenario (gpu_activity_agent, simulate_concurrent_inference, etc.)
 
 wait ${WATCHDOG_PID}
+
 ```
 
 Afterwards inspect the structured JSONL log for `nvml_exception` or `nvml_event` entries:
 
 ```bash
 jq 'select(.event == "nvml_exception")' /var/log/justnews-perf/nvml_watchdog.jsonl
+
 ```
 
-Each exception entry includes the rolling telemetry context (utilisation, memory, clocks, temps, running compute processes) captured right before NVML failed plus an optional `dmesg` tail, making it easier to pinpoint the trigger.
+Each exception entry includes the rolling telemetry context (utilisation, memory, clocks, temps, running compute
+processes) captured right before NVML failed plus an optional `dmesg` tail, making it easier to pinpoint the trigger.
 
 ````
 
@@ -124,8 +132,11 @@ Key options
 Test mode is available with `--test` which simulates a short spike to exercise start/stop behaviour.
 
 Example
+
 ```
+
 python3 scripts/perf/gpu_activity_agent.py --start-util 20 --start-seconds 5 --stop-util 10 --stop-seconds 15
+
 ```
 
 Integration

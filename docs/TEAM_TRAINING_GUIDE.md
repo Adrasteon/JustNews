@@ -1,10 +1,5 @@
----
-title: TEAM TRAINING GUIDE
-description: Auto-generated description for TEAM TRAINING GUIDE
-tags: [documentation]
-status: current
-last_updated: 2025-09-12
----
+--- title: TEAM TRAINING GUIDE description: Auto-generated description for TEAM TRAINING GUIDE tags: [documentation]
+status: current last_updated: 2025-09-12 ---
 
 ## See also
 

@@ -1,11 +1,5 @@
----
-title: Changelog
-description: Auto-generated description for Changelog
-tags: [documentation]
-status: current
-last_updated: 2025-09-12
-last_updated: 2025-11-01
----
+--- title: Changelog description: Auto-generated description for Changelog tags: [documentation] status: current
+last_updated: 2025-09-12 last_updated: 2025-11-01 ---
 
 All notable changes to this project will be documented in this file.
 
@@ -18,8 +12,7 @@ All notable changes to this project will be documented in this file.
 - **✅** Archived and removed legacy Qwen2 artifacts; added archive patterns to `.gitignore`.
 
 - **✅** Updated `environment.yml` pins: `torch==2.9.0+cu128`, `numpy==2.2.4`,
-  `numba==0.61.2`. `bitsandbytes==0.47.0` should be built from source for
-  CUDA compatibility.
+`numba==0.61.2`. `bitsandbytes==0.47.0` should be built from source for CUDA compatibility.
 
 - **✅** vLLM (0.12.0) server starts correctly under `${CANONICAL_ENV:-justnews-py312}`; smoke tests pass.
 
@@ -83,7 +76,8 @@ Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 
 - **✅ Scalability**: Modular design supports future enhancement additions without disruption
 
-**Status**: **CRAWLER ENHANCEMENTS FULLY IMPLEMENTED** - Enterprise-grade web scraping resilience features deployed with comprehensive configuration and documentation
+**Status**: **CRAWLER ENHANCEMENTS FULLY IMPLEMENTED** - Enterprise-grade web scraping resilience features deployed with
+comprehensive configuration and documentation
 
 ### 🧪 **Comprehensive Test Coverage Analysis - 41% Coverage Achieved**
 
@@ -135,7 +129,8 @@ Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 
 - **✅ Development Workflow**: Enhanced testing capabilities for continuous integration and quality assurance
 
-**Status**: **TEST COVERAGE ANALYSIS COMPLETE** - Comprehensive test coverage analysis achieved with 41% coverage, all required packages added, and test framework fully operational
+**Status**: **TEST COVERAGE ANALYSIS COMPLETE** - Comprehensive test coverage analysis achieved with 41% coverage, all
+required packages added, and test framework fully operational
 
 ## [Unreleased] - 2025-11-06 - **MEMORYENGINE COMPREHENSIVE TESTING COMPLETION**
 
@@ -189,7 +184,8 @@ Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 
 - **✅ Development Workflow**: Robust testing capabilities for MemoryEngine with automated validation
 
-**Status**: **MEMORYENGINE TESTING COMPLETE** - Comprehensive test suite implemented with 54% coverage, all core functionality validated, and robust testing infrastructure established
+**Status**: **MEMORYENGINE TESTING COMPLETE** - Comprehensive test suite implemented with 54% coverage, all core
+functionality validated, and robust testing infrastructure established
 
 ## [0.9.1] - 2025-10-26 - **STAGE B2 HIGH-PRECISION EXTRACTION PIPELINE**
 
@@ -225,7 +221,8 @@ Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 
 - **README Refresh**: Quick start and feature list now highlight the Stage B2 pipeline and provide crawler test guidance.
 
-**Status**: **STAGE B2 EXTRACTION UPGRADE COMPLETE** – High-precision ingestion active with governance-ready metadata and automated regression tests.
+**Status**: **STAGE B2 EXTRACTION UPGRADE COMPLETE** – High-precision ingestion active with governance-ready metadata
+and automated regression tests.
 
 ## [0.9.2] - 2025-11-01 - **CRAWL4AI ADAPTIVE INTEGRATION & METRICS**
 
@@ -241,7 +238,8 @@ Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 
 - Unit tests for the adapter were added (`tests/agents/crawler/test_crawl4ai_adapter.py`). The metrics helpers expose compatibility methods (`increment`, `gauge`, `timing`) so legacy test harnesses and stubs function correctly in CI.
 
-**Status**: Adaptive integration implemented; follow-up: full E2E validation, scheduler/dashboard wiring for metrics, and batched runs for low-confidence domains.
+**Status**: Adaptive integration implemented; follow-up: full E2E validation, scheduler/dashboard wiring for metrics,
+and batched runs for low-confidence domains.
 
 ## [0.9.0] - 2025-10-23 - **BUILD & CI/CD SYSTEM - COMPREHENSIVE REFACTORING COMPLETE**
 
@@ -347,7 +345,8 @@ Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 
 - **✅ Development Efficiency**: Enhanced development environment accelerates feature development
 
-**Status**: **BUILD & CI/CD SYSTEM PRODUCTION READY** - Comprehensive build automation, CI/CD pipelines, containerization, and deployment validation fully operational
+**Status**: **BUILD & CI/CD SYSTEM PRODUCTION READY** - Comprehensive build automation, CI/CD pipelines,
+containerization, and deployment validation fully operational
 
 ## [0.8.3] - 2025-10-23 - **DATABASE REFACTOR COMPLETION - PYDANTIC V2 MIGRATION SUCCESS**
 
@@ -415,7 +414,8 @@ Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 
 - **✅ Code Maintainability**: Clean, modern codebase with comprehensive type safety
 
-**Status**: **DATABASE REFACTOR COMPLETE** - Pydantic V2 migration successful, all warnings eliminated, production-ready database layer operational
+**Status**: **DATABASE REFACTOR COMPLETE** - Pydantic V2 migration successful, all warnings eliminated, production-ready
+database layer operational
 
 ## [0.8.2] - 2025-10-23 - **DEPLOYMENT SYSTEM - UNIFIED MULTI-PLATFORM COMPLETE**
 
@@ -505,7 +505,8 @@ Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 
 - **✅ Scalability**: Support for horizontal and vertical scaling across all deployment targets
 
-**Status**: **DEPLOYMENT SYSTEM PRODUCTION READY** - Unified multi-platform deployment framework complete, all targets validated, enterprise-grade security and monitoring implemented
+**Status**: **DEPLOYMENT SYSTEM PRODUCTION READY** - Unified multi-platform deployment framework complete, all targets
+validated, enterprise-grade security and monitoring implemented
 
 ## [0.8.1] - 2025-09-25 - **MONITORING SYSTEM - ALL ISSUES RESOLVED**
 
@@ -569,7 +570,8 @@ Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 
 - **✅ Deployment Confidence**: Full validation ensures reliable production deployment and operation
 
-**Status**: **MONITORING SYSTEM PRODUCTION READY** - All critical issues resolved, comprehensive validation completed, zero production risks remaining
+**Status**: **MONITORING SYSTEM PRODUCTION READY** - All critical issues resolved, comprehensive validation completed,
+zero production risks remaining
 
 ## [0.8.0] - 2025-09-25 - **BETA RELEASE CANDIDATE**
 
@@ -653,7 +655,8 @@ Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 
 - **✅ Scalability**: Distributed architecture supporting high-volume news processing
 
-**Status**: **PRODUCTION READY** - Complete unified startup system with enterprise-grade reliability, GPU acceleration, and post-reboot recovery deployed successfully
+**Status**: **PRODUCTION READY** - Complete unified startup system with enterprise-grade reliability, GPU acceleration,
+and post-reboot recovery deployed successfully
 
 ### � **MPS Resource Allocation System - ENTERPRISE GPU ISOLATION COMPLETE**
 
@@ -809,7 +812,8 @@ Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 
 - **✅ Quality Assurance**: Comprehensive testing framework ensuring system stability
 
-**Status**: **PRODUCTION READY** - System fully operational with GPU acceleration, comprehensive monitoring, and enterprise-grade reliability
+**Status**: **PRODUCTION READY** - System fully operational with GPU acceleration, comprehensive monitoring, and
+enterprise-grade reliability
 
 ### 🧹 **Package Management & Environment Optimization - PRODUCTION READY**
 
@@ -965,7 +969,8 @@ Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 
 - **✅ Agent Health**: Individual agent performance monitoring and health assessment
 
-**Status**: **ANALYTICS DASHBOARD ENHANCEMENTS COMPLETED** - All JavaScript errors resolved, automatic loading implemented, layout issues fixed, and comprehensive error handling added for production-ready monitoring
+**Status**: **ANALYTICS DASHBOARD ENHANCEMENTS COMPLETED** - All JavaScript errors resolved, automatic loading
+implemented, layout issues fixed, and comprehensive error handling added for production-ready monitoring
 
 ### 🧪 **Comprehensive Pytest Fixes - ALL ISSUES RESOLVED**
 
@@ -1153,7 +1158,8 @@ Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 
 - **✅ Error Handling**: Comprehensive error handling with security-conscious error messages
 
-**Status**: **PRODUCTION READY** - Complete legal compliance framework implemented with enterprise-grade security, comprehensive GDPR/CCPA compliance, and full production deployment capabilities
+**Status**: **PRODUCTION READY** - Complete legal compliance framework implemented with enterprise-grade security,
+comprehensive GDPR/CCPA compliance, and full production deployment capabilities
 
 ### 🔐 **Complete Authentication System Implementation**
 
@@ -1251,7 +1257,8 @@ Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 
 - **✅ Integration Examples**: Code examples for authentication integration in client applications
 
-**Status**: **PRODUCTION READY** - Complete authentication system implemented with enterprise-grade security, comprehensive testing, and full documentation
+**Status**: **PRODUCTION READY** - Complete authentication system implemented with enterprise-grade security,
+comprehensive testing, and full documentation
 
 ## [Unreleased] - 2025-09-07 - **CODE QUALITY IMPROVEMENTS COMPLETED**
 
@@ -1437,7 +1444,7 @@ Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 
 1. Start services: `./start_services_daemon.sh`
 
-2. Run the health-check sweep: `for p in {8000..8011}; do curl -sS <http://127.0.0.1:>$p/health; curl -sS <http://127.0.0.1:>$p/ready; done`
+1. Run the health-check sweep: `for p in {8000..8011}; do curl -sS <http://127.0.0.1:>$p/health; curl -sS <http://127.0.0.1:>$p/ready; done`
 
 ## [V2.19.0] - 2025-08-13 - **🚨 MAJOR BREAKTHROUGH: GPU CRASH ROOT CAUSE RESOLVED**
 
@@ -1458,6 +1465,7 @@ Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
 ```python
 
 ## ✅ CORRECT: BitsAndBytesConfig quantization
+
 quantization_config = BitsAndBytesConfig(
     load_in_8bit=True,
     bnb_8bit_compute_dtype=torch.float16,
@@ -1467,6 +1475,7 @@ quantization_config = BitsAndBytesConfig(
 ## ❌ INCORRECT: Direct dtype (caused crashes)
 
 ## torch_dtype=torch.int8
+
 ```text
 
 ### 📊 **Validation Results**
@@ -2097,7 +2106,8 @@ quantization_config = BitsAndBytesConfig(
 
 - **Production Deployment**: ✅ Enhanced deep crawl functionality operational and MCP Bus registered
 
-**Status**: Enhanced Scout Agent with native Crawl4AI integration fully operational - Advanced deep crawling capabilities deployed successfully
+**Status**: Enhanced Scout Agent with native Crawl4AI integration fully operational - Advanced deep crawling
+capabilities deployed successfully
 
 ## [V4.7.2] - Memory Optimization DEPLOYMENT SUCCESS - 2025-07-29
 
@@ -2153,7 +2163,8 @@ quantization_config = BitsAndBytesConfig(
 
 - **Performance Impact**: Maintained or improved (appropriate context sizes for news analysis)
 
-**Status**: Production deployment successful - Memory crisis completely resolved through strategic architecture optimization
+**Status**: Production deployment successful - Memory crisis completely resolved through strategic architecture
+optimization
 
 ## [V4.7.1] - Strategic Memory Optimization Implementation - 2024-12-28
 
@@ -2229,6 +2240,7 @@ System Totals:
 ├─ Total Memory: 21.8GB (vs 27.3GB original)
 ├─ Available Buffer: 0.2GB (requires optimization)
 └─ Target Buffer: 2-3GB for production stability
+
 ```text
 
 ### Memory Buffer Optimization Targets

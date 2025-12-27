@@ -1,19 +1,21 @@
 # OpenTelemetry Collector Layout
 
-This directory ships the reference configuration for deploying OpenTelemetry Collectors alongside the JustNews GPU stack. Two roles are supported:
+This directory ships the reference configuration for deploying OpenTelemetry Collectors alongside the JustNews GPU
+stack. Two roles are supported:
 
 1. **Node collector** – runs on every GPU/agent host, scrapes exporters that run locally (DCGM, node exporter), tails kernel/NVIDIA logs, and forwards data upstream.
 
-2. **Central collector** – runs once per environment (or as an HA pair) and fans the aggregated OTLP stream into Prometheus, Tempo/Jaeger, and Loki/Elastic.
+1. **Central collector** – runs once per environment (or as an HA pair) and fans the aggregated OTLP stream into Prometheus, Tempo/Jaeger, and Loki/Elastic.
 
-The configs rely heavily on environment variables so operators can reuse the same file across staging/prod. Every referenced variable has a documented default in the installer scripts.
+The configs rely heavily on environment variables so operators can reuse the same file across staging/prod. Every
+referenced variable has a documented default in the installer scripts.
 
 ## Files
 
-| File | Purpose |
-| ---- | ------- |
-| `node-collector-config.yaml` | Collector config for GPU/agent hosts. Currently limited to OTLP ingestion and log forwarding (metrics pipeline disabled 2025-11 while remote_write tuning is pending). |
-| `central-collector-config.yaml` | Collector config for the aggregation tier. Fans node traffic into Tempo/Jaeger and Loki/Elastic. Metrics forwarding is temporarily disabled (2025-11). |
+| File | Purpose | | ---- | ------- | | `node-collector-config.yaml` | Collector config for GPU/agent hosts. Currently
+limited to OTLP ingestion and log forwarding (metrics pipeline disabled 2025-11 while remote_write tuning is pending). |
+| `central-collector-config.yaml` | Collector config for the aggregation tier. Fans node traffic into Tempo/Jaeger and
+Loki/Elastic. Metrics forwarding is temporarily disabled (2025-11). |
 
 ## Installation scripts
 
@@ -22,13 +24,18 @@ Run the helper scripts (requires sudo):
 ```bash
 
 ## On every GPU/agent node
+
 sudo scripts/ops/install_otel_node_collector.sh
 
 ## On monitoring/ops nodes hosting the aggregation tier
+
 sudo scripts/ops/install_otel_central_collector.sh
+
 ```
 
-Both scripts download the requested `otelcol-contrib` release, install it under `/usr/local/bin`, copy the configs + systemd units, and create override env files under `/etc/justnews/monitoring/otel/`. Rerun the script after updating this directory to redeploy changes.
+Both scripts download the requested `otelcol-contrib` release, install it under `/usr/local/bin`, copy the configs +
+systemd units, and create override env files under `/etc/justnews/monitoring/otel/`. Rerun the script after updating
+this directory to redeploy changes.
 
 ## Customization knobs
 
@@ -60,6 +67,8 @@ Before enabling the services, validate the config:
 sudo /usr/local/bin/otelcol-contrib \
   --config /etc/justnews/monitoring/otel/node-collector-config.yaml \
   --dry-run
-```
 
-The same flag works for the central collector. The systemd units also expose `systemctl status` and `journalctl -u justnews-otel-*.service` logs if anything fails during startup.
+```bash
+
+The same flag works for the central collector. The systemd units also expose `systemctl status` and `journalctl -u
+justnews-otel-*.service` logs if anything fails during startup.

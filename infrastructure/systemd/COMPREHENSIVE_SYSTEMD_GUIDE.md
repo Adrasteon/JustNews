@@ -1,13 +1,12 @@
----
-title: Comprehensive systemd guide
-description: 'This guide explains how the native systemd deployment works, with special focus on gating, environment files, and unit drop-ins.'
+--- title: Comprehensive systemd guide description: 'This guide explains how the native systemd deployment works, with
+special focus on gating, environment files, and unit drop-ins.'
 
-tags: ["guide", "systemd", "comprehensive"]
----
+tags: ["guide", "systemd", "comprehensive"] ---
 
 # Comprehensive systemd guide
 
-This guide explains how the native systemd deployment works, with special focus on gating, environment files, and unit drop-ins.
+This guide explains how the native systemd deployment works, with special focus on gating, environment files, and unit
+drop-ins.
 
 ## Gating model preload (why orchestrator-first)
 
@@ -28,13 +27,16 @@ Relevant env/tuning:
 Loaded by the unit template:
 
 ```
+
 EnvironmentFile=-/etc/justnews/global.env
 EnvironmentFile=-/etc/justnews/%i.env
+
 ```
 
 Minimum keys (examples):
 
 ```
+
 JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python
 SERVICE_DIR=/home/adra/JustNews
 JUSTNEWS_DB_URL=postgresql://user:pass@localhost:5432/justnews
@@ -53,25 +55,32 @@ REQUIRE_TRANSPARENCY_AUDIT=1
 ## Optional Prometheus textfile target for the crawl scheduler
 
 ## CRAWL_SCHEDULER_METRICS=/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom
+
 ```
 
 Minimum governance/observability keys (recommended additions as the transparency stack comes online):
 
 ```
+
 GOVERNANCE_DASHBOARD_URL=https://grafana.example.com/d/justnews-governance
 QA_SAMPLING_PLAYBOOK=/etc/justnews/playbooks/extraction-qa.md
+
 ```
 
-Switch these to the public `https://news.example.com/*` endpoints once the transparency portal is published externally; the `http://localhost:8013/transparency` default shown above targets the dashboard agent that now serves the evidence audit API for local systemd deployments.
+Switch these to the public `https://news.example.com/*` endpoints once the transparency portal is published externally;
+the `http://localhost:8013/transparency` default shown above targets the dashboard agent that now serves the evidence
+audit API for local systemd deployments.
 
 Per-instance overrides (e.g., `/etc/justnews/analyst.env`):
 
 ```
+
 CUDA_VISIBLE_DEVICES=0
 
 ## EXEC_START can override the module if necessary
 
 ## EXEC_START="$JUSTNEWS_PYTHON -m agents.analyst.main"
+
 ```
 
 ## NVIDIA MPS Configuration (Enterprise GPU Isolation)
@@ -81,26 +90,32 @@ Enable NVIDIA Multi-Process Service for GPU resource isolation across agents:
 ### MPS Setup Steps
 
 1. **Start MPS Control Daemon** (run at system boot):
+
 ```bash
 sudo nvidia-cuda-mps-control -d
+
 ```
 
-2. **Verify MPS Operation**:
+1. **Verify MPS Operation**:
+
 ```bash
 pgrep -x nvidia-cuda-mps-control
 ls -la /tmp/nvidia-mps/
+
 ```
 
-3. **Environment Configuration**:
+1. **Environment Configuration**:
 
    - Global: `ENABLE_MPS=true` in `/etc/justnews/global.env`
 
    - GPU Orchestrator: `ENABLE_MPS=true` and `ENABLE_NVML=true` in `/etc/justnews/gpu_orchestrator.env`
 
-4. **Validate Configuration**:
+1. **Validate Configuration**:
+
 ```bash
 curl -s http://127.0.0.1:8014/mps/allocation | jq '.mps_resource_allocation.system_summary'
 curl -s http://127.0.0.1:8014/gpu/info | jq '{mps_enabled, mps}'
+
 ```
 
 ### MPS Troubleshooting
@@ -132,7 +147,9 @@ After changes: `sudo systemctl daemon-reload`.
 PATH wrappers (optional): small shims installed to `/usr/local/bin` so operators can run commands from any CWD:
 
 ```
+
 enable_all.sh, health_check.sh, reset_and_start.sh, cold_start.sh
+
 ```
 
 Install examples are in the Quick Reference.
@@ -149,7 +166,8 @@ Helpers (optional):
 
 ## Logs and troubleshooting
 
-```
+```bash
+
 sudo systemctl status justnews@analyst
 sudo journalctl -u justnews@analyst -e -n 200 -f
 sudo ./infrastructure/systemd/preflight.sh --stop     # to free occupied ports
@@ -157,6 +175,7 @@ sudo ./infrastructure/systemd/scripts/health_check.sh -v
 sudo journalctl -u justnews-crawl-scheduler.service -e -n 200 -f   # scheduler jobs
 sudo journalctl -u justnews@cluster_pipeline -e -n 200 -f  # clustering workers
 sudo journalctl -u justnews@fact_intel -e -n 200 -f        # fact intelligence workers
+
 ```
 
 If many services fail on first boot, verify `justnews@gpu_orchestrator` is READY.
@@ -175,14 +194,18 @@ If many services fail on first boot, verify `justnews@gpu_orchestrator` is READY
 
 - Verify synthesizer gate: `curl -fsS http://127.0.0.1:8005/ready` should report `true` only when `/transparency/status` returns `integrity.status` of `ok` or `degraded`.
 
-If transparency endpoints return non-200 responses, pause automated publishing (`sudo systemctl stop justnews@synthesis`) until evidence trails are restored.
+If transparency endpoints return non-200 responses, pause automated publishing (`sudo systemctl stop
+justnews@synthesis`) until evidence trails are restored.
 
 ## Orderly shutdown
 
-Shut down the system cleanly using the orchestration script which issues systemd stops in reverse order to avoid dependency issues:
+Shut down the system cleanly using the orchestration script which issues systemd stops in reverse order to avoid
+dependency issues:
 
-```
+```bash
+
 sudo ./infrastructure/systemd/scripts/enable_all.sh stop
+
 ```
 
 Behavior:
@@ -195,15 +218,19 @@ Behavior:
 
 Per-instance stop (alternative):
 
-```
+```bash
+
 sudo systemctl stop justnews@analyst
 sudo systemctl stop justnews@scout
+
 ```
 
 Also stop the GPU orchestrator if desired:
 
-```
+```bash
+
 sudo systemctl stop justnews@gpu_orchestrator
+
 ```
 
 Troubleshooting:
@@ -218,8 +245,10 @@ Troubleshooting:
 
 Launch a non-interactive, auto-refreshing health panel for operators:
 
-```
+```bash
+
 sudo health_check.sh --panel
+
 ```
 
 Behavior:
@@ -232,9 +261,11 @@ Behavior:
 
 Examples:
 
-```
+```bash
+
 sudo health_check.sh --panel --refresh 3
 sudo health_check.sh --panel mcp_bus analyst
+
 ```
 
 Requirements:
@@ -245,12 +276,15 @@ Requirements:
 
 ## Orchestrator-first and single-command restart
 
-This project gates agent startup on the GPU Orchestrator’s model preload, which avoids cascading failures and noisy restarts. There are two supported paths:
+This project gates agent startup on the GPU Orchestrator’s model preload, which avoids cascading failures and noisy
+restarts. There are two supported paths:
 
 1) One-command fresh restart (recommended)
 
-```
+```bash
+
 sudo ./infrastructure/systemd/reset_and_start.sh
+
 ```
 
 What it does:
@@ -267,11 +301,13 @@ What it does:
 
 2) Manual sequence (more control)
 
-```
+```bash
+
 sudo systemctl enable --now justnews@gpu_orchestrator
 curl -fsS http://127.0.0.1:8014/ready
 sudo ./infrastructure/systemd/scripts/enable_all.sh start
 sudo ./infrastructure/systemd/scripts/health_check.sh
+
 ```
 
 Notes and tuning:
@@ -296,8 +332,10 @@ Failure handling:
 
 Use the one-command cold boot to bring the system up from a clean machine restart:
 
-```
+```bash
+
 sudo ./infrastructure/systemd/cold_start.sh
+
 ```
 
 What it does:
@@ -324,7 +362,8 @@ Notes:
 
 Install the service/timer pair to trigger a cold start shortly after boot:
 
-```
+```bash
+
 sudo cp infrastructure/systemd/scripts/justnews-cold-start.sh /usr/local/bin/
 sudo cp infrastructure/systemd/scripts/justnews-boot-smoke.sh /usr/local/bin/
 sudo chmod +x /usr/local/bin/justnews-cold-start.sh
@@ -333,15 +372,18 @@ sudo cp infrastructure/systemd/units/justnews-cold-start.service /etc/systemd/sy
 sudo cp infrastructure/systemd/units/justnews-cold-start.timer /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now justnews-cold-start.timer
+
 ```
 
-This schedules a one-shot cold start ~45s after boot, after `network-online.target`.
+This schedules a one-shot cold start ~45s after boot, after `network- online.target`.
 
 ### Optional: Boot-time smoke test (timer)
 
-Install a lightweight smoke test that runs ~2 minutes after boot to verify orchestrator, MCP Bus, and agent /health endpoints. It logs a concise summary to the journal and always exits 0 (so it never flaps):
+Install a lightweight smoke test that runs ~2 minutes after boot to verify orchestrator, MCP Bus, and agent /health
+endpoints. It logs a concise summary to the journal and always exits 0 (so it never flaps):
 
-```
+```bash
+
 sudo cp infrastructure/systemd/helpers/boot_smoke_test.sh /usr/local/bin/
 sudo cp infrastructure/systemd/scripts/justnews-boot-smoke.sh /usr/local/bin/
 sudo chmod +x /usr/local/bin/justnews-boot-smoke.sh /usr/local/bin/boot_smoke_test.sh
@@ -349,13 +391,16 @@ sudo cp infrastructure/systemd/units/justnews-boot-smoke.service /etc/systemd/sy
 sudo cp infrastructure/systemd/units/justnews-boot-smoke.timer /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now justnews-boot-smoke.timer
+
 ```
 
 View results:
 
-```
+```bash
+
 systemctl list-timers | grep boot-smoke
 journalctl -u justnews-boot-smoke.service -e -n 200
+
 ```
 
 Tuning (optional):
@@ -370,37 +415,46 @@ The Stage B ingestion scheduler runs as a oneshot unit with an hourly timer once
 
 Setup recap (idempotent):
 
-```
+```bash
+
 sudo cp infrastructure/systemd/scripts/run_crawl_schedule.sh /usr/local/bin/
 sudo chmod +x /usr/local/bin/run_crawl_schedule.sh
 sudo cp infrastructure/systemd/units/justnews-crawl-scheduler.* /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now justnews-crawl-scheduler.timer
+
 ```
 
 Optional overrides live in `/etc/justnews/crawl_scheduler.env`:
 
 ```
+
 CRAWLER_AGENT_URL=http://127.0.0.1:8015
 CRAWL_SCHEDULE_PATH=/etc/justnews/crawl_schedule.yaml
 CRAWL_PROFILE_PATH=/etc/justnews/crawl_profiles
 CRAWL_SCHEDULER_METRICS=/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom
 CRAWL_SCHEDULER_STATE=/var/log/justnews/crawl_scheduler_state.json
 CRAWL_SCHEDULER_SUCCESS=/var/log/justnews/crawl_scheduler_success.json
+
 ```
 
 Operations:
 
-```
+```bash
+
 sudo systemctl status justnews-crawl-scheduler.timer
 sudo systemctl status justnews-crawl-scheduler.service
 journalctl -u justnews-crawl-scheduler.service -e -n 200 -f
-```
-
-Outputs land in the paths above; Prometheus gauges (`justnews_crawler_scheduler_*`) are emitted via the textfile target. For a dry run without touching the crawler agent:
 
 ```
+
+Outputs land in the paths above; Prometheus gauges (`justnews_crawler_scheduler_*`) are emitted via the textfile target.
+For a dry run without touching the crawler agent:
+
+```bash
+
 conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/ops/run_crawl_schedule.py --dry-run --profiles config/crawl_profiles
+
 ```
 
 Governance notes and rate-limit reviews belong in `logs/governance/crawl_terms_audit.md`.

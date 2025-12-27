@@ -1,6 +1,7 @@
 # Editorial Harness Runbook
 
-This runbook explains how to operate the Stage 4 editorial harness that runs normalized articles through the journalist → fact_checker → synthesizer adapters, persists results back into MariaDB, and emits Stage B acceptance metrics.
+This runbook explains how to operate the Stage 4 editorial harness that runs normalized articles through the journalist
+→ fact_checker → synthesizer adapters, persists results back into MariaDB, and emits Stage B acceptance metrics.
 
 ## Prerequisites
 
@@ -16,11 +17,13 @@ Initialize a fresh MariaDB schema (when using docker-compose or CI):
 
 ```bash
 python scripts/dev/bootstrap_editorial_harness_db.py
+
 ```
 
 ```bash
 MODEL_STORE_DRY_RUN=1 FACT_CHECKER_DISABLE_MISTRAL=0 \
     python scripts/dev/run_agent_chain_harness.py --limit 3
+
 ```
 
 Useful flags:
@@ -35,11 +38,11 @@ The script invokes `AgentChainRunner`, which:
 
 1. Uses `NormalizedArticleRepository` to select unsynthesized articles with ≥400 characters of content.
 
-2. Runs `AgentChainHarness` to generate story briefs, fact checks, and drafts.
+1. Runs `AgentChainHarness` to generate story briefs, fact checks, and drafts.
 
-3. Saves traces (`fact_check_trace`, `synth_trace`, `critic_result`) plus updated `fact_check_status`/`is_synthesized` flags back into the `articles` table.
+1. Saves traces (`fact_check_trace`, `synth_trace`, `critic_result`) plus updated `fact_check_status`/`is_synthesized` flags back into the `articles` table.
 
-4. Records metrics (`justnews_stage_b_editorial_harness_total`, `justnews_stage_b_editorial_acceptance_*`).
+1. Records metrics (`justnews_stage_b_editorial_harness_total`, `justnews_stage_b_editorial_acceptance_*`).
 
 ## Scheduling options
 
@@ -50,8 +53,10 @@ Create `/etc/cron.d/justnews-editorial-harness`:
 ```
 
 ## Run every 15 minutes against the latest normalized rows
+
 */15 * * * * justnews MODEL_STORE_DRY_RUN=1 \
   /srv/justnews/scripts/run_agent_chain_harness.py --limit 10 --no-artifacts >> /var/log/justnews/editorial_harness.log 2>&1
+
 ```
 
 ### GitHub Actions (nightly dry-run)
@@ -81,9 +86,11 @@ jobs:
           MODEL_STORE_DRY_RUN: "1"
           FACT_CHECKER_DISABLE_MISTRAL: "0"
         run: python scripts/dev/run_agent_chain_harness.py --limit 5 --no-artifacts
+
 ```
 
-(The workflow above expects database credentials provided through repository secrets or a self-hosted runner with tunnel access.)
+(The workflow above expects database credentials provided through repository secrets or a self-hosted runner with tunnel
+access.)
 
 ## Dashboards & alerts
 
@@ -101,6 +108,6 @@ jobs:
 
 1. Ensure the cron or workflow output is posted to #live-run with the JSON summary from the script.
 
-2. Investigate any `needs_followup` clusters by reviewing the artifact JSON (if enabled) or the `fact_check_trace` column.
+1. Investigate any `needs_followup` clusters by reviewing the artifact JSON (if enabled) or the `fact_check_trace` column.
 
-3. Before promoting drafts to Stage 5 (publishing), confirm the Grafana dashboard shows green status for the latest window.
+1. Before promoting drafts to Stage 5 (publishing), confirm the Grafana dashboard shows green status for the latest window.

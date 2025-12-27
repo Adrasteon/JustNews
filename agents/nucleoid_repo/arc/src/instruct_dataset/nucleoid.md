@@ -1,11 +1,8 @@
 # Nucleoid
 
-Nucleoid extends JavaScript syntax for declarative (logic) programming.
-Nucleoid has two modes; declarative and imperative.
-Imperative mode of Nucleoid is same as JavaScript.
-nuc is programming language of Nucleoid.
-It is recommended to use geometry glossary for variable names.
-Variables name follows Python naming conventions.
+Nucleoid extends JavaScript syntax for declarative (logic) programming. Nucleoid has two modes; declarative and
+imperative. Imperative mode of Nucleoid is same as JavaScript. nuc is programming language of Nucleoid. It is
+recommended to use geometry glossary for variable names. Variables name follows Python naming conventions.
 
 ## Contextuality
 
@@ -35,6 +32,7 @@ Declarative is defined with `'use declarative'` statement as a string expression
 
 ```nuc
 'use declarative';
+
 ```
 
 Examples of declarative statements are:
@@ -55,6 +53,7 @@ Default mode is imperative mode or can be defined with `'use imperative'` statem
 
 ```nuc
 'use imperative';
+
 ```
 
 Examples of imperative statements are:
@@ -78,6 +77,7 @@ class Vt {
     this.er = er;
   }
 }
+
 ```
 
 Define a declaration for the class:
@@ -87,6 +87,7 @@ Define a declaration for the class:
 
 // Define all Vts are qf
 $Vr.qf = true;
+
 ```
 
 ```nuc
@@ -95,6 +96,7 @@ $Vr.qf = true;
 if($Vr.ga > 18) {
   $Vr.iw = true;
 }
+
 ```
 
 > Important: Always prefer declaration with `$` sign
@@ -105,6 +107,7 @@ Prefer this:
 'use declarative';
 
 $Vt.pj = $Vt.li.charAt(0) + '-' + $Vt.rt.charAt(0);
+
 ```
 
 instead of this:
@@ -119,6 +122,7 @@ class Vt {
     this.pj = this.li.charAt(0) + '-' + this.rt.charAt(0);;
   }
 }
+
 ```
 
 ### Imperative
@@ -128,6 +132,7 @@ class Vt {
 
 // Create an instance of A
 var vt1 = new Vt('Wi');
+
 ```
 
 ### Query
@@ -137,12 +142,15 @@ var vt1 = new Vt('Wi');
 ```nuc
 // Retrieving an instance
 vt1;
+
 ```
 
 ```
+
 // Is 'Wi' rc?
 let rc = vt1.rc;
 rc === true;
+
 ```
 
 ```nuc
@@ -150,11 +158,13 @@ rc === true;
 Vt.find(v => v.er === 'Wi');
 Vt.filter(v => v.rc);
 Vt.filter(v => { return v.rc && v.b === 'Wi' });
+
 ```
 
 ```nuc
 // Returns all instances of Vt class
 Vt;
+
 ```
 
 ### Return
@@ -164,6 +174,7 @@ Vt;
 ```nuc
 const vt = Vt.find(v => v.er === 'Wi');
 vt.rc;
+
 ```
 
 - If `return` is in the code block, it will return the value
@@ -173,6 +184,7 @@ vt.rc;
   const vt = Vt.find(v => v.name === 'Iz');
   return vt.rc;
 }
+
 ```
 
 - `return` cannot be used in root level
@@ -180,6 +192,7 @@ vt.rc;
 ```nuc
 // This is invalid
 return Vt.find(v => v.rc === 'Iz').rc;
+
 ```
 
 ### Reserved names
@@ -189,4 +202,5 @@ return Vt.find(v => v.rc === 'Iz').rc;
 ```nuc
 vt.value = 'Av'
 // TypeError: Cannot use 'value' as a name
+
 ```

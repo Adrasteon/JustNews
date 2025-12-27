@@ -1,8 +1,11 @@
 # Workflow Management — Persistent Orchestration & Resource Control
 
-This document specifies a resilient, persistent orchestration and resource-management plan for JustNews. It captures the design decisions, DB schemas, APIs, message bus (Redis Streams) topics & consumer patterns, safety properties, monitoring, autoscaling, and an incremental implementation plan.
+This document specifies a resilient, persistent orchestration and resource- management plan for JustNews. It captures
+the design decisions, DB schemas, APIs, message bus (Redis Streams) topics & consumer patterns, safety properties,
+monitoring, autoscaling, and an incremental implementation plan.
 
-The goal: make the orchestration system durable and leader-aware, prevent GPU/host resource storms, provide dynamic throttles, and ensure work completes without losing state due to crashes or restarts.
+The goal: make the orchestration system durable and leader-aware, prevent GPU/host resource storms, provide dynamic
+throttles, and ensure work completes without losing state due to crashes or restarts.
 
 ---
 
@@ -48,7 +51,8 @@ The goal: make the orchestration system durable and leader-aware, prevent GPU/ho
 
 ## Persistent schema (SQL examples)
 
-Note: these are example schemas for MariaDB. They are intentionally minimal — add indices, constraints, and migrations in real deploys.
+Note: these are example schemas for MariaDB. They are intentionally minimal — add indices, constraints, and migrations
+in real deploys.
 
 DDL (example):
 
@@ -98,6 +102,7 @@ CREATE TABLE orchestrator_audit (
   event_type VARCHAR(128),
   details JSON
 );
+
 ```
 
 Guideline: always persist a `job_id` (client-supplied or generated) so handlers are idempotent.
@@ -106,7 +111,8 @@ Guideline: always persist a `job_id` (client-supplied or generated) so handlers 
 
 ## Redis Streams topics & consumer patterns
 
-Why Redis Streams: small ops footprint, consumer groups, exactly-once-ish semantics with XCLAIM/ACK and IDLE detection, and easy horizontal scaling.
+Why Redis Streams: small ops footprint, consumer groups, exactly-once-ish semantics with XCLAIM/ACK and IDLE detection,
+and easy horizontal scaling.
 
 Recommended streams:
 
@@ -148,10 +154,8 @@ We adapt the existing orchestrator endpoints to use persistent storage and leade
 
 1) Leases
 
-GET /leases — list leases (admin/read-only)
-POST /leases — request lease
-  body: { "agent": "embedder", "min_memory_mb": 2000, "ttl_seconds": 3600 }
-  returns: { "granted": true, "token": "uuid", "gpu_index": 0, "expires_at": "ts" }
+GET /leases — list leases (admin/read-only) POST /leases — request lease body: { "agent": "embedder", "min_memory_mb":
+2000, "ttl_seconds": 3600 } returns: { "granted": true, "token": "uuid", "gpu_index": 0, "expires_at": "ts" }
 
 POST /leases/{token}/heartbeat — body: { "timestamp": "ts" }  -> updates last_heartbeat. Not optional.
 
@@ -159,20 +163,20 @@ POST /leases/{token}/release — returns release confirmation. On release orches
 
 2) Worker pools
 
-POST /workers/pool — create worker pool
-  body: { "agent_name": "embedder", "model_id": "mistral-7b", "desired_workers": 2, "hold_seconds": 600 }
-  returns: { "pool_id": "uuid", "status": "starting" }
+POST /workers/pool — create worker pool body: { "agent_name": "embedder", "model_id": "mistral-7b", "desired_workers":
+2, "hold_seconds": 600 } returns: { "pool_id": "uuid", "status": "starting" }
 
 POST /workers/pool/{pool_id}/heartbeat — body: { "timestamp": "ts" } -> updates pool last_heartbeat
 
-POST /control/evict_pool — admin API to evict pool
-  body: { "pool_id": "uuid" }
+POST /control/evict_pool — admin API to evict pool body: { "pool_id": "uuid" }
 
 3) Jobs
 
-POST /jobs/submit — body includes stable job_id, type, payload. Orchestrator persists job row and pushes into Redis stream for consumers.
+POST /jobs/submit — body includes stable job_id, type, payload. Orchestrator persists job row and pushes into Redis
+stream for consumers.
 
-Consumer model (implemented): This behavior has been implemented and tested in the engine's reclaimer and worker implementation. Important implementation notes:
+Consumer model (implemented): This behavior has been implemented and tested in the engine's reclaimer and worker
+implementation. Important implementation notes:
 
 - The Worker (agents/gpu_orchestrator/worker.py) uses a best-effort fallback (xrange) where xreadgroup is not present, decodes fields, normalizes job ids and payloads, updates orchestrator_jobs status transitions (claimed -> done/failed), and ACKs messages.
 
@@ -180,15 +184,21 @@ Consumer model (implemented): This behavior has been implemented and tested in t
 
 4) Health & leader
 
-POST /leases/{token}/heartbeat — body: { "timestamp": "ts" } -> updates last_heartbeat. Not optional. (Implemented in main endpoints & engine heartbeat_lease.)
+POST /leases/{token}/heartbeat — body: { "timestamp": "ts" } -> updates last_heartbeat. Not optional. (Implemented in
+main endpoints & engine heartbeat_lease.)
 
-POST /jobs/submit — body includes stable job_id, type, payload. Orchestrator persists job row and pushes into Redis stream for consumers. (Implemented: engine.submit_job persists job and writes to Redis stream when a Redis client is available.)
+POST /jobs/submit — body includes stable job_id, type, payload. Orchestrator persists job row and pushes into Redis
+stream for consumers. (Implemented: engine.submit_job persists job and writes to Redis stream when a Redis client is
+available.)
 
 POST /control/reconcile — request immediate reconciliation (only leader will act)
 
-NOTE: Many of the above endpoints are available in agents/gpu_orchestrator/main.py for local testing. See that module for the FastAPI routes and how the engine integrates with the web layer.
+NOTE: Many of the above endpoints are available in agents/gpu_orchestrator/main.py for local testing. See that module
+for the FastAPI routes and how the engine integrates with the web layer.
 
-This is implemented using MariaDB GET_LOCK-based leader election and a background reconciliation/reclaimer loop in the engine. Only the leader performs lifecycle enforcement and reclaimer passes. Leader takeover is guarded by acquiring the DB advisory lock and the engine logs leader transitions.
+This is implemented using MariaDB GET_LOCK-based leader election and a background reconciliation/reclaimer loop in the
+engine. Only the leader performs lifecycle enforcement and reclaimer passes. Leader takeover is guarded by acquiring the
+DB advisory lock and the engine logs leader transitions.
  ### Phase 6 — Worker + lease usage and job lifecycle (IMPLEMENTED)
 
  - Worker implementation completed. `agents/gpu_orchestrator/worker.py` implements a simple worker that claims messages, requests leases from the engine, updates orchestrator_jobs status transitions and releases leases.
@@ -217,7 +227,8 @@ These items are blocking a safe production rollout even though the core system i
 
 ## Production readiness checklist (priority order)
 
-The following tasks should be completed and validated before we consider the orchestrator fully production-ready. Each item includes a short acceptance criteria and suggested verification steps.
+The following tasks should be completed and validated before we consider the orchestrator fully production-ready. Each
+item includes a short acceptance criteria and suggested verification steps.
 
 1) Production Redis reclaimer hardening
 
@@ -269,7 +280,8 @@ Leader election options:
 
 - Or Redis LOCK with TTL & renewals (Redlock variant) — fast and works cross-process.
 
-Simple pattern: try to acquire lock on startup; if success become leader and start reconciliation loops, spawn enforcer threads. Renew lock periodically; if fails, relinquish leader role and stop controlling operations.
+Simple pattern: try to acquire lock on startup; if success become leader and start reconciliation loops, spawn enforcer
+threads. Renew lock periodically; if fails, relinquish leader role and stop controlling operations.
 
 Reconciliation loop responsibilities (leader only):
 
@@ -327,7 +339,8 @@ Expose the following Prometheus metrics (examples):
 
 Use these metrics as inputs to KEDA scalers or HPA.
 
-Example autoscaling policy: scale workers when queue depth > 100 OR mean job latency > 2s; scale down when queue depth is low and utilization is < 10%.
+Example autoscaling policy: scale workers when queue depth > 100 OR mean job latency > 2s; scale down when queue depth
+is low and utilization is < 10%.
 
 ---
 
@@ -488,28 +501,43 @@ Deliverable: leases are persisted, survive restarts, and can be reclaimed.
 ## Appendix — sample Redis stream usage (commands)
 
 Producer push example:
+
 ```
+
 XADD stream:orchestrator:inference_jobs * job_id "123" type "inference" payload '{...}'
+
 ```
 
 Create consumer group:
+
 ```
+
 XGROUP CREATE stream:orchestrator:inference_jobs cg:inference $ MKSTREAM
+
 ```
 
 Consume (XREADGROUP):
+
 ```
+
 XREADGROUP GROUP cg:inference consumer-1 COUNT 1 BLOCK 2000 STREAMS stream:orchestrator:inference_jobs >
+
 ```
 
 Claim stale message (reclaimer):
+
 ```
+
 XCLAIM stream:orchestrator:inference_jobs cg:inference consumer-2 0-0-0-0 IDLE 60000 XX
+
 ```
 
 ACK when done:
+
 ```
+
 XACK stream:orchestrator:inference_jobs cg:inference <id>
+
 ```
 
 ---

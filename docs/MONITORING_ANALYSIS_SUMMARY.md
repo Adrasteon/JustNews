@@ -1,13 +1,12 @@
----
-title: Monitoring Analysis Complete
-description: Summary of monitoring infrastructure analysis and recommendations
+--- title: Monitoring Analysis Complete description: Summary of monitoring infrastructure analysis and recommendations
 ---
 
 # Monitoring Infrastructure Analysis - Complete
 
 ## Executive Summary
 
-You have a **complete, production-ready Prometheus and Grafana monitoring stack** on your USB drive. It's highly relevant to your infrastructure and should be deployed.
+You have a **complete, production-ready Prometheus and Grafana monitoring stack** on your USB drive. It's highly
+relevant to your infrastructure and should be deployed.
 
 ## Key Findings
 
@@ -46,13 +45,17 @@ You have a **complete, production-ready Prometheus and Grafana monitoring stack*
 ## Files on USB Drive
 
 ### Location
+
 ```
+
 /media/adra/37f1914d-e5fd-48ca-8c24-22d5f4e2e9dd/etc/justnews/monitoring/
+
 ```
 
 ### Complete File Listing
 
 ```
+
 monitoring/
 ├── grafana.ini                    [Configuration]
 ├── grafana.ini.bak.1765542014    [Backup]
@@ -72,13 +75,14 @@ monitoring/
         ├── justnews_operations_dashboard.json      [489 lines]
         ├── parity_dashboard.json                   [60 lines]
         └── system_overview_dashboard.json          [461 lines]
+
 ```
 
 ## Dashboard Overview
 
 ### 1. System Overview Dashboard
-**Purpose**: Infrastructure-focused monitoring
-**Metrics**:
+
+**Purpose**: Infrastructure-focused monitoring **Metrics**:
 
 - Fleet availability (number of services up)
 
@@ -95,8 +99,8 @@ monitoring/
 - Disk space
 
 ### 2. JustNews Operations Dashboard
-**Purpose**: Service health and operational metrics
-**Focuses On**:
+
+**Purpose**: Service health and operational metrics **Focuses On**:
 
 - MCP Bus health
 
@@ -109,8 +113,8 @@ monitoring/
 - Request rates and latencies
 
 ### 3. Business Metrics Dashboard
-**Purpose**: Content processing and business KPIs
-**Tracks**:
+
+**Purpose**: Content processing and business KPIs **Tracks**:
 
 - Content processing rates
 
@@ -123,8 +127,8 @@ monitoring/
 - Processing throughput
 
 ### 4. Ingest/Archive Dashboard
-**Purpose**: Article pipeline metrics
-**Monitors**:
+
+**Purpose**: Article pipeline metrics **Monitors**:
 
 - Ingestion rates
 
@@ -135,8 +139,8 @@ monitoring/
 - Processing delays
 
 ### 5. Parity Dashboard
-**Purpose**: Extraction quality metrics
-**Analyzes**:
+
+**Purpose**: Extraction quality metrics **Analyzes**:
 
 - Extraction parity (comparing extraction methods)
 
@@ -147,6 +151,7 @@ monitoring/
 ## Prometheus Targets Configured
 
 ```
+
 Target                    | Port  | Interval | Purpose
 --------------------------|-------|----------|----------------------------------
 prometheus                | 9090  | 15s      | Prometheus itself
@@ -158,6 +163,7 @@ justnews-agents          | 8001+ | 15s      | 9 agents (chief_editor, scout,
                          |       |          | synthesizer, critic, memory,
                          |       |          | reasoning, + 8012)
 justnews-node-exporter   | 9100  | 15s      | System metrics (CPU, mem, disk)
+
 ```
 
 ## Integration Checklist
@@ -212,7 +218,7 @@ justnews-node-exporter   | 9100  | 15s      | System metrics (CPU, mem, disk)
 
    - Consider: Store in Vault
 
-2. **Configure network security**
+1. **Configure network security**
 
    - Prometheus: Listen on `127.0.0.1:9090` (localhost only)
 
@@ -220,7 +226,7 @@ justnews-node-exporter   | 9100  | 15s      | System metrics (CPU, mem, disk)
 
    - Restrict dashboard access to authorized users
 
-3. **Enable Grafana authentication**
+1. **Enable Grafana authentication**
 
    - Disable anonymous access (already done in config)
 
@@ -228,7 +234,7 @@ justnews-node-exporter   | 9100  | 15s      | System metrics (CPU, mem, disk)
 
    - Or OAuth with trusted provider
 
-4. **Secure secrets**
+1. **Secure secrets**
 
    - Store Grafana admin password in Vault
 
@@ -252,7 +258,7 @@ justnews-node-exporter   | 9100  | 15s      | System metrics (CPU, mem, disk)
 
    - Quick start commands
 
-2. **Updated docs/DOCUMENTATION_INDEX.md**
+1. **Updated docs/DOCUMENTATION_INDEX.md**
 
    - Added monitoring to quick links
 
@@ -260,7 +266,7 @@ justnews-node-exporter   | 9100  | 15s      | System metrics (CPU, mem, disk)
 
    - Added FAQ for monitoring questions
 
-3. **Updated README.md**
+1. **Updated README.md**
 
    - Added link to Monitoring Infrastructure guide
 
@@ -277,11 +283,13 @@ justnews-node-exporter   | 9100  | 15s      | System metrics (CPU, mem, disk)
 ```bash
 
 ## Copy monitoring configs from USB
+
 sudo mkdir -p /etc/justnews/monitoring/grafana/provisioning/{datasources,dashboards}
 sudo cp -r /media/adra/37f1914d-e5fd-48ca-8c24-22d5f4e2e9dd/etc/justnews/monitoring/* \
   /etc/justnews/monitoring/
 
 ## Install packages
+
 sudo apt-get update
 sudo apt-get install -y prometheus grafana-server prometheus-node-exporter
 
@@ -292,6 +300,7 @@ sudo apt-get install -y prometheus grafana-server prometheus-node-exporter
 ## sudo ln -sf /etc/justnews/monitoring/grafana.ini /etc/grafana/grafana.ini
 
 ## Start services
+
 sudo systemctl daemon-reload
 sudo systemctl enable --now prometheus grafana-server prometheus-node-exporter
 
@@ -302,21 +311,19 @@ sudo systemctl enable --now prometheus grafana-server prometheus-node-exporter
 ## http://localhost:9090 (Prometheus)
 
 ## Change Grafana admin password
+
 sudo grafana-cli admin reset-admin-password <new-strong-password>
+
 ```
 
 ## Decision Matrix
 
-| Factor | Status | Impact | Recommendation |
-|--------|--------|--------|-----------------|
-| **Pre-built Dashboards** | ✅ Exist | High value | Deploy now |
-| **Configuration Ready** | ✅ Yes | Zero setup | Deploy now |
-| **Service Integration** | ✅ Defined | Already mapped | Deploy now |
-| **Systemd Units** | ❌ Missing | 30 mins to create | Create them |
-| **Dependencies Installed** | ❌ Not yet | Easy to install | Install soon |
-| **Grafana Default Creds** | ⚠️ Weak | Security risk | Change immediately |
-| **Agent Metrics** | ⚠️ Code ready | 1-2 hour setup | Activate next |
-| **AlertManager** | ❌ Not yet | Nice to have | Deploy after basic monitoring |
+| Factor | Status | Impact | Recommendation | |--------|--------|--------|-----------------| | **Pre-built Dashboards**
+| ✅ Exist | High value | Deploy now | | **Configuration Ready** | ✅ Yes | Zero setup | Deploy now | | **Service
+Integration** | ✅ Defined | Already mapped | Deploy now | | **Systemd Units** | ❌ Missing | 30 mins to create | Create
+them | | **Dependencies Installed** | ❌ Not yet | Easy to install | Install soon | | **Grafana Default Creds** | ⚠️ Weak
+| Security risk | Change immediately | | **Agent Metrics** | ⚠️ Code ready | 1-2 hour setup | Activate next | |
+**AlertManager** | ❌ Not yet | Nice to have | Deploy after basic monitoring |
 
 ## Verdict: YES, Deploy This
 
@@ -324,17 +331,17 @@ sudo grafana-cli admin reset-admin-password <new-strong-password>
 
 1. ✅ Complete, pre-configured stack (save 4-8 hours of work)
 
-2. ✅ 5 dashboards already designed for your architecture
+1. ✅ 5 dashboards already designed for your architecture
 
-3. ✅ Service targets already mapped
+1. ✅ Service targets already mapped
 
-4. ✅ Low effort to deploy (~1-2 hours including security)
+1. ✅ Low effort to deploy (~1-2 hours including security)
 
-5. ✅ High value for operations visibility
+1. ✅ High value for operations visibility
 
-6. ✅ Matches your systemd deployment pattern
+1. ✅ Matches your systemd deployment pattern
 
-7. ✅ Compatible with Vault/MariaDB/ChromaDB setup
+1. ✅ Compatible with Vault/MariaDB/ChromaDB setup
 
 **Timeline**:
 
@@ -350,37 +357,40 @@ sudo grafana-cli admin reset-admin-password <new-strong-password>
 
 1. Read `docs/operations/MONITORING_INFRASTRUCTURE.md` (20 mins)
 
-2. Run the "Quick Deploy Command" above (30 mins)
+1. Run the "Quick Deploy Command" above (30 mins)
 
-3. Test dashboard access (10 mins)
+1. Test dashboard access (10 mins)
 
-4. Change Grafana password (5 mins)
+1. Change Grafana password (5 mins)
 
-5. Update Prometheus targets if needed (5-10 mins)
+1. Update Prometheus targets if needed (5-10 mins)
 
-6. Document service endpoints for team (10 mins)
+1. Document service endpoints for team (10 mins)
 
 ### If You Want to Wait 1-2 Weeks
 
 1. Finish stabilizing Vault/MariaDB/ChromaDB (your current focus)
 
-2. Bookmark `docs/operations/MONITORING_INFRASTRUCTURE.md`
+1. Bookmark `docs/operations/MONITORING_INFRASTRUCTURE.md`
 
-3. Keep USB drive safe (contains dashboards, configs)
+1. Keep USB drive safe (contains dashboards, configs)
 
-4. Deploy monitoring after core infrastructure solid
+1. Deploy monitoring after core infrastructure solid
 
 ## USB Drive Preservation
 
 Since this contains valuable configuration:
+
 ```bash
 
 ## Backup USB configs to repo documentation
+
 sudo cp -r /media/adra/.../monitoring /home/adra/JustNews/infrastructure/monitoring-backup/
 
 ## Or just document the exact file locations for future reference
 
 ## (Already done in MONITORING_INFRASTRUCTURE.md)
+
 ```
 
 ## Questions?
@@ -399,7 +409,5 @@ See **docs/operations/MONITORING_INFRASTRUCTURE.md** for:
 
 ---
 
-**Status**: ✅ **Analysis Complete**
-**Recommendation**: ✅ **Deploy Within 2 Weeks**
-**Effort to Deploy**: ~1-2 hours (systemd services + configs)
-**Value**: ⭐⭐⭐⭐⭐ (Critical for production observability)
+**Status**: ✅ **Analysis Complete** **Recommendation**: ✅ **Deploy Within 2 Weeks** **Effort to Deploy**: ~1-2 hours
+(systemd services + configs) **Value**: ⭐⭐⭐⭐⭐ (Critical for production observability)

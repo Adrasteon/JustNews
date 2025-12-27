@@ -129,6 +129,24 @@ def fix_content(text: str) -> str:
     def _flush_para(p):
         if not p:
             return []
+        # Skip reflow for paragraphs that look like tables, are indented blocks,
+        # contain URLs, or look like YAML key-value pairs. These are risky to
+        # reflow automatically and may be semantically sensitive.
+        unsafe = False
+        for line in p:
+            if '|' in line or 'http://' in line or 'https://' in line:
+                unsafe = True
+                break
+            if line.startswith('    ') or line.startswith('\t'):
+                unsafe = True
+                break
+            if re.match(r"^\s*[\w-]+:\s", line):
+                unsafe = True
+                break
+        if unsafe:
+            # Preserve original lines (trim trailing whitespace)
+            return [ln.rstrip() for ln in p]
+
         s = ' '.join(l.strip() for l in p)
         # Wrap paragraphs to 120 columns to keep lines readable while allowing
         # longer documentation lines for planning/ops files.

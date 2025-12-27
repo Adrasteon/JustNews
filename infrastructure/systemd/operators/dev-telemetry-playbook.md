@@ -29,22 +29,22 @@ either force startup (risky) or use an alternate set of default dev ports:
 
 - Temporarily stop the conflicting host process (recommended)
 
-	- Example: stop a local OTLP collector systemd unit before starting the dev stack.
+  - Example: stop a local OTLP collector systemd unit before starting the dev stack.
 
 - Force the repo dev telemetry stack to start despite conflicts by setting an environment variable in your runtime environment (explicit opt-in):
 
-		- ENABLE_DEV_TELEMETRY_FORCE=1 ENABLE_DEV_TELEMETRY=true /path/to/infrastructure/systemd/scripts/dev-telemetry-manager.sh up
+    - ENABLE_DEV_TELEMETRY_FORCE=1 ENABLE_DEV_TELEMETRY=true /path/to/infrastructure/systemd/scripts/dev-telemetry-manager.sh up
 
 Or to avoid conflict we provide alternate default host ports for the dev stack that don't collide with system
 collectors. The dev compose maps container ports to alternate host ports by default; you can override any host port
 individually using environment variables when launching:
 
 ```bash
-	# Start the dev stack using the alternate dev ports (default behaviour)
+  # Start the dev stack using the alternate dev ports (default behaviour)
 ENABLE_DEV_TELEMETRY=true /path/to/infrastructure/systemd/scripts/dev-telemetry-
 manager.sh up
 
-	# Start the dev stack using canonical ports by overriding environment variables
+  # Start the dev stack using canonical ports by overriding environment variables
 LOKI_PORT=3100 OTEL_GRPC_PORT=4317 OTEL_HTTP_PORT=4318 NODE_METRICS_PORT=8889 \
 ENABLE_DEV_TELEMETRY=true /path/to/infrastructure/systemd/scripts/dev-telemetry-
 manager.sh up ```

@@ -182,9 +182,9 @@ ls -la /tmp/nvidia-mps/
 
 1. **Environment Configuration**:
 
-   - Set `ENABLE_MPS=true` in `/etc/justnews/global.env`
+  - Set `ENABLE_MPS=true` in `/etc/justnews/global.env`
 
-   - Set `ENABLE_MPS=true` and `ENABLE_NVML=true` in `/etc/justnews/gpu_orchestrator.env`
+  - Set `ENABLE_MPS=true` and `ENABLE_NVML=true` in `/etc/justnews/gpu_orchestrator.env`
 
 1. **Check MPS Allocation**:
 
@@ -255,7 +255,7 @@ sudo cp infrastructure/systemd/scripts/health_check.sh /usr/local/bin/
 sudo cp infrastructure/systemd/scripts/reset_and_start.sh /usr/local/bin/
 sudo cp infrastructure/systemd/scripts/cold_start.sh /usr/local/bin/
 sudo chmod +x /usr/local/bin/enable_all.sh /usr/local/bin/health_check.sh \
-	/usr/local/bin/reset_and_start.sh /usr/local/bin/cold_start.sh
+  /usr/local/bin/reset_and_start.sh /usr/local/bin/cold_start.sh
 
 ```
 
@@ -302,19 +302,19 @@ Notes:
 
 - Many services “failed/inactive” immediately:
 
-	- Ensure orchestrator is running and READY (see startup order above).
+  - Ensure orchestrator is running and READY (see startup order above).
 
 - Preflight shows “run as root” and exit 1 under systemd:
 
-	- Expected for ExecStartPre limited checks; continue with orchestrator-first.
+  - Expected for ExecStartPre limited checks; continue with orchestrator-first.
 
 - Ports already in use:
 
-	- `sudo ./infrastructure/systemd/preflight.sh --stop` to free conflicting services.
+  - `sudo ./infrastructure/systemd/preflight.sh --stop` to free conflicting services.
 
 - DB connectivity (Memory):
 
-	- Set `JUSTNEWS_DB_URL` in `global.env` and run `helpers/db-check.sh`.
+  - Set `JUSTNEWS_DB_URL` in `global.env` and run `helpers/db-check.sh`.
 
 ## Install helpers (optional)
 

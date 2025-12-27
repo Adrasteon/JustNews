@@ -10,17 +10,17 @@ instanced units.
 
 1) Start GPU Orchestrator first (satisfies ExecStartPre model gating):
 
-	 - `sudo systemctl enable --now justnews@gpu_orchestrator`
+  - `sudo systemctl enable --now justnews@gpu_orchestrator`
 
-	 - Wait for READY: `curl -fsS http://127.0.0.1:8014/ready` → HTTP 200
+  - Wait for READY: `curl -fsS http://127.0.0.1:8014/ready` → HTTP 200
 
 2) Start the rest in order:
 
-	 - `sudo ./infrastructure/systemd/scripts/enable_all.sh start`
+  - `sudo ./infrastructure/systemd/scripts/enable_all.sh start`
 
 3) Check health:
 
-	 - `sudo ./infrastructure/systemd/scripts/health_check.sh`
+  - `sudo ./infrastructure/systemd/scripts/health_check.sh`
 
 Troubleshooting? See the Quick Reference and Comprehensive guide below.
 
@@ -32,21 +32,21 @@ http://127.0.0.1:8013/transparency/status | jq '.integrity.status'`. Analytics h
 
 - Quick Reference (copy-paste commands, port map, troubleshooting)
 
-	- `./QUICK_REFERENCE.md`
+  - `./QUICK_REFERENCE.md`
 
 - Comprehensive systemd guide (gating internals, drop-ins, tuning)
 
-	- `./COMPREHENSIVE_SYSTEMD_GUIDE.md`
+  - `./COMPREHENSIVE_SYSTEMD_GUIDE.md`
 
 - MariaDB integration guide (DB URL and checks)
 
-	- `./mariadb_integration.md`
+  - `./mariadb_integration.md`
 
 Incident reference:
 
 - Systemd Orchestrator Incident Report — Sept 13, 2025
 
-	- `../../markdown_docs/development_reports/systemd_operational_incident_report_2025-09-13.md`
+  - `../../markdown_docs/development_reports/systemd_operational_incident_report_2025-09-13.md`
 
 ## Scripts
 
@@ -83,25 +83,25 @@ Helpers (optional, recommended):
 - Timer: `units/justnews-crawl-scheduler.timer` (hourly with a 5-minute jitter window)
 
 - Enable sequence:
-	1. `sudo cp infrastructure/systemd/scripts/run_crawl_schedule.sh /usr/local/bin/run_crawl_schedule.sh`
-	1. `sudo chmod +x /usr/local/bin/run_crawl_schedule.sh`
-	1. `sudo cp infrastructure/systemd/units/justnews-crawl-scheduler.* /etc/systemd/system/`
-	1. `sudo systemctl daemon-reload`
-	1. `sudo systemctl enable --now justnews-crawl-scheduler.timer`
+  1. `sudo cp infrastructure/systemd/scripts/run_crawl_schedule.sh /usr/local/bin/run_crawl_schedule.sh`
+  1. `sudo chmod +x /usr/local/bin/run_crawl_schedule.sh`
+  1. `sudo cp infrastructure/systemd/units/justnews-crawl-scheduler.* /etc/systemd/system/`
+  1. `sudo systemctl daemon-reload`
+  1. `sudo systemctl enable --now justnews-crawl-scheduler.timer`
 
 - Optional overrides: `/etc/justnews/crawl_scheduler.env`
 
-	- `CRAWLER_AGENT_URL=http://127.0.0.1:8015`
+  - `CRAWLER_AGENT_URL=http://127.0.0.1:8015`
 
-	- `CRAWL_SCHEDULE_PATH=/etc/justnews/crawl_schedule.yaml` (if relocating config)
+  - `CRAWL_SCHEDULE_PATH=/etc/justnews/crawl_schedule.yaml` (if relocating config)
 
-	- `CRAWL_PROFILE_PATH=/etc/justnews/crawl_profiles.yaml` (optional path to the Crawl4AI profile registry)
+  - `CRAWL_PROFILE_PATH=/etc/justnews/crawl_profiles.yaml` (optional path to the Crawl4AI profile registry)
 
-	- `CRAWL_SCHEDULER_METRICS=/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom`
+  - `CRAWL_SCHEDULER_METRICS=/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom`
 
-	- `CRAWL_SCHEDULER_STATE=/var/log/justnews/crawl_scheduler_state.json`
+  - `CRAWL_SCHEDULER_STATE=/var/log/justnews/crawl_scheduler_state.json`
 
-	- `CRAWL_SCHEDULER_SUCCESS=/var/log/justnews/crawl_scheduler_success.json`
+  - `CRAWL_SCHEDULER_SUCCESS=/var/log/justnews/crawl_scheduler_success.json`
 
 ## Unit template and drop-ins
 
@@ -109,11 +109,11 @@ Helpers (optional, recommended):
 
 - Drop-in templates: `units/drop-ins/` (copy into `/etc/systemd/system/justnews@<name>.service.d/`)
 
-	- `05-gate-timeout.conf` – tune model gate timeout
+  - `05-gate-timeout.conf` – tune model gate timeout
 
-	- `10-preflight-gating.conf` – run preflight in `--gate-only` mode
+  - `10-preflight-gating.conf` – run preflight in `--gate-only` mode
 
-	- `20-restart-policy.conf` – restart policy knobs
+  - `20-restart-policy.conf` – restart policy knobs
 
 ## Minimal environment files (examples)
 
@@ -240,7 +240,7 @@ Default dev host port mapping (host -> container):
 ## Force-start dev telemetry even if canonical ports are already in use
 
 ENABLE_DEV_TELEMETRY_FORCE=1 ENABLE_DEV_TELEMETRY=true \
-	/path/to/infrastructure/systemd/scripts/dev-telemetry-manager.sh up
+  /path/to/infrastructure/systemd/scripts/dev-telemetry-manager.sh up
 
 ```
 
@@ -252,7 +252,7 @@ individual host ports by exporting the appropriate environment variable when sta
 ## Launch dev telemetry but map Loki to canonical 3100 and OTLP gRPC to 4317
 
 LOKI_PORT=3100 OTEL_GRPC_PORT=4317 ENABLE_DEV_TELEMETRY=true \
-	/path/to/infrastructure/systemd/scripts/dev-telemetry-manager.sh up
+  /path/to/infrastructure/systemd/scripts/dev-telemetry-manager.sh up
 
 ```
 

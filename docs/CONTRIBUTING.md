@@ -257,6 +257,14 @@ Before committing changes:
 
 - [ ] **Testing**: Verify changes don't break automation
 
+- [ ] **Secrets & Sensitive Data**: DO NOT commit secrets (passwords, API keys, DSNs, private keys) to the repository. Use `global.env.sample` for non-secret placeholders and the Vault-based flow (`scripts/fetch_secrets_to_env.sh` → `/run/justnews/secrets.env`) for real secrets. Before committing, run a quick local scan, for example:
+
+  ```bash
+  git grep -nE "password|API_KEY|SENTRY_DSN|SECRET|PRIVATE_KEY|TOKEN" || true
+  ```
+
+  If you accidentally commit secrets that were pushed to a remote, **rotate the credentials immediately**, inform maintainers/security, and remove the sensitive data from the repo history (contact core maintainers for assistance with `git filter-repo`/remediation).
+
 ### Automated Quality Checks
 
 The system automatically validates:

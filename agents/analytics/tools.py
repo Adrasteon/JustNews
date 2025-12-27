@@ -31,7 +31,7 @@ def get_system_health() -> dict[str, Any] | None:
         response = requests.post(
             f"{ANALYTICS_SERVICE_URL}/get_system_health",
             json=payload,
-            timeout=ANALYTICS_SERVICE_TIMEOUT
+            timeout=ANALYTICS_SERVICE_TIMEOUT,
         )
 
         if response.status_code == 200:
@@ -43,7 +43,9 @@ def get_system_health() -> dict[str, Any] | None:
                 logger.warning(f"System health request failed: {data}")
                 return None
         else:
-            logger.warning(f"System health request failed with status {response.status_code}")
+            logger.warning(
+                f"System health request failed with status {response.status_code}"
+            )
             return None
 
     except Exception as e:
@@ -66,7 +68,7 @@ def get_performance_metrics(hours: int = 1) -> dict[str, Any] | None:
         response = requests.post(
             f"{ANALYTICS_SERVICE_URL}/get_performance_metrics",
             json=payload,
-            timeout=ANALYTICS_SERVICE_TIMEOUT
+            timeout=ANALYTICS_SERVICE_TIMEOUT,
         )
 
         if response.status_code == 200:
@@ -78,7 +80,9 @@ def get_performance_metrics(hours: int = 1) -> dict[str, Any] | None:
                 logger.warning(f"Performance metrics request failed: {data}")
                 return None
         else:
-            logger.warning(f"Performance metrics request failed with status {response.status_code}")
+            logger.warning(
+                f"Performance metrics request failed with status {response.status_code}"
+            )
             return None
 
     except Exception as e:
@@ -102,7 +106,7 @@ def get_agent_profile(agent_name: str, hours: int = 24) -> dict[str, Any] | None
         response = requests.post(
             f"{ANALYTICS_SERVICE_URL}/get_agent_profile",
             json=payload,
-            timeout=ANALYTICS_SERVICE_TIMEOUT
+            timeout=ANALYTICS_SERVICE_TIMEOUT,
         )
 
         if response.status_code == 200:
@@ -114,7 +118,9 @@ def get_agent_profile(agent_name: str, hours: int = 24) -> dict[str, Any] | None
                 logger.warning(f"Agent profile request failed: {data}")
                 return None
         else:
-            logger.warning(f"Agent profile request failed with status {response.status_code}")
+            logger.warning(
+                f"Agent profile request failed with status {response.status_code}"
+            )
             return None
 
     except Exception as e:
@@ -137,20 +143,24 @@ def get_optimization_recommendations(hours: int = 24) -> list[dict[str, Any]] | 
         response = requests.post(
             f"{ANALYTICS_SERVICE_URL}/get_optimization_recommendations",
             json=payload,
-            timeout=ANALYTICS_SERVICE_TIMEOUT
+            timeout=ANALYTICS_SERVICE_TIMEOUT,
         )
 
         if response.status_code == 200:
             data = response.json()
             if data.get("status") == "success":
                 recommendations = data.get("data", [])
-                logger.debug(f"Retrieved {len(recommendations)} optimization recommendations")
+                logger.debug(
+                    f"Retrieved {len(recommendations)} optimization recommendations"
+                )
                 return recommendations
             else:
                 logger.warning(f"Optimization recommendations request failed: {data}")
                 return None
         else:
-            logger.warning(f"Optimization recommendations request failed with status {response.status_code}")
+            logger.warning(
+                f"Optimization recommendations request failed with status {response.status_code}"
+            )
             return None
 
     except Exception as e:
@@ -177,19 +187,23 @@ def record_performance_metric(metric_data: dict[str, Any]) -> bool:
         response = requests.post(
             f"{ANALYTICS_SERVICE_URL}/record_performance_metric",
             json=metric_data,
-            timeout=ANALYTICS_SERVICE_TIMEOUT
+            timeout=ANALYTICS_SERVICE_TIMEOUT,
         )
 
         if response.status_code == 200:
             data = response.json()
             if data.get("status") == "success":
-                logger.debug(f"Recorded performance metric for {metric_data.get('agent_name')}")
+                logger.debug(
+                    f"Recorded performance metric for {metric_data.get('agent_name')}"
+                )
                 return True
             else:
                 logger.warning(f"Metric recording failed: {data}")
                 return False
         else:
-            logger.warning(f"Metric recording failed with status {response.status_code}")
+            logger.warning(
+                f"Metric recording failed with status {response.status_code}"
+            )
             return False
 
     except Exception as e:
@@ -205,32 +219,25 @@ def check_analytics_service_health() -> dict[str, Any]:
         Dict containing health status information
     """
     try:
-        response = requests.get(
-            f"{ANALYTICS_SERVICE_URL}/health",
-            timeout=10
-        )
+        response = requests.get(f"{ANALYTICS_SERVICE_URL}/health", timeout=10)
 
         if response.status_code == 200:
             return {
                 "status": "healthy",
                 "service": "analytics",
                 "response_time": response.elapsed.total_seconds(),
-                "details": response.json()
+                "details": response.json(),
             }
         else:
             return {
                 "status": "unhealthy",
                 "service": "analytics",
                 "error": f"HTTP {response.status_code}",
-                "details": response.text
+                "details": response.text,
             }
 
     except Exception as e:
-        return {
-            "status": "error",
-            "service": "analytics",
-            "error": str(e)
-        }
+        return {"status": "error", "service": "analytics", "error": str(e)}
 
 
 def get_analytics_dashboard_url() -> str:
@@ -265,7 +272,7 @@ def export_analytics_report(hours: int = 24) -> dict[str, Any] | None:
         response = requests.post(
             f"{ANALYTICS_SERVICE_URL}/export_report",
             json=payload,
-            timeout=ANALYTICS_SERVICE_TIMEOUT * 2  # Longer timeout for reports
+            timeout=ANALYTICS_SERVICE_TIMEOUT * 2,  # Longer timeout for reports
         )
 
         if response.status_code == 200:
@@ -294,14 +301,15 @@ def get_analytics_service_info() -> dict[str, Any] | None:
     """
     try:
         response = requests.get(
-            f"{ANALYTICS_SERVICE_URL}/info",
-            timeout=ANALYTICS_SERVICE_TIMEOUT
+            f"{ANALYTICS_SERVICE_URL}/info", timeout=ANALYTICS_SERVICE_TIMEOUT
         )
 
         if response.status_code == 200:
             return response.json()
         else:
-            logger.warning(f"Service info request failed with status {response.status_code}")
+            logger.warning(
+                f"Service info request failed with status {response.status_code}"
+            )
             return None
 
     except Exception as e:

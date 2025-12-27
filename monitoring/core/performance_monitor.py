@@ -9,7 +9,7 @@ import logging
 import os
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 
@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 class PerformanceMetric(Enum):
     """Performance metrics to monitor"""
+
     CPU_USAGE = "cpu_usage"
     MEMORY_USAGE = "memory_usage"
     DISK_IO = "disk_io"
@@ -43,6 +44,7 @@ class PerformanceMetric(Enum):
 
 class BottleneckType(Enum):
     """Types of performance bottlenecks"""
+
     CPU_BOUND = "cpu_bound"
     MEMORY_BOUND = "memory_bound"
     IO_BOUND = "io_bound"
@@ -55,6 +57,7 @@ class BottleneckType(Enum):
 @dataclass
 class PerformanceThreshold:
     """Performance threshold configuration"""
+
     metric: PerformanceMetric
     warning_threshold: float
     critical_threshold: float
@@ -65,6 +68,7 @@ class PerformanceThreshold:
 @dataclass
 class PerformanceSnapshot:
     """Snapshot of system performance"""
+
     timestamp: datetime
     cpu_percent: float
     memory_percent: float
@@ -81,6 +85,7 @@ class PerformanceSnapshot:
 @dataclass
 class BottleneckAnalysis:
     """Analysis of performance bottlenecks"""
+
     timestamp: datetime
     primary_bottleneck: BottleneckType
     severity: str
@@ -105,28 +110,30 @@ class PerformanceMonitor:
 
         # Performance monitoring metrics
         self.performance_score = Gauge(
-            'justnews_performance_score',
-            'Overall performance score (0-100)',
-            ['agent', 'component'],
-            registry=self.registry
+            "justnews_performance_score",
+            "Overall performance score (0-100)",
+            ["agent", "component"],
+            registry=self.registry,
         )
 
         self.bottleneck_detected = Gauge(
-            'justnews_bottleneck_detected',
-            'Bottleneck detection flag (1=detection, 0=normal)',
-            ['agent', 'bottleneck_type'],
-            registry=self.registry
+            "justnews_bottleneck_detected",
+            "Bottleneck detection flag (1=detection, 0=normal)",
+            ["agent", "bottleneck_type"],
+            registry=self.registry,
         )
 
         self.resource_contention = Gauge(
-            'justnews_resource_contention_percent',
-            'Resource contention percentage',
-            ['agent', 'resource_type'],
-            registry=self.registry
+            "justnews_resource_contention_percent",
+            "Resource contention percentage",
+            ["agent", "resource_type"],
+            registry=self.registry,
         )
 
         # Performance thresholds
-        self._thresholds: dict[PerformanceMetric, PerformanceThreshold] = self._get_default_thresholds()
+        self._thresholds: dict[PerformanceMetric, PerformanceThreshold] = (
+            self._get_default_thresholds()
+        )
 
         # Monitoring state
         self._snapshots: list[PerformanceSnapshot] = []
@@ -149,28 +156,28 @@ class PerformanceMonitor:
             PerformanceMetric.CPU_USAGE: PerformanceThreshold(
                 metric=PerformanceMetric.CPU_USAGE,
                 warning_threshold=70.0,
-                critical_threshold=90.0
+                critical_threshold=90.0,
             ),
             PerformanceMetric.MEMORY_USAGE: PerformanceThreshold(
                 metric=PerformanceMetric.MEMORY_USAGE,
                 warning_threshold=80.0,
-                critical_threshold=95.0
+                critical_threshold=95.0,
             ),
             PerformanceMetric.RESPONSE_TIME: PerformanceThreshold(
                 metric=PerformanceMetric.RESPONSE_TIME,
                 warning_threshold=2.0,  # 2 seconds
-                critical_threshold=10.0  # 10 seconds
+                critical_threshold=10.0,  # 10 seconds
             ),
             PerformanceMetric.ERROR_RATE: PerformanceThreshold(
                 metric=PerformanceMetric.ERROR_RATE,
                 warning_threshold=5.0,  # 5%
-                critical_threshold=15.0  # 15%
+                critical_threshold=15.0,  # 15%
             ),
             PerformanceMetric.QUEUE_SIZE: PerformanceThreshold(
                 metric=PerformanceMetric.QUEUE_SIZE,
                 warning_threshold=100,
-                critical_threshold=500
-            )
+                critical_threshold=500,
+            ),
         }
 
     async def start_monitoring(self):
@@ -188,7 +195,7 @@ class PerformanceMonitor:
         await asyncio.gather(
             self._monitoring_task or asyncio.sleep(0),
             self._analysis_task or asyncio.sleep(0),
-            return_exceptions=True
+            return_exceptions=True,
         )
 
     async def _monitoring_loop(self):
@@ -240,6 +247,7 @@ class PerformanceMonitor:
 
             try:
                 import GPUtil
+
                 gpus = GPUtil.getGPUs()
                 if gpus:
                     gpu = gpus[0]  # Primary GPU
@@ -255,7 +263,7 @@ class PerformanceMonitor:
 
             # Create snapshot
             snapshot = PerformanceSnapshot(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 cpu_percent=cpu_percent,
                 memory_percent=memory.percent,
                 disk_read_bytes=disk_read,
@@ -265,12 +273,12 @@ class PerformanceMonitor:
                 gpu_memory_percent=gpu_memory_percent,
                 gpu_utilization_percent=gpu_utilization_percent,
                 active_threads=active_threads,
-                open_files=open_files
+                open_files=open_files,
             )
 
             # Store snapshot (keep last 24 hours)
             self._snapshots.append(snapshot)
-            cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+            cutoff = datetime.now(UTC) - timedelta(hours=24)
             self._snapshots = [s for s in self._snapshots if s.timestamp > cutoff]
 
         except Exception as e:
@@ -286,36 +294,29 @@ class PerformanceMonitor:
 
             # Update resource utilization metrics
             self.collector.resource_utilization.labels(
-                agent=self.agent_name,
-                resource_type='cpu',
-                resource_name='system'
+                agent=self.agent_name, resource_type="cpu", resource_name="system"
             ).set(latest.cpu_percent)
 
             self.collector.resource_utilization.labels(
-                agent=self.agent_name,
-                resource_type='memory',
-                resource_name='system'
+                agent=self.agent_name, resource_type="memory", resource_name="system"
             ).set(latest.memory_percent)
 
             if latest.gpu_utilization_percent is not None:
                 self.collector.resource_utilization.labels(
                     agent=self.agent_name,
-                    resource_type='gpu',
-                    resource_name='utilization'
+                    resource_type="gpu",
+                    resource_name="utilization",
                 ).set(latest.gpu_utilization_percent)
 
             if latest.gpu_memory_percent is not None:
                 self.collector.resource_utilization.labels(
-                    agent=self.agent_name,
-                    resource_type='gpu',
-                    resource_name='memory'
+                    agent=self.agent_name, resource_type="gpu", resource_name="memory"
                 ).set(latest.gpu_memory_percent)
 
             # Calculate performance score
             performance_score = self._calculate_performance_score(latest)
             self.performance_score.labels(
-                agent=self.agent_name,
-                component='system'
+                agent=self.agent_name, component="system"
             ).set(performance_score)
 
         except Exception as e:
@@ -353,8 +354,9 @@ class PerformanceMonitor:
 
             # Analyze recent snapshots (last 10 minutes)
             recent_snapshots = [
-                s for s in self._snapshots
-                if s.timestamp > datetime.now(timezone.utc) - timedelta(minutes=10)
+                s
+                for s in self._snapshots
+                if s.timestamp > datetime.now(UTC) - timedelta(minutes=10)
             ]
 
             if len(recent_snapshots) < 3:
@@ -367,34 +369,34 @@ class PerformanceMonitor:
                 # Reset bottleneck indicators
                 for bottleneck_type in BottleneckType:
                     self.bottleneck_detected.labels(
-                        agent=self.agent_name,
-                        bottleneck_type=bottleneck_type.value
+                        agent=self.agent_name, bottleneck_type=bottleneck_type.value
                     ).set(0)
 
                 # Set detected bottleneck
                 self.bottleneck_detected.labels(
                     agent=self.agent_name,
-                    bottleneck_type=bottleneck.primary_bottleneck.value
+                    bottleneck_type=bottleneck.primary_bottleneck.value,
                 ).set(1)
 
                 # Store analysis
                 self._bottleneck_history.append(bottleneck)
 
                 # Keep only recent history
-                cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+                cutoff = datetime.now(UTC) - timedelta(hours=24)
                 self._bottleneck_history = [
-                    b for b in self._bottleneck_history
-                    if b.timestamp > cutoff
+                    b for b in self._bottleneck_history if b.timestamp > cutoff
                 ]
 
                 # Trigger alert if severe
-                if bottleneck.severity in ['high', 'critical']:
+                if bottleneck.severity in ["high", "critical"]:
                     await self._trigger_bottleneck_alert(bottleneck)
 
         except Exception as e:
             logger.error(f"Error analyzing performance: {e}")
 
-    async def _detect_bottleneck(self, snapshots: list[PerformanceSnapshot]) -> BottleneckAnalysis | None:
+    async def _detect_bottleneck(
+        self, snapshots: list[PerformanceSnapshot]
+    ) -> BottleneckAnalysis | None:
         """Detect performance bottlenecks from snapshots"""
         if not snapshots:
             return None
@@ -436,48 +438,57 @@ class PerformanceMonitor:
         recommendations = self._generate_recommendations(primary_bottleneck, latest)
 
         return BottleneckAnalysis(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             primary_bottleneck=primary_bottleneck,
             severity=severity,
             confidence_score=confidence,
             recommendations=recommendations,
             affected_components=[self.agent_name],
-            metrics_snapshot=latest
+            metrics_snapshot=latest,
         )
 
-    def _generate_recommendations(self, bottleneck: BottleneckType,
-                                snapshot: PerformanceSnapshot) -> list[str]:
+    def _generate_recommendations(
+        self, bottleneck: BottleneckType, snapshot: PerformanceSnapshot
+    ) -> list[str]:
         """Generate recommendations for bottleneck resolution"""
         recommendations = []
 
         if bottleneck == BottleneckType.CPU_BOUND:
-            recommendations.extend([
-                "Consider increasing CPU allocation or optimizing CPU-intensive operations",
-                "Review and optimize algorithms for better CPU efficiency",
-                "Consider horizontal scaling if CPU usage remains high"
-            ])
+            recommendations.extend(
+                [
+                    "Consider increasing CPU allocation or optimizing CPU-intensive operations",
+                    "Review and optimize algorithms for better CPU efficiency",
+                    "Consider horizontal scaling if CPU usage remains high",
+                ]
+            )
 
         elif bottleneck == BottleneckType.MEMORY_BOUND:
-            recommendations.extend([
-                "Increase memory allocation or optimize memory usage",
-                "Implement memory pooling or object reuse patterns",
-                "Review data structures for memory efficiency",
-                "Consider implementing memory limits and cleanup routines"
-            ])
+            recommendations.extend(
+                [
+                    "Increase memory allocation or optimize memory usage",
+                    "Implement memory pooling or object reuse patterns",
+                    "Review data structures for memory efficiency",
+                    "Consider implementing memory limits and cleanup routines",
+                ]
+            )
 
         elif bottleneck == BottleneckType.GPU_BOUND:
-            recommendations.extend([
-                "Optimize GPU kernel operations and memory transfers",
-                "Consider GPU memory optimization techniques",
-                "Review batch sizes and GPU utilization patterns"
-            ])
+            recommendations.extend(
+                [
+                    "Optimize GPU kernel operations and memory transfers",
+                    "Consider GPU memory optimization techniques",
+                    "Review batch sizes and GPU utilization patterns",
+                ]
+            )
 
         elif bottleneck == BottleneckType.IO_BOUND:
-            recommendations.extend([
-                "Optimize disk I/O operations and implement caching",
-                "Consider SSD storage for improved I/O performance",
-                "Implement asynchronous I/O operations where possible"
-            ])
+            recommendations.extend(
+                [
+                    "Optimize disk I/O operations and implement caching",
+                    "Consider SSD storage for improved I/O performance",
+                    "Implement asynchronous I/O operations where possible",
+                ]
+            )
 
         return recommendations
 
@@ -500,7 +511,7 @@ class PerformanceMonitor:
 
                 # Check cooldown
                 if alert_key in self._alert_cooldowns:
-                    if datetime.now(timezone.utc) < self._alert_cooldowns[alert_key]:
+                    if datetime.now(UTC) < self._alert_cooldowns[alert_key]:
                         continue  # Still in cooldown
                     else:
                         del self._alert_cooldowns[alert_key]
@@ -521,14 +532,16 @@ class PerformanceMonitor:
                 )
 
                 # Set cooldown
-                self._alert_cooldowns[alert_key] = (
-                    datetime.now(timezone.utc) + timedelta(seconds=threshold.cooldown_seconds)
+                self._alert_cooldowns[alert_key] = datetime.now(UTC) + timedelta(
+                    seconds=threshold.cooldown_seconds
                 )
 
         except Exception as e:
             logger.error(f"Error checking thresholds: {e}")
 
-    def _get_metric_value(self, metric: PerformanceMetric, snapshot: PerformanceSnapshot) -> float | None:
+    def _get_metric_value(
+        self, metric: PerformanceMetric, snapshot: PerformanceSnapshot
+    ) -> float | None:
         """Get metric value from snapshot"""
         if metric == PerformanceMetric.CPU_USAGE:
             return snapshot.cpu_percent
@@ -543,7 +556,9 @@ class PerformanceMonitor:
         """Trigger bottleneck alert"""
         alert = Alert(
             rule_name=f"bottleneck_{bottleneck.primary_bottleneck.value}",
-            severity=AlertSeverity.WARNING if bottleneck.severity == 'medium' else AlertSeverity.CRITICAL,
+            severity=AlertSeverity.WARNING
+            if bottleneck.severity == "medium"
+            else AlertSeverity.CRITICAL,
             message=f"Performance bottleneck detected: {bottleneck.primary_bottleneck.value.replace('_', ' ').title()}",
             value=bottleneck.confidence_score * 100,  # Convert to percentage
             threshold=70.0,  # 70% confidence threshold
@@ -551,14 +566,19 @@ class PerformanceMonitor:
             labels={
                 "bottleneck_type": bottleneck.primary_bottleneck.value,
                 "severity": bottleneck.severity,
-                "agent": self.agent_name
-            }
+                "agent": self.agent_name,
+            },
         )
 
         await self.collector._handle_alert(alert)
 
-    async def _trigger_threshold_alert(self, metric: PerformanceMetric,
-                                     current_value: float, threshold: float, severity: AlertSeverity):
+    async def _trigger_threshold_alert(
+        self,
+        metric: PerformanceMetric,
+        current_value: float,
+        threshold: float,
+        severity: AlertSeverity,
+    ):
         """Trigger threshold alert"""
         alert = Alert(
             rule_name=f"threshold_{metric.value}",
@@ -566,18 +586,15 @@ class PerformanceMonitor:
             message=f"Performance threshold exceeded: {metric.value} = {current_value:.2f} (threshold: {threshold:.2f})",
             value=current_value,
             threshold=threshold,
-            timestamp=datetime.now(timezone.utc),
-            labels={
-                "metric": metric.value,
-                "agent": self.agent_name
-            }
+            timestamp=datetime.now(UTC),
+            labels={"metric": metric.value, "agent": self.agent_name},
         )
 
         await self.collector._handle_alert(alert)
 
     def get_performance_report(self, hours: int = 1) -> dict[str, Any]:
         """Get performance report for the last N hours"""
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
 
         recent_snapshots = [s for s in self._snapshots if s.timestamp > cutoff]
 
@@ -586,7 +603,9 @@ class PerformanceMonitor:
 
         # Calculate statistics
         cpu_stats = self._calculate_stats([s.cpu_percent for s in recent_snapshots])
-        memory_stats = self._calculate_stats([s.memory_percent for s in recent_snapshots])
+        memory_stats = self._calculate_stats(
+            [s.memory_percent for s in recent_snapshots]
+        )
 
         latest = recent_snapshots[-1]
 
@@ -594,12 +613,14 @@ class PerformanceMonitor:
         active_bottlenecks = []
         for bottleneck in self._bottleneck_history[-10:]:  # Last 10 analyses
             if bottleneck.timestamp > cutoff:
-                active_bottlenecks.append({
-                    "type": bottleneck.primary_bottleneck.value,
-                    "severity": bottleneck.severity,
-                    "confidence": bottleneck.confidence_score,
-                    "recommendations": bottleneck.recommendations
-                })
+                active_bottlenecks.append(
+                    {
+                        "type": bottleneck.primary_bottleneck.value,
+                        "severity": bottleneck.severity,
+                        "confidence": bottleneck.confidence_score,
+                        "recommendations": bottleneck.recommendations,
+                    }
+                )
 
         return {
             "status": "active",
@@ -614,7 +635,7 @@ class PerformanceMonitor:
             "gpu_memory": latest.gpu_memory_percent,
             "performance_score": self._calculate_performance_score(latest),
             "active_bottlenecks": active_bottlenecks,
-            "alerts_active": len(self.collector.get_active_alerts())
+            "alerts_active": len(self.collector.get_active_alerts()),
         }
 
     def _calculate_stats(self, values: list[float]) -> dict[str, float]:
@@ -626,7 +647,7 @@ class PerformanceMonitor:
             "min": min(values),
             "max": max(values),
             "avg": sum(values) / len(values),
-            "current": values[-1]
+            "current": values[-1],
         }
 
     def set_threshold(self, metric: PerformanceMetric, threshold: PerformanceThreshold):
@@ -639,8 +660,9 @@ class PerformanceMonitor:
 
         # Check recent bottlenecks
         recent_bottlenecks = [
-            b for b in self._bottleneck_history
-            if b.timestamp > datetime.now(timezone.utc) - timedelta(hours=1)
+            b
+            for b in self._bottleneck_history
+            if b.timestamp > datetime.now(UTC) - timedelta(hours=1)
         ]
 
         for bottleneck in recent_bottlenecks[-3:]:  # Last 3 bottlenecks
@@ -660,6 +682,7 @@ class PerformanceMonitor:
 # Global performance monitor instances
 _performance_monitors: dict[str, PerformanceMonitor] = {}
 
+
 def get_performance_monitor(agent_name: str) -> PerformanceMonitor:
     """Get or create performance monitor for an agent"""
     if agent_name not in _performance_monitors:
@@ -667,6 +690,7 @@ def get_performance_monitor(agent_name: str) -> PerformanceMonitor:
         _performance_monitors[agent_name] = PerformanceMonitor(agent_name, collector)
 
     return _performance_monitors[agent_name]
+
 
 def init_performance_monitor_for_agent(agent_name: str) -> PerformanceMonitor:
     """Initialize performance monitor for a specific agent"""

@@ -13,6 +13,10 @@ class StageBMetrics:
     ingestion_total: Counter
     embedding_total: Counter
     embedding_latency_seconds: Histogram
+    editorial_total: Counter
+    editorial_acceptance: Histogram
+    publishing_total: Counter
+    publishing_latency_seconds: Histogram
 
     def record_extraction(self, result: str) -> None:
         self.extraction_total.labels(result=result).inc()
@@ -27,7 +31,9 @@ class StageBMetrics:
         return self.extraction_total.labels(result=result)._value.get()
 
     def get_fallback_count(self, fallback: str, outcome: str) -> float:
-        return self.extraction_fallback_total.labels(fallback=fallback, outcome=outcome)._value.get()
+        return self.extraction_fallback_total.labels(
+            fallback=fallback, outcome=outcome
+        )._value.get()
 
     def get_ingestion_count(self, status: str) -> float:
         return self.ingestion_total.labels(status=status)._value.get()
@@ -43,6 +49,26 @@ class StageBMetrics:
 
     def get_embedding_latency_sum(self, cache: str) -> float:
         return self.embedding_latency_seconds.labels(cache=cache)._sum.get()
+
+    def record_editorial_result(self, result: str) -> None:
+        self.editorial_total.labels(result=result).inc()
+
+    def get_editorial_count(self, result: str) -> float:
+        return self.editorial_total.labels(result=result)._value.get()
+
+    def record_publish_result(self, result: str) -> None:
+        """Record a publish outcome (success/failure)."""
+        self.publishing_total.labels(result=result).inc()
+
+    def observe_publish_latency(self, seconds: float) -> None:
+        """Observe publish latency in seconds."""
+        self.publishing_latency_seconds.observe(max(0.0, float(seconds)))
+
+    def observe_editorial_acceptance(self, score: float) -> None:
+        self.editorial_acceptance.observe(max(0.0, min(score, 1.0)))
+
+    def get_editorial_acceptance_sum(self) -> float:
+        return self.editorial_acceptance._sum.get()
 
 
 _metric_registry_map: dict[int, StageBMetrics] = {}
@@ -73,6 +99,26 @@ _default_metrics = StageBMetrics(
         "Latency for embedding generation during Stage B ingestion.",
         ["cache"],
         buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
+    ),
+    editorial_total=Counter(
+        "justnews_stage_b_editorial_harness_total",
+        "Count of editorial harness outcomes (accepted, needs_followup, error).",
+        ["result"],
+    ),
+    editorial_acceptance=Histogram(
+        "justnews_stage_b_editorial_acceptance",
+        "Acceptance score distribution produced by the editorial harness.",
+        buckets=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
+    ),
+    publishing_total=Counter(
+        "justnews_stage_b_publishing_total",
+        "Count of publishing outcomes (success/failure) during Stage B flow.",
+        ["result"],
+    ),
+    publishing_latency_seconds=Histogram(
+        "justnews_stage_b_publishing_latency_seconds",
+        "Latency of publishing operations in seconds.",
+        buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0),
     ),
 )
 _active_metrics: StageBMetrics = _default_metrics
@@ -111,6 +157,30 @@ def _build_metrics(registry: CollectorRegistry | None) -> StageBMetrics:
             ["cache"],
             registry=registry,
             buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
+        ),
+        editorial_total=Counter(
+            "justnews_stage_b_editorial_harness_total",
+            "Count of editorial harness outcomes (accepted, needs_followup, error).",
+            ["result"],
+            registry=registry,
+        ),
+        editorial_acceptance=Histogram(
+            "justnews_stage_b_editorial_acceptance",
+            "Acceptance score distribution produced by the editorial harness.",
+            registry=registry,
+            buckets=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
+        ),
+        publishing_total=Counter(
+            "justnews_stage_b_publishing_total",
+            "Count of publishing outcomes (success/failure) during Stage B flow.",
+            ["result"],
+            registry=registry,
+        ),
+        publishing_latency_seconds=Histogram(
+            "justnews_stage_b_publishing_latency_seconds",
+            "Latency of publishing operations in seconds.",
+            registry=registry,
+            buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0),
         ),
     )
 

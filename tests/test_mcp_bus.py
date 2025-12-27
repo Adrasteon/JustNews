@@ -31,6 +31,7 @@ from tests.test_utils import (
 # MCP BUS CORE TESTS
 # ============================================================================
 
+
 class TestMCPBusCore:
     """Test core MCP Bus functionality"""
 
@@ -49,9 +50,12 @@ class TestMCPBusCore:
     async def test_agent_registration(self, mock_bus):
         """Test agent registration process"""
         # Register a new agent
-        await mock_bus.call_agent("mcp_bus", "register_agent",
-                                name="test_agent",
-                                address="http://localhost:9000")
+        await mock_bus.call_agent(
+            "mcp_bus",
+            "register_agent",
+            name="test_agent",
+            address="http://localhost:9000",
+        )
 
         # Verify agent was registered
         assert "test_agent" in mock_bus.agents
@@ -71,8 +75,9 @@ class TestMCPBusCore:
     async def test_tool_call_routing(self, mock_bus):
         """Test tool call routing to correct agents"""
         # Call analyst tool
-        response = await mock_bus.call_agent("analyst", "analyze_sentiment",
-                                           content="Test content")
+        response = await mock_bus.call_agent(
+            "analyst", "analyze_sentiment", content="Test content"
+        )
 
         CustomAssertions.assert_mcp_response_valid(response)
         assert "mock_analyst_analyze_sentiment_result" in response["data"]["result"]
@@ -88,12 +93,14 @@ class TestMCPBusCore:
 # MCP BUS RESILIENCE TESTS
 # ============================================================================
 
+
 class TestMCPBusResilience:
     """Test MCP Bus resilience and error handling"""
 
     @pytest.fixture
     def failing_bus(self):
         """Create MCP Bus that simulates failures"""
+
         class FailingMCPBus:
             def __init__(self):
                 self.agents = {"failing_agent": "http://localhost:9999"}
@@ -138,6 +145,7 @@ class TestMCPBusResilience:
     @pytest.mark.asyncio
     async def test_timeout_handling(self):
         """Test timeout handling for slow responses"""
+
         class SlowMCPBus:
             async def call_agent(self, agent: str, tool: str, **kwargs):
                 await asyncio.sleep(10)  # Simulate slow response
@@ -148,14 +156,14 @@ class TestMCPBusResilience:
         # Should timeout within reasonable time
         with pytest.raises(asyncio.TimeoutError):
             await asyncio.wait_for(
-                bus.call_agent("slow_agent", "slow_tool"),
-                timeout=1.0
+                bus.call_agent("slow_agent", "slow_tool"), timeout=1.0
             )
 
 
 # ============================================================================
 # MCP BUS PERFORMANCE TESTS
 # ============================================================================
+
 
 class TestMCPBusPerformance:
     """Test MCP Bus performance characteristics"""
@@ -173,8 +181,7 @@ class TestMCPBusPerformance:
 
         async def bus_call():
             return await performance_bus.call_agent(
-                "analyst", "analyze_sentiment",
-                content="Performance test content"
+                "analyst", "analyze_sentiment", content="Performance test content"
             )
 
         metrics = await tester.measure_async_operation(bus_call, iterations=20)
@@ -184,10 +191,10 @@ class TestMCPBusPerformance:
     @pytest.mark.asyncio
     async def test_concurrent_calls(self, performance_bus):
         """Test concurrent MCP Bus calls"""
+
         async def single_call():
             return await performance_bus.call_agent(
-                "analyst", "analyze_sentiment",
-                content="Concurrent test content"
+                "analyst", "analyze_sentiment", content="Concurrent test content"
             )
 
         # Execute multiple calls concurrently
@@ -212,6 +219,7 @@ class TestMCPBusPerformance:
 # MCP BUS INTEGRATION TESTS
 # ============================================================================
 
+
 class TestMCPBusIntegration:
     """Integration tests for MCP Bus with real components"""
 
@@ -229,22 +237,19 @@ class TestMCPBusIntegration:
 
         # Step 1: Sentiment analysis
         sentiment_result = await mock_bus.call_agent(
-            "analyst", "analyze_sentiment",
-            content=article_content
+            "analyst", "analyze_sentiment", content=article_content
         )
         CustomAssertions.assert_mcp_response_valid(sentiment_result)
 
         # Step 2: Fact checking
         fact_result = await mock_bus.call_agent(
-            "fact_checker", "verify_facts",
-            content=article_content
+            "fact_checker", "verify_facts", content=article_content
         )
         CustomAssertions.assert_mcp_response_valid(fact_result)
 
         # Step 3: Synthesis
         synthesis_result = await mock_bus.call_agent(
-            "synthesizer", "synthesize_summary",
-            articles=[article_content]
+            "synthesizer", "synthesize_summary", articles=[article_content]
         )
         CustomAssertions.assert_mcp_response_valid(synthesis_result)
 
@@ -270,11 +275,9 @@ class TestMCPBusIntegration:
         health_results = []
         for agent_name in mock_bus.agents.keys():
             # In real implementation, this would call health endpoint
-            health_results.append({
-                "agent": agent_name,
-                "status": "healthy",
-                "response_time": 0.05
-            })
+            health_results.append(
+                {"agent": agent_name, "status": "healthy", "response_time": 0.05}
+            )
 
         assert len(health_results) == len(mock_bus.agents)
         for result in health_results:
@@ -285,6 +288,7 @@ class TestMCPBusIntegration:
 # ============================================================================
 # MCP BUS LOAD TESTS
 # ============================================================================
+
 
 class TestMCPBusLoad:
     """Load testing for MCP Bus"""
@@ -297,8 +301,7 @@ class TestMCPBusLoad:
 
         async def load_call(call_id: int):
             return await mock_bus.call_agent(
-                "analyst", "analyze_sentiment",
-                content=f"Load test content {call_id}"
+                "analyst", "analyze_sentiment", content=f"Load test content {call_id}"
             )
 
         # Simulate high load
@@ -339,8 +342,9 @@ class TestMCPBusLoad:
         tasks = []
         for _i in range(100):
             task = mock_bus.call_agent(
-                "synthesizer", "synthesize_summary",
-                articles=[f"Article content {j}" for j in range(5)]
+                "synthesizer",
+                "synthesize_summary",
+                articles=[f"Article content {j}" for j in range(5)],
             )
             tasks.append(task)
 
@@ -357,6 +361,7 @@ class TestMCPBusLoad:
 # ============================================================================
 # UTILITY FUNCTIONS AND FIXTURES
 # ============================================================================
+
 
 @pytest.fixture
 def mcp_test_payloads():
@@ -388,13 +393,14 @@ def parametrize_mcp_scenarios():
             ("synthesizer", "synthesize_summary", True),
             ("invalid_agent", "invalid_tool", False),
         ],
-        ids=["sentiment_analysis", "fact_checking", "synthesis", "invalid_call"]
+        ids=["sentiment_analysis", "fact_checking", "synthesis", "invalid_call"],
     )
 
 
 # ============================================================================
 # TEST CONFIGURATION
 # ============================================================================
+
 
 class MCPTestConfig:
     """Configuration for MCP Bus testing"""

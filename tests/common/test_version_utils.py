@@ -25,31 +25,31 @@ class TestVersionUtils:
         assert isinstance(version, str)
         assert len(version) > 0
         # Should be in semantic version format (e.g., "0.8.0")
-        assert version.count('.') >= 2
+        assert version.count(".") >= 2
 
     def test_get_version_info(self):
         """Test getting detailed version information"""
         info = get_version_info()
 
         assert isinstance(info, dict)
-        assert 'version' in info
-        assert 'status' in info
-        assert 'release_date' in info
-        assert 'description' in info
+        assert "version" in info
+        assert "status" in info
+        assert "release_date" in info
+        assert "description" in info
 
         # Version should match get_version()
-        assert info['version'] == get_version()
+        assert info["version"] == get_version()
 
     def test_get_agent_version_info_without_agent(self):
         """Test getting agent version info without specifying agent"""
         info = get_agent_version_info()
 
         assert isinstance(info, dict)
-        assert 'version' in info
-        assert 'status' in info
-        assert 'release_date' in info
-        assert 'description' in info
-        assert 'agent' not in info
+        assert "version" in info
+        assert "status" in info
+        assert "release_date" in info
+        assert "description" in info
+        assert "agent" not in info
 
     def test_get_agent_version_info_with_agent(self):
         """Test getting agent version info with specified agent"""
@@ -57,22 +57,22 @@ class TestVersionUtils:
         info = get_agent_version_info(agent_name)
 
         assert isinstance(info, dict)
-        assert 'version' in info
-        assert 'status' in info
-        assert 'release_date' in info
-        assert 'description' in info
-        assert info['agent'] == agent_name
+        assert "version" in info
+        assert "status" in info
+        assert "release_date" in info
+        assert "description" in info
+        assert info["agent"] == agent_name
 
     def test_constants_match_version_info(self):
         """Test that constants match version info values"""
         info = get_version_info()
 
-        assert VERSION == info['version']
-        assert STATUS == info['status']
-        assert RELEASE_DATE == info['release_date']
-        assert DESCRIPTION == info['description']
+        assert VERSION == info["version"]
+        assert STATUS == info["status"]
+        assert RELEASE_DATE == info["release_date"]
+        assert DESCRIPTION == info["description"]
 
-    @patch('common.version_utils.VERSION_INFO')
+    @patch("common.version_utils.VERSION_INFO")
     def test_fallback_version_handling(self, mock_version_info):
         """Test fallback version handling when import fails"""
         # This test is tricky because the fallback is set at import time
@@ -89,5 +89,5 @@ class TestVersionUtils:
         assert info1 == info2  # But should have same content
 
         # Modifying one shouldn't affect the other
-        info1['test_key'] = 'test_value'
-        assert 'test_key' not in info2
+        info1["test_key"] = "test_value"
+        assert "test_key" not in info2

@@ -1,4 +1,5 @@
 """High-accuracy editorial critique helper backed by the Critic Mistral adapter."""
+
 from __future__ import annotations
 
 import json
@@ -6,7 +7,7 @@ import os
 import re
 import textwrap
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any
 
 from common.observability import get_logger
 
@@ -14,6 +15,7 @@ logger = get_logger(__name__)
 
 try:  # pragma: no cover - optional heavy dependency
     import torch
+
     TORCH_AVAILABLE = True
 except Exception:  # pragma: no cover
     torch = None  # type: ignore
@@ -46,17 +48,26 @@ class CriticAssessment:
     originality: float
     overall: float
     assessment: str
-    recommendations: List[str]
+    recommendations: list[str]
 
 
 class CriticMistralAdapter:
     """Lazy loader and inference helper for editorial critiques."""
 
     def __init__(self) -> None:
-        self.enabled = os.environ.get(DISABLE_ENV, "0").lower() not in {"1", "true", "yes", "on"}
+        self.enabled = os.environ.get(DISABLE_ENV, "0").lower() not in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
         self.max_chars = int(os.environ.get("CRITIC_MISTRAL_MAX_CHARS", "6000"))
-        self.max_input_tokens = int(os.environ.get("CRITIC_MISTRAL_MAX_INPUT_TOKENS", "2048"))
-        self.max_new_tokens = int(os.environ.get("CRITIC_MISTRAL_MAX_NEW_TOKENS", "400"))
+        self.max_input_tokens = int(
+            os.environ.get("CRITIC_MISTRAL_MAX_INPUT_TOKENS", "2048")
+        )
+        self.max_new_tokens = int(
+            os.environ.get("CRITIC_MISTRAL_MAX_NEW_TOKENS", "400")
+        )
         self.temperature = float(os.environ.get("CRITIC_MISTRAL_TEMPERATURE", "0.2"))
         self.top_p = float(os.environ.get("CRITIC_MISTRAL_TOP_P", "0.8"))
         self.model = None
@@ -100,35 +111,52 @@ class CriticMistralAdapter:
             from agents.common.mistral_loader import load_mistral_adapter_or_base
         except Exception as exc:  # pragma: no cover
             self._load_error = str(exc)
-            logger.warning("Shared Mistral loader import failed for Critic adapter: %s", exc)
+            logger.warning(
+                "Shared Mistral loader import failed for Critic adapter: %s", exc
+            )
             return False
 
         try:
             model, tokenizer = load_mistral_adapter_or_base(
                 "critic",
                 adapter_name=MODEL_ADAPTER_NAME,
-                model_kwargs={"device_map": "auto", "low_cpu_mem_usage": True, "trust_remote_code": True},
+                model_kwargs={
+                    "device_map": "auto",
+                    "low_cpu_mem_usage": True,
+                    "trust_remote_code": True,
+                },
                 tokenizer_kwargs={"use_fast": True},
             )
             if model is None or tokenizer is None:
                 self._load_error = "adapter-or-base-load-failed"
-                logger.warning("Critic adapter/base load failed despite shared loader attempt")
+                logger.warning(
+                    "Critic adapter/base load failed despite shared loader attempt"
+                )
                 return False
             model.eval()
             self.model = model
             self.tokenizer = tokenizer
-            logger.info("Loaded Critic Mistral weights (adapter=%s)", MODEL_ADAPTER_NAME)
+            logger.info(
+                "Loaded Critic Mistral weights (adapter=%s)", MODEL_ADAPTER_NAME
+            )
             return True
         except Exception as exc:  # pragma: no cover
             self._load_error = str(exc)
             logger.warning("Failed to load Critic Mistral weights: %s", exc)
             return False
 
-    def _run_inference(self, content: str, url: str | None) -> Dict[str, Any] | None:
-        if not self._ensure_loaded() or not TORCH_AVAILABLE or self.model is None or self.tokenizer is None:
+    def _run_inference(self, content: str, url: str | None) -> dict[str, Any] | None:
+        if (
+            not self._ensure_loaded()
+            or not TORCH_AVAILABLE
+            or self.model is None
+            or self.tokenizer is None
+        ):
             return None
 
-        truncated = textwrap.shorten(content.strip(), width=self.max_chars, placeholder="...")
+        truncated = textwrap.shorten(
+            content.strip(), width=self.max_chars, placeholder="..."
+        )
         url_line = f"\nSource: {url}" if url else ""
         prompt = self._build_prompt(truncated, url_line)
 
@@ -145,7 +173,7 @@ class CriticMistralAdapter:
 
         device = None
         if hasattr(self.model, "device"):
-            device = getattr(self.model, "device")
+            device = self.model.device
         elif hasattr(self.model, "hf_device_map"):
             device = None
 
@@ -166,8 +194,10 @@ class CriticMistralAdapter:
             logger.warning("Critic adapter generation failed: %s", exc)
             return None
 
-        generated = output_ids[:, inputs["input_ids"].shape[-1]:]
-        completion = self.tokenizer.decode(generated[0], skip_special_tokens=True).strip()
+        generated = output_ids[:, inputs["input_ids"].shape[-1] :]
+        completion = self.tokenizer.decode(
+            generated[0], skip_special_tokens=True
+        ).strip()
         return self._parse_completion(completion)
 
     def _build_prompt(self, content: str, url_line: str) -> str:
@@ -177,12 +207,14 @@ class CriticMistralAdapter:
                 {"role": "user", "content": f"Article:\n'''{content}'''{url_line}"},
             ]
             try:
-                return self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+                return self.tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True
+                )
             except Exception:
                 pass
         return f"<s>[INST] {SYSTEM_PROMPT}\nArticle:\n'''{content}'''{url_line} [/INST]"
 
-    def _parse_completion(self, completion: str) -> Dict[str, Any] | None:
+    def _parse_completion(self, completion: str) -> dict[str, Any] | None:
         snippet = completion.strip()
         fenced = re.search(r"```(?:json)?(.*?)```", snippet, flags=re.DOTALL)
         if fenced:
@@ -204,8 +236,9 @@ class CriticMistralAdapter:
                 logger.debug("Failed to parse Critic adapter JSON: %s", snippet)
                 return None
 
-    def _normalize(self, payload: Dict[str, Any]) -> CriticAssessment | None:
+    def _normalize(self, payload: dict[str, Any]) -> CriticAssessment | None:
         try:
+
             def clamp(value: float) -> float:
                 return max(0.0, min(float(value), 1.0))
 
@@ -214,12 +247,18 @@ class CriticMistralAdapter:
             consistency = clamp(payload.get("consistency_score", 0.5))
             readability = clamp(payload.get("readability_score", 0.7))
             originality = clamp(payload.get("originality_score", 0.6))
-            overall = clamp(payload.get("overall_score", (quality + consistency + readability) / 3))
-            assessment = str(payload.get("assessment", "Adapter could not summarize its critique."))
+            overall = clamp(
+                payload.get("overall_score", (quality + consistency + readability) / 3)
+            )
+            assessment = str(
+                payload.get("assessment", "Adapter could not summarize its critique.")
+            )
             recommendations = payload.get("recommendations")
             if not isinstance(recommendations, list):
                 recommendations = [str(recommendations)] if recommendations else []
-            recommendations = [str(item) for item in recommendations if str(item).strip()]
+            recommendations = [
+                str(item) for item in recommendations if str(item).strip()
+            ]
             return CriticAssessment(
                 quality=quality,
                 bias=bias,

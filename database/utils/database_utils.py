@@ -46,53 +46,72 @@ def get_db_config() -> dict[str, Any]:
         load_global_env(logger=logger)
     except Exception:
         # Defensive: continue even if env loading failed for unexpected reasons
-        logger.debug("Failed to load global env via load_global_env(); will rely on current environment")
+        logger.debug(
+            "Failed to load global env via load_global_env(); will rely on current environment"
+        )
 
     # Get database configuration
     config = {
         # Prefer MariaDB environment variables by default; if Postgres vars are present
         # (for backward compatibility) they can still be used as a fallback.
-        'host': os.environ.get('MARIADB_HOST', os.environ.get('POSTGRES_HOST', 'localhost')),
-        'port': int(os.environ.get('MARIADB_PORT', os.environ.get('POSTGRES_PORT', '3306'))),
-        'database': os.environ.get('MARIADB_DB', os.environ.get('POSTGRES_DB', 'justnews')),
-        'user': os.environ.get('MARIADB_USER', os.environ.get('POSTGRES_USER', 'justnews')),
-        'password': os.environ.get('MARIADB_PASSWORD', os.environ.get('POSTGRES_PASSWORD', '')),
-        'min_connections': int(os.environ.get('DB_MIN_CONNECTIONS', '1')),
-        'max_connections': int(os.environ.get('DB_MAX_CONNECTIONS', '20')),
-        'health_check_interval': int(os.environ.get('DB_HEALTH_CHECK_INTERVAL', '30')),
-        'max_retries': int(os.environ.get('DB_MAX_RETRIES', '3')),
-        'retry_delay': float(os.environ.get('DB_RETRY_DELAY', '1.0'))
+        "host": os.environ.get(
+            "MARIADB_HOST", os.environ.get("POSTGRES_HOST", "localhost")
+        ),
+        "port": int(
+            os.environ.get("MARIADB_PORT", os.environ.get("POSTGRES_PORT", "3306"))
+        ),
+        "database": os.environ.get(
+            "MARIADB_DB", os.environ.get("POSTGRES_DB", "justnews")
+        ),
+        "user": os.environ.get(
+            "MARIADB_USER", os.environ.get("POSTGRES_USER", "justnews")
+        ),
+        "password": os.environ.get(
+            "MARIADB_PASSWORD", os.environ.get("POSTGRES_PASSWORD", "")
+        ),
+        "min_connections": int(os.environ.get("DB_MIN_CONNECTIONS", "1")),
+        "max_connections": int(os.environ.get("DB_MAX_CONNECTIONS", "20")),
+        "health_check_interval": int(os.environ.get("DB_HEALTH_CHECK_INTERVAL", "30")),
+        "max_retries": int(os.environ.get("DB_MAX_RETRIES", "3")),
+        "retry_delay": float(os.environ.get("DB_RETRY_DELAY", "1.0")),
     }
 
     # Parse DATABASE_URL if provided (overrides individual settings)
-    database_url = os.environ.get('DATABASE_URL')
+    database_url = os.environ.get("DATABASE_URL")
     if database_url:
         logger.info("Parsing database configuration from DATABASE_URL")
         try:
             from urllib.parse import urlparse
+
             parsed = urlparse(database_url)
 
-            config.update({
-                'host': parsed.hostname or config['host'],
-                'port': parsed.port or config['port'],
-                'database': parsed.path.lstrip('/') or config['database'],
-                'user': parsed.username or config['user'],
-                'password': parsed.password or config['password']
-            })
+            config.update(
+                {
+                    "host": parsed.hostname or config["host"],
+                    "port": parsed.port or config["port"],
+                    "database": parsed.path.lstrip("/") or config["database"],
+                    "user": parsed.username or config["user"],
+                    "password": parsed.password or config["password"],
+                }
+            )
         except Exception as e:
             logger.warning(f"Failed to parse DATABASE_URL: {e}")
 
     # Validate required fields
-    required_fields = ['host', 'database', 'user', 'password']
+    required_fields = ["host", "database", "user", "password"]
     missing_fields = [field for field in required_fields if not config.get(field)]
 
     if missing_fields:
-        raise ValueError(f"Missing required database configuration fields: {missing_fields}")
+        raise ValueError(
+            f"Missing required database configuration fields: {missing_fields}"
+        )
 
     return config
 
 
-def create_connection_pool(config: dict[str, Any] | None = None) -> DatabaseConnectionPool:
+def create_connection_pool(
+    config: dict[str, Any] | None = None,
+) -> DatabaseConnectionPool:
     """
     Create and initialize database connection pool
 
@@ -146,10 +165,7 @@ def check_connection(pool: DatabaseConnectionPool) -> bool:
 
 
 async def execute_query_async(
-    pool: DatabaseConnectionPool,
-    query: str,
-    params: tuple = None,
-    fetch: bool = True
+    pool: DatabaseConnectionPool, query: str, params: tuple = None, fetch: bool = True
 ) -> list:
     """
     Execute database query asynchronously
@@ -164,15 +180,11 @@ async def execute_query_async(
         Query results or empty list
     """
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(
-        None, pool.execute_query, query, params, fetch
-    )
+    return await loop.run_in_executor(None, pool.execute_query, query, params, fetch)
 
 
 def execute_transaction(
-    pool: DatabaseConnectionPool,
-    queries: list,
-    params_list: list | None = None
+    pool: DatabaseConnectionPool, queries: list, params_list: list | None = None
 ) -> bool:
     """
     Execute multiple queries in a database transaction
@@ -202,7 +214,9 @@ def execute_transaction(
             conn.commit()
             cursor.close()
 
-            logger.info(f"Transaction executed successfully with {len(queries)} queries")
+            logger.info(
+                f"Transaction executed successfully with {len(queries)} queries"
+            )
             return True
 
     except Exception as e:
@@ -221,10 +235,10 @@ def get_database_stats(pool: DatabaseConnectionPool) -> dict[str, Any]:
         Database statistics dictionary
     """
     stats = {
-        'connection_pool': pool.get_metrics(),
-        'tables': {},
-        'total_size': 0,
-        'total_rows': 0
+        "connection_pool": pool.get_metrics(),
+        "tables": {},
+        "total_size": 0,
+        "total_rows": 0,
     }
 
     try:
@@ -246,23 +260,25 @@ def get_database_stats(pool: DatabaseConnectionPool) -> dict[str, Any]:
         table_results = pool.execute_query(table_query)
 
         for table in table_results:
-            table_name = table['tablename']
-            stats['tables'][table_name] = {
-                'inserts': table['inserts'],
-                'updates': table['updates'],
-                'deletes': table['deletes'],
-                'live_rows': table['live_rows'],
-                'dead_rows': table['dead_rows'],
-                'size': table['size']
+            table_name = table["tablename"]
+            stats["tables"][table_name] = {
+                "inserts": table["inserts"],
+                "updates": table["updates"],
+                "deletes": table["deletes"],
+                "live_rows": table["live_rows"],
+                "dead_rows": table["dead_rows"],
+                "size": table["size"],
             }
 
-            stats['total_rows'] += table['live_rows']
+            stats["total_rows"] += table["live_rows"]
 
         # Get database size
-        size_query = "SELECT pg_size_pretty(pg_database_size(current_database())) as db_size"
+        size_query = (
+            "SELECT pg_size_pretty(pg_database_size(current_database())) as db_size"
+        )
         size_result = pool.execute_query(size_query)
         if size_result:
-            stats['total_size'] = size_result[0]['db_size']
+            stats["total_size"] = size_result[0]["db_size"]
 
     except Exception as e:
         logger.warning(f"Failed to get database stats: {e}")
@@ -313,9 +329,7 @@ def reindex_table(pool: DatabaseConnectionPool, table_name: str) -> bool:
 
 
 def get_slow_queries(
-    pool: DatabaseConnectionPool,
-    limit: int = 10,
-    min_duration: float = 1.0
+    pool: DatabaseConnectionPool, limit: int = 10, min_duration: float = 1.0
 ) -> list:
     """
     Get slow running queries from pg_stat_activity
@@ -368,7 +382,7 @@ def kill_query(pool: DatabaseConnectionPool, pid: int) -> bool:
     try:
         query = "SELECT pg_terminate_backend(%s)"
         result = pool.execute_query(query, (pid,))
-        success = result and result[0]['pg_terminate_backend']
+        success = result and result[0]["pg_terminate_backend"]
         if success:
             logger.info(f"Terminated query with PID {pid}")
         else:

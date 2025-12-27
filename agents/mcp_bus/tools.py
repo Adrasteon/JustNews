@@ -63,14 +63,21 @@ def unregister_agent(agent_name: str) -> dict[str, str]:
         if result["status"] == "ok":
             logger.info(f"Agent {agent_name} unregistered successfully")
         else:
-            logger.warning(f"Agent {agent_name} unregistration: {result.get('message', 'unknown status')}")
+            logger.warning(
+                f"Agent {agent_name} unregistration: {result.get('message', 'unknown status')}"
+            )
         return result
     except Exception as e:
         logger.error(f"Failed to unregister agent {agent_name}: {e}")
         raise
 
 
-def call_agent_tool(agent_name: str, tool_name: str, args: list[Any] = None, kwargs: dict[str, Any] = None) -> dict[str, Any]:
+def call_agent_tool(
+    agent_name: str,
+    tool_name: str,
+    args: list[Any] = None,
+    kwargs: dict[str, Any] = None,
+) -> dict[str, Any]:
     """
     Call a tool on a registered agent.
 
@@ -237,19 +244,21 @@ def health_check() -> dict[str, Any]:
             "components": {
                 "agent_registry": {
                     "status": "healthy",
-                    "registered_agents": len(engine.agents)
+                    "registered_agents": len(engine.agents),
                 },
                 "circuit_breaker": {
-                    "status": "healthy" if not health_status.get("circuit_breaker_active") else "degraded",
-                    "active_breakers": stats.get("open_circuits", 0)
+                    "status": "healthy"
+                    if not health_status.get("circuit_breaker_active")
+                    else "degraded",
+                    "active_breakers": stats.get("open_circuits", 0),
                 },
                 "communication": {
                     "status": "healthy",
-                    "total_failures": stats.get("total_circuit_breaker_failures", 0)
-                }
+                    "total_failures": stats.get("total_circuit_breaker_failures", 0),
+                },
             },
             "issues": issues,
-            "stats": stats
+            "stats": stats,
         }
 
         logger.debug(f"Health check completed: {result['overall_status']}")
@@ -262,5 +271,5 @@ def health_check() -> dict[str, Any]:
             "overall_status": "unhealthy",
             "components": {},
             "issues": [f"Health check error: {str(e)}"],
-            "error": str(e)
+            "error": str(e),
         }

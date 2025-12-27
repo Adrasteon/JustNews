@@ -49,7 +49,7 @@ class StubTokenizer:
     def __call__(self, text, **kwargs):
         return {
             "input_ids": torch.tensor([[1, 2, 3]]),
-            "attention_mask": torch.tensor([[1, 1, 1]])
+            "attention_mask": torch.tensor([[1, 1, 1]]),
         }
 
     def decode(self, tokens, **kwargs):
@@ -72,14 +72,16 @@ class StubBERTopicModel:
     def get_topic_info(self):
         return [
             {"Topic": 0, "Count": 10, "Name": "Topic 0"},
-            {"Topic": 1, "Count": 5, "Name": "Topic 1"}
+            {"Topic": 1, "Count": 5, "Name": "Topic 1"},
         ]
 
 
 @pytest.fixture(autouse=True)
 def gpu_manager_stub(monkeypatch):
     """Stub the GPU manager module."""
-    monkeypatch.setitem(sys.modules, "common.gpu_utils", SimpleNamespace(GPUManager=StubGPUManager))
+    monkeypatch.setitem(
+        sys.modules, "common.gpu_utils", SimpleNamespace(GPUManager=StubGPUManager)
+    )
     yield
     sys.modules.pop("common.gpu_utils", None)
 
@@ -94,13 +96,18 @@ async def mock_gpu_manager():
 @pytest_asyncio.fixture
 async def synthesizer_engine(mock_gpu_manager):
     """Create a SynthesizerEngine instance with mocked dependencies."""
-    with patch('agents.synthesizer.synthesizer_engine.GPUManager', return_value=mock_gpu_manager), \
-         patch('agents.synthesizer.synthesizer_engine.AutoTokenizer'), \
-         patch('agents.synthesizer.synthesizer_engine.AutoModelForSeq2SeqLM'), \
-         patch('agents.synthesizer.synthesizer_engine.BERTopic'), \
-         patch('agents.synthesizer.synthesizer_engine.pipeline'), \
-         patch('agents.synthesizer.synthesizer_engine.TfidfVectorizer'), \
-         patch('agents.synthesizer.synthesizer_engine.KMeans'):
+    with (
+        patch(
+            "agents.synthesizer.synthesizer_engine.GPUManager",
+            return_value=mock_gpu_manager,
+        ),
+        patch("agents.synthesizer.synthesizer_engine.AutoTokenizer"),
+        patch("agents.synthesizer.synthesizer_engine.AutoModelForSeq2SeqLM"),
+        patch("agents.synthesizer.synthesizer_engine.BERTopic"),
+        patch("agents.synthesizer.synthesizer_engine.pipeline"),
+        patch("agents.synthesizer.synthesizer_engine.TfidfVectorizer"),
+        patch("agents.synthesizer.synthesizer_engine.KMeans"),
+    ):
         engine = SynthesizerEngine()
         await engine.initialize()
         yield engine
@@ -113,21 +120,35 @@ class TestSynthesizerEngineInitialization:
     @pytest.mark.asyncio
     async def test_initialization_success(self, mock_gpu_manager):
         """Test successful initialization."""
-        with patch('agents.synthesizer.synthesizer_engine.GPUManager', return_value=mock_gpu_manager), \
-             patch('agents.synthesizer.synthesizer_engine.AutoTokenizer', return_value=StubTokenizer()), \
-             patch('agents.synthesizer.synthesizer_engine.AutoModelForSeq2SeqLM', return_value=StubModel()), \
-             patch('agents.synthesizer.synthesizer_engine.BERTopic', return_value=StubBERTopicModel()), \
-             patch('agents.synthesizer.synthesizer_engine.pipeline'), \
-             patch('agents.synthesizer.synthesizer_engine.TfidfVectorizer'), \
-             patch('agents.synthesizer.synthesizer_engine.KMeans'):
+        with (
+            patch(
+                "agents.synthesizer.synthesizer_engine.GPUManager",
+                return_value=mock_gpu_manager,
+            ),
+            patch(
+                "agents.synthesizer.synthesizer_engine.AutoTokenizer",
+                return_value=StubTokenizer(),
+            ),
+            patch(
+                "agents.synthesizer.synthesizer_engine.AutoModelForSeq2SeqLM",
+                return_value=StubModel(),
+            ),
+            patch(
+                "agents.synthesizer.synthesizer_engine.BERTopic",
+                return_value=StubBERTopicModel(),
+            ),
+            patch("agents.synthesizer.synthesizer_engine.pipeline"),
+            patch("agents.synthesizer.synthesizer_engine.TfidfVectorizer"),
+            patch("agents.synthesizer.synthesizer_engine.KMeans"),
+        ):
             engine = SynthesizerEngine()
             await engine.initialize()
 
             assert engine.gpu_manager == mock_gpu_manager
             assert engine.is_initialized is True
-            assert hasattr(engine, 'bart_tokenizer')
-            assert hasattr(engine, 'bart_model')
-            assert hasattr(engine, 'bertopic_model')
+            assert hasattr(engine, "bart_tokenizer")
+            assert hasattr(engine, "bart_model")
+            assert hasattr(engine, "bertopic_model")
 
             await engine.close()
 
@@ -137,7 +158,10 @@ class TestSynthesizerEngineInitialization:
         mock_gpu_manager = StubGPUManager()
         mock_gpu_manager.is_available = False
 
-        with patch('agents.synthesizer.synthesizer_engine.GPUManager', return_value=mock_gpu_manager):
+        with patch(
+            "agents.synthesizer.synthesizer_engine.GPUManager",
+            return_value=mock_gpu_manager,
+        ):
             engine = SynthesizerEngine()
 
             with pytest.raises(RuntimeError, match="GPU unavailable"):
@@ -148,8 +172,16 @@ class TestSynthesizerEngineInitialization:
     @pytest.mark.asyncio
     async def test_initialization_model_loading_failure(self, mock_gpu_manager):
         """Test initialization failure due to model loading issues."""
-        with patch('agents.synthesizer.synthesizer_engine.GPUManager', return_value=mock_gpu_manager), \
-             patch('agents.synthesizer.synthesizer_engine.AutoTokenizer', side_effect=Exception("Model load failed")):
+        with (
+            patch(
+                "agents.synthesizer.synthesizer_engine.GPUManager",
+                return_value=mock_gpu_manager,
+            ),
+            patch(
+                "agents.synthesizer.synthesizer_engine.AutoTokenizer",
+                side_effect=Exception("Model load failed"),
+            ),
+        ):
             engine = SynthesizerEngine()
 
             with pytest.raises(Exception, match="Model load failed"):
@@ -167,7 +199,7 @@ class TestSynthesizerEngineClusterArticles:
         articles = [
             {"content": "Politics news about elections", "id": 1},
             {"content": "Sports news about football", "id": 2},
-            {"content": "Another politics article", "id": 3}
+            {"content": "Another politics article", "id": 3},
         ]
 
         # Mock BERTopic behavior
@@ -195,7 +227,9 @@ class TestSynthesizerEngineClusterArticles:
         articles = [{"content": "Test content", "id": 1}]
 
         # Make BERTopic fail
-        synthesizer_engine.bertopic_model.fit_transform = Mock(side_effect=Exception("BERTopic failed"))
+        synthesizer_engine.bertopic_model.fit_transform = Mock(
+            side_effect=Exception("BERTopic failed")
+        )
 
         # Mock KMeans fallback
         mock_kmeans = Mock()
@@ -213,7 +247,9 @@ class TestSynthesizerEngineClusterArticles:
         articles = [{"content": "Test content", "id": 1}]
 
         # Make both BERTopic and KMeans fail
-        synthesizer_engine.bertopic_model.fit_transform = Mock(side_effect=Exception("BERTopic failed"))
+        synthesizer_engine.bertopic_model.fit_transform = Mock(
+            side_effect=Exception("BERTopic failed")
+        )
         synthesizer_engine.kmeans_model = None
 
         result = await synthesizer_engine.cluster_articles(articles)
@@ -232,14 +268,19 @@ class TestSynthesizerEngineNeutralizeText:
 
         # Mock FLAN-T5 model
         mock_pipeline = Mock()
-        mock_pipeline.return_value = [{"generated_text": "This neutral article contains factual content."}]
+        mock_pipeline.return_value = [
+            {"generated_text": "This neutral article contains factual content."}
+        ]
         synthesizer_engine.neutralization_pipeline = mock_pipeline
 
         result = await synthesizer_engine.neutralize_text(text)
 
         assert result["status"] == "success"
         assert "neutralized_text" in result
-        assert result["neutralized_text"] == "This neutral article contains factual content."
+        assert (
+            result["neutralized_text"]
+            == "This neutral article contains factual content."
+        )
 
     @pytest.mark.asyncio
     async def test_neutralize_text_empty_input(self, synthesizer_engine):
@@ -255,7 +296,9 @@ class TestSynthesizerEngineNeutralizeText:
         text = "Test text"
 
         # Make pipeline fail
-        synthesizer_engine.neutralization_pipeline = Mock(side_effect=Exception("Pipeline failed"))
+        synthesizer_engine.neutralization_pipeline = Mock(
+            side_effect=Exception("Pipeline failed")
+        )
 
         result = await synthesizer_engine.neutralize_text(text)
 
@@ -271,7 +314,7 @@ class TestSynthesizerEngineAggregateCluster:
         """Test successful cluster aggregation."""
         articles = [
             {"content": "Article one content", "title": "Title 1", "id": 1},
-            {"content": "Article two content", "title": "Title 2", "id": 2}
+            {"content": "Article two content", "title": "Title 2", "id": 2},
         ]
 
         # Mock BART model for summarization
@@ -301,7 +344,9 @@ class TestSynthesizerEngineAggregateCluster:
         articles = [{"content": "Test content", "title": "Test", "id": 1}]
 
         # Make BART model fail
-        synthesizer_engine.bart_model.generate = Mock(side_effect=Exception("Summarization failed"))
+        synthesizer_engine.bart_model.generate = Mock(
+            side_effect=Exception("Summarization failed")
+        )
 
         result = await synthesizer_engine.aggregate_cluster(articles)
 
@@ -317,12 +362,14 @@ class TestSynthesizerEngineSynthesizeGPU:
         """Test successful GPU synthesis."""
         articles = [
             {"content": "GPU accelerated content synthesis test", "id": 1},
-            {"content": "Another article for synthesis", "id": 2}
+            {"content": "Another article for synthesis", "id": 2},
         ]
 
         # Mock all required components
         synthesizer_engine.bertopic_model = StubBERTopicModel()
-        synthesizer_engine.neutralization_pipeline = Mock(return_value=[{"generated_text": "Neutral text"}])
+        synthesizer_engine.neutralization_pipeline = Mock(
+            return_value=[{"generated_text": "Neutral text"}]
+        )
         synthesizer_engine.bart_tokenizer = StubTokenizer()
         synthesizer_engine.bart_model = StubModel()
 
@@ -340,14 +387,16 @@ class TestSynthesizerEngineSynthesizeGPU:
 
         # Mock components
         synthesizer_engine.bertopic_model = StubBERTopicModel()
-        synthesizer_engine.neutralization_pipeline = Mock(return_value=[{"generated_text": "Neutral"}])
+        synthesizer_engine.neutralization_pipeline = Mock(
+            return_value=[{"generated_text": "Neutral"}]
+        )
         synthesizer_engine.bart_tokenizer = StubTokenizer()
         synthesizer_engine.bart_model = StubModel()
 
         options = {
             "neutralize_bias": True,
             "max_clusters": 5,
-            "summarize_clusters": True
+            "summarize_clusters": True,
         }
 
         result = await synthesizer_engine.synthesize_gpu(articles, options=options)
@@ -361,7 +410,9 @@ class TestSynthesizerEngineSynthesizeGPU:
         articles = [{"content": "Test content", "id": 1}]
 
         # Make clustering fail
-        synthesizer_engine.bertopic_model.fit_transform = Mock(side_effect=Exception("Clustering failed"))
+        synthesizer_engine.bertopic_model.fit_transform = Mock(
+            side_effect=Exception("Clustering failed")
+        )
 
         result = await synthesizer_engine.synthesize_gpu(articles)
 
@@ -369,17 +420,24 @@ class TestSynthesizerEngineSynthesizeGPU:
         assert "synthesis_failed" in result["error"]
 
     @pytest.mark.asyncio
-    async def test_synthesize_gpu_memory_pressure(self, synthesizer_engine, mock_gpu_manager):
+    async def test_synthesize_gpu_memory_pressure(
+        self, synthesizer_engine, mock_gpu_manager
+    ):
         """Test GPU synthesis under memory pressure."""
         articles = [{"content": "Test", "id": 1}]
 
         # Simulate low GPU memory (make method a Mock so tests can adjust return)
         from unittest.mock import Mock as _Mock
-        mock_gpu_manager.get_available_memory = _Mock(return_value=1 * 1024 * 1024 * 1024)  # 1GB
+
+        mock_gpu_manager.get_available_memory = _Mock(
+            return_value=1 * 1024 * 1024 * 1024
+        )  # 1GB
 
         # Mock components
         synthesizer_engine.bertopic_model = StubBERTopicModel()
-        synthesizer_engine.neutralization_pipeline = Mock(return_value=[{"generated_text": "Neutral"}])
+        synthesizer_engine.neutralization_pipeline = Mock(
+            return_value=[{"generated_text": "Neutral"}]
+        )
         synthesizer_engine.bart_tokenizer = StubTokenizer()
         synthesizer_engine.bart_model = StubModel()
 
@@ -430,7 +488,9 @@ class TestSynthesizerEngineErrorHandling:
         """Test concurrent operations on the engine."""
         # Mock components for concurrent calls
         synthesizer_engine.bertopic_model = StubBERTopicModel()
-        synthesizer_engine.neutralization_pipeline = Mock(return_value=[{"generated_text": "Neutral"}])
+        synthesizer_engine.neutralization_pipeline = Mock(
+            return_value=[{"generated_text": "Neutral"}]
+        )
         synthesizer_engine.bart_tokenizer = StubTokenizer()
         synthesizer_engine.bart_model = StubModel()
 
@@ -458,7 +518,9 @@ class TestSynthesizerEngineResourceManagement:
         articles = [{"content": "Test", "id": 1}]
 
         # Make operation fail midway
-        synthesizer_engine.bertopic_model.fit_transform = Mock(side_effect=Exception("Mid-operation failure"))
+        synthesizer_engine.bertopic_model.fit_transform = Mock(
+            side_effect=Exception("Mid-operation failure")
+        )
 
         result = await synthesizer_engine.synthesize_gpu(articles)
 
@@ -476,14 +538,13 @@ class TestSynthesizerEngineResourceManagement:
     async def test_batch_processing_limits(self, synthesizer_engine):
         """Test batch processing with size limits."""
         # Create many articles to test batching
-        articles = [
-            {"content": f"Article content {i}", "id": i}
-            for i in range(100)
-        ]
+        articles = [{"content": f"Article content {i}", "id": i} for i in range(100)]
 
         # Mock components
         synthesizer_engine.bertopic_model = StubBERTopicModel()
-        synthesizer_engine.neutralization_pipeline = Mock(return_value=[{"generated_text": "Neutral"}] * 100)
+        synthesizer_engine.neutralization_pipeline = Mock(
+            return_value=[{"generated_text": "Neutral"}] * 100
+        )
         synthesizer_engine.bart_tokenizer = StubTokenizer()
         synthesizer_engine.bart_model = StubModel()
 

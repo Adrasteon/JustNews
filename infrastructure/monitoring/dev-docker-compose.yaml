@@ -1,0 +1,77 @@
+version: '3.8'
+services:
+  loki:
+    # Use a Loki tag known to be compatible with the dev config used here
+    image: grafana/loki:2.6.1
+    container_name: justnews-loki
+    # Host port is configurable via LOKI_PORT env var (default 13100 to avoid conflicts
+    # with host/system collectors). Set LOKI_PORT=3100 to use canonical port.
+    ports:
+      - "${LOKI_PORT:-13100}:3100"
+    # Print runtime config and increase logging to help debug config errors during dev runs
+    command: -config.file=/etc/loki/local-config.yaml -log.level=debug -print-config-stderr
+    volumes:
+      # Path is relative to this compose file (infrastructure/monitoring)
+      - ./dev-loki-config.yaml:/etc/loki/local-config.yaml:ro
+
+  tempo:
+    # Use 'latest' for the dev telemetry stack to avoid pinned tags that may
+    # be removed from upstream (dev-only stack; not for production).
+    image: grafana/tempo:latest
+    container_name: justnews-tempo
+    # Tempo ports: host ports are configurable (defaults avoid colliding with system OTEL)
+    ports:
+      - "${TEMPO_HTTP_PORT:-24268}:14268"
+      - "${TEMPO_JAEGER_PORT:-19411}:9411"
+    volumes:
+      # Path is relative to this compose file (infrastructure/monitoring)
+      # Tempo's default config path inside the container is /etc/tempo/config.yaml — mount our file there
+      - ./dev-tempo-config.yaml:/etc/tempo/config.yaml:ro
+    # Ensure tempo reads the mounted file if the image's default differs; explicit flag is safe in dev
+    command: -config.file=/etc/tempo/config.yaml
+
+  otel-node:
+    image: otel/opentelemetry-collector-contrib:0.81.0
+    container_name: justnews-otel-node
+    depends_on:
+      - loki
+      - tempo
+    # OTEL node collector ports - use alternate defaults to avoid collisions on
+    # developer machines where a host collector may be running. Set OTEL_GRPC_PORT
+    # OTEL_HTTP_PORT or NODE_METRICS_PORT to use canonical ports (4317/4318/8889).
+    ports:
+      - "${OTEL_GRPC_PORT:-24317}:4317"
+      - "${OTEL_HTTP_PORT:-24318}:4318"
+      - "${NODE_METRICS_PORT:-18889}:8889"
+    volumes:
+      # Path is relative to this compose file (infrastructure/monitoring)
+      - ./otel/node-collector-config.yaml:/etc/otel/config.yaml:ro
+    environment:
+      # Tempo accepts OTLP/gRPC on 4317 (tempo's distributor OTLP receiver). Point the collector there.
+      OTEL_UPSTREAM_ENDPOINT: "tempo:4317"
+      OTEL_UPSTREAM_INSECURE: "true"
+      OTEL_SERVICE_NAME: "dev-otel-node"
+      DEPLOYMENT_ENVIRONMENT: "dev"
+      HOSTNAME: "dev-otel-node"
+      # ensure the collector's memory_limiter processor has a non-zero limit in dev
+      OTEL_MEMORY_LIMIT_MIB: "256"
+      OTEL_LOG_LEVEL: "info"
+    command: ["--config", "/etc/otel/config.yaml"]
+
+  demo-emitter:
+    build: ./demo_service
+    container_name: justnews-demo-emitter
+    depends_on:
+      - otel-node
+    environment:
+      OTLP_GRPC_ENDPOINT: "otel-node:4317"
+      # allow demo emitter to use insecure gRPC for local dev (no TLS)
+      OTLP_GRPC_INSECURE: "true"
+      LOKI_PUSH: "http://loki:3100/loki/api/v1/push"
+    # Demo emitter port - configurable; default moved to 18080 to avoid collisions
+    ports:
+      - "${DEMO_PORT:-18080}:8080"
+
+networks:
+  default:
+    name: justnews-monitoring-dev

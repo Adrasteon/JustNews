@@ -36,62 +36,84 @@ logger = get_logger(__name__)
 _reasoning_engine: Any | None = None
 _enhanced_engine: Any | None = None
 
+
 def get_reasoning_engine():
     """Get or create the global reasoning engine instance."""
     global _reasoning_engine
     if _reasoning_engine is None:
         from .reasoning_engine import ReasoningConfig, ReasoningEngine
+
         config = ReasoningConfig()
         _reasoning_engine = ReasoningEngine(config)
     return _reasoning_engine
+
 
 def get_enhanced_engine():
     """Get or create the global enhanced reasoning engine instance."""
     global _enhanced_engine
     if _enhanced_engine is None:
         from .reasoning_engine import EnhancedReasoningEngine
+
         base_engine = get_reasoning_engine()
         _enhanced_engine = EnhancedReasoningEngine(base_engine)
     return _enhanced_engine
+
 
 # Environment variables
 REASONING_AGENT_PORT = int(os.environ.get("REASONING_AGENT_PORT", 8008))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
+
 # Pydantic models
 class ToolCall(BaseModel):
     """Standard MCP tool call format"""
+
     args: list[Any] = []
     kwargs: dict[str, Any] = {}
 
+
 class Fact(BaseModel):
     """Fact data model"""
+
     data: dict[str, Any]
+
 
 class Facts(BaseModel):
     """Multiple facts data model"""
+
     facts: list[dict[str, Any]]
+
 
 class Rule(BaseModel):
     """Rule data model"""
+
     rule: str
+
 
 class Query(BaseModel):
     """Query data model"""
+
     query: str
+
 
 class Evaluate(BaseModel):
     """Evaluation data model"""
+
     expression: str
+
 
 class ContradictionCheck(BaseModel):
     """Contradiction check data model"""
+
     statements: list[str]
+
 
 class FactValidation(BaseModel):
     """Fact validation data model"""
+
     claim: str
     context: dict[str, Any] | None = None
+
 
 # MCP Bus Client
 class MCPBusClient:
@@ -103,27 +125,32 @@ class MCPBusClient:
     def register_agent(self, agent_name: str, agent_address: str, tools: list[str]):
         """Register agent with MCP Bus."""
         import requests
+
         registration_data = {
             "name": agent_name,
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
+            response = requests.post(
+                f"{self.base_url}/register", json=registration_data, timeout=(2, 5)
+            )
             response.raise_for_status()
             logger.info(f"✅ Successfully registered {agent_name} with MCP Bus")
         except requests.exceptions.RequestException as e:
             logger.error(f"❌ Failed to register {agent_name} with MCP Bus: {e}")
             raise
 
+
 # FastAPI app setup
 app = FastAPI(
     title="JustNews V4 Reasoning Agent (Nucleoid)",
-    description="Symbolic reasoning and fact validation for news analysis"
+    description="Symbolic reasoning and fact validation for news analysis",
 )
 
 metrics = JustNewsMetrics("reasoning")
 
 app.middleware("http")(metrics.request_middleware)
+
 
 # Lifespan context manager
 @asynccontextmanager
@@ -153,10 +180,15 @@ async def lifespan(app: FastAPI):
                 agent_name="reasoning",
                 agent_address=f"http://localhost:{REASONING_AGENT_PORT}",
                 tools=[
-                    "add_fact", "add_facts", "add_rule", "query",
-                    "evaluate", "validate_claim", "explain_reasoning",
-                    "pipeline_validate"
-                ]
+                    "add_fact",
+                    "add_facts",
+                    "add_rule",
+                    "query",
+                    "evaluate",
+                    "validate_claim",
+                    "explain_reasoning",
+                    "pipeline_validate",
+                ],
             )
             logger.info("✅ Registered tools with MCP Bus")
             break
@@ -167,7 +199,9 @@ async def lifespan(app: FastAPI):
                 logger.info(f"⏳ Retrying MCP registration in {sleep_time}s...")
                 await asyncio.sleep(sleep_time)
             else:
-                logger.warning("⚠️ MCP registration failed after retries; running in standalone mode")
+                logger.warning(
+                    "⚠️ MCP registration failed after retries; running in standalone mode"
+                )
 
     logger.info("✅ Reasoning agent startup complete")
 
@@ -183,7 +217,7 @@ async def lifespan(app: FastAPI):
             state_data = {
                 "facts": _reasoning_engine.get_facts(),
                 "rules": _reasoning_engine.get_rules(),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
             with open(state_file, "w") as f:
                 json.dump(state_data, f, indent=2)
@@ -193,7 +227,9 @@ async def lifespan(app: FastAPI):
 
     logger.info("✅ Reasoning agent shutdown complete")
 
+
 app.router.lifespan_context = lifespan
+
 
 # Utility functions
 def log_feedback(event: str, details: dict[str, Any]):
@@ -206,7 +242,9 @@ def log_feedback(event: str, details: dict[str, Any]):
     except Exception as e:
         logger.warning(f"⚠️ Failed to log feedback: {e}")
 
+
 # API Endpoints
+
 
 @app.post("/add_fact")
 async def add_fact_endpoint(call: ToolCall):
@@ -218,28 +256,31 @@ async def add_fact_endpoint(call: ToolCall):
     try:
         # Extract fact from args or kwargs
         if call.args:
-            fact_data = call.args[0] if isinstance(call.args[0], dict) else {"statement": str(call.args[0])}
+            fact_data = (
+                call.args[0]
+                if isinstance(call.args[0], dict)
+                else {"statement": str(call.args[0])}
+            )
         else:
             fact_data = call.kwargs.get("fact", call.kwargs.get("data", {}))
 
         result = await engine.add_fact(fact_data)
 
         # Log feedback
-        log_feedback("add_fact", {
-            "fact_data": fact_data,
-            "result": str(result),
-            "success": True
-        })
+        log_feedback(
+            "add_fact", {"fact_data": fact_data, "result": str(result), "success": True}
+        )
 
         return {"success": True, "result": result, "fact_id": len(engine.facts_store)}
 
     except Exception as e:
         error_msg = str(e)
-        log_feedback("add_fact_error", {
-            "fact_data": call.args if call.args else call.kwargs,
-            "error": error_msg
-        })
+        log_feedback(
+            "add_fact_error",
+            {"fact_data": call.args if call.args else call.kwargs, "error": error_msg},
+        )
         raise HTTPException(status_code=500, detail=error_msg) from e
+
 
 @app.post("/add_facts")
 async def add_facts_endpoint(call: ToolCall):
@@ -265,21 +306,25 @@ async def add_facts_endpoint(call: ToolCall):
                 results.append(result)
 
         # Log feedback
-        log_feedback("add_facts", {
-            "facts_count": len(facts_list),
-            "results": [str(r) for r in results],
-            "success": True
-        })
+        log_feedback(
+            "add_facts",
+            {
+                "facts_count": len(facts_list),
+                "results": [str(r) for r in results],
+                "success": True,
+            },
+        )
 
         return {"success": True, "count": len(results), "results": results}
 
     except Exception as e:
         error_msg = str(e)
-        log_feedback("add_facts_error", {
-            "facts_data": call.args if call.args else call.kwargs,
-            "error": error_msg
-        })
+        log_feedback(
+            "add_facts_error",
+            {"facts_data": call.args if call.args else call.kwargs, "error": error_msg},
+        )
         raise HTTPException(status_code=500, detail=error_msg) from e
+
 
 @app.post("/add_rule")
 async def add_rule_endpoint(call: ToolCall):
@@ -301,21 +346,22 @@ async def add_rule_endpoint(call: ToolCall):
         result = await engine.add_rule(rule)
 
         # Log feedback
-        log_feedback("add_rule", {
-            "rule": rule,
-            "result": str(result),
-            "success": True
-        })
+        log_feedback("add_rule", {"rule": rule, "result": str(result), "success": True})
 
-        return {"success": True, "result": result, "rule_count": len(engine.rules_store)}
+        return {
+            "success": True,
+            "result": result,
+            "rule_count": len(engine.rules_store),
+        }
 
     except Exception as e:
         error_msg = str(e)
-        log_feedback("add_rule_error", {
-            "rule_data": call.args if call.args else call.kwargs,
-            "error": error_msg
-        })
+        log_feedback(
+            "add_rule_error",
+            {"rule_data": call.args if call.args else call.kwargs, "error": error_msg},
+        )
         raise HTTPException(status_code=500, detail=error_msg) from e
+
 
 @app.post("/query")
 async def query_endpoint(call: ToolCall):
@@ -337,21 +383,18 @@ async def query_endpoint(call: ToolCall):
         result = await engine.query(query)
 
         # Log feedback
-        log_feedback("query", {
-            "query": query,
-            "result": str(result),
-            "success": True
-        })
+        log_feedback("query", {"query": query, "result": str(result), "success": True})
 
         return {"success": True, "result": result, "query": query}
 
     except Exception as e:
         error_msg = str(e)
-        log_feedback("query_error", {
-            "query_data": call.args if call.args else call.kwargs,
-            "error": error_msg
-        })
+        log_feedback(
+            "query_error",
+            {"query_data": call.args if call.args else call.kwargs, "error": error_msg},
+        )
         raise HTTPException(status_code=500, detail=error_msg) from e
+
 
 @app.post("/evaluate")
 async def evaluate_endpoint(call: ToolCall):
@@ -389,22 +432,29 @@ async def evaluate_endpoint(call: ToolCall):
         result = await engine.evaluate_contradiction(str_statements)
 
         # Log feedback
-        log_feedback("evaluate", {
-            "statements_count": len(str_statements),
-            "has_contradictions": result.get("has_contradictions", False),
-            "contradictions_count": len(result.get("contradictions", [])),
-            "success": True
-        })
+        log_feedback(
+            "evaluate",
+            {
+                "statements_count": len(str_statements),
+                "has_contradictions": result.get("has_contradictions", False),
+                "contradictions_count": len(result.get("contradictions", [])),
+                "success": True,
+            },
+        )
 
         return {"success": True, "result": result}
 
     except Exception as e:
         error_msg = str(e)
-        log_feedback("evaluate_error", {
-            "evaluation_data": call.args if call.args else call.kwargs,
-            "error": error_msg
-        })
+        log_feedback(
+            "evaluate_error",
+            {
+                "evaluation_data": call.args if call.args else call.kwargs,
+                "error": error_msg,
+            },
+        )
         raise HTTPException(status_code=500, detail=error_msg) from e
+
 
 @app.post("/validate_claim")
 async def validate_claim_endpoint(call: ToolCall):
@@ -429,7 +479,9 @@ async def validate_claim_endpoint(call: ToolCall):
         enhanced = get_enhanced_engine()
         if enhanced:
             try:
-                validation_result = await enhanced.validate_news_claim_with_context(claim, context)
+                validation_result = await enhanced.validate_news_claim_with_context(
+                    claim, context
+                )
             except Exception:
                 validation_result = None
 
@@ -449,26 +501,32 @@ async def validate_claim_endpoint(call: ToolCall):
                 "context": context,
                 "valid": not contradiction_result["has_contradictions"],
                 "contradictions": contradiction_result["contradictions"],
-                "confidence": 1.0 - (len(contradiction_result["contradictions"]) * 0.2)
+                "confidence": 1.0 - (len(contradiction_result["contradictions"]) * 0.2),
             }
 
         # Log feedback
-        log_feedback("validate_claim", {
-            "claim": claim,
-            "valid": validation_result.get("valid", False),
-            "contradictions_count": len(validation_result.get("contradictions", [])),
-            "confidence": validation_result.get("confidence", 0.0)
-        })
+        log_feedback(
+            "validate_claim",
+            {
+                "claim": claim,
+                "valid": validation_result.get("valid", False),
+                "contradictions_count": len(
+                    validation_result.get("contradictions", [])
+                ),
+                "confidence": validation_result.get("confidence", 0.0),
+            },
+        )
 
         return {"success": True, "result": validation_result}
 
     except Exception as e:
         error_msg = str(e)
-        log_feedback("validate_claim_error", {
-            "claim_data": call.args if call.args else call.kwargs,
-            "error": error_msg
-        })
+        log_feedback(
+            "validate_claim_error",
+            {"claim_data": call.args if call.args else call.kwargs, "error": error_msg},
+        )
         raise HTTPException(status_code=500, detail=error_msg) from e
+
 
 @app.post("/explain_reasoning")
 async def explain_reasoning_endpoint(call: ToolCall):
@@ -499,30 +557,30 @@ async def explain_reasoning_endpoint(call: ToolCall):
                 f"1. Executed query: '{query}'",
                 f"2. Applied {len(engine.rules_store)} logical rules",
                 f"3. Checked against {len(engine.facts_store)} known facts",
-                f"4. Result: {result}"
+                f"4. Result: {result}",
             ],
             "facts_used": list(engine.facts_store.keys()),
             "rules_applied": engine.rules_store,
             "confidence": 0.8 if result else 0.2,
-            "enhanced_available": enhanced is not None
+            "enhanced_available": enhanced is not None,
         }
 
         # Log feedback
-        log_feedback("explain_reasoning", {
-            "query": query,
-            "result": str(result),
-            "explanation_provided": True
-        })
+        log_feedback(
+            "explain_reasoning",
+            {"query": query, "result": str(result), "explanation_provided": True},
+        )
 
         return {"success": True, "result": explanation}
 
     except Exception as e:
         error_msg = str(e)
-        log_feedback("explain_reasoning_error", {
-            "query_data": call.args if call.args else call.kwargs,
-            "error": error_msg
-        })
+        log_feedback(
+            "explain_reasoning_error",
+            {"query_data": call.args if call.args else call.kwargs, "error": error_msg},
+        )
         raise HTTPException(status_code=500, detail=error_msg) from e
+
 
 @app.post("/pipeline/validate")
 async def pipeline_validate_endpoint(payload: dict[str, Any]):
@@ -550,8 +608,10 @@ async def pipeline_validate_endpoint(payload: dict[str, Any]):
         if enhanced:
             try:
                 logic_res = await enhanced.validate_news_claim_with_context(
-                    claim=assessment.get("extracted_claims", [{}])[0] if assessment.get("extracted_claims") else "",
-                    article_metadata=article_metadata
+                    claim=assessment.get("extracted_claims", [{}])[0]
+                    if assessment.get("extracted_claims")
+                    else "",
+                    article_metadata=article_metadata,
                 )
             except Exception:
                 logic_res = None
@@ -561,48 +621,72 @@ async def pipeline_validate_endpoint(payload: dict[str, Any]):
         if logic_res is None:
             # Fallback: aggregate evaluation
             test_statements = list(engine.facts_store.values()) + engine.rules_store
-            contradiction_res = await engine.evaluate_contradiction([str(s) for s in test_statements])
+            contradiction_res = await engine.evaluate_contradiction(
+                [str(s) for s in test_statements]
+            )
             logic_res = {
                 "logical_validation": {
-                    "consistency_check": "PASS" if not contradiction_res.get("has_contradictions") else "FAIL",
+                    "consistency_check": "PASS"
+                    if not contradiction_res.get("has_contradictions")
+                    else "FAIL",
                     "rule_compliance": "UNKNOWN",
-                    "temporal_validity": True
+                    "temporal_validity": True,
                 },
                 "orchestration_decision": {
                     "consensus_confidence": assessment.get("confidence", 0.5),
                     "escalation_required": False,
-                    "recommended_action": "REVIEW" if contradiction_res.get("has_contradictions") else "APPROVE"
-                }
+                    "recommended_action": "REVIEW"
+                    if contradiction_res.get("has_contradictions")
+                    else "APPROVE",
+                },
             }
 
         # Stage 3: Integrated decision
-        overall_confidence = float(assessment.get("confidence", 0.5)) * 0.6 + float(logic_res.get("orchestration_decision", {}).get("consensus_confidence", 0.0)) * 0.4
+        overall_confidence = (
+            float(assessment.get("confidence", 0.5)) * 0.6
+            + float(
+                logic_res.get("orchestration_decision", {}).get(
+                    "consensus_confidence", 0.0
+                )
+            )
+            * 0.4
+        )
 
         final = {
             "version": "1.0",
             "overall_confidence": overall_confidence,
-            "verification_status": logic_res.get("orchestration_decision", {}).get("recommended_action", "UNKNOWN"),
+            "verification_status": logic_res.get("orchestration_decision", {}).get(
+                "recommended_action", "UNKNOWN"
+            ),
             "explanation": logic_res.get("logical_validation", {}),
             "neural_assessment": assessment,
             "logical_validation": logic_res.get("logical_validation", {}),
             "processing_summary": {
                 "fact_checker_confidence": assessment.get("confidence", 0.5),
-                "reasoning_validation": logic_res.get("orchestration_decision", {}).get("consensus_confidence", 0.0),
-                "final_recommendation": logic_res.get("orchestration_decision", {}).get("recommended_action", "UNKNOWN")
-            }
+                "reasoning_validation": logic_res.get("orchestration_decision", {}).get(
+                    "consensus_confidence", 0.0
+                ),
+                "final_recommendation": logic_res.get("orchestration_decision", {}).get(
+                    "recommended_action", "UNKNOWN"
+                ),
+            },
         }
 
         # Log pipeline outcome
-        log_feedback("pipeline_run", {
-            "final_overall_confidence": final["overall_confidence"],
-            "verification_status": final["verification_status"]
-        })
+        log_feedback(
+            "pipeline_run",
+            {
+                "final_overall_confidence": final["overall_confidence"],
+                "verification_status": final["verification_status"],
+            },
+        )
 
         return {"success": True, "result": final}
 
     except Exception as e:
         log_feedback("pipeline_error", {"error": str(e)})
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 # Status and health endpoints
 @app.get("/facts")
@@ -614,6 +698,7 @@ async def get_facts():
 
     return {"facts": engine.get_facts(), "count": len(engine.facts_store)}
 
+
 @app.get("/rules")
 async def get_rules():
     """Retrieve all stored rules."""
@@ -622,6 +707,7 @@ async def get_rules():
         raise HTTPException(status_code=503, detail="Reasoning engine not available")
 
     return {"rules": engine.get_rules(), "count": len(engine.rules_store)}
+
 
 @app.get("/status")
 async def get_status():
@@ -632,7 +718,7 @@ async def get_status():
             "status": "unavailable",
             "nucleoid_available": False,
             "facts_count": 0,
-            "rules_count": 0
+            "rules_count": 0,
         }
 
     return {
@@ -640,8 +726,9 @@ async def get_status():
         "nucleoid_available": True,
         "facts_count": len(engine.facts_store),
         "rules_count": len(engine.rules_store),
-        "enhanced_available": get_enhanced_engine() is not None
+        "enhanced_available": get_enhanced_engine() is not None,
     }
+
 
 @app.get("/health")
 async def health():
@@ -650,15 +737,18 @@ async def health():
     status = "ok" if engine else "unavailable"
     return {"status": status, "nucleoid_available": engine is not None}
 
+
 @app.get("/ready")
 async def ready():
     """Readiness endpoint."""
     return {"ready": True}
 
+
 @app.get("/metrics")
 async def get_metrics():
     """Prometheus metrics endpoint."""
     return Response(metrics.get_metrics(), media_type="text/plain; charset=utf-8")
+
 
 # MCP Bus integration
 @app.post("/call")
@@ -680,7 +770,7 @@ async def call_tool(request: dict[str, Any]):
             "query": query_endpoint,
             "evaluate": evaluate_endpoint,
             "validate_claim": validate_claim_endpoint,
-            "explain_reasoning": explain_reasoning_endpoint
+            "explain_reasoning": explain_reasoning_endpoint,
         }
 
         if tool in tool_map:
@@ -689,18 +779,17 @@ async def call_tool(request: dict[str, Any]):
             available_tools = list(tool_map.keys())
             raise HTTPException(
                 status_code=400,
-                detail=f"Unknown tool: {tool}. Available tools: {available_tools}"
+                detail=f"Unknown tool: {tool}. Available tools: {available_tools}",
             )
 
     except Exception as e:
-        log_feedback("mcp_call_error", {
-            "request": request,
-            "error": str(e)
-        })
+        log_feedback("mcp_call_error", {"request": request, "error": str(e)})
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 # Main entry point
 if __name__ == "__main__":
     import uvicorn
+
     port = int(os.environ.get("REASONING_AGENT_PORT", 8008))
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

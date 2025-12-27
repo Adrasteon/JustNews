@@ -1,0 +1,11 @@
+{
+  "id": "df3f5d90a11a",
+  "url": "https://www.iana.org/domains/reserved",
+  "title": "IANA-managed Reserved Domains",
+  "word_count": 188,
+  "needs_review": false,
+  "canonical_url": null,
+  "extraction_used": "trafilatura",
+  "text_hash": "97975f8b00772017e24b530d1d4435cacb52284bdd418720a7c8e98937011104",
+  "text_preview": "IANA-managed Reserved Domains Certain domains are set aside, and nominally registered to \u201cIANA\u201d, for specific policy or technical purposes. Example domains As described in"
+}

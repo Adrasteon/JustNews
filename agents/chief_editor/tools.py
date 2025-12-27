@@ -31,6 +31,7 @@ logger = get_logger(__name__)
 # Global engine instance
 _engine: ChiefEditorEngine | None = None
 
+
 def get_chief_editor_engine() -> ChiefEditorEngine:
     """Get or create the global chief editor engine instance."""
     global _engine
@@ -39,10 +40,9 @@ def get_chief_editor_engine() -> ChiefEditorEngine:
         _engine = ChiefEditorEngine(config)
     return _engine
 
+
 async def process_editorial_request(
-    content: str,
-    operation_type: str,
-    **kwargs
+    content: str, operation_type: str, **kwargs
 ) -> dict[str, Any]:
     """
     Process an editorial request using the chief editor engine.
@@ -58,7 +58,9 @@ async def process_editorial_request(
     engine = get_chief_editor_engine()
 
     try:
-        logger.info(f"🎯 Processing {operation_type} editorial operation for {len(content)} characters")
+        logger.info(
+            f"🎯 Processing {operation_type} editorial operation for {len(content)} characters"
+        )
 
         if operation_type == "quality":
             result = engine.assess_content_quality_bert(content)
@@ -82,7 +84,10 @@ async def process_editorial_request(
         logger.error(f"❌ {operation_type} editorial operation failed: {e}")
         return {"error": str(e)}
 
-def assess_content_quality(content: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
+
+def assess_content_quality(
+    content: str, metadata: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """
     Assess content quality using BERT-based analysis.
 
@@ -97,12 +102,19 @@ def assess_content_quality(content: str, metadata: dict[str, Any] | None = None)
         Dictionary containing quality assessment results
     """
     if not content or not content.strip():
-        return {"overall_quality": 0.0, "assessment": "empty", "error": "Empty content provided"}
+        return {
+            "overall_quality": 0.0,
+            "assessment": "empty",
+            "error": "Empty content provided",
+        }
 
     engine = get_chief_editor_engine()
     return engine.assess_content_quality_bert(content)
 
-def categorize_content(content: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
+
+def categorize_content(
+    content: str, metadata: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """
     Categorize content using DistilBERT-based classification.
 
@@ -117,12 +129,19 @@ def categorize_content(content: str, metadata: dict[str, Any] | None = None) -> 
         Dictionary containing categorization results
     """
     if not content or not content.strip():
-        return {"category": "unknown", "confidence": 0.0, "error": "Empty content provided"}
+        return {
+            "category": "unknown",
+            "confidence": 0.0,
+            "error": "Empty content provided",
+        }
 
     engine = get_chief_editor_engine()
     return engine.categorize_content_distilbert(content)
 
-def analyze_editorial_sentiment(content: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
+
+def analyze_editorial_sentiment(
+    content: str, metadata: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """
     Analyze editorial sentiment using RoBERTa-based analysis.
 
@@ -137,12 +156,19 @@ def analyze_editorial_sentiment(content: str, metadata: dict[str, Any] | None = 
         Dictionary containing sentiment analysis results
     """
     if not content or not content.strip():
-        return {"sentiment": "neutral", "confidence": 0.0, "error": "Empty content provided"}
+        return {
+            "sentiment": "neutral",
+            "confidence": 0.0,
+            "error": "Empty content provided",
+        }
 
     engine = get_chief_editor_engine()
     return engine.analyze_editorial_sentiment_roberta(content)
 
-def generate_editorial_commentary(content: str, context: str = "news article") -> dict[str, Any]:
+
+def generate_editorial_commentary(
+    content: str, context: str = "news article"
+) -> dict[str, Any]:
     """
     Generate editorial commentary using T5-based generation.
 
@@ -166,10 +192,13 @@ def generate_editorial_commentary(content: str, context: str = "news article") -
         "commentary": commentary,
         "context": context,
         "content_length": len(content),
-        "model": "t5"
+        "model": "t5",
     }
 
-def make_editorial_decision(content: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:
+
+def make_editorial_decision(
+    content: str, metadata: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """
     Make comprehensive editorial decision using all 5 AI models.
 
@@ -198,8 +227,9 @@ def make_editorial_decision(content: str, metadata: dict[str, Any] | None = None
         "next_actions": decision.next_actions,
         "agent_assignments": list(decision.agent_assignments.keys()),
         "metadata": decision.metadata,
-        "decision_timestamp": time.time()
+        "decision_timestamp": time.time(),
     }
+
 
 def request_story_brief(topic: str, scope: str) -> dict[str, Any]:
     """
@@ -223,10 +253,10 @@ def request_story_brief(topic: str, scope: str) -> dict[str, Any]:
         engine = get_chief_editor_engine()
 
         # Generate brief using T5 if available, otherwise use template
-        if hasattr(engine, 'generate_editorial_commentary_t5'):
+        if hasattr(engine, "generate_editorial_commentary_t5"):
             brief_content = engine.generate_editorial_commentary_t5(
                 f"Generate a story brief for topic: {topic} with scope: {scope}",
-                "story brief"
+                "story brief",
             )
         else:
             brief_content = f"Story brief for topic '{topic}' within scope '{scope}'."
@@ -236,26 +266,26 @@ def request_story_brief(topic: str, scope: str) -> dict[str, Any]:
             "scope": scope,
             "brief": brief_content,
             "generated_at": time.time(),
-            "status": "generated"
+            "status": "generated",
         }
 
         # Log feedback for training
-        engine.log_feedback("request_story_brief", {
-            "topic": topic,
-            "scope": scope,
-            "brief_length": len(brief_content)
-        })
+        engine.log_feedback(
+            "request_story_brief",
+            {"topic": topic, "scope": scope, "brief_length": len(brief_content)},
+        )
 
         # Collect prediction for training
         try:
             from training_system import collect_prediction
+
             collect_prediction(
                 agent_name="chief_editor",
                 task_type="story_brief_generation",
                 input_text=f"Topic: {topic}, Scope: {scope}",
                 prediction={"brief": brief_content},
                 confidence=0.8,
-                source_url=""
+                source_url="",
             )
             logger.debug("📊 Training data collected for story brief generation")
         except ImportError:
@@ -268,6 +298,7 @@ def request_story_brief(topic: str, scope: str) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Error generating story brief: {e}")
         return {"error": str(e)}
+
 
 def publish_story(story_id: str) -> dict[str, Any]:
     """
@@ -293,12 +324,13 @@ def publish_story(story_id: str) -> dict[str, Any]:
             "agent": "librarian",
             "tool": "update_story_timeline",
             "args": [story_id],
-            "kwargs": {}
+            "kwargs": {},
         }
 
         # Try MCP bus call, fallback to local operation
         try:
             import requests
+
             resp = requests.post(f"{mcp_bus_url}/call", json=payload, timeout=10)
             resp.raise_for_status()
             mcp_result = resp.json()
@@ -313,26 +345,24 @@ def publish_story(story_id: str) -> dict[str, Any]:
             "story_id": story_id,
             "mcp_result": mcp_result,
             "message": "Story publishing coordinated successfully",
-            "published_at": time.time()
+            "published_at": time.time(),
         }
 
         # Log feedback for training
         engine = get_chief_editor_engine()
-        engine.log_feedback("publish_story", {
-            "story_id": story_id,
-            "status": status
-        })
+        engine.log_feedback("publish_story", {"story_id": story_id, "status": status})
 
         # Collect prediction for training
         try:
             from training_system import collect_prediction
+
             collect_prediction(
                 agent_name="chief_editor",
                 task_type="story_publishing",
                 input_text=story_id,
                 prediction=result,
                 confidence=0.9,
-                source_url=""
+                source_url="",
             )
             logger.debug("📊 Training data collected for story publishing")
         except ImportError:
@@ -345,6 +375,7 @@ def publish_story(story_id: str) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Error publishing story: {e}")
         return {"error": str(e)}
+
 
 def review_evidence(evidence_manifest: str, reason: str) -> dict[str, Any]:
     """
@@ -368,30 +399,32 @@ def review_evidence(evidence_manifest: str, reason: str) -> dict[str, Any]:
         from agents.chief_editor.handler import handle_review_request
 
         # Queue the review request
-        result = handle_review_request({
-            'evidence_manifest': evidence_manifest,
-            'reason': reason
-        })
+        result = handle_review_request(
+            {"evidence_manifest": evidence_manifest, "reason": reason}
+        )
 
         # Add timestamp and additional metadata
-        result.update({
-            "queued_at": time.time(),
-            "evidence_manifest": evidence_manifest,
-            "reason": reason
-        })
+        result.update(
+            {
+                "queued_at": time.time(),
+                "evidence_manifest": evidence_manifest,
+                "reason": reason,
+            }
+        )
 
         # Log feedback
         engine = get_chief_editor_engine()
-        engine.log_feedback("review_evidence", {
-            "evidence_manifest": evidence_manifest,
-            "reason": reason
-        })
+        engine.log_feedback(
+            "review_evidence",
+            {"evidence_manifest": evidence_manifest, "reason": reason},
+        )
 
         return result
 
     except Exception as e:
         logger.error(f"Error queuing evidence review: {e}")
         return {"error": str(e)}
+
 
 async def health_check() -> dict[str, Any]:
     """
@@ -411,23 +444,29 @@ async def health_check() -> dict[str, Any]:
             "components": {
                 "engine": "healthy",
                 "mcp_bus": "healthy",  # Assume healthy unless proven otherwise
-                "evidence_queue": "healthy"
+                "evidence_queue": "healthy",
             },
             "model_status": model_status,
-            "processing_stats": engine.processing_stats
+            "processing_stats": engine.processing_stats,
         }
 
         # Check for any unhealthy components
-        unhealthy_components = [k for k, v in health_status["components"].items() if v == "unhealthy"]
+        unhealthy_components = [
+            k for k, v in health_status["components"].items() if v == "unhealthy"
+        ]
         if unhealthy_components:
             health_status["overall_status"] = "degraded"
-            health_status["issues"] = [f"Component {comp} is unhealthy" for comp in unhealthy_components]
+            health_status["issues"] = [
+                f"Component {comp} is unhealthy" for comp in unhealthy_components
+            ]
 
         # Check model availability
         loaded_models = sum(1 for status in model_status.values() if status is True)
         if loaded_models < 3:  # Require at least 3 of 5 models
             health_status["overall_status"] = "degraded"
-            health_status["issues"] = health_status.get("issues", []) + [f"Only {loaded_models}/5 AI models loaded"]
+            health_status["issues"] = health_status.get("issues", []) + [
+                f"Only {loaded_models}/5 AI models loaded"
+            ]
 
         logger.info(f"🏥 Chief Editor health check: {health_status['overall_status']}")
         return health_status
@@ -437,10 +476,13 @@ async def health_check() -> dict[str, Any]:
         return {
             "timestamp": time.time(),
             "overall_status": "unhealthy",
-            "error": str(e)
+            "error": str(e),
         }
 
-def validate_editorial_result(result: dict[str, Any], expected_fields: list[str] = None) -> bool:
+
+def validate_editorial_result(
+    result: dict[str, Any], expected_fields: list[str] = None
+) -> bool:
     """
     Validate editorial result structure.
 
@@ -463,6 +505,7 @@ def validate_editorial_result(result: dict[str, Any], expected_fields: list[str]
     # Basic validation for common fields
     common_fields = ["model", "processing_time", "timestamp"]
     return any(field in result for field in common_fields)
+
 
 def format_editorial_output(result: dict[str, Any], format_type: str = "json") -> str:
     """
@@ -524,7 +567,9 @@ def format_editorial_output(result: dict[str, Any], format_type: str = "json") -
             if "sentiment" in result:
                 lines.append("## Editorial Sentiment")
                 lines.append(f"- **Sentiment**: {result['sentiment']}")
-                lines.append(f"- **Editorial Tone**: {result.get('editorial_tone', 'N/A')}")
+                lines.append(
+                    f"- **Editorial Tone**: {result.get('editorial_tone', 'N/A')}"
+                )
 
             if "priority" in result:
                 lines.append("## Editorial Decision")
@@ -549,18 +594,19 @@ def format_editorial_output(result: dict[str, Any], format_type: str = "json") -
     except Exception as e:
         return f"Formatting error: {e}"
 
+
 # Export main functions
 __all__ = [
-    'assess_content_quality',
-    'categorize_content',
-    'analyze_editorial_sentiment',
-    'generate_editorial_commentary',
-    'make_editorial_decision',
-    'request_story_brief',
-    'publish_story',
-    'review_evidence',
-    'health_check',
-    'validate_editorial_result',
-    'format_editorial_output',
-    'get_chief_editor_engine'
+    "assess_content_quality",
+    "categorize_content",
+    "analyze_editorial_sentiment",
+    "generate_editorial_commentary",
+    "make_editorial_decision",
+    "request_story_brief",
+    "publish_story",
+    "review_evidence",
+    "health_check",
+    "validate_editorial_result",
+    "format_editorial_output",
+    "get_chief_editor_engine",
 ]

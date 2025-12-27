@@ -24,6 +24,7 @@ Run this script once to set up the authentication database schema.
 # Set up logging
 logger = get_logger(__name__)
 
+
 def create_initial_admin_user():
     """Create an initial admin user for testing"""
     from agents.common.auth_models import UserCreate, UserRole, create_user
@@ -34,7 +35,7 @@ def create_initial_admin_user():
             username="admin",
             full_name="System Administrator",
             password="Admin123!@#",
-            role=UserRole.ADMIN
+            role=UserRole.ADMIN,
         )
 
         user_id = create_user(admin_user)
@@ -49,6 +50,7 @@ def create_initial_admin_user():
 
     except Exception as e:
         logger.error(f"❌ Error creating initial admin user: {e}")
+
 
 def create_knowledge_graph_tables():
     """Create tables for knowledge graph data if they don't exist"""
@@ -122,16 +124,17 @@ def create_knowledge_graph_tables():
         """,
         """
         CREATE INDEX IF NOT EXISTS idx_relationships_target ON relationships(target_entity_id)
-        """
+        """,
     ]
 
     import re
+
     def adapt_sql_for_mariadb(sql: str) -> str:
         s = sql
-        s = s.replace('JSONB', 'JSON')
-        s = re.sub(r"\bSERIAL\b", 'INT AUTO_INCREMENT', s)
-        s = s.replace('TIMESTAMPTZ', 'TIMESTAMP')
-        s = re.sub(r"\bTEXT\[\]|\bTEXT\s*\[\s*\]", 'JSON', s)
+        s = s.replace("JSONB", "JSON")
+        s = re.sub(r"\bSERIAL\b", "INT AUTO_INCREMENT", s)
+        s = s.replace("TIMESTAMPTZ", "TIMESTAMP")
+        s = re.sub(r"\bTEXT\[\]|\bTEXT\s*\[\s*\]", "JSON", s)
         return s
 
     for i, query in enumerate(queries, 1):
@@ -206,6 +209,7 @@ def create_knowledge_graph_tables():
         logger.error(f"❌ Error creating orchestrator_jobs table: {e}")
         raise
 
+
 def main():
     """Main initialization function"""
     logger.info("🚀 Starting JustNews Database Initialization")
@@ -216,13 +220,17 @@ def main():
         "MARIADB_HOST",
         "MARIADB_DB",
         "MARIADB_USER",
-        "MARIADB_PASSWORD"
+        "MARIADB_PASSWORD",
     ]
 
     missing_vars = [var for var in required_env_vars if not os.environ.get(var)]
     if missing_vars:
-        logger.error(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
-        logger.error("Please set these environment variables before running this script:")
+        logger.error(
+            f"❌ Missing required environment variables: {', '.join(missing_vars)}"
+        )
+        logger.error(
+            "Please set these environment variables before running this script:"
+        )
         for var in missing_vars:
             logger.error(f"  export {var}=<value>")
         sys.exit(1)
@@ -261,6 +269,7 @@ def main():
         logger.error(f"❌ Database initialization failed: {e}")
         logger.error("Please check your database configuration and try again.")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

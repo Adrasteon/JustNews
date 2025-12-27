@@ -58,7 +58,9 @@ def get_gpu_metrics():
     return dashboard_engine.get_gpu_metrics()
 
 
-def get_gpu_history_from_db(hours: int = 24, gpu_index: int | None = None, metric: str = "utilization"):
+def get_gpu_history_from_db(
+    hours: int = 24, gpu_index: int | None = None, metric: str = "utilization"
+):
     """Get GPU metrics history from database."""
     return dashboard_engine.get_gpu_history_from_db(hours, gpu_index, metric)
 

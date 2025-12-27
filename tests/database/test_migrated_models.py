@@ -28,10 +28,7 @@ class TestSourceModel:
     def test_source_init_default_values(self):
         """Test Source initialization with default values"""
         source = Source(
-            id=1,
-            url="https://example.com",
-            domain="example.com",
-            name="Example News"
+            id=1, url="https://example.com", domain="example.com", name="Example News"
         )
 
         assert source.id == 1
@@ -62,7 +59,7 @@ class TestSourceModel:
             last_verified=created_at,
             metadata=metadata,
             created_at=created_at,
-            updated_at=created_at
+            updated_at=created_at,
         )
 
         assert source.id == 1
@@ -91,7 +88,7 @@ class TestSourceModel:
             datetime(2024, 1, 1),  # last_verified
             '{"category": "news"}',  # metadata
             datetime(2024, 1, 1),  # created_at
-            datetime(2024, 1, 2)   # updated_at
+            datetime(2024, 1, 2),  # updated_at
         )
 
         source = Source.from_row(row)
@@ -109,8 +106,21 @@ class TestSourceModel:
 
     def test_source_from_row_with_null_metadata(self):
         """Test creating Source from row with null metadata"""
-        row = (1, "https://example.com", "example.com", "Example News",
-               None, None, None, False, None, None, None, None, None)
+        row = (
+            1,
+            "https://example.com",
+            "example.com",
+            "Example News",
+            None,
+            None,
+            None,
+            False,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
 
         source = Source.from_row(row)
 
@@ -127,25 +137,25 @@ class TestSourceModel:
             domain="example.com",
             name="Example News",
             metadata=metadata,
-            created_at=created_at
+            created_at=created_at,
         )
 
         result = source.to_dict()
 
         expected = {
-            'id': 1,
-            'url': "https://example.com",
-            'domain': "example.com",
-            'name': "Example News",
-            'description': None,
-            'country': None,
-            'language': None,
-            'paywall': False,
-            'paywall_type': None,
-            'last_verified': None,
-            'metadata': metadata,
-            'created_at': created_at,
-            'updated_at': None
+            "id": 1,
+            "url": "https://example.com",
+            "domain": "example.com",
+            "name": "Example News",
+            "description": None,
+            "country": None,
+            "language": None,
+            "paywall": False,
+            "paywall_type": None,
+            "last_verified": None,
+            "metadata": metadata,
+            "created_at": created_at,
+            "updated_at": None,
         }
 
         assert result == expected
@@ -160,7 +170,7 @@ class TestArticleModel:
             id=1,
             url="https://example.com/article1",
             title="Test Article",
-            content="Article content"
+            content="Article content",
         )
 
         assert article.id == 1
@@ -215,7 +225,7 @@ class TestArticleModel:
             structured_metadata=structured_metadata,
             publication_date=created_at,
             metadata=metadata,
-            collection_timestamp=created_at
+            collection_timestamp=created_at,
         )
 
         assert article.summary == "Article summary"
@@ -266,19 +276,19 @@ class TestArticleModel:
             '{"word_count": 500}',  # structured_metadata
             created_at,  # publication_date
             '{"category": "news"}',  # metadata
-            created_at   # collection_timestamp
-            , False  # is_synthesized
-            , '[]'   # input_cluster_ids
-            , None   # synth_model
-            , None   # synth_version
-            , None   # synth_prompt_id
-            , None   # synth_trace
-            , None   # critic_result
-            , None   # fact_check_status
-            , None   # fact_check_trace
-            , False  # is_published
-            , None   # published_at
-            , None   # created_by
+            created_at,  # collection_timestamp
+            False,  # is_synthesized
+            "[]",  # input_cluster_ids
+            None,  # synth_model
+            None,  # synth_version
+            None,  # synth_prompt_id
+            None,  # synth_trace
+            None,  # critic_result
+            None,  # fact_check_status
+            None,  # fact_check_trace
+            False,  # is_published
+            None,  # published_at
+            None,  # created_by
         )
 
         article = Article.from_row(row)
@@ -304,9 +314,33 @@ class TestArticleModel:
 
     def test_article_from_row_with_nulls(self):
         """Test creating Article from row with null values"""
-        row = (1, "https://example.com/article1", "Test Article", "Content",
-               None, False, None, None, None, None, None, None, None, None,
-               None, None, None, None, False, None, None, None, None, None, None)
+        row = (
+            1,
+            "https://example.com/article1",
+            "Test Article",
+            "Content",
+            None,
+            False,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            False,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
 
         article = Article.from_row(row)
 
@@ -333,18 +367,18 @@ class TestArticleModel:
             content="Content",
             tags=tags,
             metadata=metadata,
-            created_at=created_at
+            created_at=created_at,
         )
 
         result = article.to_dict()
 
-        assert result['id'] == 1
-        assert result['url'] == "https://example.com/article1"
-        assert result['title'] == "Test Article"
-        assert result['content'] == "Content"
-        assert result['tags'] == tags
-        assert result['metadata'] == metadata
-        assert result['created_at'] == created_at
+        assert result["id"] == 1
+        assert result["url"] == "https://example.com/article1"
+        assert result["title"] == "Test Article"
+        assert result["content"] == "Content"
+        assert result["tags"] == tags
+        assert result["metadata"] == metadata
+        assert result["created_at"] == created_at
 
 
 class TestArticleSourceMapModel:
@@ -360,7 +394,7 @@ class TestArticleSourceMapModel:
             source_id=5,
             confidence=0.95,
             detected_at=detected_at,
-            metadata={"method": "auto"}
+            metadata={"method": "auto"},
         )
 
         assert mapping.id == 1
@@ -372,10 +406,7 @@ class TestArticleSourceMapModel:
 
     def test_article_source_map_init_defaults(self):
         """Test ArticleSourceMap initialization with defaults"""
-        mapping = ArticleSourceMap(
-            article_id=100,
-            source_id=5
-        )
+        mapping = ArticleSourceMap(article_id=100, source_id=5)
 
         assert mapping.confidence == 1.0
         assert mapping.metadata == {}
@@ -389,7 +420,7 @@ class TestArticleSourceMapModel:
             5,  # source_id
             0.95,  # confidence
             detected_at,  # detected_at
-            '{"method": "auto"}'  # metadata
+            '{"method": "auto"}',  # metadata
         )
 
         mapping = ArticleSourceMap.from_row(row)
@@ -420,18 +451,18 @@ class TestArticleSourceMapModel:
             source_id=5,
             confidence=0.95,
             detected_at=detected_at,
-            metadata=metadata
+            metadata=metadata,
         )
 
         result = mapping.to_dict()
 
         expected = {
-            'id': 1,
-            'article_id': 100,
-            'source_id': 5,
-            'confidence': 0.95,
-            'detected_at': detected_at,
-            'metadata': metadata
+            "id": 1,
+            "article_id": 100,
+            "source_id": 5,
+            "confidence": 0.95,
+            "detected_at": detected_at,
+            "metadata": metadata,
         }
 
         assert result == expected
@@ -444,33 +475,31 @@ class TestMigratedDatabaseService:
     def mock_config(self):
         """Mock database configuration"""
         return {
-            'database': {
-                'mariadb': {
-                    'host': 'localhost',
-                    'port': 3306,
-                    'user': 'testuser',
-                    'password': 'testpass',
-                    'database': 'testdb'
+            "database": {
+                "mariadb": {
+                    "host": "localhost",
+                    "port": 3306,
+                    "user": "testuser",
+                    "password": "testpass",
+                    "database": "testdb",
                 },
-                'chromadb': {
-                    'host': 'localhost',
-                    'port': 8000,
-                    'collection': 'articles'
+                "chromadb": {
+                    "host": "localhost",
+                    "port": 3307,
+                    "collection": "articles",
                 },
-                'embedding': {
-                    'model': 'all-MiniLM-L6-v2',
-                    'dimensions': 384
-                }
+                "embedding": {"model": "all-MiniLM-L6-v2", "dimensions": 384},
             }
         }
 
     @pytest.fixture
     def mock_service(self, mock_config):
         """Create mock service for testing"""
-        with patch('mysql.connector.connect') as mock_mb_connect:
-            with patch('chromadb.HttpClient') as mock_chroma_client:
-                with patch('sentence_transformers.SentenceTransformer') as mock_embedding:
-
+        with patch("mysql.connector.connect") as mock_mb_connect:
+            with patch("chromadb.HttpClient") as mock_chroma_client:
+                with patch(
+                    "sentence_transformers.SentenceTransformer"
+                ) as mock_embedding:
                     # Setup mocks
                     mock_conn = MagicMock()
                     mock_mb_connect.return_value = mock_conn
@@ -495,10 +524,11 @@ class TestMigratedDatabaseService:
 
     def test_service_init(self, mock_config):
         """Test service initialization"""
-        with patch('mysql.connector.connect') as mock_mb_connect:
-            with patch('chromadb.HttpClient') as mock_chroma_client:
-                with patch('sentence_transformers.SentenceTransformer') as mock_embedding:
-
+        with patch("mysql.connector.connect") as mock_mb_connect:
+            with patch("chromadb.HttpClient") as mock_chroma_client:
+                with patch(
+                    "sentence_transformers.SentenceTransformer"
+                ) as mock_embedding:
                     mock_conn = MagicMock()
                     mock_mb_connect.return_value = mock_conn
 
@@ -521,10 +551,37 @@ class TestMigratedDatabaseService:
                     # Verify connections were made with correct params
                     mock_mb_connect.assert_called_once()
                     mock_chroma_client.assert_called_once_with(
-                        host='localhost', port=8000
+                        host="localhost", port=3307
                     )
-                    expected_collection = 'articles__all-MiniLM-L6-v2__384'
-                    mock_client.get_collection.assert_called_once_with(expected_collection)
+                    expected_collection = "articles__all-MiniLM-L6-v2__384"
+                    mock_client.get_collection.assert_called_once_with(
+                        expected_collection
+                    )
+
+    def test_collection_scoping_disabled(self, mock_config, monkeypatch):
+        """When CHROMADB_MODEL_SCOPED_COLLECTION is false the base collection should be used."""
+        monkeypatch.setenv("CHROMADB_MODEL_SCOPED_COLLECTION", "0")
+        with patch("mysql.connector.connect") as mock_mb_connect:
+            with patch("chromadb.HttpClient") as mock_chroma_client:
+                with patch(
+                    "sentence_transformers.SentenceTransformer"
+                ) as mock_embedding:
+                    mock_conn = MagicMock()
+                    mock_mb_connect.return_value = mock_conn
+
+                    mock_client = MagicMock()
+                    mock_collection = MagicMock()
+                    mock_client.get_collection.return_value = mock_collection
+                    mock_chroma_client.return_value = mock_client
+
+                    mock_model = MagicMock()
+                    mock_embedding.return_value = mock_model
+
+                    service = MigratedDatabaseService(mock_config)
+
+                    # scoping disabled -> should use base collection name
+                    mock_client.get_collection.assert_called_once_with("articles")
+
 
     def test_close(self, mock_service):
         """Test closing database connections"""
@@ -536,11 +593,31 @@ class TestMigratedDatabaseService:
         """Test getting article by ID successfully"""
         mock_cursor = MagicMock()
         mock_row = (
-            1, "https://example.com/article1", "Test Article", "Content", "Summary",
-            True, 1, datetime(2024, 1, 1), datetime(2024, 1, 2), "https://example.com/article1",
-            "hash123", "sha256", "en", "politics", '["tag1"]', '["author1"]',
-            "html123", 0.95, False, '[]', '{}', '{}', datetime(2024, 1, 1),
-            '{"meta": "data"}', datetime(2024, 1, 1)
+            1,
+            "https://example.com/article1",
+            "Test Article",
+            "Content",
+            "Summary",
+            True,
+            1,
+            datetime(2024, 1, 1),
+            datetime(2024, 1, 2),
+            "https://example.com/article1",
+            "hash123",
+            "sha256",
+            "en",
+            "politics",
+            '["tag1"]',
+            '["author1"]',
+            "html123",
+            0.95,
+            False,
+            "[]",
+            "{}",
+            "{}",
+            datetime(2024, 1, 1),
+            '{"meta": "data"}',
+            datetime(2024, 1, 1),
         )
         mock_cursor.fetchone.return_value = mock_row
         mock_service.mb_conn.cursor.return_value = mock_cursor
@@ -579,9 +656,19 @@ class TestMigratedDatabaseService:
         """Test getting source by ID successfully"""
         mock_cursor = MagicMock()
         mock_row = (
-            1, "https://example.com", "example.com", "Example News", "Description",
-            "US", "en", False, None, datetime(2024, 1, 1), '{"meta": "data"}',
-            datetime(2024, 1, 1), datetime(2024, 1, 2)
+            1,
+            "https://example.com",
+            "example.com",
+            "Example News",
+            "Description",
+            "US",
+            "en",
+            False,
+            None,
+            datetime(2024, 1, 1),
+            '{"meta": "data"}',
+            datetime(2024, 1, 1),
+            datetime(2024, 1, 2),
         )
         mock_cursor.fetchone.return_value = mock_row
         mock_service.mb_conn.cursor.return_value = mock_cursor
@@ -604,23 +691,23 @@ class TestMigratedDatabaseService:
 
         # Mock ChromaDB results
         mock_results = {
-            'ids': [['1', '2']],
-            'metadatas': [[{'score': 0.9}, {'score': 0.8}]],
-            'documents': [['doc1'], ['doc2']],
-            'distances': [[0.1, 0.2]]
+            "ids": [["1", "2"]],
+            "metadatas": [[{"score": 0.9}, {"score": 0.8}]],
+            "documents": [["doc1"], ["doc2"]],
+            "distances": [[0.1, 0.2]],
         }
         mock_service.collection.query.return_value = mock_results
 
         # Mock article lookup
         mock_article = Article(id=1, title="Test Article", content="Content")
-        with patch.object(mock_service, 'get_article_by_id', return_value=mock_article):
-            with patch.object(mock_service, 'get_source_by_id', return_value=None):
+        with patch.object(mock_service, "get_article_by_id", return_value=mock_article):
+            with patch.object(mock_service, "get_source_by_id", return_value=None):
                 results = mock_service.semantic_search("test query", n_results=2)
 
                 assert len(results) == 2
-                assert results[0]['article']['id'] == 1
-                assert results[0]['similarity_score'] == 0.9  # 1.0 - 0.1
-                assert results[1]['similarity_score'] == 0.8  # 1.0 - 0.2
+                assert results[0]["article"]["id"] == 1
+                assert results[0]["similarity_score"] == 0.9  # 1.0 - 0.1
+                assert results[1]["similarity_score"] == 0.8  # 1.0 - 0.2
 
     def test_semantic_search_error(self, mock_service):
         """Test semantic search with error"""
@@ -637,7 +724,7 @@ class TestMigratedDatabaseService:
         """Test text search in articles"""
         mock_cursor = MagicMock()
         mock_results = [
-            {'id': 1, 'title': 'Test Article', 'source_name': 'Test Source'}
+            {"id": 1, "title": "Test Article", "source_name": "Test Source"}
         ]
         mock_cursor.fetchall.return_value = mock_results
         mock_service.mb_conn.cursor.return_value = mock_cursor
@@ -651,7 +738,7 @@ class TestMigratedDatabaseService:
         """Test getting recent articles"""
         mock_cursor = MagicMock()
         mock_results = [
-            {'id': 1, 'title': 'Recent Article', 'created_at': datetime(2024, 1, 1)}
+            {"id": 1, "title": "Recent Article", "created_at": datetime(2024, 1, 1)}
         ]
         mock_cursor.fetchall.return_value = mock_results
         mock_service.mb_conn.cursor.return_value = mock_cursor
@@ -663,9 +750,7 @@ class TestMigratedDatabaseService:
     def test_get_articles_by_source(self, mock_service):
         """Test getting articles by source"""
         mock_cursor = MagicMock()
-        mock_results = [
-            {'id': 1, 'title': 'Source Article', 'source_id': 5}
-        ]
+        mock_results = [{"id": 1, "title": "Source Article", "source_id": 5}]
         mock_cursor.fetchall.return_value = mock_results
         mock_service.mb_conn.cursor.return_value = mock_cursor
 

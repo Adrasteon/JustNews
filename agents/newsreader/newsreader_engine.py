@@ -25,6 +25,7 @@ from typing import Any
 
 try:
     import torch
+
     TORCH_AVAILABLE = True
 except ImportError:
     torch = None
@@ -34,6 +35,7 @@ from PIL import Image
 
 try:
     from playwright.async_api import async_playwright
+
     PLAYWRIGHT_AVAILABLE = True
 except ImportError:
     async_playwright = None
@@ -48,6 +50,7 @@ try:
         LlavaOnevisionForConditionalGeneration,
         LlavaOnevisionProcessor,
     )
+
     LLAVA_AVAILABLE = True
 except ImportError:
     BitsAndBytesConfig = None
@@ -56,26 +59,32 @@ except ImportError:
     LLAVA_AVAILABLE = False
 
 # Suppress transformers warnings in production, but not during tests.
-if os.environ.get('PYTEST_RUNNING') != '1':
+if os.environ.get("PYTEST_RUNNING") != "1":
     warnings.filterwarnings("ignore", message=".*use_fast.*slow processor.*")
     warnings.filterwarnings("ignore", message=".*slow image processor.*")
 
 logger = get_logger(__name__)
 
+
 class ContentType(Enum):
     """Content type enumeration for processing classification."""
+
     ARTICLE = "article"
     IMAGE = "image"
     WEBPAGE = "webpage"
 
+
 class ProcessingMode(Enum):
     """Processing mode enumeration for different analysis depths."""
+
     FAST = "fast"
     COMPREHENSIVE = "comprehensive"
+
 
 @dataclass
 class ProcessingResult:
     """Result container for content processing operations."""
+
     content_type: ContentType
     extracted_text: str
     visual_description: str
@@ -85,9 +94,11 @@ class ProcessingResult:
     metadata: dict[str, Any]
     screenshot_path: str | None = None
 
+
 @dataclass
 class NewsReaderConfig:
     """Configuration for NewsReader Engine."""
+
     llava_model: str = "llava-hf/llava-onevision-qwen2-0.5b-ov-hf"
     cache_dir: str = "./model_cache"
     use_quantization: bool = True
@@ -102,6 +113,7 @@ class NewsReaderConfig:
     max_new_tokens: int = 512
     device: str = "auto"
     min_confidence_threshold: float = 0.7
+
 
 class NewsReaderEngine:
     """
@@ -130,9 +142,9 @@ class NewsReaderEngine:
 
         # Processing stats
         self.processing_stats = {
-            'total_processed': 0,
-            'success_rate': 0.0,
-            'average_processing_time': 0.0,
+            "total_processed": 0,
+            "success_rate": 0.0,
+            "average_processing_time": 0.0,
         }
 
         # Initialize components
@@ -147,7 +159,9 @@ class NewsReaderEngine:
         """Context manager exit with cleanup."""
         self._cleanup_gpu_memory()
         if exc_type is not None:
-            logger.error(f"NewsReader Engine exited with error: {exc_type.__name__}: {exc_val}")
+            logger.error(
+                f"NewsReader Engine exited with error: {exc_type.__name__}: {exc_val}"
+            )
         return False
 
     async def __aenter__(self) -> NewsReaderEngine:
@@ -158,7 +172,9 @@ class NewsReaderEngine:
         """Async context manager exit with cleanup."""
         self._cleanup_gpu_memory()
         if exc_type is not None:
-            logger.error(f"NewsReader Engine async exited with error: {exc_type.__name__}: {exc_val}")
+            logger.error(
+                f"NewsReader Engine async exited with error: {exc_type.__name__}: {exc_val}"
+            )
         return False
 
     def _setup_device(self):
@@ -174,13 +190,17 @@ class NewsReaderEngine:
             logger.info(f"✅ GPU acceleration enabled: {gpu_name} ({gpu_memory:.1f}GB)")
             return device
         else:
-            device = torch.device("cpu") if TORCH_AVAILABLE else type('obj', (object,), {'type': 'cpu'})()
+            device = (
+                torch.device("cpu")
+                if TORCH_AVAILABLE
+                else type("obj", (object,), {"type": "cpu"})()
+            )
             logger.info("✅ CPU processing mode")
             return device
 
     def _enable_cuda_optimizations(self):
         """Enable CUDA optimizations for performance."""
-        if TORCH_AVAILABLE and getattr(self.device, 'type', None) == 'cuda':
+        if TORCH_AVAILABLE and getattr(self.device, "type", None) == "cuda":
             torch.backends.cudnn.benchmark = True
             torch.backends.cudnn.deterministic = False
             torch.backends.cuda.matmul.allow_tf32 = True
@@ -201,91 +221,100 @@ class NewsReaderEngine:
         """Load LLaVA model for vision-language processing."""
         if not LLAVA_AVAILABLE:
             logger.warning("LLaVA not available - using fallback processing")
-            self.models['llava'] = None
-            self.processors['llava'] = None
+            self.models["llava"] = None
+            self.processors["llava"] = None
             return
 
         try:
             # Setup quantization
             quantization_config = None
             if self.config.use_quantization and self.config.quantization_type != "none":
-                logger.info(f"🔧 Setting up {self.config.quantization_type.upper()} quantization")
+                logger.info(
+                    f"🔧 Setting up {self.config.quantization_type.upper()} quantization"
+                )
                 if self.config.quantization_type == "int8":
                     quantization_config = BitsAndBytesConfig(
                         load_in_8bit=True,
-                        bnb_8bit_compute_dtype=getattr(torch, self.config.quantization_compute_dtype),
+                        bnb_8bit_compute_dtype=getattr(
+                            torch, self.config.quantization_compute_dtype
+                        ),
                         bnb_8bit_use_double_quant=True,
                     )
 
             # Load processor
-            self.processors['llava'] = LlavaOnevisionProcessor.from_pretrained(
+            self.processors["llava"] = LlavaOnevisionProcessor.from_pretrained(
                 self.config.llava_model,
                 use_fast=False,
                 trust_remote_code=True,
-                cache_dir=self.config.cache_dir
+                cache_dir=self.config.cache_dir,
             )
 
             # Load model with memory optimization
             model_kwargs = {
-                "dtype": torch.float16 if self.device.type == 'cuda' else torch.float32,
+                "dtype": torch.float16 if self.device.type == "cuda" else torch.float32,
                 "device_map": "auto",
                 "low_cpu_mem_usage": True,
-                "max_memory": {0: "2GB"} if self.device.type == 'cuda' else None,
+                "max_memory": {0: "2GB"} if self.device.type == "cuda" else None,
                 "cache_dir": self.config.cache_dir,
-                "trust_remote_code": True
+                "trust_remote_code": True,
             }
 
             if quantization_config:
                 model_kwargs["quantization_config"] = quantization_config
 
-            self.models['llava'] = LlavaOnevisionForConditionalGeneration.from_pretrained(
-                self.config.llava_model,
-                **model_kwargs
+            self.models["llava"] = (
+                LlavaOnevisionForConditionalGeneration.from_pretrained(
+                    self.config.llava_model, **model_kwargs
+                )
             )
 
             # Move to device if not quantized
-            if self.device.type == 'cuda' and quantization_config is None:
-                if not any('cuda' in str(param.device) for param in self.models['llava'].parameters()):
-                    self.models['llava'] = self.models['llava'].to(self.device)
+            if self.device.type == "cuda" and quantization_config is None:
+                if not any(
+                    "cuda" in str(param.device)
+                    for param in self.models["llava"].parameters()
+                ):
+                    self.models["llava"] = self.models["llava"].to(self.device)
 
             logger.info("✅ LLaVA model loaded successfully")
 
         except Exception as e:
             logger.error(f"Error loading LLaVA model: {e}")
-            self.models['llava'] = None
+            self.models["llava"] = None
 
     def _initialize_screenshot_system(self):
         """Initialize Playwright screenshot capture system."""
         if not PLAYWRIGHT_AVAILABLE:
             logger.warning("Playwright not available - screenshot capture disabled")
-            self.models['screenshot_system'] = None
+            self.models["screenshot_system"] = None
             return
 
-        self.models['screenshot_system'] = {
-            'headless': self.config.headless,
-            'timeout': self.config.screenshot_timeout,
-            'quality': self.config.screenshot_quality,
-            'browser_args': [
-                '--no-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-background-timer-throttling',
-                '--disable-backgrounding-occluded-windows',
-                '--disable-renderer-backgrounding'
-            ]
+        self.models["screenshot_system"] = {
+            "headless": self.config.headless,
+            "timeout": self.config.screenshot_timeout,
+            "quality": self.config.screenshot_quality,
+            "browser_args": [
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-background-timer-throttling",
+                "--disable-backgrounding-occluded-windows",
+                "--disable-renderer-backgrounding",
+            ],
         }
         logger.info("✅ Screenshot system initialized")
 
     def _initialize_fallback_systems(self):
         """Initialize fallback processing systems."""
         logger.info("Initializing fallback processing systems...")
-        self.models['fallback'] = True
+        self.models["fallback"] = True
 
     def _cleanup_gpu_memory(self):
         """Aggressive GPU memory cleanup."""
         logger.info("🧹 Starting GPU memory cleanup...")
 
-        if TORCH_AVAILABLE and self.device.type == 'cuda' and torch.cuda.is_available():
+        if TORCH_AVAILABLE and self.device.type == "cuda" and torch.cuda.is_available():
             import gc
+
             gc.collect()
             for _ in range(3):
                 torch.cuda.empty_cache()
@@ -297,12 +326,14 @@ class NewsReaderEngine:
     def is_llava_available(self) -> bool:
         """Check if LLaVA model is loaded and ready."""
         return (
-            self.models.get('llava') is not None
-            and self.processors.get('llava') is not None
-            and hasattr(self.models['llava'], 'generate')
+            self.models.get("llava") is not None
+            and self.processors.get("llava") is not None
+            and hasattr(self.models["llava"], "generate")
         )
 
-    async def capture_webpage_screenshot(self, url: str, screenshot_path: str = "page.png") -> str:
+    async def capture_webpage_screenshot(
+        self, url: str, screenshot_path: str = "page.png"
+    ) -> str:
         """
         Capture screenshot of webpage for analysis.
 
@@ -322,7 +353,9 @@ class NewsReaderEngine:
         if not PLAYWRIGHT_AVAILABLE:
             raise RuntimeError("Playwright is not available for screenshot capture")
 
-        if not isinstance(url, str) or not url.lower().startswith(("http://", "https://")):
+        if not isinstance(url, str) or not url.lower().startswith(
+            ("http://", "https://")
+        ):
             raise ValueError(f"Invalid URL: {url}")
 
         os.makedirs(os.path.dirname(screenshot_path) or ".", exist_ok=True)
@@ -334,11 +367,15 @@ class NewsReaderEngine:
             async with async_playwright() as p:
                 browser = await p.chromium.launch(
                     headless=self.config.headless,
-                    args=self.models['screenshot_system']['browser_args']
+                    args=self.models["screenshot_system"]["browser_args"],
                 )
 
                 page = await browser.new_page()
-                await page.goto(url, wait_until="domcontentloaded", timeout=self.config.screenshot_timeout)
+                await page.goto(
+                    url,
+                    wait_until="domcontentloaded",
+                    timeout=self.config.screenshot_timeout,
+                )
                 await page.wait_for_timeout(2000)
 
                 await page.screenshot(path=screenshot_path, full_page=False)
@@ -360,7 +397,9 @@ class NewsReaderEngine:
             except Exception:
                 pass
 
-    def analyze_screenshot_with_llava(self, screenshot_path: str, custom_prompt: str | None = None) -> dict[str, Any]:
+    def analyze_screenshot_with_llava(
+        self, screenshot_path: str, custom_prompt: str | None = None
+    ) -> dict[str, Any]:
         """
         Analyze screenshot using LLaVA vision-language model.
 
@@ -375,7 +414,7 @@ class NewsReaderEngine:
             return {
                 "success": False,
                 "error": "LLaVA model not available",
-                "screenshot_path": screenshot_path
+                "screenshot_path": screenshot_path,
             }
 
         if not custom_prompt:
@@ -396,51 +435,62 @@ class NewsReaderEngine:
             with Image.open(screenshot_path) as img:
                 image = img.convert("RGB")
 
-            conversation = [{
-                "role": "user",
-                "content": [
-                    {"type": "image"},
-                    {"type": "text", "text": custom_prompt}
-                ]
-            }]
+            conversation = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image"},
+                        {"type": "text", "text": custom_prompt},
+                    ],
+                }
+            ]
 
-            prompt_text = self.processors['llava'].apply_chat_template(conversation, add_generation_prompt=True)
+            prompt_text = self.processors["llava"].apply_chat_template(
+                conversation, add_generation_prompt=True
+            )
 
             # Limit text length
             max_chars = self.config.max_sequence_length * 4
             if len(prompt_text) > max_chars:
                 prefix_len = max_chars // 3
                 suffix_len = max_chars // 3
-                prompt_text = prompt_text[:prefix_len] + '...[truncated]...' + prompt_text[-suffix_len:]
+                prompt_text = (
+                    prompt_text[:prefix_len]
+                    + "...[truncated]..."
+                    + prompt_text[-suffix_len:]
+                )
 
-            inputs = self.processors['llava'](
-                images=image,
-                text=prompt_text,
-                return_tensors="pt",
-                padding=True
+            inputs = self.processors["llava"](
+                images=image, text=prompt_text, return_tensors="pt", padding=True
             )
 
             if TORCH_AVAILABLE and hasattr(inputs, "to"):
                 inputs = inputs.to(self.device)
 
             with torch.no_grad():
-                output = self.models['llava'].generate(
+                output = self.models["llava"].generate(
                     **inputs,
                     max_new_tokens=self.config.max_new_tokens,
                     do_sample=True,
                     temperature=0.7,
                     top_p=0.9,
-                    pad_token_id=self.processors['llava'].tokenizer.eos_token_id
+                    pad_token_id=self.processors["llava"].tokenizer.eos_token_id,
                 )
 
-            new_token_ids = output[0][len(inputs.input_ids[0]):]
+            new_token_ids = output[0][len(inputs.input_ids[0]) :]
             if TORCH_AVAILABLE and hasattr(new_token_ids, "detach"):
                 new_token_ids = new_token_ids.detach().cpu().tolist()
-            generated_text = self.processors['llava'].tokenizer.decode(new_token_ids, skip_special_tokens=True)
+            generated_text = self.processors["llava"].tokenizer.decode(
+                new_token_ids, skip_special_tokens=True
+            )
 
             parsed_content = self._parse_llava_response(generated_text)
 
-            if TORCH_AVAILABLE and self.device.type == 'cuda' and torch.cuda.is_available():
+            if (
+                TORCH_AVAILABLE
+                and self.device.type == "cuda"
+                and torch.cuda.is_available()
+            ):
                 torch.cuda.empty_cache()
 
             return {
@@ -448,7 +498,7 @@ class NewsReaderEngine:
                 "raw_analysis": generated_text.strip(),
                 "parsed_content": parsed_content,
                 "screenshot_path": screenshot_path,
-                "model_used": self.config.llava_model
+                "model_used": self.config.llava_model,
             }
 
         except Exception as e:
@@ -456,7 +506,7 @@ class NewsReaderEngine:
             return {
                 "success": False,
                 "error": str(e),
-                "screenshot_path": screenshot_path
+                "screenshot_path": screenshot_path,
             }
 
     def _parse_llava_response(self, response: str) -> dict[str, str]:
@@ -464,30 +514,35 @@ class NewsReaderEngine:
         parsed = {"headline": "", "article": "", "additional_content": ""}
 
         try:
-            lines = response.split('\n')
+            lines = response.split("\n")
             current_section = None
 
             for line in lines:
                 line = line.strip()
-                if line.startswith('HEADLINE:'):
-                    current_section = 'headline'
-                    parsed['headline'] = line.replace('HEADLINE:', '').strip()
-                elif line.startswith('ARTICLE:'):
-                    current_section = 'article'
-                    parsed['article'] = line.replace('ARTICLE:', '').strip()
+                if line.startswith("HEADLINE:"):
+                    current_section = "headline"
+                    parsed["headline"] = line.replace("HEADLINE:", "").strip()
+                elif line.startswith("ARTICLE:"):
+                    current_section = "article"
+                    parsed["article"] = line.replace("ARTICLE:", "").strip()
                 elif current_section and line:
-                    parsed[current_section] += ' ' + line
+                    parsed[current_section] += " " + line
 
-            if not parsed['headline'] and not parsed['article']:
-                parsed['additional_content'] = response.strip()
+            if not parsed["headline"] and not parsed["article"]:
+                parsed["additional_content"] = response.strip()
 
         except Exception as e:
             logger.warning(f"Failed to parse LLaVA response: {e}")
-            parsed['additional_content'] = response.strip()
+            parsed["additional_content"] = response.strip()
 
         return parsed
 
-    async def process_news_url(self, url: str, screenshot_path: str | None = None, mode: ProcessingMode = ProcessingMode.COMPREHENSIVE) -> ProcessingResult:
+    async def process_news_url(
+        self,
+        url: str,
+        screenshot_path: str | None = None,
+        mode: ProcessingMode = ProcessingMode.COMPREHENSIVE,
+    ) -> ProcessingResult:
         """
         Process news URL with screenshot-based LLaVA analysis.
 
@@ -503,35 +558,41 @@ class NewsReaderEngine:
         logger.info(f"🔍 Processing news URL: {url}")
 
         try:
-            if not isinstance(url, str) or not url.lower().startswith(("http://", "https://")):
+            if not isinstance(url, str) or not url.lower().startswith(
+                ("http://", "https://")
+            ):
                 raise ValueError(f"Invalid URL: {url}")
 
             if not screenshot_path:
                 screenshot_path = f"screenshot_{int(time.time())}.png"
 
-            screenshot_path = await self.capture_webpage_screenshot(url, screenshot_path)
+            screenshot_path = await self.capture_webpage_screenshot(
+                url, screenshot_path
+            )
             llava_result = self.analyze_screenshot_with_llava(screenshot_path)
 
-            if not llava_result['success']:
-                raise RuntimeError(f"LLaVA analysis failed: {llava_result.get('error', 'Unknown error')}")
+            if not llava_result["success"]:
+                raise RuntimeError(
+                    f"LLaVA analysis failed: {llava_result.get('error', 'Unknown error')}"
+                )
 
-            parsed_content = llava_result['parsed_content']
+            parsed_content = llava_result["parsed_content"]
             processing_time = time.time() - start_time
 
             result = ProcessingResult(
                 content_type=ContentType.WEBPAGE,
                 extracted_text=f"HEADLINE: {parsed_content.get('headline', '')}\n\nARTICLE: {parsed_content.get('article', '')}\n\nADDITIONAL: {parsed_content.get('additional_content', '')}",
-                visual_description=llava_result['raw_analysis'],
-                confidence_score=0.85 if llava_result['success'] else 0.0,
+                visual_description=llava_result["raw_analysis"],
+                confidence_score=0.85 if llava_result["success"] else 0.0,
                 processing_time=processing_time,
-                model_outputs={'llava': llava_result},
+                model_outputs={"llava": llava_result},
                 metadata={
-                    'url': url,
-                    'screenshot_path': screenshot_path,
-                    'processing_mode': mode.value,
-                    'models_used': ['llava']
+                    "url": url,
+                    "screenshot_path": screenshot_path,
+                    "processing_mode": mode.value,
+                    "models_used": ["llava"],
                 },
-                screenshot_path=screenshot_path
+                screenshot_path=screenshot_path,
             )
 
             logger.info(f"✅ Processing completed: {processing_time:.2f}s")
@@ -547,16 +608,17 @@ class NewsReaderEngine:
                 visual_description=f"Error processing URL: {url}",
                 confidence_score=0.0,
                 processing_time=processing_time,
-                model_outputs={'error': str(e)},
-                metadata={'url': url, 'error': str(e)},
-                screenshot_path=screenshot_path
+                model_outputs={"error": str(e)},
+                metadata={"url": url, "error": str(e)},
+                screenshot_path=screenshot_path,
             )
+
 
 # Export main components
 __all__ = [
-    'NewsReaderEngine',
-    'NewsReaderConfig',
-    'ContentType',
-    'ProcessingMode',
-    'ProcessingResult'
+    "NewsReaderEngine",
+    "NewsReaderConfig",
+    "ContentType",
+    "ProcessingMode",
+    "ProcessingResult",
 ]

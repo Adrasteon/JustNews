@@ -13,6 +13,7 @@ Usage:
 The endpoint accepts JSON: {"handlers": ["embedding_model"]} or {"all": true}
 and returns per-handler success/failure details.
 """
+
 from __future__ import annotations
 
 import os
@@ -40,7 +41,9 @@ def register_reload_handler(name: str, fn: Callable[[], Any]) -> None:
     _RELOAD_HANDLERS[name] = fn
 
 
-def register_reload_endpoint(app: FastAPI, path: str = "/admin/reload", require_admin: bool = False) -> None:
+def register_reload_endpoint(
+    app: FastAPI, path: str = "/admin/reload", require_admin: bool = False
+) -> None:
     """Register the POST reload endpoint on the provided FastAPI app.
 
     Request JSON schema:
@@ -76,7 +79,11 @@ def register_reload_endpoint(app: FastAPI, path: str = "/admin/reload", require_
                 results[t] = {"ok": True, "info": info}
             except Exception as e:
                 logger.exception("reload_handler_failed", handler=t)
-                results[t] = {"ok": False, "error": str(e), "trace": traceback.format_exc()}
+                results[t] = {
+                    "ok": False,
+                    "error": str(e),
+                    "trace": traceback.format_exc(),
+                }
 
         return {"results": results}
 
@@ -85,17 +92,25 @@ def register_reload_endpoint(app: FastAPI, path: str = "/admin/reload", require_
         # or a JWT Bearer token with admin role.
         async def _secure_reload(request: Request):
             admin_key = os.environ.get("ADMIN_API_KEY")
-            auth_header = (request.headers.get("Authorization") or request.headers.get("X-Admin-API-Key") or "").strip()
+            auth_header = (
+                request.headers.get("Authorization")
+                or request.headers.get("X-Admin-API-Key")
+                or ""
+            ).strip()
             if admin_key and auth_header:
                 if auth_header.lower().startswith("bearer "):
                     token = auth_header.split(" ", 1)[1]
                 else:
                     token = auth_header
                 if token != admin_key:
-                    raise HTTPException(status_code=401, detail="Admin API key missing or invalid")
+                    raise HTTPException(
+                        status_code=401, detail="Admin API key missing or invalid"
+                    )
             else:
                 if not auth_header:
-                    raise HTTPException(status_code=401, detail="Admin credentials missing")
+                    raise HTTPException(
+                        status_code=401, detail="Admin credentials missing"
+                    )
                 if auth_header.lower().startswith("bearer "):
                     token = auth_header.split(" ", 1)[1]
                 else:
@@ -106,7 +121,9 @@ def register_reload_endpoint(app: FastAPI, path: str = "/admin/reload", require_
 
                 payload = auth_models.verify_token(token)
                 if payload is None:
-                    raise HTTPException(status_code=401, detail="Invalid authentication token")
+                    raise HTTPException(
+                        status_code=401, detail="Invalid authentication token"
+                    )
                 user = auth_models.get_user_by_id(payload.user_id)
                 if user is None or user.get("role") != auth_models.UserRole.ADMIN.value:
                     raise HTTPException(status_code=403, detail="Admin role required")

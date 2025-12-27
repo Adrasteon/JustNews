@@ -6,10 +6,11 @@ fails (for example, when adapters have not been published yet) the helpers fall
 back to loading the canonical base checkpoint so agents can still function while
 training catches up.
 """
+
 from __future__ import annotations
 
 import os
-from typing import Any, Tuple
+from typing import Any
 
 from common.observability import get_logger
 
@@ -19,11 +20,16 @@ except Exception:  # pragma: no cover
     AutoModelForCausalLM = None  # type: ignore
     AutoTokenizer = None  # type: ignore
 
-from agents.common.model_loader import load_transformers_model, load_transformers_with_adapter
+from agents.common.model_loader import (
+    load_transformers_model,
+    load_transformers_with_adapter,
+)
 
 logger = get_logger(__name__)
 
-DEFAULT_BASE_MODEL_ID = os.getenv("MISTRAL_BASE_MODEL_ID", "mistralai/Mistral-7B-Instruct-v0.3")
+DEFAULT_BASE_MODEL_ID = os.getenv(
+    "MISTRAL_BASE_MODEL_ID", "mistralai/Mistral-7B-Instruct-v0.3"
+)
 
 
 def load_mistral_adapter_or_base(
@@ -32,14 +38,18 @@ def load_mistral_adapter_or_base(
     *,
     model_kwargs: dict | None = None,
     tokenizer_kwargs: dict | None = None,
-) -> Tuple[Any | None, Any | None]:
+) -> tuple[Any | None, Any | None]:
     """Load an agent's Mistral base + adapter, falling back to the base model.
 
     Returns a ``(model, tokenizer)`` tuple or ``(None, None)`` when loading fails.
     """
 
     adapter_errors: list[str] = []
-    base_model_kwargs = {"device_map": "auto", "low_cpu_mem_usage": True, "trust_remote_code": True}
+    base_model_kwargs = {
+        "device_map": "auto",
+        "low_cpu_mem_usage": True,
+        "trust_remote_code": True,
+    }
     if model_kwargs:
         base_model_kwargs.update(model_kwargs)
 
@@ -58,7 +68,9 @@ def load_mistral_adapter_or_base(
         return model, tokenizer
     except Exception as exc:  # pragma: no cover - adapter availability depends on env
         adapter_errors.append(str(exc))
-        logger.debug("Adapter load failed for agent=%s adapter=%s: %s", agent, adapter_name, exc)
+        logger.debug(
+            "Adapter load failed for agent=%s adapter=%s: %s", agent, adapter_name, exc
+        )
 
     # Fall back to the base checkpoint so the agent can still operate
     if AutoModelForCausalLM is None or AutoTokenizer is None:  # pragma: no cover

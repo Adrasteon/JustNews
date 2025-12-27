@@ -23,6 +23,7 @@ from common.observability import get_logger
 
 logger = get_logger(__name__)
 
+
 class TrainingDashboard:
     """
     Web dashboard for online training system management
@@ -89,14 +90,17 @@ class TrainingDashboard:
         </html>
         """
 
+
 # Placeholder functions for future development
 def create_training_dashboard():
     """Create and configure the training dashboard"""
     return TrainingDashboard()
 
+
 def start_dashboard_server(port: int = 8080):
     """Start the dashboard web server"""
     logger.info(f"🎨 Dashboard server placeholder - would start on port {port}")
+
 
 def get_dashboard_metrics() -> dict[str, Any]:
     """Get metrics for dashboard display"""
@@ -104,5 +108,5 @@ def get_dashboard_metrics() -> dict[str, Any]:
         "placeholder": "Dashboard metrics will be implemented here",
         "agents_managed": 7,
         "models_count": 27,
-        "status": "operational"
+        "status": "operational",
     }

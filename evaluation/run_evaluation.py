@@ -9,6 +9,7 @@ Modes:
 
 The runner imports project extraction code and applies it to dataset HTML files.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -58,7 +59,11 @@ def extract_with_project(html: str) -> str:
         result = extract_article_content("", html)
         # result might be a dict or string
         if isinstance(result, dict):
-            text = result.get("cleaned_text") or result.get("content") or result.get("text")
+            text = (
+                result.get("cleaned_text")
+                or result.get("content")
+                or result.get("text")
+            )
             if text:
                 return text
             # fallback to join available pieces
@@ -84,7 +89,9 @@ def extract_with_project(html: str) -> str:
     return text.strip()
 
 
-def run_extraction_parity(dataset_dir: str, metrics: list[str] | None = None, output: str | None = None) -> int:
+def run_extraction_parity(
+    dataset_dir: str, metrics: list[str] | None = None, output: str | None = None
+) -> int:
     pairs = find_pairs(dataset_dir)
     if not pairs:
         print(f"No (html, txt) pairs found in {dataset_dir}")
@@ -99,13 +106,24 @@ def run_extraction_parity(dataset_dir: str, metrics: list[str] | None = None, ou
         g_tokens = tokenize(gold)
         sample_metrics = {}
         # default metrics if none provided
-        metrics = metrics or ["precision_recall_f1", "rouge_l", "bleu1", "levenshtein_norm"]
+        metrics = metrics or [
+            "precision_recall_f1",
+            "rouge_l",
+            "bleu1",
+            "levenshtein_norm",
+        ]
         if "precision_recall_f1" in metrics:
             precision, recall, f1 = precision_recall_f1(p_tokens, g_tokens)
             sample_metrics.update({"precision": precision, "recall": recall, "f1": f1})
         if "rouge_l" in metrics:
             r_prec, r_rec, r_f1 = rouge_l(p_tokens, g_tokens)
-            sample_metrics.update({"rouge_l_precision": r_prec, "rouge_l_recall": r_rec, "rouge_l_f1": r_f1})
+            sample_metrics.update(
+                {
+                    "rouge_l_precision": r_prec,
+                    "rouge_l_recall": r_rec,
+                    "rouge_l_f1": r_f1,
+                }
+            )
         if "bleu1" in metrics:
             b1 = bleu_score(p_tokens, g_tokens, n=1)
             sample_metrics.update({"bleu1": b1})
@@ -121,7 +139,9 @@ def run_extraction_parity(dataset_dir: str, metrics: list[str] | None = None, ou
     print("Extraction parity results:")
     agg = {}
     for name, metrics_map in scores:
-        line = f" - {name}: " + ", ".join(f"{k}={v:.3f}" for k, v in sorted(metrics_map.items()))
+        line = f" - {name}: " + ", ".join(
+            f"{k}={v:.3f}" for k, v in sorted(metrics_map.items())
+        )
         print(line)
         for k, v in metrics_map.items():
             agg.setdefault(k, []).append(v)
@@ -137,7 +157,14 @@ def run_extraction_parity(dataset_dir: str, metrics: list[str] | None = None, ou
         os.makedirs(outdir, exist_ok=True)
         # JSON report
         with open(output + ".json", "w", encoding="utf-8") as jf:
-            json.dump({"samples": [{"name": n, "metrics": m} for n, m in scores], "summary": summary}, jf, indent=2)
+            json.dump(
+                {
+                    "samples": [{"name": n, "metrics": m} for n, m in scores],
+                    "summary": summary,
+                },
+                jf,
+                indent=2,
+            )
         # CSV summary
         csv_path = output + ".csv"
         keys = sorted(summary.keys())
@@ -161,8 +188,13 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="JustNews evaluation runner")
     parser.add_argument("--mode", choices=("extraction_parity",), required=True)
     parser.add_argument("--dataset", required=True, help="Path to dataset directory")
-    parser.add_argument("--metrics", help="Comma-separated metrics to compute (precision_recall_f1,rouge_l,bleu1,levenshtein_norm)")
-    parser.add_argument("--output", help="Base path for output reports (without extension)")
+    parser.add_argument(
+        "--metrics",
+        help="Comma-separated metrics to compute (precision_recall_f1,rouge_l,bleu1,levenshtein_norm)",
+    )
+    parser.add_argument(
+        "--output", help="Base path for output reports (without extension)"
+    )
     args = parser.parse_args(argv)
 
     if args.mode == "extraction_parity":

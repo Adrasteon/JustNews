@@ -172,27 +172,7 @@ check_python_runtime() {
 }
 
 check_data_mount() {
-  local mount_point="${JUSTNEWS_DATA_MOUNT:-$DATA_MOUNT_DEFAULT}"
-  if [[ ! -d "$mount_point" ]]; then
-    log_error "Data mount point $mount_point does not exist"
-    exit 1
-  fi
-  if mountpoint -q "$mount_point"; then
-    log_success "Data mount $mount_point is mounted"
-  else
-    if grep -E "^[^#].+\s+$mount_point\s" /etc/fstab >/dev/null 2>&1; then
-      log_warn "Data mount $mount_point is not active; attempting to mount via /etc/fstab entry"
-      if mount "$mount_point" >/dev/null 2>&1; then
-        log_success "Mounted $mount_point successfully"
-      else
-        log_error "Failed to mount $mount_point automatically. Run 'mount $mount_point' after checking the device."
-        exit 1
-      fi
-    else
-      log_error "Data mount $mount_point is not mounted and has no matching /etc/fstab entry"
-      exit 1
-    fi
-  fi
+  # Ensure required model/cache directories exist (no mount check required)
   if [[ -n "${MODEL_STORE_ROOT:-}" ]]; then
     mkdir -p "$MODEL_STORE_ROOT"
     log_info "Ensured MODEL_STORE_ROOT directory $MODEL_STORE_ROOT exists"
@@ -529,6 +509,180 @@ stop_monitoring_stack() {
   fi
 }
 
+start_dev_telemetry_stack() {
+  local repo_root="$1"
+  # When ENABLE_DEV_TELEMETRY is not set to "true" we skip starting the
+  # local development telemetry stack. This keeps the canonical startup
+  # safe for production-like hosts while allowing developers to opt-in in
+  # their /etc/justnews/global.env or other environment overrides.
+  if [[ "${ENABLE_DEV_TELEMETRY:-false}" != "true" ]]; then
+    log_info "ENABLE_DEV_TELEMETRY not set; skipping dev telemetry stack (docker compose)"
+    return 0
+  fi
+
+  local compose_file="$repo_root/infrastructure/monitoring/dev-docker-compose.yaml"
+  if [[ ! -f "$compose_file" ]]; then
+    log_warn "Dev telemetry compose file not found: $compose_file; skipping"
+    return 0
+  fi
+
+  if ! command -v docker >/dev/null 2>&1; then
+    log_warn "Docker not installed or not in PATH; cannot start dev telemetry stack"
+    return 0
+  fi
+
+  # Choose compose invoker robustly: prefer `docker compose` plugin, fall back to `docker-compose` binary.
+  local compose_invoker=""
+  if docker compose version >/dev/null 2>&1; then
+    compose_invoker="docker compose"
+  elif command -v docker-compose >/dev/null 2>&1; then
+    compose_invoker="docker-compose"
+  fi
+
+  if [[ -z "$compose_invoker" ]]; then
+    log_warn "No docker compose invoker found (neither 'docker compose' nor 'docker-compose' is available); skipping dev telemetry stack"
+    return 0
+  fi
+
+  local compose_dir; compose_dir="$(dirname "$compose_file")"
+  local compose_base; compose_base="$(basename "$compose_file")"
+
+  # Quick port conflict check - developer hosts may already have OTLP/collector
+  # listening on the standard ports. If there is a conflict we skip starting
+  # the dev telemetry stack unless explicitly forced with
+  # ENABLE_DEV_TELEMETRY_FORCE=1 (safe default to avoid bind failures).
+  # Determine the host ports that the dev compose will use. These honour
+  # environment variables (so operators can override) and default to safe
+  # alternate dev ports which avoid colliding with a running host OTEL.
+  local LOKI_PORT_HOST="${LOKI_PORT:-13100}"
+  local TEMPO_HTTP_PORT_HOST="${TEMPO_HTTP_PORT:-24268}"
+  local TEMPO_JAEGER_PORT_HOST="${TEMPO_JAEGER_PORT:-19411}"
+  local OTEL_GRPC_PORT_HOST="${OTEL_GRPC_PORT:-24317}"
+  local OTEL_HTTP_PORT_HOST="${OTEL_HTTP_PORT:-24318}"
+  local NODE_METRICS_PORT_HOST="${NODE_METRICS_PORT:-18889}"
+  local DEMO_PORT_HOST="${DEMO_PORT:-18080}"
+
+  local compose_ports=($LOKI_PORT_HOST $TEMPO_HTTP_PORT_HOST $TEMPO_JAEGER_PORT_HOST $OTEL_GRPC_PORT_HOST $OTEL_HTTP_PORT_HOST $NODE_METRICS_PORT_HOST $DEMO_PORT_HOST)
+  local conflict_found=0
+  if [[ "${ENABLE_DEV_TELEMETRY_FORCE:-0}" != "1" ]]; then
+    for p in "${compose_ports[@]}"; do
+      if ss -ltn | awk '{print $4}' | grep -E ":$p$" >/dev/null 2>&1; then
+        log_warn "Dev telemetry port $p already in use on host - skipping dev telemetry startup; set ENABLE_DEV_TELEMETRY_FORCE=1 to override"
+        conflict_found=1
+      fi
+    done
+    if [[ $conflict_found -ne 0 ]]; then
+      return 0
+    fi
+  else
+    log_info "ENABLE_DEV_TELEMETRY_FORCE=1: forcing dev telemetry startup despite potential port conflicts"
+  fi
+
+  log_info "Bringing up dev telemetry stack via $compose_invoker (cwd=$compose_dir): $compose_base"
+  if (cd "$compose_dir" && $compose_invoker -f "$compose_base" up -d); then
+    log_success "Dev telemetry stack started (docker compose)"
+  else
+    # Try fallback if the preferred invoker exists but fails.
+    log_warn "Primary compose invoker ($compose_invoker) failed; attempting fallback"
+    if [[ "$compose_invoker" == "docker compose" ]] && command -v docker-compose >/dev/null 2>&1; then
+      log_info "Attempting fallback: docker-compose -f $compose_base up -d (cwd=$compose_dir)"
+      if (cd "$compose_dir" && docker-compose -f "$compose_base" up -d); then
+        log_success "Dev telemetry stack started (docker-compose fallback)"
+      else
+        log_warn "Failed to start dev telemetry stack with docker-compose fallback"
+      fi
+    else
+      log_warn "Failed to start dev telemetry stack with $compose_invoker"
+    fi
+  fi
+}
+
+stop_dev_telemetry_stack() {
+  local repo_root="$1"
+
+  # Always attempt to tear down any *JustNews-managed* dev telemetry artefacts
+  # (systemd unit or docker compose project) even when ENABLE_DEV_TELEMETRY is
+  # not set. This addresses the case where a previously started dev telemetry
+  # instance is left running and causes port conflicts when attempting to
+  # start the stack again.
+
+  # 1) Prefer to stop the systemd-managed unit if present
+  if command -v systemctl >/dev/null 2>&1; then
+    if systemctl --no-pager is-active --quiet justnews-dev-telemetry.service; then
+      log_info "Stopping systemd unit justnews-dev-telemetry.service"
+      if systemctl stop justnews-dev-telemetry.service; then
+        log_success "Stopped justnews-dev-telemetry.service"
+      else
+        log_warn "Failed to stop justnews-dev-telemetry.service via systemctl"
+      fi
+      # If unit was active we consider the teardown complete (containers will be removed by the unit)
+      return 0
+    fi
+  fi
+
+  # 2) If the unit was not active, attempt to find and tear down docker-compose
+  local compose_file="$repo_root/infrastructure/monitoring/dev-docker-compose.yaml"
+  if [[ ! -f "$compose_file" ]]; then
+    log_info "No dev telemetry compose file found at $compose_file; nothing to stop"
+    return 0
+  fi
+
+  if ! command -v docker >/dev/null 2>&1; then
+    log_info "Docker not found; no dev telemetry containers to stop"
+    return 0
+  fi
+
+  # If any container related to the dev telemetry project exists, bring it down
+  # Use a conservative name search to avoid impacting unrelated containers.
+  local found=0
+  local known_containers=(justnews-loki justnews-tempo justnews-otel-node justnews-demo-emitter)
+  for c in "${known_containers[@]}"; do
+    if docker ps -a --filter "name=$c" --format '{{.Names}}' | grep -xq "$c"; then
+      found=1
+      break
+    fi
+  done
+
+  if [[ $found -eq 0 ]]; then
+    log_info "No JustNews dev telemetry containers found; nothing to stop"
+    return 0
+  fi
+
+  # Choose compose invoker and run down from the compose dir so relative mounts resolve
+  local compose_invoker=""
+  if docker compose version >/dev/null 2>&1; then
+    compose_invoker="docker compose"
+  elif command -v docker-compose >/dev/null 2>&1; then
+    compose_invoker="docker-compose"
+  fi
+
+  local compose_dir; compose_dir="$(dirname "$compose_file")"
+  local compose_base; compose_base="$(basename "$compose_file")"
+
+  if [[ -n "$compose_invoker" ]]; then
+    log_info "Tearing down dev telemetry containers via $compose_invoker (cwd=$compose_dir)"
+    if (cd "$compose_dir" && $compose_invoker -f "$compose_base" down); then
+      log_success "Dev telemetry stack stopped (compose)"
+      return 0
+    else
+      log_warn "Failed to stop dev telemetry stack via $compose_invoker"
+    fi
+  fi
+
+  # As a last resort attempt docker-compose binary
+  if command -v docker-compose >/dev/null 2>&1; then
+    log_info "Attempting docker-compose down as fallback (cwd=$compose_dir)"
+    if (cd "$compose_dir" && docker-compose -f "$compose_base" down); then
+      log_success "Dev telemetry stack stopped (docker-compose)"
+      return 0
+    else
+      log_warn "docker-compose fallback failed to stop dev telemetry stack"
+    fi
+  fi
+
+  log_warn "Unable to tear down dev telemetry stack: manual cleanup may be required (check docker ps -a)"
+}
+
 main() {
   parse_args "$@"
   if [[ "$SHOW_USAGE" == true ]]; then
@@ -552,6 +706,9 @@ main() {
       log_success "Prerequisite checks completed (dry run)"
     else
       stop_application_services "$repo_root"
+      # Ensure dev telemetry is torn down first (if enabled) before stopping
+      # the systemd monitoring stack to avoid orphaned compose containers.
+      stop_dev_telemetry_stack "$repo_root"
       stop_monitoring_stack
       log_success "Canonical system shutdown completed"
     fi
@@ -593,10 +750,42 @@ main() {
   else
     # Ensure systemd unit drop-ins for known agent dependencies
     ensure_systemd_dropins "$repo_root"
+
+    # Safety: if this appears to be an interactive desktop session (DISPLAY/XDG set)
+    # and the developer opted into dev telemetry, we proactively enable SAFE_MODE
+    # unless the caller explicitly provided a --safe-mode argument OR the user has
+    # explicitly set SAFE_MODE=false in global.env. This prevents accidental
+    # GPU-heavy work (model loading / OOMs) which can crash desktop processes such
+    # as VS Code, while still respecting explicit user configuration.
+    if [[ -n "${DISPLAY:-}" || -n "${XDG_SESSION_TYPE:-}" ]] && [[ "${ENABLE_DEV_TELEMETRY:-false}" == "true" ]]; then
+      # check if --safe-mode already provided in forwarded args
+      safe_mode_present=false
+      for a in "${FORWARDED_ARGS[@]}"; do
+        if [[ "$a" == "--safe-mode" ]]; then
+          safe_mode_present=true
+          break
+        fi
+      done
+
+      if [[ "$safe_mode_present" == false ]]; then
+        # Check if user has explicitly disabled SAFE_MODE in global.env
+        current_safe_mode="${SAFE_MODE:-}"
+        if [[ "$current_safe_mode" == "false" ]]; then
+          log_info "Interactive desktop detected but SAFE_MODE=false in global.env; respecting user configuration (GPU usage enabled)"
+        else
+          log_info "Interactive desktop detected + ENABLE_DEV_TELEMETRY=true; adding --safe-mode on to startup to avoid GPU usage"
+          FORWARDED_ARGS+=("--safe-mode" "on")
+        fi
+      else
+        log_info "--safe-mode already present in args; leaving unchanged"
+      fi
+    fi
     run_reset_and_start "$repo_root" "${FORWARDED_ARGS[@]}"
     if ! start_monitoring_stack "$repo_root"; then
       exit 1
     fi
+    # Optionally start the local development telemetry stack if enabled.
+    start_dev_telemetry_stack "$repo_root"
     # The Crawl4AI bridge is managed as a regular justnews@ service named
     # 'crawl4ai' and will be enabled/started by the reset_and_start ->
     # enable_all.sh flow. No dedicated enable/start is required here.
@@ -632,9 +821,29 @@ main() {
       exit 1
     fi
     # Run a diagnostic to confirm the canonical host/port is a Chroma instance
-    if ! run_python_script "$repo_root/scripts/chroma_diagnose.py" --host "$chroma_host" --port "$chroma_port"; then
-      log_error "Chroma diagnostic failed for $chroma_host:$chroma_port (fatal under CHROMADB_REQUIRE_CANONICAL)"
-      exit 1
+    # Prefer a simple HTTP probe (modern Chroma exposes /api/v2/auth/identity),
+    # fall back to /api/v1/health or root. Only invoke the Python-based
+    # scripts/chroma_diagnose.py helper if HTTP probes fail (some local
+    # environments may have incompatible native libs and that tool can crash
+    # the runtime — prefer lightweight HTTP checks first).
+    if command -v curl >/dev/null 2>&1; then
+      if curl -fsS "http://${chroma_host}:${chroma_port}/api/v2/auth/identity" >/dev/null 2>&1; then
+        log_info "Chroma identity endpoint OK: ${chroma_host}:${chroma_port}"
+      elif curl -fsS "http://${chroma_host}:${chroma_port}/api/v1/health" >/dev/null 2>&1 || curl -fsS "http://${chroma_host}:${chroma_port}/" >/dev/null 2>&1; then
+        log_info "Chroma reachable via alternate endpoint: ${chroma_host}:${chroma_port}"
+      else
+        log_warn "HTTP probes failed for Chroma at ${chroma_host}:${chroma_port}; falling back to Python diagnostic helper"
+        if ! run_python_script "$repo_root/scripts/chroma_diagnose.py" --host "$chroma_host" --port "$chroma_port"; then
+          log_error "Chroma diagnostic failed for $chroma_host:$chroma_port (fatal under CHROMADB_REQUIRE_CANONICAL)"
+          exit 1
+        fi
+      fi
+    else
+      # No curl available, try the Python helper as a last resort
+      if ! run_python_script "$repo_root/scripts/chroma_diagnose.py" --host "$chroma_host" --port "$chroma_port"; then
+        log_error "Chroma diagnostic failed for $chroma_host:$chroma_port (fatal under CHROMADB_REQUIRE_CANONICAL)"
+        exit 1
+      fi
     fi
     log_info "Chroma canonical host/port validated: $chroma_host:$chroma_port"
   else

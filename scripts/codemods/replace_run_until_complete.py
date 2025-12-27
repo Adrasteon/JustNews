@@ -11,25 +11,38 @@ determine that `loop` comes from `asyncio.new_event_loop()` in the same file.
 
 Usage: python scripts/codemods/replace_run_until_complete.py [--apply] [--root PATH] [--report PATH]
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import re
 from pathlib import Path
-from typing import List, Tuple
 
-ROOT_IGNORE = {".git", "node_modules", "third_party", "__pycache__", "tests/deprecation", "tests/codemod", "deprecations", "codemods"}
+ROOT_IGNORE = {
+    ".git",
+    "node_modules",
+    "third_party",
+    "__pycache__",
+    "tests/deprecation",
+    "tests/codemod",
+    "deprecations",
+    "codemods",
+}
 
 # Match asyncio.get_event_loop().run_until_complete(xxx)
-GET_LOOP_PATTERN = re.compile(r"asyncio\.get_event_loop\(\)\.run_until_complete\(([^\)]*)\)")
+GET_LOOP_PATTERN = re.compile(
+    r"asyncio\.get_event_loop\(\)\.run_until_complete\(([^\)]*)\)"
+)
 
 # Match <name>.run_until_complete(expr) — we'll replace only when the file contains new_event_loop
 LOOP_RUN_PATTERN = re.compile(r"\b(?P<var>\w+)\.run_until_complete\(([^\)]*)\)")
-ASSIGN_PATTERN = re.compile(r"(?P<var>\w+)\s*=\s*asyncio\.(?:new_event_loop|get_event_loop)\(\)")
+ASSIGN_PATTERN = re.compile(
+    r"(?P<var>\w+)\s*=\s*asyncio\.(?:new_event_loop|get_event_loop)\(\)"
+)
 
 
-def _find_files(root: Path) -> List[Path]:
+def _find_files(root: Path) -> list[Path]:
     results = []
     for p in root.rglob("*.py"):
         if any(ignore in str(p) for ignore in ROOT_IGNORE):
@@ -38,8 +51,8 @@ def _find_files(root: Path) -> List[Path]:
     return results
 
 
-def find_matches(root: Path) -> List[Tuple[Path, int, str]]:
-    matches: List[Tuple[Path, int, str]] = []
+def find_matches(root: Path) -> list[tuple[Path, int, str]]:
+    matches: list[tuple[Path, int, str]] = []
     for p in _find_files(root):
         try:
             text = p.read_text()
@@ -48,7 +61,7 @@ def find_matches(root: Path) -> List[Tuple[Path, int, str]]:
 
         # Identify assignment to loop variables (e.g. "loop = asyncio.new_event_loop()" or
         # "loop = asyncio.get_event_loop()") so we can safely replace var.run_until_complete
-        assigned_vars = {m.group('var') for m in ASSIGN_PATTERN.finditer(text)}
+        # NOTE: assigned_vars is computed in apply_replacements where it is actually used
 
         for i, line in enumerate(text.splitlines(), start=1):
             if GET_LOOP_PATTERN.search(line) or LOOP_RUN_PATTERN.search(line):
@@ -57,8 +70,8 @@ def find_matches(root: Path) -> List[Tuple[Path, int, str]]:
     return matches
 
 
-def apply_replacements(root: Path) -> List[Path]:
-    changed: List[Path] = []
+def apply_replacements(root: Path) -> list[Path]:
+    changed: list[Path] = []
     for p in _find_files(root):
         try:
             text = p.read_text()
@@ -75,10 +88,11 @@ def apply_replacements(root: Path) -> List[Path]:
 
         # For var.run_until_complete(...) only replace when we detected the variable was
         # assigned from asyncio.new_event_loop() or asyncio.get_event_loop() earlier
-        assigned_vars = {m.group('var') for m in ASSIGN_PATTERN.finditer(text)}
+        assigned_vars = {m.group("var") for m in ASSIGN_PATTERN.finditer(text)}
         if assigned_vars:
-            def _sub_var(match: re.Match) -> str:
-                var = match.group('var')
+
+            def _sub_var(match: re.Match, assigned_vars=assigned_vars) -> str:
+                var = match.group("var")
                 inner = match.group(2)
                 if var in assigned_vars:
                     return f"asyncio.run({inner})"
@@ -93,10 +107,10 @@ def apply_replacements(root: Path) -> List[Path]:
     return changed
 
 
-def main(argv: List[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--root", default='.', help="Root dir to scan")
-    parser.add_argument("--apply", action='store_true', help="Apply in-place")
+    parser.add_argument("--root", default=".", help="Root dir to scan")
+    parser.add_argument("--apply", action="store_true", help="Apply in-place")
     parser.add_argument("--report", help="Write JSON report path")
     args = parser.parse_args(argv)
 
@@ -112,12 +126,16 @@ def main(argv: List[str] | None = None) -> int:
         print(f" - {p}:{lno}: {line}")
 
     if args.report:
-        report = [{"path": str(p), "line": lno, "content": line} for p, lno, line in matches]
+        report = [
+            {"path": str(p), "line": lno, "content": line} for p, lno, line in matches
+        ]
         Path(args.report).write_text(json.dumps(report, indent=2))
         print(f"Wrote report to {args.report}")
 
     if not args.apply:
-        print("\nDry-run: no files modified. Re-run with --apply to update files in-place.")
+        print(
+            "\nDry-run: no files modified. Re-run with --apply to update files in-place."
+        )
         return 0
 
     changed = apply_replacements(root)

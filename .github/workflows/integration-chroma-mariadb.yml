@@ -19,9 +19,9 @@ jobs:
           --health-cmd="mysqladmin ping --silent" --health-interval=5s
       chroma:
         image: chromadb/chromadb:0.3.22
-        ports: ["8000:8000"]
+        ports: ["3307:3307"]
         options: >-
-          --health-cmd="curl -sS http://localhost:8000/" --health-interval=5s
+          --health-cmd="curl -sS http://localhost:3307/" --health-interval=5s
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -32,12 +32,30 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Wait for services
+      - name: Wait for services (bounded)
         run: |
           echo "Waiting for MariaDB..."
-          until mysqladmin ping -h 127.0.0.1 -P 3306 --silent; do sleep 1; done
+          ATTEMPTS=60
+          i=0
+          until mysqladmin ping -h 127.0.0.1 -P 3306 --silent; do
+            i=$((i+1))
+            if [ "$i" -ge "$ATTEMPTS" ]; then
+              echo "MariaDB did not become ready after ${ATTEMPTS}s" >&2
+              exit 1
+            fi
+            sleep 1
+          done
           echo "Waiting for Chroma..."
-          until curl -sS http://127.0.0.1:8000/ | grep -q "Chroma"; do sleep 1; done
+          ATTEMPTS=60
+          i=0
+          until curl -sS http://127.0.0.1:3307/ | grep -q "Chroma"; do
+            i=$((i+1))
+            if [ "$i" -ge "$ATTEMPTS" ]; then
+              echo "Chroma did not become ready after ${ATTEMPTS}s" >&2
+              exit 1
+            fi
+            sleep 1
+          done
       - name: Run integration tests
         run: |
           pytest tests/agents/memory/test_save_article.py::test_save_article_chroma_required -q

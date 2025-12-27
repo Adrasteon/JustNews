@@ -5,6 +5,7 @@ provides light-weight rotation without adding a hard dependency on browser
 automation frameworks.  When enabled, callers can request a contextual
 user-agent string (per domain) with deterministic fallback behaviour.
 """
+
 from __future__ import annotations
 
 import random

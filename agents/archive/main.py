@@ -14,7 +14,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from agents.archive.archive_engine import get_archive_engine
-from common.metrics import JustNewsMetrics
+from agents.archive.metrics_registry import metrics
 from common.observability import get_logger
 
 logger = get_logger(__name__)
@@ -42,9 +42,7 @@ class MCPBusClient:
         }
         try:
             response = requests.post(
-                f"{self.base_url}/register",
-                json=registration_data,
-                timeout=(2, 5)
+                f"{self.base_url}/register", json=registration_data, timeout=(2, 5)
             )
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
@@ -71,9 +69,10 @@ async def lifespan(app: FastAPI):
                 "search_archive",
                 "get_archive_stats",
                 "store_single_article",
+                "queue_article",
                 "get_article_entities",
                 "search_knowledge_graph",
-                "link_entities"
+                "link_entities",
             ],
         )
         logger.info("Registered tools with MCP Bus.")
@@ -91,21 +90,20 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="JustNews Archive Service",
     description="Comprehensive article archiving with knowledge graph integration",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
-
-# Initialize metrics
-metrics = JustNewsMetrics("archive")
 
 # Register common endpoints
 try:
     from agents.common.shutdown import register_shutdown_endpoint
+
     register_shutdown_endpoint(app)
 except Exception:
     logger.debug("Shutdown endpoint not registered for archive")
 
 try:
     from agents.common.reload import register_reload_endpoint
+
     register_reload_endpoint(app)
 except Exception:
     logger.debug("Reload endpoint not registered for archive")
@@ -117,12 +115,14 @@ app.middleware("http")(metrics.request_middleware)
 # Pydantic models
 class ToolCall(BaseModel):
     """Standard MCP tool call format."""
+
     args: list[Any] = []
     kwargs: dict[str, Any] = {}
 
 
 class ArticleData(BaseModel):
     """Article data model."""
+
     url: str
     url_hash: str = ""
     domain: str
@@ -141,6 +141,7 @@ class ArticleData(BaseModel):
 
 class CrawlerResults(BaseModel):
     """Crawler results model."""
+
     multi_site_crawl: bool = False
     sites_crawled: int = 0
     total_articles: int = 0
@@ -166,6 +167,7 @@ def ready_endpoint():
 def get_metrics():
     """Prometheus metrics endpoint."""
     from fastapi.responses import Response
+
     return Response(metrics.get_metrics(), media_type="text/plain")
 
 
@@ -196,7 +198,9 @@ async def retrieve_article_endpoint(call: ToolCall):
 
         article = await retrieve_article(storage_key)
         if article is None:
-            raise HTTPException(status_code=404, detail=f"Article not found: {storage_key}")
+            raise HTTPException(
+                status_code=404, detail=f"Article not found: {storage_key}"
+            )
 
         return {"status": "success", "data": article}
 
@@ -257,6 +261,37 @@ async def store_single_article_endpoint(call: ToolCall):
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+@app.post("/queue_article")
+def queue_article_endpoint(call: ToolCall):
+    """Persist a cleaned HITL article into Stage B storage."""
+    try:
+        from agents.archive.tools import queue_article
+
+        payload: Any | None = None
+        if call.args:
+            payload = call.args[0]
+        elif "job_payload" in call.kwargs:
+            payload = call.kwargs.get("job_payload")
+        elif call.kwargs:
+            payload = call.kwargs
+
+        if not isinstance(payload, dict):
+            raise HTTPException(
+                status_code=400, detail="ingest payload must be provided"
+            )
+
+        result = queue_article(payload)
+        return {"status": "success", "data": result}
+
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error(f"Error in queue_article endpoint: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
 @app.post("/get_article_entities")
 async def get_article_entities_endpoint(call: ToolCall):
     """Get knowledge graph entities for an article."""
@@ -286,7 +321,10 @@ async def search_knowledge_graph_endpoint(call: ToolCall):
             raise HTTPException(status_code=400, detail="query is required")
 
         results = await search_knowledge_graph(query)
-        return {"status": "success", "data": {"query": query, "results": results, "count": len(results)}}
+        return {
+            "status": "success",
+            "data": {"query": query, "results": results, "count": len(results)},
+        }
 
     except HTTPException:
         raise
@@ -324,7 +362,9 @@ async def api_health():
         return health_data
     except Exception as e:
         logger.error(f"Health check failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Health check failed: {str(e)}"
+        ) from e
 
 
 @app.get("/api/stats")
@@ -335,9 +375,12 @@ def api_stats():
         return stats
     except Exception as e:
         logger.error(f"Stats retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Stats retrieval failed: {str(e)}"
+        ) from e
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=ARCHIVE_AGENT_PORT)

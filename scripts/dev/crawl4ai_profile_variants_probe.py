@@ -36,7 +36,9 @@ def _build_variants(base_profile: dict[str, Any]) -> list[tuple[str, dict[str, A
     adaptive_deep = copy.deepcopy(base_profile)
     adaptive_block = adaptive_deep.setdefault("adaptive", {})
     # Loosen the scoring thresholds to encourage deeper traversal
-    adaptive_block["confidence_threshold"] = min(0.3, adaptive_block.get("confidence_threshold", 0.5))
+    adaptive_block["confidence_threshold"] = min(
+        0.3, adaptive_block.get("confidence_threshold", 0.5)
+    )
     adaptive_block["max_depth"] = max(6, adaptive_block.get("max_depth", 5) or 5)
     adaptive_block["max_pages"] = max(60, adaptive_block.get("max_pages", 20) or 20)
     adaptive_block["top_k_links"] = max(15, adaptive_block.get("top_k_links", 10) or 10)
@@ -73,9 +75,15 @@ async def _run_variant(
     profile: dict[str, Any],
     site_config: SiteConfig,
     max_articles: int,
+    follow_external: bool | None = None,
 ) -> dict[str, Any]:
     try:
-        articles = await crawl_site_with_crawl4ai(site_config, profile, max_articles=max_articles)
+        articles = await crawl_site_with_crawl4ai(
+            site_config,
+            profile,
+            max_articles=max_articles,
+            follow_external=follow_external,
+        )
     except Exception as exc:  # noqa: BLE001 - keep probe resilient
         return {"error": str(exc)}
 
@@ -105,9 +113,25 @@ async def _run_probe(args: argparse.Namespace) -> dict[str, Any]:
     )
 
     results: dict[str, Any] = {}
+    # Interpret CLI NoFollow (string 'true'/'false') into follow_external boolean
+    if args.NoFollow is None:
+        follow_external_override = None
+    else:
+        follow_external_override = str(args.NoFollow).lower() not in (
+            "1",
+            "true",
+            "yes",
+        )
+
     for name, profile in variants:
         print(f"Running variant {name}...")
-        result = await _run_variant(name, profile, site_config, args.max_articles)
+        result = await _run_variant(
+            name,
+            profile,
+            site_config,
+            args.max_articles,
+            follow_external=follow_external_override,
+        )
         print(f"Variant {name} result: {result}\n")
         results[name] = result
 
@@ -115,8 +139,12 @@ async def _run_probe(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Probe Crawl4AI profile variants for a domain")
-    parser.add_argument("--domain", default="bbc.co.uk", help="Domain to test (default: bbc.co.uk)")
+    parser = argparse.ArgumentParser(
+        description="Probe Crawl4AI profile variants for a domain"
+    )
+    parser.add_argument(
+        "--domain", default="bbc.co.uk", help="Domain to test (default: bbc.co.uk)"
+    )
     parser.add_argument(
         "--profiles",
         type=Path,
@@ -134,6 +162,12 @@ def main() -> None:
         type=Path,
         default=None,
         help="Optional path to write the JSON summary",
+    )
+    parser.add_argument(
+        "--NoFollow",
+        choices=("true", "false"),
+        default=None,
+        help="Explicitly disable following external links for the probe variants (true|false). If omitted then profile/env defaults apply",
     )
     args = parser.parse_args()
 

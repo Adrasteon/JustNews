@@ -1,255 +1,461 @@
 {
-  "dashboard": {
-    "id": null,
-    "title": "JustNews System Overview",
-    "description": "Comprehensive system health and performance monitoring",
-    "tags": [
-      "system",
-      "overview",
-      "health"
-    ],
-    "timezone": "UTC",
-    "refresh": "30s",
-    "time": {
-      "from": "now-1h",
-      "to": "now"
-    },
-    "timepicker": {},
-    "templating": {
-      "list": [
-        {
-          "name": "instance",
-          "label": "Instance",
-          "type": "query",
-          "query": "label_values(up, instance)",
-          "multi": true
-        }
-      ]
-    },
-    "annotations": {
-      "list": []
-    },
-    "panels": [
-      {
-        "id": null,
-        "title": "System CPU Usage",
-        "type": "graph",
-        "description": "CPU usage across all system instances",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 0
-        },
-        "targets": [
-          {
-            "expr": "100 - (avg by(instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
-            "legendFormat": "{{instance}}"
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "System Memory Usage",
-        "type": "graph",
-        "description": "Memory usage percentage across all instances",
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 0
-        },
-        "targets": [
-          {
-            "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100",
-            "legendFormat": "{{instance}}"
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Active Agents",
-        "type": "stat",
-        "description": "Number of active JustNews services",
-        "gridPos": {
-          "h": 4,
-          "w": 8,
-          "x": 0,
-          "y": 8
-        },
-        "targets": [
-          {
-            "expr": "up{job=~\"justnews-.*\"}",
-            "legendFormat": "{{job}}"
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "MCP Bus Requests",
-        "type": "graph",
-        "description": "MCP Bus request rate over time",
-        "gridPos": {
-          "h": 8,
-          "w": 16,
-          "x": 8,
-          "y": 8
-        },
-        "targets": [
-          {
-            "expr": "rate(mcp_bus_requests_total[5m])",
-            "legendFormat": "Requests/sec"
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Adaptive Articles Produced",
-        "type": "stat",
-        "description": "Adaptive Crawl4AI article output for the latest scheduler window",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 0,
-          "y": 16
-        },
-        "targets": [
-          {
-            "expr": "justnews_crawler_scheduler_adaptive_articles_total",
-            "legendFormat": "Adaptive Articles"
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Adaptive Sufficiency Rate",
-        "type": "stat",
-        "description": "Percentage of adaptive articles meeting sufficiency criteria",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 6,
-          "y": 16
-        },
-        "targets": [
-          {
-            "expr": "justnews_crawler_scheduler_adaptive_articles_sufficient_total / clamp_min(justnews_crawler_scheduler_adaptive_articles_total, 1) * 100",
-            "legendFormat": "Sufficient %"
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Adaptive Confidence Average",
-        "type": "stat",
-        "description": "Average model confidence emitted by adaptive runs",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 12,
-          "y": 16
-        },
-        "targets": [
-          {
-            "expr": "justnews_crawler_scheduler_adaptive_confidence_average",
-            "legendFormat": "Confidence"
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Adaptive Pages per Article",
-        "type": "stat",
-        "description": "Average Crawl4AI pages crawled per adaptive article",
-        "gridPos": {
-          "h": 4,
-          "w": 6,
-          "x": 18,
-          "y": 16
-        },
-        "targets": [
-          {
-            "expr": "justnews_crawler_scheduler_adaptive_pages_crawled_average",
-            "legendFormat": "Pages"
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      },
-      {
-        "id": null,
-        "title": "Adaptive Stop Reasons",
-        "type": "bargauge",
-        "description": "Distribution of adaptive stop reasons captured by the scheduler",
-        "gridPos": {
-          "h": 8,
-          "w": 24,
-          "x": 0,
-          "y": 20
-        },
-        "targets": [
-          {
-            "expr": "sum by(reason) (justnews_crawler_scheduler_adaptive_stop_reasons_total)",
-            "legendFormat": "{{reason}}"
-          }
-        ],
-        "options": {},
-        "fieldConfig": {
-          "defaults": {},
-          "overrides": []
-        },
-        "pluginVersion": "8.0.0"
-      }
-    ],
-    "version": 1,
-    "schemaVersion": 36,
-    "style": "dark"
+  "id": null,
+  "uid": "ef5zdqbvm17uoc",
+  "title": "JustNews System Overview",
+  "description": "Infrastructure-focused view for host, network, and accelerator health",
+  "tags": [
+    "system",
+    "infrastructure",
+    "health"
+  ],
+  "timezone": "UTC",
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
   },
-  "overwrite": false
+  "timepicker": {},
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "label": "Instance",
+        "type": "query",
+        "query": "label_values(up{job=~\"justnews-.*\"}, instance)",
+        "multi": true,
+        "includeAll": true,
+        "refresh": 1
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Fleet Availability",
+      "type": "stat",
+      "description": "Number of justnews-* services reporting up=1",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "sum(up{job=~\"justnews-.*\"})",
+          "legendFormat": "Fleet Availability"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Average CPU (%)",
+      "type": "stat",
+      "description": "Fleet-wide average CPU utilisation over the last 5m",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "avg(100 - (avg by(instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100))",
+          "legendFormat": "Average CPU (%)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Average Memory (%)",
+      "type": "stat",
+      "description": "Fleet-wide average memory pressure",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "avg((1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100)",
+          "legendFormat": "Average Memory (%)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Average Disk Usage (%)",
+      "type": "stat",
+      "description": "Average root disk utilisation across hosts",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "avg((1 - node_filesystem_avail_bytes{mountpoint=\"/\",fstype!~\"tmpfs|devtmpfs\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!~\"tmpfs|devtmpfs\"}) * 100)",
+          "legendFormat": "Average Disk Usage (%)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "CPU Usage by Instance",
+      "type": "timeseries",
+      "description": "Per-instance CPU utilisation (5m rate)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "expr": "100 - (avg by(instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "title": "Memory Usage by Instance",
+      "type": "timeseries",
+      "description": "Per-instance memory pressure",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "targets": [
+        {
+          "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "title": "Load Average (1m)",
+      "type": "timeseries",
+      "description": "Node load1 value per instance",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "targets": [
+        {
+          "expr": "node_load1",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "title": "Network Throughput",
+      "type": "timeseries",
+      "description": "Combined receive + transmit throughput per instance",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "targets": [
+        {
+          "expr": "sum by(instance) (rate(node_network_receive_bytes_total[5m]) + rate(node_network_transmit_bytes_total[5m]))",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "title": "Disk Pressure Hotspots",
+      "type": "bargauge",
+      "description": "Top instances by root filesystem usage",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "topk(10, (1 - node_filesystem_avail_bytes{fstype!~\"tmpfs|devtmpfs\", mountpoint=\"/\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|devtmpfs\", mountpoint=\"/\"}) * 100)",
+          "legendFormat": "{{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal"
+      }
+    },
+    {
+      "id": 10,
+      "title": "GPU Utilization",
+      "type": "timeseries",
+      "description": "GPU utilisation per accelerator",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "nvidia_gpu_utilization_ratio * 100",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "title": "GPU Memory Usage (GB)",
+      "type": "timeseries",
+      "description": "GPU memory usage per accelerator",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "targets": [
+        {
+          "expr": "nvidia_gpu_memory_used_bytes / 1024 / 1024 / 1024",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "gbytes"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 12,
+      "title": "GPU Temperature p95 (15m)",
+      "type": "stat",
+      "description": "95th percentile GPU temperature across the fleet",
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
+      "targets": [
+        {
+          "expr": "quantile_over_time(0.95, nvidia_gpu_temperature_celsius[15m])",
+          "legendFormat": "GPU Temperature p95 (15m)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "GPU Power Draw (avg)",
+      "type": "stat",
+      "description": "Average GPU power draw over the last scrape interval",
+      "gridPos": {
+        "h": 4,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "targets": [
+        {
+          "expr": "avg(nvidia_gpu_power_draw_watts)",
+          "legendFormat": "GPU Power Draw (avg)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      }
+    }
+  ],
+  "version": 1,
+  "schemaVersion": 36,
+  "style": "dark"
 }

@@ -60,7 +60,7 @@ class EnvironmentProfile:
             "name": self.name,
             "environment": self.environment.value,
             "overrides": self.overrides,
-            "version": self.version
+            "version": self.version,
         }
         data_str = json.dumps(profile_data, sort_keys=True, default=str)
         return hashlib.sha256(data_str.encode()).hexdigest()
@@ -84,7 +84,9 @@ class EnvironmentProfile:
         try:
             return JustNewsConfig(**config_dict)
         except Exception as e:
-            raise ValueError(f"Failed to apply profile overrides for {self.name}: {e}") from e
+            raise ValueError(
+                f"Failed to apply profile overrides for {self.name}: {e}"
+            ) from e
 
     def _deep_merge(self, base: dict[str, Any], override: dict[str, Any]):
         """Deep merge override dictionary into base dictionary"""
@@ -105,15 +107,15 @@ class EnvironmentProfile:
 
         # Validate environment consistency
         if self.environment == Environment.PRODUCTION:
-            if self.overrides.get('system', {}).get('debug_mode', False):
+            if self.overrides.get("system", {}).get("debug_mode", False):
                 errors.append("Production profiles cannot have debug_mode enabled")
 
         # Validate required overrides for production
         if self.environment == Environment.PRODUCTION:
             required_overrides = [
-                ('database', 'password'),
-                ('security', 'api_key_required'),
-                ('monitoring', 'enabled')
+                ("database", "password"),
+                ("security", "api_key_required"),
+                ("monitoring", "enabled"),
             ]
 
             for section, key in required_overrides:
@@ -141,11 +143,11 @@ class EnvironmentProfile:
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
             "version": self.version,
-            "checksum": self.checksum
+            "checksum": self.checksum,
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'EnvironmentProfile':
+    def from_dict(cls, data: dict[str, Any]) -> "EnvironmentProfile":
         """Create profile from dictionary"""
         # Convert environment string back to enum
         environment = Environment(data["environment"])
@@ -163,7 +165,7 @@ class EnvironmentProfile:
             created_at=created_at,
             updated_at=updated_at,
             version=data.get("version", "1.0.0"),
-            checksum=data.get("checksum")
+            checksum=data.get("checksum"),
         )
 
 
@@ -185,7 +187,9 @@ class EnvironmentProfileManager:
         Args:
             profiles_dir: Directory containing profile files (auto-discovered if None)
         """
-        self.profiles_dir = Path(profiles_dir) if profiles_dir else self._find_profiles_dir()
+        self.profiles_dir = (
+            Path(profiles_dir) if profiles_dir else self._find_profiles_dir()
+        )
         self.profiles_dir.mkdir(parents=True, exist_ok=True)
 
         # Profile cache
@@ -195,7 +199,9 @@ class EnvironmentProfileManager:
         # Load built-in profiles
         self._load_builtin_profiles()
 
-        logger.info(f"✅ Environment profile manager initialized (profiles dir: {self.profiles_dir})")
+        logger.info(
+            f"✅ Environment profile manager initialized (profiles dir: {self.profiles_dir})"
+        )
 
     def _find_profiles_dir(self) -> Path:
         """Find profiles directory using standard search paths"""
@@ -203,7 +209,7 @@ class EnvironmentProfileManager:
             Path.cwd() / "config" / "refactor" / "environments",
             Path.cwd() / "config" / "environments",
             Path.home() / ".justnews" / "environments",
-            Path("/etc/justnews/environments")
+            Path("/etc/justnews/environments"),
         ]
 
         for path in search_paths:
@@ -221,21 +227,13 @@ class EnvironmentProfileManager:
             environment=Environment.DEVELOPMENT,
             description="Development environment with debug features enabled",
             overrides={
-                "system": {
-                    "debug_mode": True,
-                    "log_level": "DEBUG"
-                },
-                "database": {
-                    "host": "localhost",
-                    "database": "justnews_dev"
-                },
+                "system": {"debug_mode": True, "log_level": "DEBUG"},
+                "database": {"host": "localhost", "database": "justnews_dev"},
                 "gpu": {
                     "enabled": False  # Disable GPU in dev by default
                 },
-                "monitoring": {
-                    "enabled": False
-                }
-            }
+                "monitoring": {"enabled": False},
+            },
         )
 
         # Staging profile
@@ -244,24 +242,15 @@ class EnvironmentProfileManager:
             environment=Environment.STAGING,
             description="Staging environment for testing and validation",
             overrides={
-                "system": {
-                    "debug_mode": False,
-                    "log_level": "INFO"
-                },
+                "system": {"debug_mode": False, "log_level": "INFO"},
                 "database": {
                     "host": "staging-db.justnews.internal",
-                    "database": "justnews_staging"
+                    "database": "justnews_staging",
                 },
-                "gpu": {
-                    "enabled": True
-                },
-                "monitoring": {
-                    "enabled": True
-                },
-                "security": {
-                    "api_key_required": True
-                }
-            }
+                "gpu": {"enabled": True},
+                "monitoring": {"enabled": True},
+                "security": {"api_key_required": True},
+            },
         )
 
         # Production profile
@@ -270,30 +259,16 @@ class EnvironmentProfileManager:
             environment=Environment.PRODUCTION,
             description="Production environment with security and performance optimizations",
             overrides={
-                "system": {
-                    "debug_mode": False,
-                    "log_level": "WARNING"
-                },
+                "system": {"debug_mode": False, "log_level": "WARNING"},
                 "database": {
                     "host": "prod-db.justnews.internal",
-                    "database": "justnews_prod"
+                    "database": "justnews_prod",
                 },
-                "gpu": {
-                    "enabled": True
-                },
-                "monitoring": {
-                    "enabled": True,
-                    "metrics_enabled": True
-                },
-                "security": {
-                    "api_key_required": True,
-                    "rate_limiting_enabled": True
-                },
-                "performance": {
-                    "caching_enabled": True,
-                    "connection_pooling": True
-                }
-            }
+                "gpu": {"enabled": True},
+                "monitoring": {"enabled": True, "metrics_enabled": True},
+                "security": {"api_key_required": True, "rate_limiting_enabled": True},
+                "performance": {"caching_enabled": True, "connection_pooling": True},
+            },
         )
 
         # Register built-in profiles
@@ -320,7 +295,9 @@ class EnvironmentProfileManager:
 
         if name not in self._profiles:
             available = list(self._profiles.keys())
-            raise ValueError(f"Profile '{name}' not found. Available profiles: {available}")
+            raise ValueError(
+                f"Profile '{name}' not found. Available profiles: {available}"
+            )
 
         return self._profiles[name]
 
@@ -369,7 +346,7 @@ class EnvironmentProfileManager:
             profile.checksum = profile._calculate_checksum()
 
             # Save to file
-            with open(profile_file, 'w') as f:
+            with open(profile_file, "w") as f:
                 json.dump(profile.to_dict(), f, indent=2, default=str)
 
             # Update cache
@@ -389,7 +366,7 @@ class EnvironmentProfileManager:
         environment: Environment,
         base_profile: str | None = None,
         description: str = "",
-        overrides: dict[str, Any] | None = None
+        overrides: dict[str, Any] | None = None,
     ) -> EnvironmentProfile:
         """
         Create new environment profile
@@ -416,7 +393,7 @@ class EnvironmentProfileManager:
             environment=environment,
             description=description,
             base_config=base_config,
-            overrides=overrides or {}
+            overrides=overrides or {},
         )
 
         # Validate profile
@@ -444,7 +421,7 @@ class EnvironmentProfileManager:
             Environment: Detected environment
         """
         # Check environment variable
-        env_var = os.environ.get('JUSTNEWS_ENVIRONMENT')
+        env_var = os.environ.get("JUSTNEWS_ENVIRONMENT")
         if env_var:
             try:
                 return Environment(env_var.lower())
@@ -459,10 +436,11 @@ class EnvironmentProfileManager:
 
         # Check hostname patterns
         import socket
+
         hostname = socket.gethostname().lower()
-        if 'prod' in hostname or 'production' in hostname:
+        if "prod" in hostname or "production" in hostname:
             return Environment.PRODUCTION
-        if 'staging' in hostname or 'stage' in hostname:
+        if "staging" in hostname or "stage" in hostname:
             return Environment.STAGING
 
         # Default to development
@@ -514,7 +492,7 @@ class EnvironmentProfileManager:
             "created_at": profile.created_at.isoformat(),
             "updated_at": profile.updated_at.isoformat(),
             "checksum": profile.checksum,
-            "overrides_count": len(profile.overrides)
+            "overrides_count": len(profile.overrides),
         }
 
 
@@ -524,6 +502,7 @@ class EnvironmentProfileManager:
 
 _profile_manager: EnvironmentProfileManager | None = None
 
+
 def get_profile_manager() -> EnvironmentProfileManager:
     """Get global profile manager instance"""
     global _profile_manager
@@ -531,9 +510,6 @@ def get_profile_manager() -> EnvironmentProfileManager:
         _profile_manager = EnvironmentProfileManager()
     return _profile_manager
 
+
 # Export public API
-__all__ = [
-    'EnvironmentProfile',
-    'EnvironmentProfileManager',
-    'get_profile_manager'
-]
+__all__ = ["EnvironmentProfile", "EnvironmentProfileManager", "get_profile_manager"]

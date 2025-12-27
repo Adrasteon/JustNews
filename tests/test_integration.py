@@ -43,7 +43,7 @@ class TestMCPBusIntegration:
             "agent": "analyst",
             "port": 8004,
             "capabilities": ["sentiment_analysis", "bias_detection"],
-            "health_endpoint": "/health"
+            "health_endpoint": "/health",
         }
 
         # This would normally call the MCP Bus
@@ -64,11 +64,11 @@ class TestMCPBusIntegration:
         analyst_response = {
             "sentiment": "neutral",
             "bias_score": 0.1,
-            "confidence": 0.95
+            "confidence": 0.95,
         }
 
         # Mock MCP Bus calls
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             # Setup response sequence
             scout_call = AsyncMock()
             scout_call.json.return_value = scout_response
@@ -100,7 +100,7 @@ class TestMCPBusIntegration:
                         "title": "Breaking News: AI Advances",
                         "content": "Artificial intelligence continues to evolve...",
                         "source": "tech_news",
-                        "timestamp": "2024-01-15T10:00:00Z"
+                        "timestamp": "2024-01-15T10:00:00Z",
                     }
                 ]
             },
@@ -108,27 +108,31 @@ class TestMCPBusIntegration:
                 "sentiment": "positive",
                 "bias_score": 0.05,
                 "confidence": 0.92,
-                "key_entities": ["AI", "technology", "innovation"]
+                "key_entities": ["AI", "technology", "innovation"],
             },
             "fact_checker": {
                 "verdict": "verified",
                 "confidence": 0.88,
                 "sources_checked": 3,
-                "contradictions_found": 0
+                "contradictions_found": 0,
             },
             "synthesizer": {
                 "summary": "AI technology continues to advance with positive developments",
-                "key_points": ["AI evolution", "Positive sentiment", "Verified information"],
-                "topics": ["Technology", "AI", "Innovation"]
+                "key_points": [
+                    "AI evolution",
+                    "Positive sentiment",
+                    "Verified information",
+                ],
+                "topics": ["Technology", "AI", "Innovation"],
             },
             "critic": {
                 "quality_score": 8.5,
                 "recommendations": ["Expand on technical details"],
-                "publish_ready": True
-            }
+                "publish_ready": True,
+            },
         }
 
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             # Setup sequential responses
             call_responses = []
             for _agent, response in mock_responses.items():
@@ -186,10 +190,10 @@ class TestMCPBusIntegration:
         _failure_sequence = [
             {"agent": "analyst", "error": "GPU memory error", "retry_count": 2},
             {"agent": "fact_checker", "error": "Network timeout", "retry_count": 1},
-            {"agent": "synthesizer", "error": None, "success": True}
+            {"agent": "synthesizer", "error": None, "success": True},
         ]
 
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             # Setup failure and recovery sequence
             call_count = 0
 
@@ -237,15 +241,16 @@ class TestMCPBusIntegration:
         initial_memory = await self._get_memory_usage()
 
         # Execute memory-intensive workflow
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             # Mock large data responses
             large_article_data = {
                 "articles": [
                     {
                         "id": f"article_{i}",
                         "content": "Large content " * 1000,  # Simulate large content
-                        "metadata": {"size": "large"}
-                    } for i in range(50)  # 50 large articles
+                        "metadata": {"size": "large"},
+                    }
+                    for i in range(50)  # 50 large articles
                 ]
             }
 
@@ -270,13 +275,16 @@ class TestMCPBusIntegration:
         # This would normally orchestrate Scout -> Analyst communication
         return {
             "articles": [{"id": "1", "title": "Test"}],
-            "analysis": {"sentiment": "neutral", "confidence": 0.9}
+            "analysis": {"sentiment": "neutral", "confidence": 0.9},
         }
 
-    async def _simulate_pipeline_step(self, agent: str, expected_response: dict) -> dict[str, Any]:
+    async def _simulate_pipeline_step(
+        self, agent: str, expected_response: dict
+    ) -> dict[str, Any]:
         """Simulate a single pipeline step"""
         # This simulates making an HTTP call to an agent
         import httpx
+
         async with httpx.AsyncClient() as client:
             # This will be mocked, so it doesn't actually make a call
             await client.post(f"http://localhost/{agent}")
@@ -290,8 +298,8 @@ class TestMCPBusIntegration:
             "final_article": {
                 "quality_score": 8.5,
                 "publish_ready": True,
-                "summary": "AI advances continue"
-            }
+                "summary": "AI advances continue",
+            },
         }
 
     async def _simulate_concurrent_workflow(self, workflow_id: int) -> dict[str, Any]:
@@ -301,22 +309,16 @@ class TestMCPBusIntegration:
 
     async def _execute_workflow_with_failures(self) -> dict[str, Any]:
         """Execute workflow that encounters and recovers from failures"""
-        return {
-            "status": "completed",
-            "retries_attempted": 3,
-            "final_success": True
-        }
+        return {"status": "completed", "retries_attempted": 3, "final_success": True}
 
     async def _execute_memory_intensive_workflow(self) -> dict[str, Any]:
         """Execute memory-intensive workflow"""
-        return {
-            "status": "completed",
-            "memory_efficient": True
-        }
+        return {"status": "completed", "memory_efficient": True}
 
     async def _get_memory_usage(self) -> int:
         """Get current memory usage (simplified)"""
         import psutil
+
         process = psutil.Process()
         return process.memory_info().rss
 
@@ -338,10 +340,10 @@ class TestAgentIntegrationPatterns:
             ("analyst", 8004),
             ("fact_checker", 8003),
             ("synthesizer", 8005),
-            ("memory", 8007)
+            ("memory", 8007),
         ]
 
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             # Setup healthy responses
             mock_response = AsyncMock()
             mock_response.json.return_value = {"status": "healthy", "uptime": 3600}
@@ -352,22 +354,22 @@ class TestAgentIntegrationPatterns:
             # Verify all agents are healthy
             assert all(result["healthy"] for result in health_results.values())
             assert len(health_results) == len(agents_to_test)
+
     @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_configuration_consistency(self):
         """Test configuration consistency across agents"""
         # Test that agents share consistent configuration
-        config_checks = [
-            "MCP_BUS_URL",
-            "LOG_LEVEL",
-            "GPU_CONFIG_PATH"
-        ]
+        config_checks = ["MCP_BUS_URL", "LOG_LEVEL", "GPU_CONFIG_PATH"]
 
-        with patch.dict(os.environ, {
-            "MCP_BUS_URL": "http://localhost:8000",
-            "LOG_LEVEL": "INFO",
-            "GPU_CONFIG_PATH": "/opt/justnews/gpu"
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "MCP_BUS_URL": "http://localhost:8000",
+                "LOG_LEVEL": "INFO",
+                "GPU_CONFIG_PATH": "/opt/justnews/gpu",
+            },
+        ):
             # Test configuration extraction without importing actual agents
             analyst_config = await self._extract_agent_config()
             memory_config = await self._extract_agent_config()
@@ -387,7 +389,7 @@ class TestAgentIntegrationPatterns:
         return {
             "MCP_BUS_URL": os.environ.get("MCP_BUS_URL"),
             "LOG_LEVEL": os.environ.get("LOG_LEVEL"),
-            "GPU_CONFIG_PATH": os.environ.get("GPU_CONFIG_PATH")
+            "GPU_CONFIG_PATH": os.environ.get("GPU_CONFIG_PATH"),
         }
 
 
@@ -403,7 +405,7 @@ class TestSystemMonitoringIntegration:
     async def test_metrics_collection_integration(self):
         """Test metrics collection across the system"""
         # Execute operations that generate metrics
-        with patch('common.metrics.JustNewsMetrics') as mock_metrics:
+        with patch("common.metrics.JustNewsMetrics") as mock_metrics:
             mock_metrics_instance = MagicMock()
             mock_metrics.return_value = mock_metrics_instance
 
@@ -425,6 +427,7 @@ class TestSystemMonitoringIntegration:
         """Simulate various system operations"""
         # Simulate MCP Bus calls, agent processing, etc.
         from common.metrics import JustNewsMetrics
+
         metrics = JustNewsMetrics("test")
         metrics.increment("test_counter")
         metrics.timing("test_timer", 0.1)

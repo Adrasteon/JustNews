@@ -1,4 +1,5 @@
 """Cookie/consent modal heuristics for the crawler."""
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -106,7 +107,6 @@ class ModalHandler:
             "//div[contains(@id, 'consent')]",
             "//section[contains(@class, 'cookie')]",
             "//section[contains(@id, 'cookie')]",
-
             # Modern cookie banner patterns
             "//div[contains(@class, 'gdpr')]",
             "//div[contains(@class, 'privacy')]",
@@ -122,14 +122,12 @@ class ModalHandler:
             "//div[contains(@id, 'popup')]",
             "//div[contains(@id, 'dialog')]",
             "//div[contains(@id, 'notification')]",
-
             # Data attributes
             "//div[contains(@data-testid, 'cookie')]",
             "//div[contains(@data-testid, 'gdpr')]",
             "//div[contains(@data-testid, 'consent')]",
             "//div[contains(@data-testid, 'privacy')]",
             "//div[contains(@data-testid, 'banner')]",
-
             # ARIA attributes
             "//div[contains(@role, 'dialog')]",
             "//div[contains(@role, 'alertdialog')]",
@@ -137,20 +135,17 @@ class ModalHandler:
             "//div[contains(@aria-label, 'consent')]",
             "//div[contains(@aria-label, 'privacy')]",
             "//div[contains(@aria-label, 'gdpr')]",
-
             # Generic overlay patterns
             "//div[contains(@class, 'fixed') and contains(@class, 'bottom')]",
             "//div[contains(@class, 'fixed') and contains(@class, 'top')]",
             "//div[contains(@style, 'position: fixed')]",
             "//div[contains(@style, 'position:fixed')]",
-
             # Common framework classes
             "//div[contains(@class, 'fc-consent')]",  # Foundry CMP
-            "//div[contains(@class, 'onetrust')]",    # OneTrust
-            "//div[contains(@class, 'cookiebot')]",   # Cookiebot
-            "//div[contains(@class, 'cmp')]",         # Generic CMP
-            "//div[contains(@class, 'cc-banner')]",   # Cookie Consent
-
+            "//div[contains(@class, 'onetrust')]",  # OneTrust
+            "//div[contains(@class, 'cookiebot')]",  # Cookiebot
+            "//div[contains(@class, 'cmp')]",  # Generic CMP
+            "//div[contains(@class, 'cc-banner')]",  # Cookie Consent
             # Other element types
             "//section[contains(@class, 'cookie')]",
             "//section[contains(@class, 'consent')]",
@@ -162,7 +157,6 @@ class ModalHandler:
             "//aside[contains(@class, 'gdpr')]",
             "//aside[contains(@class, 'privacy')]",
             "//aside[contains(@class, 'banner')]",
-
             # Iframes that might be cookie-related
             "//iframe[contains(@src, 'cookie')]",
             "//iframe[contains(@src, 'consent')]",

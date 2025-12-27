@@ -7,6 +7,7 @@ via the MCP protocol. Provides clean interfaces to archive functionality.
 
 from typing import Any
 
+from agents.archive import ingest_pipeline
 from agents.archive.archive_engine import get_archive_engine
 from common.observability import get_logger
 
@@ -16,13 +17,23 @@ logger = get_logger(__name__)
 archive_engine = get_archive_engine()
 
 
+def queue_article(job_payload: dict[str, Any]) -> dict[str, Any]:
+    """Expose the Stage 2 ingest helper via the archive tool surface."""
+
+    try:
+        return ingest_pipeline.queue_article(job_payload)
+    except Exception as exc:
+        logger.error(f"Error queueing article via archive tools: {exc}")
+        raise
+
+
 async def archive_articles(
     multi_site_crawl: bool = False,
     sites_crawled: int = 0,
     total_articles: int = 0,
     processing_time_seconds: float = 0.0,
     articles_per_second: float = 0.0,
-    articles: list[dict[str, Any]] | None = None
+    articles: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """
     Archive articles from crawler results.
@@ -45,7 +56,7 @@ async def archive_articles(
             "total_articles": total_articles,
             "processing_time_seconds": processing_time_seconds,
             "articles_per_second": articles_per_second,
-            "articles": articles or []
+            "articles": articles or [],
         }
 
         result = await archive_engine.archive_articles(crawler_results)
@@ -81,8 +92,7 @@ async def retrieve_article(storage_key: str) -> dict[str, Any] | None:
 
 
 async def search_archive(
-    query: str,
-    filters: dict[str, Any] | None = None
+    query: str, filters: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     """
     Search archived articles by query and filters.
@@ -101,7 +111,7 @@ async def search_archive(
             "query": query,
             "results": storage_keys,
             "count": len(storage_keys),
-            "filters_applied": filters or {}
+            "filters_applied": filters or {},
         }
 
         logger.info(f"Search '{query}' returned {len(storage_keys)} results")
@@ -121,7 +131,9 @@ def get_archive_stats() -> dict[str, Any]:
     """
     try:
         stats = archive_engine.get_archive_stats()
-        logger.info(f"Retrieved archive stats: {stats.get('total_archived_articles', 0)} articles")
+        logger.info(
+            f"Retrieved archive stats: {stats.get('total_archived_articles', 0)} articles"
+        )
         return stats
 
     except Exception as e:
@@ -143,7 +155,7 @@ async def store_single_article(
     confidence: float = 0.8,
     publisher_meta: dict[str, Any] | None = None,
     news_score: float = 0.7,
-    timestamp: str | None = None
+    timestamp: str | None = None,
 ) -> dict[str, Any]:
     """
     Store a single article with complete metadata.
@@ -182,7 +194,7 @@ async def store_single_article(
             "confidence": confidence,
             "publisher_meta": publisher_meta or {},
             "news_score": news_score,
-            "timestamp": timestamp
+            "timestamp": timestamp,
         }
 
         storage_key = await archive_engine.store_single_article(article_data)
@@ -190,7 +202,7 @@ async def store_single_article(
         result = {
             "storage_key": storage_key,
             "article_title": title,
-            "status": "success"
+            "status": "success",
         }
 
         logger.info(f"Stored single article: {title[:50]}...")
@@ -212,7 +224,10 @@ async def get_article_entities(storage_key: str) -> dict[str, Any] | None:
         Entity data or None if not available
     """
     try:
-        if not hasattr(archive_engine, 'kg_manager') or archive_engine.kg_manager is None:
+        if (
+            not hasattr(archive_engine, "kg_manager")
+            or archive_engine.kg_manager is None
+        ):
             return None
 
         entities = await archive_engine.kg_manager.get_article_entities(storage_key)
@@ -235,7 +250,10 @@ async def search_knowledge_graph(query: str) -> list[dict[str, Any]]:
         List of matching entities and relationships
     """
     try:
-        if not hasattr(archive_engine, 'kg_manager') or archive_engine.kg_manager is None:
+        if (
+            not hasattr(archive_engine, "kg_manager")
+            or archive_engine.kg_manager is None
+        ):
             return []
 
         results = await archive_engine.kg_manager.search_entities(query)
@@ -258,7 +276,10 @@ async def link_entities(article_data: dict[str, Any]) -> dict[str, Any]:
         Linked entity data
     """
     try:
-        if not hasattr(archive_engine, 'entity_linker') or archive_engine.entity_linker is None:
+        if (
+            not hasattr(archive_engine, "entity_linker")
+            or archive_engine.entity_linker is None
+        ):
             return {"linked_entities": []}
 
         linked_entities = await archive_engine.entity_linker.link_entities(article_data)
@@ -266,7 +287,7 @@ async def link_entities(article_data: dict[str, Any]) -> dict[str, Any]:
         result = {
             "linked_entities": linked_entities,
             "article_url": article_data.get("url"),
-            "linking_timestamp": archive_engine.config.get("timestamp")
+            "linking_timestamp": archive_engine.config.get("timestamp"),
         }
 
         logger.debug(f"Linked {len(linked_entities)} entities for article")

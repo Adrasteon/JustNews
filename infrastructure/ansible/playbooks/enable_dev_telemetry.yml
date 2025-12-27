@@ -1,0 +1,69 @@
+---
+# Example Ansible playbook to opt-in and start the JustNews development telemetry stack
+# (Loki + Tempo + OTel node) on a set of hosts. This is a minimal example and should
+# be adapted to your environment (package manager, security controls, and paths).
+
+- hosts: dev_telemetry_hosts
+  become: yes
+  vars:
+    repo_path: /home/adra/JustNews
+    global_env_file: /etc/justnews/global.env
+    enable_dev_telemetry: true
+
+  tasks:
+    - name: Ensure docker is installed (apt example)
+      apt:
+        name: ["docker.io"]
+        state: latest
+      when: ansible_os_family == 'Debian'
+
+    - name: Ensure docker compose plugin present (apt/curl fallback)
+      shell: |
+        if ! command -v docker-compose >/dev/null 2>&1 && ! docker compose version >/dev/null 2>&1; then
+          apt-get update && apt-get install -y docker-compose-plugin || true
+        fi
+      args:
+        warn: false
+
+    - name: Create /etc/justnews directory
+      file:
+        path: /etc/justnews
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Ensure ENABLE_DEV_TELEMETRY is set in global.env
+      lineinfile:
+        path: "{{ global_env_file }}"
+        regexp: '^ENABLE_DEV_TELEMETRY='
+        line: "ENABLE_DEV_TELEMETRY={{ 'true' if enable_dev_telemetry else 'false' }}"
+        create: yes
+
+    - name: Install dev telemetry systemd unit
+      copy:
+        src: "{{ repo_path }}/infrastructure/systemd/units/justnews-dev-telemetry.service"
+        dest: /etc/systemd/system/justnews-dev-telemetry.service
+        mode: '0644'
+
+    - name: Reload systemd
+      command: systemctl daemon-reload
+
+    - name: Enable and start dev telemetry unit
+      systemd:
+        name: justnews-dev-telemetry.service
+        enabled: yes
+        state: started
+
+    - name: Wait for demo emitter probe
+      uri:
+        url: http://localhost:8080/
+        method: GET
+        status_code: 200
+      register: probe
+      retries: 20
+      delay: 3
+
+    - name: Show probe result
+      debug:
+        var: probe.status

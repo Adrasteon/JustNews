@@ -1,58 +1,107 @@
 # JustNews Operations Guide
 
+## Quick Links
+
+**Getting Started**:
+
+- [Setup Guide](./SETUP_GUIDE.md) — Complete end-to-end installation (Python, Vault, MariaDB, ChromaDB, systemd)
+
+- [Environment Configuration](./ENVIRONMENT_CONFIG.md) — Global configuration, environment variables, secrets management
+
+- [Troubleshooting](./TROUBLESHOOTING.md) — Diagnostics and recovery procedures
+
+**Infrastructure**:
+
+- [Vault Setup & Administration](./VAULT_SETUP.md) — Secrets management, AppRole, key rotation
+
+- [Systemd Operations](../infrastructure/systemd/README.md) — Service management and deployment
+
 ## Deployment Procedures
 
 This guide covers production deployment, scaling, and operational procedures for JustNews.
 
 ## Stage B Validation Workflow
+
 - Follow the playbook in `docs/operations/stage_b_validation.md` when preparing Stage B rollout work.
+
 - Instantiate ops tickets with the checklist from `docs/operations/stage_b_ticket_template.md`.
+
 - Attach artifacts to the running ticket and log summaries in `docs/operations/stage_b_validation_evidence_log.md`.
+
 - Use `bash scripts/ops/apply_stage_b_migration.sh` to run migration 003 and optionally append a timestamped entry to the evidence log; the script drops raw output in `logs/operations/migrations/` for archival.
 
 ## Environment Overview
 
 ### Development Environment
+
 - **Purpose**: Feature development and testing
+
 - **Components**: systemd with hot reload support via development scripts
+
 - **Persistence**: Local volumes and SQLite
+
 - **Monitoring**: Basic logging and health checks
 
 ### Staging Environment
+
 - **Purpose**: Integration testing and validation
+
 - **Components**: systemd services with multiple instances or dedicated staging host
+
 - **Persistence**: MariaDB with test data
+
 - **Monitoring**: Prometheus/Grafana dashboards
 
 ### Production Environment
+
 - **Purpose**: Live system serving real traffic
+
 - **Components**: systemd-managed services with cluster-level HA managed outside this repo
+
 - **Persistence**: MariaDB cluster with backups
+
 - **Monitoring**: Full observability stack
 
 ## Prerequisites
 
 ### System Requirements
+
 ```bash
-# Minimum hardware requirements
+
+## Minimum hardware requirements
+
 - CPU: 8 cores
+
 - RAM: 32GB
+
 - GPU: NVIDIA RTX 3090 or equivalent (24GB VRAM)
+
 - Storage: 500GB SSD
+
 - Network: 1Gbps connection
 
-# Software requirements
+## Software requirements
+
 - NVIDIA GPU Operator (if using GPU features)
+
 - MariaDB 10.11+
+
 - ChromaDB 0.4.18+
+
 - Redis 7+
+
 - systemd (required for production runs)
-# NOTE: Kubernetes and Docker are deprecated and archived; see `infrastructure/archives/` for historical artifacts.
+
+## NOTE: Kubernetes and Docker are deprecated and archived; see `infrastructure/archives/` for historical artifacts.
+
 ```
 
 ### Network Configuration
+
 ```yaml
-# Required ports (internal)
+
+## Required ports (internal)
+
 8000: MCP Bus
 8001-8008: Agent services
 8013: Dashboard
@@ -60,8 +109,10 @@ This guide covers production deployment, scaling, and operational procedures for
 8020: GraphQL API
 8021: Archive API
 
-# External access
+## External access
+
 80/443: Web interface and APIs
+
 ```
 
 #### GPU / bitsandbytes (important ops note)
@@ -72,51 +123,70 @@ This guide covers production deployment, scaling, and operational procedures for
 
 - Artifacts & guidance: see the prebuilt wheel and notes under `.build/bitsandbytes/dist/` and `docs/bitsandbytes_cuda122_wheel.md`. When you upgrade the system/CUDA/PyTorch stacks, either rebuild a matching wheel or install a bitsandbytes package built for the new CUDA target.
 
-
 ## Deployment Methods
 
 ### Method 1: systemd (Preferred / Production)
 
 #### Prerequisites
+
 ```bash
-# No Kubernetes required. systemd is the default orchestration for JustNews.
-# Ensure systemd and MariaDB are available on the host.
+
+## No Kubernetes required. systemd is the default orchestration for JustNews.
+
+## Ensure systemd and MariaDB are available on the host.
+
 ```
 
 #### Deploy Infrastructure
+
 ```bash
-# Install MariaDB via your OS package manager or use the supplied scripts
+
+## Install MariaDB via your OS package manager or use the supplied scripts
+
 sudo apt-get update && sudo apt-get install -y mariadb-server
 sudo systemctl enable --now mariadb
 
-# Optionally install ChromaDB following upstream packaging or binary install
+## Optionally install ChromaDB following upstream packaging or binary install
+
 ```
 
 #### Deploy JustNews
+
 ```bash
-# Clone repository
+
+## Clone repository
+
 git clone <repository>
 cd JustNews
 
-# Install systemd units
+## Install systemd units
+
 sudo cp infrastructure/systemd/units/*.service /etc/systemd/system/
 sudo systemctl daemon-reload
 
-# Start and enable core services (MariaDB should be configured already)
+## Start and enable core services (MariaDB should be configured already)
+
 sudo systemctl enable --now justnews-mcp-bus
 sudo systemctl enable --now justnews-redis
 
-# Enable/start agent services
+## Enable/start agent services
+
 for service in justnews-scout justnews-analyst justnews-synthesizer; do
   sudo systemctl enable --now $service || true
 done
+
 ```
 
 #### Configuration
+
 ```bash
-# Create local environment files and place them under `deploy/refactor/config/environments/`.
+
+## Create local environment files and place them under `deploy/refactor/config/environments/`.
+
 cp deploy/refactor/config/environments/development.env deploy/refactor/config/environments/production.env
-# Edit production.env with proper MARIADB/CHROMADB/REDIS values
+
+## Edit production.env with proper MARIADB/CHROMADB/REDIS values
+
 ```
 
 ### Method 2: Docker Compose (DEPRECATED & ARCHIVED)
@@ -124,49 +194,71 @@ cp deploy/refactor/config/environments/development.env deploy/refactor/config/en
 > ⚠️ Docker Compose has been deprecated and archived in this repository. It is not supported for active development or deployments. Historical compose files are available under `infrastructure/archives/docker/` for reference only; prefer systemd artifacts for local and production deployments.
 
 #### Quick Start
+
 ```bash
-# Clone repository
-# Scale via systemd
-# Create additional unit instances or use templated units to add replicas. See the systemd scaling section above.
+
+## Clone repository
+
+## Scale via systemd
+
+## Create additional unit instances or use templated units to add replicas. See the systemd scaling section above.
+
 cd JustNews
 
-# Start all services (DEPRECATED)
+## Start all services (DEPRECATED)
+
 ## (DEPRECATED) docker-compose -f docker-compose.yml up -d
 
-# Check status
+## Check status
+
 ## (DEPRECATED) docker-compose ps
+
 ## (DEPRECATED) docker-compose logs -f
+
 ```
 
 #### Production-Ready Compose
+
 ```bash
-# Use production compose file (DEPRECATED)
-# (DEPRECATED) docker-compose -f docker-compose.prod.yml up -d
+
+## Use production compose file (DEPRECATED)
+
+## (DEPRECATED) docker-compose -f docker-compose.prod.yml up -d
+
 sudo systemctl status --type=service --state=running
 sudo journalctl -u <unit-name> -f
 ## (DEPRECATED) docker-compose up -d --scale scout=3 --scale analyst=2
+
 ```
 
 ### Method 3: systemd (Legacy)
 
 #### Systemd Deployment
+
 ```bash
-# Install systemd services
+
+## Install systemd services
+
 sudo cp infrastructure/systemd/units/*.service /etc/systemd/system/
 sudo systemctl daemon-reload
 
-# Start services in order (MariaDB recommended; Postgres services are deprecated)
+## Start services in order (MariaDB recommended; Postgres services are deprecated)
+
 sudo systemctl start justnews-mcp-bus
 sudo systemctl start justnews-mariadb || sudo systemctl start justnews-postgres
 sudo systemctl start justnews-redis
 
-# Start agents
+## Start agents
+
 for service in justnews-scout justnews-analyst justnews-synthesizer; do
   sudo systemctl start $service
 done
 sudo systemctl list-units > systemd_backup.txt
-# Enable auto-start
+
+## Enable auto-start
+
 sudo systemctl enable justnews-*
+
 ```
 
 ## Scaling Procedures
@@ -174,47 +266,69 @@ sudo systemctl enable justnews-*
 ### Horizontal Scaling
 
 #### systemd Scaling
+
 ```yaml
 Use systemd templated units or clone the unit to start additional instances of an agent if you need horizontal scaling.
 Example: Run multiple instances of `justnews-scout@` template (if available) or duplicate the unit with numbered instances and start them as required.
+
 ```
-# Start a second instance
+
+## Start a second instance
+
 sudo systemctl enable --now justnews-scout@2.service
+
 ```
+
   metrics:
+
   - type: Resource
     resource:
       name: cpu
       target:
         type: Utilization
         averageUtilization: 70
+
 ```
 
 #### Manual Scaling
+
 ```bash
-# For systemd: start additional instances or use templated units to add more replicas
+
+## For systemd: start additional instances or use templated units to add more replicas
+
 sudo systemctl enable --now justnews-scout@2.service
+
 ```
 
 ### Vertical Scaling
 
 #### GPU Scaling (systemd)
+
 ```bash
-# Check GPU utilization
+
+## Check GPU utilization
+
 nvidia-smi
 
-# Update GPU resource allocation in the service configuration. For systemd based deployments, update the service environment or system-wide GPU limits and restart the service. See the `infrastructure/systemd/units/` templates for guidance.
+## Update GPU resource allocation in the service configuration. For systemd based deployments, update the service environment or system-wide GPU limits and restart the service. See the `infrastructure/systemd/units/` templates for guidance.
+
 ```
 
 #### Memory/CPU Scaling
+
 ```bash
-# Update resource requests/limits
+
+## Update resource requests/limits
+
 Edit the relevant systemd service file to adjust resources and restart the service:
+
+```bash
+
+sudo systemctl edit --full justnews-synthesizer.service sudo systemctl daemon- reload sudo systemctl restart justnews-
+synthesizer
+
 ```
-sudo systemctl edit --full justnews-synthesizer.service
-sudo systemctl daemon-reload
-sudo systemctl restart justnews-synthesizer
-```
+
 ```
 
 ## Monitoring & Alerting
@@ -222,35 +336,49 @@ sudo systemctl restart justnews-synthesizer
 ### Health Checks
 
 #### Service Health
+
 ```bash
-# Check all services
+
+## Check all services
+
 curl http://localhost:8000/health
 curl http://localhost:8001/health
-# ... check all agent health endpoints
 
-# Service health (systemd)
+## ... check all agent health endpoints
+
+## Service health (systemd)
+
 sudo systemctl status justnews-mcp-bus
 sudo systemctl status justnews-scout
 sudo journalctl -u <unit-name> -f
+
 ```
 
 #### Application Metrics
+
 ```bash
-# Prometheus metrics
+
+## Prometheus metrics
+
 curl http://localhost:9090/metrics
 
-# Custom metrics
+## Custom metrics
+
 curl http://localhost:8000/metrics
 curl http://localhost:8004/metrics  # GPU metrics
+
 ```
 
 ### Alerting Configuration
 
 #### Prometheus Alerts
+
 ```yaml
 groups:
+
 - name: justnews_alerts
   rules:
+
   - alert: HighCPUUsage
     expr: cpu_usage_percent > 85
     for: 5m
@@ -266,88 +394,128 @@ groups:
       severity: critical
     annotations:
       summary: "GPU memory critically high"
+
 ```
 
 #### Dashboard Access
+
 ```bash
-# Grafana dashboard
+
+## Grafana dashboard
+
 open http://localhost:3000
 
-# Application dashboard
+## Application dashboard
+
 open http://localhost:8013
+
 ```
 
 ## Backup & Recovery
 
 ### Database Backup
+
 ```bash
-# MariaDB backup
+
+## MariaDB backup
+
 mysqldump -h localhost -u justnews -p justnews_db > backup_$(date +%Y%m%d).sql
 
-# ChromaDB backup (copy data directory)
+## ChromaDB backup (copy data directory)
+
 cp -r /chroma/chroma /backup/chroma_$(date +%Y%m%d)
 
-# Automated backup script
+## Automated backup script
+
 ./scripts/backup_database.sh
+
 ```
 
 ### Configuration Backup
+
 ```bash
-# Backup configs
+
+## Backup configs
+
 tar -czf config_backup_$(date +%Y%m%d).tar.gz config/
 
-# systemd units backup
+## systemd units backup
+
 sudo systemctl list-units --type=service --state=active > systemd_backup.txt
+
 ```
 
 ### Recovery Procedures
 
 #### Database Recovery
+
 ```bash
-# Stop all services
+
+## Stop all services
+
 for svc in justnews-*; do sudo systemctl stop $svc || true; done
 
-# Restore database
+## Restore database
+
 mysql -h localhost -u justnews -p justnews_db < backup_file.sql
 
-# Restart services
+## Restart services
+
 for svc in justnews-*; do sudo systemctl start $svc || true; done
+
 ```
 
 #### Full System Recovery
+
 ```bash
-# Complete recovery script
+
+## Complete recovery script
+
 ./scripts/disaster_recovery.sh
 
-# Verify recovery
+## Verify recovery
+
 make health-check
 make test-integration
+
 ```
 
 ## Security Operations
 
 ### Access Control
+
 ```bash
-# Rotate API keys
+
+## Rotate API keys
+
 ./scripts/rotate_api_keys.sh
 
-# Update certificates
+## Update certificates
+
 ./scripts/update_certificates.sh
 
-# Security audit
+## Security audit
+
 ./scripts/security_audit.sh
+
 ```
 
 ### Compliance Monitoring
+
 ```bash
-# GDPR compliance check
+
+## GDPR compliance check
+
 ./scripts/gdpr_audit.sh
 
-# Data retention cleanup
+## Data retention cleanup
+
 ./scripts/data_cleanup.sh
 
-# Audit log review
+## Audit log review
+
 ./scripts/review_audit_logs.sh
+
 ```
 
 ## Troubleshooting
@@ -355,66 +523,95 @@ make test-integration
 ### Common Issues
 
 #### Service Startup Failures
+
 ```bash
-# Check service logs
+
+## Check service logs
+
 sudo journalctl -u justnews-mcp-bus -f
 
-# Check system events
+## Check system events
+
 sudo journalctl -u justnews-mcp-bus --since "1 hour ago"
 
-# Check resource constraints
+## Check resource constraints
+
 sudo systemctl status <unit-name>
+
 ```
 
 #### Performance Issues
+
 ```bash
-# Check resource usage
+
+## Check resource usage
+
 top -b -n 1 | head -n 20
 
-# Check GPU usage
+## Check GPU usage
+
 nvidia-smi
 
-# Profile application
+## Profile application
+
 ./scripts/profile_performance.sh
+
 ```
 
 #### Network Issues
+
 ```bash
-# Check service connectivity
+
+## Check service connectivity
+
 curl http://localhost:8000/health
 
-# Network policies are not applicable to systemd-managed services
+## Network policies are not applicable to systemd-managed services
 
-# DNS resolution
+## DNS resolution
+
 nslookup mcp-bus
+
 ```
 
 ## Maintenance Windows
 
 ### Scheduled Maintenance
+
 ```bash
-# Enter maintenance mode
+
+## Enter maintenance mode
+
 ./scripts/maintenance_mode.sh enable
 
-# Perform maintenance
-# ... maintenance tasks ...
+## Perform maintenance
 
-# Exit maintenance mode
+## ... maintenance tasks ...
+
+## Exit maintenance mode
+
 ./scripts/maintenance_mode.sh disable
+
 ```
 
 ### Rolling Updates
+
 ```bash
-# Rolling updates with systemd
+
+## Rolling updates with systemd
+
 Update code, update the unit file or the ExecStart command, and run:
-```
-sudo systemctl daemon-reload
-sudo systemctl restart justnews-scout
-```
+
+```bash
+
+sudo systemctl daemon-reload sudo systemctl restart justnews-scout
+
+```bash
+
 Rollback: Revert the unit file or binaries and run `sudo systemctl restart justnews-scout`.
+
 ```
 
 ---
 
-*Operations Guide Version: 1.0.0*
-*Last Updated: October 22, 2025*
+*Operations Guide Version: 1.0.0* *Last Updated: October 22, 2025*

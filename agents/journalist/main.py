@@ -5,15 +5,21 @@ Lightweight agent wrapper that exposes a simple interface to the JournalistEngin
 This mirrors other agents' structure so it can be registered with MCP or run standalone
 for local testing.
 """
+
 from __future__ import annotations
 
 import logging
-from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from common.observability import bootstrap_observability
 
-from .journalist_engine import JournalistEngine
-from .tools import health_check
+# Initialize observability for the Journalist agent
+bootstrap_observability("journalist", level=logging.INFO)
+from contextlib import asynccontextmanager  # noqa: E402
+
+from fastapi import FastAPI  # noqa: E402
+
+from .journalist_engine import JournalistEngine  # noqa: E402
+from .tools import health_check  # noqa: E402
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
@@ -57,7 +63,9 @@ async def crawl_url(payload: dict):
     """
     if engine is None:
         return {"success": False, "error": "Engine not initialized"}
-    result = await engine.crawl_and_analyze(payload.get("url"), mode=payload.get("mode"))
+    result = await engine.crawl_and_analyze(
+        payload.get("url"), mode=payload.get("mode")
+    )
     return result
 
 

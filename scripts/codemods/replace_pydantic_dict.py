@@ -7,21 +7,30 @@ for likely model instances.
 
 Usage: python scripts/codemods/replace_pydantic_dict.py [--apply] [--root PATH] [--report PATH]
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import re
 from pathlib import Path
-from typing import List, Tuple
 
-ROOT_IGNORE = {".git", "node_modules", "third_party", "__pycache__", "tests/deprecation", "tests/codemod", "deprecations", "codemods"}
+ROOT_IGNORE = {
+    ".git",
+    "node_modules",
+    "third_party",
+    "__pycache__",
+    "tests/deprecation",
+    "tests/codemod",
+    "deprecations",
+    "codemods",
+}
 
 PATTERN = re.compile(r"\.dict\(")
 
 
-def _find_files(root: Path) -> List[Path]:
-    results: List[Path] = []
+def _find_files(root: Path) -> list[Path]:
+    results: list[Path] = []
     for p in root.rglob("*.py"):
         if any(ignore in str(p) for ignore in ROOT_IGNORE):
             continue
@@ -44,8 +53,8 @@ def _should_skip(line: str, start: int) -> bool:
     return False
 
 
-def find_matches(root: Path) -> List[Tuple[Path, int, str]]:
-    matches: List[Tuple[Path, int, str]] = []
+def find_matches(root: Path) -> list[tuple[Path, int, str]]:
+    matches: list[tuple[Path, int, str]] = []
     for p in _find_files(root):
         try:
             text = p.read_text()
@@ -60,36 +69,36 @@ def find_matches(root: Path) -> List[Tuple[Path, int, str]]:
     return matches
 
 
-def apply_replacements(root: Path) -> List[Path]:
-    changed: List[Path] = []
+def apply_replacements(root: Path) -> list[Path]:
+    changed: list[Path] = []
     for p in _find_files(root):
         try:
             text = p.read_text()
         except Exception:
             continue
 
-        new_lines: List[str] = []
+        new_lines: list[str] = []
         changed_file = False
         for line in text.splitlines():
             newline = line
             for m in list(PATTERN.finditer(line)):
                 if _should_skip(line, m.start()):
                     continue
-                newline = newline.replace('.dict(', '.model_dump(')
+                newline = newline.replace(".dict(", ".model_dump(")
                 changed_file = True
             new_lines.append(newline)
 
         if changed_file:
-            p.write_text('\n'.join(new_lines) + '\n')
+            p.write_text("\n".join(new_lines) + "\n")
             changed.append(p)
 
     return changed
 
 
-def main(argv: List[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--root", default='.', help="Root dir to scan")
-    parser.add_argument("--apply", action='store_true', help="Apply in-place")
+    parser.add_argument("--root", default=".", help="Root dir to scan")
+    parser.add_argument("--apply", action="store_true", help="Apply in-place")
     parser.add_argument("--report", help="Write JSON report path")
     args = parser.parse_args(argv)
 
@@ -104,11 +113,21 @@ def main(argv: List[str] | None = None) -> int:
         print(f" - {p}:{lno}: {line}")
 
     if args.report:
-        Path(args.report).write_text(json.dumps([{"path": str(p), "line": lno, "content": line} for p, lno, line in matches], indent=2))
+        Path(args.report).write_text(
+            json.dumps(
+                [
+                    {"path": str(p), "line": lno, "content": line}
+                    for p, lno, line in matches
+                ],
+                indent=2,
+            )
+        )
         print(f"Wrote report to {args.report}")
 
     if not args.apply:
-        print("\nDry-run: no files modified. Re-run with --apply to update files in-place.")
+        print(
+            "\nDry-run: no files modified. Re-run with --apply to update files in-place."
+        )
         return 0
 
     changed = apply_replacements(root)

@@ -22,6 +22,7 @@ Endpoints:
 - GET /metrics: Prometheus metrics endpoint
 """
 
+import logging
 import os
 import time
 from contextlib import asynccontextmanager
@@ -33,7 +34,10 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from common.metrics import JustNewsMetrics
-from common.observability import get_logger
+from common.observability import bootstrap_observability, get_logger
+
+# Initialize observability (logging + optional OTEL + optional Sentry)
+bootstrap_observability("mcp_bus", level=logging.INFO)
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
@@ -42,7 +46,7 @@ try:
     )
 except Exception:
     create_database_service = None
-from .tools import (
+from .tools import (  # noqa: E402
     call_agent_tool,
     get_bus_stats,
     get_circuit_breaker_status,
@@ -50,7 +54,7 @@ from .tools import (
     health_check,
     notify_gpu_orchestrator,
 )
-from .tools import register_agent as register_agent_tool
+from .tools import register_agent as register_agent_tool  # noqa: E402
 
 logger = get_logger(__name__)
 
@@ -58,42 +62,61 @@ logger = get_logger(__name__)
 ready = False
 startup_time = time.time()
 
+
 # Request/Response Models
 class AgentRegistration(BaseModel):
     """Request model for agent registration."""
+
     name: str = Field(..., description="Name of the agent to register")
     address: str = Field(..., description="HTTP address of the agent")
 
+
 class ToolCallRequest(BaseModel):
     """Request model for tool calling."""
+
     agent: str = Field(..., description="Name of the agent to call")
     tool: str = Field(..., description="Name of the tool to execute")
-    args: list[Any] = Field(default_factory=list, description="Positional arguments for the tool")
-    kwargs: dict[str, Any] = Field(default_factory=dict, description="Keyword arguments for the tool")
+    args: list[Any] = Field(
+        default_factory=list, description="Positional arguments for the tool"
+    )
+    kwargs: dict[str, Any] = Field(
+        default_factory=dict, description="Keyword arguments for the tool"
+    )
+
 
 class ToolCallResponse(BaseModel):
     """Response model for tool calling."""
+
     status: str = Field(..., description="Call status ('success' or 'error')")
     data: dict[str, Any] | None = Field(None, description="Call result data")
     error: str | None = Field(None, description="Error message if call failed")
     timestamp: float = Field(..., description="Response timestamp")
 
+
 class HealthResponse(BaseModel):
     """Response model for health checks."""
+
     timestamp: float = Field(..., description="Health check timestamp")
     overall_status: str = Field(..., description="Overall health status")
     components: dict[str, Any] = Field(..., description="Component health status")
     issues: list[str] = Field(..., description="List of issues found")
     stats: dict[str, Any] | None = Field(None, description="Bus statistics")
 
+
 class StatsResponse(BaseModel):
     """Response model for bus statistics."""
+
     registered_agents: int = Field(..., description="Number of registered agents")
-    total_circuit_breaker_failures: int = Field(..., description="Total circuit breaker failures")
+    total_circuit_breaker_failures: int = Field(
+        ..., description="Total circuit breaker failures"
+    )
     open_circuits: int = Field(..., description="Number of open circuits")
-    agents_with_failures: int = Field(..., description="Agents with circuit breaker failures")
+    agents_with_failures: int = Field(
+        ..., description="Agents with circuit breaker failures"
+    )
     uptime: float = Field(..., description="Service uptime in seconds")
     timestamp: float = Field(..., description="Statistics timestamp")
+
 
 # Lifespan management
 @asynccontextmanager
@@ -126,12 +149,13 @@ async def lifespan(app: FastAPI):
         ready = False
         logger.info("✅ MCP Bus Agent shutdown complete")
 
+
 # Create FastAPI app
 app = FastAPI(
     title="MCP Bus Agent",
     description="Model Context Protocol Bus for inter-agent communication and coordination",
     version="2.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Initialize metrics
@@ -152,6 +176,7 @@ app.add_middleware(
 # Register common shutdown endpoint
 try:
     from agents.common.shutdown import register_shutdown_endpoint
+
     register_shutdown_endpoint(app)
 except Exception:
     logger.debug("shutdown endpoint not registered for mcp_bus")
@@ -159,9 +184,11 @@ except Exception:
 # Register reload endpoint
 try:
     from agents.common.reload import register_reload_endpoint
+
     register_reload_endpoint(app)
 except Exception:
     logger.debug("reload endpoint not registered for mcp_bus")
+
 
 @app.get("/")
 async def root():
@@ -170,8 +197,9 @@ async def root():
         "name": "MCP Bus Agent",
         "version": "2.0.0",
         "description": "Model Context Protocol Bus for inter-agent communication",
-        "status": "running" if ready else "starting"
+        "status": "running" if ready else "starting",
     }
+
 
 @app.post("/register")
 async def register_agent_endpoint(agent: AgentRegistration):
@@ -194,7 +222,10 @@ async def register_agent_endpoint(agent: AgentRegistration):
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"❌ Registration error: {e}")
-        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Registration failed: {str(e)}"
+        ) from e
+
 
 @app.post("/call", response_model=ToolCallResponse)
 async def call_tool_endpoint(call: ToolCallRequest):
@@ -207,18 +238,13 @@ async def call_tool_endpoint(call: ToolCallRequest):
     try:
         logger.debug(f"📨 Tool call request: {call.agent}.{call.tool}")
 
-        result = call_agent_tool(
-            call.agent,
-            call.tool,
-            call.args,
-            call.kwargs
-        )
+        result = call_agent_tool(call.agent, call.tool, call.args, call.kwargs)
 
         response = ToolCallResponse(
             status=result.get("status", "unknown"),
             data=result.get("data"),
             error=result.get("error"),
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         logger.debug(f"✅ Tool call completed: {call.agent}.{call.tool}")
@@ -235,7 +261,10 @@ async def call_tool_endpoint(call: ToolCallRequest):
         raise HTTPException(status_code=502, detail=str(e)) from e
     except Exception as e:
         logger.error(f"❌ Unexpected tool call error: {e}")
-        raise HTTPException(status_code=500, detail=f"Tool call failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Tool call failed: {str(e)}"
+        ) from e
+
 
 @app.get("/agents")
 async def get_agents_endpoint():
@@ -250,7 +279,10 @@ async def get_agents_endpoint():
         return agents
     except Exception as e:
         logger.error(f"❌ Failed to retrieve agents: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve agents: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve agents: {str(e)}"
+        ) from e
+
 
 @app.get("/health", response_model=HealthResponse)
 async def health_endpoint():
@@ -260,12 +292,16 @@ async def health_endpoint():
         return HealthResponse(**health_result)
     except Exception as e:
         logger.error(f"❌ Health check error: {e}")
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Health check failed: {str(e)}"
+        ) from e
+
 
 @app.get("/ready")
 async def ready_endpoint():
     """Readiness check endpoint."""
     return {"ready": ready}
+
 
 @app.get("/stats", response_model=StatsResponse)
 async def stats_endpoint():
@@ -276,11 +312,13 @@ async def stats_endpoint():
 
         response = StatsResponse(
             registered_agents=stats.get("registered_agents", 0),
-            total_circuit_breaker_failures=stats.get("total_circuit_breaker_failures", 0),
+            total_circuit_breaker_failures=stats.get(
+                "total_circuit_breaker_failures", 0
+            ),
             open_circuits=stats.get("open_circuits", 0),
             agents_with_failures=stats.get("agents_with_failures", 0),
             uptime=uptime,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         logger.debug("📊 Bus statistics retrieved")
@@ -288,7 +326,10 @@ async def stats_endpoint():
 
     except Exception as e:
         logger.error(f"❌ Stats retrieval error: {e}")
-        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Stats retrieval failed: {str(e)}"
+        ) from e
+
 
 @app.get("/circuit_breaker_status")
 async def circuit_breaker_status_endpoint():
@@ -299,12 +340,16 @@ async def circuit_breaker_status_endpoint():
         return status
     except Exception as e:
         logger.error(f"❌ Failed to get circuit breaker status: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get circuit breaker status: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get circuit breaker status: {str(e)}"
+        ) from e
+
 
 @app.get("/metrics")
 async def metrics_endpoint():
     """Prometheus metrics endpoint."""
     return Response(metrics.get_metrics(), media_type="text/plain; charset=utf-8")
+
 
 @app.get("/capabilities")
 async def capabilities_endpoint():
@@ -317,7 +362,7 @@ async def capabilities_endpoint():
             "tool_calling",
             "circuit_breaker",
             "health_monitoring",
-            "metrics_collection"
+            "metrics_collection",
         ],
         "supported_protocols": ["http", "https"],
         "features": {
@@ -325,18 +370,13 @@ async def capabilities_endpoint():
                 "enabled": True,
                 "failure_threshold": 3,
                 "cooldown_seconds": 10,
-                "max_retries": 3
+                "max_retries": 3,
             },
-            "timeouts": {
-                "connect_timeout": 3.0,
-                "read_timeout": 120.0
-            }
+            "timeouts": {"connect_timeout": 3.0, "read_timeout": 120.0},
         },
-        "rate_limits": {
-            "requests_per_minute": 1000,
-            "concurrent_requests": 100
-        }
+        "rate_limits": {"requests_per_minute": 1000, "concurrent_requests": 100},
     }
+
 
 # Error handlers
 @app.exception_handler(500)
@@ -347,9 +387,12 @@ async def internal_error_handler(request, exc):
         status_code=500,
         content={
             "error": "Internal server error",
-            "detail": str(exc) if os.getenv("DEBUG", "").lower() == "true" else "An unexpected error occurred",
+            "detail": str(exc)
+            if os.getenv("DEBUG", "").lower() == "true"
+            else "An unexpected error occurred",
         },
     )
+
 
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
@@ -362,6 +405,7 @@ async def not_found_handler(request, exc):
         },
     )
 
+
 @app.exception_handler(503)
 async def service_unavailable_handler(request, exc):
     """Handle 503 service unavailable errors (circuit breaker)."""
@@ -373,6 +417,7 @@ async def service_unavailable_handler(request, exc):
             "detail": str(exc),
         },
     )
+
 
 if __name__ == "__main__":
     import uvicorn

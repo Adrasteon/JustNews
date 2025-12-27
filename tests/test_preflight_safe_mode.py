@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: MIT
 import os
+import socket
 import subprocess
 import threading
-import socket
-import time
-
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
@@ -41,7 +39,12 @@ def test_preflight_gate_skips_preload_in_safe_mode(tmp_path):
     server, thread, port = _start_test_server()
     try:
         script_path = os.path.join(
-            os.path.dirname(__file__), "..", "infrastructure", "systemd", "scripts", "justnews-preflight-check.sh"
+            os.path.dirname(__file__),
+            "..",
+            "infrastructure",
+            "systemd",
+            "scripts",
+            "justnews-preflight-check.sh",
         )
         script_path = os.path.abspath(script_path)
 
@@ -50,7 +53,14 @@ def test_preflight_gate_skips_preload_in_safe_mode(tmp_path):
 
         # Run the preflight script in gate-only mode pointing at our test server.
         # allow up to 30s for the script to run in CI or loaded test environments
-        proc = subprocess.run(["/bin/bash", script_path, "--gate-only"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30)
+        proc = subprocess.run(
+            ["/bin/bash", script_path, "--gate-only"],
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=30,
+        )
 
         # Should exit successfully and mention SAFE_MODE in its output
         assert proc.returncode == 0, f"preflight failed: {proc.stdout}"

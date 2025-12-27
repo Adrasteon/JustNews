@@ -44,87 +44,88 @@ class TestGetDBConfig:
                     "port": 3306,
                     "database": "justnews",
                     "user": "justnews_user",
-                    "password": "secure_password"
+                    "password": "secure_password",
                 },
                 "chromadb": {
                     "host": "vector.example.com",
-                    "port": 8000,
-                    "collection": "news_articles"
+                    "port": 3307,
+                    "collection": "news_articles",
                 },
                 "embedding": {
                     "model": "all-MiniLM-L6-v2",
                     "dimensions": 384,
-                    "device": "cpu"
-                }
+                    "device": "cpu",
+                },
             }
         }
 
-        with patch('os.path.exists', return_value=True):
-            with patch('builtins.open', mock_open(read_data=json.dumps(config_data))):
-                with patch('os.path.join') as mock_join:
+        with patch("os.path.exists", return_value=True):
+            with patch("builtins.open", mock_open(read_data=json.dumps(config_data))):
+                with patch("os.path.join") as mock_join:
                     mock_join.return_value = "/fake/path/system_config.json"
                     result = get_db_config()
 
-                    assert result['mariadb']['host'] == "db.example.com"
-                    assert result['mariadb']['user'] == "justnews_user"
-                    assert result['chromadb']['host'] == "vector.example.com"
-                    assert result['embedding']['model'] == "all-MiniLM-L6-v2"
+                    assert result["mariadb"]["host"] == "db.example.com"
+                    assert result["mariadb"]["user"] == "justnews_user"
+                    assert result["chromadb"]["host"] == "vector.example.com"
+                    assert result["embedding"]["model"] == "all-MiniLM-L6-v2"
 
     def test_get_db_config_from_environment(self):
         """Test loading config from environment variables when system config fails"""
         env_vars = {
-            'MARIADB_HOST': 'env-db.example.com',
-            'MARIADB_PORT': '3307',
-            'MARIADB_DB': 'env_justnews',
-            'MARIADB_USER': 'env_user',
-            'MARIADB_PASSWORD': 'env_password',
-            'CHROMADB_HOST': 'env-vector.example.com',
-            'CHROMADB_PORT': '8001',
-            'CHROMADB_COLLECTION': 'env_articles',
-            'EMBEDDING_MODEL': 'env-model',
-            'EMBEDDING_DIMENSIONS': '512',
-            'EMBEDDING_DEVICE': 'cuda'
+            "MARIADB_HOST": "env-db.example.com",
+            "MARIADB_PORT": "3307",
+            "MARIADB_DB": "env_justnews",
+            "MARIADB_USER": "env_user",
+            "MARIADB_PASSWORD": "env_password",
+            "CHROMADB_HOST": "env-vector.example.com",
+            "CHROMADB_PORT": "8001",
+            "CHROMADB_COLLECTION": "env_articles",
+            "EMBEDDING_MODEL": "env-model",
+            "EMBEDDING_DIMENSIONS": "512",
+            "EMBEDDING_DEVICE": "cuda",
         }
 
         with patch.dict(os.environ, env_vars):
-            with patch('os.path.exists', return_value=False):
-                with patch('builtins.open', side_effect=FileNotFoundError):
+            with patch("os.path.exists", return_value=False):
+                with patch("builtins.open", side_effect=FileNotFoundError):
                     result = get_db_config()
 
-                    assert result['mariadb']['host'] == "env-db.example.com"
-                    assert result['mariadb']['port'] == 3307
-                    assert result['chromadb']['collection'] == "env_articles"
-                    assert result['embedding']['dimensions'] == 512
+                    assert result["mariadb"]["host"] == "env-db.example.com"
+                    assert result["mariadb"]["port"] == 3307
+                    assert result["chromadb"]["collection"] == "env_articles"
+                    assert result["embedding"]["dimensions"] == 512
 
     def test_get_db_config_missing_required_fields(self):
         """Test config validation with missing required fields"""
-        with patch('os.path.exists', return_value=False):
-            with patch('builtins.open', side_effect=FileNotFoundError):
+        with patch("os.path.exists", return_value=False):
+            with patch("builtins.open", side_effect=FileNotFoundError):
                 with patch.dict(os.environ, {}, clear=True):
                     # get_db_config returns defaults rather than raising, so check we get defaults
                     result = get_db_config()
                     # Should have default values instead of raising
-                    assert 'mariadb' in result
-                    assert 'host' in result['mariadb']
+                    assert "mariadb" in result
+                    assert "host" in result["mariadb"]
 
     def test_get_db_config_with_global_env_file(self):
         """Test loading global.env file"""
         env_content = "MARIADB_PASSWORD=from_env_file\nCHROMADB_HOST=from_env\n"
 
-        with patch('os.path.exists') as mock_exists:
+        with patch("os.path.exists") as mock_exists:
+
             def exists_side_effect(path):
-                if path == '/etc/justnews/global.env':
+                if path == "/etc/justnews/global.env":
                     return True
                 return False
 
             mock_exists.side_effect = exists_side_effect
 
-            with patch('builtins.open', mock_open(read_data=env_content)):
+            with patch("builtins.open", mock_open(read_data=env_content)):
                 with patch.dict(os.environ, {}, clear=True):
                     result = get_db_config()
 
                     # Should have loaded password from env file
-                    assert result['mariadb']['password'] == "from_env_file"
+                    assert result["mariadb"]["password"] == "from_env_file"
 
 
 class TestCreateDatabaseService:
@@ -134,32 +135,36 @@ class TestCreateDatabaseService:
     def mock_config(self):
         """Mock database configuration"""
         return {
-            'mariadb': {
-                'host': 'localhost',
-                'port': 3306,
-                'database': 'testdb',
-                'user': 'testuser',
-                'password': 'testpass'
+            "mariadb": {
+                "host": "localhost",
+                "port": 3306,
+                "database": "testdb",
+                "user": "testuser",
+                "password": "testpass",
             },
-            'chromadb': {
-                'host': 'localhost',
-                'port': 8000,
-                'collection': 'test_collection'
+            "chromadb": {
+                "host": "localhost",
+                "port": 3307,
+                "collection": "test_collection",
             },
-            'embedding': {
-                'model': 'test-model'
-            }
+            "embedding": {"model": "test-model"},
         }
 
     def test_create_database_service_with_config(self, mock_config, monkeypatch):
         """Test creating service with provided config"""
-        with patch('database.models.migrated_models.SentenceTransformer') as mock_st:
+        with patch("database.models.migrated_models.SentenceTransformer") as mock_st:
             # Ensure canonical enforcement is disabled for this unit test unless explicitly tested
-            monkeypatch.setenv('CHROMADB_REQUIRE_CANONICAL', '0')
-            with patch('database.utils.migrated_database_utils.check_database_connections', return_value=True):
-                with patch('mysql.connector.connect') as mock_connect:
-                    with patch('chromadb.HttpClient') as mock_chroma:
-                        with patch('database.utils.chromadb_utils.validate_chroma_is_canonical', return_value={'ok': True}):
+            monkeypatch.setenv("CHROMADB_REQUIRE_CANONICAL", "0")
+            with patch(
+                "database.utils.migrated_database_utils.check_database_connections",
+                return_value=True,
+            ):
+                with patch("mysql.connector.connect") as mock_connect:
+                    with patch("chromadb.HttpClient") as mock_chroma:
+                        with patch(
+                            "database.utils.chromadb_utils.validate_chroma_is_canonical",
+                            return_value={"ok": True},
+                        ):
                             mock_connect.return_value = MagicMock()
                         mock_chroma_instance = MagicMock()
                         mock_chroma_instance.get_collection.return_value = MagicMock()
@@ -169,27 +174,38 @@ class TestCreateDatabaseService:
                         result = create_database_service(mock_config)
 
                         assert result is not None
-                        assert hasattr(result, 'mb_conn')
+                        assert hasattr(result, "mb_conn")
 
     def test_create_database_service_without_config(self, mock_config, monkeypatch):
         """Test creating service without config (uses get_db_config)"""
-        with patch('database.models.migrated_models.SentenceTransformer') as mock_st:
-            monkeypatch.setenv('CHROMADB_REQUIRE_CANONICAL', '0')
-            with patch('database.utils.migrated_database_utils.get_db_config', return_value=mock_config):
-                with patch('database.utils.migrated_database_utils.check_database_connections', return_value=True):
-                    with patch('mysql.connector.connect') as mock_connect:
-                        with patch('chromadb.HttpClient') as mock_chroma:
-                            with patch('database.utils.chromadb_utils.validate_chroma_is_canonical', return_value={'ok': True}):
+        with patch("database.models.migrated_models.SentenceTransformer") as mock_st:
+            monkeypatch.setenv("CHROMADB_REQUIRE_CANONICAL", "0")
+            with patch(
+                "database.utils.migrated_database_utils.get_db_config",
+                return_value=mock_config,
+            ):
+                with patch(
+                    "database.utils.migrated_database_utils.check_database_connections",
+                    return_value=True,
+                ):
+                    with patch("mysql.connector.connect") as mock_connect:
+                        with patch("chromadb.HttpClient") as mock_chroma:
+                            with patch(
+                                "database.utils.chromadb_utils.validate_chroma_is_canonical",
+                                return_value={"ok": True},
+                            ):
                                 mock_connect.return_value = MagicMock()
                             mock_chroma_instance = MagicMock()
-                            mock_chroma_instance.get_collection.return_value = MagicMock()
+                            mock_chroma_instance.get_collection.return_value = (
+                                MagicMock()
+                            )
                             mock_chroma.return_value = mock_chroma_instance
                             mock_st.return_value = MagicMock()
 
                             result = create_database_service()
 
                             assert result is not None
-                            assert hasattr(result, 'mb_conn')
+                            assert hasattr(result, "mb_conn")
 
 
 class TestCheckDatabaseConnections:
@@ -296,7 +312,9 @@ class TestExecuteMariaDBQuery:
         mock_cursor.fetchall.return_value = [("result1",), ("result2",)]
         mock_service.mb_conn.cursor.return_value = mock_cursor
 
-        results = execute_mariadb_query(mock_service, "SELECT * FROM test", ("param1",), fetch=True)
+        results = execute_mariadb_query(
+            mock_service, "SELECT * FROM test", ("param1",), fetch=True
+        )
 
         assert results == [("result1",), ("result2",)]
         mock_cursor.execute.assert_called_with("SELECT * FROM test", ("param1",))
@@ -307,7 +325,9 @@ class TestExecuteMariaDBQuery:
         mock_cursor = MagicMock()
         mock_service.mb_conn.cursor.return_value = mock_cursor
 
-        results = execute_mariadb_query(mock_service, "INSERT INTO test VALUES (?)", ("value",), fetch=False)
+        results = execute_mariadb_query(
+            mock_service, "INSERT INTO test VALUES (?)", ("value",), fetch=False
+        )
 
         assert results == []
         mock_service.mb_conn.commit.assert_called_once()
@@ -339,8 +359,13 @@ class TestExecuteQueryAsync:
         """Test async query execution"""
         expected_results = [("result1",), ("result2",)]
 
-        with patch('database.utils.migrated_database_utils.execute_mariadb_query', return_value=expected_results):
-            results = await execute_query_async(mock_service, "SELECT * FROM test", ("param",), fetch=True)
+        with patch(
+            "database.utils.migrated_database_utils.execute_mariadb_query",
+            return_value=expected_results,
+        ):
+            results = await execute_query_async(
+                mock_service, "SELECT * FROM test", ("param",), fetch=True
+            )
 
             assert results == expected_results
 
@@ -389,7 +414,9 @@ class TestExecuteTransaction:
         queries = ["INSERT INTO test VALUES (?)"]
         params_list = [("param1",), ("param2",)]  # Wrong length
 
-        with pytest.raises(ValueError, match="queries and params_list must have the same length"):
+        with pytest.raises(
+            ValueError, match="queries and params_list must have the same length"
+        ):
             execute_transaction(mock_service, queries, params_list)
 
 
@@ -420,14 +447,14 @@ class TestGetDatabaseStats:
 
         stats = get_database_stats(mock_service)
 
-        assert stats['mariadb']['articles'] == 100
-        assert stats['mariadb']['sources'] == 25
-        assert stats['mariadb']['mappings'] == 75
-        assert stats['chromadb']['vectors'] == 150
-        assert stats['total_articles'] == 100
-        assert stats['total_sources'] == 25
-        assert stats['total_vectors'] == 150
-        assert stats['chromadb']['collections'] == ["articles"]
+        assert stats["mariadb"]["articles"] == 100
+        assert stats["mariadb"]["sources"] == 25
+        assert stats["mariadb"]["mappings"] == 75
+        assert stats["chromadb"]["vectors"] == 150
+        assert stats["total_articles"] == 100
+        assert stats["total_sources"] == 25
+        assert stats["total_vectors"] == 150
+        assert stats["chromadb"]["collections"] == ["articles"]
 
     def test_get_database_stats_with_error(self, mock_service):
         """Test database stats with error"""
@@ -436,10 +463,10 @@ class TestGetDatabaseStats:
         stats = get_database_stats(mock_service)
 
         # Should return stats structure even on error
-        assert 'mariadb' in stats
-        assert 'total_articles' in stats
+        assert "mariadb" in stats
+        assert "total_articles" in stats
         # Values should be 0 on error
-        assert stats.get('total_articles', 0) == 0
+        assert stats.get("total_articles", 0) == 0
 
 
 class TestSearchFunctions:
@@ -492,14 +519,17 @@ class TestSearchFunctions:
         mock_service.get_articles_by_source.assert_called_once_with(5, 10)
 
 
-@pytest.mark.parametrize("function_name,expected_behavior", [
-    ("get_db_config", "returns_config_dict"),
-    ("create_database_service", "creates_service_instance"),
-    ("check_database_connections", "validates_connections"),
-    ("execute_mariadb_query", "executes_query"),
-    ("get_database_stats", "returns_stats_dict"),
-    ("semantic_search", "performs_search"),
-])
+@pytest.mark.parametrize(
+    "function_name,expected_behavior",
+    [
+        ("get_db_config", "returns_config_dict"),
+        ("create_database_service", "creates_service_instance"),
+        ("check_database_connections", "validates_connections"),
+        ("execute_mariadb_query", "executes_query"),
+        ("get_database_stats", "returns_stats_dict"),
+        ("semantic_search", "performs_search"),
+    ],
+)
 def test_function_signatures(function_name, expected_behavior):
     """Test that all functions have expected signatures and behavior"""
     # This test ensures our test coverage includes all major functions

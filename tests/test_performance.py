@@ -44,9 +44,9 @@ class TestSystemPerformance:
         """Test MCP Bus response times under various loads"""
         # Test different load scenarios using PerformanceTester
         load_scenarios = [
-            ("light", 10, 0.1),    # 10 requests, 100ms delay
+            ("light", 10, 0.1),  # 10 requests, 100ms delay
             ("medium", 50, 0.05),  # 50 requests, 50ms delay
-            ("heavy", 100, 0.02)   # 100 requests, 20ms delay
+            ("heavy", 100, 0.02),  # 100 requests, 20ms delay
         ]
 
         for scenario_name, num_requests, delay in load_scenarios:
@@ -57,10 +57,16 @@ class TestSystemPerformance:
             metrics = self.perf_tester.metrics
 
             # Assert performance requirements
-            assert metrics.average_time < 1.0, f"Average response time too high: {metrics.average_time}"
-            assert metrics.p95_time < 2.0, f"P95 response time too high: {metrics.p95_time}"
+            assert metrics.average_time < 1.0, (
+                f"Average response time too high: {metrics.average_time}"
+            )
+            assert metrics.p95_time < 2.0, (
+                f"P95 response time too high: {metrics.p95_time}"
+            )
 
-            print(f"✅ {scenario_name} load: avg={metrics.average_time:.3f}s, p95={metrics.p95_time:.3f}s")
+            print(
+                f"✅ {scenario_name} load: avg={metrics.average_time:.3f}s, p95={metrics.p95_time:.3f}s"
+            )
 
     @pytest.mark.asyncio
     @pytest.mark.performance
@@ -96,7 +102,9 @@ class TestSystemPerformance:
 
         # Assert memory stability (less than 10% growth)
         memory_growth_percent = (memory_growth / initial_memory) * 100
-        assert memory_growth_percent < 10, f"Memory growth too high: {memory_growth_percent:.1f}%"
+        assert memory_growth_percent < 10, (
+            f"Memory growth too high: {memory_growth_percent:.1f}%"
+        )
 
         # Force garbage collection and check again
         gc.collect()
@@ -104,10 +112,14 @@ class TestSystemPerformance:
         post_gc_growth = post_gc_memory - initial_memory
         post_gc_growth_percent = (post_gc_growth / initial_memory) * 100
 
-        assert post_gc_growth_percent < 5, f"Memory leak detected: {post_gc_growth_percent:.1f}% after GC"
+        assert post_gc_growth_percent < 5, (
+            f"Memory leak detected: {post_gc_growth_percent:.1f}% after GC"
+        )
 
         tracemalloc.stop()
-        print(f"✅ Memory stability: {memory_growth_percent:.1f}% growth, {post_gc_growth_percent:.1f}% after GC")
+        print(
+            f"✅ Memory stability: {memory_growth_percent:.1f}% growth, {post_gc_growth_percent:.1f}% after GC"
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.performance
@@ -131,14 +143,22 @@ class TestSystemPerformance:
 
             # Calculate metrics
             total_time = end_time - start_time
-            successful_requests = len([r for r in results if not isinstance(r, Exception)])
+            successful_requests = len(
+                [r for r in results if not isinstance(r, Exception)]
+            )
             success_rate = successful_requests / num_concurrent
 
             # Assert concurrent handling
-            assert success_rate > 0.95, f"Success rate too low at {num_concurrent} concurrent requests: {success_rate:.1f}"
-            assert total_time < 10, f"Total time too high for {num_concurrent} requests: {total_time:.1f}s"
+            assert success_rate > 0.95, (
+                f"Success rate too low at {num_concurrent} concurrent requests: {success_rate:.1f}"
+            )
+            assert total_time < 10, (
+                f"Total time too high for {num_concurrent} requests: {total_time:.1f}s"
+            )
 
-            print(f"✅ Concurrent {num_concurrent}: {success_rate:.1f}% success, {total_time:.1f}s total")
+            print(
+                f"✅ Concurrent {num_concurrent}: {success_rate:.1f}% success, {total_time:.1f}s total"
+            )
 
     @pytest.mark.asyncio
     @pytest.mark.performance
@@ -158,16 +178,22 @@ class TestSystemPerformance:
         gpu_memory_growth = final_gpu_memory - initial_gpu_memory
 
         # Assert GPU memory efficiency
-        assert gpu_memory_growth < 1024 * 1024 * 1024, f"GPU memory growth too high: {gpu_memory_growth / (1024*1024):.1f}MB"
+        assert gpu_memory_growth < 1024 * 1024 * 1024, (
+            f"GPU memory growth too high: {gpu_memory_growth / (1024 * 1024):.1f}MB"
+        )
 
         # Test memory cleanup
         await self._cleanup_gpu_memory()
         cleanup_gpu_memory = await self._get_gpu_memory_usage()
         cleanup_growth = cleanup_gpu_memory - initial_gpu_memory
 
-        assert cleanup_growth < 100 * 1024 * 1024, f"GPU memory leak: {cleanup_growth / (1024*1024):.1f}MB after cleanup"
+        assert cleanup_growth < 100 * 1024 * 1024, (
+            f"GPU memory leak: {cleanup_growth / (1024 * 1024):.1f}MB after cleanup"
+        )
 
-        print(f"✅ GPU memory: {gpu_memory_growth / (1024*1024):.1f}MB used, {cleanup_growth / (1024*1024):.1f}MB after cleanup")
+        print(
+            f"✅ GPU memory: {gpu_memory_growth / (1024 * 1024):.1f}MB used, {cleanup_growth / (1024 * 1024):.1f}MB after cleanup"
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.performance
@@ -185,16 +211,22 @@ class TestSystemPerformance:
         )
 
         # Assert network efficiency
-        assert metrics.average_time < 0.5, f"Network latency too high: {metrics.average_time}"
-        assert metrics.success_rate > 0.9, f"Network success rate too low: {metrics.success_rate}"
+        assert metrics.average_time < 0.5, (
+            f"Network latency too high: {metrics.average_time}"
+        )
+        assert metrics.success_rate > 0.9, (
+            f"Network success rate too low: {metrics.success_rate}"
+        )
 
-        print(f"✅ Network I/O: {metrics.average_time:.3f}s latency, {metrics.success_rate:.1f}% success")
+        print(
+            f"✅ Network I/O: {metrics.average_time:.3f}s latency, {metrics.success_rate:.1f}% success"
+        )
 
     async def _benchmark_mcp_bus_load(self, num_requests: int, delay: float):
         """Benchmark MCP Bus under load"""
         execution_times = []
 
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             mock_response = AsyncMock()
             mock_response.json.return_value = {"status": "success"}
             mock_client.return_value.post.return_value = mock_response
@@ -247,6 +279,7 @@ class TestSystemPerformance:
         """Check if GPU is available"""
         try:
             import torch
+
             return torch.cuda.is_available()
         except ImportError:
             return False
@@ -257,6 +290,7 @@ class TestSystemPerformance:
             return 0
 
         import torch
+
         return torch.cuda.memory_allocated()
 
     async def _run_gpu_operations_batch(self):
@@ -279,6 +313,7 @@ class TestSystemPerformance:
             return
 
         import torch
+
         torch.cuda.empty_cache()
 
     async def _simulate_database_operations(self, num_operations: int):
@@ -329,7 +364,9 @@ class TestScalabilityBenchmarks:
             # Simulate parallel processing
             tasks = []
             for _i in range(num_instances):
-                task = asyncio.create_task(self._simulate_instance_load(load_per_instance))
+                task = asyncio.create_task(
+                    self._simulate_instance_load(load_per_instance)
+                )
                 tasks.append(task)
 
             await asyncio.gather(*tasks)
@@ -338,7 +375,9 @@ class TestScalabilityBenchmarks:
             processing_time = end_time - start_time
             throughput = total_load / processing_time
 
-            print(f"✅ {num_instances} instances: {throughput:.1f} items/s, {processing_time:.3f}s")
+            print(
+                f"✅ {num_instances} instances: {throughput:.1f} items/s, {processing_time:.3f}s"
+            )
 
             # Assert scaling efficiency
             if num_instances > 1:

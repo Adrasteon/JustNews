@@ -27,6 +27,7 @@ from database.utils.migrated_database_utils import create_database_service
 # Lazy import placeholders for heavy training utilities
 _TRANSFORMERS_AVAILABLE = importlib.util.find_spec("transformers") is not None
 
+
 def _import_trainer_and_args():
     try:
         transformers_mod = importlib.import_module("transformers")
@@ -35,6 +36,7 @@ def _import_trainer_and_args():
         return Trainer, TrainingArguments
     except Exception:
         return None, None
+
 
 # Import database utilities
 
@@ -47,11 +49,14 @@ except ImportError:
         with open("training_feedback.log", "a", encoding="utf-8") as f:
             f.write(f"{datetime.now(UTC).isoformat()}\t{event}\t{details}\n")
 
+
 logger = get_logger(__name__)
+
 
 @dataclass
 class TrainingExample:
     """Structured training example with metadata"""
+
     agent_name: str
     task_type: str  # sentiment, fact_check, entity_extraction, etc.
     input_text: str
@@ -63,9 +68,11 @@ class TrainingExample:
     user_feedback: str | None = None
     correction_priority: int = 0  # 0=low, 1=medium, 2=high, 3=critical
 
+
 @dataclass
 class ModelPerformance:
     """Model performance tracking"""
+
     agent_name: str
     model_name: str
     accuracy_before: float
@@ -74,16 +81,19 @@ class ModelPerformance:
     update_timestamp: datetime
     rollback_triggered: bool = False
 
+
 class OnTheFlyTrainingCoordinator:
     """
     Centralized coordinator for continuous model improvement across all V2 agents
     """
 
-    def __init__(self,
-                 update_threshold: int = 50,
-                 max_buffer_size: int = 1000,
-                 performance_window: int = 100,
-                 rollback_threshold: float = 0.05):
+    def __init__(
+        self,
+        update_threshold: int = 50,
+        max_buffer_size: int = 1000,
+        performance_window: int = 100,
+        rollback_threshold: float = 0.05,
+    ):
         """
         Initialize training coordinator
 
@@ -100,14 +110,14 @@ class OnTheFlyTrainingCoordinator:
 
         # Training buffers for each agent
         self.training_buffers = {
-            'scout': deque(maxlen=max_buffer_size),
-            'analyst': deque(maxlen=max_buffer_size),
-            'critic': deque(maxlen=max_buffer_size),
-            'fact_checker': deque(maxlen=max_buffer_size),
-            'newsreader': deque(maxlen=max_buffer_size),
-            'synthesizer': deque(maxlen=max_buffer_size),
-            'chief_editor': deque(maxlen=max_buffer_size),
-            'memory': deque(maxlen=max_buffer_size)
+            "scout": deque(maxlen=max_buffer_size),
+            "analyst": deque(maxlen=max_buffer_size),
+            "critic": deque(maxlen=max_buffer_size),
+            "fact_checker": deque(maxlen=max_buffer_size),
+            "newsreader": deque(maxlen=max_buffer_size),
+            "synthesizer": deque(maxlen=max_buffer_size),
+            "chief_editor": deque(maxlen=max_buffer_size),
+            "memory": deque(maxlen=max_buffer_size),
         }
 
         # Performance tracking
@@ -119,7 +129,9 @@ class OnTheFlyTrainingCoordinator:
         self.training_lock = threading.Lock()
 
         # Database connection for training data persistence
-        self.db_connection = None  # Will be initialized on first use via connection pooling
+        self.db_connection = (
+            None  # Will be initialized on first use via connection pooling
+        )
 
         # Start background training thread
         self.training_thread = threading.Thread(target=self._training_loop, daemon=True)
@@ -135,21 +147,24 @@ class OnTheFlyTrainingCoordinator:
         try:
             # Use the new advanced database layer
             from agents.common.database import get_db_connection
+
             return get_db_connection()
         except Exception as e:
             logger.warning(f"Database connection failed: {e}")
             return None
 
-    def add_training_example(self,
-                           agent_name: str,
-                           task_type: str,
-                           input_text: str,
-                           expected_output: Any,
-                           uncertainty_score: float,
-                           importance_score: float = 0.5,
-                           source_url: str = "",
-                           user_feedback: str = None,
-                           correction_priority: int = 0):
+    def add_training_example(
+        self,
+        agent_name: str,
+        task_type: str,
+        input_text: str,
+        expected_output: Any,
+        uncertainty_score: float,
+        importance_score: float = 0.5,
+        source_url: str = "",
+        user_feedback: str = None,
+        correction_priority: int = 0,
+    ):
         """
         Add a training example to the appropriate agent buffer
 
@@ -165,7 +180,7 @@ class OnTheFlyTrainingCoordinator:
             source_url=source_url,
             timestamp=datetime.now(UTC),
             user_feedback=user_feedback,
-            correction_priority=correction_priority
+            correction_priority=correction_priority,
         )
 
         # Add to appropriate buffer
@@ -176,21 +191,27 @@ class OnTheFlyTrainingCoordinator:
             self._persist_training_example(example)
 
             # Log addition
-            logger.info(f"📚 Training example added: {agent_name}/{task_type} "
-                       f"(uncertainty: {uncertainty_score:.3f}, importance: {importance_score:.3f})")
+            logger.info(
+                f"📚 Training example added: {agent_name}/{task_type} "
+                f"(uncertainty: {uncertainty_score:.3f}, importance: {importance_score:.3f})"
+            )
 
             # Trigger immediate update for high-priority corrections
             if correction_priority >= 2:  # High or critical priority
-                logger.info("🚨 High-priority correction detected - triggering immediate update")
+                logger.info(
+                    "🚨 High-priority correction detected - triggering immediate update"
+                )
                 self._schedule_immediate_update(agent_name)
 
-    def add_prediction_feedback(self,
-                              agent_name: str,
-                              task_type: str,
-                              input_text: str,
-                              predicted_output: Any,
-                              actual_output: Any,
-                              confidence_score: float):
+    def add_prediction_feedback(
+        self,
+        agent_name: str,
+        task_type: str,
+        input_text: str,
+        predicted_output: Any,
+        actual_output: Any,
+        confidence_score: float,
+    ):
         """
         Add feedback from agent predictions to improve training
 
@@ -200,7 +221,7 @@ class OnTheFlyTrainingCoordinator:
         uncertainty_score = 1.0 - confidence_score
 
         # Calculate importance based on prediction error
-        if task_type in ['sentiment', 'bias', 'fact_verification']:
+        if task_type in ["sentiment", "bias", "fact_verification"]:
             # For classification tasks
             importance_score = 1.0 if predicted_output != actual_output else 0.3
         else:
@@ -215,7 +236,7 @@ class OnTheFlyTrainingCoordinator:
                 input_text=input_text,
                 expected_output=actual_output,
                 uncertainty_score=uncertainty_score,
-                importance_score=importance_score
+                importance_score=importance_score,
             )
 
     def _schedule_immediate_update(self, agent_name: str):
@@ -225,7 +246,7 @@ class OnTheFlyTrainingCoordinator:
                 threading.Thread(
                     target=self._update_agent_model,
                     args=(agent_name, True),  # immediate=True
-                    daemon=True
+                    daemon=True,
                 ).start()
 
     def _training_loop(self):
@@ -237,8 +258,10 @@ class OnTheFlyTrainingCoordinator:
                 # Check each agent buffer for update readiness
                 for agent_name, buffer in self.training_buffers.items():
                     if len(buffer) >= self.update_threshold:
-                        logger.info(f"🎯 Triggering scheduled update for {agent_name} "
-                                   f"({len(buffer)} examples ready)")
+                        logger.info(
+                            f"🎯 Triggering scheduled update for {agent_name} "
+                            f"({len(buffer)} examples ready)"
+                        )
 
                         with self.training_lock:
                             if not self.is_training:
@@ -270,8 +293,12 @@ class OnTheFlyTrainingCoordinator:
 
             # Sort by priority and importance
             training_examples.sort(
-                key=lambda x: (x.correction_priority, x.importance_score, x.uncertainty_score),
-                reverse=True
+                key=lambda x: (
+                    x.correction_priority,
+                    x.importance_score,
+                    x.uncertainty_score,
+                ),
+                reverse=True,
             )
 
             # Take top examples for training
@@ -292,12 +319,16 @@ class OnTheFlyTrainingCoordinator:
                 performance_drop = pre_update_performance - post_update_performance
 
                 if performance_drop > self.rollback_threshold:
-                    logger.warning(f"⚠️ Performance drop detected for {agent_name}: "
-                                   f"{performance_drop:.3f} - initiating rollback")
+                    logger.warning(
+                        f"⚠️ Performance drop detected for {agent_name}: "
+                        f"{performance_drop:.3f} - initiating rollback"
+                    )
                     self._rollback_model(agent_name)
                 else:
-                    logger.info(f"✅ Model update successful for {agent_name}: "
-                               f"{pre_update_performance:.3f} → {post_update_performance:.3f}")
+                    logger.info(
+                        f"✅ Model update successful for {agent_name}: "
+                        f"{pre_update_performance:.3f} → {post_update_performance:.3f}"
+                    )
 
                     # Clear processed examples from buffer
                     for _ in range(len(selected_examples)):
@@ -311,7 +342,7 @@ class OnTheFlyTrainingCoordinator:
                         accuracy_before=pre_update_performance,
                         accuracy_after=post_update_performance,
                         examples_trained=len(selected_examples),
-                        update_timestamp=datetime.now(UTC)
+                        update_timestamp=datetime.now(UTC),
                     )
                     self.performance_history.append(performance_record)
 
@@ -321,27 +352,29 @@ class OnTheFlyTrainingCoordinator:
         finally:
             self.is_training = False
 
-    def _perform_model_update(self, agent_name: str, training_examples: list[TrainingExample]) -> bool:
+    def _perform_model_update(
+        self, agent_name: str, training_examples: list[TrainingExample]
+    ) -> bool:
         """
         Perform the actual model update using incremental learning
         """
         try:
             # Route to appropriate agent's training method
-            if agent_name == 'scout':
+            if agent_name == "scout":
                 return self._update_scout_models(training_examples)
-            elif agent_name == 'analyst':
+            elif agent_name == "analyst":
                 return self._update_analyst_models(training_examples)
-            elif agent_name == 'critic':
+            elif agent_name == "critic":
                 return self._update_critic_models(training_examples)
-            elif agent_name == 'fact_checker':
+            elif agent_name == "fact_checker":
                 return self._update_fact_checker_models(training_examples)
-            elif agent_name == 'newsreader':
+            elif agent_name == "newsreader":
                 return self._update_newsreader_models(training_examples)
-            elif agent_name == 'synthesizer':
+            elif agent_name == "synthesizer":
                 return self._update_synthesizer_models(training_examples)
-            elif agent_name == 'chief_editor':
+            elif agent_name == "chief_editor":
                 return self._update_chief_editor_models(training_examples)
-            elif agent_name == 'memory':
+            elif agent_name == "memory":
                 return self._update_memory_models(training_examples)
             else:
                 logger.warning(f"Model update not implemented for {agent_name}")
@@ -364,23 +397,26 @@ class OnTheFlyTrainingCoordinator:
                         "task_type": ex.task_type,
                         "input_text": ex.input_text,
                         "expected_output": ex.expected_output,
-                        "importance_score": ex.importance_score
-                    } for ex in examples
+                        "importance_score": ex.importance_score,
+                    }
+                    for ex in examples
                 ]
             }
 
             # Call Scout's training endpoint via MCP Bus
             response = mcp_client.call_agent_tool(
-                agent="scout",
-                tool="update_models",
-                kwargs=training_data
+                agent="scout", tool="update_models", kwargs=training_data
             )
 
             success = response.get("status") == "success"
             if success:
-                logger.info(f"✅ Scout models updated via MCP Bus with {len(examples)} examples")
+                logger.info(
+                    f"✅ Scout models updated via MCP Bus with {len(examples)} examples"
+                )
             else:
-                logger.warning(f"❌ Scout model update failed: {response.get('message', 'Unknown error')}")
+                logger.warning(
+                    f"❌ Scout model update failed: {response.get('message', 'Unknown error')}"
+                )
 
             return success
 
@@ -401,23 +437,26 @@ class OnTheFlyTrainingCoordinator:
                         "task_type": ex.task_type,
                         "input_text": ex.input_text,
                         "expected_output": ex.expected_output,
-                        "importance_score": ex.importance_score
-                    } for ex in examples
+                        "importance_score": ex.importance_score,
+                    }
+                    for ex in examples
                 ]
             }
 
             # Call Fact Checker's training endpoint via MCP Bus
             response = mcp_client.call_agent_tool(
-                agent="fact_checker",
-                tool="update_models",
-                kwargs=training_data
+                agent="fact_checker", tool="update_models", kwargs=training_data
             )
 
             success = response.get("status") == "success"
             if success:
-                logger.info(f"✅ Fact Checker models updated via MCP Bus with {len(examples)} examples")
+                logger.info(
+                    f"✅ Fact Checker models updated via MCP Bus with {len(examples)} examples"
+                )
             else:
-                logger.warning(f"❌ Fact Checker model update failed: {response.get('message', 'Unknown error')}")
+                logger.warning(
+                    f"❌ Fact Checker model update failed: {response.get('message', 'Unknown error')}"
+                )
 
             return success
 
@@ -438,23 +477,26 @@ class OnTheFlyTrainingCoordinator:
                         "task_type": ex.task_type,
                         "input_text": ex.input_text,
                         "expected_output": ex.expected_output,
-                        "importance_score": ex.importance_score
-                    } for ex in examples
+                        "importance_score": ex.importance_score,
+                    }
+                    for ex in examples
                 ]
             }
 
             # Call NewsReader's training endpoint via MCP Bus
             response = mcp_client.call_agent_tool(
-                agent="newsreader",
-                tool="update_models",
-                kwargs=training_data
+                agent="newsreader", tool="update_models", kwargs=training_data
             )
 
             success = response.get("status") == "success"
             if success:
-                logger.info(f"✅ NewsReader models updated via MCP Bus with {len(examples)} examples")
+                logger.info(
+                    f"✅ NewsReader models updated via MCP Bus with {len(examples)} examples"
+                )
             else:
-                logger.warning(f"❌ NewsReader model update failed: {response.get('message', 'Unknown error')}")
+                logger.warning(
+                    f"❌ NewsReader model update failed: {response.get('message', 'Unknown error')}"
+                )
 
             # Also log examples for future LLaVA fine-tuning (maintaining existing behavior)
             for example in examples:
@@ -464,8 +506,8 @@ class OnTheFlyTrainingCoordinator:
                         "task_type": example.task_type,
                         "input": example.input_text,
                         "expected_output": example.expected_output,
-                        "timestamp": datetime.now(UTC).isoformat()
-                    }
+                        "timestamp": datetime.now(UTC).isoformat(),
+                    },
                 )
 
             return success
@@ -487,23 +529,26 @@ class OnTheFlyTrainingCoordinator:
                         "task_type": ex.task_type,
                         "input_text": ex.input_text,
                         "expected_output": ex.expected_output,
-                        "importance_score": ex.importance_score
-                    } for ex in examples
+                        "importance_score": ex.importance_score,
+                    }
+                    for ex in examples
                 ]
             }
 
             # Call Analyst's training endpoint via MCP Bus
             response = mcp_client.call_agent_tool(
-                agent="analyst",
-                tool="update_models",
-                kwargs=training_data
+                agent="analyst", tool="update_models", kwargs=training_data
             )
 
             success = response.get("status") == "success"
             if success:
-                logger.info(f"✅ Analyst models updated via MCP Bus with {len(examples)} examples")
+                logger.info(
+                    f"✅ Analyst models updated via MCP Bus with {len(examples)} examples"
+                )
             else:
-                logger.warning(f"❌ Analyst model update failed: {response.get('message', 'Unknown error')}")
+                logger.warning(
+                    f"❌ Analyst model update failed: {response.get('message', 'Unknown error')}"
+                )
 
             return success
 
@@ -524,29 +569,33 @@ class OnTheFlyTrainingCoordinator:
                         "task_type": ex.task_type,
                         "input_text": ex.input_text,
                         "expected_output": ex.expected_output,
-                        "importance_score": ex.importance_score
-                    } for ex in examples
+                        "importance_score": ex.importance_score,
+                    }
+                    for ex in examples
                 ]
             }
 
             # Call Critic's training endpoint via MCP Bus
             response = mcp_client.call_agent_tool(
-                agent="critic",
-                tool="update_models",
-                kwargs=training_data
+                agent="critic", tool="update_models", kwargs=training_data
             )
 
             success = response.get("status") == "success"
             if success:
-                logger.info(f"✅ Critic models updated via MCP Bus with {len(examples)} examples")
+                logger.info(
+                    f"✅ Critic models updated via MCP Bus with {len(examples)} examples"
+                )
             else:
-                logger.warning(f"❌ Critic model update failed: {response.get('message', 'Unknown error')}")
+                logger.warning(
+                    f"❌ Critic model update failed: {response.get('message', 'Unknown error')}"
+                )
 
             return success
 
         except Exception as e:
             logger.error(f"Critic model update error: {e}")
             return False
+
     def _update_synthesizer_models(self, examples: list[TrainingExample]) -> bool:
         """Update Synthesizer V3 models via MCP Bus"""
         try:
@@ -560,23 +609,26 @@ class OnTheFlyTrainingCoordinator:
                         "task_type": ex.task_type,
                         "input_text": ex.input_text,
                         "expected_output": ex.expected_output,
-                        "importance_score": ex.importance_score
-                    } for ex in examples
+                        "importance_score": ex.importance_score,
+                    }
+                    for ex in examples
                 ]
             }
 
             # Call Synthesizer's training endpoint via MCP Bus
             response = mcp_client.call_agent_tool(
-                agent="synthesizer",
-                tool="update_models",
-                kwargs=training_data
+                agent="synthesizer", tool="update_models", kwargs=training_data
             )
 
             success = response.get("status") == "success"
             if success:
-                logger.info(f"✅ Synthesizer models updated via MCP Bus with {len(examples)} examples")
+                logger.info(
+                    f"✅ Synthesizer models updated via MCP Bus with {len(examples)} examples"
+                )
             else:
-                logger.warning(f"❌ Synthesizer model update failed: {response.get('message', 'Unknown error')}")
+                logger.warning(
+                    f"❌ Synthesizer model update failed: {response.get('message', 'Unknown error')}"
+                )
 
             return success
 
@@ -597,23 +649,26 @@ class OnTheFlyTrainingCoordinator:
                         "task_type": ex.task_type,
                         "input_text": ex.input_text,
                         "expected_output": ex.expected_output,
-                        "importance_score": ex.importance_score
-                    } for ex in examples
+                        "importance_score": ex.importance_score,
+                    }
+                    for ex in examples
                 ]
             }
 
             # Call Chief Editor's training endpoint via MCP Bus
             response = mcp_client.call_agent_tool(
-                agent="chief_editor",
-                tool="update_models",
-                kwargs=training_data
+                agent="chief_editor", tool="update_models", kwargs=training_data
             )
 
             success = response.get("status") == "success"
             if success:
-                logger.info(f"✅ Chief Editor models updated via MCP Bus with {len(examples)} examples")
+                logger.info(
+                    f"✅ Chief Editor models updated via MCP Bus with {len(examples)} examples"
+                )
             else:
-                logger.warning(f"❌ Chief Editor model update failed: {response.get('message', 'Unknown error')}")
+                logger.warning(
+                    f"❌ Chief Editor model update failed: {response.get('message', 'Unknown error')}"
+                )
 
             return success
 
@@ -634,23 +689,26 @@ class OnTheFlyTrainingCoordinator:
                         "task_type": ex.task_type,
                         "input_text": ex.input_text,
                         "expected_output": ex.expected_output,
-                        "importance_score": ex.importance_score
-                    } for ex in examples
+                        "importance_score": ex.importance_score,
+                    }
+                    for ex in examples
                 ]
             }
 
             # Call Memory's training endpoint via MCP Bus
             response = mcp_client.call_agent_tool(
-                agent="memory",
-                tool="update_models",
-                kwargs=training_data
+                agent="memory", tool="update_models", kwargs=training_data
             )
 
             success = response.get("status") == "success"
             if success:
-                logger.info(f"✅ Memory models updated via MCP Bus with {len(examples)} examples")
+                logger.info(
+                    f"✅ Memory models updated via MCP Bus with {len(examples)} examples"
+                )
             else:
-                logger.warning(f"❌ Memory model update failed: {response.get('message', 'Unknown error')}")
+                logger.warning(
+                    f"❌ Memory model update failed: {response.get('message', 'Unknown error')}"
+                )
 
             return success
 
@@ -658,7 +716,9 @@ class OnTheFlyTrainingCoordinator:
             logger.error(f"Memory model update error: {e}")
             return False
 
-    def _incremental_update_classifier(self, model, examples: list[TrainingExample]) -> bool:
+    def _incremental_update_classifier(
+        self, model, examples: list[TrainingExample]
+    ) -> bool:
         """
         Perform incremental update on a transformer classifier model
         Uses Elastic Weight Consolidation (EWC) to prevent catastrophic forgetting
@@ -691,19 +751,19 @@ class OnTheFlyTrainingCoordinator:
                     encoding = self.tokenizer(
                         text,
                         truncation=True,
-                        padding='max_length',
+                        padding="max_length",
                         max_length=self.max_length,
-                        return_tensors='pt'
+                        return_tensors="pt",
                     )
 
                     return {
-                        'input_ids': encoding['input_ids'].flatten(),
-                        'attention_mask': encoding['attention_mask'].flatten(),
-                        'labels': torch.tensor(label, dtype=torch.long)
+                        "input_ids": encoding["input_ids"].flatten(),
+                        "attention_mask": encoding["attention_mask"].flatten(),
+                        "labels": torch.tensor(label, dtype=torch.long),
                     }
 
             # Get model and tokenizer
-            if hasattr(model, 'model'):
+            if hasattr(model, "model"):
                 torch_model = model.model
                 tokenizer = model.tokenizer
             else:
@@ -717,11 +777,13 @@ class OnTheFlyTrainingCoordinator:
             # Training arguments for incremental learning (lazy import)
             TrainerCls, TrainingArgumentsCls = _import_trainer_and_args()
             if TrainerCls is None or TrainingArgumentsCls is None:
-                logger.warning("Transformers Trainer or TrainingArguments not available; skipping incremental update")
+                logger.warning(
+                    "Transformers Trainer or TrainingArguments not available; skipping incremental update"
+                )
                 return False
 
             training_args = TrainingArgumentsCls(
-                output_dir='/tmp/incremental_training',
+                output_dir="/tmp/incremental_training",
                 num_train_epochs=1,  # Single epoch for incremental updates
                 per_device_train_batch_size=4,
                 learning_rate=1e-5,  # Low learning rate to prevent catastrophic forgetting
@@ -729,7 +791,7 @@ class OnTheFlyTrainingCoordinator:
                 logging_steps=10,
                 save_steps=1000,
                 evaluation_strategy="no",
-                save_strategy="no"
+                save_strategy="no",
             )
 
             # Create trainer
@@ -737,7 +799,7 @@ class OnTheFlyTrainingCoordinator:
                 model=torch_model,
                 args=training_args,
                 train_dataset=dataset,
-                tokenizer=tokenizer
+                tokenizer=tokenizer,
             )
 
             # Perform incremental training
@@ -759,17 +821,18 @@ class OnTheFlyTrainingCoordinator:
             # For now, return a simulated performance score
             # In production, this would evaluate on a real test set
             base_performance = {
-                'scout': 0.85,
-                'analyst': 0.82,
-                'critic': 0.78,
-                'fact_checker': 0.80,
-                'synthesizer': 0.75,
-                'chief_editor': 0.77,
-                'memory': 0.88
+                "scout": 0.85,
+                "analyst": 0.82,
+                "critic": 0.78,
+                "fact_checker": 0.80,
+                "synthesizer": 0.75,
+                "chief_editor": 0.77,
+                "memory": 0.88,
             }
 
             # Add some random variation to simulate real performance changes
             import random
+
             variation = random.uniform(-0.02, 0.02)
             return base_performance.get(agent_name, 0.75) + variation
 
@@ -780,15 +843,15 @@ class OnTheFlyTrainingCoordinator:
     def _get_agent_model_name(self, agent_name: str) -> str:
         """Get the primary model name for an agent"""
         model_names = {
-            'scout': 'bert-base-news-classification',
-            'analyst': 'spacy-ner-en_core_web_sm',
-            'critic': 'nltk-pattern-analysis',
-            'fact_checker': 'distilbert-fact-verification',
-            'synthesizer': 'bart-news-summarization',
-            'chief_editor': 'bert-task-classification',
-            'memory': 'sentence-transformers-semantic-search'
+            "scout": "bert-base-news-classification",
+            "analyst": "spacy-ner-en_core_web_sm",
+            "critic": "nltk-pattern-analysis",
+            "fact_checker": "distilbert-fact-verification",
+            "synthesizer": "bart-news-summarization",
+            "chief_editor": "bert-task-classification",
+            "memory": "sentence-transformers-semantic-search",
         }
-        return model_names.get(agent_name, 'unknown-model')
+        return model_names.get(agent_name, "unknown-model")
 
     def _rollback_model(self, agent_name: str):
         """Rollback model to previous checkpoint due to performance degradation"""
@@ -813,23 +876,26 @@ class OnTheFlyTrainingCoordinator:
             db_service = create_database_service()
 
             cursor = db_service.mb_conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO training_examples
                 (agent_name, task_type, input_text, expected_output, uncertainty_score,
                  importance_score, source_url, timestamp, user_feedback, correction_priority)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                example.agent_name,
-                example.task_type,
-                example.input_text,
-                json.dumps(example.expected_output),
-                example.uncertainty_score,
-                example.importance_score,
-                example.source_url,
-                example.timestamp,
-                example.user_feedback,
-                example.correction_priority
-            ))
+            """,
+                (
+                    example.agent_name,
+                    example.task_type,
+                    example.input_text,
+                    json.dumps(example.expected_output),
+                    example.uncertainty_score,
+                    example.importance_score,
+                    example.source_url,
+                    example.timestamp,
+                    example.user_feedback,
+                    example.correction_priority,
+                ),
+            )
             db_service.mb_conn.commit()
             cursor.close()
             db_service.close()
@@ -841,12 +907,18 @@ class OnTheFlyTrainingCoordinator:
         """Get current training status and statistics"""
         return {
             "is_training": self.is_training,
-            "buffer_sizes": {agent: len(buffer) for agent, buffer in self.training_buffers.items()},
-            "total_examples": sum(len(buffer) for buffer in self.training_buffers.values()),
+            "buffer_sizes": {
+                agent: len(buffer) for agent, buffer in self.training_buffers.items()
+            },
+            "total_examples": sum(
+                len(buffer) for buffer in self.training_buffers.values()
+            ),
             "performance_history_size": len(self.performance_history),
-            "recent_performance": self.performance_history[-5:] if self.performance_history else [],
+            "recent_performance": self.performance_history[-5:]
+            if self.performance_history
+            else [],
             "update_threshold": self.update_threshold,
-            "rollback_threshold": self.rollback_threshold
+            "rollback_threshold": self.rollback_threshold,
         }
 
     def force_update_agent(self, agent_name: str) -> bool:
@@ -861,13 +933,15 @@ class OnTheFlyTrainingCoordinator:
 
         return False
 
-    def add_user_correction(self,
-                           agent_name: str,
-                           task_type: str,
-                           input_text: str,
-                           incorrect_output: Any,
-                           correct_output: Any,
-                           priority: int = 2):
+    def add_user_correction(
+        self,
+        agent_name: str,
+        task_type: str,
+        input_text: str,
+        incorrect_output: Any,
+        correct_output: Any,
+        priority: int = 2,
+    ):
         """
         Add user correction for immediate model improvement
         High priority corrections trigger immediate updates
@@ -878,17 +952,21 @@ class OnTheFlyTrainingCoordinator:
             input_text=input_text,
             expected_output=correct_output,
             uncertainty_score=1.0,  # Maximum uncertainty for corrections
-            importance_score=1.0,   # Maximum importance for corrections
+            importance_score=1.0,  # Maximum importance for corrections
             user_feedback=f"Corrected from '{incorrect_output}' to '{correct_output}'",
-            correction_priority=priority
+            correction_priority=priority,
         )
 
         logger.info(f"🔧 User correction added for {agent_name}: {task_type}")
 
+
 # Global training coordinator instance
 training_coordinator = None
 
-def initialize_online_training(update_threshold: int = 50) -> OnTheFlyTrainingCoordinator:
+
+def initialize_online_training(
+    update_threshold: int = 50,
+) -> OnTheFlyTrainingCoordinator:
     """Initialize the global training coordinator"""
     global training_coordinator
 
@@ -897,23 +975,27 @@ def initialize_online_training(update_threshold: int = 50) -> OnTheFlyTrainingCo
             update_threshold=update_threshold,
             max_buffer_size=1000,
             performance_window=100,
-            rollback_threshold=0.05
+            rollback_threshold=0.05,
         )
         logger.info("🎓 Online Training System initialized")
 
     return training_coordinator
+
 
 def get_training_coordinator() -> OnTheFlyTrainingCoordinator | None:
     """Get the global training coordinator instance"""
     global training_coordinator
     return training_coordinator
 
-def add_training_feedback(agent_name: str,
-                         task_type: str,
-                         input_text: str,
-                         predicted_output: Any,
-                         actual_output: Any,
-                         confidence: float):
+
+def add_training_feedback(
+    agent_name: str,
+    task_type: str,
+    input_text: str,
+    predicted_output: Any,
+    actual_output: Any,
+    confidence: float,
+):
     """
     Convenience function to add prediction feedback to the training system
     Called automatically by agents during predictions
@@ -926,15 +1008,18 @@ def add_training_feedback(agent_name: str,
             input_text=input_text,
             predicted_output=predicted_output,
             actual_output=actual_output,
-            confidence_score=confidence
+            confidence_score=confidence,
         )
 
-def add_user_correction(agent_name: str,
-                       task_type: str,
-                       input_text: str,
-                       incorrect_output: Any,
-                       correct_output: Any,
-                       priority: int = 2):
+
+def add_user_correction(
+    agent_name: str,
+    task_type: str,
+    input_text: str,
+    incorrect_output: Any,
+    correct_output: Any,
+    priority: int = 2,
+):
     """
     Convenience function to add user corrections for immediate model improvement
     """
@@ -946,8 +1031,9 @@ def add_user_correction(agent_name: str,
             input_text=input_text,
             incorrect_output=incorrect_output,
             correct_output=correct_output,
-            priority=priority
+            priority=priority,
         )
+
 
 def get_online_training_status() -> dict[str, Any]:
     """Get current status of the online training system"""

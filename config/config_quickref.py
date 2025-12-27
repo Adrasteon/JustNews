@@ -20,18 +20,20 @@ except ImportError:
     print("Make sure you're running from the config directory")
     sys.exit(1)
 
+
 def print_section_header(title: str):
     """Print a formatted section header"""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f" {title}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
+
 
 def print_crawling_config():
     """Display crawling configuration"""
     print_section_header("🤖 CRAWLING CONFIGURATION")
 
-    crawling = config.get_section('crawling')
-    rate_limits = crawling.get('rate_limiting', {})
+    crawling = config.get_section("crawling")
+    rate_limits = crawling.get("rate_limiting", {})
 
     print("General Settings:")
     print(f"  • Enabled: {crawling.get('enabled', False)}")
@@ -42,7 +44,9 @@ def print_crawling_config():
 
     print("\nRate Limiting:")
     print(f"  • Requests per Minute: {rate_limits.get('requests_per_minute', 0)}")
-    print(f"  • Delay Between Requests: {rate_limits.get('delay_between_requests_seconds', 0)}s")
+    print(
+        f"  • Delay Between Requests: {rate_limits.get('delay_between_requests_seconds', 0)}s"
+    )
     print(f"  • Concurrent Sites: {rate_limits.get('concurrent_sites', 0)}")
     print(f"  • Concurrent Browsers: {rate_limits.get('concurrent_browsers', 0)}")
     print(f"  • Batch Size: {rate_limits.get('batch_size', 0)}")
@@ -50,24 +54,27 @@ def print_crawling_config():
     print(f"  • Max Total Articles: {rate_limits.get('max_total_articles', 0)}")
 
     print("\nTimeouts:")
-    timeouts = crawling.get('timeouts', {})
+    timeouts = crawling.get("timeouts", {})
     print(f"  • Page Load: {timeouts.get('page_load_timeout_seconds', 0)}ms")
     print(f"  • Modal Dismiss: {timeouts.get('modal_dismiss_timeout_ms', 0)}ms")
     print(f"  • Request: {timeouts.get('request_timeout_seconds', 0)}s")
+
 
 def print_database_config():
     """Display database configuration"""
     print_section_header("🗄️ DATABASE CONFIGURATION")
 
-    db = config.get_section('database')
-    pool = db.get('connection_pool', {})
+    db = config.get_section("database")
+    pool = db.get("connection_pool", {})
 
     print("Connection Settings:")
     print(f"  • Host: {db.get('host', 'Not set')}")
     print(f"  • Port: {db.get('port', 0)}")
     print(f"  • Database: {db.get('database', 'Not set')}")
     print(f"  • User: {db.get('user', 'Not set')}")
-    print(f"  • Password: {'*' * len(db.get('password', '')) if db.get('password') else 'Not set'}")
+    print(
+        f"  • Password: {'*' * len(db.get('password', '')) if db.get('password') else 'Not set'}"
+    )
     print(f"  • SSL Mode: {db.get('ssl_mode', 'Not set')}")
 
     print("\nConnection Pool:")
@@ -76,14 +83,15 @@ def print_database_config():
     print(f"  • Connection Timeout: {pool.get('connection_timeout_seconds', 0)}s")
     print(f"  • Command Timeout: {pool.get('command_timeout_seconds', 0)}s")
 
+
 def print_gpu_config():
     """Display GPU configuration"""
     print_section_header("🎮 GPU CONFIGURATION")
 
-    gpu = config.get_section('gpu')
-    devices = gpu.get('devices', {})
-    memory = gpu.get('memory_management', {})
-    health = gpu.get('health_monitoring', {})
+    gpu = config.get_section("gpu")
+    devices = gpu.get("devices", {})
+    memory = gpu.get("memory_management", {})
+    health = gpu.get("health_monitoring", {})
 
     print("General Settings:")
     print(f"  • Enabled: {gpu.get('enabled', False)}")
@@ -97,26 +105,29 @@ def print_gpu_config():
     print(f"  • Preallocation: {memory.get('preallocation', False)}")
 
     print("\nPerformance:")
-    perf = gpu.get('performance', {})
+    perf = gpu.get("performance", {})
     print(f"  • Batch Size Optimization: {perf.get('batch_size_optimization', False)}")
     print(f"  • Async Operations: {perf.get('async_operations', False)}")
     print(f"  • Profiling Enabled: {perf.get('profiling_enabled', False)}")
-    print(f"  • Metrics Interval: {perf.get('metrics_collection_interval_seconds', 0)}s")
+    print(
+        f"  • Metrics Interval: {perf.get('metrics_collection_interval_seconds', 0)}s"
+    )
 
     print("\nHealth Monitoring:")
     print(f"  • Enabled: {health.get('enabled', False)}")
     print(f"  • Check Interval: {health.get('check_interval_seconds', 0)}s")
-    temp_limits = health.get('temperature_limits', {})
+    temp_limits = health.get("temperature_limits", {})
     print(f"  • Warning Temperature: {temp_limits.get('warning_celsius', 0)}°C")
     print(f"  • Critical Temperature: {temp_limits.get('critical_celsius', 0)}°C")
     print(f"  • Shutdown Temperature: {temp_limits.get('shutdown_celsius', 0)}°C")
+
 
 def print_system_config():
     """Display system configuration"""
     print_section_header("⚙️ SYSTEM CONFIGURATION")
 
-    system = config.get_section('system')
-    mcp = config.get_section('mcp_bus')
+    system = config.get_section("system")
+    mcp = config.get_section("mcp_bus")
 
     print("System Info:")
     print(f"  • Name: {system.get('name', 'Not set')}")
@@ -133,32 +144,36 @@ def print_system_config():
     print(f"  • Max Retries: {mcp.get('max_retries', 0)}")
     print(f"  • Retry Delay: {mcp.get('retry_delay_seconds', 0)}s")
 
+
 def print_agent_ports():
     """Display agent port configuration"""
     print_section_header("🔌 AGENT PORTS")
 
-    agents = config.get_section('agents')
-    ports = agents.get('ports', {})
+    agents = config.get_section("agents")
+    ports = agents.get("ports", {})
 
     print("Agent Services:")
     for agent, port in ports.items():
         print(f"  • {agent.replace('_', ' ').title()}: {port}")
 
     print("\nTimeouts:")
-    timeouts = agents.get('timeouts', {})
+    timeouts = agents.get("timeouts", {})
     print(f"  • Agent Response: {timeouts.get('agent_response_timeout_seconds', 0)}s")
     print(f"  • Health Check: {timeouts.get('health_check_timeout_seconds', 0)}s")
+
 
 def print_monitoring_config():
     """Display monitoring configuration"""
     print_section_header("📊 MONITORING CONFIGURATION")
 
-    monitoring = config.get_section('monitoring')
-    alerts = monitoring.get('alert_thresholds', {})
+    monitoring = config.get_section("monitoring")
+    alerts = monitoring.get("alert_thresholds", {})
 
     print("General Settings:")
     print(f"  • Enabled: {monitoring.get('enabled', False)}")
-    print(f"  • Metrics Interval: {monitoring.get('metrics_collection_interval_seconds', 0)}s")
+    print(
+        f"  • Metrics Interval: {monitoring.get('metrics_collection_interval_seconds', 0)}s"
+    )
     print(f"  • Alert Cooldown: {monitoring.get('alert_cooldown_minutes', 0)} minutes")
 
     print("\nAlert Thresholds:")
@@ -167,6 +182,7 @@ def print_monitoring_config():
     print(f"  • Disk Usage: {alerts.get('disk_usage_percent', 0)}%")
     print(f"  • GPU Memory: {alerts.get('gpu_memory_percent', 0)}%")
     print(f"  • GPU Temperature: {alerts.get('gpu_temperature_celsius', 0)}°C")
+
 
 def show_usage_examples():
     """Show usage examples"""
@@ -192,6 +208,7 @@ def show_usage_examples():
     print("export MARIADB_HOST=your-db-host")
     print("export LOG_LEVEL=DEBUG")
 
+
 def main():
     """Main function"""
     print("🎯 JustNews Configuration Quick Reference")
@@ -209,6 +226,7 @@ def main():
     print_section_header("✅ CONFIGURATION LOADED")
     print(f"Total configuration sections: {len(list(config.keys()))}")
     print("Use 'python config/validate_config.py' to validate configuration")
+
 
 if __name__ == "__main__":
     main()

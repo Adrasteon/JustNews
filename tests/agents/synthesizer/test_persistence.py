@@ -22,37 +22,41 @@ def make_fake_db_service():
 
 def test_save_synthesized_draft_option_a(monkeypatch):
     fake = make_fake_db_service()
-    monkeypatch.setattr('database.utils.migrated_database_utils.create_database_service', lambda: fake)
-
-    res = persistence.save_synthesized_draft(
-        story_id='s1',
-        title='Title A',
-        body='Body text',
-        summary='Summary',
-        synth_metadata={'model': 'gpt-test'},
-        persistence_mode='extend',
-        embedding=[0.1, 0.2, 0.3]
+    monkeypatch.setattr(
+        "database.utils.migrated_database_utils.create_database_service", lambda: fake
     )
 
-    assert res['status'] == 'success'
-    assert res['id'] == 123
+    res = persistence.save_synthesized_draft(
+        story_id="s1",
+        title="Title A",
+        body="Body text",
+        summary="Summary",
+        synth_metadata={"model": "gpt-test"},
+        persistence_mode="extend",
+        embedding=[0.1, 0.2, 0.3],
+    )
+
+    assert res["status"] == "success"
+    assert res["id"] == 123
     fake.collection.add.assert_called_once()
 
 
 def test_save_synthesized_draft_option_b(monkeypatch):
     fake = make_fake_db_service()
-    monkeypatch.setattr('database.utils.migrated_database_utils.create_database_service', lambda: fake)
-
-    res = persistence.save_synthesized_draft(
-        story_id='s2',
-        title='Title B',
-        body='Body text',
-        summary='Summary',
-        synth_metadata={'model': 'gpt-test'},
-        persistence_mode='synthesized_articles',
-        embedding=[0.1, 0.2, 0.3]
+    monkeypatch.setattr(
+        "database.utils.migrated_database_utils.create_database_service", lambda: fake
     )
 
-    assert res['status'] == 'success'
-    assert res['id'] == 123
+    res = persistence.save_synthesized_draft(
+        story_id="s2",
+        title="Title B",
+        body="Body text",
+        summary="Summary",
+        synth_metadata={"model": "gpt-test"},
+        persistence_mode="synthesized_articles",
+        embedding=[0.1, 0.2, 0.3],
+    )
+
+    assert res["status"] == "success"
+    assert res["id"] == 123
     fake.collection.add.assert_called_once()

@@ -12,7 +12,7 @@ import os
 import secrets
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -25,6 +25,7 @@ from .log_collector import LogEntry
 
 class AggregationStrategy(Enum):
     """Log aggregation strategies"""
+
     TIME_WINDOW = "time_window"
     SIZE_BASED = "size_based"
     EVENT_COUNT = "event_count"
@@ -32,6 +33,7 @@ class AggregationStrategy(Enum):
 
 class StorageBackend(Enum):
     """Supported storage backends"""
+
     FILE = "file"
     ELASTICSEARCH = "elasticsearch"
     OPENSEARCH = "opensearch"
@@ -42,6 +44,7 @@ class StorageBackend(Enum):
 @dataclass
 class AggregationConfig:
     """Log aggregation configuration"""
+
     strategy: AggregationStrategy = AggregationStrategy.TIME_WINDOW
     time_window_seconds: int = 60
     max_batch_size: int = 1000
@@ -54,6 +57,7 @@ class AggregationConfig:
 @dataclass
 class StorageConfig:
     """Storage backend configuration"""
+
     backend: StorageBackend = StorageBackend.FILE
     file_path: str = "logs/aggregated"
     elasticsearch_url: str | None = None
@@ -73,12 +77,14 @@ class LogAggregator:
 
     def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or self._get_default_config()
-        self.aggregation_config = AggregationConfig(**self.config.get('aggregation', {}))
-        self.storage_config = StorageConfig(**self.config.get('storage', {}))
+        self.aggregation_config = AggregationConfig(
+            **self.config.get("aggregation", {})
+        )
+        self.storage_config = StorageConfig(**self.config.get("storage", {}))
 
         # Aggregation state
         self._log_buffer: list[LogEntry] = []
-        self._last_flush_time = datetime.now(timezone.utc)
+        self._last_flush_time = datetime.now(UTC)
         self._flush_task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
 
@@ -111,19 +117,16 @@ class LogAggregator:
     def _get_default_config(self) -> dict[str, Any]:
         """Get default aggregator configuration"""
         return {
-            'aggregation': {
-                'strategy': 'time_window',
-                'time_window_seconds': 60,
-                'max_batch_size': 1000,
-                'max_buffer_size': 10000,
-                'flush_interval_seconds': 30.0,
-                'compression_enabled': True,
-                'retention_days': 30
+            "aggregation": {
+                "strategy": "time_window",
+                "time_window_seconds": 60,
+                "max_batch_size": 1000,
+                "max_buffer_size": 10000,
+                "flush_interval_seconds": 30.0,
+                "compression_enabled": True,
+                "retention_days": 30,
             },
-            'storage': {
-                'backend': 'file',
-                'file_path': 'logs/aggregated'
-            }
+            "storage": {"backend": "file", "file_path": "logs/aggregated"},
         }
 
     def _setup_storage_backends(self) -> None:
@@ -172,12 +175,20 @@ class LogAggregator:
             should_flush = False
 
             if self.aggregation_config.strategy == AggregationStrategy.SIZE_BASED:
-                should_flush = len(self._log_buffer) >= self.aggregation_config.max_batch_size
+                should_flush = (
+                    len(self._log_buffer) >= self.aggregation_config.max_batch_size
+                )
             elif self.aggregation_config.strategy == AggregationStrategy.EVENT_COUNT:
-                should_flush = len(self._log_buffer) >= self.aggregation_config.max_batch_size
+                should_flush = (
+                    len(self._log_buffer) >= self.aggregation_config.max_batch_size
+                )
             elif self.aggregation_config.strategy == AggregationStrategy.TIME_WINDOW:
-                time_since_last_flush = (datetime.now(timezone.utc) - self._last_flush_time).total_seconds()
-                should_flush = time_since_last_flush >= self.aggregation_config.time_window_seconds
+                time_since_last_flush = (
+                    datetime.now(UTC) - self._last_flush_time
+                ).total_seconds()
+                should_flush = (
+                    time_since_last_flush >= self.aggregation_config.time_window_seconds
+                )
 
             # Emergency flush if buffer is too large
             if len(self._log_buffer) >= self.aggregation_config.max_buffer_size:
@@ -208,7 +219,7 @@ class LogAggregator:
                     self._errors_count += 1
 
             self._batches_flushed += 1
-            self._last_flush_time = datetime.now(timezone.utc)
+            self._last_flush_time = datetime.now(UTC)
             self._log_buffer.clear()
 
         except Exception as e:
@@ -230,15 +241,17 @@ class LogAggregator:
         """Store logs to file system"""
         try:
             # Create timestamped filename
-            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
             batch_id = secrets.token_hex(4)
-            filename = f"{self.storage_config.file_path}/logs_{timestamp}_{batch_id}.json"
+            filename = (
+                f"{self.storage_config.file_path}/logs_{timestamp}_{batch_id}.json"
+            )
 
             # Ensure directory exists
             os.makedirs(os.path.dirname(filename), exist_ok=True)
 
             # Write batch data
-            async with aiofiles.open(filename, 'w') as f:
+            async with aiofiles.open(filename, "w") as f:
                 if self.aggregation_config.compression_enabled:
                     # Simple compression - could be enhanced with gzip
                     data = json.dumps(batch_data, indent=2)
@@ -262,22 +275,29 @@ class LogAggregator:
             bulk_data = ""
             for entry in batch_data:
                 # Create bulk index command
-                index_cmd = json.dumps({
-                    "index": {
-                        "_index": self.storage_config.elasticsearch_index,
-                        "_id": entry.get('correlation_id', secrets.token_hex(8))
+                index_cmd = json.dumps(
+                    {
+                        "index": {
+                            "_index": self.storage_config.elasticsearch_index,
+                            "_id": entry.get("correlation_id", secrets.token_hex(8)),
+                        }
                     }
-                })
+                )
                 bulk_data += index_cmd + "\n"
                 bulk_data += json.dumps(entry) + "\n"
 
             # Send to Elasticsearch
             async with aiohttp.ClientSession() as session:
-                async with session.post(url, data=bulk_data,
-                                      headers={'Content-Type': 'application/x-ndjson'}) as response:
+                async with session.post(
+                    url,
+                    data=bulk_data,
+                    headers={"Content-Type": "application/x-ndjson"},
+                ) as response:
                     if response.status not in [200, 201]:
                         error_text = await response.text()
-                        raise Exception(f"Elasticsearch error {response.status}: {error_text}")
+                        raise Exception(
+                            f"Elasticsearch error {response.status}: {error_text}"
+                        )
 
         except Exception as e:
             logging.error(f"Elasticsearch storage error: {e}")
@@ -297,7 +317,9 @@ class LogAggregator:
             # This would require boto3 and AWS credentials
             # Implementation would create log streams and put log events
             # For now, just log that this would be implemented
-            logging.info(f"Would store {len(batch_data)} logs to CloudWatch group {self.storage_config.cloudwatch_log_group}")
+            logging.info(
+                f"Would store {len(batch_data)} logs to CloudWatch group {self.storage_config.cloudwatch_log_group}"
+            )
 
         except Exception as e:
             logging.error(f"CloudWatch storage error: {e}")
@@ -317,18 +339,22 @@ class LogAggregator:
                     event_data = {
                         "event": entry,
                         "sourcetype": "justnews:log",
-                        "index": "justnews_logs"
+                        "index": "justnews_logs",
                     }
 
-                    async with session.post(url,
-                                          json=event_data,
-                                          headers={
-                                              'Authorization': f'Splunk {self.storage_config.splunk_token}',
-                                              'Content-Type': 'application/json'
-                                          }) as response:
+                    async with session.post(
+                        url,
+                        json=event_data,
+                        headers={
+                            "Authorization": f"Splunk {self.storage_config.splunk_token}",
+                            "Content-Type": "application/json",
+                        },
+                    ) as response:
                         if response.status not in [200, 201]:
                             error_text = await response.text()
-                            raise Exception(f"Splunk error {response.status}: {error_text}")
+                            raise Exception(
+                                f"Splunk error {response.status}: {error_text}"
+                            )
 
         except Exception as e:
             logging.error(f"Splunk storage error: {e}")
@@ -340,7 +366,9 @@ class LogAggregator:
             try:
                 await asyncio.sleep(86400)  # Run daily
 
-                cutoff_date = datetime.now(timezone.utc) - timedelta(days=self.aggregation_config.retention_days)
+                cutoff_date = datetime.now(UTC) - timedelta(
+                    days=self.aggregation_config.retention_days
+                )
                 cutoff_timestamp = cutoff_date.strftime("%Y%m%d")
 
                 # Clean up file-based logs
@@ -348,7 +376,9 @@ class LogAggregator:
                     log_dir = Path(self.storage_config.file_path)
                     if log_dir.exists():
                         for log_file in log_dir.glob("logs_*.json"):
-                            file_date = log_file.stem.split('_')[1]  # Extract date from filename
+                            file_date = log_file.stem.split("_")[
+                                1
+                            ]  # Extract date from filename
                             if file_date < cutoff_timestamp:
                                 try:
                                     log_file.unlink()
@@ -364,13 +394,13 @@ class LogAggregator:
     async def get_status(self) -> dict[str, Any]:
         """Get aggregator status"""
         return {
-            'logs_processed': self._logs_processed,
-            'batches_flushed': self._batches_flushed,
-            'buffer_size': len(self._log_buffer),
-            'errors_count': self._errors_count,
-            'last_flush_time': self._last_flush_time.isoformat(),
-            'storage_backend': self.storage_config.backend.value,
-            'aggregation_strategy': self.aggregation_config.strategy.value
+            "logs_processed": self._logs_processed,
+            "batches_flushed": self._batches_flushed,
+            "buffer_size": len(self._log_buffer),
+            "errors_count": self._errors_count,
+            "last_flush_time": self._last_flush_time.isoformat(),
+            "storage_backend": self.storage_config.backend.value,
+            "aggregation_strategy": self.aggregation_config.strategy.value,
         }
 
     def add_storage_backend(self, backend: Callable) -> None:
@@ -386,6 +416,7 @@ class LogAggregator:
 # Global aggregator instance
 _global_aggregator: LogAggregator | None = None
 
+
 def get_log_aggregator(config: dict[str, Any] | None = None) -> LogAggregator:
     """Get or create global log aggregator"""
     global _global_aggregator
@@ -394,6 +425,7 @@ def get_log_aggregator(config: dict[str, Any] | None = None) -> LogAggregator:
         _global_aggregator = LogAggregator(config)
 
     return _global_aggregator
+
 
 def init_log_aggregation(config: dict[str, Any] | None = None) -> LogAggregator:
     """Initialize log aggregation system"""

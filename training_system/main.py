@@ -12,6 +12,7 @@ from common.observability import get_logger
 # Configure centralized logging
 logger = get_logger(__name__)
 
+
 def main():
     """Main entry point for the training system agent"""
     # Environment variables
@@ -23,7 +24,9 @@ def main():
     logger.info(f"   📍 Host: {host}")
     logger.info(f"   🔌 Port: {port}")
     logger.info(f"   👷 Workers: {workers}")
-    logger.info(f"   🔗 MCP Bus URL: {os.environ.get('MCP_BUS_URL', 'http://localhost:8000')}")
+    logger.info(
+        f"   🔗 MCP Bus URL: {os.environ.get('MCP_BUS_URL', 'http://localhost:8000')}"
+    )
 
     # Start the FastAPI server
     uvicorn.run(
@@ -32,8 +35,9 @@ def main():
         port=port,
         workers=workers,
         reload=False,  # Disable reload in production
-        log_level="info"
+        log_level="info",
     )
+
 
 if __name__ == "__main__":
     main()

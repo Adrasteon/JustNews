@@ -18,11 +18,13 @@ def test_programmatic_label_flow(tmp_path, monkeypatch):
 
     # Reload the module so it picks up the env var
     import agents.hitl_service.app as hitl_mod
+
     importlib.reload(hitl_mod)
 
     # Prevent network/background tasks from running during startup
     monkeypatch.setattr(hitl_mod, "register_with_mcp_bus", _make_noop_coro())
     monkeypatch.setattr(hitl_mod, "monitor_qa_health", _make_noop_coro())
+
     # mcp_client may attempt network calls; replace methods used with safe no-ops
     class DummyMCP:
         def register_agent(self, *a, **k):
@@ -90,7 +92,10 @@ def test_programmatic_label_flow(tmp_path, monkeypatch):
 
     # Check label row
     label_id = ldata.get("label_id")
-    cur.execute("SELECT id, candidate_id, label, ingestion_status FROM hitl_labels WHERE id=?", (label_id,))
+    cur.execute(
+        "SELECT id, candidate_id, label, ingestion_status FROM hitl_labels WHERE id=?",
+        (label_id,),
+    )
     label_row = cur.fetchone()
     assert label_row is not None
     # ingestion_status may be 'skipped' in test env

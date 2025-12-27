@@ -29,7 +29,7 @@ async def main():
         bcrypt_rounds=12,
         session_timeout_minutes=30,
         max_login_attempts=5,
-        enable_mfa=False  # Disabled for demo
+        enable_mfa=False,  # Disabled for demo
     )
 
     # Initialize security manager
@@ -46,7 +46,7 @@ async def main():
             username="admin",
             email="admin@justnews.com",
             password="AdminPass123!",
-            roles=["admin"]
+            roles=["admin"],
         )
         print(f"✓ Created admin user (ID: {admin_id})")
 
@@ -54,7 +54,7 @@ async def main():
             username="journalist",
             email="journalist@justnews.com",
             password="JournalistPass123!",
-            roles=["user"]
+            roles=["user"],
         )
         print(f"✓ Created journalist user (ID: {user_id})")
 
@@ -67,7 +67,7 @@ async def main():
             username="admin",
             password="AdminPass123!",
             ip_address="192.168.1.100",
-            user_agent="DemoBrowser/1.0"
+            user_agent="DemoBrowser/1.0",
         )
         print("✓ Admin authentication successful")
         print(f"  Access Token: {admin_tokens['access_token'][:50]}...")
@@ -77,7 +77,7 @@ async def main():
             username="journalist",
             password="JournalistPass123!",
             ip_address="192.168.1.101",
-            user_agent="DemoBrowser/1.0"
+            user_agent="DemoBrowser/1.0",
         )
         print("✓ Journalist authentication successful")
 
@@ -92,8 +92,12 @@ async def main():
         print(f"✓ Admin can manage users: {admin_can_manage_users}")
         print(f"✓ User can manage users: {user_can_manage_users}")
 
-        admin_can_read_articles = await security.check_permission(admin_id, "articles:read")
-        user_can_read_articles = await security.check_permission(user_id, "articles:read")
+        admin_can_read_articles = await security.check_permission(
+            admin_id, "articles:read"
+        )
+        user_can_read_articles = await security.check_permission(
+            user_id, "articles:read"
+        )
 
         print(f"✓ Admin can read articles: {admin_can_read_articles}")
         print(f"✓ User can read articles: {user_can_read_articles}")
@@ -123,19 +127,21 @@ async def main():
             user_id=user_id,
             purpose="marketing",
             consent_text="I consent to receive marketing communications",
-            ip_address="192.168.1.101"
+            ip_address="192.168.1.101",
         )
         print(f"✓ Recorded marketing consent (ID: {consent_id})")
 
         # Check consent
-        consent_status = await security.compliance_service.check_consent(user_id, "marketing")
+        consent_status = await security.compliance_service.check_consent(
+            user_id, "marketing"
+        )
         print(f"✓ Marketing consent status: {consent_status.value}")
 
         # Log compliance event
         await security.log_compliance_event(
             event_type="data_processing",
             user_id=user_id,
-            data={"purpose": "news_analysis", "data_types": ["articles", "metadata"]}
+            data={"purpose": "news_analysis", "data_types": ["articles", "metadata"]},
         )
         print("✓ Logged data processing event")
 
@@ -147,13 +153,13 @@ async def main():
         await security.monitor_service.log_security_event(
             "authentication_success",
             admin_id,
-            {"ip_address": "192.168.1.100", "method": "password"}
+            {"ip_address": "192.168.1.100", "method": "password"},
         )
 
         await security.monitor_service.log_security_event(
             "data_access",
             user_id,
-            {"resource": "articles", "action": "read", "count": 5}
+            {"resource": "articles", "action": "read", "count": 5},
         )
 
         print("✓ Logged security events")
@@ -178,13 +184,15 @@ async def main():
 
         # Export user data
         export_data = await security.compliance_service.export_user_data(user_id)
-        print(f"✓ Exported user data - {len(export_data.get('consent_records', []))} consent records")
+        print(
+            f"✓ Exported user data - {len(export_data.get('consent_records', []))} consent records"
+        )
 
         # Submit data erasure request
         erasure_request_id = await security.compliance_service.submit_data_request(
             user_id=user_id,
             request_type="erase",
-            details={"reason": "demo_data_cleanup"}
+            details={"reason": "demo_data_cleanup"},
         )
         print(f"✓ Submitted data erasure request (ID: {erasure_request_id})")
 
@@ -194,6 +202,7 @@ async def main():
 
         # Set up alert handler
         alerts_received = []
+
         async def alert_handler(alert):
             alerts_received.append(alert)
             print(f"🚨 ALERT: {alert.title} (Severity: {alert.severity.value})")
@@ -208,8 +217,8 @@ async def main():
                 {
                     "ip_address": "192.168.1.200",
                     "username": "unknown_user",
-                    "attempt": i + 1
-                }
+                    "attempt": i + 1,
+                },
             )
 
         # Wait for async processing

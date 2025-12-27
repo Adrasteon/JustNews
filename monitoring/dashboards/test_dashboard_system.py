@@ -42,6 +42,7 @@ except ImportError:
     # Fallback for when running as script
     import os
     import sys
+
     sys.path.insert(0, os.path.dirname(__file__))
     from alert_dashboard import AlertDashboard, AlertRule, AlertSeverity
     from dashboard_generator import (
@@ -65,6 +66,7 @@ except ImportError:
 # Configure logging
 logger = logging.getLogger(__name__)
 
+
 class TestDashboardGenerator(unittest.TestCase):
     """Unit tests for DashboardGenerator component"""
 
@@ -74,7 +76,7 @@ class TestDashboardGenerator(unittest.TestCase):
             title="Test Dashboard",
             description="Test dashboard for unit testing",
             refresh="30s",
-            time_range="1h"
+            time_range="1h",
         )
         self.generator = DashboardGenerator()
 
@@ -82,28 +84,24 @@ class TestDashboardGenerator(unittest.TestCase):
         """Test dashboard generator initialization"""
         self.assertIsInstance(self.generator, DashboardGenerator)
         self.assertIsInstance(self.generator.templates, dict)
-        self.assertGreater(len(self.generator.templates), 0)  # Should have default templates
+        self.assertGreater(
+            len(self.generator.templates), 0
+        )  # Should have default templates
 
     def test_create_template(self):
         """Test template creation"""
         self.generator = DashboardGenerator()
         config = DashboardConfig(
-            title="Test Dashboard",
-            description="Test dashboard description"
+            title="Test Dashboard", description="Test dashboard description"
         )
-        template = DashboardTemplate(
-            name="Test Template",
-            config=config,
-            panels=[]
-        )
+        template = DashboardTemplate(name="Test Template", config=config, panels=[])
         self.assertEqual(template.name, "Test Template")
         self.assertEqual(template.config.title, "Test Dashboard")
 
     def test_generate_dashboard_json(self):
         """Test dashboard JSON generation"""
         config = DashboardConfig(
-            title="Test Dashboard",
-            description="Test dashboard description"
+            title="Test Dashboard", description="Test dashboard description"
         )
         template = DashboardTemplate(
             name="Test Template",
@@ -113,9 +111,9 @@ class TestDashboardGenerator(unittest.TestCase):
                     title="Test Panel",
                     type="graph",
                     targets=[{"expr": "test_metric"}],
-                    grid_pos={"h": 8, "w": 12, "x": 0, "y": 0}
+                    grid_pos={"h": 8, "w": 12, "x": 0, "y": 0},
                 )
-            ]
+            ],
         )
         self.generator.add_template(template)
 
@@ -129,10 +127,9 @@ class TestDashboardGenerator(unittest.TestCase):
     def test_deploy_dashboard_mock(self):
         """Test dashboard deployment with mocked HTTP client"""
         config = DashboardConfig(
-            title="Test Dashboard",
-            description="Test dashboard description"
+            title="Test Dashboard", description="Test dashboard description"
         )
-        with patch('aiohttp.ClientSession.post') as mock_post:
+        with patch("aiohttp.ClientSession.post") as mock_post:
             mock_response = AsyncMock()
             mock_response.status = 201
             mock_response.json = AsyncMock(return_value={"uid": "test-uid"})
@@ -140,13 +137,14 @@ class TestDashboardGenerator(unittest.TestCase):
 
             async def test_deploy():
                 template = DashboardTemplate(
-                    name="Test Template",
-                    config=config,
-                    panels=[]
+                    name="Test Template", config=config, panels=[]
                 )
                 # Without API key, deploy_dashboard returns None
-                result = await self.generator.deploy_dashboard(template, "Test Dashboard")
+                result = await self.generator.deploy_dashboard(
+                    template, "Test Dashboard"
+                )
                 self.assertIsNone(result)  # Expected when no API key is configured
+
 
 class TestRealTimeMonitor(unittest.TestCase):
     """Unit tests for RealTimeMonitor component"""
@@ -159,7 +157,7 @@ class TestRealTimeMonitor(unittest.TestCase):
             metrics=["test_metric"],
             update_interval=1.0,
             buffer_size=1000,
-            retention_period=3600
+            retention_period=3600,
         )
         self.monitor = RealTimeMonitor()
 
@@ -175,7 +173,7 @@ class TestRealTimeMonitor(unittest.TestCase):
         client = ClientConnection(
             websocket=Mock(),
             client_id="test-client",
-            subscribed_streams={"system_metrics"}
+            subscribed_streams={"system_metrics"},
         )
 
         self.monitor.clients["test-client"] = client
@@ -188,12 +186,12 @@ class TestRealTimeMonitor(unittest.TestCase):
             name="test_stream",
             metrics=["test_metric"],
             update_interval=1.0,
-            buffer_size=100
+            buffer_size=100,
         )
 
         # Mock asyncio.create_task to avoid event loop issues while ensuring
         # created coroutines are properly closed to prevent warnings
-        with patch('asyncio.create_task') as mock_create_task:
+        with patch("asyncio.create_task") as mock_create_task:
             mock_task = AsyncMock()
 
             def _fake_create_task(coro, *args, **kwargs):
@@ -212,11 +210,12 @@ class TestRealTimeMonitor(unittest.TestCase):
             name="test_stream",
             metrics=["test_metric"],
             update_interval=1.0,
-            buffer_size=10
+            buffer_size=10,
         )
 
         # Mock asyncio.create_task similarly to ensure clean coroutine shutdown
-        with patch('asyncio.create_task') as mock_create_task:
+        with patch("asyncio.create_task") as mock_create_task:
+
             def _fake_create_task(coro, *args, **kwargs):
                 coro.close()
                 return AsyncMock()
@@ -227,40 +226,48 @@ class TestRealTimeMonitor(unittest.TestCase):
         # Simulate adding data to buffer (this would normally be limited by the update loop)
         for i in range(15):  # More than buffer size
             from realtime_monitor import StreamData
+
             data = StreamData(
                 stream_name="test_stream",
                 data={"value": i, "timestamp": time.time()},
-                metadata={}
+                metadata={},
             )
             self.monitor.data_buffers["test_stream"].append(data)
 
         # Manually limit buffer size as would happen in the update loop
         buffer = self.monitor.data_buffers["test_stream"]
         if len(buffer) > config.buffer_size:
-            self.monitor.data_buffers["test_stream"] = buffer[-config.buffer_size:]
+            self.monitor.data_buffers["test_stream"] = buffer[-config.buffer_size :]
 
         # Buffer should now be limited by the stream config
         buffer = self.monitor.get_stream_data("test_stream")
         self.assertLessEqual(len(buffer), 10)  # Should be limited to buffer size
 
-    @patch('monitoring.dashboards.realtime_monitor.websockets.serve')
+    @patch("monitoring.dashboards.realtime_monitor.websockets.serve")
     def test_start_monitoring_mock(self, mock_serve):
         """Test monitoring startup with mocked WebSocket server"""
         mock_server = AsyncMock()
         mock_server.is_serving = True
+
         async def fake_serve(*_args, **_kwargs):
             return mock_server
+
         mock_serve.side_effect = fake_serve
 
         async def test_start():
             # Mock the update/cleanup coroutines to avoid background tasks
-            with patch.object(self.monitor, '_start_stream_updates', new_callable=AsyncMock):
-                with patch.object(self.monitor, '_cleanup_inactive_clients', new_callable=AsyncMock):
+            with patch.object(
+                self.monitor, "_start_stream_updates", new_callable=AsyncMock
+            ):
+                with patch.object(
+                    self.monitor, "_cleanup_inactive_clients", new_callable=AsyncMock
+                ):
                     server = await self.monitor.start_server()
                     mock_serve.assert_called_once()
                     self.assertIsNotNone(server)
 
         asyncio.run(test_start())
+
 
 class TestAlertDashboard(unittest.TestCase):
     """Unit tests for AlertDashboard component"""
@@ -274,7 +281,9 @@ class TestAlertDashboard(unittest.TestCase):
         self.assertIsInstance(self.alert_dashboard, AlertDashboard)
         self.assertIsInstance(self.alert_dashboard.rules, dict)
         self.assertIsInstance(self.alert_dashboard.active_alerts, dict)
-        self.assertGreater(len(self.alert_dashboard.rules), 0)  # Should have default rules
+        self.assertGreater(
+            len(self.alert_dashboard.rules), 0
+        )  # Should have default rules
 
     def test_add_alert_rule(self):
         """Test adding alert rules"""
@@ -285,7 +294,7 @@ class TestAlertDashboard(unittest.TestCase):
             severity=AlertSeverity.CRITICAL,
             threshold=90.0,
             duration=300,
-            enabled=True
+            enabled=True,
         )
 
         self.alert_dashboard.add_rule(rule)
@@ -301,7 +310,7 @@ class TestAlertDashboard(unittest.TestCase):
             severity=AlertSeverity.MEDIUM,
             threshold=90.0,
             duration=60,
-            enabled=True
+            enabled=True,
         )
 
         self.alert_dashboard.add_rule(rule)
@@ -327,7 +336,7 @@ class TestAlertDashboard(unittest.TestCase):
             severity=AlertSeverity.MEDIUM,
             threshold=5.0,
             duration=60,
-            enabled=True
+            enabled=True,
         )
 
         self.alert_dashboard.add_rule(rule)
@@ -362,10 +371,12 @@ class TestAlertDashboard(unittest.TestCase):
             severity=AlertSeverity.CRITICAL,
             threshold=1.0,
             duration=60,
-            enabled=True
+            enabled=True,
         )
 
-        with patch.object(self.alert_dashboard, '_send_slack_notification') as mock_send:
+        with patch.object(
+            self.alert_dashboard, "_send_slack_notification"
+        ) as mock_send:
             self.alert_dashboard.add_rule(rule)
 
             # Trigger alert by evaluating rules
@@ -376,6 +387,7 @@ class TestAlertDashboard(unittest.TestCase):
 
             # Check that notifications were sent
             mock_send.assert_called()
+
 
 class TestExecutiveDashboard(unittest.TestCase):
     """Unit tests for ExecutiveDashboard component"""
@@ -392,11 +404,10 @@ class TestExecutiveDashboard(unittest.TestCase):
 
     def test_metric_updates(self):
         """Test executive metric updates"""
+
         async def test_updates():
             # Update metrics that exist in the dashboard
-            await self.dashboard.update_metrics({
-                "System Uptime": 99.8
-            })
+            await self.dashboard.update_metrics({"System Uptime": 99.8})
 
             # Check updates
             uptime_metric = self.dashboard.executive_metrics.get("System Uptime")
@@ -419,20 +430,14 @@ class TestExecutiveDashboard(unittest.TestCase):
         """Test KPI status calculation"""
         # Test excellent KPI
         excellent_kpi = BusinessKPI(
-            name="Perfect KPI",
-            value=100,
-            target=100,
-            status=KPIStatus.GOOD
+            name="Perfect KPI", value=100, target=100, status=KPIStatus.GOOD
         )
         status = self.dashboard._calculate_kpi_status(excellent_kpi)
         self.assertEqual(status, KPIStatus.EXCELLENT)
 
         # Test critical KPI
         critical_kpi = BusinessKPI(
-            name="Poor KPI",
-            value=50,
-            target=100,
-            status=KPIStatus.GOOD
+            name="Poor KPI", value=50, target=100, status=KPIStatus.GOOD
         )
         status = self.dashboard._calculate_kpi_status(critical_kpi)
         self.assertEqual(status, KPIStatus.CRITICAL)
@@ -455,6 +460,7 @@ class TestExecutiveDashboard(unittest.TestCase):
         self.assertEqual(trend_data["trend"], "increasing")
         self.assertGreater(trend_data["change_percent"], 0)
 
+
 class TestGrafanaIntegration(unittest.TestCase):
     """Unit tests for GrafanaIntegration component"""
 
@@ -464,7 +470,7 @@ class TestGrafanaIntegration(unittest.TestCase):
             url="http://localhost:3000",
             api_key="test-api-key",
             datasource_name="prometheus",
-            folder_name="Test Folder"
+            folder_name="Test Folder",
         )
         self.integration = GrafanaIntegration(self.config)
 
@@ -496,7 +502,9 @@ class TestGrafanaIntegration(unittest.TestCase):
     def test_dashboard_json_creation(self):
         """Test dashboard JSON creation from template"""
         template = self.integration.templates["system_overview"]
-        dashboard_json = self.integration._create_dashboard_json(template, "Test Dashboard")
+        dashboard_json = self.integration._create_dashboard_json(
+            template, "Test Dashboard"
+        )
 
         self.assertIn("dashboard", dashboard_json)
         self.assertEqual(dashboard_json["dashboard"]["title"], "Test Dashboard")
@@ -525,6 +533,7 @@ class TestGrafanaIntegration(unittest.TestCase):
 
         asyncio.run(test_deploy())
 
+
 class IntegrationTests(unittest.TestCase):
     """Integration tests for dashboard components"""
 
@@ -536,8 +545,7 @@ class IntegrationTests(unittest.TestCase):
         self.alert_dashboard = AlertDashboard()
         self.executive_dashboard = ExecutiveDashboard()
         self.grafana_config = GrafanaConfig(
-            url="http://localhost:3000",
-            api_key="test-key"
+            url="http://localhost:3000", api_key="test-key"
         )
         self.grafana_integration = GrafanaIntegration(self.grafana_config)
 
@@ -545,14 +553,9 @@ class IntegrationTests(unittest.TestCase):
         """Test interaction between dashboard components"""
         # Create a dashboard with alerts
         config = DashboardConfig(
-            title="Integration Test",
-            description="Test integration dashboard"
+            title="Integration Test", description="Test integration dashboard"
         )
-        template = DashboardTemplate(
-            name="Integration Test",
-            config=config,
-            panels=[]
-        )
+        template = DashboardTemplate(name="Integration Test", config=config, panels=[])
 
         self.dashboard_gen.add_template(template)
 
@@ -562,22 +565,27 @@ class IntegrationTests(unittest.TestCase):
             query="test_metric > 10",
             condition="Test metric too high",
             severity=AlertSeverity.MEDIUM,
-            threshold=10.0
+            threshold=10.0,
         )
 
         self.alert_dashboard.add_rule(alert_rule)
 
         # Verify components are properly configured
         self.assertIn("Integration Test", self.dashboard_gen.templates)
-        self.assertIn("Integration Alert", [rule.name for rule in self.alert_dashboard.get_rules()])
+        self.assertIn(
+            "Integration Alert",
+            [rule.name for rule in self.alert_dashboard.get_rules()],
+        )
 
-    @patch('monitoring.dashboards.realtime_monitor.websockets.serve')
-    @patch('aiohttp.ClientSession')
+    @patch("monitoring.dashboards.realtime_monitor.websockets.serve")
+    @patch("aiohttp.ClientSession")
     def test_full_workflow_mock(self, mock_session, mock_websockets):
         """Test full dashboard workflow with mocked external dependencies"""
         mock_ws_server = AsyncMock()
+
         async def fake_serve(*_args, **_kwargs):
             return mock_ws_server
+
         mock_websockets.side_effect = fake_serve
 
         mock_http_session = AsyncMock()
@@ -585,30 +593,38 @@ class IntegrationTests(unittest.TestCase):
 
         async def test_workflow():
             # Start real-time monitor
-            with patch.object(self.realtime_monitor, '_start_stream_updates', new_callable=AsyncMock):
-                with patch.object(self.realtime_monitor, '_cleanup_inactive_clients', new_callable=AsyncMock):
+            with patch.object(
+                self.realtime_monitor, "_start_stream_updates", new_callable=AsyncMock
+            ):
+                with patch.object(
+                    self.realtime_monitor,
+                    "_cleanup_inactive_clients",
+                    new_callable=AsyncMock,
+                ):
                     await self.realtime_monitor.start_server()
                     self.assertIsNotNone(self.realtime_monitor.server)
 
             # Deploy dashboard
             template = self.dashboard_gen.templates.get("system_overview")
             if template:
-                with patch.object(self.dashboard_gen, 'deploy_dashboard') as mock_deploy:
+                with patch.object(
+                    self.dashboard_gen, "deploy_dashboard"
+                ) as mock_deploy:
                     mock_deploy.return_value = "test-uid"
                     uid = await mock_deploy(template, "Test Dashboard")
                     self.assertEqual(uid, "test-uid")
 
             # Update executive metrics
-            await self.executive_dashboard.update_metrics({
-                "System Uptime": 99.9,
-                "Total Revenue": 75000.0
-            })
+            await self.executive_dashboard.update_metrics(
+                {"System Uptime": 99.9, "Total Revenue": 75000.0}
+            )
 
             # Generate executive summary
             summary = self.executive_dashboard.get_executive_summary()
             self.assertIsNotNone(summary)
 
         asyncio.run(test_workflow())
+
 
 class PerformanceTests(unittest.TestCase):
     """Performance tests for dashboard components"""
@@ -623,6 +639,7 @@ class PerformanceTests(unittest.TestCase):
         metrics_data = {f"metric_{i}": float(i) for i in range(100)}
 
         start_time = time.time()
+
         async def update_metrics():
             await self.dashboard.update_metrics(metrics_data)
 
@@ -642,15 +659,18 @@ class PerformanceTests(unittest.TestCase):
                 condition=f"Metric {i} too high",
                 severity=AlertSeverity.MEDIUM,
                 threshold=float(i * 2),
-                duration=60
+                duration=60,
             )
             self.alert_dashboard.add_rule(rule)
 
         # Test data - ensure all rules trigger
-        test_data = {f"metric_{i}": float(i * 3 + 1) for i in range(50)}  # Add 1 to ensure > threshold
+        test_data = {
+            f"metric_{i}": float(i * 3 + 1) for i in range(50)
+        }  # Add 1 to ensure > threshold
 
         start_time = time.time()
         triggered_count = 0
+
         async def evaluate_rules():
             nonlocal triggered_count
             await self.alert_dashboard.evaluate_rules(test_data)
@@ -684,6 +704,7 @@ class PerformanceTests(unittest.TestCase):
         # Memory increase should be reasonable (less than 50MB)
         self.assertLess(memory_increase, 50.0)
 
+
 class EndToEndTests(unittest.TestCase):
     """End-to-end tests for complete dashboard workflows"""
 
@@ -694,15 +715,18 @@ class EndToEndTests(unittest.TestCase):
 
     def test_complete_monitoring_workflow(self):
         """Test complete monitoring workflow from data to insights"""
+
         async def run_workflow():
             # 1. Update metrics
-            await self.executive_dashboard.update_metrics({
-                "Total Revenue": 100000.0,
-                "System Uptime": 99.95,
-                "CPU Usage": 75.0,
-                "Memory Usage": 80.0,
-                "Active Security Alerts": 1
-            })
+            await self.executive_dashboard.update_metrics(
+                {
+                    "Total Revenue": 100000.0,
+                    "System Uptime": 99.95,
+                    "CPU Usage": 75.0,
+                    "Memory Usage": 80.0,
+                    "Active Security Alerts": 1,
+                }
+            )
 
             # 2. Check KPI status
             revenue_kpi = self.executive_dashboard.business_kpis["Monthly Active Users"]
@@ -719,7 +743,7 @@ class EndToEndTests(unittest.TestCase):
                 condition="CPU usage is high",
                 severity=AlertSeverity.MEDIUM,
                 threshold=90.0,
-                duration=60
+                duration=60,
             )
             self.alert_dashboard.add_rule(alert_rule)
 
@@ -751,9 +775,12 @@ class EndToEndTests(unittest.TestCase):
         new_export = new_dashboard.export_dashboard_data()
 
         # Timestamps should be different
-        self.assertNotEqual(export_data["export_timestamp"], new_export["export_timestamp"])
+        self.assertNotEqual(
+            export_data["export_timestamp"], new_export["export_timestamp"]
+        )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # Configure logging for tests
     logging.basicConfig(level=logging.INFO)
 

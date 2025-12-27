@@ -26,7 +26,9 @@ class MCPBusConfig:
     def __init__(self):
         self.connect_timeout = float(os.getenv("MCP_CALL_CONNECT_TIMEOUT", "3"))
         self.read_timeout = float(os.getenv("MCP_CALL_READ_TIMEOUT", "120"))
-        self.circuit_breaker_fail_threshold = int(os.getenv("MCP_CB_FAIL_THRESHOLD", "3"))
+        self.circuit_breaker_fail_threshold = int(
+            os.getenv("MCP_CB_FAIL_THRESHOLD", "3")
+        )
         self.circuit_breaker_cooldown_sec = int(os.getenv("MCP_CB_COOLDOWN_SEC", "10"))
         self.max_retries = int(os.getenv("MCP_MAX_RETRIES", "3"))
         self.retry_backoff_base = float(os.getenv("MCP_RETRY_BACKOFF_BASE", "0.2"))
@@ -61,10 +63,7 @@ class MCPBusEngine:
         self.agents[agent_name] = agent_address
 
         # Reset circuit breaker on registration
-        self.circuit_breaker_state[agent_name] = {
-            "fails": 0,
-            "open_until": 0
-        }
+        self.circuit_breaker_state[agent_name] = {"fails": 0, "open_until": 0}
 
         return {"status": "ok"}
 
@@ -85,7 +84,10 @@ class MCPBusEngine:
                 del self.circuit_breaker_state[agent_name]
             return {"status": "ok"}
         else:
-            return {"status": "not_found", "message": f"Agent {agent_name} not registered"}
+            return {
+                "status": "not_found",
+                "message": f"Agent {agent_name} not registered",
+            }
 
     def get_registered_agents(self) -> dict[str, str]:
         """
@@ -108,7 +110,9 @@ class MCPBusEngine:
         """
         return agent_name in self.agents
 
-    def call_agent_tool(self, agent_name: str, tool_name: str, args: list, kwargs: dict) -> dict[str, Any]:
+    def call_agent_tool(
+        self, agent_name: str, tool_name: str, args: list, kwargs: dict
+    ) -> dict[str, Any]:
         """
         Call a tool on a registered agent.
 
@@ -158,7 +162,9 @@ class MCPBusEngine:
         state = self.circuit_breaker_state.get(agent_name, {"open_until": 0})
         return state.get("open_until", 0) > time.time()
 
-    def _execute_tool_call(self, agent_name: str, url: str, payload: dict, timeout: tuple) -> dict[str, Any]:
+    def _execute_tool_call(
+        self, agent_name: str, url: str, payload: dict, timeout: tuple
+    ) -> dict[str, Any]:
         """
         Execute a tool call with retry logic and circuit breaker management.
 
@@ -184,23 +190,24 @@ class MCPBusEngine:
                 # Success: reset circuit breaker
                 self.circuit_breaker_state[agent_name] = {"fails": 0, "open_until": 0}
 
-                return {
-                    "status": "success",
-                    "data": response.json()
-                }
+                return {"status": "success", "data": response.json()}
 
             except requests.exceptions.RequestException as e:
                 last_error = str(e)
-                self.logger.warning(f"Tool call attempt {attempt + 1} failed for {agent_name}: {e}")
+                self.logger.warning(
+                    f"Tool call attempt {attempt + 1} failed for {agent_name}: {e}"
+                )
 
                 # Exponential backoff
                 if attempt < self.config.max_retries - 1:
-                    backoff_time = self.config.retry_backoff_base * (2 ** attempt)
+                    backoff_time = self.config.retry_backoff_base * (2**attempt)
                     time.sleep(backoff_time)
 
         # All retries failed: update circuit breaker
         self._handle_call_failure(agent_name, last_error)
-        raise ConnectionError(f"Tool call failed after {self.config.max_retries} attempts: {last_error}")
+        raise ConnectionError(
+            f"Tool call failed after {self.config.max_retries} attempts: {last_error}"
+        )
 
     def _handle_call_failure(self, agent_name: str, error: str) -> None:
         """
@@ -215,7 +222,10 @@ class MCPBusEngine:
         if fails >= self.config.circuit_breaker_fail_threshold:
             # Open circuit breaker
             open_until = time.time() + self.config.circuit_breaker_cooldown_sec
-            self.circuit_breaker_state[agent_name] = {"fails": 0, "open_until": open_until}
+            self.circuit_breaker_state[agent_name] = {
+                "fails": 0,
+                "open_until": open_until,
+            }
             self.logger.warning(
                 f"Circuit breaker opened for {agent_name} for {self.config.circuit_breaker_cooldown_sec}s "
                 f"after {fails} failures"
@@ -240,7 +250,9 @@ class MCPBusEngine:
             True if notification succeeded, False otherwise
         """
         if requests is None:
-            self.logger.warning("Requests library not available; skipping GPU Orchestrator notification")
+            self.logger.warning(
+                "Requests library not available; skipping GPU Orchestrator notification"
+            )
             return False
 
         orchestrator_url = "http://localhost:8014/notify_ready"
@@ -248,7 +260,9 @@ class MCPBusEngine:
         try:
             response = requests.post(orchestrator_url, timeout=10)
             response.raise_for_status()
-            self.logger.info("Successfully notified GPU Orchestrator that MCP Bus is ready")
+            self.logger.info(
+                "Successfully notified GPU Orchestrator that MCP Bus is ready"
+            )
             return True
         except requests.RequestException as e:
             self.logger.error(f"Failed to notify GPU Orchestrator: {e}")
@@ -268,7 +282,7 @@ class MCPBusEngine:
                 state.get("open_until", 0) > time.time()
                 for state in self.circuit_breaker_state.values()
             ),
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
     def get_stats(self) -> dict[str, Any]:
@@ -279,12 +293,12 @@ class MCPBusEngine:
             Dict containing operational statistics
         """
         total_failures = sum(
-            state.get("fails", 0)
-            for state in self.circuit_breaker_state.values()
+            state.get("fails", 0) for state in self.circuit_breaker_state.values()
         )
 
         open_circuits = sum(
-            1 for state in self.circuit_breaker_state.values()
+            1
+            for state in self.circuit_breaker_state.values()
             if state.get("open_until", 0) > time.time()
         )
 
@@ -292,8 +306,11 @@ class MCPBusEngine:
             "registered_agents": len(self.agents),
             "total_circuit_breaker_failures": total_failures,
             "open_circuits": open_circuits,
-            "agents_with_failures": len([
-                agent for agent, state in self.circuit_breaker_state.items()
-                if state.get("fails", 0) > 0
-            ])
+            "agents_with_failures": len(
+                [
+                    agent
+                    for agent, state in self.circuit_breaker_state.items()
+                    if state.get("fails", 0) > 0
+                ]
+            ),
         }

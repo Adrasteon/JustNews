@@ -1,14 +1,28 @@
+import importlib
+import sys
+import types
 from datetime import datetime, timedelta
 
-import importlib, sys, types
 # Provide a minimal monitoring.common.config module so imports succeed in tests
 cfg_mod = types.ModuleType("monitoring.common.config")
-cfg_mod.get_config = lambda: {"tracing": {"jaeger_enabled": False, "otlp_enabled": False, "file_export_enabled": False}}
-sys.modules.setdefault('monitoring.common.config', cfg_mod)
+cfg_mod.get_config = lambda: {
+    "tracing": {
+        "jaeger_enabled": False,
+        "otlp_enabled": False,
+        "file_export_enabled": False,
+    }
+}
+sys.modules.setdefault("monitoring.common.config", cfg_mod)
 # Also make monitoring.common.metrics available by mapping to top-level common.metrics
-sys.modules.setdefault('monitoring.common.metrics', importlib.import_module('common.metrics'))
+sys.modules.setdefault(
+    "monitoring.common.metrics", importlib.import_module("common.metrics")
+)
 
-from monitoring.core.trace_collector import TraceSpan, TraceData, TraceCollector
+from monitoring.core.trace_collector import (  # noqa: E402
+    TraceCollector,
+    TraceData,
+    TraceSpan,
+)
 
 
 def test_trace_span_and_data_to_dict():
@@ -27,10 +41,19 @@ def test_trace_span_and_data_to_dict():
         events=[{"e": 1}],
         service_name="svc",
         agent_name="agent",
-        operation="op"
+        operation="op",
     )
 
-    d = TraceData(trace_id="t1", root_span_id="s1", spans=[span], start_time=start, end_time=start + timedelta(milliseconds=50), duration_ms=50.0, service_count=1, total_spans=1)
+    d = TraceData(
+        trace_id="t1",
+        root_span_id="s1",
+        spans=[span],
+        start_time=start,
+        end_time=start + timedelta(milliseconds=50),
+        duration_ms=50.0,
+        service_count=1,
+        total_spans=1,
+    )
 
     sd = span.to_dict()
     td = d.to_dict()
@@ -42,7 +65,16 @@ def test_trace_span_and_data_to_dict():
 
 def test_collector_stats_and_cleanup(monkeypatch, tmp_path):
     # Prevent exporters and heavy OTEL setup by returning minimal config
-    monkeypatch.setattr("monitoring.core.trace_collector.get_config", lambda: {"tracing": {"jaeger_enabled": False, "otlp_enabled": False, "file_export_enabled": False}})
+    monkeypatch.setattr(
+        "monitoring.core.trace_collector.get_config",
+        lambda: {
+            "tracing": {
+                "jaeger_enabled": False,
+                "otlp_enabled": False,
+                "file_export_enabled": False,
+            }
+        },
+    )
 
     # Provide a dummy JustNewsMetrics implementation to avoid needing the real metrics
     class DummyMetric:
@@ -82,9 +114,14 @@ def test_collector_stats_and_cleanup(monkeypatch, tmp_path):
         def create_counter(self, *a, **k):
             return DummyMetric()
 
-    monkeypatch.setattr("monitoring.core.trace_collector.JustNewsMetrics", DummyMetricsFactory)
+    monkeypatch.setattr(
+        "monitoring.core.trace_collector.JustNewsMetrics", DummyMetricsFactory
+    )
     # Avoid configuring real OpenTelemetry tracer in tests
-    monkeypatch.setattr("monitoring.core.trace_collector.TraceCollector._setup_tracing", lambda self: None)
+    monkeypatch.setattr(
+        "monitoring.core.trace_collector.TraceCollector._setup_tracing",
+        lambda self: None,
+    )
 
     collector = TraceCollector(service_name="svc", agent_name="agent")
 
@@ -93,18 +130,36 @@ def test_collector_stats_and_cleanup(monkeypatch, tmp_path):
     assert stats["active_traces"] == 0
 
     # Add a completed trace older than retention
-    old = TraceData(trace_id="old", root_span_id="s", spans=[], start_time=datetime.now() - timedelta(days=2), end_time=datetime.now() - timedelta(days=2), duration_ms=10.0)
+    old = TraceData(
+        trace_id="old",
+        root_span_id="s",
+        spans=[],
+        start_time=datetime.now() - timedelta(days=2),
+        end_time=datetime.now() - timedelta(days=2),
+        duration_ms=10.0,
+    )
     collector.completed_traces["old"] = old
 
     # Ensure cleanup removes it
     collector.trace_retention_hours = 1
     import asyncio
+
     asyncio.run(collector.cleanup_old_traces())
     assert "old" not in collector.completed_traces
 
 
 def test_get_trace_active_and_completed(monkeypatch):
-    monkeypatch.setattr("monitoring.core.trace_collector.get_config", lambda: {"tracing": {"jaeger_enabled": False, "otlp_enabled": False, "file_export_enabled": False}})
+    monkeypatch.setattr(
+        "monitoring.core.trace_collector.get_config",
+        lambda: {
+            "tracing": {
+                "jaeger_enabled": False,
+                "otlp_enabled": False,
+                "file_export_enabled": False,
+            }
+        },
+    )
+
     class DummyMetric:
         def __init__(self, *a, **k):
             pass
@@ -142,8 +197,13 @@ def test_get_trace_active_and_completed(monkeypatch):
         def create_counter(self, *a, **k):
             return DummyMetric()
 
-    monkeypatch.setattr("monitoring.core.trace_collector.JustNewsMetrics", DummyMetricsFactory)
-    monkeypatch.setattr("monitoring.core.trace_collector.TraceCollector._setup_tracing", lambda self: None)
+    monkeypatch.setattr(
+        "monitoring.core.trace_collector.JustNewsMetrics", DummyMetricsFactory
+    )
+    monkeypatch.setattr(
+        "monitoring.core.trace_collector.TraceCollector._setup_tracing",
+        lambda self: None,
+    )
 
     collector = TraceCollector("svc2", "agent2")
 

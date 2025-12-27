@@ -2,17 +2,13 @@ import json
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import pytest
-
 from config.legacy import (
     LegacyConfigFile,
     LegacyConfigurationMigrator,
     MigrationPlan,
-    discover_and_migrate_configs,
     create_legacy_compatibility_layer,
 )
 from config.schemas import JustNewsConfig
-from config.validation import ValidationResult
 
 
 def test_legacyfile_is_active_true_and_false():
@@ -50,7 +46,10 @@ def test_determine_config_type_various_keywords():
     assert migrator._determine_config_type(Path("crawl_settings.yml"), "") == "crawling"
     assert migrator._determine_config_type(Path("monitor.yaml"), "") == "monitoring"
     assert migrator._determine_config_type(Path("security.env"), "") == "security"
-    assert migrator._determine_config_type(Path("training.json"), "train something") == "training"
+    assert (
+        migrator._determine_config_type(Path("training.json"), "train something")
+        == "training"
+    )
     # Unknown
     assert migrator._determine_config_type(Path("misc.txt"), "nothing relevant") is None
 

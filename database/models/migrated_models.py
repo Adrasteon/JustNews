@@ -12,7 +12,12 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 import json
 import mysql.connector
-from sentence_transformers import SentenceTransformer
+# Module-level placeholder so tests can patch `database.models.migrated_models.SentenceTransformer`
+SentenceTransformer = None
+# NOTE: Do not import sentence_transformers at module import time — it's a
+# heavy optional dependency. Import dynamically in the initialization path so
+# tests that patch/magic-mock sentence_transformers.SentenceTransformer work
+# reliably and missing packages don't break test collection.
 
 from common.observability import get_logger
 import os
@@ -477,7 +482,13 @@ class MigratedDatabaseService:
         # Controlled by CHROMADB_MODEL_SCOPED_COLLECTION (default enabled).
         collection_name = base_collection_name
         try:
-            enable_scoped = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION', '1') == '1'
+            # Default behaviour: scoped collection enabled unless explicitly disabled.
+            # Treat unset or empty env values as enabled for backward compatibility.
+            _scoped_env = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION')
+            if _scoped_env is None or _scoped_env == "" or str(_scoped_env).lower() in ('1', 'true', 'yes', 'on'):
+                enable_scoped = True
+            else:
+                enable_scoped = False
             if enable_scoped and base_collection_name:
                 emb_model = self.config['database']['embedding'].get('model', '')
                 emb_dims = str(self.config['database']['embedding'].get('dimensions', ''))
@@ -487,36 +498,84 @@ class MigratedDatabaseService:
         except Exception:
             collection_name = base_collection_name
         if self.chroma_client and collection_name:
-            try:
-                self.collection = self.chroma_client.get_collection(collection_name)
-                logger.info(f"Connected to existing ChromaDB collection: {collection_name}")
-            except Exception as e:
-                logger.info(f"Collection {collection_name} doesn't exist or could not be fetched: {e}")
+            # If possible, try scoped collection name first (better traceability), fall back to base name
+            tried_names = []
+            def try_get_or_create(name: str):
                 try:
-                    self.collection = self.chroma_client.create_collection(
-                        name=collection_name,
-                        metadata={"description": "Article embeddings for semantic search"}
-                    )
-                    logger.info(f"Created new ChromaDB collection: {collection_name}")
-                except Exception as create_err:
-                    logger.warning(f"Failed to create ChromaDB collection '{collection_name}': {create_err}")
-                    # If we failed due to tenant missing or API mismatch, try to auto-create using HTTP helper
+                    c = self.chroma_client.get_collection(name)
+                    logger.info(f"Connected to existing ChromaDB collection: {name}")
+                    return c
+                except Exception as e:
+                    logger.info(f"Collection {name} doesn't exist or could not be fetched: {e}")
                     try:
-                        from database.utils.chromadb_utils import ensure_collection_exists_using_http, create_tenant
-                        tenant_create_enabled = os.environ.get('CHROMADB_AUTO_CREATE_TENANT', '0') == '1'
-                        if tenant_create_enabled:
-                            if create_tenant(host, port, tenant='default_tenant'):
-                                logger.info("Created default tenant 'default_tenant' for ChromaDB server")
-                            else:
-                                logger.warning("Could not auto-create default tenant for ChromaDB server")
-                        # Try collection creation via HTTP API (best-effort)
-                        if ensure_collection_exists_using_http(host, port, collection_name):
-                            logger.info(f"Ensured collection {collection_name} exists via HTTP API")
+                        c = self.chroma_client.create_collection(
+                            name=name,
+                            metadata={"description": "Article embeddings for semantic search"}
+                        )
+                        logger.info(f"Created new ChromaDB collection: {name}")
+                        return c
+                    except Exception as create_err:
+                        logger.warning(f"Failed to create ChromaDB collection '{name}': {create_err}")
+                        return None
+
+            # Attempt scoped collection name first (when enabled and embedding config present), then fall back to base
+            collection_candidates = [collection_name]
+            try:
+                _scoped_env = os.environ.get('CHROMADB_MODEL_SCOPED_COLLECTION')
+                if _scoped_env is None or _scoped_env == "" or str(_scoped_env).lower() in ('1', 'true', 'yes', 'on'):
+                    enable_scoped_flag = True
+                else:
+                    enable_scoped_flag = False
+            except Exception:
+                enable_scoped_flag = False
+
+            if enable_scoped_flag:
+                try:
+                    emb_model = self.config['database']['embedding'].get('model', '')
+                    emb_dims = str(self.config['database']['embedding'].get('dimensions', ''))
+                    safe_model = ''.join(c if c.isalnum() or c in ('-', '_') else '_' for c in emb_model)
+                    scoped_candidate = f"{base_collection_name}__{safe_model}__{emb_dims}"
+                    if scoped_candidate and scoped_candidate != base_collection_name:
+                        collection_candidates = [scoped_candidate, base_collection_name]
+                    else:
+                        collection_candidates = [base_collection_name]
+                except Exception:
+                    collection_candidates = [collection_name]
+            else:
+                collection_candidates = [base_collection_name]
+
+            logger.debug(f"CHROMADB scoping enabled=%s; candidates=%s", enable_scoped_flag, collection_candidates)
+            for candidate in collection_candidates:
+                tried_names.append(candidate)
+                c = try_get_or_create(candidate)
+                if c is not None:
+                    self.collection = c
+                    break
+
+            if self.collection is None:
+                # If all attempts failed, try HTTP helper auto-provisioning as a last resort
+                try:
+                    from database.utils.chromadb_utils import ensure_collection_exists_using_http, create_tenant
+                    tenant_create_enabled = os.environ.get('CHROMADB_AUTO_CREATE_TENANT', '0') == '1'
+                    if tenant_create_enabled:
+                        if create_tenant(host, port, tenant='default_tenant'):
+                            logger.info("Created default tenant 'default_tenant' for ChromaDB server")
                         else:
-                            logger.warning(f"Failed to ensure collection {collection_name} exists via HTTP API")
-                    except Exception:
-                        logger.debug("Failed to attempt auto-provision of ChromaDB tenant/collection via HTTP (skipping)")
-                    # Ensure service continues to operate without ChromaDB
+                            logger.warning("Could not auto-create default tenant for ChromaDB server")
+                    for candidate in tried_names:
+                        if ensure_collection_exists_using_http(host, port, candidate):
+                            logger.info(f"Ensured collection {candidate} exists via HTTP API")
+                            try:
+                                self.collection = self.chroma_client.get_collection(candidate)
+                                break
+                            except Exception:
+                                continue
+                        else:
+                            logger.warning(f"Failed to ensure collection {candidate} exists via HTTP API")
+                except Exception:
+                    logger.debug("ChromaDB extra diagnostics/auto-provision not available (skipping)")
+                # Ensure service continues to operate without ChromaDB if all methods failed
+                if self.collection is None:
                     self.collection = None
         else:
             logger.warning("ChromaDB client not initialized; operating without embeddings support.")
@@ -526,10 +585,20 @@ class MigratedDatabaseService:
         else:
             logger.warning("ChromaDB not available - embeddings support disabled")
 
-        # Embedding model
+        # Embedding model: import sentence-transformers at runtime (best-effort)
         embedding_config = self.config['database']['embedding']
-        self.embedding_model = SentenceTransformer(embedding_config['model'])
-        logger.info(f"Loaded embedding model: {embedding_config['model']}")
+        try:
+            from sentence_transformers import SentenceTransformer as _SentenceTransformer  # type: ignore
+        except Exception:
+            logger.warning("SentenceTransformer unavailable - embeddings disabled in MigratedDatabaseService")
+            self.embedding_model = None
+        else:
+            try:
+                self.embedding_model = _SentenceTransformer(embedding_config.get('model'))
+                logger.info(f"Loaded embedding model: {embedding_config.get('model')}")
+            except Exception as e:
+                logger.warning(f"Failed to load embedding model '{embedding_config.get('model')}': {e}")
+                self.embedding_model = None
 
     def close(self):
         """Close database connections"""
@@ -574,6 +643,59 @@ class MigratedDatabaseService:
             except Exception as e:
                 logger.warning(f"Failed to ensure MariaDB connection: {e}")
                 raise
+
+    def get_connection(self):
+        """Create a fresh MariaDB connection using the service's configuration.
+
+        This is intended for short-lived / per-request DB usage where a single
+        shared connection object would otherwise be shared across concurrent
+        callers and can surface 'Unread result found' errors. Callers that use
+        get_connection() must close the returned connection when done.
+        """
+        mb_cfg = getattr(self, '_mariadb_config', None) or self.config['database'].get('mariadb', {})
+        params = {
+            'host': mb_cfg.get('host'),
+            'port': int(mb_cfg.get('port')) if mb_cfg.get('port') else None,
+            'user': mb_cfg.get('user'),
+            'database': mb_cfg.get('database'),
+            'autocommit': False,
+            'use_pure': True,
+        }
+        if mb_cfg.get('password'):
+            params['password'] = mb_cfg.get('password')
+        params = {k: v for k, v in params.items() if v is not None}
+        logger.debug("MigratedDatabaseService.get_connection: creating new per-call MariaDB connection")
+        return mysql.connector.connect(**params)
+
+    def get_safe_cursor(self, *, per_call: bool = False, dictionary: bool = False, buffered: bool = True):
+        """
+        Helper to obtain a 'safe' cursor for use by callers.
+
+        - If per_call is True this will create a fresh connection (via get_connection()),
+          and return (cursor, connection) where the caller is responsible for closing
+          both cursor and connection.
+        - If per_call is False we fall back to the shared `self.mb_conn` connection and
+          return (cursor, None). The returned cursor will respect the `buffered` and
+          `dictionary` flags.
+
+        This should reduce risk of 'Unread result found' by encouraging per-call
+        connections for high-concurrency call sites while still supporting
+        backward-compatible usage.
+        """
+        try:
+            if per_call:
+                conn = self.get_connection()
+                cursor = conn.cursor(buffered=buffered, dictionary=dictionary)
+                logger.debug("get_safe_cursor: using per-call connection %s (id=%s)", conn, id(conn))
+                return cursor, conn
+            # fallback to shared connection
+            self.ensure_conn()
+            cursor = self.mb_conn.cursor(buffered=buffered, dictionary=dictionary)
+            logger.debug("get_safe_cursor: using shared connection %s (id=%s)", self.mb_conn, id(self.mb_conn))
+            return cursor, None
+        except Exception as e:
+            logger.warning(f"Failed to obtain safe cursor: {e}")
+            raise
 
     def get_article_by_id(self, article_id: Union[int, str]) -> Optional[Article]:
         """Get article by ID from MariaDB"""
@@ -630,8 +752,15 @@ class MigratedDatabaseService:
             if not self.collection:
                 logger.warning("ChromaDB collection not initialized - semantic search unavailable")
                 return []
-            # Embed the query
-            query_embedding = self.embedding_model.encode(query).tolist()
+            # Embed the query. Some embedding providers return numpy-like arrays
+            # with a `.tolist()` method; others (mocks/tests) may return a plain
+            # Python list. Handle both possibilities.
+            emb = self.embedding_model.encode(query)
+            if hasattr(emb, 'tolist'):
+                query_embedding = emb.tolist()
+            else:
+                # Ensure it's a plain list copy so downstream code can index it
+                query_embedding = list(emb)
 
             # Search ChromaDB for similar articles
             results = self.collection.query(

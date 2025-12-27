@@ -6,7 +6,9 @@ import uuid
 import pytest
 
 
-def _import_hitl_module(tmp_path, monkeypatch, extra_env: dict[str, str | None] | None = None):
+def _import_hitl_module(
+    tmp_path, monkeypatch, extra_env: dict[str, str | None] | None = None
+):
     db_path = tmp_path / f"hitl_training_{uuid.uuid4().hex}.db"
     monkeypatch.setenv("HITL_DB_PATH", str(db_path))
 
@@ -115,11 +117,17 @@ async def test_training_forward_flow_updates_metrics(tmp_path, monkeypatch):
     monkeypatch.setattr(
         importlib.util,
         "find_spec",
-        lambda name, package=None: None if name == "transformers" else original_find_spec(name, package),
+        lambda name, package=None: None
+        if name == "transformers"
+        else original_find_spec(name, package),
     )
 
-    training_coordinator_module = importlib.import_module("training_system.core.training_coordinator")
-    training_system_manager = importlib.import_module("training_system.core.system_manager")
+    training_coordinator_module = importlib.import_module(
+        "training_system.core.training_coordinator"
+    )
+    training_system_manager = importlib.import_module(
+        "training_system.core.system_manager"
+    )
     training_mcp = importlib.import_module("training_system.mcp_integration")
 
     # Reset shared singletons to guarantee a fresh state for monitoring assertions
@@ -132,7 +140,9 @@ async def test_training_forward_flow_updates_metrics(tmp_path, monkeypatch):
         manager.coordinator.training_buffers.get("scout", []).clear()
 
     def _counter_value() -> float:
-        counter = hitl_module.metrics._custom_counters.get("hitl_training_forward_success_total")
+        counter = hitl_module.metrics._custom_counters.get(
+            "hitl_training_forward_success_total"
+        )
         if not counter:
             return 0.0
         child = counter.labels(
@@ -176,7 +186,9 @@ async def test_training_forward_flow_updates_metrics(tmp_path, monkeypatch):
     )
     result = hitl_module.store_label(label_req)
 
-    await hitl_module.forward_training_label(result["training_payload"], result["label_id"])
+    await hitl_module.forward_training_label(
+        result["training_payload"], result["label_id"]
+    )
 
     counter_after = _counter_value()
     metric_after = training_mcp.training_metrics.training_examples_total.labels(

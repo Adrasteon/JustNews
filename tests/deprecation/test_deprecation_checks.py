@@ -10,7 +10,18 @@ PATTERNS = {
     r"\.dict\(\)": "Pydantic v2: prefer model_dump() instead of dict() where appropriate",
 }
 
-EXCLUDE_DIRS = {".git", "node_modules", "third_party", ".mypy_cache", "__pycache__", "tests/deprecation", "tests/codemod", "codemod", "deprecations", "codemods"}
+EXCLUDE_DIRS = {
+    ".git",
+    "node_modules",
+    "third_party",
+    ".mypy_cache",
+    "__pycache__",
+    "tests/deprecation",
+    "tests/codemod",
+    "codemod",
+    "deprecations",
+    "codemods",
+}
 
 
 def _scan_repo():
@@ -30,7 +41,9 @@ def _scan_repo():
             regex = re.compile(pat)
             for i, line in enumerate(text.splitlines(), start=1):
                 if regex.search(line):
-                    results[pat].append({"path": str(p), "line": i, "content": line.strip()})
+                    results[pat].append(
+                        {"path": str(p), "line": i, "content": line.strip()}
+                    )
 
     return results
 
@@ -55,7 +68,7 @@ def test_no_new_deprecations():
         current_set = {f"{m['path']}:{m['line']}" for m in matches}
 
         # New occurrences are current_set - base_set
-        new = sorted(list(current_set - base_set))
+        new = sorted(current_set - base_set)
         if new:
             new_issues[pat] = {
                 "suggestion": PATTERNS[pat],
@@ -65,7 +78,10 @@ def test_no_new_deprecations():
     if new_issues:
         msgs = []
         for pat, details in new_issues.items():
-            msgs.append(f"Pattern: {pat}\nSuggestion: {details['suggestion']}\nNew occurrences:\n  " + "\n  ".join(details['new_occurrences']))
+            msgs.append(
+                f"Pattern: {pat}\nSuggestion: {details['suggestion']}\nNew occurrences:\n  "
+                + "\n  ".join(details["new_occurrences"])
+            )
 
         full = "\n\n".join(msgs)
         raise AssertionError(

@@ -4,6 +4,7 @@ The canonical bridge utilities moved to `agents.c4ai.bridge`. This module
 keeps a small compatibility shim that warns on import and re-exports the
 primary helper `crawl_via_local_server` when available.
 """
+
 import os as _os
 from warnings import warn
 
@@ -23,6 +24,7 @@ try:
 
     __all__ = ["crawl_via_local_server"]
 except Exception:  # pragma: no cover - fallback
+
     async def crawl_via_local_server(url: str, *_, **__) -> dict:
         """Fallback minimal implementation when canonical bridge can't be imported.
 

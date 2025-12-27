@@ -11,7 +11,7 @@ data:
 
   # Vector Database Configuration
   CHROMA_HOST: "{{ include "justnews.fullname" . }}-chromadb"
-  CHROMA_PORT: "8000"
+  CHROMA_PORT: "3307"
 
   # MCP Bus Configuration
   MCP_BUS_URL: "http://{{ include "justnews.fullname" . }}-mcp-bus:{{ .Values.mcpBus.port }}"

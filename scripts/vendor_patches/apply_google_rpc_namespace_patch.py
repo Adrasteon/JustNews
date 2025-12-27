@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Vendor patch to remove pkg_resources dependency from google.rpc namespace."""
+
 from __future__ import annotations
 
 import argparse
@@ -61,7 +62,11 @@ def apply_patch(module_path: Path, dry_run: bool = False) -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dry-run", action="store_true", help="Only report whether the patch would be applied")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Only report whether the patch would be applied",
+    )
     args = parser.parse_args()
 
     module_path = locate_module()

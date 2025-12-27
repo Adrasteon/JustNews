@@ -5,6 +5,7 @@ from ``config/crawl_profiles``.  The scheduler imports these helpers to
 attach the resolved profile payload to each crawler submission so runtime
 behaviour stays configuration-driven.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
@@ -84,7 +85,11 @@ class CrawlProfile:
             "wait_for": _expand_placeholders(self.wait_for, domain),
             "extra": _expand_placeholders(self.extra, domain),
         }
-        return {key: value for key, value in expanded.items() if value not in (None, [], {}, "")}
+        return {
+            key: value
+            for key, value in expanded.items()
+            if value not in (None, [], {}, "")
+        }
 
 
 @dataclass(frozen=True)
@@ -162,10 +167,18 @@ def _build_registry(raw: Mapping[str, Any]) -> CrawlProfileRegistry:
         if isinstance(start_urls, str):
             start_urls = [start_urls]
         start_urls = [str(item).strip() for item in start_urls if str(item).strip()]
-        run_config = _coerce_mapping(data.get("run_config"), context=f"profile '{slug}' run_config")
-        link_preview = _coerce_mapping(data.get("link_preview"), context=f"profile '{slug}' link_preview")
-        browser_config = _coerce_mapping(data.get("browser_config"), context=f"profile '{slug}' browser_config")
-        adaptive = _coerce_mapping(data.get("adaptive"), context=f"profile '{slug}' adaptive")
+        run_config = _coerce_mapping(
+            data.get("run_config"), context=f"profile '{slug}' run_config"
+        )
+        link_preview = _coerce_mapping(
+            data.get("link_preview"), context=f"profile '{slug}' link_preview"
+        )
+        browser_config = _coerce_mapping(
+            data.get("browser_config"), context=f"profile '{slug}' browser_config"
+        )
+        adaptive = _coerce_mapping(
+            data.get("adaptive"), context=f"profile '{slug}' adaptive"
+        )
         extra = _coerce_mapping(data.get("extra"), context=f"profile '{slug}' extra")
         description = data.get("description")
         js_code = data.get("js_code") or []
@@ -252,7 +265,9 @@ def load_crawl_profiles(path: Path) -> CrawlProfileRegistry:
 
         doc_defaults = raw.get("defaults")
         if doc_defaults:
-            defaults_mapping = _coerce_mapping(doc_defaults, context=f"{source} defaults")
+            defaults_mapping = _coerce_mapping(
+                doc_defaults, context=f"{source} defaults"
+            )
             if aggregated_defaults is None:
                 aggregated_defaults = defaults_mapping
             elif defaults_mapping != aggregated_defaults:
@@ -260,10 +275,14 @@ def load_crawl_profiles(path: Path) -> CrawlProfileRegistry:
                     f"Conflicting defaults across crawl profile files: {source}"
                 )
 
-        doc_profiles = _coerce_mapping(raw.get("profiles"), context=f"{source} profiles")
+        doc_profiles = _coerce_mapping(
+            raw.get("profiles"), context=f"{source} profiles"
+        )
         for slug, body in doc_profiles.items():
             if slug in aggregated_profiles:
-                raise CrawlProfileError(f"Duplicate profile slug '{slug}' found in {source}")
+                raise CrawlProfileError(
+                    f"Duplicate profile slug '{slug}' found in {source}"
+                )
             aggregated_profiles[slug] = body
 
     if not aggregated_profiles:

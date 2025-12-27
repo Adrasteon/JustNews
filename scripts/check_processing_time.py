@@ -21,7 +21,15 @@ PATTERNS = [
     re.compile(r"\bprocessing_time\s*:\s*time\.time\(\)(?!\s*-)"),
 ]
 
-EXCLUDES = ["/venv/", "venv/", "/.venv/", ".venv", "__pycache__", "tests/fixtures", "scripts/"]
+EXCLUDES = [
+    "/venv/",
+    "venv/",
+    "/.venv/",
+    ".venv",
+    "__pycache__",
+    "tests/fixtures",
+    "scripts/",
+]
 
 
 def is_excluded(path):
@@ -59,7 +67,9 @@ def main():
     for path, n, line in issues:
         print(f"  {path}:{n}: {line}")
 
-    print("\nPlease fix the processing_time calculations (use start_time and compute elapsed: time.time() - start_time)")
+    print(
+        "\nPlease fix the processing_time calculations (use start_time and compute elapsed: time.time() - start_time)"
+    )
     return 1
 
 

@@ -9,7 +9,6 @@ Features:
 - Web dashboard interface
 """
 
-
 import contextlib
 from datetime import datetime
 
@@ -32,6 +31,7 @@ from .gpu_monitoring_enhanced import (
 
 logger = get_logger(__name__)
 
+
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan context manager"""
@@ -49,13 +49,15 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Failed to stop GPU monitoring: {e}")
 
+
 # Create FastAPI app
 app = FastAPI(
     title="JustNews GPU Monitoring Dashboard",
     description="Real-time GPU monitoring and performance analytics for JustNews",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
+
 
 @app.get("/", response_class=HTMLResponse)
 async def get_dashboard_page():
@@ -334,6 +336,7 @@ async def get_dashboard_page():
     """
     return HTMLResponse(content=html_content)
 
+
 @app.get("/api/dashboard")
 async def get_dashboard_api():
     """Get current dashboard data"""
@@ -343,6 +346,7 @@ async def get_dashboard_api():
     except Exception as e:
         logger.error(f"Error getting dashboard: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @app.get("/api/trends")
 async def get_trends_api(hours: int = 24):
@@ -354,6 +358,7 @@ async def get_trends_api(hours: int = 24):
         logger.error(f"Error getting trends: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @app.get("/api/system-status")
 async def get_system_status():
     """Get detailed system status"""
@@ -361,14 +366,17 @@ async def get_system_status():
         collector = get_metrics_collector()
         manager = get_gpu_manager()
 
-        return JSONResponse(content={
-            'monitoring': collector.get_current_dashboard(),
-            'gpu_manager': manager.get_system_status(),
-            'timestamp': datetime.now().isoformat()
-        })
+        return JSONResponse(
+            content={
+                "monitoring": collector.get_current_dashboard(),
+                "gpu_manager": manager.get_system_status(),
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
     except Exception as e:
         logger.error(f"Error getting system status: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @app.post("/api/alerts/clear")
 async def clear_alerts():
@@ -382,15 +390,18 @@ async def clear_alerts():
         logger.error(f"Error clearing alerts: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
+
 def run_dashboard(host: str = "0.0.0.0", port: int = 8001):
     """Run the GPU monitoring dashboard"""
     logger.info(f"🚀 Starting GPU Dashboard on {host}:{port}")
     uvicorn.run(app, host=host, port=port)
+
 
 if __name__ == "__main__":
     run_dashboard()

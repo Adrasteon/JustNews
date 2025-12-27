@@ -49,7 +49,9 @@ class TestConfigurationSchemas:
 
         assert isinstance(config, JustNewsConfig)
         assert config.system.environment == Environment.DEVELOPMENT
-        assert config.database.host == "localhost"  # DatabaseConfig has host, not enabled
+        assert (
+            config.database.host == "localhost"
+        )  # DatabaseConfig has host, not enabled
         assert config.gpu.enabled is True  # GPUConfig has enabled
 
     def test_config_validation(self):
@@ -62,7 +64,7 @@ class TestConfigurationSchemas:
         # Test serialization
         config_dict = config.model_dump()
         assert isinstance(config_dict, dict)
-        assert 'system' in config_dict
+        assert "system" in config_dict
 
     def test_environment_enum(self):
         """Test environment enumeration"""
@@ -183,7 +185,7 @@ class TestEnvironmentProfiles:
         profile = EnvironmentProfile(
             name="test",
             environment=Environment.DEVELOPMENT,
-            overrides={"system": {"debug_mode": True}}
+            overrides={"system": {"debug_mode": True}},
         )
 
         errors = profile.validate()
@@ -193,7 +195,7 @@ class TestEnvironmentProfiles:
         invalid_profile = EnvironmentProfile(
             name="invalid",
             environment=Environment.PRODUCTION,
-            overrides={"system": {"debug_mode": True}}
+            overrides={"system": {"debug_mode": True}},
         )
 
         errors = invalid_profile.validate()
@@ -206,7 +208,7 @@ class TestEnvironmentProfiles:
         profile = EnvironmentProfile(
             name="test",
             environment=Environment.DEVELOPMENT,
-            overrides={"database": {"host": "overridden_host"}}
+            overrides={"database": {"host": "overridden_host"}},
         )
 
         result_config = profile.apply_overrides(base_config)
@@ -222,12 +224,12 @@ class TestEnvironmentProfiles:
         profile_manager = EnvironmentProfileManager()
 
         # Test environment variable detection
-        with patch.dict('os.environ', {'JUSTNEWS_ENVIRONMENT': 'production'}):
+        with patch.dict("os.environ", {"JUSTNEWS_ENVIRONMENT": "production"}):
             detected = profile_manager.detect_environment()
             assert detected == Environment.PRODUCTION
 
         # Test hostname detection
-        with patch('socket.gethostname', return_value='prod-server-01'):
+        with patch("socket.gethostname", return_value="prod-server-01"):
             detected = profile_manager.detect_environment()
             assert detected == Environment.PRODUCTION
 
@@ -353,9 +355,13 @@ class TestLegacyMigration:
             temp_path = Path(temp_dir)
 
             # Create some mock legacy files
-            (temp_path / "database.json").write_text('{"host": "localhost", "port": 5432}')
-            (temp_path / "gpu_config.py").write_text('GPU_ENABLED = True\nBATCH_SIZE = 16')
-            (temp_path / "old_config.txt").write_text('some random content')
+            (temp_path / "database.json").write_text(
+                '{"host": "localhost", "port": 5432}'
+            )
+            (temp_path / "gpu_config.py").write_text(
+                "GPU_ENABLED = True\nBATCH_SIZE = 16"
+            )
+            (temp_path / "old_config.txt").write_text("some random content")
 
             migrator = LegacyConfigurationMigrator()
             files = migrator.discover_legacy_configs([temp_path])
@@ -376,7 +382,7 @@ class TestLegacyMigration:
                 format="json",
                 config_type="database",
                 is_active=True,
-                content_hash="test"
+                content_hash="test",
             )
         ]
 
@@ -394,7 +400,7 @@ class TestLegacyMigration:
             "host": "testhost",
             "port": 5433,
             "user": "testuser",
-            "password": "testpass"
+            "password": "testpass",
         }
 
         steps = migrator._merge_database_config(config_dict, legacy_config)
@@ -414,7 +420,7 @@ class TestLegacyMigration:
             migration_steps=["Set database.host = localhost"],
             conflicts=[],
             warnings=[],
-            estimated_effort="low"
+            estimated_effort="low",
         )
 
         compat_code = migrator._generate_compatibility_code(plan)
@@ -432,14 +438,19 @@ class TestIntegration:
         with tempfile.TemporaryDirectory() as temp_dir:
             # Ensure env does not override file-backed configuration during test
             from unittest.mock import patch
+
             # Ensure the loader does not import system or repo-level global.env
             # during this test: mark PYTEST_RUNNING so load_global_env skips
             # Provide an empty explicit JUSTNEWS_GLOBAL_ENV inside temp_dir
             # so load_global_env will prefer that path and not load repo/system
             # global.env files which would override our test configuration.
-            env_file = Path(temp_dir) / 'global.env'
-            env_file.write_text('')
-            with patch.dict(os.environ, {'PYTEST_RUNNING': '1', 'JUSTNEWS_GLOBAL_ENV': str(env_file)}, clear=True):
+            env_file = Path(temp_dir) / "global.env"
+            env_file.write_text("")
+            with patch.dict(
+                os.environ,
+                {"PYTEST_RUNNING": "1", "JUSTNEWS_GLOBAL_ENV": str(env_file)},
+                clear=True,
+            ):
                 temp_path = Path(temp_dir)
 
                 # Create configuration file
@@ -512,7 +523,10 @@ class TestIntegration:
 # TEST UTILITIES
 # ============================================================================
 
-def create_test_config_file(config: JustNewsConfig = None, temp_dir: str = None) -> Path:
+
+def create_test_config_file(
+    config: JustNewsConfig = None, temp_dir: str = None
+) -> Path:
     """Create a test configuration file"""
     if config is None:
         config = create_default_config()
@@ -524,6 +538,7 @@ def create_test_config_file(config: JustNewsConfig = None, temp_dir: str = None)
     save_config_to_file(config, config_file)
 
     return config_file
+
 
 def create_test_legacy_files(temp_dir: str = None) -> list[Path]:
     """Create test legacy configuration files"""
@@ -542,12 +557,12 @@ def create_test_legacy_files(temp_dir: str = None) -> list[Path]:
 
     # Python GPU config
     gpu_file = temp_path / "gpu.py"
-    gpu_file.write_text('GPU_ENABLED = True\nBATCH_SIZE = 8')
+    gpu_file.write_text("GPU_ENABLED = True\nBATCH_SIZE = 8")
     files.append(gpu_file)
 
     # YAML monitoring config
     mon_file = temp_path / "monitoring.yaml"
-    mon_file.write_text('enabled: true\nmetrics_enabled: false')
+    mon_file.write_text("enabled: true\nmetrics_enabled: false")
     files.append(mon_file)
 
     return files

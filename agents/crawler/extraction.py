@@ -6,6 +6,7 @@ implementation.  The goal is to deliver clean article bodies with provenance,
 while keeping enough context (raw HTML + structured metadata) for audits and
 reprocessing.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -105,7 +106,9 @@ class ExtractionOutcome:
     raw_html_path: str | None = None
 
 
-def _store_raw_html(html: str, url: str, *, target_dir: Path = _DEFAULT_RAW_DIR) -> str | None:
+def _store_raw_html(
+    html: str, url: str, *, target_dir: Path = _DEFAULT_RAW_DIR
+) -> str | None:
     """Persist the raw HTML to disk for forensic reprocessing."""
 
     try:
@@ -214,8 +217,12 @@ def _extract_with_justext(html: str, language_hint: str | None) -> str | None:
 def _plain_text_fallback(html: str) -> str | None:
     """Very lightweight HTML-to-text fallback used when specialized libraries are unavailable."""
 
-    cleaned = re.sub(r"<script[^>]*>.*?</script>", " ", html, flags=re.DOTALL | re.IGNORECASE)
-    cleaned = re.sub(r"<style[^>]*>.*?</style>", " ", cleaned, flags=re.DOTALL | re.IGNORECASE)
+    cleaned = re.sub(
+        r"<script[^>]*>.*?</script>", " ", html, flags=re.DOTALL | re.IGNORECASE
+    )
+    cleaned = re.sub(
+        r"<style[^>]*>.*?</style>", " ", cleaned, flags=re.DOTALL | re.IGNORECASE
+    )
     cleaned = re.sub(r"<!--.*?-->", " ", cleaned, flags=re.DOTALL)
     cleaned = re.sub(r"<[^>]+>", " ", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned)
@@ -249,9 +256,13 @@ def _derive_meta_from_dom(html: str, url: str) -> dict[str, Any]:
         return {}
 
     canonical = tree.xpath("//link[@rel='canonical']/@href")
-    meta_author = tree.xpath("//meta[@name='author']/@content | //meta[@property='article:author']/@content")
+    meta_author = tree.xpath(
+        "//meta[@name='author']/@content | //meta[@property='article:author']/@content"
+    )
     meta_section = tree.xpath("//meta[@property='article:section']/@content")
-    meta_tags = tree.xpath("//meta[@property='article:tag']/@content | //meta[@name='keywords']/@content")
+    meta_tags = tree.xpath(
+        "//meta[@property='article:tag']/@content | //meta[@name='keywords']/@content"
+    )
     meta_pub = tree.xpath(
         "//meta[@property='article:published_time']/@content | "
         "//meta[@name='date']/@content | //meta[@property='og:published_time']/@content"
@@ -262,7 +273,9 @@ def _derive_meta_from_dom(html: str, url: str) -> dict[str, Any]:
     if meta_tags:
         for entry in meta_tags:
             if entry:
-                tags.extend([token.strip() for token in entry.split(",") if token.strip()])
+                tags.extend(
+                    [token.strip() for token in entry.split(",") if token.strip()]
+                )
 
     canonical_url = canonical[0] if canonical else (og_url[0] if og_url else None)
     if canonical_url:
@@ -329,7 +342,9 @@ def extract_article_content(html: str, url: str) -> ExtractionOutcome:
 
     # Tier 3: jusText fallback for stubborn pages
     if not outcome.text and html:
-        language_hint = outcome.language or (outcome.metadata.get("lang") if outcome.metadata else None)
+        language_hint = outcome.language or (
+            outcome.metadata.get("lang") if outcome.metadata else None
+        )
         justext_result = _extract_with_justext(html, language_hint)
         if justext_result:
             outcome.text = justext_result.strip()
@@ -381,14 +396,10 @@ def extract_article_content(html: str, url: str) -> ExtractionOutcome:
     )
     if outcome.word_count < _MIN_WORDS:
         outcome.needs_review = True
-        outcome.review_reasons.append(
-            f"word_count_below_threshold<{_MIN_WORDS}>"
-        )
+        outcome.review_reasons.append(f"word_count_below_threshold<{_MIN_WORDS}>")
     if outcome.boilerplate_ratio < _MIN_TEXT_HTML_RATIO:
         outcome.needs_review = True
-        outcome.review_reasons.append(
-            f"low_text_html_ratio<{_MIN_TEXT_HTML_RATIO}>"
-        )
+        outcome.review_reasons.append(f"low_text_html_ratio<{_MIN_TEXT_HTML_RATIO}>")
     if outcome.text and "lorem ipsum" in outcome.text.lower():
         outcome.needs_review = True
         outcome.review_reasons.append("possible_placeholder_text")

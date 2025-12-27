@@ -14,7 +14,6 @@ Features:
 - Consent policy management
 """
 
-
 import json
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
@@ -26,8 +25,10 @@ from common.observability import get_logger
 
 logger = get_logger(__name__)
 
+
 class ConsentType(Enum):
     """Types of user consent"""
+
     DATA_PROCESSING = "data_processing"
     EXTERNAL_LINKING = "external_linking"
     ANALYTICS = "analytics"
@@ -35,16 +36,20 @@ class ConsentType(Enum):
     PROFILE_ANALYSIS = "profile_analysis"
     DATA_SHARING = "data_sharing"
 
+
 class ConsentStatus(Enum):
     """Consent status"""
+
     GRANTED = "granted"
     WITHDRAWN = "withdrawn"
     EXPIRED = "expired"
     PENDING = "pending"
 
+
 @dataclass
 class ConsentRecord:
     """User consent record"""
+
     consent_id: str
     user_id: int
     consent_type: ConsentType
@@ -60,30 +65,32 @@ class ConsentRecord:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for storage"""
         data = asdict(self)
-        data['consent_type'] = self.consent_type.value
-        data['status'] = self.status.value
-        data['granted_at'] = self.granted_at.isoformat()
+        data["consent_type"] = self.consent_type.value
+        data["status"] = self.status.value
+        data["granted_at"] = self.granted_at.isoformat()
         if self.withdrawn_at:
-            data['withdrawn_at'] = self.withdrawn_at.isoformat()
+            data["withdrawn_at"] = self.withdrawn_at.isoformat()
         if self.expires_at:
-            data['expires_at'] = self.expires_at.isoformat()
+            data["expires_at"] = self.expires_at.isoformat()
         return data
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'ConsentRecord':
+    def from_dict(cls, data: dict[str, Any]) -> "ConsentRecord":
         """Create from dictionary"""
-        data['consent_type'] = ConsentType(data['consent_type'])
-        data['status'] = ConsentStatus(data['status'])
-        data['granted_at'] = datetime.fromisoformat(data['granted_at'])
-        if data.get('withdrawn_at'):
-            data['withdrawn_at'] = datetime.fromisoformat(data['withdrawn_at'])
-        if data.get('expires_at'):
-            data['expires_at'] = datetime.fromisoformat(data['expires_at'])
+        data["consent_type"] = ConsentType(data["consent_type"])
+        data["status"] = ConsentStatus(data["status"])
+        data["granted_at"] = datetime.fromisoformat(data["granted_at"])
+        if data.get("withdrawn_at"):
+            data["withdrawn_at"] = datetime.fromisoformat(data["withdrawn_at"])
+        if data.get("expires_at"):
+            data["expires_at"] = datetime.fromisoformat(data["expires_at"])
         return cls(**data)
+
 
 @dataclass
 class ConsentPolicy:
     """Consent policy definition"""
+
     policy_id: str
     consent_type: ConsentType
     name: str
@@ -101,9 +108,10 @@ class ConsentPolicy:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         data = asdict(self)
-        data['consent_type'] = self.consent_type.value
-        data['last_updated'] = self.last_updated.isoformat()
+        data["consent_type"] = self.consent_type.value
+        data["last_updated"] = self.last_updated.isoformat()
         return data
+
 
 class ConsentManager:
     """
@@ -127,7 +135,7 @@ class ConsentManager:
                 description="Consent for processing personal data for news analysis and research purposes",
                 required=True,
                 default_granted=False,
-                expires_days=365
+                expires_days=365,
             ),
             ConsentType.EXTERNAL_LINKING: ConsentPolicy(
                 policy_id="external_linking_v1",
@@ -136,7 +144,7 @@ class ConsentManager:
                 description="Consent for linking user data with external knowledge bases (Wikidata, DBpedia)",
                 required=False,
                 default_granted=False,
-                expires_days=365
+                expires_days=365,
             ),
             ConsentType.ANALYTICS: ConsentPolicy(
                 policy_id="analytics_v1",
@@ -145,7 +153,7 @@ class ConsentManager:
                 description="Consent for collecting anonymous usage analytics to improve the service",
                 required=False,
                 default_granted=False,
-                expires_days=365
+                expires_days=365,
             ),
             ConsentType.MARKETING: ConsentPolicy(
                 policy_id="marketing_v1",
@@ -154,7 +162,7 @@ class ConsentManager:
                 description="Consent for receiving marketing communications and newsletters",
                 required=False,
                 default_granted=False,
-                expires_days=365
+                expires_days=365,
             ),
             ConsentType.PROFILE_ANALYSIS: ConsentPolicy(
                 policy_id="profile_analysis_v1",
@@ -163,7 +171,7 @@ class ConsentManager:
                 description="Consent for analyzing user behavior to personalize content and recommendations",
                 required=False,
                 default_granted=False,
-                expires_days=365
+                expires_days=365,
             ),
             ConsentType.DATA_SHARING: ConsentPolicy(
                 policy_id="data_sharing_v1",
@@ -172,8 +180,8 @@ class ConsentManager:
                 description="Consent for sharing anonymized data with research partners",
                 required=False,
                 default_granted=False,
-                expires_days=365
-            )
+                expires_days=365,
+            ),
         }
 
     def _ensure_consent_tables(self):
@@ -241,23 +249,34 @@ class ConsentManager:
         version = EXCLUDED.version,
         last_updated = EXCLUDED.last_updated
         """
-        auth_execute_query(query, (
-            policy.policy_id,
-            policy.consent_type.value,
-            policy.name,
-            policy.description,
-            policy.required,
-            policy.default_granted,
-            policy.expires_days,
-            policy.version,
-            policy.last_updated
-        ), fetch=False)
+        auth_execute_query(
+            query,
+            (
+                policy.policy_id,
+                policy.consent_type.value,
+                policy.name,
+                policy.description,
+                policy.required,
+                policy.default_granted,
+                policy.expires_days,
+                policy.version,
+                policy.last_updated,
+            ),
+            fetch=False,
+        )
 
-    def grant_consent(self, user_id: int, consent_type: ConsentType,
-                     ip_address: str = None, user_agent: str = None,
-                     details: dict[str, Any] = None) -> str:
+    def grant_consent(
+        self,
+        user_id: int,
+        consent_type: ConsentType,
+        ip_address: str = None,
+        user_agent: str = None,
+        details: dict[str, Any] = None,
+    ) -> str:
         """Grant user consent for a specific type"""
-        consent_id = f"consent_{user_id}_{consent_type.value}_{int(datetime.now().timestamp())}"
+        consent_id = (
+            f"consent_{user_id}_{consent_type.value}_{int(datetime.now().timestamp())}"
+        )
 
         policy = self.policies.get(consent_type)
         expires_at = None
@@ -273,7 +292,7 @@ class ConsentManager:
             expires_at=expires_at,
             ip_address=ip_address,
             user_agent=user_agent,
-            details=details
+            details=details,
         )
 
         # Insert consent record
@@ -282,39 +301,50 @@ class ConsentManager:
         (consent_id, user_id, consent_type, status, granted_at, expires_at, ip_address, user_agent, details)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-        auth_execute_query(query, (
-            consent.consent_id,
-            consent.user_id,
-            consent.consent_type.value,
-            consent.status.value,
-            consent.granted_at,
-            consent.expires_at,
-            consent.ip_address,
-            consent.user_agent,
-            json.dumps(consent.details) if consent.details else None
-        ), fetch=False)
+        auth_execute_query(
+            query,
+            (
+                consent.consent_id,
+                consent.user_id,
+                consent.consent_type.value,
+                consent.status.value,
+                consent.granted_at,
+                consent.expires_at,
+                consent.ip_address,
+                consent.user_agent,
+                json.dumps(consent.details) if consent.details else None,
+            ),
+            fetch=False,
+        )
 
         logger.info(f"✅ Consent granted: User {user_id} for {consent_type.value}")
         return consent_id
 
-    def withdraw_consent(self, user_id: int, consent_type: ConsentType,
-                        ip_address: str = None) -> bool:
+    def withdraw_consent(
+        self, user_id: int, consent_type: ConsentType, ip_address: str = None
+    ) -> bool:
         """Withdraw user consent"""
         query = """
         UPDATE user_consents
         SET status = %s, withdrawn_at = %s, updated_at = CURRENT_TIMESTAMP
         WHERE user_id = %s AND consent_type = %s AND status = %s
         """
-        result = auth_execute_query(query, (
-            ConsentStatus.WITHDRAWN.value,
-            datetime.now(),
-            user_id,
-            consent_type.value,
-            ConsentStatus.GRANTED.value
-        ), fetch=False)
+        result = auth_execute_query(
+            query,
+            (
+                ConsentStatus.WITHDRAWN.value,
+                datetime.now(),
+                user_id,
+                consent_type.value,
+                ConsentStatus.GRANTED.value,
+            ),
+            fetch=False,
+        )
 
         if result:
-            logger.info(f"✅ Consent withdrawn: User {user_id} for {consent_type.value}")
+            logger.info(
+                f"✅ Consent withdrawn: User {user_id} for {consent_type.value}"
+            )
             return True
         return False
 
@@ -350,12 +380,12 @@ class ConsentManager:
                 return True
             return False
 
-        status = ConsentStatus(result['status'])
+        status = ConsentStatus(result["status"])
         if status != ConsentStatus.GRANTED:
             return False
 
         # Check expiration
-        expires_at = result.get('expires_at')
+        expires_at = result.get("expires_at")
         if expires_at and datetime.now() > expires_at:
             # Mark as expired
             self._mark_expired(user_id, consent_type)
@@ -370,12 +400,16 @@ class ConsentManager:
         SET status = %s, updated_at = CURRENT_TIMESTAMP
         WHERE user_id = %s AND consent_type = %s AND status = %s
         """
-        auth_execute_query(query, (
-            ConsentStatus.EXPIRED.value,
-            user_id,
-            consent_type.value,
-            ConsentStatus.GRANTED.value
-        ), fetch=False)
+        auth_execute_query(
+            query,
+            (
+                ConsentStatus.EXPIRED.value,
+                user_id,
+                consent_type.value,
+                ConsentStatus.GRANTED.value,
+            ),
+            fetch=False,
+        )
 
     def get_consent_summary(self, user_id: int) -> dict[str, Any]:
         """Get consent summary for a user"""
@@ -388,7 +422,7 @@ class ConsentManager:
             "optional_consents_granted": 0,
             "total_required_consents": 0,
             "total_optional_consents": 0,
-            "compliance_status": "compliant"
+            "compliance_status": "compliant",
         }
 
         for consent_type, policy in self.policies.items():
@@ -399,8 +433,12 @@ class ConsentManager:
                 "granted": is_granted,
                 "required": policy.required,
                 "expires_days": policy.expires_days,
-                "last_updated": consent_record.granted_at.isoformat() if consent_record else None,
-                "status": consent_record.status.value if consent_record else "not_granted"
+                "last_updated": consent_record.granted_at.isoformat()
+                if consent_record
+                else None,
+                "status": consent_record.status.value
+                if consent_record
+                else "not_granted",
             }
 
             if policy.required:
@@ -424,11 +462,12 @@ class ConsentManager:
             "total_users": 0,
             "consent_rates": {},
             "policy_compliance": {},
-            "generated_at": datetime.now().isoformat()
+            "generated_at": datetime.now().isoformat(),
         }
 
         # Get total users
         from agents.common.auth_models import get_user_count
+
         stats["total_users"] = get_user_count()
 
         # Get consent rates for each type
@@ -442,22 +481,24 @@ class ConsentManager:
             """
             result = auth_execute_query_single(query, (consent_type.value,))
 
-            if result and result['total_count'] > 0:
-                grant_rate = result['granted_count'] / result['total_count']
+            if result and result["total_count"] > 0:
+                grant_rate = result["granted_count"] / result["total_count"]
             else:
                 grant_rate = 0.0
 
             stats["consent_rates"][consent_type.value] = {
-                "granted_users": result['granted_count'] if result else 0,
-                "total_users": result['total_count'] if result else 0,
+                "granted_users": result["granted_count"] if result else 0,
+                "total_users": result["total_count"] if result else 0,
                 "grant_rate": round(grant_rate * 100, 2),
-                "required": policy.required
+                "required": policy.required,
             }
 
         return stats
 
+
 # Global consent manager instance
 consent_manager = ConsentManager()
+
 
 async def demo_consent_management():
     """Demonstrate consent management capabilities"""
@@ -477,7 +518,9 @@ async def demo_consent_management():
 
     print("✅ Consent Management System Ready!")
     print("\n🚀 Key Features:")
-    print("   ✅ Multiple consent types (data processing, external linking, analytics, etc.)")
+    print(
+        "   ✅ Multiple consent types (data processing, external linking, analytics, etc.)"
+    )
     print("   ✅ Granular consent tracking with expiration")
     print("   ✅ Consent withdrawal capabilities")
     print("   ✅ Compliance status monitoring")
@@ -489,6 +532,8 @@ async def demo_consent_management():
     print("   3. Implement consent validation middleware")
     print("   4. Add consent audit logging")
 
+
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(demo_consent_management())

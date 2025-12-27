@@ -6,6 +6,7 @@ pool of HTTP(S) proxies on a per-request basis without introducing any new
 runtime dependencies.  When the proxy pool is empty the helper is effectively
 inactive.
 """
+
 from __future__ import annotations
 
 import itertools
@@ -165,11 +166,23 @@ class PIASocks5Manager:
             self._hosts = [primary_host, *alternate_hosts]
         self._host_cycle = itertools.cycle(self._hosts)
 
-        self.reuse_limit = reuse_limit or int(os.getenv("PIA_SOCKS5_REUSE_LIMIT", self.DEFAULT_REUSE_LIMIT))
-        self.backoff_seconds = backoff_seconds or float(os.getenv("PIA_SOCKS5_RELOG_BACKOFF_SECONDS", self.DEFAULT_BACKOFF_SECONDS))
-        self.max_backoff_seconds = max_backoff_seconds or float(os.getenv("PIA_SOCKS5_RELOG_BACKOFF_MAX_SECONDS", self.DEFAULT_BACKOFF_MAX_SECONDS))
-        self.max_retries = max_retries or int(os.getenv("PIA_SOCKS5_RELOG_MAX_RETRIES", self.DEFAULT_MAX_RETRIES))
-        self.verify_timeout = verify_timeout or float(os.getenv("PIA_SOCKS5_VERIFY_TIMEOUT", self.DEFAULT_VERIFY_TIMEOUT))
+        self.reuse_limit = reuse_limit or int(
+            os.getenv("PIA_SOCKS5_REUSE_LIMIT", self.DEFAULT_REUSE_LIMIT)
+        )
+        self.backoff_seconds = backoff_seconds or float(
+            os.getenv("PIA_SOCKS5_RELOG_BACKOFF_SECONDS", self.DEFAULT_BACKOFF_SECONDS)
+        )
+        self.max_backoff_seconds = max_backoff_seconds or float(
+            os.getenv(
+                "PIA_SOCKS5_RELOG_BACKOFF_MAX_SECONDS", self.DEFAULT_BACKOFF_MAX_SECONDS
+            )
+        )
+        self.max_retries = max_retries or int(
+            os.getenv("PIA_SOCKS5_RELOG_MAX_RETRIES", self.DEFAULT_MAX_RETRIES)
+        )
+        self.verify_timeout = verify_timeout or float(
+            os.getenv("PIA_SOCKS5_VERIFY_TIMEOUT", self.DEFAULT_VERIFY_TIMEOUT)
+        )
 
         self._current_host: str | None = None
         self._current_url: str | None = None
@@ -179,7 +192,9 @@ class PIASocks5Manager:
         self._next_available_ts = 0.0
 
         if not self.username or not self.password:
-            raise ValueError("PIA SOCKS5 credentials not provided. Set PIA_SOCKS5_USERNAME and PIA_SOCKS5_PASSWORD environment variables.")
+            raise ValueError(
+                "PIA SOCKS5 credentials not provided. Set PIA_SOCKS5_USERNAME and PIA_SOCKS5_PASSWORD environment variables."
+            )
 
         logger.info(
             "PIA SOCKS5 manager initialized for hosts=%s:%d (reuse_limit=%d)",
@@ -231,15 +246,17 @@ class PIASocks5Manager:
             True if credentials are configured, False otherwise.
         """
         return bool(
-            os.getenv("PIA_SOCKS5_USERNAME") and
-            os.getenv("PIA_SOCKS5_PASSWORD")
+            os.getenv("PIA_SOCKS5_USERNAME") and os.getenv("PIA_SOCKS5_PASSWORD")
         )
 
     def report_failure(self, error: Exception | str | None = None) -> None:
         """Report a proxy failure to trigger reconnection and backoff."""
         reason = str(error) if error else "unknown"
         self._consecutive_failures += 1
-        backoff = min(self.backoff_seconds * (2 ** (self._consecutive_failures - 1)), self.max_backoff_seconds)
+        backoff = min(
+            self.backoff_seconds * (2 ** (self._consecutive_failures - 1)),
+            self.max_backoff_seconds,
+        )
         jitter = random.uniform(0, min(self.backoff_seconds, backoff))
         delay = max(0.0, backoff + jitter)
         self._next_available_ts = time.monotonic() + delay
@@ -274,7 +291,10 @@ class PIASocks5Manager:
             if self._verify_host(host):
                 self._activate_host(host)
                 if attempt:
-                    logger.info("PIA SOCKS5 reconnection succeeded after %d attempts", attempt + 1)
+                    logger.info(
+                        "PIA SOCKS5 reconnection succeeded after %d attempts",
+                        attempt + 1,
+                    )
                 return
 
             attempt += 1
@@ -298,7 +318,9 @@ class PIASocks5Manager:
 
     def _verify_host(self, host: str) -> bool:
         try:
-            with socket.create_connection((host, self.port), timeout=self.verify_timeout):
+            with socket.create_connection(
+                (host, self.port), timeout=self.verify_timeout
+            ):
                 return True
         except OSError as exc:  # pragma: no cover - network dependent
             logger.warning(
@@ -312,7 +334,9 @@ class PIASocks5Manager:
     def _activate_host(self, host: str) -> None:
         self._current_host = host
         self._reuse_count = 0
-        self._current_url = f"socks5://{self.username}:{self.password}@{host}:{self.port}"
+        self._current_url = (
+            f"socks5://{self.username}:{self.password}@{host}:{self.port}"
+        )
         self._base_metadata = {
             "provider": "pia",
             "type": "socks5",

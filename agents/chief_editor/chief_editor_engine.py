@@ -19,34 +19,41 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
+from agents.chief_editor.mistral_adapter import SYSTEM_PROMPT
+from agents.common.mistral_adapter import MistralAdapter
 from common.observability import get_logger
-from agents.chief_editor.mistral_adapter import ChiefEditorMistralAdapter
 
 # Core ML Libraries with fallbacks
 try:
     from transformers import pipeline
+
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
 
 try:
     from sentence_transformers import SentenceTransformer
+
     SENTENCE_TRANSFORMERS_AVAILABLE = True
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
 
 logger = get_logger(__name__)
 
+
 class EditorialPriority(Enum):
     """Editorial priority levels"""
+
     URGENT = "urgent"
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
     REVIEW = "review"
 
+
 class WorkflowStage(Enum):
     """Editorial workflow stages"""
+
     INTAKE = "intake"
     ANALYSIS = "analysis"
     FACT_CHECK = "fact_check"
@@ -55,9 +62,11 @@ class WorkflowStage(Enum):
     PUBLISH = "publish"
     ARCHIVE = "archive"
 
+
 @dataclass
 class EditorialDecision:
     """Editorial decision data structure"""
+
     priority: EditorialPriority
     stage: WorkflowStage
     confidence: float
@@ -65,6 +74,7 @@ class EditorialDecision:
     next_actions: list[str]
     agent_assignments: dict[str, str]
     metadata: dict[str, Any]
+
 
 @dataclass
 class ChiefEditorConfig:
@@ -86,6 +96,7 @@ class ChiefEditorConfig:
     max_length: int = 512
     device: str = "cpu"  # Default to CPU for stability
 
+
 class ChiefEditorEngine:
     """
     Simplified 5-Model Editorial Workflow Engine
@@ -101,7 +112,12 @@ class ChiefEditorEngine:
     def __init__(self, config: ChiefEditorConfig | None = None):
         self.config = config or ChiefEditorConfig()
         self.device = self.config.device
-        self.mistral_adapter = ChiefEditorMistralAdapter()
+        # Use shared MistralAdapter wrapper for consistent dry-run & modelstore behavior
+        self.mistral_adapter = MistralAdapter(
+            agent="chief_editor",
+            adapter_name="mistral_chief_editor_v1",
+            system_prompt=SYSTEM_PROMPT,
+        )
 
         # Model containers
         self.pipelines = {}
@@ -109,7 +125,7 @@ class ChiefEditorEngine:
             "total_requests": 0,
             "successful_operations": 0,
             "failed_operations": 0,
-            "average_processing_time": 0.0
+            "average_processing_time": 0.0,
         }
 
         # Agent capabilities for routing
@@ -118,7 +134,7 @@ class ChiefEditorEngine:
             "analyst": ["sentiment_analysis", "bias_detection"],
             "fact_checker": ["fact_verification", "credibility_assessment"],
             "synthesizer": ["content_aggregation", "summarization"],
-            "critic": ["content_review", "quality_control"]
+            "critic": ["content_review", "quality_control"],
         }
 
         # Initialize models
@@ -154,17 +170,17 @@ class ChiefEditorEngine:
                 logger.warning("Transformers not available - using fallback")
                 return
 
-            self.pipelines['bert_quality'] = pipeline(
+            self.pipelines["bert_quality"] = pipeline(
                 "text-classification",
                 model=self.config.bert_model,
                 device=-1,  # CPU
-                return_all_scores=True
+                return_all_scores=True,
             )
             logger.info("✅ BERT quality model loaded")
 
         except Exception as e:
             logger.error(f"Error loading BERT: {e}")
-            self.pipelines['bert_quality'] = None
+            self.pipelines["bert_quality"] = None
 
     def _load_distilbert_category_model(self):
         """Load DistilBERT model for categorization"""
@@ -173,17 +189,17 @@ class ChiefEditorEngine:
                 logger.warning("Transformers not available - using fallback")
                 return
 
-            self.pipelines['distilbert_category'] = pipeline(
+            self.pipelines["distilbert_category"] = pipeline(
                 "text-classification",
                 model=self.config.distilbert_model,
                 device=-1,  # CPU
-                return_all_scores=True
+                return_all_scores=True,
             )
             logger.info("✅ DistilBERT category model loaded")
 
         except Exception as e:
             logger.error(f"Error loading DistilBERT: {e}")
-            self.pipelines['distilbert_category'] = None
+            self.pipelines["distilbert_category"] = None
 
     def _load_roberta_sentiment_model(self):
         """Load RoBERTa model for sentiment analysis"""
@@ -192,17 +208,17 @@ class ChiefEditorEngine:
                 logger.warning("Transformers not available - using fallback")
                 return
 
-            self.pipelines['roberta_sentiment'] = pipeline(
+            self.pipelines["roberta_sentiment"] = pipeline(
                 "sentiment-analysis",
                 model=self.config.roberta_model,
                 device=-1,  # CPU
-                return_all_scores=True
+                return_all_scores=True,
             )
             logger.info("✅ RoBERTa sentiment model loaded")
 
         except Exception as e:
             logger.error(f"Error loading RoBERTa: {e}")
-            self.pipelines['roberta_sentiment'] = None
+            self.pipelines["roberta_sentiment"] = None
 
     def _load_t5_commentary_model(self):
         """Load T5 model for commentary generation"""
@@ -211,18 +227,18 @@ class ChiefEditorEngine:
                 logger.warning("Transformers not available - using fallback")
                 return
 
-            self.pipelines['t5_commentary'] = pipeline(
+            self.pipelines["t5_commentary"] = pipeline(
                 "text2text-generation",
                 model=self.config.t5_model,
                 device=-1,  # CPU
                 max_length=256,
-                temperature=0.7
+                temperature=0.7,
             )
             logger.info("✅ T5 commentary model loaded")
 
         except Exception as e:
             logger.error(f"Error loading T5: {e}")
-            self.pipelines['t5_commentary'] = None
+            self.pipelines["t5_commentary"] = None
 
     def _load_embedding_model(self):
         """Load SentenceTransformer model for embeddings"""
@@ -231,17 +247,21 @@ class ChiefEditorEngine:
                 logger.warning("SentenceTransformers not available - using fallback")
                 return
 
-            self.pipelines['embeddings'] = SentenceTransformer(self.config.embedding_model)
+            self.pipelines["embeddings"] = SentenceTransformer(
+                self.config.embedding_model
+            )
             logger.info("✅ Embedding model loaded")
 
         except Exception as e:
             logger.error(f"Error loading embeddings: {e}")
-            self.pipelines['embeddings'] = None
+            self.pipelines["embeddings"] = None
 
     def log_feedback(self, event: str, details: dict[str, Any]):
         """Log feedback for editorial decision tracking"""
         try:
-            feedback_log = os.environ.get("CHIEF_EDITOR_FEEDBACK_LOG", "./feedback_chief_editor.log")
+            feedback_log = os.environ.get(
+                "CHIEF_EDITOR_FEEDBACK_LOG", "./feedback_chief_editor.log"
+            )
             with open(feedback_log, "a", encoding="utf-8") as f:
                 timestamp = datetime.now(UTC).isoformat()
                 f.write(f"{timestamp}\t{event}\t{details}\n")
@@ -251,30 +271,34 @@ class ChiefEditorEngine:
     def assess_content_quality_bert(self, text: str) -> dict[str, Any]:
         """Assess content quality using BERT"""
         try:
-            if self.pipelines.get('bert_quality') is None:
+            if self.pipelines.get("bert_quality") is None:
                 return self._fallback_quality_assessment(text)
 
             # Truncate text
-            text = text[:self.config.max_length]
+            text = text[: self.config.max_length]
 
-            results = self.pipelines['bert_quality'](text)
+            results = self.pipelines["bert_quality"](text)
 
             # Calculate overall quality score
             if results:
-                quality_score = sum(r['score'] for r in results) / len(results)
+                quality_score = sum(r["score"] for r in results) / len(results)
             else:
                 quality_score = 0.5
 
             assessment = {
                 "overall_quality": quality_score,
-                "assessment": "high" if quality_score > 0.7 else "medium" if quality_score > 0.4 else "low",
-                "model": "bert"
+                "assessment": "high"
+                if quality_score > 0.7
+                else "medium"
+                if quality_score > 0.4
+                else "low",
+                "model": "bert",
             }
 
-            self.log_feedback("assess_content_quality_bert", {
-                "quality_score": quality_score,
-                "text_length": len(text)
-            })
+            self.log_feedback(
+                "assess_content_quality_bert",
+                {"quality_score": quality_score, "text_length": len(text)},
+            )
 
             return assessment
 
@@ -285,19 +309,19 @@ class ChiefEditorEngine:
     def categorize_content_distilbert(self, text: str) -> dict[str, Any]:
         """Categorize content using DistilBERT"""
         try:
-            if self.pipelines.get('distilbert_category') is None:
+            if self.pipelines.get("distilbert_category") is None:
                 return self._fallback_categorization(text)
 
             # Truncate text
-            text = text[:self.config.max_length]
+            text = text[: self.config.max_length]
 
-            results = self.pipelines['distilbert_category'](text)
+            results = self.pipelines["distilbert_category"](text)
 
             # Get top category
             if results:
-                top_result = max(results, key=lambda x: x['score'])
-                category = top_result['label']
-                confidence = top_result['score']
+                top_result = max(results, key=lambda x: x["score"])
+                category = top_result["label"]
+                confidence = top_result["score"]
             else:
                 category = "general"
                 confidence = 0.5
@@ -305,13 +329,13 @@ class ChiefEditorEngine:
             categorization = {
                 "category": category,
                 "confidence": confidence,
-                "model": "distilbert"
+                "model": "distilbert",
             }
 
-            self.log_feedback("categorize_content_distilbert", {
-                "category": category,
-                "confidence": confidence
-            })
+            self.log_feedback(
+                "categorize_content_distilbert",
+                {"category": category, "confidence": confidence},
+            )
 
             return categorization
 
@@ -322,18 +346,20 @@ class ChiefEditorEngine:
     def analyze_editorial_sentiment_roberta(self, text: str) -> dict[str, Any]:
         """Analyze editorial sentiment using RoBERTa"""
         try:
-            if self.pipelines.get('roberta_sentiment') is None:
+            if self.pipelines.get("roberta_sentiment") is None:
                 return self._fallback_sentiment_analysis(text)
 
             # Truncate text
-            text = text[:self.config.max_length]
+            text = text[: self.config.max_length]
 
-            results = self.pipelines['roberta_sentiment'](text)
+            results = self.pipelines["roberta_sentiment"](text)
 
             # Process sentiment results
             if results:
-                sentiment_scores = {r['label']: r['score'] for r in results}
-                dominant_sentiment = max(sentiment_scores.keys(), key=lambda k: sentiment_scores[k])
+                sentiment_scores = {r["label"]: r["score"] for r in results}
+                dominant_sentiment = max(
+                    sentiment_scores.keys(), key=lambda k: sentiment_scores[k]
+                )
                 confidence = sentiment_scores[dominant_sentiment]
             else:
                 dominant_sentiment = "neutral"
@@ -342,14 +368,16 @@ class ChiefEditorEngine:
             analysis = {
                 "sentiment": dominant_sentiment.lower(),
                 "confidence": confidence,
-                "editorial_tone": self._determine_editorial_tone(dominant_sentiment, confidence),
-                "model": "roberta"
+                "editorial_tone": self._determine_editorial_tone(
+                    dominant_sentiment, confidence
+                ),
+                "model": "roberta",
             }
 
-            self.log_feedback("analyze_editorial_sentiment_roberta", {
-                "sentiment": dominant_sentiment,
-                "confidence": confidence
-            })
+            self.log_feedback(
+                "analyze_editorial_sentiment_roberta",
+                {"sentiment": dominant_sentiment, "confidence": confidence},
+            )
 
             return analysis
 
@@ -357,27 +385,34 @@ class ChiefEditorEngine:
             logger.error(f"RoBERTa sentiment analysis error: {e}")
             return self._fallback_sentiment_analysis(text)
 
-    def generate_editorial_commentary_t5(self, text: str, context: str = "news article") -> str:
+    def generate_editorial_commentary_t5(
+        self, text: str, context: str = "news article"
+    ) -> str:
         """Generate editorial commentary using T5"""
         try:
-            if self.pipelines.get('t5_commentary') is None:
+            if self.pipelines.get("t5_commentary") is None:
                 return self._fallback_commentary_generation(text, context)
 
             prompt = f"summarize editorial notes for {context}: {text[:300]}"
 
-            result = self.pipelines['t5_commentary'](prompt)
+            result = self.pipelines["t5_commentary"](prompt)
 
-            commentary = result[0]['generated_text'] if result else "Editorial review required."
+            commentary = (
+                result[0]["generated_text"] if result else "Editorial review required."
+            )
 
             # Clean up T5 artifacts
             if commentary.startswith("summarize editorial notes"):
                 commentary = commentary.split(": ", 1)[-1].strip()
 
-            self.log_feedback("generate_editorial_commentary_t5", {
-                "input_length": len(text),
-                "output_length": len(commentary),
-                "context": context
-            })
+            self.log_feedback(
+                "generate_editorial_commentary_t5",
+                {
+                    "input_length": len(text),
+                    "output_length": len(commentary),
+                    "context": context,
+                },
+            )
 
             return commentary
 
@@ -385,7 +420,9 @@ class ChiefEditorEngine:
             logger.error(f"T5 commentary generation error: {e}")
             return self._fallback_commentary_generation(text, context)
 
-    def make_editorial_decision(self, content: str, metadata: dict[str, Any] | None = None) -> EditorialDecision:
+    def make_editorial_decision(
+        self, content: str, metadata: dict[str, Any] | None = None
+    ) -> EditorialDecision:
         """Make comprehensive editorial decision using all models"""
         try:
             metadata = metadata or {}
@@ -401,20 +438,24 @@ class ChiefEditorEngine:
 
             # Calculate confidence
             confidences = [
-                quality.get('overall_quality', 0.5),
-                category.get('confidence', 0.5),
-                sentiment.get('confidence', 0.5)
+                quality.get("overall_quality", 0.5),
+                category.get("confidence", 0.5),
+                sentiment.get("confidence", 0.5),
             ]
             confidence = sum(confidences) / len(confidences)
 
             # Generate reasoning
-            reasoning = self.generate_editorial_commentary_t5(content, f"{category['category']} article")
+            reasoning = self.generate_editorial_commentary_t5(
+                content, f"{category['category']} article"
+            )
 
             # Determine next actions
             next_actions = self._determine_next_actions(priority, stage, quality)
 
             # Agent assignments
-            agent_assignments = self._determine_agent_assignments(category['category'], stage)
+            agent_assignments = self._determine_agent_assignments(
+                category["category"], stage
+            )
 
             decision = EditorialDecision(
                 priority=priority,
@@ -423,16 +464,19 @@ class ChiefEditorEngine:
                 reasoning=reasoning,
                 next_actions=next_actions,
                 agent_assignments=agent_assignments,
-                metadata=metadata
+                metadata=metadata,
             )
 
             self._attach_mistral_review(decision, content)
 
-            self.log_feedback("make_editorial_decision", {
-                "priority": priority.value,
-                "stage": stage.value,
-                "confidence": confidence
-            })
+            self.log_feedback(
+                "make_editorial_decision",
+                {
+                    "priority": priority.value,
+                    "stage": stage.value,
+                    "confidence": confidence,
+                },
+            )
 
             return decision
 
@@ -440,17 +484,23 @@ class ChiefEditorEngine:
             logger.error(f"Editorial decision error: {e}")
             return self._fallback_editorial_decision(content, metadata)
 
-    def _determine_priority(self, quality, category, sentiment, metadata) -> EditorialPriority:
+    def _determine_priority(
+        self, quality, category, sentiment, metadata
+    ) -> EditorialPriority:
         """Determine editorial priority"""
-        quality_score = quality.get('overall_quality', 0.5)
-        category_confidence = category.get('confidence', 0.5)
-        sentiment_confidence = sentiment.get('confidence', 0.5)
+        quality_score = quality.get("overall_quality", 0.5)
+        category_confidence = category.get("confidence", 0.5)
+        sentiment_confidence = sentiment.get("confidence", 0.5)
 
-        priority_score = (quality_score + category_confidence + sentiment_confidence) / 3
+        priority_score = (
+            quality_score + category_confidence + sentiment_confidence
+        ) / 3
 
         # Check for urgency indicators
-        content_text = str(metadata.get('title', '') + ' ' + metadata.get('summary', '')).lower()
-        urgent_keywords = ['breaking', 'urgent', 'alert', 'emergency', 'crisis']
+        content_text = str(
+            metadata.get("title", "") + " " + metadata.get("summary", "")
+        ).lower()
+        urgent_keywords = ["breaking", "urgent", "alert", "emergency", "crisis"]
 
         if any(keyword in content_text for keyword in urgent_keywords):
             return EditorialPriority.URGENT
@@ -465,11 +515,11 @@ class ChiefEditorEngine:
 
     def _determine_workflow_stage(self, quality, category, metadata) -> WorkflowStage:
         """Determine workflow stage"""
-        quality_score = quality.get('overall_quality', 0.5)
+        quality_score = quality.get("overall_quality", 0.5)
 
-        if metadata.get('is_new', True):
+        if metadata.get("is_new", True):
             return WorkflowStage.INTAKE
-        elif metadata.get('needs_fact_check', False):
+        elif metadata.get("needs_fact_check", False):
             return WorkflowStage.FACT_CHECK
         elif quality_score < 0.5:
             return WorkflowStage.REVIEW
@@ -481,21 +531,23 @@ class ChiefEditorEngine:
         actions = []
 
         if priority == EditorialPriority.URGENT:
-            actions.extend(['fast_track_review', 'assign_senior_editor'])
+            actions.extend(["fast_track_review", "assign_senior_editor"])
 
         if stage == WorkflowStage.INTAKE:
-            actions.extend(['initial_classification', 'route_to_analyst'])
+            actions.extend(["initial_classification", "route_to_analyst"])
         elif stage == WorkflowStage.FACT_CHECK:
-            actions.extend(['verify_facts', 'check_sources'])
+            actions.extend(["verify_facts", "check_sources"])
         elif stage == WorkflowStage.REVIEW:
-            actions.extend(['detailed_review', 'quality_improvement'])
+            actions.extend(["detailed_review", "quality_improvement"])
 
-        if quality.get('overall_quality', 0.5) < 0.4:
-            actions.append('quality_enhancement_required')
+        if quality.get("overall_quality", 0.5) < 0.4:
+            actions.append("quality_enhancement_required")
 
         return actions
 
-    def _determine_agent_assignments(self, category: str, stage: WorkflowStage) -> dict[str, str]:
+    def _determine_agent_assignments(
+        self, category: str, stage: WorkflowStage
+    ) -> dict[str, str]:
         """Determine agent assignments based on category and stage"""
         assignments = {}
 
@@ -516,9 +568,9 @@ class ChiefEditorEngine:
             return "neutral"
 
         sentiment_lower = sentiment.lower()
-        if 'positive' in sentiment_lower:
+        if "positive" in sentiment_lower:
             return "positive"
-        elif 'negative' in sentiment_lower:
+        elif "negative" in sentiment_lower:
             return "critical"
         else:
             return "balanced"
@@ -531,12 +583,19 @@ class ChiefEditorEngine:
         return {"category": "general", "confidence": 0.5, "model": "fallback"}
 
     def _fallback_sentiment_analysis(self, text: str) -> dict[str, Any]:
-        return {"sentiment": "neutral", "confidence": 0.5, "editorial_tone": "balanced", "model": "fallback"}
+        return {
+            "sentiment": "neutral",
+            "confidence": 0.5,
+            "editorial_tone": "balanced",
+            "model": "fallback",
+        }
 
     def _fallback_commentary_generation(self, text: str, context: str) -> str:
         return f"Editorial review required for {context}."
 
-    def _fallback_editorial_decision(self, content: str, metadata: dict[str, Any] | None) -> EditorialDecision:
+    def _fallback_editorial_decision(
+        self, content: str, metadata: dict[str, Any] | None
+    ) -> EditorialDecision:
         return EditorialDecision(
             priority=EditorialPriority.MEDIUM,
             stage=WorkflowStage.REVIEW,
@@ -544,14 +603,16 @@ class ChiefEditorEngine:
             reasoning="Fallback decision - manual review required",
             next_actions=["manual_review"],
             agent_assignments={"scout": "primary"},
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
     def _attach_mistral_review(self, decision: EditorialDecision, content: str) -> None:
         if not getattr(self, "mistral_adapter", None):
             return
         try:
-            review = self.mistral_adapter.review_content(content, metadata=decision.metadata)
+            review = self.mistral_adapter.review_content(
+                content, metadata=decision.metadata
+            )
         except Exception as exc:
             logger.debug("Chief Editor Mistral adapter failed: %s", exc)
             return
@@ -562,9 +623,9 @@ class ChiefEditorEngine:
     def get_model_status(self) -> dict[str, bool]:
         """Get status of all models"""
         return {
-            "bert": self.pipelines.get('bert_quality') is not None,
-            "distilbert": self.pipelines.get('distilbert_category') is not None,
-            "roberta": self.pipelines.get('roberta_sentiment') is not None,
-            "t5": self.pipelines.get('t5_commentary') is not None,
-            "embeddings": self.pipelines.get('embeddings') is not None
+            "bert": self.pipelines.get("bert_quality") is not None,
+            "distilbert": self.pipelines.get("distilbert_category") is not None,
+            "roberta": self.pipelines.get("roberta_sentiment") is not None,
+            "t5": self.pipelines.get("t5_commentary") is not None,
+            "embeddings": self.pipelines.get("embeddings") is not None,
         }

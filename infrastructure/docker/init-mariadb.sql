@@ -38,8 +38,8 @@ CREATE INDEX IF NOT EXISTS idx_articles_author ON articles(author);
 CREATE INDEX IF NOT EXISTS idx_articles_source_url ON articles(source_url);
 CREATE INDEX IF NOT EXISTS idx_articles_sentiment_score ON articles(sentiment_score);
 CREATE INDEX IF NOT EXISTS idx_articles_sentiment_label ON articles(sentiment_label);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_articles_normalized_url ON articles (normalized_url) WHERE normalized_url IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_articles_url_hash ON articles (url_hash) WHERE url_hash IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_articles_normalized_url ON articles (normalized_url);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_articles_url_hash ON articles (url_hash);
 CREATE INDEX IF NOT EXISTS idx_articles_publication_date ON articles (publication_date);
 
 -- Create entities table

@@ -14,12 +14,13 @@ Example:
 The script respects ``MODEL_STORE_ROOT`` unless ``--model-store`` overrides it.
 Set ``HF_TOKEN`` or pass ``--token`` to authenticate against private repos.
 """
+
 from __future__ import annotations
 
 import argparse
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -50,7 +51,9 @@ def _normalize_model_id(model_id: str) -> str:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Stage Hugging Face models in the ModelStore")
+    parser = argparse.ArgumentParser(
+        description="Stage Hugging Face models in the ModelStore"
+    )
     parser.add_argument("--agent", required=True, help="Agent name (e.g. synthesizer)")
     parser.add_argument(
         "--model",
@@ -93,10 +96,12 @@ def main() -> None:
 
     model_store_root = args.model_store or os.environ.get("MODEL_STORE_ROOT")
     if not model_store_root:
-        raise SystemExit("MODEL_STORE_ROOT is not set and --model-store was not provided.")
+        raise SystemExit(
+            "MODEL_STORE_ROOT is not set and --model-store was not provided."
+        )
 
     agent = args.agent.strip()
-    version = args.version or f"v{datetime.now(timezone.utc):%Y%m%d-%H%M}"
+    version = args.version or f"v{datetime.now(UTC):%Y%m%d-%H%M}"
     token = args.token or os.environ.get("HF_TOKEN") or os.environ.get("HF_HUB_TOKEN")
 
     store = ModelStore(Path(model_store_root))
@@ -106,9 +111,13 @@ def main() -> None:
     staged_path = versions_root / f"{version}.tmp"
     final_path = versions_root / version
     if staged_path.exists() and not args.force:
-        raise SystemExit(f"Staging path already exists: {staged_path}. Use --force to replace it.")
+        raise SystemExit(
+            f"Staging path already exists: {staged_path}. Use --force to replace it."
+        )
     if final_path.exists() and not args.force:
-        raise SystemExit(f"Version already exists: {final_path}. Choose another --version or pass --force.")
+        raise SystemExit(
+            f"Version already exists: {final_path}. Choose another --version or pass --force."
+        )
 
     if args.force:
         # Clean up existing staged path if present. Leave final version intact to avoid surprise.

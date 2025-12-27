@@ -1,14 +1,20 @@
 # JustNews Security Framework
 
-A comprehensive, production-ready security framework for JustNews providing authentication, authorization, encryption, compliance monitoring, and security event tracking.
+A comprehensive, production-ready security framework for JustNews providing authentication, authorization, encryption,
+compliance monitoring, and security event tracking.
 
 ## Features
 
 - **🔐 Authentication**: JWT-based authentication with MFA support
+
 - **🛡️ Authorization**: Role-based access control (RBAC) with hierarchical permissions
+
 - **🔒 Encryption**: AES-256 encryption for data protection
+
 - **⚖️ Compliance**: GDPR/CCPA compliance with audit trails and data subject rights
+
 - **👁️ Monitoring**: Real-time security monitoring and threat detection
+
 - **🚨 Alerting**: Automated security alerts and incident response
 
 ## Quick Start
@@ -18,6 +24,7 @@ A comprehensive, production-ready security framework for JustNews providing auth
 ```bash
 cd security/refactor
 pip install -r requirements.txt
+
 ```
 
 ### Basic Usage
@@ -25,35 +32,43 @@ pip install -r requirements.txt
 ```python
 from security.refactor import SecurityManager, SecurityConfig
 
-# Configure security
+## Configure security
+
 config = SecurityConfig(
     jwt_secret="your-secret-key",
     jwt_expiration_hours=24,
     bcrypt_rounds=12
 )
 
-# Initialize security framework
+## Initialize security framework
+
 security = SecurityManager(config)
 await security.initialize()
 
-# Create user
+## Create user
+
 user_id = await security.auth_service.create_user(
     username="john_doe",
     email="john@example.com",
     password="SecurePass123!"
 )
 
-# Authenticate user
+## Authenticate user
+
 tokens = await security.authenticate_user("john_doe", "SecurePass123!")
 
-# Check permissions
+## Check permissions
+
 can_read = await security.check_permission(user_id, "articles:read")
 
-# Encrypt sensitive data
+## Encrypt sensitive data
+
 encrypted = await security.encrypt_data("sensitive information")
 
-# Cleanup
+## Cleanup
+
 await security.shutdown()
+
 ```
 
 ## Architecture
@@ -61,36 +76,57 @@ await security.shutdown()
 ### Core Components
 
 #### SecurityManager
+
 Central orchestrator coordinating all security operations.
 
 #### AuthenticationService
+
 - User registration and login
+
 - JWT token generation and validation
+
 - Session management
+
 - Multi-factor authentication (MFA) support
 
 #### AuthorizationService
+
 - Role-based access control (RBAC)
+
 - Permission validation
+
 - User role management
+
 - Resource-level permissions
 
 #### EncryptionService
+
 - Symmetric encryption (AES-256-GCM)
+
 - Asymmetric encryption (RSA)
+
 - Key management and rotation
+
 - Digital signatures
 
 #### ComplianceService
+
 - GDPR/CCPA compliance
+
 - Consent management
+
 - Data subject rights (access, rectify, erase)
+
 - Audit trail generation
 
 #### SecurityMonitor
+
 - Real-time security event logging
+
 - Threat detection rules
+
 - Automated alerting
+
 - Security metrics and reporting
 
 ## Configuration
@@ -121,6 +157,7 @@ config = SecurityConfig(
     # Monitoring
     enable_mfa=True
 )
+
 ```
 
 ## API Reference
@@ -128,123 +165,171 @@ config = SecurityConfig(
 ### Authentication
 
 ```python
-# Create user
+
+## Create user
+
 user_id = await auth_service.create_user(username, email, password, roles)
 
-# Authenticate
+## Authenticate
+
 tokens = await auth_service.authenticate(username, password)
 
-# Validate token
+## Validate token
+
 payload = await auth_service.validate_token(access_token)
 
-# Refresh token
+## Refresh token
+
 new_tokens = await auth_service.refresh_access_token(refresh_token)
+
 ```
 
 ### Authorization
 
 ```python
-# Check permission
+
+## Check permission
+
 allowed = await authz_service.check_permission(user_id, "articles:read")
 
-# Get user roles
+## Get user roles
+
 roles = await authz_service.get_user_roles(user_id)
 
-# Assign role
+## Assign role
+
 await authz_service.assign_role(user_id, "moderator")
 
-# Create custom role
+## Create custom role
+
 await authz_service.create_role(Role(
     name="editor",
     description="Content editor",
     permissions=["articles:write", "comments:moderate"]
 ))
+
 ```
 
 ### Encryption
 
 ```python
-# Encrypt data
+
+## Encrypt data
+
 encrypted = await encrypt_service.encrypt_data(data, key_id)
 
-# Decrypt data
+## Decrypt data
+
 decrypted = await encrypt_service.decrypt_data(encrypted_data, key_id)
 
-# Generate key pair
+## Generate key pair
+
 key_pair = await encrypt_service.generate_key_pair()
 
-# Sign data
+## Sign data
+
 signature = await encrypt_service.sign_data(data, private_key_id)
 
-# Verify signature
+## Verify signature
+
 valid = await encrypt_service.verify_signature(data, signature, public_key_id)
+
 ```
 
 ### Compliance
 
 ```python
-# Record consent
+
+## Record consent
+
 consent_id = await compliance_service.record_consent(
     user_id, "marketing", "consent text"
 )
 
-# Check consent
+## Check consent
+
 status = await compliance_service.check_consent(user_id, "marketing")
 
-# Export user data (GDPR Article 15)
+## Export user data (GDPR Article 15)
+
 data = await compliance_service.export_user_data(user_id)
 
-# Delete user data (GDPR Article 17)
+## Delete user data (GDPR Article 17)
+
 await compliance_service.delete_user_data(user_id)
 
-# Generate compliance report
+## Generate compliance report
+
 report = await compliance_service.get_compliance_report("gdpr")
+
 ```
 
 ### Monitoring
 
 ```python
-# Log security event
+
+## Log security event
+
 await monitor.log_security_event(
     "authentication_failure",
     user_id,
     {"ip_address": "192.168.1.100"}
 )
 
-# Get security metrics
+## Get security metrics
+
 metrics = await monitor.get_security_metrics(hours=24)
 
-# Get active alerts
+## Get active alerts
+
 alerts = await monitor.get_active_alerts()
 
-# Resolve alert
+## Resolve alert
+
 await monitor.resolve_alert(alert_id, "Issue resolved")
+
 ```
 
 ## Security Policies
 
 ### Authentication Policies
+
 - **Password Requirements**: Minimum 12 characters, complexity rules
+
 - **Account Lockout**: 5 failed attempts trigger 30-minute lockout
+
 - **Session Timeout**: Automatic logout after 30 minutes of inactivity
+
 - **MFA Support**: Optional TOTP-based multi-factor authentication
 
 ### Authorization Policies
+
 - **Role Hierarchy**: user < moderator < admin
+
 - **Principle of Least Privilege**: Users get minimum required permissions
+
 - **Permission Inheritance**: Roles inherit permissions from parent roles
+
 - **Resource-Level Access**: Granular permissions per resource
 
 ### Data Protection Policies
+
 - **Encryption at Rest**: AES-256-GCM encryption for sensitive data
+
 - **Encryption in Transit**: TLS 1.3 required for all communications
+
 - **Key Rotation**: Automatic key rotation every 90 days
+
 - **Secure Deletion**: Cryptographic erasure of deleted data
 
 ### Compliance Policies
+
 - **GDPR Compliance**: Full support for data subject rights
+
 - **CCPA Compliance**: California Consumer Privacy Act support
+
 - **Audit Trails**: Complete logging of all security-relevant operations
+
 - **Consent Management**: Granular consent tracking with legal basis
 
 ## Integration Examples
@@ -267,6 +352,7 @@ async def create_article(
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
     return await create_article_logic(article, current_user)
+
 ```
 
 ### Database Integration
@@ -289,6 +375,7 @@ class SecureDatabase:
             user_id,
             {"data_types": list(profile_data.keys())}
         )
+
 ```
 
 ## Testing
@@ -297,43 +384,62 @@ Run the integration tests:
 
 ```bash
 pytest security/refactor/tests_integration.py -v
+
 ```
 
 Run the demo:
 
 ```bash
 python security/refactor/demo.py
+
 ```
 
 ## Security Best Practices
 
 ### Development
+
 - **Input Validation**: Always validate inputs using Pydantic models
+
 - **SQL Injection Prevention**: Use parameterized queries only
+
 - **XSS Protection**: Sanitize all user-generated content
+
 - **CSRF Protection**: Implement anti-CSRF tokens
 
 ### Operations
+
 - **Regular Updates**: Keep all dependencies updated
+
 - **Security Scanning**: Regular vulnerability scans
+
 - **Access Reviews**: Quarterly access permission reviews
+
 - **Incident Response**: Documented incident response procedures
 
 ### Compliance
+
 - **Data Classification**: Classify data by sensitivity level
+
 - **Privacy by Design**: Build privacy into system architecture
+
 - **Regular Audits**: Conduct regular security and compliance audits
+
 - **Training**: Security awareness training for all team members
 
 ## Monitoring & Alerting
 
 ### Built-in Rules
+
 - **Brute Force Detection**: Multiple failed login attempts
+
 - **Unusual Traffic**: Abnormal request patterns
+
 - **Account Lockouts**: Security-relevant account changes
+
 - **Compliance Violations**: GDPR/CCPA violations
 
 ### Custom Rules
+
 ```python
 await monitor.add_monitoring_rule(MonitoringRule(
     id="custom_rule",
@@ -343,13 +449,17 @@ await monitor.add_monitoring_rule(MonitoringRule(
     condition="event.get('severity', 0) > 8",
     severity=AlertSeverity.HIGH
 ))
+
 ```
 
 ## Performance Considerations
 
 - **Key Caching**: Encryption keys cached in memory for performance
+
 - **Async Operations**: All operations are async for scalability
+
 - **Connection Pooling**: Database connections pooled for efficiency
+
 - **Background Cleanup**: Automatic cleanup of expired sessions and data
 
 ## Troubleshooting
@@ -357,18 +467,27 @@ await monitor.add_monitoring_rule(MonitoringRule(
 ### Common Issues
 
 **Authentication fails**
+
 - Check JWT secret configuration
+
 - Verify user credentials
+
 - Check account lockout status
 
 **Permission denied**
+
 - Verify user roles and permissions
+
 - Check role hierarchy
+
 - Review resource-level permissions
 
 **Encryption errors**
+
 - Verify encryption key configuration
+
 - Check key rotation status
+
 - Validate data format
 
 ### Debug Mode
@@ -378,14 +497,18 @@ Enable debug logging:
 ```python
 import logging
 logging.basicConfig(level=logging.DEBUG)
+
 ```
 
 ## Contributing
 
 1. Follow PEP 8 style guidelines
-2. Add comprehensive tests for new features
-3. Update documentation for API changes
-4. Ensure compliance with security policies
+
+1. Add comprehensive tests for new features
+
+1. Update documentation for API changes
+
+1. Ensure compliance with security policies
 
 ## License
 
@@ -393,6 +516,4 @@ This security framework is part of JustNews and follows the same licensing terms
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: October 22, 2025
-**Contact**: security@justnews.com
+**Version**: 1.0.0 **Last Updated**: October 22, 2025 **Contact**: security@justnews.com

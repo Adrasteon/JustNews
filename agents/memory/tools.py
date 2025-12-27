@@ -49,7 +49,9 @@ MEMORY_AGENT_PORT = int(os.environ.get("MEMORY_AGENT_PORT", 8007))
 # service from `database.utils.migrated_database_utils`.
 
 # Canonical cache folder for shared embedding model
-DEFAULT_MODEL_CACHE = os.environ.get("MEMORY_MODEL_CACHE") or str(Path('./agents/memory/models').resolve())
+DEFAULT_MODEL_CACHE = os.environ.get("MEMORY_MODEL_CACHE") or str(
+    Path("./agents/memory/models").resolve()
+)
 
 
 def log_feedback(event: str, details: dict):
@@ -65,20 +67,28 @@ def get_embedding_model():
     """Return a SentenceTransformer instance, using the shared helper when available."""
     try:
         from agents.common.embedding import get_shared_embedding_model
+
         # Use a canonical cache folder and device so cached instances are reused
         device = None
         if torch is not None:
-            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        return get_shared_embedding_model(EMBEDDING_MODEL_NAME, cache_folder=DEFAULT_MODEL_CACHE, device=device)
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        return get_shared_embedding_model(
+            EMBEDDING_MODEL_NAME, cache_folder=DEFAULT_MODEL_CACHE, device=device
+        )
     except Exception:
         # Fallback: use agent-local models directory
         try:
             from agents.common.embedding import get_shared_embedding_model
-            agent_cache = os.environ.get('MEMORY_MODEL_CACHE') or str(Path('./agents/memory/models').resolve())
+
+            agent_cache = os.environ.get("MEMORY_MODEL_CACHE") or str(
+                Path("./agents/memory/models").resolve()
+            )
             device = None
             if torch is not None:
-                device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            return get_shared_embedding_model(EMBEDDING_MODEL_NAME, cache_folder=agent_cache, device=device)
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            return get_shared_embedding_model(
+                EMBEDDING_MODEL_NAME, cache_folder=agent_cache, device=device
+            )
         except Exception as e:
             logger.warning(f"Could not load shared embedding model: {e}")
             # Return None - caller should handle this gracefully
@@ -128,14 +138,18 @@ def _make_chroma_metadata_safe(metadata: dict) -> dict:
 def _ensure_embedding_metadata(metadata: dict) -> dict:
     """Attach embedding model metadata to Chroma metadatas for traceability."""
     try:
-        model = os.environ.get('EMBEDDING_MODEL') or os.environ.get('SENTENCE_TRANSFORMER_MODEL') or 'all-MiniLM-L6-v2'
-        dims = os.environ.get('EMBEDDING_DIMENSIONS')
+        model = (
+            os.environ.get("EMBEDDING_MODEL")
+            or os.environ.get("SENTENCE_TRANSFORMER_MODEL")
+            or "all-MiniLM-L6-v2"
+        )
+        dims = os.environ.get("EMBEDDING_DIMENSIONS")
         metadata = metadata or {}
         if isinstance(metadata, dict):
-            metadata.setdefault('embedding_model', model)
+            metadata.setdefault("embedding_model", model)
             if dims:
                 try:
-                    metadata.setdefault('embedding_dimensions', int(dims))
+                    metadata.setdefault("embedding_dimensions", int(dims))
                 except Exception:
                     pass
     except Exception:
@@ -143,7 +157,9 @@ def _ensure_embedding_metadata(metadata: dict) -> dict:
     return metadata
 
 
-def save_article(content: str, metadata: dict, embedding_model=None, db_service=None) -> dict:
+def save_article(
+    content: str, metadata: dict, embedding_model=None, db_service=None
+) -> dict:
     """Saves an article to the migrated MariaDB + ChromaDB system.
 
     Args:
@@ -164,18 +180,31 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
 
         raw_url = metadata.get("url")
         canonical_url = metadata.get("canonical") or raw_url
-        normalized_url = metadata.get("normalized_url") or normalize_article_url(raw_url or "", canonical_url)
+        normalized_url = metadata.get("normalized_url") or normalize_article_url(
+            raw_url or "", canonical_url
+        )
         normalized_url = normalized_url or None
-        hash_algorithm = (metadata.get("url_hash_algorithm") or os.environ.get("ARTICLE_URL_HASH_ALGO", "sha256")).lower()
+        hash_algorithm = (
+            metadata.get("url_hash_algorithm")
+            or os.environ.get("ARTICLE_URL_HASH_ALGO", "sha256")
+        ).lower()
 
         hash_value = None
         duplicate_lookup_id = None
 
         # Use migrated database service
         from database.utils.migrated_database_utils import create_database_service
+
         created_local_db_service = False
         if db_service is None:
             db_service = create_database_service()
+            # Ensure the db_service exposes a minimal compatible API for test fakes
+            try:
+                from database.utils.migrated_database_utils import ensure_service_compat
+
+                db_service = ensure_service_compat(db_service)
+            except Exception:
+                pass
             created_local_db_service = True
 
         # Ensure DB connection is available before doing any cursor operations
@@ -186,16 +215,26 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
             metrics.record_ingestion("db_connection_unavailable")
             if created_local_db_service:
                 db_service.close()
-            return {"error": "MySQL Connection not available", "processing_time": perf_counter() - start_time}
+            return {
+                "error": "MySQL Connection not available",
+                "processing_time": perf_counter() - start_time,
+            }
 
         # If canonical Chroma is required and unavailable, fail fast
-        chroma_require_canonical = os.environ.get('CHROMADB_REQUIRE_CANONICAL', '1') == '1'
-        if chroma_require_canonical and getattr(db_service, 'collection', None) is None:
-            logger.error("CHROMADB_REQUIRE_CANONICAL enabled but Chroma collection not available")
+        chroma_require_canonical = (
+            os.environ.get("CHROMADB_REQUIRE_CANONICAL", "1") == "1"
+        )
+        if chroma_require_canonical and getattr(db_service, "collection", None) is None:
+            logger.error(
+                "CHROMADB_REQUIRE_CANONICAL enabled but Chroma collection not available"
+            )
             if created_local_db_service:
                 db_service.close()
-            metrics.record_ingestion('chroma_unavailable')
-            return {"error": "chroma_unavailable", "processing_time": perf_counter() - start_time}
+            metrics.record_ingestion("chroma_unavailable")
+            return {
+                "error": "chroma_unavailable",
+                "processing_time": perf_counter() - start_time,
+            }
 
         if not disable_dedupe:
             hash_candidate = metadata.get("url_hash") or hash_article_url(
@@ -204,43 +243,79 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
             )
 
             if not hash_candidate and normalized_url:
-                hash_candidate = hash_article_url(normalized_url, algorithm=hash_algorithm)
+                hash_candidate = hash_article_url(
+                    normalized_url, algorithm=hash_algorithm
+                )
             hash_value = hash_candidate or None
 
             if hash_value:
-                # Check for duplicates in MariaDB
-                cursor = db_service.mb_conn.cursor()
-                cursor.execute("SELECT id FROM articles WHERE url_hash = %s", (hash_value,))
-                duplicate = cursor.fetchone()
-                cursor.close()
+                # Use a short-lived connection for the duplicate checks + insert to
+                # avoid sharing a single connection across concurrent callers
+                using_temp_conn = False
+                conn = getattr(db_service, "mb_conn", None)
+                try:
+                    if getattr(db_service, "get_connection", None):
+                        conn = db_service.get_connection()
+                        using_temp_conn = True
+
+                    # Check for duplicates in MariaDB (buffered cursor to avoid "Unread result found")
+                    cursor = conn.cursor(buffered=True)
+                    cursor.execute(
+                        "SELECT id FROM articles WHERE url_hash = %s", (hash_value,)
+                    )
+                    duplicate = cursor.fetchone()
+                    cursor.close()
+                finally:
+                    # Close any per-call connection we opened
+                    if using_temp_conn:
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
 
                 if duplicate:
                     duplicate_lookup_id = duplicate[0]
             if normalized_url and duplicate_lookup_id is None:
-                # Check for duplicates by normalized URL
-                cursor = db_service.mb_conn.cursor()
-                cursor.execute("SELECT id FROM articles WHERE normalized_url = %s", (normalized_url,))
-                duplicate = cursor.fetchone()
-                cursor.close()
+                using_temp_conn = False
+                conn = getattr(db_service, "mb_conn", None)
+                try:
+                    if getattr(db_service, "get_connection", None):
+                        conn = db_service.get_connection()
+                        using_temp_conn = True
+
+                    # Check for duplicates by normalized URL (buffered)
+                    cursor = conn.cursor(buffered=True)
+                    cursor.execute(
+                        "SELECT id FROM articles WHERE normalized_url = %s",
+                        (normalized_url,),
+                    )
+                    duplicate = cursor.fetchone()
+                    cursor.close()
+                finally:
+                    if using_temp_conn:
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
 
                 if duplicate:
                     duplicate_lookup_id = duplicate[0]
 
             if duplicate_lookup_id is not None:
-                    logger.info(
-                        "Article with hash %s already exists (ID: %s), skipping duplicate",
-                        hash_value,
-                        duplicate_lookup_id,
-                    )
-                    metrics.record_ingestion("duplicate")
-                    if created_local_db_service:
-                        db_service.close()
-                    return {
-                        "status": "duplicate",
-                        "article_id": duplicate_lookup_id,
-                        "message": "Article already exists",
-                        "processing_time": perf_counter() - start_time,
-                    }
+                logger.info(
+                    "Article with hash %s already exists (ID: %s), skipping duplicate",
+                    hash_value,
+                    duplicate_lookup_id,
+                )
+                metrics.record_ingestion("duplicate")
+                if created_local_db_service:
+                    db_service.close()
+                return {
+                    "status": "duplicate",
+                    "article_id": duplicate_lookup_id,
+                    "message": "Article already exists",
+                    "processing_time": perf_counter() - start_time,
+                }
 
         # Use provided model if available to avoid re-loading model per-call
         cache_label = "provided" if embedding_model is not None else "shared"
@@ -252,7 +327,10 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
                 metrics.record_ingestion("embedding_model_unavailable")
                 if created_local_db_service:
                     db_service.close()
-                return {"error": "embedding_model_unavailable", "processing_time": perf_counter() - start_time}
+                return {
+                    "error": "embedding_model_unavailable",
+                    "processing_time": perf_counter() - start_time,
+                }
             cache_label = "shared"
 
         # encode may return numpy array; convert later to list of floats
@@ -270,7 +348,10 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
             metrics.record_ingestion("error")
             if created_local_db_service:
                 db_service.close()
-            return {"error": "embedding_generation_failed", "processing_time": perf_counter() - start_time}
+            return {
+                "error": "embedding_generation_failed",
+                "processing_time": perf_counter() - start_time,
+            }
 
         try:
             metadata_payload = json.dumps(metadata)
@@ -292,93 +373,133 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
         review_reasons_json = json.dumps(metadata.get("review_reasons") or [])
 
         # Insert into MariaDB (without embedding column)
-        cursor = db_service.mb_conn.cursor()
-        insertion_params = (
-            raw_url,
-            metadata.get("title"),
-            content,
-            metadata.get("summary"),
-            bool(metadata.get("analyzed", False)),
-            metadata.get("source_id"),
-            normalized_url,
-            hash_value,
-            hash_algorithm,
-            metadata.get("language"),
-            metadata.get("section"),
-            json.dumps(tags) if tags else None,
-            json.dumps(authors) if authors else None,
-            metadata.get("raw_html_ref"),
-            float(metadata.get("confidence", 0.0)) if metadata.get("confidence") is not None else None,
-            bool(metadata.get("needs_review", False)),
-            review_reasons_json,
-            json.dumps(metadata.get("extraction_metadata") or {}),
-            json.dumps(metadata.get("structured_metadata") or {}),
-            publication_dt,
-            metadata_payload,
-            collection_dt,
-        )
+        # Use a per-request connection to perform the insert and subsequent
+        # read of LAST_INSERT_ID() — this avoids interfering with other
+        # concurrent operations using a shared connection.
+        using_temp_conn = False
+        conn = getattr(db_service, "mb_conn", None)
+        try:
+            if getattr(db_service, "get_connection", None):
+                conn = db_service.get_connection()
+                using_temp_conn = True
 
-        insert_query = """
-        INSERT INTO articles (
-            url,
-            title,
-            content,
-            summary,
-            analyzed,
-            source_id,
-            normalized_url,
-            url_hash,
-            url_hash_algo,
-            language,
-            section,
-            tags,
-            authors,
-            raw_html_ref,
-            extraction_confidence,
-            needs_review,
-            review_reasons,
-            extraction_metadata,
-            structured_metadata,
-            publication_date,
-            metadata,
-            collection_timestamp,
-            created_at,
-            updated_at
-        )
-        VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW()
-        )
-        """
+            cursor = conn.cursor(buffered=True)
 
-        cursor.execute(insert_query, insertion_params)
-        db_service.mb_conn.commit()
+            insertion_params = (
+                raw_url,
+                metadata.get("title"),
+                content,
+                metadata.get("summary"),
+                bool(metadata.get("analyzed", False)),
+                metadata.get("source_id"),
+                normalized_url,
+                hash_value,
+                hash_algorithm,
+                metadata.get("language"),
+                metadata.get("section"),
+                json.dumps(tags) if tags else None,
+                json.dumps(authors) if authors else None,
+                metadata.get("raw_html_ref"),
+                float(metadata.get("confidence", 0.0))
+                if metadata.get("confidence") is not None
+                else None,
+                bool(metadata.get("needs_review", False)),
+                review_reasons_json,
+                json.dumps(metadata.get("extraction_metadata") or {}),
+                json.dumps(metadata.get("structured_metadata") or {}),
+                publication_dt,
+                metadata_payload,
+                collection_dt,
+            )
 
-        # Get the inserted article ID
-        cursor.execute("SELECT LAST_INSERT_ID()")
-        last = cursor.fetchone()
-        next_id = last[0] if last and len(last) > 0 else None
-        cursor.close()
+            insert_query = """
+            INSERT INTO articles (
+                url,
+                title,
+                content,
+                summary,
+                analyzed,
+                source_id,
+                normalized_url,
+                url_hash,
+                url_hash_algo,
+                language,
+                section,
+                tags,
+                authors,
+                raw_html_ref,
+                extraction_confidence,
+                needs_review,
+                review_reasons,
+                extraction_metadata,
+                structured_metadata,
+                publication_date,
+                metadata,
+                collection_timestamp,
+                created_at,
+                updated_at
+            )
+            VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW()
+            )
+            """
+
+            cursor.execute(insert_query, insertion_params)
+
+            # commit on the same connection we used for insert
+            try:
+                conn.commit()
+            except Exception:
+                # If conn is the shared service connection, let higher-level
+                # logic handle commit/rollback as before
+                try:
+                    if not using_temp_conn and getattr(db_service, "mb_conn", None):
+                        db_service.mb_conn.commit()
+                except Exception:
+                    pass
+
+            # Get the inserted article ID
+            cursor.execute("SELECT LAST_INSERT_ID()")
+            last = cursor.fetchone()
+            next_id = last[0] if last and len(last) > 0 else None
+            cursor.close()
+        finally:
+            # Close any per-call connection
+            if using_temp_conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
         if next_id is None:
-            logger.error('Could not determine inserted article id; aborting save operation')
+            logger.error(
+                "Could not determine inserted article id; aborting save operation"
+            )
             if created_local_db_service:
                 db_service.close()
-            return {"error": "could_not_determine_inserted_id", "processing_time": perf_counter() - start_time}
+            return {
+                "error": "could_not_determine_inserted_id",
+                "processing_time": perf_counter() - start_time,
+            }
 
         # Add embedding to ChromaDB
         try:
-            if getattr(db_service, 'collection', None):
+            if getattr(db_service, "collection", None):
                 embedding_list = list(map(float, embedding))
-                chroma_metadata = _make_chroma_metadata_safe(_ensure_embedding_metadata(metadata))
+                chroma_metadata = _make_chroma_metadata_safe(
+                    _ensure_embedding_metadata(metadata)
+                )
                 db_service.collection.add(
                     ids=[str(next_id)],
                     embeddings=[embedding_list],
                     metadatas=[chroma_metadata],
-                    documents=[content]
+                    documents=[content],
                 )
                 logger.debug(f"Added embedding to ChromaDB for article {next_id}")
             else:
-                logger.warning("Skipping embedding add to ChromaDB as no collection is configured")
+                logger.warning(
+                    "Skipping embedding add to ChromaDB as no collection is configured"
+                )
         except Exception as chroma_error:
             logger.warning(f"Failed to add embedding to ChromaDB: {chroma_error}")
             # Don't fail the whole operation if ChromaDB fails
@@ -390,13 +511,14 @@ def save_article(content: str, metadata: dict, embedding_model=None, db_service=
         # Collect prediction for training
         try:
             from training_system import collect_prediction
+
             collect_prediction(
                 agent_name="memory",
                 task_type="article_storage",
                 input_text=content,
                 prediction=result,
                 confidence=0.95,  # High confidence for successful storage
-                source_url=""
+                source_url="",
             )
             logger.debug("📊 Training data collected for article storage")
         except ImportError:
@@ -433,8 +555,8 @@ def vector_search_articles(query: str, top_k: int = 5) -> list:
             return res
         if isinstance(res, dict):
             # prefer explicit results key
-            if 'results' in res and isinstance(res['results'], list):
-                return res['results']
+            if "results" in res and isinstance(res["results"], list):
+                return res["results"]
             # sometimes test fakes return empty dict
             return []
         return []
@@ -443,7 +565,9 @@ def vector_search_articles(query: str, top_k: int = 5) -> list:
         return []
 
 
-def vector_search_articles_local(query: str, top_k: int = 5, embedding_model=None) -> list:
+def vector_search_articles_local(
+    query: str, top_k: int = 5, embedding_model=None
+) -> list:
     """Local in-process vector search implementation using the new ChromaDB + MariaDB system.
 
     This uses the semantic search service instead of direct PostgreSQL queries.
@@ -456,35 +580,48 @@ def vector_search_articles_local(query: str, top_k: int = 5, embedding_model=Non
 
         # Perform semantic search
         response = search_service.search(
-            query=query,
-            n_results=top_k,
-            search_type='semantic',
-            min_score=0.0
+            query=query, n_results=top_k, search_type="semantic", min_score=0.0
         )
 
         # Convert SearchResult objects to the expected format
         results = []
         for result in response.results:
-            results.append({
-                "id": result.article_id,
-                "score": result.similarity_score,
-                "content": result.content,
-                "metadata": result.metadata,
-            })
+            results.append(
+                {
+                    "id": result.article_id,
+                    "score": result.similarity_score,
+                    "content": result.content,
+                    "metadata": result.metadata,
+                }
+            )
 
         # Collect prediction for training
         try:
             from training_system import collect_prediction
-            confidence = min(0.9, max(0.1, float(sum(r.similarity_score for r in response.results) / len(response.results)) if response.results else 0.5))
+
+            confidence = min(
+                0.9,
+                max(
+                    0.1,
+                    float(
+                        sum(r.similarity_score for r in response.results)
+                        / len(response.results)
+                    )
+                    if response.results
+                    else 0.5,
+                ),
+            )
             collect_prediction(
                 agent_name="memory",
                 task_type="vector_search",
                 input_text=query,
                 prediction={"results": results, "top_k": top_k},
                 confidence=confidence,
-                source_url=""
+                source_url="",
             )
-            logger.debug(f"📊 Training data collected for vector search (confidence: {confidence:.3f})")
+            logger.debug(
+                f"📊 Training data collected for vector search (confidence: {confidence:.3f})"
+            )
         except ImportError:
             logger.debug("Training system not available - skipping data collection")
         except Exception as e:

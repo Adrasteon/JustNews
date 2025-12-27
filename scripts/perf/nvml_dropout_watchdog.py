@@ -1,4 +1,3 @@
-from datetime import timezone
 #!/usr/bin/env python3
 """NVML dropout watchdog.
 
@@ -31,7 +30,6 @@ import argparse
 import collections
 import datetime as _dt
 import json
-import os
 import pathlib
 import signal
 import subprocess
@@ -91,7 +89,7 @@ class NvmlDropoutWatchdog:
 
     @staticmethod
     def _now_iso() -> str:
-        return _dt.datetime.now(timezone.utc).isoformat(timespec="milliseconds") + "Z"
+        return _dt.datetime.now(_dt.UTC).isoformat(timespec="milliseconds") + "Z"
 
     def _write_log(self, payload: dict[str, Any]) -> None:
         if self._fh is None:
@@ -140,7 +138,9 @@ class NvmlDropoutWatchdog:
             self._write_log(
                 {
                     "event": "nvml_initialized",
-                    "driver_version": driver.decode() if isinstance(driver, bytes) else driver,
+                    "driver_version": driver.decode()
+                    if isinstance(driver, bytes)
+                    else driver,
                     "nvml_version": nvml_version.decode()
                     if isinstance(nvml_version, bytes)
                     else nvml_version,
@@ -276,7 +276,9 @@ class NvmlDropoutWatchdog:
         def _loop() -> None:
             while not self._stop.is_set():
                 try:
-                    event = pynvml.nvmlEventSetWait(event_set, int(self.interval * 1000))
+                    event = pynvml.nvmlEventSetWait(
+                        event_set, int(self.interval * 1000)
+                    )
                     if event:
                         names = [
                             name
@@ -304,7 +306,9 @@ class NvmlDropoutWatchdog:
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="NVML dropout watchdog")
-    p.add_argument("--interval", type=float, default=1.0, help="Sampling interval seconds")
+    p.add_argument(
+        "--interval", type=float, default=1.0, help="Sampling interval seconds"
+    )
     p.add_argument(
         "--context-samples",
         type=int,

@@ -37,21 +37,21 @@ class ConsentUIComponents:
             consent_items.append(f"""
                 <div class="consent-item">
                     <div class="consent-header">
-                        <h4>{consent['name']}</h4>
+                        <h4>{consent["name"]}</h4>
                         <label class="consent-toggle">
                             <input type="checkbox"
-                                   id="consent-{consent['type']}"
+                                   id="consent-{consent["type"]}"
                                    class="consent-checkbox"
-                                   data-consent-type="{consent['type']}"
-                                   {'checked' if consent.get('default_granted', False) else ''}>
+                                   data-consent-type="{consent["type"]}"
+                                   {"checked" if consent.get("default_granted", False) else ""}>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
-                    <p class="consent-description">{consent['description']}</p>
+                    <p class="consent-description">{consent["description"]}</p>
                     <div class="consent-details">
                         <small>
-                            {f"Expires: {consent['expires_days']} days" if consent.get('expires_days') else "No expiration"}
-                            {' | Required' if consent.get('required', False) else ' | Optional'}
+                            {f"Expires: {consent['expires_days']} days" if consent.get("expires_days") else "No expiration"}
+                            {" | Required" if consent.get("required", False) else " | Optional"}
                         </small>
                     </div>
                 </div>
@@ -77,7 +77,7 @@ class ConsentUIComponents:
                     </div>
 
                     <div class="consent-items">
-                        {''.join(consent_items)}
+                        {"".join(consent_items)}
                     </div>
 
                     <div class="consent-actions">
@@ -106,7 +106,9 @@ class ConsentUIComponents:
 
         return banner_html
 
-    def generate_consent_preferences_modal(self, consent_types: list[dict[str, Any]]) -> str:
+    def generate_consent_preferences_modal(
+        self, consent_types: list[dict[str, Any]]
+    ) -> str:
         """Generate consent preferences modal HTML"""
         consent_items = []
         for consent in consent_types:
@@ -114,35 +116,35 @@ class ConsentUIComponents:
                 <div class="preference-item">
                     <div class="preference-header">
                         <div class="preference-info">
-                            <h4>{consent['name']}</h4>
-                            <p>{consent['description']}</p>
+                            <h4>{consent["name"]}</h4>
+                            <p>{consent["description"]}</p>
                         </div>
                         <label class="preference-toggle">
                             <input type="checkbox"
-                                   id="pref-{consent['type']}"
+                                   id="pref-{consent["type"]}"
                                    class="preference-checkbox"
-                                   data-consent-type="{consent['type']}"
-                                   {'checked' if consent.get('default_granted', False) else ''}>
+                                   data-consent-type="{consent["type"]}"
+                                   {"checked" if consent.get("default_granted", False) else ""}>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
                     <div class="preference-details">
                         <div class="detail-section">
                             <h5>Purpose</h5>
-                            <p>{consent.get('purpose', 'Not specified')}</p>
+                            <p>{consent.get("purpose", "Not specified")}</p>
                         </div>
                         <div class="detail-section">
                             <h5>Legal Basis</h5>
-                            <p>{consent.get('legal_basis', 'Not specified')}</p>
+                            <p>{consent.get("legal_basis", "Not specified")}</p>
                         </div>
                         <div class="detail-section">
                             <h5>Data Retention</h5>
-                            <p>{f"{consent['expires_days']} days" if consent.get('expires_days') else "Until withdrawn"}</p>
+                            <p>{f"{consent['expires_days']} days" if consent.get("expires_days") else "Until withdrawn"}</p>
                         </div>
                         <div class="detail-section">
                             <h5>Status</h5>
-                            <p class="consent-status" data-consent-type="{consent['type']}">
-                                {'Granted' if consent.get('default_granted', False) else 'Not granted'}
+                            <p class="consent-status" data-consent-type="{consent["type"]}">
+                                {"Granted" if consent.get("default_granted", False) else "Not granted"}
                             </p>
                         </div>
                     </div>
@@ -164,7 +166,7 @@ class ConsentUIComponents:
                     </div>
 
                     <div class="preference-items">
-                        {''.join(consent_items)}
+                        {"".join(consent_items)}
                     </div>
 
                     <div class="preference-actions">
@@ -198,26 +200,32 @@ class ConsentUIComponents:
         """Generate consent dashboard HTML for user consent management"""
         consent_rows = []
         for consent in user_consents:
-            status_class = "status-granted" if consent.get('granted', False) else "status-denied"
-            status_text = "Granted" if consent.get('granted', False) else "Not Granted"
-            expiry_text = consent.get('expires_at', 'Never') if consent.get('expires_at') else 'Never'
+            status_class = (
+                "status-granted" if consent.get("granted", False) else "status-denied"
+            )
+            status_text = "Granted" if consent.get("granted", False) else "Not Granted"
+            expiry_text = (
+                consent.get("expires_at", "Never")
+                if consent.get("expires_at")
+                else "Never"
+            )
 
             consent_rows.append(f"""
                 <tr>
-                    <td>{consent['name']}</td>
-                    <td>{consent['description']}</td>
+                    <td>{consent["name"]}</td>
+                    <td>{consent["description"]}</td>
                     <td><span class="status-badge {status_class}">{status_text}</span></td>
-                    <td>{consent.get('granted_at', 'N/A')}</td>
+                    <td>{consent.get("granted_at", "N/A")}</td>
                     <td>{expiry_text}</td>
                     <td>
                         <button class="btn-action btn-grant"
-                                data-consent-type="{consent['type']}"
-                                {'style="display: none;"' if consent.get('granted', False) else ''}>
+                                data-consent-type="{consent["type"]}"
+                                {'style="display: none;"' if consent.get("granted", False) else ""}>
                             Grant
                         </button>
                         <button class="btn-action btn-withdraw"
-                                data-consent-type="{consent['type']}"
-                                {'style="display: none;"' if not consent.get('granted', False) else ''}>
+                                data-consent-type="{consent["type"]}"
+                                {'style="display: none;"' if not consent.get("granted", False) else ""}>
                             Withdraw
                         </button>
                     </td>
@@ -238,11 +246,11 @@ class ConsentUIComponents:
                 </div>
                 <div class="stat-card">
                     <h3>Granted</h3>
-                    <div class="stat-value">{sum(1 for c in user_consents if c.get('granted', False))}</div>
+                    <div class="stat-value">{sum(1 for c in user_consents if c.get("granted", False))}</div>
                 </div>
                 <div class="stat-card">
                     <h3>Pending</h3>
-                    <div class="stat-value">{sum(1 for c in user_consents if not c.get('granted', False))}</div>
+                    <div class="stat-value">{sum(1 for c in user_consents if not c.get("granted", False))}</div>
                 </div>
             </div>
 
@@ -259,7 +267,7 @@ class ConsentUIComponents:
                         </tr>
                     </thead>
                     <tbody>
-                        {''.join(consent_rows)}
+                        {"".join(consent_rows)}
                     </tbody>
                 </table>
             </div>
@@ -1222,7 +1230,7 @@ class ConsentUIComponents:
                 "required": True,
                 "expires_days": 365,
                 "purpose": "Service delivery",
-                "legal_basis": "Contract fulfillment (GDPR Art. 6(1)(b))"
+                "legal_basis": "Contract fulfillment (GDPR Art. 6(1)(b))",
             },
             {
                 "type": "analytics",
@@ -1232,7 +1240,7 @@ class ConsentUIComponents:
                 "required": False,
                 "expires_days": 365,
                 "purpose": "Service improvement",
-                "legal_basis": "Legitimate interest (GDPR Art. 6(1)(f))"
+                "legal_basis": "Legitimate interest (GDPR Art. 6(1)(f))",
             },
             {
                 "type": "marketing",
@@ -1242,18 +1250,18 @@ class ConsentUIComponents:
                 "required": False,
                 "expires_days": 365,
                 "purpose": "Marketing",
-                "legal_basis": "Consent (GDPR Art. 6(1)(a))"
-            }
+                "legal_basis": "Consent (GDPR Art. 6(1)(a))",
+            },
         ]
 
         # Save banner
         banner_path = self.templates_dir / "consent_banner.html"
-        with open(banner_path, 'w', encoding='utf-8') as f:
+        with open(banner_path, "w", encoding="utf-8") as f:
             f.write(self.generate_consent_banner(sample_consents))
 
         # Save modal
         modal_path = self.templates_dir / "consent_modal.html"
-        with open(modal_path, 'w', encoding='utf-8') as f:
+        with open(modal_path, "w", encoding="utf-8") as f:
             f.write(self.generate_consent_preferences_modal(sample_consents))
 
         # Save dashboard
@@ -1265,7 +1273,7 @@ class ConsentUIComponents:
                 "description": "Process your data to provide our services",
                 "granted": True,
                 "granted_at": "2024-01-15T10:30:00Z",
-                "expires_at": "2025-01-15T10:30:00Z"
+                "expires_at": "2025-01-15T10:30:00Z",
             },
             {
                 "type": "analytics",
@@ -1273,10 +1281,10 @@ class ConsentUIComponents:
                 "description": "Collect anonymous usage statistics",
                 "granted": False,
                 "granted_at": None,
-                "expires_at": None
-            }
+                "expires_at": None,
+            },
         ]
-        with open(dashboard_path, 'w', encoding='utf-8') as f:
+        with open(dashboard_path, "w", encoding="utf-8") as f:
             f.write(self.generate_consent_dashboard(sample_user_consents))
 
         print("✅ Consent UI components saved to templates directory")
@@ -1327,4 +1335,5 @@ async def demo_consent_ui():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(demo_consent_ui())

@@ -35,7 +35,9 @@ def get_search_service():
     import time so tests can patch the implementation in `common.semantic_search_service`.
     """
     from common.semantic_search_service import get_search_service as _get_search_service
+
     return _get_search_service()
+
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
@@ -47,12 +49,14 @@ except Exception:
 
 try:
     from agents.common.gpu_manager_production import get_gpu_manager
+
     GPU_MANAGER_AVAILABLE = True
 except Exception:  # pragma: no cover - GPU manager optional in some environments
     GPU_MANAGER_AVAILABLE = False
 
     def get_gpu_manager():  # type: ignore[override]
         raise RuntimeError("GPU manager not available in this environment")
+
 
 try:
     from config import get_config as _get_global_config
@@ -63,7 +67,11 @@ except Exception:  # pragma: no cover - unified config not available in this run
 
 logger = get_logger(__name__)
 
-PUBLIC_API_AVAILABLE = os.getenv("JUSTNEWS_ENABLE_PUBLIC_API", "0").lower() in {"1", "true", "yes"}
+PUBLIC_API_AVAILABLE = os.getenv("JUSTNEWS_ENABLE_PUBLIC_API", "0").lower() in {
+    "1",
+    "true",
+    "yes",
+}
 
 
 def include_public_api(app: FastAPI) -> None:
@@ -81,12 +89,16 @@ def include_public_api(app: FastAPI) -> None:
             public_api.include_public_api(app)
             logger.info("Public API routes registered for dashboard agent.")
         else:
-            logger.warning("Public API module missing include_public_api(); skipping registration.")
+            logger.warning(
+                "Public API module missing include_public_api(); skipping registration."
+            )
     except (ModuleNotFoundError, ImportError) as exc:
         # In some test runs PUBLIC_API_AVAILABLE may be enabled but the
         # optional public_api module may not exist or may not export the
         # expected symbol. Treat either case as non-fatal and continue.
-        logger.warning("Public API module unavailable or invalid; skipping registration: %s", exc)
+        logger.warning(
+            "Public API module unavailable or invalid; skipping registration: %s", exc
+        )
 
 
 def load_config() -> dict[str, Any]:
@@ -97,7 +109,9 @@ def load_config() -> dict[str, Any]:
 
     try:
         unified = _get_global_config()
-        dashboard_port = getattr(getattr(unified.agents, "ports", None), "dashboard", 8014)
+        dashboard_port = getattr(
+            getattr(unified.agents, "ports", None), "dashboard", 8014
+        )
         mcp_bus = getattr(unified, "mcp_bus", None)
 
         if mcp_bus is not None:
@@ -123,7 +137,9 @@ def load_config() -> dict[str, Any]:
 def save_config(updated_config: dict[str, Any]) -> None:
     """Persist dashboard-specific overrides when the unified configuration is available."""
     if _get_config_manager is None:
-        logger.debug("No configuration manager available; skipping dashboard config persistence.")
+        logger.debug(
+            "No configuration manager available; skipping dashboard config persistence."
+        )
         return
 
     try:
@@ -134,7 +150,11 @@ def save_config(updated_config: dict[str, Any]) -> None:
 
     if "dashboard_port" in updated_config:
         try:
-            manager.set("agents.ports.dashboard", int(updated_config["dashboard_port"]), persist=True)
+            manager.set(
+                "agents.ports.dashboard",
+                int(updated_config["dashboard_port"]),
+                persist=True,
+            )
             logger.info("Persisted dashboard port override to unified configuration.")
         except Exception as exc:  # pragma: no cover - defensive fallback
             logger.warning("Unable to persist dashboard port: %s", exc)
@@ -145,7 +165,9 @@ config = load_config()
 # Default dashboard port set to 8013 for transparency and public website
 DASHBOARD_AGENT_PORT = config.get("dashboard_port", 8013)
 MCP_BUS_URL = config.get("mcp_bus_url", "http://localhost:8000")
-GPU_ORCHESTRATOR_URL = os.environ.get("GPU_ORCHESTRATOR_URL", "http://localhost:8014").rstrip("/")
+GPU_ORCHESTRATOR_URL = os.environ.get(
+    "GPU_ORCHESTRATOR_URL", "http://localhost:8014"
+).rstrip("/")
 
 
 class MCPBusClient:
@@ -161,7 +183,9 @@ class MCPBusClient:
             "address": agent_address,
         }
         try:
-            response = requests.post(f"{self.base_url}/register", json=registration_data)
+            response = requests.post(
+                f"{self.base_url}/register", json=registration_data
+            )
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except requests.exceptions.RequestException as e:
@@ -171,6 +195,7 @@ class MCPBusClient:
 
 class ToolCall(BaseModel):
     """Standard MCP tool call format"""
+
     args: list
     kwargs: dict[str, Any]
 
@@ -184,7 +209,16 @@ async def lifespan(app: FastAPI):
         mcp_bus_client.register_agent(
             agent_name="dashboard",
             agent_address=f"http://localhost:{DASHBOARD_AGENT_PORT}",
-            tools=["get_status", "send_command", "receive_logs", "get_gpu_info", "get_gpu_history", "get_agent_gpu_usage", "get_gpu_config", "update_gpu_config"],
+            tools=[
+                "get_status",
+                "send_command",
+                "receive_logs",
+                "get_gpu_info",
+                "get_gpu_history",
+                "get_agent_gpu_usage",
+                "get_gpu_config",
+                "update_gpu_config",
+            ],
         )
         logger.info("Registered tools with MCP Bus.")
     except Exception as e:
@@ -194,6 +228,7 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Dashboard agent is shutting down.")
     save_config(config)
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -220,7 +255,11 @@ def set_publishing_config(payload: dict, request: Request):
         # `X-Admin-API-Key: <key>`. Otherwise a JWT bearer token with admin
         # role is required.
         admin_key = os.environ.get("ADMIN_API_KEY")
-        auth_header = (request.headers.get("Authorization") or request.headers.get("X-Admin-API-Key") or "").strip()
+        auth_header = (
+            request.headers.get("Authorization")
+            or request.headers.get("X-Admin-API-Key")
+            or ""
+        ).strip()
         if admin_key and auth_header:
             # accept either a raw key header or Authorization: Bearer <key>
             if auth_header.lower().startswith("bearer "):
@@ -228,11 +267,15 @@ def set_publishing_config(payload: dict, request: Request):
             else:
                 token = auth_header
             if token != admin_key:
-                raise HTTPException(status_code=401, detail="Admin API key missing or invalid")
+                raise HTTPException(
+                    status_code=401, detail="Admin API key missing or invalid"
+                )
         else:
             # No API key or header; try JWT bearer token
             if not auth_header:
-                raise HTTPException(status_code=401, detail="Admin credentials required")
+                raise HTTPException(
+                    status_code=401, detail="Admin credentials required"
+                )
             if auth_header.lower().startswith("bearer "):
                 token = auth_header.split(" ", 1)[1]
             else:
@@ -242,20 +285,35 @@ def set_publishing_config(payload: dict, request: Request):
 
             token_payload = auth_models.verify_token(token)
             if token_payload is None:
-                raise HTTPException(status_code=401, detail="Invalid authentication token")
+                raise HTTPException(
+                    status_code=401, detail="Invalid authentication token"
+                )
             user = auth_models.get_user_by_id(token_payload.user_id)
             if user is None or user.get("role") != auth_models.UserRole.ADMIN.value:
                 raise HTTPException(status_code=403, detail="Admin role required")
         from config.core import get_config_manager
+
         manager = get_config_manager()
         # Set individual flags
         if "require_draft_fact_check_pass_for_publish" in payload:
             # dot-path
-            manager.set("agents.publishing.require_draft_fact_check_pass_for_publish", bool(payload["require_draft_fact_check_pass_for_publish"]), persist=True)
+            manager.set(
+                "agents.publishing.require_draft_fact_check_pass_for_publish",
+                bool(payload["require_draft_fact_check_pass_for_publish"]),
+                persist=True,
+            )
         if "chief_editor_review_required" in payload:
-            manager.set("agents.publishing.chief_editor_review_required", bool(payload["chief_editor_review_required"]), persist=True)
+            manager.set(
+                "agents.publishing.chief_editor_review_required",
+                bool(payload["chief_editor_review_required"]),
+                persist=True,
+            )
         if "synthesized_article_storage" in payload:
-            manager.set("system.persistence.synthesized_article_storage", str(payload["synthesized_article_storage"]), persist=True)
+            manager.set(
+                "system.persistence.synthesized_article_storage",
+                str(payload["synthesized_article_storage"]),
+                persist=True,
+            )
         # Audit: persist change to disk for governance
         try:
             audit_dir = Path(os.environ.get("SERVICE_DIR", ".")) / "logs" / "audit"
@@ -268,14 +326,18 @@ def set_publishing_config(payload: dict, request: Request):
             # If admin action was performed with a JWT, record admin identity
             try:
                 # `payload` variable above may be set when JWT auth is used
-                if 'token_payload' in locals() and locals().get('token_payload') and hasattr(locals().get('token_payload'), 'user_id'):
-                    token_payload = locals().get('token_payload')
+                if (
+                    "token_payload" in locals()
+                    and locals().get("token_payload")
+                    and hasattr(locals().get("token_payload"), "user_id")
+                ):
+                    token_payload = locals().get("token_payload")
                     admin_user = get_user_by_id(token_payload.user_id)
                     if admin_user:
                         audit_entry["admin_user"] = {
                             "user_id": admin_user.get("user_id"),
                             "username": admin_user.get("username"),
-                            "email": admin_user.get("email")
+                            "email": admin_user.get("email"),
                         }
             except Exception:
                 pass
@@ -303,18 +365,26 @@ def get_publishing_config(request: Request):
         # an admin JWT Bearer token. If no header is passed and ADMIN_API_KEY
         # isn't set, a valid JWT with admin role is required.
         admin_key = os.environ.get("ADMIN_API_KEY")
-        auth_header = (request.headers.get("Authorization") or request.headers.get("X-Admin-API-Key") or "").strip()
+        auth_header = (
+            request.headers.get("Authorization")
+            or request.headers.get("X-Admin-API-Key")
+            or ""
+        ).strip()
         if admin_key and auth_header:
             if auth_header.lower().startswith("bearer "):
                 token = auth_header.split(" ", 1)[1]
             else:
                 token = auth_header
             if token != admin_key:
-                raise HTTPException(status_code=401, detail="Admin API key missing or invalid")
+                raise HTTPException(
+                    status_code=401, detail="Admin API key missing or invalid"
+                )
         else:
             # Jack back to JWT admin role requirement
             if not auth_header:
-                raise HTTPException(status_code=401, detail="Admin credentials required")
+                raise HTTPException(
+                    status_code=401, detail="Admin credentials required"
+                )
 
             # Extract the token or raw API key value when an Authorization header
             # is present; then verify via JWT-based admin role checks.
@@ -329,20 +399,26 @@ def get_publishing_config(request: Request):
 
             token_payload = auth_models.verify_token(token)
             if token_payload is None:
-                raise HTTPException(status_code=401, detail="Invalid authentication token")
+                raise HTTPException(
+                    status_code=401, detail="Invalid authentication token"
+                )
             user = auth_models.get_user_by_id(token_payload.user_id)
             if user is None or user.get("role") != auth_models.UserRole.ADMIN.value:
                 raise HTTPException(status_code=403, detail="Admin role required")
 
         cfg = get_config()
-        publishing = getattr(cfg.agents, 'publishing', None)
-        require_draft = bool(getattr(publishing, 'require_draft_fact_check_pass_for_publish', False))
-        chief_required = bool(getattr(publishing, 'chief_editor_review_required', False))
+        publishing = getattr(cfg.agents, "publishing", None)
+        require_draft = bool(
+            getattr(publishing, "require_draft_fact_check_pass_for_publish", False)
+        )
+        chief_required = bool(
+            getattr(publishing, "chief_editor_review_required", False)
+        )
         # Persistence storage option
-        persistence = getattr(cfg, 'persistence', None)
+        persistence = getattr(cfg, "persistence", None)
         storage = None
         if persistence is not None:
-            storage = getattr(persistence, 'synthesized_article_storage', None)
+            storage = getattr(persistence, "synthesized_article_storage", None)
         return {
             "status": "success",
             "require_draft_fact_check_pass_for_publish": require_draft,
@@ -357,6 +433,7 @@ def get_publishing_config(request: Request):
         logger.exception("Failed to read publishing config")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 # Mount static files for public website
 static_path = Path(__file__).parent / "static"
 static_path.mkdir(exist_ok=True)
@@ -370,6 +447,7 @@ app.include_router(transparency_router)
 if PUBLIC_API_AVAILABLE:
     try:
         from .search_api import router as search_router
+
         app.include_router(search_router)
     except Exception:
         logger.warning("Search API not available; skipping search router registration.")
@@ -386,6 +464,7 @@ ready = False
 # Register shutdown endpoint
 try:
     from agents.common.shutdown import register_shutdown_endpoint
+
     register_shutdown_endpoint(app)
 except Exception:
     logger.debug("shutdown endpoint not registered for dashboard")
@@ -393,6 +472,7 @@ except Exception:
 # Register reload endpoint if available
 try:
     from agents.common.reload import register_reload_endpoint
+
     register_reload_endpoint(app, require_admin=True)
 except Exception:
     logger.debug("reload endpoint not registered for dashboard")
@@ -402,6 +482,7 @@ app.middleware("http")(metrics.request_middleware)
 
 
 # Core Agent Endpoints
+
 
 @app.get("/get_status")
 def get_status():
@@ -437,6 +518,7 @@ def send_command(call: ToolCall):
 
 # Web Interface Endpoints
 
+
 @app.get("/")
 def dashboard_home():
     """Serve the main JustNews public website"""
@@ -460,12 +542,11 @@ def serve_article_page(article_id: str):
         # Try to serve the public website HTML file with article context
         public_website_path = Path(__file__).parent / "public_website.html"
         if public_website_path.exists():
-            with open(public_website_path, encoding='utf-8') as f:
+            with open(public_website_path, encoding="utf-8") as f:
                 content = f.read()
             # Add article ID to the page for JavaScript to handle
             content = content.replace(
-                '<body>',
-                f'<body data-article-id="{article_id}">'
+                "<body>", f'<body data-article-id="{article_id}">'
             )
             return HTMLResponse(content=content)
         else:
@@ -479,16 +560,13 @@ def serve_article_page(article_id: str):
 def serve_search_page(request: Request):
     """Serve search results page"""
     try:
-        query = request.query_params.get('q', '')
+        query = request.query_params.get("q", "")
         public_website_path = Path(__file__).parent / "public_website.html"
         if public_website_path.exists():
-            with open(public_website_path, encoding='utf-8') as f:
+            with open(public_website_path, encoding="utf-8") as f:
                 content = f.read()
             # Add search query to the page for JavaScript to handle
-            content = content.replace(
-                '<body>',
-                f'<body data-search-query="{query}">'
-            )
+            content = content.replace("<body>", f'<body data-search-query="{query}">')
             return HTMLResponse(content=content)
         else:
             return HTMLResponse(content=get_fallback_public_website_html())
@@ -503,13 +581,10 @@ def serve_about_page():
     try:
         public_website_path = Path(__file__).parent / "public_website.html"
         if public_website_path.exists():
-            with open(public_website_path, encoding='utf-8') as f:
+            with open(public_website_path, encoding="utf-8") as f:
                 content = f.read()
             # Add about flag to the page for JavaScript to handle
-            content = content.replace(
-                '<body>',
-                '<body data-page="about">'
-            )
+            content = content.replace("<body>", '<body data-page="about">')
             return HTMLResponse(content=content)
         else:
             return HTMLResponse(content=get_fallback_public_website_html())
@@ -524,13 +599,10 @@ def serve_api_docs():
     try:
         public_website_path = Path(__file__).parent / "public_website.html"
         if public_website_path.exists():
-            with open(public_website_path, encoding='utf-8') as f:
+            with open(public_website_path, encoding="utf-8") as f:
                 content = f.read()
             # Add API docs flag to the page for JavaScript to handle
-            content = content.replace(
-                '<body>',
-                '<body data-page="api-docs">'
-            )
+            content = content.replace("<body>", '<body data-page="api-docs">')
             return HTMLResponse(content=content)
         else:
             return HTMLResponse(content=get_fallback_public_website_html())
@@ -540,6 +612,7 @@ def serve_api_docs():
 
 
 # GPU Monitoring Endpoints
+
 
 @app.get("/gpu/info")
 def get_gpu_info():
@@ -561,7 +634,7 @@ def get_gpu_history(hours: int = 1):
             "hours": hours,
             "data_points": len(history),
             "history": history,
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
     except Exception as e:
         logger.error(f"Error in get_gpu_history endpoint: {e}")
@@ -585,11 +658,7 @@ def get_gpu_config():
         return dashboard_engine.get_gpu_config()
     except Exception as e:
         logger.error(f"Error getting GPU config: {e}")
-        return {
-            "status": "error",
-            "message": str(e),
-            "timestamp": time.time()
-        }
+        return {"status": "error", "message": str(e), "timestamp": time.time()}
 
 
 @app.post("/gpu/config")
@@ -634,6 +703,7 @@ def get_gpu_metrics():
 
 class IngestRequest(BaseModel):
     """Request model for ingesting external GPU metrics JSONL."""
+
     path: str
     max_lines: int | None = 10000
 
@@ -661,7 +731,9 @@ def get_gpu_dashboard_data():
 
 
 @app.get("/gpu/history/db")
-def get_gpu_history_from_db(hours: int = 24, gpu_index: int | None = None, metric: str = "utilization"):
+def get_gpu_history_from_db(
+    hours: int = 24, gpu_index: int | None = None, metric: str = "utilization"
+):
     """Get GPU metrics history from database."""
     try:
         return dashboard_engine.get_gpu_history_from_db(hours, gpu_index, metric)
@@ -712,6 +784,7 @@ def get_storage_stats():
 
 # Orchestrator proxy helpers & endpoints
 
+
 def fetch_orchestrator_gpu_info():
     """Fetch GPU info from orchestrator (fast timeout)."""
     try:
@@ -729,7 +802,10 @@ def fetch_orchestrator_policy():
         r = requests.get(f"{GPU_ORCHESTRATOR_URL}/policy", timeout=(1.5, 3.0))
         if r.status_code == 200:
             return r.json()
-        return {"safe_mode_read_only": True, "error": f"unexpected_status:{r.status_code}"}
+        return {
+            "safe_mode_read_only": True,
+            "error": f"unexpected_status:{r.status_code}",
+        }
     except Exception as e:
         return {"safe_mode_read_only": True, "error": str(e)}
 
@@ -750,10 +826,12 @@ def orchestrator_gpu_policy_proxy():
 def get_metrics():
     """Prometheus metrics endpoint."""
     from fastapi.responses import Response
+
     return Response(metrics.get_metrics(), media_type="text/plain")
 
 
 # Crawler Control Endpoints
+
 
 class CrawlRequest(BaseModel):
     domains: list[str]
@@ -782,15 +860,17 @@ async def start_crawl(request: CrawlRequest):
                 "strategy": request.strategy,
                 "enable_ai": request.enable_ai,
                 "timeout": request.timeout,
-                "user_agent": request.user_agent
-            }
+                "user_agent": request.user_agent,
+            },
         }
         response = requests.post(f"{MCP_BUS_URL}/call", json=payload, timeout=10)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
         logger.error(f"Failed to start crawl: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to start crawl: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to start crawl: {str(e)}"
+        ) from e
 
 
 @app.get("/api/crawl/status")
@@ -798,12 +878,7 @@ async def get_crawl_status():
     """Get current crawl job statuses"""
     try:
         # Use MCP bus to get crawler status
-        payload = {
-            "agent": "crawler",
-            "tool": "get_jobs",
-            "args": [],
-            "kwargs": {}
-        }
+        payload = {"agent": "crawler", "tool": "get_jobs", "args": [], "kwargs": {}}
         response = requests.post(f"{MCP_BUS_URL}/call", json=payload, timeout=5)
         response.raise_for_status()
         jobs = response.json()
@@ -816,9 +891,11 @@ async def get_crawl_status():
                     "agent": "crawler",
                     "tool": "get_job_status",
                     "args": [job_id],
-                    "kwargs": {}
+                    "kwargs": {},
                 }
-                detail_response = requests.post(f"{MCP_BUS_URL}/call", json=detail_payload, timeout=5)
+                detail_response = requests.post(
+                    f"{MCP_BUS_URL}/call", json=detail_payload, timeout=5
+                )
                 detail_response.raise_for_status()
                 job_details[job_id] = detail_response.json()
             except Exception:
@@ -827,7 +904,9 @@ async def get_crawl_status():
         return job_details
     except requests.RequestException as e:
         logger.error(f"Failed to get crawl status: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get crawl status: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get crawl status: {str(e)}"
+        ) from e
 
 
 @app.get("/api/crawl/scheduler")
@@ -835,15 +914,21 @@ async def get_crawl_scheduler(include_runs: bool = True, history_limit: int = 20
     """Return the latest crawl scheduler snapshot with adaptive metrics."""
 
     try:
-        snapshot = dashboard_engine.get_crawl_scheduler_snapshot(include_runs=include_runs)
+        snapshot = dashboard_engine.get_crawl_scheduler_snapshot(
+            include_runs=include_runs
+        )
         if history_limit:
-            snapshot["history"] = dashboard_engine.get_crawl_scheduler_history(limit=history_limit)
+            snapshot["history"] = dashboard_engine.get_crawl_scheduler_history(
+                limit=history_limit
+            )
         else:
             snapshot["history"] = []
         return snapshot
     except Exception as exc:
         logger.error(f"Failed to load crawl scheduler snapshot: {exc}")
-        raise HTTPException(status_code=500, detail=f"Failed to load crawl scheduler snapshot: {exc}") from exc
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load crawl scheduler snapshot: {exc}"
+        ) from exc
 
 
 @app.get("/api/metrics/crawler")
@@ -851,12 +936,7 @@ async def get_crawler_metrics():
     """Get crawler performance metrics"""
     try:
         # Use MCP bus to get crawler metrics
-        payload = {
-            "agent": "crawler",
-            "tool": "get_metrics",
-            "args": [],
-            "kwargs": {}
-        }
+        payload = {"agent": "crawler", "tool": "get_metrics", "args": [], "kwargs": {}}
         response = requests.post(f"{MCP_BUS_URL}/call", json=payload, timeout=5)
         response.raise_for_status()
         return response.json()
@@ -866,41 +946,42 @@ async def get_crawler_metrics():
             "articles_processed": 150,
             "sites_crawled": 5,
             "articles_per_second": 2.5,
-            "mode_usage": {"ultra_fast": 2, "ai_enhanced": 1, "generic": 2}
+            "mode_usage": {"ultra_fast": 2, "ai_enhanced": 1, "generic": 2},
         }
 
 
 @app.get("/api/dashboard/pages")
 def get_dashboard_pages():
-        """Return the configured dashboard pages for dynamic menu building on the web UI."""
-        try:
-            # Prefer dashboard config in the module-level config variable
-            pages = config.get("pages") if isinstance(config, dict) else None
-            if not pages:
-                # Fallback to reading the dashboard config directly
-                path = Path(__file__).parent / "config.json"
-                if path.exists():
-                    import json
-                    with open(path, encoding="utf-8") as f:
-                        data = json.load(f)
-                        pages = data.get("pages", [])
-            # Provide a small fallback list so UI has something even if config is empty
-            fallback_pages = [
-                {"title": "Home", "path": "/"},
-                {"title": "Search", "path": "/search"},
-                {"title": "About", "path": "/about"},
-                {"title": "Crawler Status", "path": "/api/crawl/status"},
-                {"title": "Crawl Scheduler", "path": "/api/crawl/scheduler"},
-                {"title": "GPU Dashboard", "path": "/gpu/dashboard"},
-                {"title": "Transparency", "path": "/transparency/status"},
-                {"title": "Crawler Metrics", "path": "/api/metrics/crawler"},
-                {"title": "System Health", "path": "/api/health"},
-                {"title": "Crawler Control", "path": "http://localhost:8016/"}
-            ]
-            return {"status": "success", "pages": pages or fallback_pages}
-        except Exception as e:
-            logger.warning(f"Failed to read dashboard pages config: {e}")
-            return {"status": "error", "pages": [], "error": str(e)}
+    """Return the configured dashboard pages for dynamic menu building on the web UI."""
+    try:
+        # Prefer dashboard config in the module-level config variable
+        pages = config.get("pages") if isinstance(config, dict) else None
+        if not pages:
+            # Fallback to reading the dashboard config directly
+            path = Path(__file__).parent / "config.json"
+            if path.exists():
+                import json
+
+                with open(path, encoding="utf-8") as f:
+                    data = json.load(f)
+                    pages = data.get("pages", [])
+        # Provide a small fallback list so UI has something even if config is empty
+        fallback_pages = [
+            {"title": "Home", "path": "/"},
+            {"title": "Search", "path": "/search"},
+            {"title": "About", "path": "/about"},
+            {"title": "Crawler Status", "path": "/api/crawl/status"},
+            {"title": "Crawl Scheduler", "path": "/api/crawl/scheduler"},
+            {"title": "GPU Dashboard", "path": "/gpu/dashboard"},
+            {"title": "Transparency", "path": "/transparency/status"},
+            {"title": "Crawler Metrics", "path": "/api/metrics/crawler"},
+            {"title": "System Health", "path": "/api/health"},
+            {"title": "Crawler Control", "path": "http://localhost:8016/"},
+        ]
+        return {"status": "success", "pages": pages or fallback_pages}
+    except Exception as e:
+        logger.warning(f"Failed to read dashboard pages config: {e}")
+        return {"status": "error", "pages": [], "error": str(e)}
 
 
 @app.get("/api/metrics/analyst")
@@ -908,22 +989,13 @@ async def get_analyst_metrics():
     """Get analyst metrics"""
     try:
         # Use MCP bus to get analyst metrics
-        payload = {
-            "agent": "analyst",
-            "tool": "get_metrics",
-            "args": [],
-            "kwargs": {}
-        }
+        payload = {"agent": "analyst", "tool": "get_metrics", "args": [], "kwargs": {}}
         response = requests.post(f"{MCP_BUS_URL}/call", json=payload, timeout=5)
         response.raise_for_status()
         return response.json()
     except requests.RequestException:
         # Fallback mock data
-        return {
-            "sentiment_count": 120,
-            "bias_count": 80,
-            "topics_count": 95
-        }
+        return {"sentiment_count": 120, "bias_count": 80, "topics_count": 95}
 
 
 @app.get("/api/metrics/memory")
@@ -931,21 +1003,13 @@ async def get_memory_metrics():
     """Get memory usage metrics"""
     try:
         # Use MCP bus to get memory metrics
-        payload = {
-            "agent": "memory",
-            "tool": "get_metrics",
-            "args": [],
-            "kwargs": {}
-        }
+        payload = {"agent": "memory", "tool": "get_metrics", "args": [], "kwargs": {}}
         response = requests.post(f"{MCP_BUS_URL}/call", json=payload, timeout=5)
         response.raise_for_status()
         return response.json()
     except requests.RequestException:
         # Fallback mock data
-        return {
-            "used": 60,
-            "free": 40
-        }
+        return {"used": 60, "free": 40}
 
 
 @app.get("/api/health")
@@ -956,7 +1020,7 @@ async def get_system_health():
         ("crawler", 8015),  # Assuming crawler port
         ("analyst", 8004),
         ("memory", 8007),
-        ("mcp_bus", 8000)
+        ("mcp_bus", 8000),
     ]
 
     for name, port in agents:
@@ -986,18 +1050,23 @@ def public_articles(n: int = 10):
                 {
                     "id": a.id,
                     "title": a.title,
-                    "summary": (a.content[:300] + "...") if len(a.content) > 300 else a.content,
+                    "summary": (a.content[:300] + "...")
+                    if len(a.content) > 300
+                    else a.content,
                     "source": a.source_name,
                     "published_date": a.published_date,
-                    "sentiment_score": getattr(a, 'sentiment_score', 0),
-                    "fact_check_score": getattr(a, 'fact_check_score', None),
-                    "url": getattr(a, 'url', None)
-                } for a in articles
-            ]
+                    "sentiment_score": getattr(a, "sentiment_score", 0),
+                    "fact_check_score": getattr(a, "fact_check_score", None),
+                    "url": getattr(a, "url", None),
+                }
+                for a in articles
+            ],
         }
     except Exception as exc:
         logger.exception("Public articles endpoint failed: %s", exc)
-        raise HTTPException(status_code=500, detail="Recent articles temporarily unavailable") from exc
+        raise HTTPException(
+            status_code=500, detail="Recent articles temporarily unavailable"
+        ) from exc
 
 
 def get_fallback_dashboard_html():

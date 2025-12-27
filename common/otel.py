@@ -1,12 +1,13 @@
 """OpenTelemetry bootstrap helpers for JustNews services."""
+
 from __future__ import annotations
 
 import json
-import logging
 import os
+from collections.abc import Iterable
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 from common.observability import get_logger
 
@@ -14,10 +15,14 @@ logger = get_logger(__name__)
 
 try:  # Optional dependency: we only configure OpenTelemetry when installed.
     from opentelemetry import trace
-    from opentelemetry.sdk.resources import DEPLOYMENT_ENVIRONMENT, SERVICE_NAME, Resource
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.resources import (
+        DEPLOYMENT_ENVIRONMENT,
+        SERVICE_NAME,
+        Resource,
+    )
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
-    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 except ImportError:  # pragma: no cover - optional dependency
     trace = None  # type: ignore
     Resource = None  # type: ignore
@@ -44,7 +49,9 @@ def _parse_headers(raw: str | None) -> dict[str, str]:
             parsed = json.loads(raw)
             return {str(k): str(v) for k, v in parsed.items()}
         except json.JSONDecodeError:
-            logger.warning("Failed to parse JSON OTLP headers, falling back to CSV format")
+            logger.warning(
+                "Failed to parse JSON OTLP headers, falling back to CSV format"
+            )
     headers: dict[str, str] = {}
     for pair in raw.split(","):
         if "=" not in pair:
@@ -57,7 +64,9 @@ def _parse_headers(raw: str | None) -> dict[str, str]:
     return headers
 
 
-def init_telemetry(service_name: str, *, resource_attributes: dict[str, Any] | None = None) -> bool:
+def init_telemetry(
+    service_name: str, *, resource_attributes: dict[str, Any] | None = None
+) -> bool:
     """Configure OpenTelemetry tracing exporters."""
     if trace is None:
         logger.debug("OpenTelemetry SDK not installed; skipping instrumentation")
@@ -67,7 +76,11 @@ def init_telemetry(service_name: str, *, resource_attributes: dict[str, Any] | N
         return True
 
     endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "127.0.0.1:4317")
-    insecure = os.environ.get("OTEL_EXPORTER_OTLP_INSECURE", "true").lower() in {"1", "true", "yes"}
+    insecure = os.environ.get("OTEL_EXPORTER_OTLP_INSECURE", "true").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
     headers = _parse_headers(os.environ.get("OTEL_EXPORTER_OTLP_HEADERS"))
 
     resource_attrs = {
@@ -88,7 +101,11 @@ def init_telemetry(service_name: str, *, resource_attributes: dict[str, Any] | N
     _STATE.enabled = True
     _STATE.service_name = service_name
     _STATE.tracer_name = f"justnews.{service_name}"
-    logger.info("OpenTelemetry tracing enabled (endpoint=%s, service=%s)", endpoint, service_name)
+    logger.info(
+        "OpenTelemetry tracing enabled (endpoint=%s, service=%s)",
+        endpoint,
+        service_name,
+    )
     return True
 
 

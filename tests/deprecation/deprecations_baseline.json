@@ -1,475 +1,160 @@
 {
   "\\bdatetime\\.utcnow\\(": [
     {
-      "path": "/home/adra/JustNews/security/security_manager.py",
-      "line": 155,
-      "content": "if locked_until > datetime.utcnow():"
+      "path": "/home/adra/JustNews/tests/codemod/test_replace_utcnow.py",
+      "line": 16,
+      "content": "f1.write_text(\"from datetime import datetime\\nnow = datetime.utcnow()\\n\")"
     },
     {
-      "path": "/home/adra/JustNews/security/security_manager.py",
-      "line": 398,
-      "content": "\"timestamp\": datetime.utcnow().isoformat()"
+      "path": "/home/adra/JustNews/tests/codemod/test_replace_utcnow.py",
+      "line": 19,
+      "content": "f2.write_text(\"import datetime\\nnow = datetime.utcnow()\\n\")"
     },
     {
-      "path": "/home/adra/JustNews/security/security_manager.py",
-      "line": 406,
-      "content": "\"timestamp\": datetime.utcnow().isoformat()"
+      "path": "/home/adra/JustNews/tests/codemod/test_replace_utcnow.py",
+      "line": 22,
+      "content": "f3.write_text(\"import datetime as dt\\nnow = dt.datetime.utcnow()\\n\")"
     },
     {
-      "path": "/home/adra/JustNews/security/security_manager.py",
-      "line": 423,
-      "content": "timestamp=datetime.utcnow()"
+      "path": "/home/adra/JustNews/tests/codemod/test_replace_utcnow.py",
+      "line": 25,
+      "content": "assert \"Found 3 datetime.utcnow() occurrences\" in out or \"Found 3\" in out"
     },
     {
-      "path": "/home/adra/JustNews/security/security_manager.py",
-      "line": 434,
-      "content": "return datetime.utcnow() > expiration"
+      "path": "/home/adra/JustNews/scripts/codemods/replace_utcnow.py",
+      "line": 2,
+      "content": "\"\"\"A small codemod to find and optionally replace `datetime.utcnow()` calls"
     },
     {
-      "path": "/home/adra/JustNews/security/security_manager.py",
-      "line": 443,
-      "content": "now = datetime.utcnow()"
+      "path": "/home/adra/JustNews/scripts/codemods/replace_utcnow.py",
+      "line": 130,
+      "content": "print(\"No datetime.utcnow() occurrences found.\")"
     },
     {
-      "path": "/home/adra/JustNews/security/tests_integration.py",
-      "line": 252,
-      "content": "context.timestamp = datetime.utcnow() - timedelta(minutes=10)  # Expired"
-    },
-    {
-      "path": "/home/adra/JustNews/scripts/publish_hf_to_model_store.py",
-      "line": 99,
-      "content": "version = args.version or f\"v{datetime.utcnow():%Y%m%d-%H%M}\""
-    },
-    {
-      "path": "/home/adra/JustNews/security/encryption/service.py",
-      "line": 213,
-      "content": "created_at = datetime.utcnow()"
-    },
-    {
-      "path": "/home/adra/JustNews/security/encryption/service.py",
-      "line": 313,
-      "content": "old_key[\"rotated_at\"] = datetime.utcnow().isoformat()"
-    },
-    {
-      "path": "/home/adra/JustNews/security/encryption/service.py",
-      "line": 468,
-      "content": "now = datetime.utcnow()"
-    },
-    {
-      "path": "/home/adra/JustNews/security/encryption/service.py",
-      "line": 500,
-      "content": "datetime.fromisoformat(k[\"expires_at\"]) < datetime.utcnow()))"
-    },
-    {
-      "path": "/home/adra/JustNews/security/encryption/service.py",
-      "line": 519,
-      "content": "if expires_at and datetime.fromisoformat(expires_at) > datetime.utcnow():"
-    },
-    {
-      "path": "/home/adra/JustNews/security/encryption/service.py",
-      "line": 572,
-      "content": "now = datetime.utcnow()"
-    },
-    {
-      "path": "/home/adra/JustNews/security/authentication/service.py",
-      "line": 116,
-      "content": "if locked_until > datetime.utcnow():"
-    },
-    {
-      "path": "/home/adra/JustNews/security/authentication/service.py",
-      "line": 128,
-      "content": "user_data[\"locked_until\"] = (datetime.utcnow() + lock_duration).isoformat()"
-    },
-    {
-      "path": "/home/adra/JustNews/security/authentication/service.py",
-      "line": 151,
-      "content": "now = datetime.utcnow()"
-    },
-    {
-      "path": "/home/adra/JustNews/security/authentication/service.py",
-      "line": 230,
-      "content": "if datetime.fromisoformat(token_data[\"expires_at\"]) < datetime.utcnow():"
-    },
-    {
-      "path": "/home/adra/JustNews/security/authentication/service.py",
-      "line": 334,
-      "content": "\"created_at\": datetime.utcnow().isoformat(),"
-    },
-    {
-      "path": "/home/adra/JustNews/security/authentication/service.py",
-      "line": 442,
-      "content": "user_data[\"last_login\"] = datetime.utcnow().isoformat()"
-    },
-    {
-      "path": "/home/adra/JustNews/security/compliance/service.py",
-      "line": 196,
-      "content": "id=f\"audit_{datetime.utcnow().timestamp()}_{secrets.token_hex(4)}\"," 
-    },
-    {
-      "path": "/home/adra/JustNews/security/compliance/service.py",
-      "line": 197,
-      "content": "timestamp=datetime.utcnow(),"
-    },
-    {
-      "path": "/home/adra/JustNews/security/compliance/service.py",
-      "line": 237,
-      "content": "consent_id = f\"consent_{datetime.utcnow().timestamp()}_{secrets.token_hex(4)}\""
-    },
-    {
-      "path": "/home/adra/JustNews/security/compliance/service.py",
-      "line": 250,
-      "content": "consent.granted_at = datetime.utcnow()"
-    },
-    {
-      "path": "/home/adra/JustNews/security/compliance/service.py",
-      "line": 252,
-      "content": "consent.withdrawn_at = datetime.utcnow()"
-    },
-    {
-      "path": "/home/adra/JustNews/security/compliance/service.py",
-      "line": 322,
-      "content": "request_id = f\"dsr_{datetime.utcnow().timestamp()}_{secrets.token_hex(4)}\""
-    },
-    {
-      "path": "/home/adra/JustNews/security/compliance/service.py",
-      "line": 329,
-      "content": "requested_at=datetime.utcnow(),"
-    },
-    {
-      "path": "/home/adra/JustNews/security/compliance/service.py",
-      "line": 377,
-      "content": "request.completed_at = datetime.utcnow()"
-    },
-    {
-      "path": "/home/adra/JustNews/security/compliance/service.py",
-      "line": 380,
-      "content": "request.completed_at = datetime.utcnow()"
-    },
-    {
-      "path": "/home/adra/JustNews/security/compliance/service.py",
-      "line": 415,
-      "content": "\"export_timestamp\": datetime.utcnow().isoformat(),"
-    },
-    {
-      "path": "/home/adra/JustNews/security/compliance/service.py",
-      "line": 514,
-      "content": "date_from = datetime.utcnow() - timedelta(days=30)"
-    },
-    {
-      "path": "/home/adra/JustNews/security/compliance/service.py",
-      "line": 516,
-      "content": "date_to = datetime.utcnow()"
-    },
-    {
-      "path": "/home/adra/JustNews/security/compliance/service.py",
-      "line": 614,
-      "content": "cutoff_date = datetime.utcnow() - timedelta(days=self.compliance_config.audit_retention_days)"
-    },
-    {
-      "path": "/home/adra/JustNews/security/compliance/service.py",
-      "line": 637,
-      "content": "cutoff_date = datetime.utcnow() - timedelta(days=self.compliance_config.consent_retention_days)"
-    },
-    {
-      "path": "/home/adra/JustNews/security/monitoring/service.py",
-      "line": 198,
-      "content": "\"timestamp\": datetime.utcnow(),"
-    },
-    {
-      "path": "/home/adra/JustNews/security/monitoring/service.py",
-      "line": 263,
-      "content": "alert.resolved_at = datetime.utcnow()"
-    },
-    {
-      "path": "/home/adra/JustNews/security/monitoring/service.py",
-      "line": 280,
-      "content": "cutoff_time = datetime.utcnow() - timedelta(hours=hours)"
-    },
-    {
-      "path": "/home/adra/JustNews/security/monitoring/service.py",
-      "line": 316,
-      "content": "timestamp=datetime.utcnow(),"
-    },
-    {
-      "path": "/home/adra/JustNews/security/monitoring/service.py",
-      "line": 329,
-      "content": "timestamp=datetime.utcnow(),"
-    },
-    {
-      "path": "/home/adra/JustNews/security/monitoring/service.py",
-      "line": 421,
-      "content": "if datetime.utcnow() < cooldown_end:"
-    },
-    {
-      "path": "/home/adra/JustNews/security/monitoring/service.py",
-      "line": 432,
-      "content": "rule.last_triggered = datetime.utcnow()"
-    },
-    {
-      "path": "/home/adra/JustNews/security/monitoring/service.py",
-      "line": 487,
-      "content": "alert_id = f\"alert_{datetime.utcnow().timestamp()}_{secrets.token_hex(4)}\""
-    },
-    {
-      "path": "/home/adra/JustNews/security/monitoring/service.py",
-      "line": 491,
-      "content": "timestamp=datetime.utcnow(),"
-    },
-    {
-      "path": "/home/adra/JustNews/security/monitoring/service.py",
-      "line": 522,
-      "content": "cutoff_time = datetime.utcnow() - timedelta(hours=24)"
-    },
-    {
-      "path": "/home/adra/JustNews/security/monitoring/service.py",
-      "line": 550,
-      "content": "cutoff_date = datetime.utcnow() - timedelta(days=self.monitoring_config.alert_retention_days)"
-    },
-    {
-      "path": "/home/adra/JustNews/scripts/archive/run_safe_mode_demo.py",
-      "line": 45,
-      "content": "record: dict[str, Any] = {\"safe_mode\": safe_mode, \"timestamp\": datetime.utcnow().isoformat(), \"mode\": \"inprocess\"}"
-    },
-    {
-      "path": "/home/adra/JustNews/scripts/perf/nvml_dropout_watchdog.py",
-      "line": 93,
-      "content": "return _dt.datetime.utcnow().isoformat(timespec=\"milliseconds\") + \"Z\""
-    },
-    {
-      "path": "/home/adra/JustNews/agents/crawler/crawler_utils.py",
-      "line": 436,
-      "content": "\"last_detected_at\": datetime.utcnow().isoformat() + \"Z\"," 
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_aggregator.py",
-      "line": 81,
-      "content": "self._last_flush_time = datetime.utcnow()"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_aggregator.py",
-      "line": 163,
-      "content": "time_since_last_flush = (datetime.utcnow() - self._last_flush_time).total_seconds()"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_aggregator.py",
-      "line": 195,
-      "content": "self._last_flush_time = datetime.utcnow()"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_aggregator.py",
-      "line": 217,
-      "content": "timestamp = datetime.utcnow().strftime(\"%Y%m%d_%H%M%S\")"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_aggregator.py",
-      "line": 327,
-      "content": "cutoff_date = datetime.utcnow() - timedelta(days=self.aggregation_config.retention_days)"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_analyzer.py",
-      "line": 115,
-      "content": "end_time = datetime.utcnow()"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_analyzer.py",
-      "line": 139,
-      "content": "timestamp=datetime.utcnow(),"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_analyzer.py",
-      "line": 211,
-      "content": "timestamp=datetime.utcnow(),"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_analyzer.py",
-      "line": 293,
-      "content": "timestamp=datetime.utcnow(),"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_analyzer.py",
-      "line": 368,
-      "content": "timestamp=datetime.utcnow(),"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_analyzer.py",
-      "line": 399,
-      "content": "timestamp=datetime.utcnow(),"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_analyzer.py",
-      "line": 419,
-      "content": "timestamp=datetime.utcnow(),"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_analyzer.py",
-      "line": 528,
-      "content": "timestamp=datetime.utcnow(),"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_analyzer.py",
-      "line": 561,
-      "content": "end_time = datetime.utcnow()"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_collector.py",
-      "line": 180,
-      "content": "timestamp=datetime.utcnow(),"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_collector.py",
-      "line": 341,
-      "content": "'timestamp': datetime.utcnow().isoformat(),"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_collector.py",
-      "line": 365,
-      "content": "timestamp = datetime.utcnow().isoformat()"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_storage.py",
-      "line": 137,
-      "content": "start_time = datetime.utcnow()"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_storage.py",
-      "line": 145,
-      "content": "if (datetime.utcnow() - start_time).total_seconds() < self._cache_ttl_seconds:"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_storage.py",
-      "line": 174,
-      "content": "query_time_ms=(datetime.utcnow() - start_time).total_seconds() * 1000"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_storage.py",
-      "line": 188,
-      "content": "query_time_ms=(datetime.utcnow() - start_time).total_seconds() * 1000"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_storage.py",
-      "line": 372,
-      "content": "'last_updated': datetime.utcnow().isoformat()"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_storage.py",
-      "line": 401,
-      "content": "'last_updated': datetime.utcnow().isoformat()"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/log_storage.py",
-      "line": 426,
-      "content": "cutoff_date = datetime.utcnow() - timedelta(days=retention)"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/custom_metrics.py",
-      "line": 367,
-      "content": "self._throughput_counters[key].append((datetime.utcnow(), throughput))"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/custom_metrics.py",
-      "line": 370,
-      "content": "cutoff = datetime.utcnow() - timedelta(hours=24)"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/custom_metrics.py",
-      "line": 428,
-      "content": "cutoff = datetime.utcnow() - timedelta(days=7)"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/custom_metrics.py",
-      "line": 455,
-      "content": "cutoff = datetime.utcnow() - timedelta(hours=hours)"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/core/custom_metrics.py",
-      "line": 492,
-      "content": "cutoff = datetime.utcnow() - timedelta(hours=hours)"
+      "path": "/home/adra/JustNews/scripts/codemods/replace_utcnow.py",
+      "line": 133,
+      "content": "print(f\"Found {len(matches)} datetime.utcnow() occurrences:\")"
     }
   ],
   "asyncio\\.get_event_loop\\(\\)\\.run_until_complete": [
     {
-      "path": "/home/adra/JustNews/tests/integration/test_kg_and_chroma_metadata.py",
-      "line": 45,
-      "content": "asyncio.get_event_loop().run_until_complete(kg.store_article_entities({'url_hash': url_hash}, entities, relationships))"
+      "path": "/home/adra/JustNews/tests/codemod/test_replace_run_until_complete.py",
+      "line": 20,
+      "content": "f.write_text(\"import asyncio\\nasyncio.get_event_loop().run_until_complete(foo())\\n\")"
     },
     {
-      "path": "/home/adra/JustNews/scripts/deprecations/find_deprecations.py",
-      "line": 7,
-      "content": "monitor over time (e.g., datetime.utcnow(), asyncio.get_event_loop().run_until_complete,"
+      "path": "/home/adra/JustNews/scripts/codemods/replace_run_until_complete.py",
+      "line": 5,
+      "content": "- Replaces `asyncio.get_event_loop().run_until_complete(expr)` -> `asyncio.run(expr)`"
+    },
+    {
+      "path": "/home/adra/JustNews/scripts/codemods/replace_run_until_complete.py",
+      "line": 33,
+      "content": "# Match asyncio.get_event_loop().run_until_complete(xxx)"
     }
   ],
   "\\.run_until_complete\\(": [
     {
-      "path": "/home/adra/JustNews/tests/integration/test_kg_and_chroma_metadata.py",
-      "line": 45,
-      "content": "asyncio.get_event_loop().run_until_complete(kg.store_article_entities({'url_hash': url_hash}, entities, relationships))"
+      "path": "/home/adra/JustNews/tests/codemod/test_replace_run_until_complete.py",
+      "line": 20,
+      "content": "f.write_text(\"import asyncio\\nasyncio.get_event_loop().run_until_complete(foo())\\n\")"
     },
     {
-      "path": "/home/adra/JustNews/agents/fact_checker/tools.py",
-      "line": 143,
-      "content": "return loop.run_until_complete(future)  # pragma: no cover"
+      "path": "/home/adra/JustNews/tests/codemod/test_replace_run_until_complete.py",
+      "line": 35,
+      "content": "\"import asyncio\\nloop = asyncio.new_event_loop()\\nloop.run_until_complete(foo())\\n\""
     },
     {
-      "path": "/home/adra/JustNews/agents/synthesizer/tools.py",
-      "line": 383,
-      "content": "return loop.run_until_complete(_run())"
+      "path": "/home/adra/JustNews/tests/codemod/test_replace_run_until_complete.py",
+      "line": 51,
+      "content": "\"import asyncio\\nloop = asyncio.get_event_loop()\\nloop.run_until_complete(foo())\\n\""
+    },
+    {
+      "path": "/home/adra/JustNews/tests/codemod/test_replace_run_until_complete.py",
+      "line": 67,
+      "content": "\"import asyncio\\nloop = some_running_loop\\nloop.run_until_complete(foo())\\n\""
+    },
+    {
+      "path": "/home/adra/JustNews/tests/codemod/test_replace_run_until_complete.py",
+      "line": 80,
+      "content": "assert \"loop.run_until_complete(foo())\" in txt"
+    },
+    {
+      "path": "/home/adra/JustNews/scripts/codemods/replace_run_until_complete.py",
+      "line": 5,
+      "content": "- Replaces `asyncio.get_event_loop().run_until_complete(expr)` -> `asyncio.run(expr)`"
+    },
+    {
+      "path": "/home/adra/JustNews/scripts/codemods/replace_run_until_complete.py",
+      "line": 6,
+      "content": "- Replaces `loop.run_until_complete(expr)` -> `asyncio.run(expr)` when the file"
+    },
+    {
+      "path": "/home/adra/JustNews/scripts/codemods/replace_run_until_complete.py",
+      "line": 33,
+      "content": "# Match asyncio.get_event_loop().run_until_complete(xxx)"
+    },
+    {
+      "path": "/home/adra/JustNews/scripts/codemods/replace_run_until_complete.py",
+      "line": 38,
+      "content": "# Match <name>.run_until_complete(expr) \u2014 we'll replace only when the file contains new_event_loop"
+    },
+    {
+      "path": "/home/adra/JustNews/scripts/codemods/replace_run_until_complete.py",
+      "line": 86,
+      "content": "# Replace direct get_event_loop().run_until_complete(...)"
+    },
+    {
+      "path": "/home/adra/JustNews/scripts/codemods/replace_run_until_complete.py",
+      "line": 89,
+      "content": "# For var.run_until_complete(...) only replace when we detected the variable was"
     }
   ],
   "\\.dict\\(\\)": [
     {
-      "path": "/home/adra/JustNews/config/legacy/__init__.py",
-      "line": 368,
-      "content": "config_dict = target_config.dict()"
+      "path": "/home/adra/JustNews/tests/codemod/test_replace_pydantic_dict.py",
+      "line": 18,
+      "content": "assert \"Found 1 .dict() occurrences\" in out"
     },
     {
-      "path": "/home/adra/JustNews/config/legacy/__init__.py",
-      "line": 606,
-      "content": "json.dump(plan.target_config.dict(), f, indent=2)"
+      "path": "/home/adra/JustNews/tests/codemod/test_replace_pydantic_dict.py",
+      "line": 34,
+      "content": "assert \"Found 0\" in out or \"No .dict() occurrences\" in out or True"
     },
     {
-      "path": "/home/adra/JustNews/scripts/deprecations/find_deprecations.py",
-      "line": 8,
-      "content": "and .dict()), and prints a JSON report which can be used as a baseline for QA."
+      "path": "/home/adra/JustNews/tests/codemod/test_replace_pydantic_dict.py",
+      "line": 45,
+      "content": "\"import json\\nexport_data = MyModel()\\njson.dump(export_data.dict(), f)\\n\""
+    },
+    {
+      "path": "/home/adra/JustNews/tests/codemod/test_replace_pydantic_dict.py",
+      "line": 49,
+      "content": "assert \"Found 1 .dict() occurrences\" in out"
+    },
+    {
+      "path": "/home/adra/JustNews/scripts/codemods/replace_pydantic_dict.py",
+      "line": 2,
+      "content": "\"\"\"Codemod to replace Pydantic `.dict()` calls with `.model_dump()`."
+    },
+    {
+      "path": "/home/adra/JustNews/scripts/codemods/replace_pydantic_dict.py",
+      "line": 50,
+      "content": "# blindly replace the fallback `.dict()` call (it would create a broken call)."
+    },
+    {
+      "path": "/home/adra/JustNews/scripts/codemods/replace_pydantic_dict.py",
+      "line": 108,
+      "content": "print(\"No .dict() occurrences found (excluding patch.dict).\")"
+    },
+    {
+      "path": "/home/adra/JustNews/scripts/codemods/replace_pydantic_dict.py",
+      "line": 111,
+      "content": "print(f\"Found {len(matches)} .dict() occurrences (candidates):\")"
     },
     {
       "path": "/home/adra/JustNews/agents/dashboard/dashboard_engine.py",
-      "line": 425,
-      "content": "json=(call.model_dump() if hasattr(call, \"model_dump\") else call.dict()),"
-    },
-    {
-      "path": "/home/adra/JustNews/agents/common/auth_api.py",
-      "line": 765,
-      "content": "json.dump(export_data.dict(), f, indent=2, default=str)"
-    },
-    {
-      "path": "/home/adra/JustNews/agents/common/compliance_dashboard.py",
-      "line": 296,
-      "content": "\"data_retention_status\": (await get_data_retention_status(current_user)).dict(),"
-    },
-    {
-      "path": "/home/adra/JustNews/agents/common/compliance_dashboard.py",
-      "line": 297,
-      "content": "\"user_request_summary\": (await get_user_request_summary(50, current_user)).dict(),"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/dashboards/alert_dashboard.py",
-      "line": 548,
-      "content": "\"active_alerts\": [alert.dict() for alert in self.active_alerts.values()],"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/dashboards/alert_dashboard.py",
-      "line": 549,
-      "content": "\"alert_history\": [alert.dict() for alert in self.alert_history[-100:]],  # Last 100"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/dashboards/alert_dashboard.py",
-      "line": 550,
-      "content": "\"rules\": [rule.dict() for rule in self.rules.values()],"
-    },
-    {
-      "path": "/home/adra/JustNews/monitoring/dashboards/realtime_monitor.py",
-      "line": 342,
-      "content": "\"data\": [item.dict() for item in history_data],"
+      "line": 449,
+      "content": "call.model_dump() if hasattr(call, \"model_dump\") else call.dict()"
     }
   ]
 }

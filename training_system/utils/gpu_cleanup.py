@@ -16,6 +16,7 @@ from common.observability import get_logger
 
 logger = get_logger(__name__)
 
+
 class GPUModelManager:
     """
     Context manager for safe GPU model loading and cleanup
@@ -55,7 +56,7 @@ class GPUModelManager:
                 if model is not None:
                     try:
                         # Move to CPU first
-                        if hasattr(model, 'cpu'):
+                        if hasattr(model, "cpu"):
                             model.cpu()
                         # Delete the model
                         del model
@@ -93,6 +94,7 @@ class GPUModelManager:
 
         # Setup signal handlers for graceful shutdown
         if not self._signal_handlers_set:
+
             def signal_handler(signum, frame):
                 logger.info(f"🔔 Received signal {signum}, cleaning up...")
                 self.cleanup_all_models()
@@ -112,21 +114,26 @@ class GPUModelManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cleanup_all_models()
 
+
 # Global model manager instance
 _global_model_manager = GPUModelManager()
+
 
 def register_gpu_model(model: Any) -> None:
     """Register a GPU model for automatic cleanup"""
     _global_model_manager.register_model(model)
     _global_model_manager.setup_cleanup_handlers()
 
+
 def cleanup_gpu_models() -> None:
     """Manually trigger GPU model cleanup"""
     _global_model_manager.cleanup_all_models()
 
+
 def safe_gpu_context():
     """Context manager for safe GPU operations"""
     return _global_model_manager
+
 
 def force_clean_exit() -> None:
     """Force a clean exit with proper GPU cleanup"""
@@ -136,6 +143,7 @@ def force_clean_exit() -> None:
     # Additional cleanup steps
     try:
         import torch
+
         if torch.cuda.is_available():
             # Clear all CUDA memory
             torch.cuda.empty_cache()
@@ -149,6 +157,7 @@ def force_clean_exit() -> None:
     gc.collect()
 
     logger.info("✅ Clean exit preparation completed")
+
 
 class SafeModelLoader:
     """
@@ -174,7 +183,7 @@ class SafeModelLoader:
         if self.model is not None:
             try:
                 # Move to CPU before cleanup
-                if hasattr(self.model, 'cpu'):
+                if hasattr(self.model, "cpu"):
                     self.model.cpu()
                 del self.model
                 self.model = None

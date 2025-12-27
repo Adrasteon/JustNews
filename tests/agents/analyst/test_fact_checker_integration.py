@@ -14,6 +14,7 @@ import pytest
 def fake_engine():
     """Provide a real AnalystEngine instance for integration tests."""
     from agents.analyst.analyst_engine import AnalystEngine
+
     return AnalystEngine()
 
 
@@ -54,7 +55,9 @@ def mock_fact_checker():
 class TestFactCheckerIntegration:
     """Test Analyst integration with Fact-Checker."""
 
-    def test_generate_analysis_report_calls_fact_checker(self, fake_engine, mock_fact_checker):
+    def test_generate_analysis_report_calls_fact_checker(
+        self, fake_engine, mock_fact_checker
+    ):
         """Test that generate_analysis_report calls fact-checker for each article."""
         texts = ["Article 1 text", "Article 2 text"]
         article_ids = ["art1", "art2"]
@@ -63,7 +66,7 @@ class TestFactCheckerIntegration:
             texts=texts,
             article_ids=article_ids,
             cluster_id="test_cluster",
-            enable_fact_check=True
+            enable_fact_check=True,
         )
 
         # Verify fact-checker was called for each article
@@ -78,15 +81,15 @@ class TestFactCheckerIntegration:
         assert second_call[1]["content"] == "Article 2 text"
         assert second_call[1]["source_url"] == "art2"
 
-    def test_generate_analysis_report_attaches_source_fact_checks(self, fake_engine, mock_fact_checker):
+    def test_generate_analysis_report_attaches_source_fact_checks(
+        self, fake_engine, mock_fact_checker
+    ):
         """Test that source_fact_checks are attached to AnalysisReport."""
         texts = ["Article text"]
         article_ids = ["art1"]
 
         report = fake_engine.generate_analysis_report(
-            texts=texts,
-            article_ids=article_ids,
-            enable_fact_check=True
+            texts=texts, article_ids=article_ids, enable_fact_check=True
         )
 
         # Verify source_fact_checks field exists
@@ -99,15 +102,15 @@ class TestFactCheckerIntegration:
         assert sfc["overall_score"] == 0.85
         assert sfc["credibility_score"] == 0.88
 
-    def test_generate_analysis_report_per_article_includes_fact_check(self, fake_engine, mock_fact_checker):
+    def test_generate_analysis_report_per_article_includes_fact_check(
+        self, fake_engine, mock_fact_checker
+    ):
         """Test that per_article results include source_fact_check."""
         texts = ["Article text"]
         article_ids = ["art1"]
 
         report = fake_engine.generate_analysis_report(
-            texts=texts,
-            article_ids=article_ids,
-            enable_fact_check=True
+            texts=texts, article_ids=article_ids, enable_fact_check=True
         )
 
         per_article = report["per_article"][0]
@@ -115,30 +118,56 @@ class TestFactCheckerIntegration:
         assert per_article["source_fact_check"]["article_id"] == "art1"
         assert per_article["source_fact_check"]["fact_check_status"] == "passed"
 
-    def test_generate_analysis_report_cluster_summary(self, fake_engine, mock_fact_checker):
+    def test_generate_analysis_report_cluster_summary(
+        self, fake_engine, mock_fact_checker
+    ):
         """Test cluster_fact_check_summary aggregation."""
         # Mock different fact-check statuses
         mock_fact_checker.side_effect = [
             {  # Article 1: passed (score=0.85)
                 "overall_score": 0.85,
-                "fact_verification": {"verification_score": 0.85, "classification": "verified", "confidence": 0.9, "claims_analyzed": 2},
-                "credibility_assessment": {"credibility_score": 0.88, "reliability": "high"},
+                "fact_verification": {
+                    "verification_score": 0.85,
+                    "classification": "verified",
+                    "confidence": 0.9,
+                    "claims_analyzed": 2,
+                },
+                "credibility_assessment": {
+                    "credibility_score": 0.88,
+                    "reliability": "high",
+                },
                 "claims_analysis": {"claims": [], "claim_count": 0},
                 "contradictions_analysis": {"contradictions_found": False},
                 "processing_timestamp": "2024-01-01T00:00:00Z",
             },
             {  # Article 2: needs_review (score=0.65)
                 "overall_score": 0.65,
-                "fact_verification": {"verification_score": 0.65, "classification": "questionable", "confidence": 0.7, "claims_analyzed": 1},
-                "credibility_assessment": {"credibility_score": 0.70, "reliability": "medium"},
+                "fact_verification": {
+                    "verification_score": 0.65,
+                    "classification": "questionable",
+                    "confidence": 0.7,
+                    "claims_analyzed": 1,
+                },
+                "credibility_assessment": {
+                    "credibility_score": 0.70,
+                    "reliability": "medium",
+                },
                 "claims_analysis": {"claims": [], "claim_count": 0},
                 "contradictions_analysis": {"contradictions_found": False},
                 "processing_timestamp": "2024-01-01T00:00:01Z",
             },
             {  # Article 3: failed (score=0.45)
                 "overall_score": 0.45,
-                "fact_verification": {"verification_score": 0.45, "classification": "false", "confidence": 0.8, "claims_analyzed": 3},
-                "credibility_assessment": {"credibility_score": 0.50, "reliability": "low"},
+                "fact_verification": {
+                    "verification_score": 0.45,
+                    "classification": "false",
+                    "confidence": 0.8,
+                    "claims_analyzed": 3,
+                },
+                "credibility_assessment": {
+                    "credibility_score": 0.50,
+                    "reliability": "low",
+                },
                 "claims_analysis": {"claims": [], "claim_count": 0},
                 "contradictions_analysis": {"contradictions_found": True, "count": 2},
                 "processing_timestamp": "2024-01-01T00:00:02Z",
@@ -152,7 +181,7 @@ class TestFactCheckerIntegration:
             texts=texts,
             article_ids=article_ids,
             cluster_id="test_cluster",
-            enable_fact_check=True
+            enable_fact_check=True,
         )
 
         summary = report["cluster_fact_check_summary"]
@@ -160,7 +189,9 @@ class TestFactCheckerIntegration:
         assert summary["passed_count"] == 1
         assert summary["failed_count"] == 1
         assert summary["needs_review_count"] == 1
-        assert summary["average_overall_score"] == pytest.approx((0.85 + 0.65 + 0.45) / 3, rel=1e-3)
+        assert summary["average_overall_score"] == pytest.approx(
+            (0.85 + 0.65 + 0.45) / 3, rel=1e-3
+        )
         assert summary["articles_flagged"] == ["art3"]
         assert summary["percent_verified"] == pytest.approx(100.0 / 3, rel=1e-2)
 
@@ -179,28 +210,36 @@ class TestFactCheckerIntegration:
             mock_fact_checker.reset_mock()
             mock_fact_checker.return_value = {
                 "overall_score": score,
-                "fact_verification": {"verification_score": score, "classification": "test", "confidence": 0.9, "claims_analyzed": 1},
-                "credibility_assessment": {"credibility_score": score, "reliability": "test"},
+                "fact_verification": {
+                    "verification_score": score,
+                    "classification": "test",
+                    "confidence": 0.9,
+                    "claims_analyzed": 1,
+                },
+                "credibility_assessment": {
+                    "credibility_score": score,
+                    "reliability": "test",
+                },
                 "claims_analysis": {"claims": [], "claim_count": 0},
                 "contradictions_analysis": {"contradictions_found": False},
                 "processing_timestamp": "2024-01-01T00:00:00Z",
             }
 
             report = fake_engine.generate_analysis_report(
-                texts=["Test text"],
-                article_ids=["test"],
-                enable_fact_check=True
+                texts=["Test text"], article_ids=["test"], enable_fact_check=True
             )
 
             sfc = report["source_fact_checks"][0]
-            assert sfc["fact_check_status"] == expected_status, f"Score {score} should map to status {expected_status}"
+            assert sfc["fact_check_status"] == expected_status, (
+                f"Score {score} should map to status {expected_status}"
+            )
 
-    def test_generate_analysis_report_disable_fact_check(self, fake_engine, mock_fact_checker):
+    def test_generate_analysis_report_disable_fact_check(
+        self, fake_engine, mock_fact_checker
+    ):
         """Test that fact-checking can be disabled with enable_fact_check=False."""
         report = fake_engine.generate_analysis_report(
-            texts=["Article text"],
-            article_ids=["art1"],
-            enable_fact_check=False
+            texts=["Article text"], article_ids=["art1"], enable_fact_check=False
         )
 
         # Verify fact-checker was not called
@@ -216,11 +255,12 @@ class TestFactCheckerIntegration:
 
     def test_fact_checker_import_error_handling(self, fake_engine, caplog):
         """Test graceful handling when fact-checker is not available."""
-        with patch("agents.fact_checker.tools.comprehensive_fact_check", side_effect=ImportError("No module named 'agents.fact_checker'")):
+        with patch(
+            "agents.fact_checker.tools.comprehensive_fact_check",
+            side_effect=ImportError("No module named 'agents.fact_checker'"),
+        ):
             report = fake_engine.generate_analysis_report(
-                texts=["Article text"],
-                article_ids=["art1"],
-                enable_fact_check=True
+                texts=["Article text"], article_ids=["art1"], enable_fact_check=True
             )
 
             # Should not crash, just log error
@@ -230,14 +270,14 @@ class TestFactCheckerIntegration:
             )
             assert report["source_fact_checks"] == []
 
-    def test_fact_checker_error_response_handling(self, fake_engine, mock_fact_checker, caplog):
+    def test_fact_checker_error_response_handling(
+        self, fake_engine, mock_fact_checker, caplog
+    ):
         """Test handling of fact-checker error responses."""
         mock_fact_checker.return_value = {"error": "Fact-check service unavailable"}
 
         report = fake_engine.generate_analysis_report(
-            texts=["Article text"],
-            article_ids=["art1"],
-            enable_fact_check=True
+            texts=["Article text"], article_ids=["art1"], enable_fact_check=True
         )
 
         # Should log error and continue
@@ -248,13 +288,36 @@ class TestFactCheckerIntegration:
         """Test that claim_verdicts are correctly extracted from fact-checker response."""
         mock_fact_checker.return_value = {
             "overall_score": 0.80,
-            "fact_verification": {"verification_score": 0.80, "classification": "verified", "confidence": 0.9, "claims_analyzed": 3},
-            "credibility_assessment": {"credibility_score": 0.85, "reliability": "high"},
+            "fact_verification": {
+                "verification_score": 0.80,
+                "classification": "verified",
+                "confidence": 0.9,
+                "claims_analyzed": 3,
+            },
+            "credibility_assessment": {
+                "credibility_score": 0.85,
+                "reliability": "high",
+            },
             "claims_analysis": {
                 "claims": [
-                    {"text": "Claim 1", "verdict": "verified", "confidence": 0.95, "evidence": [{"source": "test"}]},
-                    {"text": "Claim 2", "verdict": "questionable", "confidence": 0.70, "evidence": None},
-                    {"text": "Claim 3", "verdict": "false", "confidence": 0.85, "evidence": []},
+                    {
+                        "text": "Claim 1",
+                        "verdict": "verified",
+                        "confidence": 0.95,
+                        "evidence": [{"source": "test"}],
+                    },
+                    {
+                        "text": "Claim 2",
+                        "verdict": "questionable",
+                        "confidence": 0.70,
+                        "evidence": None,
+                    },
+                    {
+                        "text": "Claim 3",
+                        "verdict": "false",
+                        "confidence": 0.85,
+                        "evidence": [],
+                    },
                 ],
                 "claim_count": 3,
             },
@@ -263,9 +326,7 @@ class TestFactCheckerIntegration:
         }
 
         report = fake_engine.generate_analysis_report(
-            texts=["Article text"],
-            article_ids=["art1"],
-            enable_fact_check=True
+            texts=["Article text"], article_ids=["art1"], enable_fact_check=True
         )
 
         sfc = report["source_fact_checks"][0]
@@ -281,7 +342,9 @@ class TestFactCheckerIntegration:
         assert claim_verdicts[1]["verdict"] == "questionable"
         assert claim_verdicts[1]["confidence"] == 0.70
 
-    def test_fact_check_trace_includes_full_details(self, fake_engine, mock_fact_checker):
+    def test_fact_check_trace_includes_full_details(
+        self, fake_engine, mock_fact_checker
+    ):
         """Test that fact_check_trace captures comprehensive details."""
         mock_fact_checker.return_value = {
             "overall_score": 0.75,
@@ -309,9 +372,7 @@ class TestFactCheckerIntegration:
         }
 
         report = fake_engine.generate_analysis_report(
-            texts=["Article text"],
-            article_ids=["art1"],
-            enable_fact_check=True
+            texts=["Article text"], article_ids=["art1"], enable_fact_check=True
         )
 
         sfc = report["source_fact_checks"][0]
@@ -326,9 +387,7 @@ class TestFactCheckerIntegration:
     def test_empty_texts_list(self, fake_engine, mock_fact_checker):
         """Test handling of empty texts list."""
         report = fake_engine.generate_analysis_report(
-            texts=[],
-            article_ids=[],
-            enable_fact_check=True
+            texts=[], article_ids=[], enable_fact_check=True
         )
 
         assert mock_fact_checker.call_count == 0
@@ -336,19 +395,45 @@ class TestFactCheckerIntegration:
         assert report["cluster_fact_check_summary"] is None
         assert report["articles_count"] == 0
 
-    def test_multiple_articles_fact_check_isolation(self, fake_engine, mock_fact_checker):
+    def test_multiple_articles_fact_check_isolation(
+        self, fake_engine, mock_fact_checker
+    ):
         """Test that each article gets independent fact-check call."""
         # Set up different responses for each article
         responses = [
-            {"overall_score": 0.90, "fact_verification": {"verification_score": 0.90, "classification": "verified", "confidence": 0.95, "claims_analyzed": 2}, "credibility_assessment": {"credibility_score": 0.92}, "claims_analysis": {"claims": [], "claim_count": 0}, "contradictions_analysis": {"contradictions_found": False}, "processing_timestamp": "2024-01-01T00:00:00Z"},
-            {"overall_score": 0.50, "fact_verification": {"verification_score": 0.50, "classification": "questionable", "confidence": 0.70, "claims_analyzed": 1}, "credibility_assessment": {"credibility_score": 0.55}, "claims_analysis": {"claims": [], "claim_count": 0}, "contradictions_analysis": {"contradictions_found": True}, "processing_timestamp": "2024-01-01T00:00:01Z"},
+            {
+                "overall_score": 0.90,
+                "fact_verification": {
+                    "verification_score": 0.90,
+                    "classification": "verified",
+                    "confidence": 0.95,
+                    "claims_analyzed": 2,
+                },
+                "credibility_assessment": {"credibility_score": 0.92},
+                "claims_analysis": {"claims": [], "claim_count": 0},
+                "contradictions_analysis": {"contradictions_found": False},
+                "processing_timestamp": "2024-01-01T00:00:00Z",
+            },
+            {
+                "overall_score": 0.50,
+                "fact_verification": {
+                    "verification_score": 0.50,
+                    "classification": "questionable",
+                    "confidence": 0.70,
+                    "claims_analyzed": 1,
+                },
+                "credibility_assessment": {"credibility_score": 0.55},
+                "claims_analysis": {"claims": [], "claim_count": 0},
+                "contradictions_analysis": {"contradictions_found": True},
+                "processing_timestamp": "2024-01-01T00:00:01Z",
+            },
         ]
         mock_fact_checker.side_effect = responses
 
         report = fake_engine.generate_analysis_report(
             texts=["Article 1", "Article 2"],
             article_ids=["art1", "art2"],
-            enable_fact_check=True
+            enable_fact_check=True,
         )
 
         # Verify independent results

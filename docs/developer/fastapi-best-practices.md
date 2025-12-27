@@ -2,17 +2,20 @@
 
 ## Overview
 
-This guide provides best practices for developing FastAPI applications in the JustNews system, incorporating the latest FastAPI patterns and conventions.
+This guide provides best practices for developing FastAPI applications in the JustNews system, incorporating the latest
+FastAPI patterns and conventions.
 
 ## Application Structure
 
 ### Basic Application Setup
+
 ```python
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-# Create FastAPI application with metadata
+## Create FastAPI application with metadata
+
 app = FastAPI(
     title="JustNews API",
     description="Multi-agent news analysis system",
@@ -22,7 +25,8 @@ app = FastAPI(
     openapi_url="/openapi.json"
 )
 
-# Add middleware
+## Add middleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Configure for production
@@ -35,11 +39,13 @@ app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"]  # Configure for production
 )
+
 ```
 
 ### Path Operations
 
 #### GET Endpoints
+
 ```python
 from typing import Optional, List
 from fastapi import Query, Path
@@ -64,9 +70,11 @@ async def read_items(
 ):
     """Retrieve paginated list of items"""
     return {"skip": skip, "limit": limit}
+
 ```
 
 #### POST Endpoints
+
 ```python
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -82,9 +90,11 @@ async def create_item(item: ItemCreate):
     """Create a new item"""
     # Process item creation
     return item
+
 ```
 
 #### PUT/PATCH Endpoints
+
 ```python
 from pydantic import BaseModel
 
@@ -102,11 +112,13 @@ async def update_item(
     """Update an existing item"""
     # Process item update
     return {"item_id": item_id, "updated": True}
+
 ```
 
 ## Request Body Handling
 
 ### Pydantic Models
+
 ```python
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional
@@ -130,9 +142,11 @@ class Article(BaseModel):
     author: User
     tags: List[str] = []
     published: bool = False
+
 ```
 
 ### Nested Models
+
 ```python
 class Comment(BaseModel):
     content: str
@@ -140,16 +154,19 @@ class Comment(BaseModel):
     replies: List['Comment'] = []
 
 Comment.update_forward_refs()  # Required for self-referencing models
+
 ```
 
 ## Dependency Injection
 
 ### Basic Dependencies
+
 ```python
 from fastapi import Depends, HTTPException
 from typing import Generator
 
-# Database dependency
+## Database dependency
+
 def get_db() -> Generator:
     db = create_database_session()
     try:
@@ -161,9 +178,11 @@ def get_db() -> Generator:
 async def read_items(db = Depends(get_db)):
     """Retrieve items with database dependency"""
     return db.query(Item).all()
+
 ```
 
 ### Security Dependencies
+
 ```python
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer
 from typing import Optional
@@ -197,11 +216,13 @@ async def get_current_active_user(current_user = Depends(get_current_user)):
 async def read_users_me(current_user = Depends(get_current_active_user)):
     """Protected endpoint requiring active user"""
     return current_user
+
 ```
 
 ## Error Handling
 
 ### Custom Exceptions
+
 ```python
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -220,16 +241,19 @@ async def custom_exception_handler(request: Request, exc: CustomException):
         content={"detail": exc.message}
     )
 
-# Usage
+## Usage
+
 @app.get("/items/{item_id}")
 async def read_item(item_id: int):
     item = get_item(item_id)
     if not item:
         raise CustomException("Item not found", status_code=404)
     return item
+
 ```
 
 ### Validation Error Handling
+
 ```python
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -244,11 +268,13 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "errors": exc.errors()
         }
     )
+
 ```
 
 ## Response Models
 
 ### Response Model Definition
+
 ```python
 from pydantic import BaseModel
 from typing import List, Optional
@@ -275,9 +301,11 @@ async def read_items(skip: int = 0, limit: int = 100):
         "skip": skip,
         "limit": limit
     }
+
 ```
 
 ### Different Response Models
+
 ```python
 class ItemPublic(ItemResponse):
     """Public item data (excludes sensitive fields)"""
@@ -296,11 +324,13 @@ async def read_item_public(item_id: int):
 async def read_item_private(item_id: int, current_user = Depends(get_current_user)):
     """Private item endpoint (authenticated users only)"""
     return get_item(item_id, include_private=True)
+
 ```
 
 ## Middleware
 
 ### Custom Middleware
+
 ```python
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -326,11 +356,14 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
         return response
 
-# Add to app
+## Add to app
+
 app.add_middleware(LoggingMiddleware)
+
 ```
 
 ### Rate Limiting Middleware
+
 ```python
 from collections import defaultdict
 import time
@@ -367,11 +400,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     #### Redis-backed rate limiting
 
     For multi-replica deployments use a Redis-backed limiter. Set `REDIS_URL` in the environment and prefer a Redis `INCR` + `EXPIRE` strategy in the application. If you need token-bucket semantics, use a Lua script running in Redis or a dedicated rate-limiter proxy (Kong, Envoy). The repo implements a Redis-backed fallback in `agents/dashboard/rate_limit.py`.
+
 ```
 
 ## Background Tasks
 
 ### Basic Background Tasks
+
 ```python
 from fastapi import BackgroundTasks
 
@@ -397,9 +432,11 @@ async def create_item(
     )
 
     return new_item
+
 ```
 
 ### Task Management
+
 ```python
 from fastapi import BackgroundTasks
 import asyncio
@@ -418,11 +455,13 @@ async def process_data(
     """Process data asynchronously"""
     background_tasks.add_task(process_data_async, data)
     return {"message": "Processing started"}
+
 ```
 
 ## WebSockets
 
 ### Basic WebSocket Endpoint
+
 ```python
 from fastapi import WebSocket, WebSocketDisconnect
 import json
@@ -458,11 +497,13 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int):
             await manager.broadcast(response)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
 ```
 
 ## Testing
 
 ### Test Client Setup
+
 ```python
 from fastapi.testclient import TestClient
 import pytest
@@ -490,9 +531,11 @@ def test_create_item(client):
     data = response.json()
     assert data["name"] == item_data["name"]
     assert data["price"] == item_data["price"]
+
 ```
 
 ### Async Testing
+
 ```python
 import pytest_asyncio
 
@@ -502,11 +545,13 @@ async def test_async_endpoint():
     async with AsyncClient(app=app, base_url="http://testserver") as client:
         response = await client.get("/async-endpoint")
         assert response.status_code == 200
+
 ```
 
 ## Performance Optimization
 
 ### Response Caching
+
 ```python
 from fastapi import Response
 from functools import lru_cache
@@ -528,14 +573,17 @@ async def get_cached_data(key: str):
         media_type="application/json",
         headers={"Cache-Control": "max-age=300"}  # Cache for 5 minutes
     )
+
 ```
 
 ### Database Optimization
+
 ```python
 from sqlalchemy.orm import selectinload
 from fastapi import Depends
 
-# Optimized query with eager loading
+## Optimized query with eager loading
+
 @app.get("/articles/with-authors/")
 async def get_articles_with_authors(db = Depends(get_db)):
     """Get articles with authors (optimized)"""
@@ -543,11 +591,13 @@ async def get_articles_with_authors(db = Depends(get_db)):
     result = await db.execute(query)
     articles = result.scalars().all()
     return articles
+
 ```
 
 ## Security Best Practices
 
 ### Input Validation
+
 ```python
 from pydantic import validator
 import re
@@ -567,20 +617,25 @@ class SecureUserInput(BaseModel):
         if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', v):
             raise ValueError('Invalid email format')
         return v
+
 ```
 
 ### HTTPS and Security Headers
+
 ```python
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-# Force HTTPS
+## Force HTTPS
+
 app.add_middleware(HTTPSRedirectMiddleware)
 
-# GZip compression
+## GZip compression
+
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# Security headers
+## Security headers
+
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -589,13 +644,17 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
+
 ```
 
 ## Deployment
 
 ### Production Server
+
 ```python
-# For production, use a production ASGI server
+
+## For production, use a production ASGI server
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
@@ -605,9 +664,11 @@ if __name__ == "__main__":
         workers=4,  # Multiple workers for production
         reload=False  # Disable reload in production
     )
+
 ```
 
 ### Docker Deployment
+
 ```dockerfile
 FROM python:3.11-slim
 
@@ -621,10 +682,10 @@ COPY . .
 EXPOSE 8000
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
 ```
 
 ---
 
-*FastAPI Best Practices Guide - Version 1.0.0*
-*Based on FastAPI documentation and latest patterns*
-*Last Updated: October 22, 2025*
+*FastAPI Best Practices Guide - Version 1.0.0* *Based on FastAPI documentation and latest patterns* *Last Updated:
+October 22, 2025*

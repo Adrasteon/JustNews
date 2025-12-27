@@ -1,4 +1,5 @@
 """High-accuracy sentiment/bias scoring backed by the Analyst Mistral adapter."""
+
 from __future__ import annotations
 
 import time
@@ -72,24 +73,38 @@ class AnalystMistralAdapter(BaseMistralJSONAdapter):
 
     # Internal helpers -------------------------------------------------
 
-    def _normalize(self, payload: dict[str, Any], elapsed: float) -> AdapterResult | None:
+    def _normalize(
+        self, payload: dict[str, Any], elapsed: float
+    ) -> AdapterResult | None:
         try:
             sentiment_label = str(payload.get("sentiment_label", "neutral")).lower()
             if sentiment_label not in {"positive", "negative", "neutral"}:
                 sentiment_label = "neutral"
             sentiment_conf = float(payload.get("sentiment_confidence", 0.72))
-            intensity = payload.get("sentiment_intensity") or self._confidence_to_intensity(sentiment_conf)
+            intensity = payload.get(
+                "sentiment_intensity"
+            ) or self._confidence_to_intensity(sentiment_conf)
             positive_score = float(
                 payload.get(
                     "sentiment_positive",
-                    sentiment_conf if sentiment_label == "positive" else 1 - sentiment_conf if sentiment_label == "negative" else 0.33,
+                    sentiment_conf
+                    if sentiment_label == "positive"
+                    else 1 - sentiment_conf
+                    if sentiment_label == "negative"
+                    else 0.33,
                 )
             )
-            negative_score = float(payload.get("sentiment_negative", 1.0 - positive_score))
+            negative_score = float(
+                payload.get("sentiment_negative", 1.0 - positive_score)
+            )
 
             bias_score = float(payload.get("bias_score", 0.35))
-            bias_level = payload.get("bias_level") or self._bias_level_from_score(bias_score)
-            bias_conf = float(payload.get("bias_confidence", min(bias_score + 0.25, 0.95)))
+            bias_level = payload.get("bias_level") or self._bias_level_from_score(
+                bias_score
+            )
+            bias_conf = float(
+                payload.get("bias_confidence", min(bias_score + 0.25, 0.95))
+            )
 
             sentiment = {
                 "dominant_sentiment": sentiment_label,
@@ -98,7 +113,9 @@ class AnalystMistralAdapter(BaseMistralJSONAdapter):
                 "sentiment_scores": {
                     "positive": max(0.0, min(positive_score, 1.0)),
                     "negative": max(0.0, min(negative_score, 1.0)),
-                    "neutral": max(0.0, min(1.0 - positive_score - negative_score, 1.0)),
+                    "neutral": max(
+                        0.0, min(1.0 - positive_score - negative_score, 1.0)
+                    ),
                 },
                 "method": "mistral_adapter",
                 "model_name": self.adapter_name,
@@ -112,9 +129,15 @@ class AnalystMistralAdapter(BaseMistralJSONAdapter):
                 "bias_score": max(0.0, min(bias_score, 1.0)),
                 "bias_level": bias_level,
                 "confidence": max(0.0, min(bias_conf, 0.99)),
-                "political_bias": float(payload.get("political_bias", bias_score * 0.6)),
-                "emotional_bias": float(payload.get("emotional_bias", bias_score * 0.8)),
-                "factual_bias": float(payload.get("factual_bias", max(0.0, 1.0 - bias_score))),
+                "political_bias": float(
+                    payload.get("political_bias", bias_score * 0.6)
+                ),
+                "emotional_bias": float(
+                    payload.get("emotional_bias", bias_score * 0.8)
+                ),
+                "factual_bias": float(
+                    payload.get("factual_bias", max(0.0, 1.0 - bias_score))
+                ),
                 "reasoning": payload.get("rationale", "Adapter judgment"),
                 "method": "mistral_adapter",
                 "model_used": self.adapter_name,

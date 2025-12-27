@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class NeuralAssessment(BaseModel):
     """Standardized payload produced by the Fact Checker agent for reasoning."""
+
     version: str = "1.0"
     confidence: float
     source_credibility: float | None = None
@@ -15,6 +16,7 @@ class NeuralAssessment(BaseModel):
 
 class ReasoningInput(BaseModel):
     """Input wrapper for the reasoning pipeline containing a neural assessment and article metadata."""
+
     assessment: NeuralAssessment
     article_metadata: dict[str, Any] | None = {}
 

@@ -30,14 +30,16 @@ from collections import deque
 
 def run_cmd(cmd: list[str]) -> str:
     try:
-        return subprocess.check_output(cmd, stderr=subprocess.DEVNULL).decode('utf-8')
+        return subprocess.check_output(cmd, stderr=subprocess.DEVNULL).decode("utf-8")
     except Exception:
-        return ''
+        return ""
 
 
 def get_gpu_util() -> float | None:
     # Try NVML via nvidia-smi
-    out = run_cmd(['nvidia-smi', '--query-gpu=utilization.gpu', '--format=csv,noheader,nounits'])
+    out = run_cmd(
+        ["nvidia-smi", "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"]
+    )
     if out:
         try:
             # handle multiple GPUs - take max util across GPUs
@@ -49,32 +51,45 @@ def get_gpu_util() -> float | None:
     return None
 
 
-def start_telemetry(out_dir: str, bnb_version: str | None = None, exporter_port: int | None = None):
+def start_telemetry(
+    out_dir: str, bnb_version: str | None = None, exporter_port: int | None = None
+):
     # start telemetry script (shell), store pid
-    telem_pid_file = '/tmp/gpu_telemetry.pid'
-    exporter_pid_file = '/tmp/gpu_telemetry_exporter.pid'
+    telem_pid_file = "/tmp/gpu_telemetry.pid"
+    exporter_pid_file = "/tmp/gpu_telemetry_exporter.pid"
 
     if not os.path.exists(telem_pid_file):
-        cmd = [os.path.join('scripts', 'perf', 'gpu_telemetry.sh'), out_dir]
+        cmd = [os.path.join("scripts", "perf", "gpu_telemetry.sh"), out_dir]
         # start in background
         p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        with open(telem_pid_file, 'w') as f:
+        with open(telem_pid_file, "w") as f:
             f.write(str(p.pid))
-        print('started gpu_telemetry.sh pid', p.pid)
+        print("started gpu_telemetry.sh pid", p.pid)
 
     if exporter_port and not os.path.exists(exporter_pid_file):
         # Use the canonical project conda environment name for running monitoring helpers
-        conda_env = os.environ.get('CANONICAL_ENV', 'justnews-py312')
-        cmd = ['mamba', 'run', '-n', conda_env, 'python', os.path.join('scripts', 'perf', 'gpu_telemetry_exporter.py'), '--port', str(exporter_port), '--interval', '1']
+        conda_env = os.environ.get("CANONICAL_ENV", "justnews-py312")
+        cmd = [
+            "mamba",
+            "run",
+            "-n",
+            conda_env,
+            "python",
+            os.path.join("scripts", "perf", "gpu_telemetry_exporter.py"),
+            "--port",
+            str(exporter_port),
+            "--interval",
+            "1",
+        ]
         p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        with open(exporter_pid_file, 'w') as f:
+        with open(exporter_pid_file, "w") as f:
             f.write(str(p.pid))
-        print('started exporter pid', p.pid)
+        print("started exporter pid", p.pid)
 
 
 def stop_telemetry():
-    telem_pid_file = '/tmp/gpu_telemetry.pid'
-    exporter_pid_file = '/tmp/gpu_telemetry_exporter.pid'
+    telem_pid_file = "/tmp/gpu_telemetry.pid"
+    exporter_pid_file = "/tmp/gpu_telemetry_exporter.pid"
 
     def kill_pidfile(pfile):
         if os.path.exists(pfile):
@@ -91,20 +106,37 @@ def stop_telemetry():
     kill_pidfile(telem_pid_file)
     kill_pidfile(exporter_pid_file)
     # best-effort: kill any lingering spinner processes
-    run_cmd(['pkill', '-f', 'gpu_telemetry.sh'])
-    run_cmd(['pkill', '-f', 'gpu_telemetry_exporter.py'])
-    print('telemetry stopped (pid files removed)')
+    run_cmd(["pkill", "-f", "gpu_telemetry.sh"])
+    run_cmd(["pkill", "-f", "gpu_telemetry_exporter.py"])
+    print("telemetry stopped (pid files removed)")
 
 
 def main(argv=None):
     p = argparse.ArgumentParser()
-    p.add_argument('--start-threshold', type=float, default=20.0, help='percent util to start telemetry')
-    p.add_argument('--stop-threshold', type=float, default=10.0, help='percent util below which to stop')
-    p.add_argument('--window', type=int, default=5, help='seconds sliding window for smoothing')
-    p.add_argument('--idle', type=int, default=10, help='seconds below stop-threshold before stopping')
-    p.add_argument('--out-dir', type=str, default='/var/log/justnews-perf')
-    p.add_argument('--exporter-port', type=int, default=9118)
-    p.add_argument('--poll-seconds', type=float, default=1.0)
+    p.add_argument(
+        "--start-threshold",
+        type=float,
+        default=20.0,
+        help="percent util to start telemetry",
+    )
+    p.add_argument(
+        "--stop-threshold",
+        type=float,
+        default=10.0,
+        help="percent util below which to stop",
+    )
+    p.add_argument(
+        "--window", type=int, default=5, help="seconds sliding window for smoothing"
+    )
+    p.add_argument(
+        "--idle",
+        type=int,
+        default=10,
+        help="seconds below stop-threshold before stopping",
+    )
+    p.add_argument("--out-dir", type=str, default="/var/log/justnews-perf")
+    p.add_argument("--exporter-port", type=int, default=9118)
+    p.add_argument("--poll-seconds", type=float, default=1.0)
     args = p.parse_args(argv)
 
     # sliding average buffer
@@ -147,9 +179,9 @@ def main(argv=None):
             time.sleep(args.poll_seconds)
 
     except KeyboardInterrupt:
-        print('stopping monitor')
+        print("stopping monitor")
         stop_telemetry()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

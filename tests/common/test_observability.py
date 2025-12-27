@@ -123,8 +123,8 @@ class TestObservability:
         # This is hard to test directly, but we can verify no exceptions
         assert True
 
-    @patch('os.makedirs')
-    @patch('os.path.exists')
+    @patch("os.makedirs")
+    @patch("os.path.exists")
     def test_log_dir_creation_failure_handling(self, mock_exists, mock_makedirs):
         """Test handling when log directory creation fails"""
         mock_exists.return_value = False
@@ -133,7 +133,8 @@ class TestObservability:
         # This should not raise an exception - the module handles it gracefully
         # by importing the LOG_DIR variable
         from common import observability
-        assert hasattr(observability, 'LOG_DIR')
+
+        assert hasattr(observability, "LOG_DIR")
 
     def test_logger_actual_logging(self):
         """Test that logger actually writes to file"""
@@ -153,7 +154,7 @@ class TestObservability:
         assert os.path.exists(log_file)
 
         # Check that message was written
-        with open(log_file, encoding='utf-8') as f:
+        with open(log_file, encoding="utf-8") as f:
             content = f.read()
             assert test_message in content
 

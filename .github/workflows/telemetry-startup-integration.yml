@@ -1,0 +1,18 @@
+name: Telemetry startup integration
+
+on:
+  workflow_dispatch:
+
+jobs:
+  start-stop-telemetry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure Docker available
+        run: |
+          docker --version
+
+      - name: Run canonical dev telemetry lifecycle test
+        run: |
+          bash tests/ci/run_canonical_telemetry_startup_test.sh

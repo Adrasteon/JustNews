@@ -22,6 +22,7 @@ from training_system.utils.gpu_cleanup import GPUModelManager
 
 gpu_manager = GPUModelManager()
 
+
 def test_online_training_system():
     """Test the complete online training system"""
     print("🎓 === ONLINE TRAINING SYSTEM VALIDATION ===")
@@ -58,11 +59,41 @@ def test_online_training_system():
 
         # Simulate predictions from different agents
         predictions = [
-            ("scout", "news_classification", "Breaking: Economic news update", "news", 0.85),
-            ("scout", "sentiment", "Great economic progress announced", "positive", 0.92),
-            ("analyst", "entity_extraction", "Apple Inc reported strong earnings", ["Apple Inc"], 0.88),
-            ("fact_checker", "fact_verification", "Unemployment rate is 3.5%", "factual", 0.75),
-            ("critic", "logical_fallacy", "All politicians are corrupt", "hasty_generalization", 0.70)
+            (
+                "scout",
+                "news_classification",
+                "Breaking: Economic news update",
+                "news",
+                0.85,
+            ),
+            (
+                "scout",
+                "sentiment",
+                "Great economic progress announced",
+                "positive",
+                0.92,
+            ),
+            (
+                "analyst",
+                "entity_extraction",
+                "Apple Inc reported strong earnings",
+                ["Apple Inc"],
+                0.88,
+            ),
+            (
+                "fact_checker",
+                "fact_verification",
+                "Unemployment rate is 3.5%",
+                "factual",
+                0.75,
+            ),
+            (
+                "critic",
+                "logical_fallacy",
+                "All politicians are corrupt",
+                "hasty_generalization",
+                0.70,
+            ),
         ]
 
         for agent, task, text, prediction, confidence in predictions:
@@ -71,7 +102,7 @@ def test_online_training_system():
                 task_type=task,
                 input_text=text,
                 prediction=prediction,
-                confidence=confidence
+                confidence=confidence,
             )
 
         print(f"✅ Collected {len(predictions)} predictions from various agents")
@@ -82,9 +113,30 @@ def test_online_training_system():
 
         # Simulate user corrections
         corrections = [
-            ("scout", "sentiment", "The market crashed badly", "negative", "positive", 3),  # Critical priority
-            ("fact_checker", "fact_verification", "The moon is made of cheese", "factual", "questionable", 2),  # High priority
-            ("analyst", "entity_extraction", "Microsoft and Google compete", ["Microsoft", "Google"], ["Microsoft Corp", "Google LLC"], 1)  # Medium priority
+            (
+                "scout",
+                "sentiment",
+                "The market crashed badly",
+                "negative",
+                "positive",
+                3,
+            ),  # Critical priority
+            (
+                "fact_checker",
+                "fact_verification",
+                "The moon is made of cheese",
+                "factual",
+                "questionable",
+                2,
+            ),  # High priority
+            (
+                "analyst",
+                "entity_extraction",
+                "Microsoft and Google compete",
+                ["Microsoft", "Google"],
+                ["Microsoft Corp", "Google LLC"],
+                1,
+            ),  # Medium priority
         ]
 
         correction_results = []
@@ -96,7 +148,7 @@ def test_online_training_system():
                 incorrect_output=incorrect,
                 correct_output=correct,
                 priority=priority,
-                explanation=f"User correction for {agent} {task} task"
+                explanation=f"User correction for {agent} {task} task",
             )
             correction_results.append({"agent_name": agent, "task_type": task})
 
@@ -104,7 +156,9 @@ def test_online_training_system():
         for result in correction_results:
             status = "✅" if result.get("correction_submitted") else "❌"
             immediate = " (IMMEDIATE)" if result.get("immediate_update") else ""
-            print(f"   {status} {result.get('agent_name')}/{result.get('task_type')}{immediate}")
+            print(
+                f"   {status} {result.get('agent_name')}/{result.get('task_type')}{immediate}"
+            )
         print()
 
         # Test 5: Training Status Dashboard
@@ -113,8 +167,12 @@ def test_online_training_system():
 
         print("System Status:")
         system_status = dashboard.get("system_status", {})
-        print(f"   🎯 Training Active: {system_status.get('online_training_active', False)}")
-        print(f"   📊 Total Examples: {system_status.get('total_training_examples', 0)}")
+        print(
+            f"   🎯 Training Active: {system_status.get('online_training_active', False)}"
+        )
+        print(
+            f"   📊 Total Examples: {system_status.get('total_training_examples', 0)}"
+        )
         print(f"   🤖 Agents Managed: {system_status.get('agents_managed', 0)}")
         print()
 
@@ -126,7 +184,9 @@ def test_online_training_system():
             progress = status.get("progress_percentage", 0)
             ready = "🚀" if status.get("update_ready", False) else "⏳"
 
-            print(f"   {ready} {agent_name}: {buffer_size}/{threshold} examples ({progress:.1f}%)")
+            print(
+                f"   {ready} {agent_name}: {buffer_size}/{threshold} examples ({progress:.1f}%)"
+            )
         print()
 
         # Test 6: Agent-Specific Integration
@@ -140,9 +200,15 @@ def test_online_training_system():
             )
 
             fact_status = get_fact_checker_status()
-            print(f"   ✅ Fact Checker V2: Training Enabled = {fact_status.get('online_training_enabled', False)}")
-            print(f"      📊 Buffer Size: {fact_status.get('fact_checker_buffer_size', 0)}")
-            print(f"      🎯 Update Threshold: {fact_status.get('update_threshold', 30)}")
+            print(
+                f"   ✅ Fact Checker V2: Training Enabled = {fact_status.get('online_training_enabled', False)}"
+            )
+            print(
+                f"      📊 Buffer Size: {fact_status.get('fact_checker_buffer_size', 0)}"
+            )
+            print(
+                f"      🎯 Update Threshold: {fact_status.get('update_threshold', 30)}"
+            )
 
             # Test correction function
             correction_result = correct_fact_verification(
@@ -150,7 +216,7 @@ def test_online_training_system():
                 context="Scientific consensus disagrees",
                 incorrect_classification="factual",
                 correct_classification="questionable",
-                priority=3  # Critical
+                priority=3,  # Critical
             )
 
             status = "✅" if correction_result.get("correction_submitted") else "❌"
@@ -169,7 +235,7 @@ def test_online_training_system():
         print(f"   🔄 System Training Active: {final_status.get('is_training', False)}")
 
         # Show buffer status
-        buffer_sizes = final_status.get('buffer_sizes', {})
+        buffer_sizes = final_status.get("buffer_sizes", {})
         total_buffered = sum(buffer_sizes.values())
         print(f"   💾 Total Buffered Examples: {total_buffered}")
 
@@ -183,7 +249,9 @@ def test_online_training_system():
 
         # Simulate continuous data flow
         articles_per_hour = 8 * 3600  # From BBC crawler: 28,800 articles/hour
-        quality_examples_rate = int(articles_per_hour * 0.1)  # 10% generate training examples
+        quality_examples_rate = int(
+            articles_per_hour * 0.1
+        )  # 10% generate training examples
         examples_per_minute = quality_examples_rate / 60
 
         print("Training Data Generation Rate:")
@@ -225,7 +293,9 @@ def test_online_training_system():
     except Exception as e:
         print(f"❌ Test failed: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     # Use GPU cleanup context manager for safe execution

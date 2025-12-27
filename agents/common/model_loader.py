@@ -4,10 +4,11 @@ Provides small wrappers around transformers and sentence-transformers loading to
 prefer canonical ModelStore paths when `MODEL_STORE_ROOT` is configured, and to
 fall back to per-agent cache_dir behavior otherwise.
 """
+
 from __future__ import annotations
 
-import os
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -38,7 +39,9 @@ def _load_agent_model_map() -> dict:
         return {}
 
 
-def _agent_base_entry(agent: str | None, adapter_name: str | None = None) -> tuple[dict, dict] | None:
+def _agent_base_entry(
+    agent: str | None, adapter_name: str | None = None
+) -> tuple[dict, dict] | None:
     if not agent:
         return None
     model_map = _load_agent_model_map()
@@ -62,7 +65,9 @@ def _agent_base_entry(agent: str | None, adapter_name: str | None = None) -> tup
                 selected = entry
                 break
     if selected is None:
-        selected = agent_entries[0] if isinstance(agent_entries, list) else agent_entries
+        selected = (
+            agent_entries[0] if isinstance(agent_entries, list) else agent_entries
+        )
 
     if not isinstance(selected, dict):
         return None
@@ -87,7 +92,9 @@ def _resolve_version_dir(base_info: dict) -> Path | None:
         if candidate.exists():
             return candidate
     version = base_info.get("model_store_version")
-    agent = base_info.get("model_store_agent") or base_info.get("agent") or "base_models"
+    agent = (
+        base_info.get("model_store_agent") or base_info.get("agent") or "base_models"
+    )
     if version:
         try:
             from agents.common.model_store import ModelStore
@@ -97,7 +104,12 @@ def _resolve_version_dir(base_info: dict) -> Path | None:
             if candidate.exists():
                 return candidate
         except Exception as exc:  # pragma: no cover - best effort
-            logger.debug("Failed to resolve version dir for agent=%s version=%s: %s", agent, version, exc)
+            logger.debug(
+                "Failed to resolve version dir for agent=%s version=%s: %s",
+                agent,
+                version,
+                exc,
+            )
     return None
 
 
@@ -122,13 +134,22 @@ def _resolve_adapter_path(agent: str, entry: dict) -> Path | None:
 
             store = ModelStore(root)
             version_dir = store.version_path(adapter_agent, version)
-            subdir = entry.get("adapter_subdir") or (f"adapters/{entry.get('adapter_name')}" if entry.get("adapter_name") else None)
+            subdir = entry.get("adapter_subdir") or (
+                f"adapters/{entry.get('adapter_name')}"
+                if entry.get("adapter_name")
+                else None
+            )
             if subdir:
                 candidates.append(version_dir / subdir)
             else:
                 candidates.append(version_dir)
         except Exception as exc:  # pragma: no cover
-            logger.debug("Failed to resolve adapter version path for agent=%s version=%s: %s", adapter_agent, version, exc)
+            logger.debug(
+                "Failed to resolve adapter version path for agent=%s version=%s: %s",
+                adapter_agent,
+                version,
+                exc,
+            )
 
     for candidate in candidates:
         if candidate.exists():
@@ -153,7 +174,9 @@ def _resolve_snapshot_path(base_dir: Path, model_id: str | None) -> Path | None:
     return base_dir
 
 
-def _resolve_model_store_path(agent: str | None, model_id: str | None = None, adapter_name: str | None = None) -> Path | None:
+def _resolve_model_store_path(
+    agent: str | None, model_id: str | None = None, adapter_name: str | None = None
+) -> Path | None:
     root_env = os.environ.get("MODEL_STORE_ROOT")
     if not root_env or not agent:
         return None
@@ -162,6 +185,7 @@ def _resolve_model_store_path(agent: str | None, model_id: str | None = None, ad
     base_entry = _agent_base_entry(agent, adapter_name)
     try:
         from agents.common.model_store import ModelStore
+
         store = ModelStore(root)
     except Exception:
         store = None
@@ -234,29 +258,39 @@ def load_transformers_model(
     if ms_path:
         try:
             model = ModelClass.from_pretrained(str(ms_path), **(model_kwargs or {}))
-            tokenizer = TokenizerClass.from_pretrained(str(ms_path), **(tokenizer_kwargs or {}))
+            tokenizer = TokenizerClass.from_pretrained(
+                str(ms_path), **(tokenizer_kwargs or {})
+            )
             return model, tokenizer
         except Exception as e:
-            logger.warning("Failed to load model from ModelStore path %s, falling back", ms_path)
+            logger.warning(
+                "Failed to load model from ModelStore path %s, falling back", ms_path
+            )
             if strict:
-                raise RuntimeError(f"STRICT_MODEL_STORE=1 but failed to load model for agent={agent} from {ms_path}") from e
+                raise RuntimeError(
+                    f"STRICT_MODEL_STORE=1 but failed to load model for agent={agent} from {ms_path}"
+                ) from e
 
     # Fallback to supplied cache_dir or model_id_or_path
     load_kwargs = dict(model_kwargs or {})
     if cache_dir:
-        load_kwargs['cache_dir'] = cache_dir
+        load_kwargs["cache_dir"] = cache_dir
 
     tokenizer_load_kwargs = dict(tokenizer_kwargs or {})
     if cache_dir:
-        tokenizer_load_kwargs['cache_dir'] = cache_dir
+        tokenizer_load_kwargs["cache_dir"] = cache_dir
 
     # If model_id_or_path is a filesystem path, transformers will load from there.
     model = ModelClass.from_pretrained(model_id_or_path, **load_kwargs)
-    tokenizer = TokenizerClass.from_pretrained(model_id_or_path, **tokenizer_load_kwargs)
+    tokenizer = TokenizerClass.from_pretrained(
+        model_id_or_path, **tokenizer_load_kwargs
+    )
     return model, tokenizer
 
 
-def load_sentence_transformer(model_name: str, agent: str | None = None, cache_folder: str | None = None):
+def load_sentence_transformer(
+    model_name: str, agent: str | None = None, cache_folder: str | None = None
+):
     """Load a SentenceTransformer instance preferring ModelStore when configured."""
     try:
         from sentence_transformers import SentenceTransformer
@@ -269,9 +303,13 @@ def load_sentence_transformer(model_name: str, agent: str | None = None, cache_f
         try:
             return SentenceTransformer(str(ms_path))
         except Exception as e:
-            logger.warning("Failed to load SentenceTransformer from ModelStore %s", ms_path)
+            logger.warning(
+                "Failed to load SentenceTransformer from ModelStore %s", ms_path
+            )
             if strict:
-                raise RuntimeError(f"STRICT_MODEL_STORE=1 but failed to load SentenceTransformer for agent={agent} from {ms_path}") from e
+                raise RuntimeError(
+                    f"STRICT_MODEL_STORE=1 but failed to load SentenceTransformer for agent={agent} from {ms_path}"
+                ) from e
 
     if cache_folder:
         return SentenceTransformer(model_name, cache_folder=cache_folder)
@@ -308,9 +346,15 @@ def load_transformers_with_adapter(
     if not base_model_identifier:
         raise RuntimeError(f"Missing base model identifier for agent={agent}")
 
-    dry_run_enabled = _truthy_env(os.environ.get("MODEL_STORE_DRY_RUN")) or _truthy_env(os.environ.get("DRY_RUN"))
+    dry_run_enabled = _truthy_env(os.environ.get("MODEL_STORE_DRY_RUN")) or _truthy_env(
+        os.environ.get("DRY_RUN")
+    )
 
-    base_model_kwargs = {"device_map": "auto", "low_cpu_mem_usage": True, "trust_remote_code": True}
+    base_model_kwargs = {
+        "device_map": "auto",
+        "low_cpu_mem_usage": True,
+        "trust_remote_code": True,
+    }
     if model_kwargs:
         base_model_kwargs.update(model_kwargs)
 
@@ -324,8 +368,15 @@ def load_transformers_with_adapter(
                 f"STRICT_MODEL_STORE=1 but adapter path missing for agent={agent} adapter={resolved_adapter_name}"
             )
         return (
-            {"dry_run": True, "agent": agent, "base_path": str(base_path or base_model_identifier)},
-            {"dry_run": True, "adapter_path": str(adapter_path) if adapter_path else None},
+            {
+                "dry_run": True,
+                "agent": agent,
+                "base_path": str(base_path or base_model_identifier),
+            },
+            {
+                "dry_run": True,
+                "adapter_path": str(adapter_path) if adapter_path else None,
+            },
         )
 
     try:
@@ -361,7 +412,11 @@ def load_transformers_with_adapter(
             )
     else:
         if resolved_adapter_name:
-            logger.debug("Adapter path not resolved for agent=%s adapter=%s", agent, resolved_adapter_name)
+            logger.debug(
+                "Adapter path not resolved for agent=%s adapter=%s",
+                agent,
+                resolved_adapter_name,
+            )
         if strict and resolved_adapter_name:
             raise RuntimeError(
                 f"STRICT_MODEL_STORE=1 but adapter path missing for agent={agent} adapter={resolved_adapter_name}"
@@ -370,7 +425,9 @@ def load_transformers_with_adapter(
     return model, tokenizer
 
 
-def get_agent_model_metadata(agent: str, adapter_name: str | None = None) -> dict[str, Any] | None:
+def get_agent_model_metadata(
+    agent: str, adapter_name: str | None = None
+) -> dict[str, Any] | None:
     """Return metadata describing base + adapter paths, manifest contents, etc."""
 
     adapter_entry = _agent_base_entry(agent, adapter_name)
@@ -386,7 +443,12 @@ def get_agent_model_metadata(agent: str, adapter_name: str | None = None) -> dic
                 with manifest_path.open("r", encoding="utf-8") as fh:
                     manifest = json.load(fh)
             except Exception as exc:  # pragma: no cover
-                logger.warning("Failed to read manifest for agent=%s path=%s: %s", agent, manifest_path, exc)
+                logger.warning(
+                    "Failed to read manifest for agent=%s path=%s: %s",
+                    agent,
+                    manifest_path,
+                    exc,
+                )
     adapter_path = _resolve_adapter_path(agent, entry)
     return {
         "agent": agent,

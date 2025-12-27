@@ -36,8 +36,10 @@ MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
 ready = False
 
+
 class MCPBusClient:
     """MCP Bus client for inter-agent communication"""
+
     def __init__(self, base_url: str = MCP_BUS_URL):
         self.base_url = base_url
 
@@ -49,12 +51,16 @@ class MCPBusClient:
         }
         try:
             import requests
-            response = requests.post(f"{self.base_url}/register", json=registration_data, timeout=(2, 5))
+
+            response = requests.post(
+                f"{self.base_url}/register", json=registration_data, timeout=(2, 5)
+            )
             response.raise_for_status()
             logger.info(f"Successfully registered {agent_name} with MCP Bus.")
         except Exception as e:
             logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
             raise
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -75,7 +81,7 @@ async def lifespan(app: FastAPI):
                 "health_check",
                 "validate_critique_result",
                 "format_critique_output",
-                "get_critic_engine"
+                "get_critic_engine",
             ],
         )
         logger.info("Registered tools with MCP Bus.")
@@ -86,11 +92,12 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Critic agent is shutting down.")
 
+
 app = FastAPI(
     title="Critic Agent API",
     description="Content analysis and critique services for editorial quality control",
     version="2.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Initialize metrics
@@ -99,6 +106,7 @@ metrics = JustNewsMetrics("critic")
 # Register shutdown endpoint if available
 try:
     from agents.common.shutdown import register_shutdown_endpoint
+
     register_shutdown_endpoint(app)
 except Exception:
     logger.debug("shutdown endpoint not registered for critic")
@@ -106,6 +114,7 @@ except Exception:
 # Register reload endpoint if available
 try:
     from agents.common.reload import register_reload_endpoint
+
     register_reload_endpoint(app)
 except Exception:
     logger.debug("reload endpoint not registered for critic")
@@ -113,37 +122,50 @@ except Exception:
 # Add metrics middleware
 app.middleware("http")(metrics.request_middleware)
 
+
 # Pydantic models
 class ToolCall(BaseModel):
     """Standard MCP tool call format"""
+
     args: list[Any]
     kwargs: dict[str, Any]
 
+
 class CritiqueRequest(BaseModel):
     """Critique request model"""
+
     content: str
     url: str | None = None
     context: str | None = None
 
+
 class ArgumentAnalysisRequest(BaseModel):
     """Argument structure analysis request"""
+
     text: str
     url: str | None = None
+
 
 class ConsistencyRequest(BaseModel):
     """Editorial consistency request"""
+
     text: str
     url: str | None = None
+
 
 class FallacyRequest(BaseModel):
     """Logical fallacy detection request"""
+
     text: str
     url: str | None = None
 
+
 class CredibilityRequest(BaseModel):
     """Source credibility assessment request"""
+
     text: str
     url: str | None = None
+
 
 # Health and status endpoints
 @app.get("/health")
@@ -151,16 +173,20 @@ def health():
     """Health check endpoint"""
     return {"status": "ok", "agent": "critic", "version": "2.0.0"}
 
+
 @app.get("/ready")
 def ready_endpoint():
     """Readiness check endpoint"""
     return {"ready": ready}
 
+
 @app.get("/metrics")
 def get_metrics():
     """Prometheus metrics endpoint"""
     from fastapi.responses import Response
+
     return Response(metrics.get_metrics(), media_type="text/plain")
+
 
 # Core critique endpoints
 @app.post("/critique_synthesis")
@@ -168,13 +194,16 @@ def critique_synthesis_endpoint(call: ToolCall):
     """Synthesize comprehensive content critique"""
     try:
         from .tools import critique_synthesis
+
         logger.info(f"Calling critique_synthesis with {len(call.args)} args")
 
         result = critique_synthesis(*call.args, **call.kwargs)
 
         # Log performance metrics
         if isinstance(result, dict) and "critique_score" in result:
-            logger.info(f"✅ Critique synthesis complete: score {result['critique_score']:.1f}/10")
+            logger.info(
+                f"✅ Critique synthesis complete: score {result['critique_score']:.1f}/10"
+            )
 
         return result
 
@@ -182,18 +211,22 @@ def critique_synthesis_endpoint(call: ToolCall):
         logger.error(f"❌ Critique synthesis error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @app.post("/critique_neutrality")
 def critique_neutrality_endpoint(call: ToolCall):
     """Analyze content neutrality and bias indicators"""
     try:
         from .tools import critique_neutrality
+
         logger.info(f"Calling critique_neutrality with {len(call.args)} args")
 
         result = critique_neutrality(*call.args, **call.kwargs)
 
         # Log performance metrics
         if isinstance(result, dict) and "neutrality_score" in result:
-            logger.info(f"✅ Neutrality analysis complete: score {result['neutrality_score']:.1f}/10")
+            logger.info(
+                f"✅ Neutrality analysis complete: score {result['neutrality_score']:.1f}/10"
+            )
 
         return result
 
@@ -201,12 +234,14 @@ def critique_neutrality_endpoint(call: ToolCall):
         logger.error(f"❌ Neutrality analysis error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 # Specialized analysis endpoints
 @app.post("/analyze_argument_structure")
 def analyze_argument_structure_endpoint(request: ArgumentAnalysisRequest):
     """Analyze argument structure in content"""
     try:
         from .tools import analyze_argument_structure
+
         logger.info(f"Analyzing argument structure for {len(request.text)} characters")
 
         result = analyze_argument_structure(request.text, request.url)
@@ -222,19 +257,25 @@ def analyze_argument_structure_endpoint(request: ArgumentAnalysisRequest):
         logger.error(f"❌ Argument structure analysis error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @app.post("/assess_editorial_consistency")
 def assess_editorial_consistency_endpoint(request: ConsistencyRequest):
     """Assess editorial consistency and coherence"""
     try:
         from .tools import assess_editorial_consistency
-        logger.info(f"Assessing editorial consistency for {len(request.text)} characters")
+
+        logger.info(
+            f"Assessing editorial consistency for {len(request.text)} characters"
+        )
 
         result = assess_editorial_consistency(request.text, request.url)
 
         # Log performance metrics
         if isinstance(result, dict) and "coherence_score" in result:
             coherence = result["coherence_score"]
-            logger.info(f"✅ Consistency assessment complete: coherence {coherence:.2f}")
+            logger.info(
+                f"✅ Consistency assessment complete: coherence {coherence:.2f}"
+            )
 
         return result
 
@@ -242,11 +283,13 @@ def assess_editorial_consistency_endpoint(request: ConsistencyRequest):
         logger.error(f"❌ Editorial consistency error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @app.post("/detect_logical_fallacies")
 def detect_logical_fallacies_endpoint(request: FallacyRequest):
     """Detect logical fallacies in content"""
     try:
         from .tools import detect_logical_fallacies
+
         logger.info(f"Detecting logical fallacies in {len(request.text)} characters")
 
         result = detect_logical_fallacies(request.text, request.url)
@@ -262,11 +305,13 @@ def detect_logical_fallacies_endpoint(request: FallacyRequest):
         logger.error(f"❌ Logical fallacy detection error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @app.post("/assess_source_credibility")
 def assess_source_credibility_endpoint(request: CredibilityRequest):
     """Assess source credibility and evidence quality"""
     try:
         from .tools import assess_source_credibility
+
         logger.info(f"Assessing source credibility for {len(request.text)} characters")
 
         result = assess_source_credibility(request.text, request.url)
@@ -282,12 +327,14 @@ def assess_source_credibility_endpoint(request: CredibilityRequest):
         logger.error(f"❌ Source credibility error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 # Utility endpoints
 @app.post("/health_check")
 def health_check_endpoint(call: ToolCall):
     """Perform comprehensive health check"""
     try:
         from .tools import health_check
+
         logger.info("Performing critic agent health check")
 
         result = health_check()
@@ -303,11 +350,13 @@ def health_check_endpoint(call: ToolCall):
         logger.error(f"❌ Health check error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @app.post("/validate_critique_result")
 def validate_critique_result_endpoint(call: ToolCall):
     """Validate critique result structure"""
     try:
         from .tools import validate_critique_result
+
         logger.info("Validating critique result")
 
         result = validate_critique_result(*call.args, **call.kwargs)
@@ -317,11 +366,13 @@ def validate_critique_result_endpoint(call: ToolCall):
         logger.error(f"❌ Result validation error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @app.post("/format_critique_output")
 def format_critique_output_endpoint(call: ToolCall):
     """Format critique result for output"""
     try:
         from .tools import format_critique_output
+
         logger.info("Formatting critique output")
 
         result = format_critique_output(*call.args, **call.kwargs)
@@ -331,19 +382,25 @@ def format_critique_output_endpoint(call: ToolCall):
         logger.error(f"❌ Output formatting error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @app.post("/get_critic_engine")
 def get_critic_engine_endpoint(call: ToolCall):
     """Get critic engine instance"""
     try:
         from .tools import get_critic_engine
+
         logger.info("Retrieving critic engine instance")
 
         engine = get_critic_engine()
-        return {"engine_status": "available", "model_count": len(engine.models) if hasattr(engine, 'models') else 0}
+        return {
+            "engine_status": "available",
+            "model_count": len(engine.models) if hasattr(engine, "models") else 0,
+        }
 
     except Exception as e:
         logger.error(f"❌ Engine retrieval error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 # Feedback logging endpoint
 @app.post("/log_feedback")
@@ -354,7 +411,7 @@ def log_feedback_endpoint(call: ToolCall):
             "timestamp": datetime.now().isoformat(),
             "agent": "critic",
             "feedback": call.kwargs.get("feedback", {}),
-            "operation": call.kwargs.get("operation", "unknown")
+            "operation": call.kwargs.get("operation", "unknown"),
         }
         logger.info(f"📝 Feedback logged: {feedback_data['operation']}")
         return feedback_data
@@ -362,6 +419,7 @@ def log_feedback_endpoint(call: ToolCall):
     except Exception as e:
         logger.error(f"❌ Feedback logging error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 if __name__ == "__main__":
     import uvicorn

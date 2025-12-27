@@ -1,4 +1,5 @@
 """High-accuracy claim verification helper backed by the Fact Checker Mistral adapter."""
+
 from __future__ import annotations
 
 import json
@@ -6,7 +7,7 @@ import os
 import re
 import textwrap
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 from common.observability import get_logger
 
@@ -14,6 +15,7 @@ logger = get_logger(__name__)
 
 try:  # pragma: no cover - optional heavy dep
     import torch
+
     TORCH_AVAILABLE = True
 except Exception:  # pragma: no cover
     torch = None  # type: ignore
@@ -48,20 +50,41 @@ class FactCheckerMistralAdapter:
     """Lazy loader and inference helper for fact-check verification."""
 
     def __init__(self) -> None:
-        self.enabled = os.environ.get(DISABLE_ENV, "0").lower() not in {"1", "true", "yes", "on"}
+        self.enabled = os.environ.get(DISABLE_ENV, "0").lower() not in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self._dry_run = (
+            os.environ.get("MODEL_STORE_DRY_RUN") == "1"
+            or os.environ.get("DRY_RUN") == "1"
+        )
         self.max_chars = int(os.environ.get("FACT_CHECKER_MISTRAL_MAX_CHARS", "4096"))
-        self.max_input_tokens = int(os.environ.get("FACT_CHECKER_MISTRAL_MAX_INPUT_TOKENS", "2048"))
-        self.max_new_tokens = int(os.environ.get("FACT_CHECKER_MISTRAL_MAX_NEW_TOKENS", "320"))
-        self.temperature = float(os.environ.get("FACT_CHECKER_MISTRAL_TEMPERATURE", "0.0"))
+        self.max_input_tokens = int(
+            os.environ.get("FACT_CHECKER_MISTRAL_MAX_INPUT_TOKENS", "2048")
+        )
+        self.max_new_tokens = int(
+            os.environ.get("FACT_CHECKER_MISTRAL_MAX_NEW_TOKENS", "320")
+        )
+        self.temperature = float(
+            os.environ.get("FACT_CHECKER_MISTRAL_TEMPERATURE", "0.0")
+        )
         self.top_p = float(os.environ.get("FACT_CHECKER_MISTRAL_TOP_P", "0.9"))
         self.model = None
         self.tokenizer = None
         self._load_attempted = False
         self._load_error: str | None = None
 
-    def evaluate_claim(self, claim: str, context: str | None = None) -> ClaimAssessment | None:
+    def evaluate_claim(
+        self, claim: str, context: str | None = None
+    ) -> ClaimAssessment | None:
         if not self.enabled or not claim.strip():
             return None
+
+        if self._dry_run:
+            return self._simulate_assessment(claim, context)
+
         payload = self._run_inference(claim, context)
         if not payload:
             return None
@@ -84,36 +107,58 @@ class FactCheckerMistralAdapter:
             from agents.common.mistral_loader import load_mistral_adapter_or_base
         except Exception as exc:  # pragma: no cover
             self._load_error = str(exc)
-            logger.warning("Shared Mistral loader import failed for fact-checker: %s", exc)
+            logger.warning(
+                "Shared Mistral loader import failed for fact-checker: %s", exc
+            )
             return False
 
         try:
             model, tokenizer = load_mistral_adapter_or_base(
                 "fact_checker",
                 adapter_name=MODEL_ADAPTER_NAME,
-                model_kwargs={"device_map": "auto", "low_cpu_mem_usage": True, "trust_remote_code": True},
+                model_kwargs={
+                    "device_map": "auto",
+                    "low_cpu_mem_usage": True,
+                    "trust_remote_code": True,
+                },
                 tokenizer_kwargs={"use_fast": True},
             )
             if model is None or tokenizer is None:
                 self._load_error = "adapter-or-base-load-failed"
-                logger.warning("Fact-checker adapter/base load failed despite shared loader attempt")
+                logger.warning(
+                    "Fact-checker adapter/base load failed despite shared loader attempt"
+                )
                 return False
             model.eval()
             self.model = model
             self.tokenizer = tokenizer
-            logger.info("Loaded Fact Checker Mistral weights (adapter=%s)", MODEL_ADAPTER_NAME)
+            logger.info(
+                "Loaded Fact Checker Mistral weights (adapter=%s)", MODEL_ADAPTER_NAME
+            )
             return True
         except Exception as exc:  # pragma: no cover
             self._load_error = str(exc)
             logger.warning("Failed to load Fact Checker Mistral weights: %s", exc)
             return False
 
-    def _run_inference(self, claim: str, context: str | None) -> Dict[str, Any] | None:
-        if not self._ensure_loaded() or not TORCH_AVAILABLE or self.model is None or self.tokenizer is None:
+    def _run_inference(self, claim: str, context: str | None) -> dict[str, Any] | None:
+        if (
+            not self._ensure_loaded()
+            or not TORCH_AVAILABLE
+            or self.model is None
+            or self.tokenizer is None
+        ):
             return None
 
-        truncated_claim = textwrap.shorten(claim.strip(), width=self.max_chars, placeholder="...")
-        context_block = "\nContext:\n" + textwrap.shorten(context.strip(), width=self.max_chars, placeholder="...") if context else ""
+        truncated_claim = textwrap.shorten(
+            claim.strip(), width=self.max_chars, placeholder="..."
+        )
+        context_block = (
+            "\nContext:\n"
+            + textwrap.shorten(context.strip(), width=self.max_chars, placeholder="...")
+            if context
+            else ""
+        )
         prompt = self._build_prompt(truncated_claim, context_block)
 
         try:
@@ -129,7 +174,7 @@ class FactCheckerMistralAdapter:
 
         device = None
         if hasattr(self.model, "device"):
-            device = getattr(self.model, "device")
+            device = self.model.device
         elif hasattr(self.model, "hf_device_map"):
             device = None
 
@@ -150,8 +195,10 @@ class FactCheckerMistralAdapter:
             logger.warning("Fact-checker adapter generation failed: %s", exc)
             return None
 
-        generated = output_ids[:, inputs["input_ids"].shape[-1]:]
-        completion = self.tokenizer.decode(generated[0], skip_special_tokens=True).strip()
+        generated = output_ids[:, inputs["input_ids"].shape[-1] :]
+        completion = self.tokenizer.decode(
+            generated[0], skip_special_tokens=True
+        ).strip()
         return self._parse_completion(completion)
 
     def _build_prompt(self, claim: str, context_block: str) -> str:
@@ -161,12 +208,16 @@ class FactCheckerMistralAdapter:
                 {"role": "user", "content": f"Claim:\n'''{claim}'''{context_block}"},
             ]
             try:
-                return self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+                return self.tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True
+                )
             except Exception:
                 pass
-        return f"<s>[INST] {SYSTEM_PROMPT}\nClaim:\n'''{claim}'''{context_block} [/INST]"
+        return (
+            f"<s>[INST] {SYSTEM_PROMPT}\nClaim:\n'''{claim}'''{context_block} [/INST]"
+        )
 
-    def _parse_completion(self, completion: str) -> Dict[str, Any] | None:
+    def _parse_completion(self, completion: str) -> dict[str, Any] | None:
         snippet = completion.strip()
         fenced = re.search(r"```(?:json)?(.*?)```", snippet, flags=re.DOTALL)
         if fenced:
@@ -188,15 +239,29 @@ class FactCheckerMistralAdapter:
                 logger.debug("Failed to parse fact-checker adapter JSON: %s", snippet)
                 return None
 
-    def _normalize(self, payload: Dict[str, Any]) -> ClaimAssessment | None:
+    def _normalize(self, payload: dict[str, Any]) -> ClaimAssessment | None:
         try:
             verdict = str(payload.get("verdict", "unclear")).lower()
             if verdict not in {"verified", "refuted", "unclear"}:
                 verdict = "unclear"
             confidence = float(payload.get("confidence", 0.65))
-            score = float(payload.get("score", 0.6 if verdict == "verified" else 0.3 if verdict == "refuted" else 0.5))
-            rationale = str(payload.get("rationale", "Model could not justify the verdict."))
-            evidence_needed = str(payload.get("evidence_needed", "no")).lower() in {"yes", "true"}
+            score = float(
+                payload.get(
+                    "score",
+                    0.6
+                    if verdict == "verified"
+                    else 0.3
+                    if verdict == "refuted"
+                    else 0.5,
+                )
+            )
+            rationale = str(
+                payload.get("rationale", "Model could not justify the verdict.")
+            )
+            evidence_needed = str(payload.get("evidence_needed", "no")).lower() in {
+                "yes",
+                "true",
+            }
             return ClaimAssessment(
                 verdict=verdict,
                 confidence=max(0.0, min(confidence, 1.0)),
@@ -207,3 +272,32 @@ class FactCheckerMistralAdapter:
         except Exception as exc:
             logger.warning("Failed to normalize fact-checker adapter output: %s", exc)
             return None
+
+    def _simulate_assessment(self, claim: str, context: str | None) -> ClaimAssessment:
+        """Generate a deterministic dry-run ClaimAssessment."""
+
+        fingerprint = abs(hash((claim, context))) % 100
+        bucket = fingerprint % 3
+        if bucket == 0:
+            verdict = "verified"
+            score = 0.82
+        elif bucket == 1:
+            verdict = "refuted"
+            score = 0.35
+        else:
+            verdict = "unclear"
+            score = 0.55
+
+        confidence = min(0.99, 0.65 + (fingerprint % 7) * 0.035)
+        rationale = (
+            "Dry-run verdict generated deterministically — run without MODEL_STORE_DRY_RUN=1 "
+            "to obtain live fact-checking output."
+        )
+        evidence_needed = verdict != "verified"
+        return ClaimAssessment(
+            verdict=verdict,
+            confidence=confidence,
+            score=score,
+            rationale=rationale,
+            evidence_needed=evidence_needed,
+        )

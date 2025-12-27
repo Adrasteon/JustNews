@@ -21,13 +21,17 @@ except ImportError:  # pragma: no cover - optional dependency
 logger = get_logger(__name__)
 
 # Context variables for trace propagation
-current_trace_id: ContextVar[str | None] = ContextVar('trace_id', default=None)
-current_span_id: ContextVar[str | None] = ContextVar('span_id', default=None)
-current_parent_span_id: ContextVar[str | None] = ContextVar('parent_span_id', default=None)
+current_trace_id: ContextVar[str | None] = ContextVar("trace_id", default=None)
+current_span_id: ContextVar[str | None] = ContextVar("span_id", default=None)
+current_parent_span_id: ContextVar[str | None] = ContextVar(
+    "parent_span_id", default=None
+)
+
 
 @dataclass
 class TraceSpan:
     """Represents a single trace span"""
+
     trace_id: str
     span_id: str
     parent_span_id: str | None
@@ -53,6 +57,7 @@ class TraceSpan:
         """Add metadata to the span"""
         self.metadata[key] = value
 
+
 class TraceContext:
     """Manages trace context for distributed operations"""
 
@@ -61,15 +66,18 @@ class TraceContext:
         self.spans: dict[str, TraceSpan] = {}
         self.active_spans: list = []
 
-    def start_span(self, operation_name: str, parent_span_id: str | None = None) -> TraceSpan:
+    def start_span(
+        self, operation_name: str, parent_span_id: str | None = None
+    ) -> TraceSpan:
         """Start a new span"""
         span_id = str(uuid.uuid4())
         span = TraceSpan(
             trace_id=self.trace_id,
             span_id=span_id,
-            parent_span_id=parent_span_id or (self.active_spans[-1].span_id if self.active_spans else None),
+            parent_span_id=parent_span_id
+            or (self.active_spans[-1].span_id if self.active_spans else None),
             operation_name=operation_name,
-            start_time=time.time()
+            start_time=time.time(),
         )
 
         self.spans[span_id] = span
@@ -93,7 +101,9 @@ class TraceContext:
     def get_trace_summary(self) -> dict[str, Any]:
         """Get a summary of the trace"""
         total_spans = len(self.spans)
-        completed_spans = sum(1 for span in self.spans.values() if span.status == "completed")
+        completed_spans = sum(
+            1 for span in self.spans.values() if span.status == "completed"
+        )
         failed_spans = sum(1 for span in self.spans.values() if span.status == "failed")
 
         total_duration = 0
@@ -114,14 +124,16 @@ class TraceContext:
                     "operation": span.operation_name,
                     "duration_ms": span.duration_ms,
                     "status": span.status,
-                    "tags": span.tags
+                    "tags": span.tags,
                 }
                 for span in self.spans.values()
-            ]
+            ],
         }
+
 
 # Global trace context
 _current_trace_context: TraceContext | None = None
+
 
 def start_trace(operation_name: str, trace_id: str | None = None) -> TraceSpan:
     """Start a new trace"""
@@ -133,12 +145,16 @@ def start_trace(operation_name: str, trace_id: str | None = None) -> TraceSpan:
     current_trace_id.set(_current_trace_context.trace_id)
     current_span_id.set(span.span_id)
 
-    logger.debug(f"Started trace {span.trace_id} with span {span.span_id} for operation '{operation_name}'")
+    logger.debug(
+        f"Started trace {span.trace_id} with span {span.span_id} for operation '{operation_name}'"
+    )
     return span
+
 
 def get_current_trace_context() -> TraceContext | None:
     """Get the current trace context"""
     return _current_trace_context
+
 
 def get_trace_context() -> dict[str, Any]:
     """Get current trace context information"""
@@ -150,8 +166,9 @@ def get_trace_context() -> dict[str, Any]:
         "trace_id": trace_id,
         "span_id": span_id,
         "parent_span_id": parent_span_id,
-        "has_active_trace": trace_id is not None
+        "has_active_trace": trace_id is not None,
     }
+
 
 def create_child_span(operation_name: str) -> TraceSpan | None:
     """Create a child span in the current trace"""
@@ -167,6 +184,7 @@ def create_child_span(operation_name: str) -> TraceSpan | None:
     logger.debug(f"Created child span {span.span_id} for operation '{operation_name}'")
     return span
 
+
 def finish_current_span(status: str = "completed"):
     """Finish the current active span"""
     global _current_trace_context
@@ -181,6 +199,7 @@ def finish_current_span(status: str = "completed"):
             current_span_id.set(_current_trace_context.active_spans[-1].span_id)
         else:
             current_span_id.set(None)
+
 
 def finish_trace() -> dict[str, Any] | None:
     """Finish the current trace and return summary"""
@@ -203,8 +222,11 @@ def finish_trace() -> dict[str, Any] | None:
     current_span_id.set(None)
     current_parent_span_id.set(None)
 
-    logger.info(f"Finished trace {summary['trace_id']} with {summary['total_spans']} spans in {summary['total_duration_ms']:.2f}ms")
+    logger.info(
+        f"Finished trace {summary['trace_id']} with {summary['total_spans']} spans in {summary['total_duration_ms']:.2f}ms"
+    )
     return summary
+
 
 def add_span_tag(key: str, value: Any):
     """Add a tag to the current active span"""
@@ -214,6 +236,7 @@ def add_span_tag(key: str, value: Any):
     if _current_trace_context and span_id and span_id in _current_trace_context.spans:
         _current_trace_context.spans[span_id].add_tag(key, value)
 
+
 def add_span_metadata(key: str, value: Any):
     """Add metadata to the current active span"""
     global _current_trace_context
@@ -221,6 +244,7 @@ def add_span_metadata(key: str, value: Any):
 
     if _current_trace_context and span_id and span_id in _current_trace_context.spans:
         _current_trace_context.spans[span_id].add_metadata(key, value)
+
 
 def record_exception(exception: Exception):
     """Record an exception in the current span"""
@@ -235,6 +259,7 @@ def record_exception(exception: Exception):
 
         # Finish span with error status
         _current_trace_context.finish_span(span_id, "error")
+
 
 # Context manager for automatic span management
 class trace_span:
@@ -262,9 +287,11 @@ class trace_span:
         if self._otel_cm is not None:
             self._otel_cm.__exit__(exc_type, exc_val, exc_tb)
 
+
 # Decorator for automatic function tracing
 def traced(operation_name: str | None = None):
     """Decorator to automatically trace function calls"""
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             op_name = operation_name or f"{func.__module__}.{func.__name__}"
@@ -276,13 +303,15 @@ def traced(operation_name: str | None = None):
                 except Exception as e:
                     record_exception(e)
                     raise
+
         return wrapper
+
     return decorator
+
 
 # Integration with logging
 def setup_tracing_logging():
     """Set up logging integration with tracing"""
-
 
     class TracingLogFilter(logging.Filter):
         def filter(self, record):
@@ -299,6 +328,7 @@ def setup_tracing_logging():
     # Add filter to root logger
     root_logger = get_logger(__name__)
     root_logger.addFilter(TracingLogFilter())
+
 
 # Initialize tracing logging on import
 setup_tracing_logging()

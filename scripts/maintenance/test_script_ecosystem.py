@@ -15,6 +15,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+
 class ScriptTester:
     """Test runner for script ecosystem"""
 
@@ -26,17 +27,15 @@ class ScriptTester:
         """Find all Python scripts in the refactor directory"""
         scripts = []
         for category_dir in self.refactor_dir.iterdir():
-            if category_dir.is_dir() and category_dir.name not in ['archive', 'common']:
-                for script_file in category_dir.glob('*.py'):
+            if category_dir.is_dir() and category_dir.name not in ["archive", "common"]:
+                for script_file in category_dir.glob("*.py"):
                     scripts.append(script_file)
         return scripts
 
     def test_script_import(self, script_path: Path) -> tuple[bool, str]:
         """Test if script can be imported without errors"""
         try:
-            spec = importlib.util.spec_from_file_location(
-                script_path.stem, script_path
-            )
+            spec = importlib.util.spec_from_file_location(script_path.stem, script_path)
             if spec and spec.loader:
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
@@ -50,15 +49,18 @@ class ScriptTester:
         """Test if script can be executed without immediate crash"""
         try:
             result = subprocess.run(
-                [sys.executable, str(script_path), '--help'],
+                [sys.executable, str(script_path), "--help"],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
             # Accept any return code - some scripts might fail due to missing dependencies
             # but they should at least start and show some output
             if len(result.stdout) > 0 or len(result.stderr) > 0:
-                return True, "Script executed (may have warnings/errors due to environment)"
+                return (
+                    True,
+                    "Script executed (may have warnings/errors due to environment)",
+                )
             else:
                 return False, "Script produced no output"
         except subprocess.TimeoutExpired:
@@ -71,10 +73,10 @@ class ScriptTester:
         try:
             # Test with --dry-run if it's a Python script using our framework
             subprocess.run(
-                [sys.executable, str(script_path), '--dry-run'],
+                [sys.executable, str(script_path), "--dry-run"],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
             # Some scripts might not support --dry-run, that's ok
             return True, "Basic argument parsing works"
@@ -95,17 +97,13 @@ class ScriptTester:
                 results[category] = []
 
             # Skip the test script itself
-            if script_name == 'test_script_ecosystem.py':
+            if script_name == "test_script_ecosystem.py":
                 continue
 
             # Test help (most basic test)
             help_ok, help_msg = self.test_script_help(script_path)
 
-            results[category].append((
-                script_name,
-                help_ok,
-                f"Help: {help_msg}"
-            ))
+            results[category].append((script_name, help_ok, f"Help: {help_msg}"))
 
         return results
 
@@ -132,6 +130,7 @@ class ScriptTester:
 
         print(f"\nSummary: {passed_scripts}/{total_scripts} scripts passed basic tests")
 
+
 def main():
     """Main test runner"""
     # Use absolute path to refactor directory
@@ -143,11 +142,11 @@ def main():
 
     # Exit with error code if any tests failed
     all_passed = all(
-        all(passed for _, passed, _ in scripts)
-        for scripts in results.values()
+        all(passed for _, passed, _ in scripts) for scripts in results.values()
     )
 
     sys.exit(0 if all_passed else 1)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

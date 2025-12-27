@@ -7,6 +7,7 @@ production venvs.
 Usage: run inside CI where requirements.txt has been installed (or in a venv
 that represents the production environment).
 """
+
 from __future__ import annotations
 
 from importlib import util
@@ -40,9 +41,13 @@ def main() -> int:
         print("ERROR: Missing runtime Python modules detected for production agents:\n")
         for agent, miss in all_missing.items():
             print(f" - {agent}: {', '.join(miss)}")
-        print("\nFix: add the missing packages to requirements.txt and the deployment step that builds /opt/justnews/venv. Example:\n  sudo /opt/justnews/venv/bin/pip install ")
+        print(
+            "\nFix: add the missing packages to requirements.txt and the deployment step that builds /opt/justnews/venv. Example:\n  sudo /opt/justnews/venv/bin/pip install "
+        )
         for agent, miss in all_missing.items():
-            print(f"    sudo /opt/justnews/venv/bin/pip install {' '.join(miss)}  # for {agent}")
+            print(
+                f"    sudo /opt/justnews/venv/bin/pip install {' '.join(miss)}  # for {agent}"
+            )
         return 2
 
     print("All required runtime Python modules appear available.")

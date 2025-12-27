@@ -20,15 +20,17 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 import networkx as nx
 
+from agents.common.mistral_adapter import MistralAdapter
+from agents.reasoning.mistral_adapter import SYSTEM_PROMPT
 from common.observability import get_logger
-from agents.reasoning.mistral_adapter import ReasoningMistralAdapter
 
 # Configure logging
 logger = get_logger(__name__)
+
 
 class ReasoningConfig:
     """Configuration for the Reasoning Engine."""
@@ -39,28 +41,29 @@ class ReasoningConfig:
             "fallback_to_github": True,
             "github_repo": "https://github.com/nucleoidai/nucleoid.git",
             "max_facts": 10000,
-            "max_rules": 1000
+            "max_rules": 1000,
         }
 
         self.enhanced_config = {
             "load_news_domain_rules": True,
             "enable_temporal_reasoning": True,
             "enable_orchestration_rules": True,
-            "max_context_facts": 100
+            "max_context_facts": 100,
         }
 
         self.performance_config = {
             "cache_enabled": True,
             "cache_ttl": 300,  # seconds
             "parallel_processing": True,
-            "max_concurrent_queries": 4
+            "max_concurrent_queries": 4,
         }
 
         self.training_config = {
             "feedback_collection": True,
             "online_training": True,
-            "max_feedback_buffer": 1000
+            "max_feedback_buffer": 1000,
         }
+
 
 # Nucleoid State Management
 class NucleoidState:
@@ -78,6 +81,7 @@ class NucleoidState:
     def clear(self):
         self.variable_state.clear()
 
+
 class NucleoidGraph:
     """Dependency graph management using NetworkX."""
 
@@ -92,6 +96,7 @@ class NucleoidGraph:
 
     def clear(self):
         self.maingraph.clear()
+
 
 class ExpressionHandler:
     """Handles expression evaluation with AST parsing."""
@@ -139,9 +144,12 @@ class ExpressionHandler:
             elif isinstance(node.ops[0], ast.GtE):
                 return left >= right
             else:
-                raise NotImplementedError(f"Comparison operator {type(node.ops[0])} not supported")
+                raise NotImplementedError(
+                    f"Comparison operator {type(node.ops[0])} not supported"
+                )
         else:
             raise NotImplementedError(f"Node type {type(node)} not supported")
+
 
 class AssignmentHandler:
     """Handles variable assignments."""
@@ -149,6 +157,7 @@ class AssignmentHandler:
     def __init__(self, state: NucleoidState, graph: NucleoidGraph):
         self.state = state
         self.graph = graph
+
 
 class SimpleNucleoidImplementation:
     """Simple fallback implementation of Nucleoid for basic reasoning."""
@@ -166,7 +175,11 @@ class SimpleNucleoidImplementation:
         statement = statement.strip()
 
         # Handle variable assignments (facts) - simple assignments only
-        if "=" in statement and "==" not in statement and not any(op in statement for op in ["+", "-", "*", "/", "if", "then"]):
+        if (
+            "=" in statement
+            and "==" not in statement
+            and not any(op in statement for op in ["+", "-", "*", "/", "if", "then"])
+        ):
             parts = statement.split("=")
             if len(parts) == 2:
                 var_name = parts[0].strip()
@@ -184,10 +197,17 @@ class SimpleNucleoidImplementation:
 
                 self.facts[var_name] = value
                 self.state.set(var_name, value)
-                return {"success": True, "message": f"Variable {var_name} set to {value}"}
+                return {
+                    "success": True,
+                    "message": f"Variable {var_name} set to {value}",
+                }
 
         # Handle rule definitions (y = x + 10, if-then statements)
-        if "=" in statement and (any(op in statement for op in ["+", "-", "*", "/"]) or "if" in statement or "then" in statement):
+        if "=" in statement and (
+            any(op in statement for op in ["+", "-", "*", "/"])
+            or "if" in statement
+            or "then" in statement
+        ):
             self.rules.append(statement)
             return {"success": True, "message": "Rule added"}
 
@@ -204,7 +224,8 @@ class SimpleNucleoidImplementation:
                     try:
                         # Simple expression evaluation
                         import ast
-                        tree = ast.parse(right_side, mode='eval')
+
+                        tree = ast.parse(right_side, mode="eval")
                         result = self.expression_handler.evaluate(tree.body)
                         if result is not None:
                             return result
@@ -217,11 +238,15 @@ class SimpleNucleoidImplementation:
         if any(op in statement for op in ["==", "!=", ">", "<", ">=", "<="]):
             try:
                 import ast
-                tree = ast.parse(statement, mode='eval')
+
+                tree = ast.parse(statement, mode="eval")
                 result = self.expression_handler.evaluate(tree.body)
                 return result
             except Exception:
-                return {"success": False, "message": "Could not evaluate boolean expression"}
+                return {
+                    "success": False,
+                    "message": "Could not evaluate boolean expression",
+                }
 
         return {"success": False, "message": "Unknown statement type"}
 
@@ -237,6 +262,7 @@ class SimpleNucleoidImplementation:
         self.graph.clear()
         return {"success": True, "message": "Knowledge base cleared"}
 
+
 class ReasoningEngine:
     """
     Core reasoning engine using Nucleoid for symbolic reasoning.
@@ -248,7 +274,12 @@ class ReasoningEngine:
     def __init__(self, config: ReasoningConfig):
         self.config = config
         self.logger = logger
-        self.mistral_adapter = ReasoningMistralAdapter()
+        # use shared MistralAdapter wrapper (keeps per-agent system prompt)
+        self.mistral_adapter = MistralAdapter(
+            agent="reasoning",
+            adapter_name="mistral_reasoning_v1",
+            system_prompt=SYSTEM_PROMPT,
+        )
 
         # Core components
         self.nucleoid: Any | None = None
@@ -262,7 +293,7 @@ class ReasoningEngine:
             "rules_added": 0,
             "contradictions_found": 0,
             "average_processing_time": 0.0,
-            "error_count": 0
+            "error_count": 0,
         }
 
         # Feedback and training
@@ -284,16 +315,22 @@ class ReasoningEngine:
             if self.config.nucleoid_config["use_local_implementation"]:
                 try:
                     # Import local Nucleoid implementation
-                    nucleoid_path = Path(__file__).parent.parent / "nucleoid_implementation.py"
+                    nucleoid_path = (
+                        Path(__file__).parent.parent / "nucleoid_implementation.py"
+                    )
                     if nucleoid_path.exists():
-                        spec = importlib.util.spec_from_file_location("nucleoid_local", str(nucleoid_path))
+                        spec = importlib.util.spec_from_file_location(
+                            "nucleoid_local", str(nucleoid_path)
+                        )
                         if spec and spec.loader:
                             module = importlib.util.module_from_spec(spec)
                             spec.loader.exec_module(module)
                             NucleoidClass = getattr(module, "Nucleoid", None)
                             if NucleoidClass:
                                 self.nucleoid = NucleoidClass()
-                                self.logger.info("✅ Local Nucleoid implementation loaded successfully")
+                                self.logger.info(
+                                    "✅ Local Nucleoid implementation loaded successfully"
+                                )
                                 return
                 except Exception as e:
                     self.logger.warning(f"⚠️ Local Nucleoid implementation failed: {e}")
@@ -304,11 +341,16 @@ class ReasoningEngine:
                     nucleoid_dir = Path(__file__).parent.parent / "nucleoid_repo"
                     if not nucleoid_dir.exists():
                         self.logger.info("📥 Cloning Nucleoid repository...")
-                        subprocess.run([
-                            "git", "clone",
-                            self.config.nucleoid_config["github_repo"],
-                            str(nucleoid_dir)
-                        ], check=True, capture_output=True)
+                        subprocess.run(
+                            [
+                                "git",
+                                "clone",
+                                self.config.nucleoid_config["github_repo"],
+                                str(nucleoid_dir),
+                            ],
+                            check=True,
+                            capture_output=True,
+                        )
 
                     # Add to Python path and import
                     python_path = str(nucleoid_dir / "python")
@@ -318,10 +360,13 @@ class ReasoningEngine:
                     # Try package import
                     try:
                         import nucleoid.nucleoid as nucleoid_module  # type: ignore
+
                         NucleoidClass = getattr(nucleoid_module, "Nucleoid", None)
                         if NucleoidClass:
                             self.nucleoid = NucleoidClass()
-                            self.logger.info("✅ GitHub Nucleoid implementation loaded successfully")
+                            self.logger.info(
+                                "✅ GitHub Nucleoid implementation loaded successfully"
+                            )
                             return
                     except ImportError:
                         pass
@@ -329,14 +374,18 @@ class ReasoningEngine:
                     # Try file-based import
                     candidate = Path(python_path) / "nucleoid" / "nucleoid.py"
                     if candidate.exists():
-                        spec = importlib.util.spec_from_file_location("nucleoid_github", str(candidate))
+                        spec = importlib.util.spec_from_file_location(
+                            "nucleoid_github", str(candidate)
+                        )
                         if spec and spec.loader:
                             module = importlib.util.module_from_spec(spec)
                             spec.loader.exec_module(module)
                             NucleoidClass = getattr(module, "Nucleoid", None)
                             if NucleoidClass:
                                 self.nucleoid = NucleoidClass()
-                                self.logger.info("✅ GitHub Nucleoid implementation loaded successfully (file import)")
+                                self.logger.info(
+                                    "✅ GitHub Nucleoid implementation loaded successfully (file import)"
+                                )
                                 return
 
                 except Exception as e:
@@ -358,12 +407,13 @@ class ReasoningEngine:
             "cache_size": len(self.cache),
             "feedback_buffer_size": len(self.feedback_buffer),
             "facts_store_size": len(self.facts_store),
-            "rules_store_size": len(self.rules_store)
+            "rules_store_size": len(self.rules_store),
         }
 
     async def add_fact(self, fact_data: dict[str, Any]) -> Any:
         """Add a fact to the reasoning system."""
         import time
+
         start_time = time.time()
 
         try:
@@ -385,7 +435,7 @@ class ReasoningEngine:
                         if isinstance(value, str):
                             statements.append(f'{key} = "{value}"')
                         else:
-                            statements.append(f'{key} = {value}')
+                            statements.append(f"{key} = {value}")
 
                     result = None
                     for statement in statements:
@@ -393,8 +443,11 @@ class ReasoningEngine:
 
                 processing_time = time.time() - start_time
                 self.processing_stats["average_processing_time"] = (
-                    (self.processing_stats["average_processing_time"] * (self.processing_stats["facts_added"] - 1)) +
-                    processing_time
+                    (
+                        self.processing_stats["average_processing_time"]
+                        * (self.processing_stats["facts_added"] - 1)
+                    )
+                    + processing_time
                 ) / self.processing_stats["facts_added"]
 
                 return result
@@ -409,6 +462,7 @@ class ReasoningEngine:
     async def add_rule(self, rule: str) -> Any:
         """Add a logical rule."""
         import time
+
         start_time = time.time()
 
         try:
@@ -423,8 +477,11 @@ class ReasoningEngine:
 
                 processing_time = time.time() - start_time
                 self.processing_stats["average_processing_time"] = (
-                    (self.processing_stats["average_processing_time"] * (self.processing_stats["rules_added"] - 1)) +
-                    processing_time
+                    (
+                        self.processing_stats["average_processing_time"]
+                        * (self.processing_stats["rules_added"] - 1)
+                    )
+                    + processing_time
                 ) / self.processing_stats["rules_added"]
 
                 return result
@@ -439,6 +496,7 @@ class ReasoningEngine:
     async def query(self, query_str: str) -> Any:
         """Execute a symbolic reasoning query."""
         import time
+
         start_time = time.time()
 
         try:
@@ -462,8 +520,11 @@ class ReasoningEngine:
 
                 processing_time = time.time() - start_time
                 self.processing_stats["average_processing_time"] = (
-                    (self.processing_stats["average_processing_time"] * (self.processing_stats["total_queries"] - 1)) +
-                    processing_time
+                    (
+                        self.processing_stats["average_processing_time"]
+                        * (self.processing_stats["total_queries"] - 1)
+                    )
+                    + processing_time
                 ) / self.processing_stats["total_queries"]
 
                 if llm_task is not None:
@@ -497,7 +558,14 @@ class ReasoningEngine:
 
             for stmt in statements:
                 # Check for direct variable assignments (x = 5, x = 10)
-                if "=" in stmt and "==" not in stmt and not any(op in stmt for op in ["+", "-", "*", "/", "if", "then", ">", "<"]):
+                if (
+                    "=" in stmt
+                    and "==" not in stmt
+                    and not any(
+                        op in stmt
+                        for op in ["+", "-", "*", "/", "if", "then", ">", "<"]
+                    )
+                ):
                     parts = stmt.split("=")
                     if len(parts) == 2:
                         var_name = parts[0].strip()
@@ -514,27 +582,35 @@ class ReasoningEngine:
 
                         if var_name in variable_assignments:
                             if variable_assignments[var_name] != value:
-                                contradictions.append({
-                                    "statement1": f"{var_name} = {variable_assignments[var_name]}",
-                                    "statement2": f"{var_name} = {value}",
-                                    "conflict": "variable_reassignment_contradiction"
-                                })
+                                contradictions.append(
+                                    {
+                                        "statement1": f"{var_name} = {variable_assignments[var_name]}",
+                                        "statement2": f"{var_name} = {value}",
+                                        "conflict": "variable_reassignment_contradiction",
+                                    }
+                                )
                         else:
                             variable_assignments[var_name] = value
 
             # Check for boolean contradictions (x == 5 vs x == 10)
-            boolean_statements = [stmt for stmt in statements if any(op in stmt for op in ["==", "!=", ">", "<", ">=", "<="])]
+            boolean_statements = [
+                stmt
+                for stmt in statements
+                if any(op in stmt for op in ["==", "!=", ">", "<", ">=", "<="])
+            ]
 
             for i, stmt1 in enumerate(boolean_statements):
-                for _j, stmt2 in enumerate(boolean_statements[i+1:], i+1):
+                for _j, stmt2 in enumerate(boolean_statements[i + 1 :], i + 1):
                     # Extract variable and values from boolean statements
                     try:
                         if self._are_contradictory_booleans(stmt1, stmt2):
-                            contradictions.append({
-                                "statement1": stmt1,
-                                "statement2": stmt2,
-                                "conflict": "boolean_contradiction"
-                            })
+                            contradictions.append(
+                                {
+                                    "statement1": stmt1,
+                                    "statement2": stmt2,
+                                    "conflict": "boolean_contradiction",
+                                }
+                            )
                     except Exception:
                         pass  # Skip if can't parse
 
@@ -543,7 +619,7 @@ class ReasoningEngine:
             return {
                 "has_contradictions": len(contradictions) > 0,
                 "contradictions": contradictions,
-                "total_statements": len(statements)
+                "total_statements": len(statements),
             }
 
         except Exception as e:
@@ -551,7 +627,7 @@ class ReasoningEngine:
             return {
                 "has_contradictions": False,
                 "contradictions": [],
-                "total_statements": len(statements)
+                "total_statements": len(statements),
             }
 
     def _are_contradictory_booleans(self, stmt1: str, stmt2: str) -> bool:
@@ -587,7 +663,7 @@ class ReasoningEngine:
         """Clear all facts and rules."""
         self.facts_store.clear()
         self.rules_store.clear()
-        if self.nucleoid and hasattr(self.nucleoid, 'clear'):
+        if self.nucleoid and hasattr(self.nucleoid, "clear"):
             self.nucleoid.clear()
         return {"success": True, "message": "Knowledge base cleared"}
 
@@ -601,7 +677,7 @@ class ReasoningEngine:
                 "operation": operation,
                 "data": feedback_data,
                 "timestamp": datetime.now().isoformat(),
-                "session_id": "reasoning_engine"
+                "session_id": "reasoning_engine",
             }
 
             self.feedback_buffer.append(feedback_entry)
@@ -611,7 +687,10 @@ class ReasoningEngine:
             if len(self.feedback_buffer) > max_buffer:
                 self.feedback_buffer = self.feedback_buffer[-max_buffer:]
 
-            return {"status": "feedback_logged", "buffer_size": len(self.feedback_buffer)}
+            return {
+                "status": "feedback_logged",
+                "buffer_size": len(self.feedback_buffer),
+            }
 
         except Exception as e:
             self.logger.error(f"Feedback logging failed: {e}")
@@ -620,11 +699,13 @@ class ReasoningEngine:
     def get_training_status(self) -> dict[str, Any]:
         """Get training status."""
         return {
-            "feedback_collection_enabled": self.config.training_config["feedback_collection"],
+            "feedback_collection_enabled": self.config.training_config[
+                "feedback_collection"
+            ],
             "online_training_enabled": self.config.training_config["online_training"],
             "feedback_buffer_size": len(self.feedback_buffer),
             "facts_count": len(self.facts_store),
-            "rules_count": len(self.rules_store)
+            "rules_count": len(self.rules_store),
         }
 
     def _run_llm_analysis(self, query_str: str) -> dict[str, Any] | None:
@@ -671,15 +752,15 @@ class ReasoningEngine:
                 if isinstance(em, dict):
                     src = em.get("source") or em.get("source_url") or "unknown_source"
                     score = em.get("score", em.get("match_score", 0.0))
-                    stmts.append(f'evidence_from_{src} = {score}')
+                    stmts.append(f"evidence_from_{src} = {score}")
 
         # Add source credibility and confidence as facts
         source_credibility = assessment.get("source_credibility")
         if source_credibility is not None:
-            stmts.append(f'source_credibility = {float(source_credibility)}')
+            stmts.append(f"source_credibility = {float(source_credibility)}")
 
         confidence = assessment.get("confidence", 0.0)
-        stmts.append(f'fact_checker_confidence = {float(confidence)}')
+        stmts.append(f"fact_checker_confidence = {float(confidence)}")
 
         return stmts
 
@@ -692,6 +773,7 @@ class ReasoningEngine:
             return False
 
         import time
+
         cache_age = time.time() - self.cache_timestamps[cache_key]
         return cache_age < self.config.performance_config["cache_ttl"]
 
@@ -700,16 +782,19 @@ class ReasoningEngine:
         if self.config.performance_config["cache_enabled"]:
             self.cache[cache_key] = result
             import time
+
             self.cache_timestamps[cache_key] = time.time()
 
             # Limit cache size
             if len(self.cache) > 1000:  # Configurable limit
                 # Remove oldest entries
-                oldest_keys = sorted(self.cache_timestamps.keys(),
-                                   key=lambda k: self.cache_timestamps[k])[:100]
+                oldest_keys = sorted(
+                    self.cache_timestamps.keys(), key=lambda k: self.cache_timestamps[k]
+                )[:100]
                 for key in oldest_keys:
                     del self.cache[key]
                     del self.cache_timestamps[key]
+
 
 class EnhancedReasoningEngine:
     """
@@ -725,44 +810,38 @@ class EnhancedReasoningEngine:
         "if (source_age_days > 365 && fact_checks_passed > 50 && error_rate < 0.1) then source_tier = 'tier1'",
         "if (source_tier == 'tier1' && claim_controversial == false) then auto_approve_threshold = 0.7",
         "if (source_tier == 'tier1' && claim_controversial == true) then auto_approve_threshold = 0.9",
-
         # Breaking news validation
         "if (news_type == 'breaking' && confirmation_sources < 2) then require_manual_review = true",
         "if (news_type == 'breaking' && time_since_event < 60_minutes) then confidence_penalty = 0.2",
-
         # Cross-reference validation
         "if (claim_in_reuters == true && claim_in_ap == true) then cross_confirmation_bonus = 0.3",
         "if (claim_only_in_single_source == true && controversy_score > 0.8) then skepticism_flag = true",
-
         # Temporal consistency
         "if (quoted_event_date > publication_date) then temporal_error = true",
         "if (article_age_hours > 48 && urgency_tag == 'breaking') then stale_breaking_flag = true",
-
         # Multi-agent consensus
         "if (scout_confidence > 0.8 && fact_checker_score > 0.75 && analyst_sentiment == 'factual') then strong_consensus = true",
         "if (agent_agreement_count >= 3 && average_confidence > 0.85) then high_confidence_consensus = true",
-
         # Contradiction handling
         "if (internal_contradiction_detected == true) then credibility_score -= 0.4",
         "if (contradicts_established_fact == true) then flag_for_investigation = true",
-
         # Evidence strength rules
         "if (primary_sources_count >= 2 && expert_quotes >= 1) then evidence_strength = 'strong'",
-        "if (evidence_strength == 'strong' && source_tier == 'tier1') then verification_confidence = 0.95"
+        "if (evidence_strength == 'strong' && source_tier == 'tier1') then verification_confidence = 0.95",
     ]
 
     # TEMPORAL REASONING RULES
     TEMPORAL_RULES = [
         "if (event_timestamp > current_timestamp) then future_event_flag = true",
         "if (breaking_news_age_minutes > 180) then no_longer_breaking = true",
-        "if (fact_last_updated_days > 30 && fact_volatility == 'high') then revalidation_required = true"
+        "if (fact_last_updated_days > 30 && fact_volatility == 'high') then revalidation_required = true",
     ]
 
     # AGENT ORCHESTRATION RULES
     ORCHESTRATION_RULES = [
         "if (fact_checker_confidence < 0.6) then escalate_to_reasoning_validation = true",
         "if (scout_quality_score < 0.5) then skip_detailed_analysis = true",
-        "if (multiple_agents_disagree == true) then require_chief_editor_review = true"
+        "if (multiple_agents_disagree == true) then require_chief_editor_review = true",
     ]
 
     def __init__(self, nucleoid_engine):
@@ -771,8 +850,8 @@ class EnhancedReasoningEngine:
         self.logger = logger
 
         # Detect engine capabilities
-        self._supports_add_rule = hasattr(self.nucleoid, 'add_rule')
-        self._supports_query = hasattr(self.nucleoid, 'query')
+        self._supports_add_rule = hasattr(self.nucleoid, "add_rule")
+        self._supports_query = hasattr(self.nucleoid, "query")
 
         if self._supports_add_rule:
             try:
@@ -782,20 +861,24 @@ class EnhancedReasoningEngine:
 
     def _load_news_domain_rules(self):
         """Load comprehensive news domain validation rules."""
-        for rule in self.NEWS_DOMAIN_RULES + self.TEMPORAL_RULES + self.ORCHESTRATION_RULES:
+        for rule in (
+            self.NEWS_DOMAIN_RULES + self.TEMPORAL_RULES + self.ORCHESTRATION_RULES
+        ):
             try:
                 self._add_rule(rule)
             except Exception:
                 # Silently continue; engine may not be ready during import-time
                 pass
 
-    async def validate_news_claim_with_context(self, claim: str, article_metadata: dict[str, Any]) -> dict[str, Any]:
+    async def validate_news_claim_with_context(
+        self, claim: str, article_metadata: dict[str, Any]
+    ) -> dict[str, Any]:
         """Advanced news validation using domain-specific logic."""
         # Add article context as facts
         for key, value in article_metadata.items():
             try:
                 if isinstance(value, str):
-                    await self.nucleoid.add_fact({"statement": f"{key} = \"{value}\""})
+                    await self.nucleoid.add_fact({"statement": f'{key} = "{value}"'})
                 else:
                     await self.nucleoid.add_fact({"statement": f"{key} = {value}"})
             except Exception:
@@ -814,21 +897,27 @@ class EnhancedReasoningEngine:
             "confidence_modifier": await self._query("confidence_penalty"),
             "evidence_strength": await self._query("evidence_strength"),
             "temporal_validity": not await self._query("temporal_error"),
-            "reasoning_chain": None
+            "reasoning_chain": None,
         }
 
         return results
 
-    async def orchestrate_multi_agent_decision(self, agent_outputs: dict[str, Any]) -> dict[str, Any]:
+    async def orchestrate_multi_agent_decision(
+        self, agent_outputs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Use Nucleoid to coordinate between multiple agents."""
         # Add agent outputs as facts
         for agent, output in agent_outputs.items():
             for key, value in output.items():
                 try:
                     if isinstance(value, str):
-                        await self.nucleoid.add_fact({"statement": f"{agent}_{key} = \"{value}\""})
+                        await self.nucleoid.add_fact(
+                            {"statement": f'{agent}_{key} = "{value}"'}
+                        )
                     else:
-                        await self.nucleoid.add_fact({"statement": f"{agent}_{key} = {value}"})
+                        await self.nucleoid.add_fact(
+                            {"statement": f"{agent}_{key} = {value}"}
+                        )
                 except Exception:
                     continue
 
@@ -838,38 +927,38 @@ class EnhancedReasoningEngine:
             "confidence_level": await self._query("high_confidence_consensus"),
             "requires_escalation": await self._query("require_chief_editor_review"),
             "recommended_action": None,
-            "explanation": None
+            "explanation": None,
         }
 
         return decision
 
     # Adapter helpers for different Nucleoid interfaces
     async def _add_rule(self, rule: str):
-        if hasattr(self.nucleoid, 'add_rule'):
+        if hasattr(self.nucleoid, "add_rule"):
             return await self.nucleoid.add_rule(rule)
-        if hasattr(self.nucleoid, 'run'):
+        if hasattr(self.nucleoid, "run"):
             return self.nucleoid.run(rule)
-        raise AttributeError('Underlying engine has no add_rule or run')
+        raise AttributeError("Underlying engine has no add_rule or run")
 
     async def _add_fact(self, fact: dict[str, Any]):
         # Accept either dict with 'statement' or raw statement
-        if hasattr(self.nucleoid, 'add_fact'):
+        if hasattr(self.nucleoid, "add_fact"):
             return await self.nucleoid.add_fact(fact)
-        if hasattr(self.nucleoid, 'run'):
-            stmt = fact.get('statement') if isinstance(fact, dict) else str(fact)
+        if hasattr(self.nucleoid, "run"):
+            stmt = fact.get("statement") if isinstance(fact, dict) else str(fact)
             return self.nucleoid.run(stmt)
-        raise AttributeError('Underlying engine has no add_fact or run')
+        raise AttributeError("Underlying engine has no add_fact or run")
 
     async def _query(self, query_str: str):
         # Prefer a native `query` method if available, otherwise fall back to `run`
-        if hasattr(self.nucleoid, 'query'):
+        if hasattr(self.nucleoid, "query"):
             try:
                 return await self.nucleoid.query(query_str)
             except Exception:
                 return None
-        if hasattr(self.nucleoid, 'run'):
+        if hasattr(self.nucleoid, "run"):
             try:
                 return self.nucleoid.run(query_str)
             except Exception:
                 return None
-        raise AttributeError('Underlying engine has no query or run')
+        raise AttributeError("Underlying engine has no query or run")

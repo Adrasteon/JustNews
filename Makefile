@@ -108,8 +108,8 @@ test: test-unit test-integration
 # for local runs to ensure consistent environments.
 pytest-local:
 	$(call log_info,"Running local pytest via scripts/dev/pytest.sh")
-	$(shell [ -x ./scripts/dev/pytest.sh ] || chmod +x ./scripts/dev/pytest.sh)
-	./scripts/dev/pytest.sh
+	$(shell [ -x ./scripts/dev/run_full_pytest_safe.sh ] || chmod +x ./scripts/dev/run_full_pytest_safe.sh)
+	./scripts/dev/run_full_pytest_safe.sh
 
 test-unit:
 	$(call log_info,"Running unit tests...")

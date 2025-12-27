@@ -10,6 +10,7 @@ It will ignore (allow) references inside these directories:
 
 Usage: scripts/checks/no_container_refs.py
 """
+
 from __future__ import annotations
 
 import os
@@ -121,16 +122,25 @@ def main() -> int:
                         line_end = len(text)
                     matched_line = text[line_start:line_end].strip()
                     # Ignore textual references that explicitly state deprecation or archival
-                    if re.search(r"deprecated|deprecate|archiv|archived|removed", matched_line, flags=re.IGNORECASE):
+                    if re.search(
+                        r"deprecated|deprecate|archiv|archived|removed",
+                        matched_line,
+                        flags=re.IGNORECASE,
+                    ):
                         continue
                     # Only add as violation when file path not in excluded set
                     matches.append((str(fpath), m.group(0), matched_line))
     if matches:
-        print("Found disallowed container/orchestration references outside of 'infrastructure/archives' or 'docs':", file=sys.stderr)
+        print(
+            "Found disallowed container/orchestration references outside of 'infrastructure/archives' or 'docs':",
+            file=sys.stderr,
+        )
         for filepath, token, _ in matches:
             print(f" - {token}: {filepath}", file=sys.stderr)
         return 2
-    print("No disallowed container/orchestration references found outside of allowed folders.")
+    print(
+        "No disallowed container/orchestration references found outside of allowed folders."
+    )
     return 0
 
 

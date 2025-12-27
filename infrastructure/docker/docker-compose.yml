@@ -30,7 +30,7 @@ services:
     image: chromadb/chroma:0.4.18
     container_name: justnews-chromadb
     ports:
-      - "8000:8000"
+      - "3307:3307"
     networks:
       - justnews-network
     restart: unless-stopped
@@ -40,9 +40,7 @@ services:
       - CHROMA_SERVER_HOST=0.0.0.0
   # Docker Compose is deprecated; use systemd scaling instead:
   # for i in 1 2 3 4 5; do sudo systemctl enable --now justnews-scout@${i}; done
-      interval: 30s
-      timeout: 10s
-      retries: 3
+
 
   redis:
     image: redis:7-alpine
@@ -66,7 +64,7 @@ services:
       MYSQL_USER: justnews
       MYSQL_PASSWORD: change_me
       CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
+      CHROMA_PORT: 3307
       REDIS_HOST: redis
     ports:
       - "8000:8000"
@@ -94,7 +92,7 @@ services:
       MYSQL_USER: justnews
       MYSQL_PASSWORD: change_me
       CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
+      CHROMA_PORT: 3307
       REDIS_HOST: redis
       MCP_BUS_HOST: mcp-bus
       MCP_BUS_PORT: 8000
@@ -120,7 +118,7 @@ services:
       MYSQL_USER: justnews
       MYSQL_PASSWORD: change_me
       CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
+      CHROMA_PORT: 3307
       REDIS_HOST: redis
       MCP_BUS_HOST: mcp-bus
       MCP_BUS_PORT: 8000
@@ -146,7 +144,7 @@ services:
       MYSQL_USER: justnews
       MYSQL_PASSWORD: change_me
       CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
+      CHROMA_PORT: 3307
       REDIS_HOST: redis
       MCP_BUS_HOST: mcp-bus
       MCP_BUS_PORT: 8000
@@ -172,7 +170,7 @@ services:
       MYSQL_USER: justnews
       MYSQL_PASSWORD: change_me
       CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
+      CHROMA_PORT: 3307
       REDIS_HOST: redis
       MCP_BUS_HOST: mcp-bus
       MCP_BUS_PORT: 8000
@@ -198,7 +196,7 @@ services:
       MYSQL_USER: justnews
       MYSQL_PASSWORD: change_me
       CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
+      CHROMA_PORT: 3307
       REDIS_HOST: redis
       MCP_BUS_HOST: mcp-bus
       MCP_BUS_PORT: 8000
@@ -224,7 +222,7 @@ services:
       MYSQL_USER: justnews
       MYSQL_PASSWORD: change_me
       CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
+      CHROMA_PORT: 3307
       REDIS_HOST: redis
       MCP_BUS_HOST: mcp-bus
       MCP_BUS_PORT: 8000
@@ -250,7 +248,7 @@ services:
       MYSQL_USER: justnews
       MYSQL_PASSWORD: change_me
       CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
+      CHROMA_PORT: 3307
       REDIS_HOST: redis
       MCP_BUS_HOST: mcp-bus
       MCP_BUS_PORT: 8000
@@ -276,7 +274,7 @@ services:
       MYSQL_USER: justnews
       MYSQL_PASSWORD: change_me
       CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
+      CHROMA_PORT: 3307
       REDIS_HOST: redis
       MCP_BUS_HOST: mcp-bus
       MCP_BUS_PORT: 8000
@@ -302,7 +300,7 @@ services:
       MYSQL_USER: justnews
       MYSQL_PASSWORD: change_me
       CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
+      CHROMA_PORT: 3307
       REDIS_HOST: redis
       MCP_BUS_HOST: mcp-bus
       MCP_BUS_PORT: 8000
@@ -328,7 +326,7 @@ services:
       MYSQL_USER: justnews
       MYSQL_PASSWORD: change_me
       CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
+      CHROMA_PORT: 3307
       REDIS_HOST: redis
       MCP_BUS_HOST: mcp-bus
       MCP_BUS_PORT: 8000
@@ -354,7 +352,7 @@ services:
       MYSQL_USER: justnews
       MYSQL_PASSWORD: change_me
       CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
+      CHROMA_PORT: 3307
       REDIS_HOST: redis
       MCP_BUS_HOST: mcp-bus
       MCP_BUS_PORT: 8000
@@ -380,7 +378,7 @@ services:
       MYSQL_USER: justnews
       MYSQL_PASSWORD: change_me
       CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
+      CHROMA_PORT: 3307
       REDIS_HOST: redis
       MCP_BUS_HOST: mcp-bus
       MCP_BUS_PORT: 8000
@@ -408,7 +406,7 @@ services:
       MYSQL_USER: justnews
       MYSQL_PASSWORD: change_me
       CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
+      CHROMA_PORT: 3307
       REDIS_HOST: redis
       MCP_BUS_HOST: mcp-bus
       MCP_BUS_PORT: 8000
@@ -434,7 +432,7 @@ services:
       MYSQL_USER: justnews
       MYSQL_PASSWORD: change_me
       CHROMA_HOST: chromadb
-      CHROMA_PORT: 8000
+      CHROMA_PORT: 3307
       REDIS_HOST: redis
       MCP_BUS_HOST: mcp-bus
       MCP_BUS_PORT: 8000

@@ -6,5 +6,7 @@ def test_checker_runs_successfully():
 
     This verifies CI's quick sanity check behaves as expected for this branch.
     """
-    res = subprocess.run(["bash", "scripts/dev/check_canonical_env.sh"], capture_output=True, text=True)
+    res = subprocess.run(
+        ["bash", "scripts/dev/check_canonical_env.sh"], capture_output=True, text=True
+    )
     assert res.returncode == 0, f"checker failed: {res.stdout}\n{res.stderr}"

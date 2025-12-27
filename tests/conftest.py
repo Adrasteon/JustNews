@@ -35,7 +35,13 @@ import pytest_asyncio
 
 # Keep GPU orchestrator imports lightweight during pytest runs to avoid
 # instantiating heavy services (MariaDB, Chroma, embedding models) during module import.
-os.environ.setdefault('GPU_ORCHESTRATOR_SKIP_BOOTSTRAP', '1')
+os.environ.setdefault("GPU_ORCHESTRATOR_SKIP_BOOTSTRAP", "1")
+# Disable GPU-marked tests by default for safety (prevents accidental real GPU usage
+# when running the full suite in a development environment). Developers who want
+# to exercise real GPU behavior should explicitly opt in by setting
+# TEST_GPU_AVAILABLE=true in their shell or CI job.
+os.environ.setdefault("TEST_GPU_AVAILABLE", "false")
+os.environ.setdefault("TEST_GPU_COUNT", "1")
 
 # Add the repository root to sys.path so project packages import cleanly regardless
 # of how pytest is launched (e.g. via `conda run`). The previous logic walked one
@@ -47,16 +53,17 @@ sys.path.insert(0, str(project_root))
 # Guarantee that a minimal testing global.env is present at import-time to
 # avoid modules parsing /etc/justnews/global.env during collection. This is
 # intentionally performed during import so early imports honor the test env.
-if not os.environ.get('JUSTNEWS_GLOBAL_ENV'):
+if not os.environ.get("JUSTNEWS_GLOBAL_ENV"):
     early_tmp = Path(tempfile.gettempdir()) / f"justnews_test_global_env_{os.getpid()}"
     early_tmp.mkdir(parents=True, exist_ok=True)
     early_env = early_tmp / "global.env"
     if not early_env.exists():
-        early_env.write_text(textwrap.dedent(f"""
+        early_env.write_text(
+            textwrap.dedent(f"""
         # Auto-generated early global.env for pytest import time
         SERVICE_DIR={project_root}
-        PYTHON_BIN={os.environ.get('PYTHON_BIN', '')}
-        JUSTNEWS_PYTHON={os.environ.get('JUSTNEWS_PYTHON', '')}
+        PYTHON_BIN={os.environ.get("PYTHON_BIN", "")}
+        JUSTNEWS_PYTHON={os.environ.get("JUSTNEWS_PYTHON", "")}
         MODEL_STORE_ROOT={project_root}/model_store
         MARIADB_HOST=127.0.0.1
         MARIADB_PORT=3306
@@ -68,26 +75,31 @@ if not os.environ.get('JUSTNEWS_GLOBAL_ENV'):
         MARIADB_DB=justnews_test
         MARIADB_USER=justnews
         MARIADB_PASSWORD=test
-        """))
-    os.environ['JUSTNEWS_GLOBAL_ENV'] = str(early_env)
+        """)
+        )
+    os.environ["JUSTNEWS_GLOBAL_ENV"] = str(early_env)
 
 # Indicate we are running pytest; this affects how `common.env_loader` chooses
 # whether to consult /etc/justnews/global.env. This helps keep test runs
 # hermetic and not rely on the host's installed system files.
-os.environ['PYTEST_RUNNING'] = '1'
+os.environ["PYTEST_RUNNING"] = "1"
 
 # Enforce usage of the project's conda environment for local runs
 # - In CI we allow broader environments (CI=true will skip the check)
 # - Developers can temporarily bypass with ALLOW_ANY_PYTEST_ENV=1
-if os.environ.get('CI', '').lower() not in ('1', 'true') and os.environ.get('ALLOW_ANY_PYTEST_ENV', '') != '1':
-    CANONICAL_ENV = os.environ.get('CANONICAL_ENV', 'justnews-py312')
-    conda_env = os.environ.get('CONDA_DEFAULT_ENV') or os.environ.get('CONDA_PREFIX') or ''
+if (
+    os.environ.get("CI", "").lower() not in ("1", "true")
+    and os.environ.get("ALLOW_ANY_PYTEST_ENV", "") != "1"
+):
+    CANONICAL_ENV = os.environ.get("CANONICAL_ENV", "justnews-py312")
+    conda_env = (
+        os.environ.get("CONDA_DEFAULT_ENV") or os.environ.get("CONDA_PREFIX") or ""
+    )
     # If CONDA_DEFAULT_ENV is not present, also detect if sys.executable path contains the env name
-    in_exec = CANONICAL_ENV in (sys.executable or '')
+    in_exec = CANONICAL_ENV in (sys.executable or "")
     if CANONICAL_ENV not in conda_env and not in_exec:
         # Friendly guidance to developers on how to run tests correctly
-        msg = (
-            """
+        msg = """
 Tests should be run inside the '${CANONICAL_ENV}' conda environment for consistent results.
 
 Use the helper script: scripts/dev/pytest.sh <args>
@@ -95,7 +107,6 @@ Or re-run with: PYTHONPATH=$(pwd) conda run -n ${CANONICAL_ENV} pytest <args>
 
 If you intentionally want to run in a different environment set ALLOW_ANY_PYTEST_ENV=1 to bypass this check.
 """
-        )
         pytest.exit(msg)
 
 # Import common utilities
@@ -107,11 +118,17 @@ logger = get_logger(__name__)
 # MOCKING INFRASTRUCTURE
 # ============================================================================
 
+
 class MockResponse:
     """Unified mock response for HTTP calls"""
 
-    def __init__(self, status_code: int = 200, json_data: dict | None = None,
-                 text: str = "", headers: dict | None = None):
+    def __init__(
+        self,
+        status_code: int = 200,
+        json_data: dict | None = None,
+        text: str = "",
+        headers: dict | None = None,
+    ):
         self.status_code = status_code
         self._json = json_data or {}
         self.text = text
@@ -141,11 +158,11 @@ def create_mock_torch() -> types.ModuleType:
     class MockCuda:
         @staticmethod
         def is_available() -> bool:
-            return os.environ.get('TEST_GPU_AVAILABLE', 'false').lower() == 'true'
+            return os.environ.get("TEST_GPU_AVAILABLE", "false").lower() == "true"
 
         @staticmethod
         def device_count() -> int:
-            return int(os.environ.get('TEST_GPU_COUNT', '0'))
+            return int(os.environ.get("TEST_GPU_COUNT", "0"))
 
         class Event:
             def __init__(self):
@@ -160,7 +177,45 @@ def create_mock_torch() -> types.ModuleType:
             def elapsed_time(self, other):
                 return 0.001
 
-    fake_torch = types.ModuleType('torch')
+        # Additional minimal GPU helper methods used by tests
+        @staticmethod
+        def set_device(device_id: int) -> None:
+            # No-op for tests
+            return None
+
+        @staticmethod
+        def empty_cache() -> None:
+            # No-op for tests
+            return None
+
+        @staticmethod
+        def mem_get_info(device_id: int) -> tuple[int, int]:
+            # Return (free, total) in bytes — default to 8GB free, 12GB total
+            return (8 * 1024 * 1024 * 1024, 12 * 1024 * 1024 * 1024)
+
+        @staticmethod
+        def memory_allocated(device_id: int = 0) -> int:
+            return 1024 * 1024 * 1024  # 1GB
+
+        @staticmethod
+        def memory_reserved(device_id: int = 0) -> int:
+            return 2 * 1024 * 1024 * 1024  # 2GB
+
+        @staticmethod
+        def memory_summary(*args, **kwargs) -> str:
+            return "Mock memory summary"
+
+        @staticmethod
+        def synchronize(device_id: int = 0) -> None:
+            # No-op in mock
+            return None
+
+        @staticmethod
+        def device(spec):
+            # Allow patching "torch.cuda.device" target used in tests
+            return MockDevice(spec)
+
+    fake_torch = types.ModuleType("torch")
 
     # Core torch attributes
     fake_torch.device = lambda s: MockDevice(s)
@@ -177,16 +232,16 @@ def create_mock_torch() -> types.ModuleType:
         def __init__(self, data=None, dtype=None, device=None):
             self.data = data
             self.dtype = dtype
-            self.device = device or MockDevice('cpu')
+            self.device = device or MockDevice("cpu")
 
         def to(self, device):
             return MockTensor(self.data, self.dtype, device)
 
         def cpu(self):
-            return MockTensor(self.data, self.dtype, MockDevice('cpu'))
+            return MockTensor(self.data, self.dtype, MockDevice("cpu"))
 
         def cuda(self):
-            return MockTensor(self.data, self.dtype, MockDevice('cuda'))
+            return MockTensor(self.data, self.dtype, MockDevice("cuda"))
 
         def detach(self):
             return self
@@ -201,7 +256,7 @@ def create_mock_torch() -> types.ModuleType:
             return MockTensor()
 
         def __len__(self):
-            return len(self.data) if hasattr(self.data, '__len__') else 1
+            return len(self.data) if hasattr(self.data, "__len__") else 1
 
     fake_torch.tensor = lambda data, **kwargs: MockTensor(data, **kwargs)
     fake_torch.zeros = lambda *args, **kwargs: MockTensor()
@@ -248,7 +303,7 @@ def create_mock_torch() -> types.ModuleType:
     # Optimization
     class MockOptimizer:
         def __init__(self, params, lr=0.001):
-            self.param_groups = [{'lr': lr, 'params': params}]
+            self.param_groups = [{"lr": lr, "params": params}]
 
         def step(self):
             pass
@@ -268,7 +323,7 @@ def create_mock_torch() -> types.ModuleType:
 def create_mock_transformers() -> types.ModuleType:
     """Create comprehensive transformers mock"""
 
-    fake_transformers = types.ModuleType('transformers')
+    fake_transformers = types.ModuleType("transformers")
 
     class MockTokenizer:
         def __init__(self):
@@ -285,10 +340,10 @@ def create_mock_transformers() -> types.ModuleType:
             if isinstance(texts, str):
                 texts = [texts]
             batch_size = len(texts)
-            max_length = kwargs.get('max_length', 128)
+            max_length = kwargs.get("max_length", 128)
             return {
-                'input_ids': [[1] * max_length for _ in range(batch_size)],
-                'attention_mask': [[1] * max_length for _ in range(batch_size)],
+                "input_ids": [[1] * max_length for _ in range(batch_size)],
+                "attention_mask": [[1] * max_length for _ in range(batch_size)],
             }
 
         def decode(self, tokens, **kwargs):
@@ -304,8 +359,11 @@ def create_mock_transformers() -> types.ModuleType:
 
         def __call__(self, **kwargs):
             return types.SimpleNamespace(
-                last_hidden_state=[[0.1] * 768 for _ in range(kwargs.get('input_ids', [[1]])[0].__len__())],
-                pooler_output=[0.1] * 768
+                last_hidden_state=[
+                    [0.1] * 768
+                    for _ in range(kwargs.get("input_ids", [[1]])[0].__len__())
+                ],
+                pooler_output=[0.1] * 768,
             )
 
     fake_transformers.AutoTokenizer = MockTokenizer
@@ -315,7 +373,10 @@ def create_mock_transformers() -> types.ModuleType:
     fake_transformers.AutoModelForTokenClassification = MockModel
     fake_transformers.BertModel = MockModel
     fake_transformers.BertTokenizer = MockTokenizer
-    fake_transformers.pipeline = lambda task, **kwargs: lambda text: {"label": "POSITIVE", "score": 0.9}
+    fake_transformers.pipeline = lambda task, **kwargs: lambda text: {
+        "label": "POSITIVE",
+        "score": 0.9,
+    }
 
     return fake_transformers
 
@@ -323,7 +384,7 @@ def create_mock_transformers() -> types.ModuleType:
 def create_mock_sentence_transformers() -> types.ModuleType:
     """Create sentence transformers mock"""
 
-    fake_st = types.ModuleType('sentence_transformers')
+    fake_st = types.ModuleType("sentence_transformers")
 
     class MockSentenceTransformer:
         def __init__(self, model_name=None):
@@ -341,48 +402,52 @@ def create_mock_sentence_transformers() -> types.ModuleType:
 def create_mock_requests() -> types.ModuleType:
     """Create requests mock with MCP Bus compatibility"""
 
-    fake_requests = types.ModuleType('requests')
+    fake_requests = types.ModuleType("requests")
 
     def mock_get(url, **kwargs):
         # MCP Bus endpoints
-        if '/agents' in url:
-            return MockResponse(200, {
-                "analyst": "http://localhost:8004",
-                "fact_checker": "http://localhost:8003",
-                "synthesizer": "http://localhost:8005",
-                "scout": "http://localhost:8002",
-                "critic": "http://localhost:8006",
-                "memory": "http://localhost:8007",
-                "reasoning": "http://localhost:8008",
-                "chief_editor": "http://localhost:8001"
-            })
-        elif '/health' in url:
+        if "/agents" in url:
+            return MockResponse(
+                200,
+                {
+                    "analyst": "http://localhost:8004",
+                    "fact_checker": "http://localhost:8003",
+                    "synthesizer": "http://localhost:8005",
+                    "scout": "http://localhost:8002",
+                    "critic": "http://localhost:8006",
+                    "memory": "http://localhost:8007",
+                    "reasoning": "http://localhost:8008",
+                    "chief_editor": "http://localhost:8001",
+                },
+            )
+        elif "/health" in url:
             return MockResponse(200, {"status": "healthy"})
-        elif 'vector_search' in url:
+        elif "vector_search" in url:
             return MockResponse(200, [])
-        elif '/get_article/' in url:
-            return MockResponse(200, {
-                "id": "test-article-123",
-                "content": "Test article content for testing purposes.",
-                "meta": {"source": "test", "timestamp": "2024-01-01T00:00:00Z"}
-            })
+        elif "/get_article/" in url:
+            return MockResponse(
+                200,
+                {
+                    "id": "test-article-123",
+                    "content": "Test article content for testing purposes.",
+                    "meta": {"source": "test", "timestamp": "2024-01-01T00:00:00Z"},
+                },
+            )
         return MockResponse(200, {})
 
     def mock_post(url, **kwargs):
-        if 'vector_search' in url:
+        if "vector_search" in url:
             return MockResponse(200, [])
-        elif url.endswith('/call'):
+        elif url.endswith("/call"):
             return MockResponse(200, {"status": "success", "data": {}})
-        elif '/log_training_example' in url:
+        elif "/log_training_example" in url:
             return MockResponse(200, {"status": "logged"})
         return MockResponse(200, {})
 
     fake_requests.get = mock_get
     fake_requests.post = mock_post
     fake_requests.exceptions = types.SimpleNamespace(
-        RequestException=Exception,
-        Timeout=Exception,
-        ConnectionError=Exception
+        RequestException=Exception, Timeout=Exception, ConnectionError=Exception
     )
 
     return fake_requests
@@ -392,27 +457,28 @@ def create_mock_requests() -> types.ModuleType:
 # GLOBAL FIXTURES
 # ============================================================================
 
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_environment():
     """Setup comprehensive test environment with all mocks"""
 
     # Install mocks if not in real environment
-    if not os.environ.get('USE_REAL_ML_LIBS'):
+    if not os.environ.get("USE_REAL_ML_LIBS"):
         # Mock heavy ML libraries
-        if 'torch' not in sys.modules:
-            sys.modules['torch'] = create_mock_torch()
-        if 'transformers' not in sys.modules:
-            sys.modules['transformers'] = create_mock_transformers()
-        if 'sentence_transformers' not in sys.modules:
-            sys.modules['sentence_transformers'] = create_mock_sentence_transformers()
+        if "torch" not in sys.modules:
+            sys.modules["torch"] = create_mock_torch()
+        if "transformers" not in sys.modules:
+            sys.modules["transformers"] = create_mock_transformers()
+        if "sentence_transformers" not in sys.modules:
+            sys.modules["sentence_transformers"] = create_mock_sentence_transformers()
 
     # Mock requests for HTTP calls
-    if 'requests' not in sys.modules and not os.environ.get('USE_REAL_REQUESTS'):
-        sys.modules['requests'] = create_mock_requests()
+    if "requests" not in sys.modules and not os.environ.get("USE_REAL_REQUESTS"):
+        sys.modules["requests"] = create_mock_requests()
 
     # Mock chromadb to avoid importing optional telemetry-heavy SDK during tests
-    if 'chromadb' not in sys.modules and not os.environ.get('USE_REAL_CHROMADB'):
-        fake_chromadb = types.ModuleType('chromadb')
+    if "chromadb" not in sys.modules and not os.environ.get("USE_REAL_CHROMADB"):
+        fake_chromadb = types.ModuleType("chromadb")
 
         class FakeHttpClient:
             def __init__(self, host=None, port=None, tenant=None):
@@ -431,8 +497,10 @@ def setup_test_environment():
 
         fake_chromadb.HttpClient = FakeHttpClient
         # telemetry module stub
-        fake_chromadb.telemetry = types.SimpleNamespace(opentelemetry=types.SimpleNamespace())
-        sys.modules['chromadb'] = fake_chromadb
+        fake_chromadb.telemetry = types.SimpleNamespace(
+            opentelemetry=types.SimpleNamespace()
+        )
+        sys.modules["chromadb"] = fake_chromadb
 
     yield
 
@@ -455,8 +523,8 @@ def create_test_global_env(tmp_path_factory):
     contents = textwrap.dedent(f"""
     # Auto-generated test global.env
     SERVICE_DIR={project_root}
-    PYTHON_BIN={os.environ.get('PYTHON_BIN', '')}
-    JUSTNEWS_PYTHON={os.environ.get('JUSTNEWS_PYTHON', '')}
+    PYTHON_BIN={os.environ.get("PYTHON_BIN", "")}
+    JUSTNEWS_PYTHON={os.environ.get("JUSTNEWS_PYTHON", "")}
     MODEL_STORE_ROOT={project_root}/model_store
     MARIADB_HOST=127.0.0.1
     MARIADB_PORT=3306
@@ -495,6 +563,7 @@ async def async_setup():
 # AGENT TESTING FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def sample_articles():
     """Provide sample articles for testing"""
@@ -502,18 +571,18 @@ def sample_articles():
         {
             "id": "article-1",
             "content": "This is a positive news article about technology advancements.",
-            "meta": {"source": "tech-news", "sentiment": "positive"}
+            "meta": {"source": "tech-news", "sentiment": "positive"},
         },
         {
             "id": "article-2",
             "content": "Breaking news: Market shows significant growth today.",
-            "meta": {"source": "finance-news", "sentiment": "positive"}
+            "meta": {"source": "finance-news", "sentiment": "positive"},
         },
         {
             "id": "article-3",
             "content": "Concerns raised about environmental impact of new policy.",
-            "meta": {"source": "environment-news", "sentiment": "negative"}
-        }
+            "meta": {"source": "environment-news", "sentiment": "negative"},
+        },
     ]
 
 
@@ -525,14 +594,15 @@ def mock_mcp_bus_response():
         "data": {
             "result": "mock analysis result",
             "confidence": 0.85,
-            "metadata": {"processing_time": 0.1}
-        }
+            "metadata": {"processing_time": 0.1},
+        },
     }
 
 
 @pytest.fixture
 def mock_gpu_context():
     """Mock GPU context for GPU-dependent tests"""
+
     class MockGPUContext:
         def __enter__(self):
             return self
@@ -553,6 +623,7 @@ def mock_gpu_context():
 # DATABASE TESTING FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def mock_database_connection():
     """Mock database connection for testing"""
@@ -569,7 +640,7 @@ def mock_database_connection():
         async def fetch(self, query, *args):
             return [
                 {"id": 1, "content": "mock article", "meta": {}},
-                {"id": 2, "content": "another mock article", "meta": {}}
+                {"id": 2, "content": "another mock article", "meta": {}},
             ]
 
         async def close(self):
@@ -591,6 +662,7 @@ def mock_database_connection():
 # ============================================================================
 # PERFORMANCE TESTING UTILITIES
 # ============================================================================
+
 
 @pytest.fixture
 def performance_timer():
@@ -615,7 +687,9 @@ def performance_timer():
 
         def assert_under_limit(self, limit_seconds, operation_name="operation"):
             elapsed = self.elapsed
-            assert elapsed < limit_seconds, f"{operation_name} took {elapsed:.3f}s, limit was {limit_seconds}s"
+            assert elapsed < limit_seconds, (
+                f"{operation_name} took {elapsed:.3f}s, limit was {limit_seconds}s"
+            )
 
     return PerformanceTimer()
 
@@ -623,6 +697,7 @@ def performance_timer():
 # ============================================================================
 # SECURITY TESTING FIXTURES
 # ============================================================================
+
 
 @pytest.fixture
 def mock_security_context():
@@ -655,35 +730,26 @@ def mock_security_context():
 # CONFIGURATION TESTING FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def test_config():
     """Test configuration fixture"""
     return {
-            "database": {
-                "url": "mysql://test:test@localhost:3306/test_db",
+        "database": {
+            "url": "mysql://test:test@localhost:3306/test_db",
             "pool_size": 5,
-            "timeout": 30
+            "timeout": 30,
         },
-        "mcp_bus": {
-            "url": "http://localhost:8000",
-            "timeout": 10,
-            "retries": 3
-        },
-        "gpu": {
-            "enabled": False,
-            "memory_limit": "2GB",
-            "devices": []
-        },
-        "logging": {
-            "level": "INFO",
-            "format": "json"
-        }
+        "mcp_bus": {"url": "http://localhost:8000", "timeout": 10, "retries": 3},
+        "gpu": {"enabled": False, "memory_limit": "2GB", "devices": []},
+        "logging": {"level": "INFO", "format": "json"},
     }
 
 
 # ============================================================================
 # MARKERS AND CONFIGURATION
 # ============================================================================
+
 
 def pytest_configure(config):
     """Configure pytest with custom markers"""
@@ -699,7 +765,7 @@ def pytest_collection_modifyitems(config, items):
     """Modify test collection based on environment"""
 
     # Skip GPU tests if no GPU available
-    gpu_available = os.environ.get('TEST_GPU_AVAILABLE', 'false').lower() == 'true'
+    gpu_available = os.environ.get("TEST_GPU_AVAILABLE", "false").lower() == "true"
     if not gpu_available:
         skip_gpu = pytest.mark.skip(reason="GPU not available")
         for item in items:
@@ -723,6 +789,7 @@ def pytest_collection_modifyitems(config, items):
 # UTILITY FUNCTIONS
 # ============================================================================
 
+
 def assert_async_operation_completes_within(async_func, timeout_seconds=5.0):
     """Assert that an async operation completes within timeout"""
 
@@ -745,7 +812,7 @@ def create_mock_agent_response(agent_name, tool_name, result=None, error=None):
         "result": result,
         "error": error,
         "timestamp": "2024-01-01T00:00:00Z",
-        "processing_time": 0.1
+        "processing_time": 0.1,
     }
 
 
@@ -754,5 +821,5 @@ def parametrize_test_data(*test_cases):
     return pytest.mark.parametrize(
         "test_input,expected_output",
         test_cases,
-        ids=[f"case_{i}" for i in range(len(test_cases))]
+        ids=[f"case_{i}" for i in range(len(test_cases))],
     )

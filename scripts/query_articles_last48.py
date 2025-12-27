@@ -9,11 +9,14 @@ def main():
     s = create_database_service()
     try:
         cur = s.mb_conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM articles WHERE collection_timestamp >= NOW() - INTERVAL 48 HOUR")
+        cur.execute(
+            "SELECT COUNT(*) FROM articles WHERE collection_timestamp >= NOW() - INTERVAL 48 HOUR"
+        )
         print(cur.fetchone())
         cur.close()
     finally:
         s.close()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

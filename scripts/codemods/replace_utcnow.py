@@ -15,21 +15,30 @@ Notes:
    to handle every edge case (e.g., complex aliasing of imports), but it's careful
    about only replacing the `.utcnow()` suffix on tokens containing "datetime".
 """
+
 from __future__ import annotations
 
 import argparse
+import json
 import re
 from pathlib import Path
-from typing import List, Tuple
-import json
 
-ROOT_IGNORE = {".git", "node_modules", "third_party", "__pycache__", "tests/deprecation", "tests/codemod", "deprecations", "codemods"}
+ROOT_IGNORE = {
+    ".git",
+    "node_modules",
+    "third_party",
+    "__pycache__",
+    "tests/deprecation",
+    "tests/codemod",
+    "deprecations",
+    "codemods",
+}
 
 PATTERN = re.compile(r"(?P<prefix>\b[\w\.]*datetime)\.utcnow\(\s*\)")
 
 
-def find_matches(root: Path) -> List[Tuple[Path, int, str]]:
-    results: List[Tuple[Path, int, str]] = []
+def find_matches(root: Path) -> list[tuple[Path, int, str]]:
+    results: list[tuple[Path, int, str]] = []
     for p in root.rglob("*.py"):
         # Exclude if any identifier in ROOT_IGNORE appears in the absolute path
         if any(ignore in str(p) for ignore in ROOT_IGNORE):
@@ -77,8 +86,8 @@ def _ensure_timezone_import(text: str) -> str:
     return "\n".join(lines)
 
 
-def apply_replacements(root: Path) -> List[Path]:
-    changed_files: List[Path] = []
+def apply_replacements(root: Path) -> list[Path]:
+    changed_files: list[Path] = []
     for p in root.rglob("*.py"):
         if any(part in ROOT_IGNORE for part in p.parts):
             continue
@@ -103,11 +112,15 @@ def apply_replacements(root: Path) -> List[Path]:
     return changed_files
 
 
-def main(argv: List[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--apply", action="store_true", help="Apply replacements in-place")
-    parser.add_argument("--root", default='.', help="Root directory to scan")
-    parser.add_argument("--report", help="Write a JSON report to the given path (dry-run or apply)")
+    parser.add_argument(
+        "--apply", action="store_true", help="Apply replacements in-place"
+    )
+    parser.add_argument("--root", default=".", help="Root directory to scan")
+    parser.add_argument(
+        "--report", help="Write a JSON report to the given path (dry-run or apply)"
+    )
     args = parser.parse_args(argv)
 
     root = Path(args.root).resolve()
@@ -123,12 +136,16 @@ def main(argv: List[str] | None = None) -> int:
 
     if args.report:
         report_path = Path(args.report)
-        report = [{"path": str(p), "line": lno, "content": line} for p, lno, line in matches]
+        report = [
+            {"path": str(p), "line": lno, "content": line} for p, lno, line in matches
+        ]
         report_path.write_text(json.dumps(report, indent=2))
         print(f"Wrote report to {report_path}")
 
     if not args.apply:
-        print("\nDry-run: no files modified. Re-run with --apply to update files in-place.")
+        print(
+            "\nDry-run: no files modified. Re-run with --apply to update files in-place."
+        )
         return 0
 
     changed = apply_replacements(root)

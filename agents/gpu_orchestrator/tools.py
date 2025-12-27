@@ -21,9 +21,11 @@ def get_policy() -> dict[str, Any]:
     return engine.get_policy()
 
 
-def set_policy(max_memory_per_agent_mb: int | None = None,
-               allow_fractional_shares: bool | None = None,
-               kill_on_oom: bool | None = None) -> dict[str, Any]:
+def set_policy(
+    max_memory_per_agent_mb: int | None = None,
+    allow_fractional_shares: bool | None = None,
+    kill_on_oom: bool | None = None,
+) -> dict[str, Any]:
     """Update GPU allocation policy."""
     update = {}
     if max_memory_per_agent_mb is not None:
@@ -50,9 +52,9 @@ def release_gpu_lease(token: str) -> dict[str, Any]:
     return engine.release_gpu_lease(token)
 
 
-def models_preload(agents: list[str] | None = None,
-                  refresh: bool = False,
-                  strict: bool | None = None) -> dict[str, Any]:
+def models_preload(
+    agents: list[str] | None = None, refresh: bool = False, strict: bool | None = None
+) -> dict[str, Any]:
     """Start model preload job."""
     return engine.start_model_preload(agents, refresh, strict)
 
@@ -70,4 +72,3 @@ def get_mps_allocation() -> dict[str, Any]:
 def get_metrics() -> str:
     """Get Prometheus metrics as text."""
     return engine.get_metrics_text()
-

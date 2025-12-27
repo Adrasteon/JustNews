@@ -13,6 +13,7 @@ When --apply is provided the files will be updated in-place (a .bak copy is
 written alongside each changed file). Without --apply the script prints the
 proposed changes only.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -22,12 +23,30 @@ from pathlib import Path
 
 REPLACEMENTS: list[tuple[re.Pattern, str]] = [
     # Specific module-level rewrites
-    (re.compile(r"\bfrom\s+agents\.scout\.crawl4ai_server_impl\b"), "from agents.c4ai.server"),
-    (re.compile(r"\bfrom\s+agents\.scout\.crawl4ai_server\b"), "from agents.c4ai.server"),
-    (re.compile(r"\bfrom\s+agents\.scout\.crawl4ai_bridge\b"), "from agents.c4ai.bridge"),
-    (re.compile(r"\bimport\s+agents\.scout\.crawl4ai_bridge\b"), "import agents.c4ai.bridge"),
-    (re.compile(r"\bimport\s+agents\.scout\.crawl4ai_server\b"), "import agents.c4ai.server"),
-    (re.compile(r"\bimport\s+agents\.scout\.crawl4ai_server_impl\b"), "import agents.c4ai.server"),
+    (
+        re.compile(r"\bfrom\s+agents\.scout\.crawl4ai_server_impl\b"),
+        "from agents.c4ai.server",
+    ),
+    (
+        re.compile(r"\bfrom\s+agents\.scout\.crawl4ai_server\b"),
+        "from agents.c4ai.server",
+    ),
+    (
+        re.compile(r"\bfrom\s+agents\.scout\.crawl4ai_bridge\b"),
+        "from agents.c4ai.bridge",
+    ),
+    (
+        re.compile(r"\bimport\s+agents\.scout\.crawl4ai_bridge\b"),
+        "import agents.c4ai.bridge",
+    ),
+    (
+        re.compile(r"\bimport\s+agents\.scout\.crawl4ai_server\b"),
+        "import agents.c4ai.server",
+    ),
+    (
+        re.compile(r"\bimport\s+agents\.scout\.crawl4ai_server_impl\b"),
+        "import agents.c4ai.server",
+    ),
     # Generic module prefix replacement for any other occurrences like
     # agents.c4ai or agents.c4ai.utils -> agents.c4ai.*
     (re.compile(r"\bagents\.scout\.crawl4ai\b"), "agents.c4ai"),
@@ -37,7 +56,15 @@ REPLACEMENTS: list[tuple[re.Pattern, str]] = [
 
 def should_skip_path(path: Path) -> bool:
     s = str(path)
-    ignore = [".git/", "__pycache__", "venv/", "env/", ".venv/", "node_modules/", "model_store/"]
+    ignore = [
+        ".git/",
+        "__pycache__",
+        "venv/",
+        "env/",
+        ".venv/",
+        "node_modules/",
+        "model_store/",
+    ]
     return any(p in s for p in ignore)
 
 
@@ -88,7 +115,9 @@ def process_file(path: Path, apply: bool) -> tuple[bool, list[str]]:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--apply", action="store_true", help="Apply changes in-place (write files).")
+    p.add_argument(
+        "--apply", action="store_true", help="Apply changes in-place (write files)."
+    )
     p.add_argument("--root", default=".", help="Root directory to operate on")
     args = p.parse_args(argv)
 
@@ -118,7 +147,9 @@ def main(argv: list[str] | None = None) -> int:
     if not args.apply:
         print("\nDry-run complete. Re-run with --apply to make these changes.")
     else:
-        print("\nApplied changes. Backups written with .bak suffix next to each updated file.")
+        print(
+            "\nApplied changes. Backups written with .bak suffix next to each updated file."
+        )
 
     return 0
 

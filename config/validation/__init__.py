@@ -29,6 +29,7 @@ logger = get_logger(__name__)
 @dataclass
 class ValidationResult:
     """Result of configuration validation"""
+
     is_valid: bool
     errors: list[str]
     warnings: list[str]
@@ -68,13 +69,15 @@ class ConfigurationValidator:
     """
 
     def __init__(self):
-        self.validators: list[Callable[[JustNewsConfig], tuple[list[str], list[str], list[str]]]] = [
+        self.validators: list[
+            Callable[[JustNewsConfig], tuple[list[str], list[str], list[str]]]
+        ] = [
             self._validate_schema,
             self._validate_cross_component_consistency,
             self._validate_environment_requirements,
             self._validate_performance_constraints,
             self._validate_security_requirements,
-            self._validate_integration_compatibility
+            self._validate_integration_compatibility,
         ]
 
     def validate(self, config: JustNewsConfig) -> ValidationResult:
@@ -110,10 +113,12 @@ class ConfigurationValidator:
             errors=all_errors,
             warnings=all_warnings,
             info=all_info,
-            duration_ms=duration_ms
+            duration_ms=duration_ms,
         )
 
-    def _validate_schema(self, config: JustNewsConfig) -> tuple[list[str], list[str], list[str]]:
+    def _validate_schema(
+        self, config: JustNewsConfig
+    ) -> tuple[list[str], list[str], list[str]]:
         """Validate schema compliance and type safety"""
         errors = []
         warnings = []
@@ -127,26 +132,40 @@ class ConfigurationValidator:
             errors.append(f"Schema validation failed: {e}")
 
         # Check for required fields
-        required_sections = ['system', 'database', 'gpu', 'agents', 'monitoring']
+        required_sections = ["system", "database", "gpu", "agents", "monitoring"]
         for section in required_sections:
             if not hasattr(config, section):
                 errors.append(f"Missing required section: {section}")
 
         return errors, warnings, info
 
-    def _validate_cross_component_consistency(self, config: JustNewsConfig) -> tuple[list[str], list[str], list[str]]:
+    def _validate_cross_component_consistency(
+        self, config: JustNewsConfig
+    ) -> tuple[list[str], list[str], list[str]]:
         """Validate consistency across components"""
         errors = []
         warnings = []
         info = []
 
         # Port conflicts - check all agent ports are unique
-        port_fields = ['scout', 'analyst', 'fact_checker', 'synthesizer', 'critic', 'chief_editor', 'memory', 'reasoning', 'dashboard']
+        port_fields = [
+            "scout",
+            "analyst",
+            "fact_checker",
+            "synthesizer",
+            "critic",
+            "chief_editor",
+            "memory",
+            "reasoning",
+            "dashboard",
+        ]
         ports = []
         for field_name in port_fields:
             port_value = getattr(config.agents.ports, field_name)
             if port_value in ports:
-                errors.append(f"Port conflict: {field_name} uses port {port_value} which is already used")
+                errors.append(
+                    f"Port conflict: {field_name} uses port {port_value} which is already used"
+                )
             ports.append(port_value)
 
         # GPU consistency
@@ -166,7 +185,9 @@ class ConfigurationValidator:
 
         return errors, warnings, info
 
-    def _validate_environment_requirements(self, config: JustNewsConfig) -> tuple[list[str], list[str], list[str]]:
+    def _validate_environment_requirements(
+        self, config: JustNewsConfig
+    ) -> tuple[list[str], list[str], list[str]]:
         """Validate environment-specific requirements"""
         errors = []
         warnings = []
@@ -189,7 +210,9 @@ class ConfigurationValidator:
                 warnings.append("Monitoring should be enabled in production")
 
             if config.gpu.enabled and not config.gpu.devices.preferred:
-                warnings.append("GPU enabled in production but no preferred devices specified")
+                warnings.append(
+                    "GPU enabled in production but no preferred devices specified"
+                )
 
         elif env == Environment.STAGING:
             # Staging requirements
@@ -202,14 +225,18 @@ class ConfigurationValidator:
         elif env == Environment.DEVELOPMENT:
             # Development allowances
             if not config.system.debug_mode:
-                info.append("Debug mode disabled in development (consider enabling for debugging)")
+                info.append(
+                    "Debug mode disabled in development (consider enabling for debugging)"
+                )
 
             if config.monitoring.enabled:
                 info.append("Monitoring enabled in development")
 
         return errors, warnings, info
 
-    def _validate_performance_constraints(self, config: JustNewsConfig) -> tuple[list[str], list[str], list[str]]:
+    def _validate_performance_constraints(
+        self, config: JustNewsConfig
+    ) -> tuple[list[str], list[str], list[str]]:
         """Validate performance-related constraints"""
         errors = []
         warnings = []
@@ -217,15 +244,21 @@ class ConfigurationValidator:
 
         # Database connection pool
         if config.database.connection_pool.max_connections > 100:
-            warnings.append(f"High max connections: {config.database.connection_pool.max_connections} (may overwhelm database)")
+            warnings.append(
+                f"High max connections: {config.database.connection_pool.max_connections} (may overwhelm database)"
+            )
 
         # Crawling rate limits
         if config.crawling.rate_limiting.requests_per_minute > 1000:
-            warnings.append(f"High crawl rate: {config.crawling.rate_limiting.requests_per_minute} req/min")
+            warnings.append(
+                f"High crawl rate: {config.crawling.rate_limiting.requests_per_minute} req/min"
+            )
 
         return errors, warnings, info
 
-    def _validate_security_requirements(self, config: JustNewsConfig) -> tuple[list[str], list[str], list[str]]:
+    def _validate_security_requirements(
+        self, config: JustNewsConfig
+    ) -> tuple[list[str], list[str], list[str]]:
         """Validate security-related requirements"""
         errors = []
         warnings = []
@@ -247,7 +280,9 @@ class ConfigurationValidator:
 
         return errors, warnings, info
 
-    def _validate_integration_compatibility(self, config: JustNewsConfig) -> tuple[list[str], list[str], list[str]]:
+    def _validate_integration_compatibility(
+        self, config: JustNewsConfig
+    ) -> tuple[list[str], list[str], list[str]]:
         """Validate integration compatibility"""
         errors = []
         warnings = []
@@ -300,6 +335,7 @@ class ConfigurationTester:
         try:
             # Test loading
             from config.schemas import load_config_from_file
+
             config = load_config_from_file(config_path)
             info.append(f"Successfully loaded configuration from {config_path}")
 
@@ -319,7 +355,7 @@ class ConfigurationTester:
             errors=errors,
             warnings=warnings,
             info=info,
-            duration_ms=duration_ms
+            duration_ms=duration_ms,
         )
 
     def simulate_agent_startup(self, config: JustNewsConfig) -> ValidationResult:
@@ -342,8 +378,9 @@ class ConfigurationTester:
         try:
             # Test port availability for MCP Bus
             import socket
+
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            result = sock.connect_ex(('localhost', config.mcp_bus.port))
+            result = sock.connect_ex(("localhost", config.mcp_bus.port))
             sock.close()
 
             if result == 0:
@@ -372,6 +409,7 @@ class ConfigurationTester:
             try:
                 # Check for GPU availability (simulated)
                 import torch
+
                 if torch.cuda.is_available():
                     device_count = torch.cuda.device_count()
                     info.append(f"GPU available: {device_count} device(s)")
@@ -390,10 +428,12 @@ class ConfigurationTester:
             errors=errors,
             warnings=warnings,
             info=info,
-            duration_ms=duration_ms
+            duration_ms=duration_ms,
         )
 
-    def benchmark_configuration_performance(self, config: JustNewsConfig, iterations: int = 10) -> dict[str, Any]:
+    def benchmark_configuration_performance(
+        self, config: JustNewsConfig, iterations: int = 10
+    ) -> dict[str, Any]:
         """
         Benchmark configuration performance
 
@@ -410,7 +450,7 @@ class ConfigurationTester:
             "deserialization_times": [],
             "average_validation_time": 0,
             "average_serialization_time": 0,
-            "average_deserialization_time": 0
+            "average_deserialization_time": 0,
         }
 
         for _i in range(iterations):
@@ -433,9 +473,15 @@ class ConfigurationTester:
             results["deserialization_times"].append(deserialization_time)
 
         # Calculate averages
-        results["average_validation_time"] = sum(results["validation_times"]) / len(results["validation_times"])
-        results["average_serialization_time"] = sum(results["serialization_times"]) / len(results["serialization_times"])
-        results["average_deserialization_time"] = sum(results["deserialization_times"]) / len(results["deserialization_times"])
+        results["average_validation_time"] = sum(results["validation_times"]) / len(
+            results["validation_times"]
+        )
+        results["average_serialization_time"] = sum(
+            results["serialization_times"]
+        ) / len(results["serialization_times"])
+        results["average_deserialization_time"] = sum(
+            results["deserialization_times"]
+        ) / len(results["deserialization_times"])
 
         return results
 
@@ -464,7 +510,7 @@ class ConfigurationMigrationValidator:
         self,
         old_config: JustNewsConfig,
         new_config: JustNewsConfig,
-        migration_steps: list[str]
+        migration_steps: list[str],
     ) -> ValidationResult:
         """
         Validate configuration migration path
@@ -507,7 +553,9 @@ class ConfigurationMigrationValidator:
         # Check data integrity
         integrity_issues = self._check_data_integrity(old_config, new_config)
         if integrity_issues:
-            errors.extend(f"Data integrity issue: {issue}" for issue in integrity_issues)
+            errors.extend(
+                f"Data integrity issue: {issue}" for issue in integrity_issues
+            )
 
         duration_ms = (time.time() - start_time) * 1000
 
@@ -516,10 +564,12 @@ class ConfigurationMigrationValidator:
             errors=errors,
             warnings=warnings,
             info=info,
-            duration_ms=duration_ms
+            duration_ms=duration_ms,
         )
 
-    def _identify_breaking_changes(self, old_config: JustNewsConfig, new_config: JustNewsConfig) -> list[str]:
+    def _identify_breaking_changes(
+        self, old_config: JustNewsConfig, new_config: JustNewsConfig
+    ) -> list[str]:
         """Identify breaking changes between configurations"""
         changes = []
 
@@ -528,11 +578,15 @@ class ConfigurationMigrationValidator:
         new_ports = new_config.agents.ports.model_dump()
         for port_name, old_port in old_ports.items():
             if port_name in new_ports and old_port != new_ports[port_name]:
-                changes.append(f"Port changed: {port_name} {old_port} -> {new_ports[port_name]}")
+                changes.append(
+                    f"Port changed: {port_name} {old_port} -> {new_ports[port_name]}"
+                )
 
         return changes
 
-    def _check_data_integrity(self, old_config: JustNewsConfig, new_config: JustNewsConfig) -> list[str]:
+    def _check_data_integrity(
+        self, old_config: JustNewsConfig, new_config: JustNewsConfig
+    ) -> list[str]:
         """Check data integrity between configurations"""
         issues = []
 
@@ -542,7 +596,9 @@ class ConfigurationMigrationValidator:
 
         return issues
 
-    def validate_rollback_safety(self, config: JustNewsConfig, backup_path: str | Path) -> ValidationResult:
+    def validate_rollback_safety(
+        self, config: JustNewsConfig, backup_path: str | Path
+    ) -> ValidationResult:
         """
         Validate rollback safety
 
@@ -562,6 +618,7 @@ class ConfigurationMigrationValidator:
         try:
             # Load backup configuration
             from config.schemas import load_config_from_file
+
             backup_config = load_config_from_file(backup_path)
 
             # Validate backup configuration
@@ -571,9 +628,14 @@ class ConfigurationMigrationValidator:
                 errors.extend(backup_validation.errors)
 
             # Check rollback compatibility
-            compatibility_issues = self._check_rollback_compatibility(config, backup_config)
+            compatibility_issues = self._check_rollback_compatibility(
+                config, backup_config
+            )
             if compatibility_issues:
-                warnings.extend(f"Rollback compatibility issue: {issue}" for issue in compatibility_issues)
+                warnings.extend(
+                    f"Rollback compatibility issue: {issue}"
+                    for issue in compatibility_issues
+                )
 
             info.append("Rollback safety validated")
 
@@ -587,10 +649,12 @@ class ConfigurationMigrationValidator:
             errors=errors,
             warnings=warnings,
             info=info,
-            duration_ms=duration_ms
+            duration_ms=duration_ms,
         )
 
-    def _check_rollback_compatibility(self, current_config: JustNewsConfig, backup_config: JustNewsConfig) -> list[str]:
+    def _check_rollback_compatibility(
+        self, current_config: JustNewsConfig, backup_config: JustNewsConfig
+    ) -> list[str]:
         """Check rollback compatibility issues"""
         issues = []
 
@@ -605,6 +669,7 @@ class ConfigurationMigrationValidator:
 # UTILITY FUNCTIONS
 # ============================================================================
 
+
 def validate_configuration_file(config_path: str | Path) -> ValidationResult:
     """
     Validate configuration file
@@ -617,6 +682,7 @@ def validate_configuration_file(config_path: str | Path) -> ValidationResult:
     """
     tester = ConfigurationTester()
     return tester.test_configuration_loading(config_path)
+
 
 def simulate_system_startup(config: JustNewsConfig) -> ValidationResult:
     """
@@ -631,6 +697,7 @@ def simulate_system_startup(config: JustNewsConfig) -> ValidationResult:
     tester = ConfigurationTester()
     return tester.simulate_agent_startup(config)
 
+
 def benchmark_configuration(config: JustNewsConfig) -> dict[str, Any]:
     """
     Benchmark configuration performance
@@ -644,13 +711,14 @@ def benchmark_configuration(config: JustNewsConfig) -> dict[str, Any]:
     tester = ConfigurationTester()
     return tester.benchmark_configuration_performance(config)
 
+
 # Export public API
 __all__ = [
-    'ValidationResult',
-    'ConfigurationValidator',
-    'ConfigurationTester',
-    'ConfigurationMigrationValidator',
-    'validate_configuration_file',
-    'simulate_system_startup',
-    'benchmark_configuration'
+    "ValidationResult",
+    "ConfigurationValidator",
+    "ConfigurationTester",
+    "ConfigurationMigrationValidator",
+    "validate_configuration_file",
+    "simulate_system_startup",
+    "benchmark_configuration",
 ]

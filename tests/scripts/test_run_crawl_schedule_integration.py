@@ -83,7 +83,9 @@ def write_schedule(path: Path) -> None:
     path.write_text(SCHEDULE_YAML, encoding="utf-8")
 
 
-def run_scheduler(tmp_path: Path, dry_run: bool = False) -> tuple[int, Path, Path, Path]:
+def run_scheduler(
+    tmp_path: Path, dry_run: bool = False
+) -> tuple[int, Path, Path, Path]:
     schedule_path = tmp_path / "crawl_schedule.yaml"
     state_path = tmp_path / "state.json"
     success_path = tmp_path / "success.json"
@@ -128,8 +130,12 @@ def run_scheduler(tmp_path: Path, dry_run: bool = False) -> tuple[int, Path, Pat
 
 
 @pytest.mark.parametrize("dry_run", [True, False])
-def test_scheduler_invokes_crawler_and_writes_outputs(tmp_path: Path, requests_stub: RequestRecorder, dry_run: bool) -> None:
-    exit_code, state_path, success_path, metrics_path = run_scheduler(tmp_path, dry_run=dry_run)
+def test_scheduler_invokes_crawler_and_writes_outputs(
+    tmp_path: Path, requests_stub: RequestRecorder, dry_run: bool
+) -> None:
+    exit_code, state_path, success_path, metrics_path = run_scheduler(
+        tmp_path, dry_run=dry_run
+    )
 
     assert exit_code == 0
 

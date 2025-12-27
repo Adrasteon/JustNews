@@ -37,16 +37,19 @@ logger = get_logger(__name__)
 
 class ConfigurationError(Exception):
     """Configuration-related errors"""
+
     pass
 
 
 class ConfigurationValidationError(ConfigurationError):
     """Configuration validation errors"""
+
     pass
 
 
 class ConfigurationNotFoundError(ConfigurationError):
     """Configuration file not found"""
+
     pass
 
 
@@ -66,7 +69,7 @@ class ConfigurationManager:
         self,
         config_file: str | Path | None = None,
         environment: Environment | None = None,
-        auto_reload: bool = False
+        auto_reload: bool = False,
     ):
         """
         Initialize configuration manager
@@ -76,7 +79,9 @@ class ConfigurationManager:
             environment: Override environment (detected from file if None)
             auto_reload: Enable automatic config reloading on file changes
         """
-        self.config_file = Path(config_file) if config_file else self._find_config_file()
+        self.config_file = (
+            Path(config_file) if config_file else self._find_config_file()
+        )
         self.environment = environment
         self.auto_reload = auto_reload
 
@@ -92,7 +97,9 @@ class ConfigurationManager:
         # Load initial configuration
         self.reload()
 
-        logger.info(f"✅ Configuration manager initialized with file: {self.config_file}")
+        logger.info(
+            f"✅ Configuration manager initialized with file: {self.config_file}"
+        )
 
     def _find_config_file(self) -> Path:
         """Find configuration file using standard search paths"""
@@ -100,15 +107,12 @@ class ConfigurationManager:
             # Current working directory
             Path.cwd() / "config.json",
             Path.cwd() / "config" / "system_config.json",
-
             # User home directory
             Path.home() / ".justnews" / "config.json",
-
             # System-wide locations
             Path("/etc/justnews/config.json"),
-
             # Development fallback
-            Path(__file__).parent.parent.parent / "config" / "system_config.json"
+            Path(__file__).parent.parent.parent / "config" / "system_config.json",
         ]
 
         for path in search_paths:
@@ -173,9 +177,13 @@ class ConfigurationManager:
 
             # Log configuration change
             if old_config is not None:
-                self._log_change("reload", "configuration reloaded from file", old_config, config)
+                self._log_change(
+                    "reload", "configuration reloaded from file", old_config, config
+                )
 
-            logger.info(f"✅ Configuration reloaded successfully (environment: {self.environment.value})")
+            logger.info(
+                f"✅ Configuration reloaded successfully (environment: {self.environment.value})"
+            )
             return config
 
         except Exception as e:
@@ -198,7 +206,9 @@ class ConfigurationManager:
             return JustNewsConfig(**config_dict)
         except Exception as e:
             # Preserve original exception context for debugging
-            raise ConfigurationValidationError(f"Environment overrides validation failed: {e}") from e
+            raise ConfigurationValidationError(
+                f"Environment overrides validation failed: {e}"
+            ) from e
 
     def _get_environment_overrides(self) -> dict[str, Any]:
         """Get environment-specific configuration overrides"""
@@ -221,35 +231,46 @@ class ConfigurationManager:
         overrides = {}
 
         # System overrides
-        if os.environ.get('JUSTNEWS_LOG_LEVEL'):
-            overrides.setdefault('system', {})['log_level'] = os.environ['JUSTNEWS_LOG_LEVEL']
-        if os.environ.get('JUSTNEWS_DEBUG_MODE'):
-            overrides.setdefault('system', {})['debug_mode'] = os.environ['JUSTNEWS_DEBUG_MODE'].lower() == 'true'
+        if os.environ.get("JUSTNEWS_LOG_LEVEL"):
+            overrides.setdefault("system", {})["log_level"] = os.environ[
+                "JUSTNEWS_LOG_LEVEL"
+            ]
+        if os.environ.get("JUSTNEWS_DEBUG_MODE"):
+            overrides.setdefault("system", {})["debug_mode"] = (
+                os.environ["JUSTNEWS_DEBUG_MODE"].lower() == "true"
+            )
 
         # Database overrides - use MariaDB environment variable names
-        if os.environ.get('MARIADB_HOST'):
-            overrides.setdefault('database', {})['host'] = os.environ['MARIADB_HOST']
+        if os.environ.get("MARIADB_HOST"):
+            overrides.setdefault("database", {})["host"] = os.environ["MARIADB_HOST"]
 
-        if os.environ.get('MARIADB_PORT'):
-            overrides.setdefault('database', {})['port'] = int(os.environ['MARIADB_PORT'])
+        if os.environ.get("MARIADB_PORT"):
+            overrides.setdefault("database", {})["port"] = int(
+                os.environ["MARIADB_PORT"]
+            )
 
-        if os.environ.get('MARIADB_DB'):
-            overrides.setdefault('database', {})['database'] = os.environ['MARIADB_DB']
+        if os.environ.get("MARIADB_DB"):
+            overrides.setdefault("database", {})["database"] = os.environ["MARIADB_DB"]
 
-        if os.environ.get('MARIADB_USER'):
-            overrides.setdefault('database', {})['user'] = os.environ['MARIADB_USER']
+        if os.environ.get("MARIADB_USER"):
+            overrides.setdefault("database", {})["user"] = os.environ["MARIADB_USER"]
 
-        if os.environ.get('MARIADB_PASSWORD'):
-            overrides.setdefault('database', {})['password'] = os.environ['MARIADB_PASSWORD']
+        if os.environ.get("MARIADB_PASSWORD"):
+            overrides.setdefault("database", {})["password"] = os.environ[
+                "MARIADB_PASSWORD"
+            ]
 
         # GPU overrides
-        if os.environ.get('JUSTNEWS_GPU_ENABLED'):
-            overrides.setdefault('gpu', {})['enabled'] = os.environ['JUSTNEWS_GPU_ENABLED'].lower() == 'true'
+        if os.environ.get("JUSTNEWS_GPU_ENABLED"):
+            overrides.setdefault("gpu", {})["enabled"] = (
+                os.environ["JUSTNEWS_GPU_ENABLED"].lower() == "true"
+            )
 
         # Crawling overrides
-        if os.environ.get('JUSTNEWS_CRAWL_REQUESTS_PER_MINUTE'):
-            overrides.setdefault('crawling', {}).setdefault('rate_limiting', {})['requests_per_minute'] = \
-                int(os.environ['JUSTNEWS_CRAWL_REQUESTS_PER_MINUTE'])
+        if os.environ.get("JUSTNEWS_CRAWL_REQUESTS_PER_MINUTE"):
+            overrides.setdefault("crawling", {}).setdefault("rate_limiting", {})[
+                "requests_per_minute"
+            ] = int(os.environ["JUSTNEWS_CRAWL_REQUESTS_PER_MINUTE"])
 
         return overrides
 
@@ -262,7 +283,7 @@ class ConfigurationManager:
         override_files = [
             self.config_file.parent / f"config.{self.environment.value}.json",
             self.config_file.parent / f"{self.environment.value}.json",
-            Path.home() / ".justnews" / f"config.{self.environment.value}.json"
+            Path.home() / ".justnews" / f"config.{self.environment.value}.json",
         ]
 
         for override_file in override_files:
@@ -273,7 +294,9 @@ class ConfigurationManager:
                     logger.info(f"Loaded environment overrides from: {override_file}")
                     return overrides
                 except Exception as e:
-                    logger.warning(f"Failed to load environment overrides from {override_file}: {e}")
+                    logger.warning(
+                        f"Failed to load environment overrides from {override_file}: {e}"
+                    )
 
         return {}
 
@@ -295,13 +318,25 @@ class ConfigurationManager:
             errors.append("GPU enabled but no preferred devices specified")
 
         # Agent port conflicts
-        port_fields = ['scout', 'analyst', 'fact_checker', 'synthesizer', 'critic', 'chief_editor', 'memory', 'reasoning', 'dashboard']
+        port_fields = [
+            "scout",
+            "analyst",
+            "fact_checker",
+            "synthesizer",
+            "critic",
+            "chief_editor",
+            "memory",
+            "reasoning",
+            "dashboard",
+        ]
         ports = [getattr(config.agents.ports, field) for field in port_fields]
         if len(ports) != len(set(ports)):
             errors.append("Agent ports must be unique")
 
         if errors:
-            raise ConfigurationValidationError(f"Configuration validation failed: {'; '.join(errors)}")
+            raise ConfigurationValidationError(
+                f"Configuration validation failed: {'; '.join(errors)}"
+            )
 
     def _calculate_hash(self, config: JustNewsConfig) -> str:
         """Calculate configuration hash for change detection"""
@@ -316,14 +351,24 @@ class ConfigurationManager:
             else:
                 base[key] = value
 
-    def _log_change(self, operation: str, description: str, old_value: Any = None, new_value: Any = None):
+    def _log_change(
+        self,
+        operation: str,
+        description: str,
+        old_value: Any = None,
+        new_value: Any = None,
+    ):
         """Log configuration change for audit trail"""
         change_entry = {
             "timestamp": datetime.now().isoformat(),
             "operation": operation,
             "description": description,
-            "old_value": old_value.model_dump() if hasattr(old_value, 'model_dump') else old_value,
-            "new_value": new_value.model_dump() if hasattr(new_value, 'model_dump') else new_value
+            "old_value": old_value.model_dump()
+            if hasattr(old_value, "model_dump")
+            else old_value,
+            "new_value": new_value.model_dump()
+            if hasattr(new_value, "model_dump")
+            else new_value,
         }
 
         self._audit_log.append(change_entry)
@@ -385,6 +430,7 @@ class ConfigurationManager:
 
         try:
             from ..schemas import save_config_to_file
+
             save_config_to_file(self.config, save_path)
             self._log_change("save", f"Configuration saved to {save_path}")
             logger.info(f"✅ Configuration saved to {save_path}")
@@ -398,7 +444,9 @@ class ConfigurationManager:
         """Reset configuration to defaults"""
         old_config = self.config
         self._config = create_default_config()
-        self._log_change("reset", "Configuration reset to defaults", old_config, self._config)
+        self._log_change(
+            "reset", "Configuration reset to defaults", old_config, self._config
+        )
         logger.info("✅ Configuration reset to defaults")
 
     def add_change_callback(self, callback: Callable[[str, Any, Any], None]):
@@ -414,9 +462,11 @@ class ConfigurationManager:
         return {
             "config_file": str(self.config_file),
             "environment": self.environment.value if self.environment else None,
-            "last_load_time": self._last_load_time.isoformat() if self._last_load_time else None,
+            "last_load_time": self._last_load_time.isoformat()
+            if self._last_load_time
+            else None,
             "config_hash": self._config_hash,
-            "auto_reload": self.auto_reload
+            "auto_reload": self.auto_reload,
         }
 
     def __getitem__(self, key: str) -> Any:
@@ -434,6 +484,7 @@ class ConfigurationManager:
 
 _config_manager: ConfigurationManager | None = None
 
+
 def get_config_manager() -> ConfigurationManager:
     """Get global configuration manager instance"""
     global _config_manager
@@ -441,47 +492,55 @@ def get_config_manager() -> ConfigurationManager:
         _config_manager = ConfigurationManager()
     return _config_manager
 
+
 def get_config() -> JustNewsConfig:
     """Get current configuration"""
     return get_config_manager().config
+
 
 # Convenience functions for common access patterns
 def get_system_config():
     """Get system configuration section"""
     return get_config().system
 
+
 def get_database_config():
     """Get database configuration section"""
     return get_config().database
+
 
 def get_gpu_config():
     """Get GPU configuration section"""
     return get_config().gpu
 
+
 def get_crawling_config():
     """Get crawling configuration section"""
     return get_config().crawling
+
 
 def is_production():
     """Check if running in production environment"""
     return get_config().system.environment == Environment.PRODUCTION
 
+
 def is_debug_mode():
     """Check if debug mode is enabled"""
     return get_config().system.debug_mode
 
+
 # Export public API
 __all__ = [
-    'ConfigurationManager',
-    'ConfigurationError',
-    'ConfigurationValidationError',
-    'ConfigurationNotFoundError',
-    'get_config_manager',
-    'get_config',
-    'get_system_config',
-    'get_database_config',
-    'get_gpu_config',
-    'get_crawling_config',
-    'is_production',
-    'is_debug_mode'
+    "ConfigurationManager",
+    "ConfigurationError",
+    "ConfigurationValidationError",
+    "ConfigurationNotFoundError",
+    "get_config_manager",
+    "get_config",
+    "get_system_config",
+    "get_database_config",
+    "get_gpu_config",
+    "get_crawling_config",
+    "is_production",
+    "is_debug_mode",
 ]

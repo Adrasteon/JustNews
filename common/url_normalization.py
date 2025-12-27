@@ -58,7 +58,9 @@ def _normalise_netloc(parsed: ParseResult) -> str:
     if not host:
         return ""
 
-    if (parsed.scheme == "http" and port == 80) or (parsed.scheme == "https" and port == 443):
+    if (parsed.scheme == "http" and port == 80) or (
+        parsed.scheme == "https" and port == 443
+    ):
         port = None
 
     return host if port is None else f"{host}:{port}"
@@ -72,7 +74,9 @@ def _collapse_slashes(path: str) -> str:
     return collapsed
 
 
-def normalize_article_url(url: str, canonical_url: str | None = None, *, mode: str | None = None) -> str:
+def normalize_article_url(
+    url: str, canonical_url: str | None = None, *, mode: str | None = None
+) -> str:
     """Return a normalised URL suitable for hashing and dedupe checks.
 
     Args:
@@ -129,7 +133,9 @@ def hash_article_url(url: str, *, algorithm: str | None = None) -> str:
     algo = (algorithm or os.environ.get("ARTICLE_URL_HASH_ALGO", "sha256")).lower()
     try:
         digest = hashlib.new(algo)
-    except ValueError as exc:  # pragma: no cover - invalid algorithm configured by operator
+    except (
+        ValueError
+    ) as exc:  # pragma: no cover - invalid algorithm configured by operator
         raise ValueError(f"Unsupported hash algorithm '{algo}'") from exc
 
     digest.update(url.encode("utf-8", errors="ignore"))

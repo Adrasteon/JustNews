@@ -18,8 +18,12 @@ class EntityLinkerManager:
 
     async def link_entities(self, article: dict[str, Any]) -> dict[str, Any]:
         entities = await self._knowledge_graph.extract_entities(article)
-        relationships = await self._knowledge_graph.extract_relationships(article, entities)
-        await self._knowledge_graph.store_article_entities(article, entities, relationships)
+        relationships = await self._knowledge_graph.extract_relationships(
+            article, entities
+        )
+        await self._knowledge_graph.store_article_entities(
+            article, entities, relationships
+        )
         return {
             "entities": entities,
             "relationships": relationships,
@@ -36,5 +40,7 @@ class EntityLinkerManager:
     def get_statistics(self) -> dict[str, Any]:
         return {
             "cache_dir": self._cache_dir,
-            "entities_indexed": self._knowledge_graph.get_statistics().get("entities_indexed", 0),
+            "entities_indexed": self._knowledge_graph.get_statistics().get(
+                "entities_indexed", 0
+            ),
         }

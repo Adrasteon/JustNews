@@ -6,9 +6,9 @@ from agents.crawler_control import main as crawler_main
 
 def test_root_serves_html(tmp_path, monkeypatch):
     client = TestClient(crawler_main.app)
-    response = client.get('/')
+    response = client.get("/")
     assert response.status_code == 200
-    assert 'JustNews Crawler Dashboard' in response.text
+    assert "JustNews Crawler Dashboard" in response.text
 
 
 class DummyResp:
@@ -31,7 +31,7 @@ def test_api_start_crawl(monkeypatch):
     def fake_post(url, json=None, **kwargs):
         return dummy
 
-    monkeypatch.setattr(requests, 'post', fake_post)
+    monkeypatch.setattr(requests, "post", fake_post)
 
     payload = {
         "domains": "example.com",
@@ -41,9 +41,9 @@ def test_api_start_crawl(monkeypatch):
         "strategy": "auto",
         "enable_ai": False,
         "timeout": 60,
-        "user_agent": "test-agent"
+        "user_agent": "test-agent",
     }
-    response = client.post('/api/crawl/start', json=payload)
+    response = client.post("/api/crawl/start", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert "job" in data
@@ -53,18 +53,22 @@ def test_api_start_crawl(monkeypatch):
 def test_app_startup_db_warmup(monkeypatch):
     # Ensure DB warmup step on startup is not fatal and runs when available
     import agents.crawler_control.main as crawler_main
+
     called = {"closed": False}
 
     def fake_create_database_service():
         class DB:
             def close(self):
                 called["closed"] = True
+
         return DB()
 
-    monkeypatch.setattr(crawler_main, 'create_database_service', fake_create_database_service)
+    monkeypatch.setattr(
+        crawler_main, "create_database_service", fake_create_database_service
+    )
     with TestClient(crawler_main.app) as client:
-        r = client.get('/ready')
+        r = client.get("/ready")
         assert r.status_code == 200
-        assert r.json().get('ready') in (True, False)
+        assert r.json().get("ready") in (True, False)
     # Ensure warmup close was called
     assert called["closed"] is True

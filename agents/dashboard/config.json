@@ -20,7 +20,7 @@
     "port": 3306,
     "database": "justnews",
     "user": "justnews",
-    "password": "migration_password_2024",
+    "password": "justnews_password_2024",
     "connection_pool": {
       "min_connections": 2,
       "max_connections": 10,
@@ -215,8 +215,8 @@
   },
   "external_services": {
     "news_sources": {
-      "verification_required": true,
-      "max_age_days": 30,
+      "verification_required": false,
+      "max_age_days": 365,
       "auto_discovery": false
     },
     "apis": {

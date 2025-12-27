@@ -22,6 +22,7 @@ from .newsreader_engine import NewsReaderEngine, ProcessingMode
 
 logger = get_logger(__name__)
 
+
 class MemoryMonitor:
     """Simple memory monitoring for GPU operations."""
 
@@ -64,17 +65,23 @@ class MemoryMonitor:
         """Record current memory statistics."""
         try:
             import torch
+
             if torch.cuda.is_available():
                 allocated = torch.cuda.memory_allocated() / 1e6
                 reserved = torch.cuda.memory_reserved() / 1e6
-                free = torch.cuda.get_device_properties(0).total_memory / 1e6 - allocated
+                free = (
+                    torch.cuda.get_device_properties(0).total_memory / 1e6 - allocated
+                )
 
                 stats = {
-                    'timestamp': time.time(),
-                    'allocated_mb': allocated,
-                    'reserved_mb': reserved,
-                    'free_mb': free,
-                    'utilization_percent': (allocated / torch.cuda.get_device_properties(0).total_memory) * 100
+                    "timestamp": time.time(),
+                    "allocated_mb": allocated,
+                    "reserved_mb": reserved,
+                    "free_mb": free,
+                    "utilization_percent": (
+                        allocated / torch.cuda.get_device_properties(0).total_memory
+                    )
+                    * 100,
                 }
 
                 self.memory_stats.append(stats)
@@ -92,15 +99,17 @@ class MemoryMonitor:
         """Get current memory statistics."""
         return self.memory_stats.copy()
 
+
 # Global memory monitor instance
 memory_monitor = MemoryMonitor()
+
 
 async def process_article_content(
     url: str,
     engine: NewsReaderEngine,
     mode: ProcessingMode = ProcessingMode.COMPREHENSIVE,
     screenshot_path: str | None = None,
-    custom_prompt: str | None = None
+    custom_prompt: str | None = None,
 ) -> dict[str, Any]:
     """
     Process article content from URL using NewsReader engine.
@@ -146,7 +155,7 @@ async def process_article_content(
             "model_outputs": result.model_outputs,
             "metadata": result.metadata,
             "timestamp": time.time(),
-            "processing_mode": mode.value
+            "processing_mode": mode.value,
         }
 
         # Add memory stats if available
@@ -163,8 +172,9 @@ async def process_article_content(
             "url": url,
             "error": str(e),
             "timestamp": time.time(),
-            "processing_mode": mode.value
+            "processing_mode": mode.value,
         }
+
 
 def validate_processing_result(result: dict[str, Any]) -> tuple[bool, str]:
     """
@@ -177,7 +187,13 @@ def validate_processing_result(result: dict[str, Any]) -> tuple[bool, str]:
         Tuple of (is_valid, error_message)
     """
     try:
-        required_fields = ["success", "url", "content_type", "extracted_text", "confidence_score"]
+        required_fields = [
+            "success",
+            "url",
+            "content_type",
+            "extracted_text",
+            "confidence_score",
+        ]
 
         for field in required_fields:
             if field not in result:
@@ -199,6 +215,7 @@ def validate_processing_result(result: dict[str, Any]) -> tuple[bool, str]:
 
     except Exception as e:
         return False, f"Validation error: {e}"
+
 
 def format_processing_output(result: dict[str, Any], format_type: str = "json") -> str:
     """
@@ -224,15 +241,15 @@ def format_processing_output(result: dict[str, Any], format_type: str = "json") 
                 f"Processing Time: {result.get('processing_time', 0.0):.2f}s",
                 "",
                 "Extracted Text:",
-                result.get('extracted_text', 'N/A'),
+                result.get("extracted_text", "N/A"),
                 "",
                 "Visual Description:",
-                result.get('visual_description', 'N/A')
+                result.get("visual_description", "N/A"),
             ]
             return "\n".join(lines)
 
         elif format_type == "markdown":
-            success_emoji = "✅" if result.get('success', False) else "❌"
+            success_emoji = "✅" if result.get("success", False) else "❌"
             lines = [
                 f"# News Article Processing Result {success_emoji}",
                 "",
@@ -243,11 +260,11 @@ def format_processing_output(result: dict[str, Any], format_type: str = "json") 
                 "",
                 "## Extracted Text",
                 "```",
-                result.get('extracted_text', 'N/A'),
+                result.get("extracted_text", "N/A"),
                 "```",
                 "",
                 "## Visual Description",
-                result.get('visual_description', 'N/A')
+                result.get("visual_description", "N/A"),
             ]
             return "\n".join(lines)
 
@@ -256,6 +273,7 @@ def format_processing_output(result: dict[str, Any], format_type: str = "json") 
 
     except Exception as e:
         return f"Formatting error: {e}"
+
 
 async def health_check(engine: NewsReaderEngine) -> dict[str, Any]:
     """
@@ -273,7 +291,7 @@ async def health_check(engine: NewsReaderEngine) -> dict[str, Any]:
         "timestamp": time.time(),
         "overall_status": "healthy",
         "components": {},
-        "issues": []
+        "issues": [],
     }
 
     try:
@@ -281,7 +299,7 @@ async def health_check(engine: NewsReaderEngine) -> dict[str, Any]:
         llava_available = engine.is_llava_available()
         health_status["components"]["llava_model"] = {
             "status": "healthy" if llava_available else "unhealthy",
-            "available": llava_available
+            "available": llava_available,
         }
 
         if not llava_available:
@@ -289,10 +307,10 @@ async def health_check(engine: NewsReaderEngine) -> dict[str, Any]:
             health_status["overall_status"] = "degraded"
 
         # Check screenshot system
-        screenshot_available = engine.models.get('screenshot_system') is not None
+        screenshot_available = engine.models.get("screenshot_system") is not None
         health_status["components"]["screenshot_system"] = {
             "status": "healthy" if screenshot_available else "unhealthy",
-            "available": screenshot_available
+            "available": screenshot_available,
         }
 
         if not screenshot_available:
@@ -304,13 +322,13 @@ async def health_check(engine: NewsReaderEngine) -> dict[str, Any]:
         health_status["components"]["memory_monitor"] = {
             "status": "healthy",
             "active": memory_monitor.monitoring,
-            "stats_count": len(memory_stats)
+            "stats_count": len(memory_stats),
         }
 
         # Check processing stats
         health_status["components"]["processing_stats"] = {
             "status": "healthy",
-            "stats": engine.processing_stats
+            "stats": engine.processing_stats,
         }
 
         logger.info(f"🏥 Health check completed: {health_status['overall_status']}")
@@ -321,6 +339,7 @@ async def health_check(engine: NewsReaderEngine) -> dict[str, Any]:
         health_status["overall_status"] = "unhealthy"
         health_status["issues"].append(f"Health check error: {e}")
         return health_status
+
 
 def cleanup_temp_files(temp_dir: str = "./temp", max_age_hours: int = 24):
     """
@@ -355,13 +374,14 @@ def cleanup_temp_files(temp_dir: str = "./temp", max_age_hours: int = 24):
     except Exception as e:
         logger.error(f"Error cleaning temp files: {e}")
 
+
 # Export main functions
 __all__ = [
-    'process_article_content',
-    'validate_processing_result',
-    'format_processing_output',
-    'health_check',
-    'cleanup_temp_files',
-    'memory_monitor',
-    'MemoryMonitor'
+    "process_article_content",
+    "validate_processing_result",
+    "format_processing_output",
+    "health_check",
+    "cleanup_temp_files",
+    "memory_monitor",
+    "MemoryMonitor",
 ]

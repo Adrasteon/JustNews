@@ -57,10 +57,7 @@ class TestMakeJsonSafe:
             "number": 42,
             "datetime": datetime(2023, 1, 1),
             "bytes": b"data",
-            "nested": {
-                "key": "value",
-                "date": date(2023, 1, 1)
-            }
+            "nested": {"key": "value", "date": date(2023, 1, 1)},
         }
 
         result = make_json_safe(test_dict)
@@ -74,13 +71,7 @@ class TestMakeJsonSafe:
 
     def test_list_conversion(self):
         """Test list conversion with mixed types"""
-        test_list = [
-            "string",
-            42,
-            datetime(2023, 1, 1),
-            b"bytes",
-            {"key": "value"}
-        ]
+        test_list = ["string", 42, datetime(2023, 1, 1), b"bytes", {"key": "value"}]
 
         result = make_json_safe(test_list)
 
@@ -114,6 +105,7 @@ class TestMakeJsonSafe:
 
     def test_complex_object_conversion(self):
         """Test conversion of arbitrary objects to strings"""
+
         class CustomObject:
             def __init__(self, value):
                 self.value = value
@@ -151,7 +143,7 @@ class TestMakeJsonSafe:
         # Should not crash - depth limit should prevent issues
         assert isinstance(result, dict)
 
-    @patch('common.json_utils.lxml_etree')
+    @patch("common.json_utils.lxml_etree")
     def test_lxml_element_conversion(self, mock_lxml):
         """Test lxml element conversion when lxml is available"""
         mock_lxml.tostring.return_value = "<element>content</element>"
@@ -169,7 +161,7 @@ class TestMakeJsonSafe:
     def test_lxml_element_conversion_no_lxml(self):
         """Test lxml element conversion when lxml is not available"""
         # When lxml_etree is None, should fall back to str()
-        with patch('common.json_utils.lxml_etree', None):
+        with patch("common.json_utils.lxml_etree", None):
             mock_element = Mock()
             mock_element.tag = "element"
             mock_element.attrib = {"class": "test"}
@@ -178,7 +170,7 @@ class TestMakeJsonSafe:
 
             assert "Mock object" in result or "element" in result
 
-    @patch('common.json_utils.lxml_etree')
+    @patch("common.json_utils.lxml_etree")
     def test_lxml_element_conversion_error(self, mock_lxml):
         """Test lxml element conversion when tostring fails"""
         mock_lxml.tostring.side_effect = Exception("Conversion failed")
@@ -200,8 +192,8 @@ class TestMakeJsonSafe:
             "set": {1, 2, 3},
             "nested": {
                 "date": date(2023, 1, 1),
-                "custom": object()  # This will become a string
-            }
+                "custom": object(),  # This will become a string
+            },
         }
 
         result = make_json_safe(complex_data)

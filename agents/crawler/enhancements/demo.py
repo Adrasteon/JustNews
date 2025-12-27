@@ -30,11 +30,13 @@ def load_global_env():
         with open(global_env_path) as f:
             for line in f:
                 line = line.strip()
-                if line and not line.startswith('#'):
-                    if '=' in line:
-                        key, value = line.split('=', 1)
+                if line and not line.startswith("#"):
+                    if "=" in line:
+                        key, value = line.split("=", 1)
                         os.environ[key] = value
-                        print(f"  Set {key}={value[:10]}{'...' if len(value) > 10 else ''}")
+                        print(
+                            f"  Set {key}={value[:10]}{'...' if len(value) > 10 else ''}"
+                        )
     else:
         print(f"Warning: global.env not found at {global_env_path}")
 
@@ -62,8 +64,7 @@ def demo_modal_handler():
     """
 
     handler = ModalHandler(
-        consent_cookie_name="cookie_consent",
-        consent_cookie_value="accepted"
+        consent_cookie_name="cookie_consent", consent_cookie_value="accepted"
     )
     result = handler.process(html_with_modal)
 
@@ -80,25 +81,24 @@ def demo_user_agent_rotation():
     user_agents = [
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     ]
 
     per_domain = {
         "bbc.co.uk": ["BBC News App/1.0 (iOS)"],
-        "nytimes.com": ["Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15"]
+        "nytimes.com": [
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15"
+        ],
     }
 
     provider = UserAgentProvider(
-        config=UserAgentConfig(
-            pool=user_agents,
-            per_domain_overrides=per_domain
-        )
+        config=UserAgentConfig(pool=user_agents, per_domain_overrides=per_domain)
     )
 
     print("General rotation:")
     for i in range(3):
         ua = provider.choose()
-        print(f"  {i+1}. {ua}")
+        print(f"  {i + 1}. {ua}")
 
     print("\nDomain-specific:")
     for domain in ["bbc.co.uk", "nytimes.com", "example.com"]:
@@ -114,7 +114,7 @@ def demo_proxy_manager():
     proxies = [
         ProxyDefinition(url="http://proxy1.example.com:8080"),
         ProxyDefinition(url="http://proxy2.example.com:8080"),
-        ProxyDefinition(url="http://proxy3.example.com:8080")
+        ProxyDefinition(url="http://proxy3.example.com:8080"),
     ]
 
     manager = ProxyManager(proxies)
@@ -122,7 +122,7 @@ def demo_proxy_manager():
     print("Proxy rotation:")
     for i in range(5):
         proxy = manager.next_proxy()
-        print(f"  {i+1}. {proxy.url}")
+        print(f"  {i + 1}. {proxy.url}")
     print()
 
 
@@ -163,21 +163,15 @@ def demo_stealth_browser():
         {
             "accept_language": "en-US,en;q=0.9",
             "accept_encoding": "gzip, deflate, br",
-            "headers": {
-                "DNT": "1",
-                "Upgrade-Insecure-Requests": "1"
-            },
-            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            "headers": {"DNT": "1", "Upgrade-Insecure-Requests": "1"},
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         },
         {
             "accept_language": "en-GB,en;q=0.9",
             "accept_encoding": "gzip, deflate, br",
-            "headers": {
-                "DNT": "1",
-                "Sec-Fetch-Site": "same-origin"
-            },
-            "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-        }
+            "headers": {"DNT": "1", "Sec-Fetch-Site": "same-origin"},
+            "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        },
     ]
 
     factory = StealthBrowserFactory(profiles=profiles)
@@ -185,7 +179,7 @@ def demo_stealth_browser():
     print("Random profile selection:")
     for i in range(3):
         profile = factory.random_profile()
-        print(f"  Profile {i+1}:")
+        print(f"  Profile {i + 1}:")
         print(f"    User-Agent: {profile.user_agent}")
         print(f"    Accept-Language: {profile.accept_language}")
         print(f"    Headers: {dict(profile.headers)}")
@@ -217,7 +211,7 @@ async def demo_paywall_detector():
     result = await detector.analyze(
         url="https://example.com/premium-article",
         html=paywalled_html,
-        text="Subscribe to Continue Reading You've reached your monthly article limit."
+        text="Subscribe to Continue Reading You've reached your monthly article limit.",
     )
 
     print(f"Paywall detected: {result.is_paywall}")
@@ -241,34 +235,29 @@ def demo_configuration():
                 "enable_stealth_headers": True,
                 "user_agent_pool": [
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
                 ],
-                "per_domain_user_agents": {
-                    "bbc.co.uk": ["BBC News App/1.0"]
-                },
+                "per_domain_user_agents": {"bbc.co.uk": ["BBC News App/1.0"]},
                 "proxy_pool": [
                     "http://proxy1.example.com:8080",
-                    "http://proxy2.example.com:8080"
+                    "http://proxy2.example.com:8080",
                 ],
                 "stealth_profiles": [
                     {
                         "accept_language": "en-US,en;q=0.9",
                         "accept_encoding": "gzip, deflate, br",
                         "headers": {"DNT": "1"},
-                        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                     }
                 ],
-                "consent_cookie": {
-                    "name": "cookie_consent",
-                    "value": "accepted"
-                },
+                "consent_cookie": {"name": "cookie_consent", "value": "accepted"},
                 "paywall_detector": {
                     "enable_remote_analysis": False,
-                    "max_remote_chars": 6000
+                    "max_remote_chars": 6000,
                 },
                 "enable_pia_socks5": True,
                 "pia_socks5_username": "${PIA_SOCKS5_USERNAME}",
-                "pia_socks5_password": "${PIA_SOCKS5_PASSWORD}"
+                "pia_socks5_password": "${PIA_SOCKS5_PASSWORD}",
             }
         }
     }

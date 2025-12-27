@@ -2,6 +2,7 @@
 
 Provides token-level precision/recall/f1 utilities used by evaluation runner.
 """
+
 import re
 from collections import Counter
 from collections.abc import Iterable
@@ -17,7 +18,9 @@ def tokenize(text: str) -> list[str]:
     return tokens
 
 
-def precision_recall_f1(pred_tokens: Iterable[str], gold_tokens: Iterable[str]) -> tuple[float, float, float]:
+def precision_recall_f1(
+    pred_tokens: Iterable[str], gold_tokens: Iterable[str]
+) -> tuple[float, float, float]:
     """Token-level precision, recall, and F1 between predicted and gold tokens."""
     pred_counts = Counter(pred_tokens)
     gold_counts = Counter(gold_tokens)
@@ -89,7 +92,9 @@ def _lcs_length(a: list[str], b: list[str]) -> int:
     return dp[n]
 
 
-def rouge_l(pred_tokens: list[str], gold_tokens: list[str]) -> tuple[float, float, float]:
+def rouge_l(
+    pred_tokens: list[str], gold_tokens: list[str]
+) -> tuple[float, float, float]:
     """Compute ROUGE-L precision/recall/F1 based on LCS."""
     if not pred_tokens or not gold_tokens:
         return 0.0, 0.0, 0.0

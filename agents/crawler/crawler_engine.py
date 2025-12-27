@@ -69,11 +69,13 @@ try:
 except (TypeError, ValueError):
     PAYWALL_SKIP_ACTIVATION_THRESHOLD = 3
 
+
 def call_analyst_tool(tool: str, *args, **kwargs) -> Any:
     payload = {"agent": "analyst", "tool": tool, "args": list(args), "kwargs": kwargs}
     resp = requests.post(f"{MCP_BUS_URL}/call", json=payload)
     resp.raise_for_status()
     return resp.json().get("data")
+
 
 logger = get_logger(__name__)
 
@@ -126,9 +128,10 @@ class CrawlerEngine:
         if enhancements.enable_pia_socks5:
             try:
                 from .enhancements import PIASocks5Manager
+
                 self.pia_socks5_manager = PIASocks5Manager(
                     username=enhancements.pia_socks5_username,
-                    password=enhancements.pia_socks5_password
+                    password=enhancements.pia_socks5_password,
                 )
                 logger.info("✅ PIA SOCKS5 proxy enabled")
             except Exception as e:
@@ -137,7 +140,9 @@ class CrawlerEngine:
         self.stealth_factory = None
         if enhancements.enable_stealth_headers and enhancements.stealth_profiles:
             try:
-                self.stealth_factory = StealthBrowserFactory(enhancements.stealth_profiles)
+                self.stealth_factory = StealthBrowserFactory(
+                    enhancements.stealth_profiles
+                )
                 logger.info("✅ Stealth headers enabled")
             except Exception as e:
                 logger.warning(f"Failed to initialize stealth factory: {e}")
@@ -181,6 +186,7 @@ class CrawlerEngine:
         self.performance_optimizer = PerformanceOptimizer(self.performance_monitor)
         # Initialize performance metrics tracking
         import time
+
         self.performance_metrics = {
             "start_time": time.time(),
             "articles_processed": 0,
@@ -195,7 +201,10 @@ class CrawlerEngine:
         }
 
         # Start monitoring if enabled
-        if os.environ.get("UNIFIED_CRAWLER_PERFORMANCE_MONITORING", "true").lower() == "true":
+        if (
+            os.environ.get("UNIFIED_CRAWLER_PERFORMANCE_MONITORING", "true").lower()
+            == "true"
+        ):
             start_performance_monitoring(interval_seconds=60)
 
         # Initialize database connection and performance table
@@ -204,7 +213,9 @@ class CrawlerEngine:
             create_crawling_performance_table()
             logger.info("✅ Database connection pool and performance table initialized")
         except Exception as e:
-            logger.warning(f"⚠️ Database initialization failed (crawler will work without performance tracking): {e}")
+            logger.warning(
+                f"⚠️ Database initialization failed (crawler will work without performance tracking): {e}"
+            )
             # Continue without database - crawler can still work via MCP bus
 
         # Strategy optimization cache
@@ -227,7 +238,9 @@ class CrawlerEngine:
             or os.environ.get("HITL_SERVICE_ADDRESS")
             or "http://localhost:8040"
         ).rstrip("/")
-        self.hitl_enabled = os.environ.get("ENABLE_HITL_PIPELINE", "true").lower() != "false"
+        self.hitl_enabled = (
+            os.environ.get("ENABLE_HITL_PIPELINE", "true").lower() != "false"
+        )
         self.hitl_stats_interval = _parse_int("HITL_STATS_INTERVAL_SECONDS", 60, 0)
         self.hitl_backoff_seconds = _parse_int("HITL_FAILURE_BACKOFF_SECONDS", 180, 30)
         self._hitl_last_stats_check = 0.0
@@ -258,15 +271,22 @@ class CrawlerEngine:
             # Kill Chrome processes older than 10 minutes (very conservative)
             try:
                 import psutil
+
                 now_ts = time.time()
                 current_pid = os.getpid()
                 cleaned_count = 0
-                for proc in psutil.process_iter(attrs=['pid', 'name', 'cmdline', 'create_time']):
+                for proc in psutil.process_iter(
+                    attrs=["pid", "name", "cmdline", "create_time"]
+                ):
                     try:
                         info = proc.info
-                        name = (info.get('name') or '').lower()
-                        cmdline = ' '.join(info.get('cmdline') or [])
-                        if 'chrome' not in name and 'chromium' not in name and 'chrome' not in cmdline:
+                        name = (info.get("name") or "").lower()
+                        cmdline = " ".join(info.get("cmdline") or [])
+                        if (
+                            "chrome" not in name
+                            and "chromium" not in name
+                            and "chrome" not in cmdline
+                        ):
                             continue
 
                         # Only consider processes that are descendants of this process
@@ -275,12 +295,18 @@ class CrawlerEngine:
                             continue
 
                         # Age check
-                        etime = int(now_ts - (info.get('create_time') or now_ts))
+                        etime = int(now_ts - (info.get("create_time") or now_ts))
                         if etime > 600:  # 10 minutes conservative limit
                             proc.terminate()
                             cleaned_count += 1
-                            logger.debug(f"Cleaned up very old Chrome process {proc.pid} (age: {etime}s)")
-                    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                            logger.debug(
+                                f"Cleaned up very old Chrome process {proc.pid} (age: {etime}s)"
+                            )
+                    except (
+                        psutil.NoSuchProcess,
+                        psutil.AccessDenied,
+                        psutil.ZombieProcess,
+                    ):
                         continue
                 if cleaned_count > 0:
                     logger.info(f"Cleaned up {cleaned_count} very old Chrome processes")
@@ -290,21 +316,30 @@ class CrawlerEngine:
             # Kill Playwright driver processes older than 15 minutes
             try:
                 import psutil
+
                 now_ts = time.time()
                 current_pid = os.getpid()
-                for proc in psutil.process_iter(attrs=['pid', 'name', 'cmdline', 'create_time']):
+                for proc in psutil.process_iter(
+                    attrs=["pid", "name", "cmdline", "create_time"]
+                ):
                     try:
-                        cmdline = ' '.join(proc.info.get('cmdline') or [])
-                        if 'run-driver' not in cmdline and 'playwright' not in cmdline:
+                        cmdline = " ".join(proc.info.get("cmdline") or [])
+                        if "run-driver" not in cmdline and "playwright" not in cmdline:
                             continue
                         parents = [p.pid for p in proc.parents()]
                         if current_pid not in parents:
                             continue
-                        etime = int(now_ts - (proc.info.get('create_time') or now_ts))
+                        etime = int(now_ts - (proc.info.get("create_time") or now_ts))
                         if etime > 900:  # 15 minutes
                             proc.terminate()
-                            logger.debug(f"Cleaned up very old Playwright driver {proc.pid}")
-                    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                            logger.debug(
+                                f"Cleaned up very old Playwright driver {proc.pid}"
+                            )
+                    except (
+                        psutil.NoSuchProcess,
+                        psutil.AccessDenied,
+                        psutil.ZombieProcess,
+                    ):
                         continue
             except Exception as e:
                 logger.debug(f"Playwright cleanup failed: {e}")
@@ -314,40 +349,70 @@ class CrawlerEngine:
             try:
                 import signal
                 import subprocess
+
                 # Find chrome-like pids
-                pgrep_proc = subprocess.run(['pgrep', '-f', 'chrome'], capture_output=True, text=True, timeout=5)
+                pgrep_proc = subprocess.run(
+                    ["pgrep", "-f", "chrome"], capture_output=True, text=True, timeout=5
+                )
                 if pgrep_proc.returncode == 0 and pgrep_proc.stdout:
-                    pids = [int(pid.strip()) for pid in pgrep_proc.stdout.splitlines() if pid.strip().isdigit()]
+                    pids = [
+                        int(pid.strip())
+                        for pid in pgrep_proc.stdout.splitlines()
+                        if pid.strip().isdigit()
+                    ]
                     for pid in pids:
                         try:
                             # Get elapsed time via ps (seconds)
-                            ps_proc = subprocess.run(['ps', '-p', str(pid), '-o', 'etimes='], capture_output=True, text=True, timeout=5)
+                            ps_proc = subprocess.run(
+                                ["ps", "-p", str(pid), "-o", "etimes="],
+                                capture_output=True,
+                                text=True,
+                                timeout=5,
+                            )
                             if ps_proc.returncode != 0:
                                 continue
                             age_seconds = int(ps_proc.stdout.strip() or 0)
                             if age_seconds > 600:
                                 try:
                                     os.kill(pid, signal.SIGTERM)
-                                    logger.debug(f"Cleaned up shell-detected Chrome process {pid} (age: {age_seconds}s)")
+                                    logger.debug(
+                                        f"Cleaned up shell-detected Chrome process {pid} (age: {age_seconds}s)"
+                                    )
                                 except Exception:
                                     continue
                         except Exception:
                             continue
 
                 # Find playwright pids
-                pgrep_proc = subprocess.run(['pgrep', '-f', 'playwright.*run-driver'], capture_output=True, text=True, timeout=5)
+                pgrep_proc = subprocess.run(
+                    ["pgrep", "-f", "playwright.*run-driver"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
                 if pgrep_proc.returncode == 0 and pgrep_proc.stdout:
-                    pids = [int(pid.strip()) for pid in pgrep_proc.stdout.splitlines() if pid.strip().isdigit()]
+                    pids = [
+                        int(pid.strip())
+                        for pid in pgrep_proc.stdout.splitlines()
+                        if pid.strip().isdigit()
+                    ]
                     for pid in pids:
                         try:
-                            ps_proc = subprocess.run(['ps', '-p', str(pid), '-o', 'etimes='], capture_output=True, text=True, timeout=5)
+                            ps_proc = subprocess.run(
+                                ["ps", "-p", str(pid), "-o", "etimes="],
+                                capture_output=True,
+                                text=True,
+                                timeout=5,
+                            )
                             if ps_proc.returncode != 0:
                                 continue
                             age_seconds = int(ps_proc.stdout.strip() or 0)
                             if age_seconds > 900:
                                 try:
                                     os.kill(pid, signal.SIGTERM)
-                                    logger.debug(f"Cleaned up shell-detected Playwright process {pid} (age: {age_seconds}s)")
+                                    logger.debug(
+                                        f"Cleaned up shell-detected Playwright process {pid} (age: {age_seconds}s)"
+                                    )
                                 except Exception:
                                     continue
                         except Exception:
@@ -383,14 +448,21 @@ class CrawlerEngine:
 
             # Force kill any remaining processes - be more aggressive here
             import subprocess
+
             try:
                 # Kill all Chrome processes (they should all be from this crawler instance)
-                subprocess.run(['pkill', '-9', '-f', 'chrome'],
-                             timeout=10, capture_output=True)
+                subprocess.run(
+                    ["pkill", "-9", "-f", "chrome"], timeout=10, capture_output=True
+                )
                 # Kill Playwright drivers
-                subprocess.run(['pkill', '-9', '-f', 'playwright.*run-driver'],
-                             timeout=10, capture_output=True)
-                logger.info("Forced cleanup of all browser processes from crawler session")
+                subprocess.run(
+                    ["pkill", "-9", "-f", "playwright.*run-driver"],
+                    timeout=10,
+                    capture_output=True,
+                )
+                logger.info(
+                    "Forced cleanup of all browser processes from crawler session"
+                )
             except subprocess.TimeoutExpired:
                 logger.warning("Force cleanup timed out")
             except Exception as e:
@@ -425,10 +497,10 @@ class CrawlerEngine:
                 # Calculate average performance by strategy
                 strategy_performance = {}
                 for record in performance_history:
-                    strategy = record['strategy_used']
+                    strategy = record["strategy_used"]
                     if strategy not in strategy_performance:
                         strategy_performance[strategy] = []
-                    strategy_performance[strategy].append(record['articles_per_second'])
+                    strategy_performance[strategy].append(record["articles_per_second"])
 
                 # Find best performing strategy
                 best_strategy = None
@@ -442,7 +514,9 @@ class CrawlerEngine:
 
                 if best_strategy and best_avg_performance > 0.1:  # Minimum threshold
                     self.strategy_cache[cache_key] = best_strategy
-                    logger.info(f"🎯 Using performance-optimized strategy for {domain}: {best_strategy} ({best_avg_performance:.2f} articles/sec)")
+                    logger.info(
+                        f"🎯 Using performance-optimized strategy for {domain}: {best_strategy} ({best_avg_performance:.2f} articles/sec)"
+                    )
                     return best_strategy
 
         # 1. Check for pre-defined ultra-fast sites
@@ -451,8 +525,19 @@ class CrawlerEngine:
             return "ultra_fast"
 
         # Force AI-enhanced for known complex/paywalled sites
-        if any(d in domain for d in ["nytimes.com", "wsj.com", "washingtonpost.com", "theatlantic.com", "newyorker.com"]):
-            logger.info(f"Found known complex site {domain}, forcing 'ai_enhanced' strategy.")
+        if any(
+            d in domain
+            for d in [
+                "nytimes.com",
+                "wsj.com",
+                "washingtonpost.com",
+                "theatlantic.com",
+                "newyorker.com",
+            ]
+        ):
+            logger.info(
+                f"Found known complex site {domain}, forcing 'ai_enhanced' strategy."
+            )
             return "ai_enhanced"
 
         # 2. Check database for historical performance
@@ -462,7 +547,9 @@ class CrawlerEngine:
         # Default to generic strategy
         return "generic"
 
-    async def _crawl_ultra_fast_mode(self, site_config: SiteConfig, max_articles: int = 50) -> list[dict]:
+    async def _crawl_ultra_fast_mode(
+        self, site_config: SiteConfig, max_articles: int = 50
+    ) -> list[dict]:
         """
         Ultra-fast crawling mode (8.14+ articles/sec)
         Optimized for high-volume sites with reliable structure
@@ -471,16 +558,21 @@ class CrawlerEngine:
 
         try:
             # Try to import ultra-fast BBC crawler for BBC sites
-            if 'bbc' in site_config.domain.lower():
+            if "bbc" in site_config.domain.lower():
                 try:
                     from ..sites.bbc_crawler import UltraFastBBCCrawler
+
                     crawler = UltraFastBBCCrawler()
-                    results = await crawler.run_ultra_fast_crawl(max_articles, skip_ingestion=True)
+                    results = await crawler.run_ultra_fast_crawl(
+                        max_articles, skip_ingestion=True
+                    )
                     self.performance_metrics["mode_usage"]["ultra_fast"] += 1
                     # BBC crawler returns summary with 'articles' key and handles its own ingestion
-                    return results.get('articles', [])
+                    return results.get("articles", [])
                 except Exception:
-                    logger.warning("Ultra-fast BBC crawler not available, falling back to generic")
+                    logger.warning(
+                        "Ultra-fast BBC crawler not available, falling back to generic"
+                    )
                 finally:
                     # Cleanup after BBC crawler
                     await self._cleanup_orphaned_processes()
@@ -501,7 +593,9 @@ class CrawlerEngine:
                 enable_stealth_headers=enhancements.enable_stealth_headers,
             )
             articles = await crawler.crawl_site(max_articles)
-            logger.info(f"🔄 Generic fallback returned {len(articles)} articles for {site_config.name}")
+            logger.info(
+                f"🔄 Generic fallback returned {len(articles)} articles for {site_config.name}"
+            )
 
             self.performance_metrics["mode_usage"]["ultra_fast"] += 1
             return articles
@@ -509,15 +603,20 @@ class CrawlerEngine:
         except Exception as e:
             logger.error(f"Ultra-fast crawling failed for {site_config.name}: {e}")
             import traceback
+
             logger.error(f"Traceback: {traceback.format_exc()}")
             return []
         finally:
             # Always cleanup after ultra-fast mode
             await self._cleanup_orphaned_processes()
 
-    async def _crawl_ai_enhanced_mode(self, site_config: SiteConfig, max_articles: int = 25) -> list[dict]:
+    async def _crawl_ai_enhanced_mode(
+        self, site_config: SiteConfig, max_articles: int = 25
+    ) -> list[dict]:
         """AI-enhanced crawling stub: delegates to generic mode"""
-        logger.info(f"🤖 AI-enhanced crawling stub: delegating to generic mode for {site_config.name}")
+        logger.info(
+            f"🤖 AI-enhanced crawling stub: delegating to generic mode for {site_config.name}"
+        )
         try:
             articles = await self._crawl_generic_mode(site_config, max_articles)
             self.performance_metrics["mode_usage"]["ai_enhanced"] += 1
@@ -526,7 +625,9 @@ class CrawlerEngine:
             # Always cleanup after AI-enhanced crawling
             await self._cleanup_orphaned_processes()
 
-    async def _crawl_generic_mode(self, site_config: SiteConfig, max_articles: int = 25) -> list[dict]:
+    async def _crawl_generic_mode(
+        self, site_config: SiteConfig, max_articles: int = 25
+    ) -> list[dict]:
         """
         Generic crawling mode with Crawl4AI-first strategy
         Supports any news source with graceful fallbacks
@@ -590,37 +691,48 @@ class CrawlerEngine:
             return await self._crawl_generic_mode(site_config, effective_limit)
 
         try:
-            return await crawl_site_with_crawl4ai(site_config, profile, effective_limit)
+            # Respect profile-level 'follow_external' override (or let the adapter
+            # consult environment variables when None).
+            return await crawl_site_with_crawl4ai(
+                site_config,
+                profile,
+                effective_limit,
+                follow_external=profile.get("follow_external", None),
+            )
         except Exception as exc:  # noqa: BLE001 - resilience over strict typing
-            logger.error("Crawl4AI profiled crawl failed for %s: %s", site_config.name, exc)
+            logger.error(
+                "Crawl4AI profiled crawl failed for %s: %s", site_config.name, exc
+            )
             return []
         finally:
             await self._cleanup_orphaned_processes()
 
     async def _apply_ai_analysis(self, article: dict) -> dict:
         """Delegate AI analysis to Analyst agent via MCP bus"""
-        content = article.get('content', '')
+        content = article.get("content", "")
         if not content or len(content) < 100:
             return article
         try:
-            sentiment_score = call_analyst_tool('score_sentiment', content)
-            article['sentiment'] = {'score': sentiment_score}
-            topics = call_analyst_tool('extract_topics', content)
-            article['topics'] = topics
-            article['ai_analysis_applied'] = True
+            sentiment_score = call_analyst_tool("score_sentiment", content)
+            article["sentiment"] = {"score": sentiment_score}
+            topics = call_analyst_tool("extract_topics", content)
+            article["topics"] = topics
+            article["ai_analysis_applied"] = True
         except Exception as e:
             logger.error(f"Remote AI analysis failed: {e}")
         return article
 
-    async def crawl_site(self, site_config: SiteConfig, max_articles: int = 25) -> list[dict]:
+    async def crawl_site(
+        self, site_config: SiteConfig, max_articles: int = 25
+    ) -> list[dict]:
         """
         Crawl a single site using the optimal strategy
         """
         strategy = await self._determine_optimal_strategy(site_config)
 
-        if strategy == 'ultra_fast':
+        if strategy == "ultra_fast":
             return await self._crawl_ultra_fast_mode(site_config, max_articles)
-        elif strategy == 'ai_enhanced':
+        elif strategy == "ai_enhanced":
             return await self._crawl_ai_enhanced_mode(site_config, max_articles)
         else:  # generic
             return await self._crawl_generic_mode(site_config, max_articles)
@@ -652,7 +764,9 @@ class CrawlerEngine:
                     site_configs.append(config)
                 else:
                     # Create basic config for unknown domains
-                    logger.warning(f"No database entry for {domain}, creating basic config")
+                    logger.warning(
+                        f"No database entry for {domain}, creating basic config"
+                    )
                     parsed = urlparse(domain)
                     if parsed.scheme and parsed.netloc:
                         fallback_domain = parsed.netloc
@@ -661,13 +775,15 @@ class CrawlerEngine:
                         fallback_domain = domain
                         fallback_url = f"https://{domain}" if domain else ""
 
-                    config = SiteConfig({
-                        'id': None,
-                        'name': fallback_domain or domain or 'unknown',
-                        'domain': fallback_domain,
-                        'url': fallback_url,
-                        'crawling_strategy': 'generic'
-                    })
+                    config = SiteConfig(
+                        {
+                            "id": None,
+                            "name": fallback_domain or domain or "unknown",
+                            "domain": fallback_domain,
+                            "url": fallback_url,
+                            "crawling_strategy": "generic",
+                        }
+                    )
                     site_configs.append(config)
             except Exception as e:
                 logger.error(f"Failed to create config for {domain}: {e}")
@@ -699,7 +815,12 @@ class CrawlerEngine:
         start_time = time.time()
         site_articles: dict[str, list[dict[str, Any]]] = {}
         site_metrics: dict[str, dict[str, Any]] = {}
-        ingestion_totals = {"new_articles": 0, "duplicates": 0, "errors": 0, "paywalls": 0}
+        ingestion_totals = {
+            "new_articles": 0,
+            "duplicates": 0,
+            "errors": 0,
+            "paywalls": 0,
+        }
         total_successful = 0
         total_candidates = 0
         all_articles: list[dict[str, Any]] = []
@@ -747,33 +868,46 @@ class CrawlerEngine:
 
                 profile_override = _lookup_profile(site_config)
 
-                def _filter_paywall_skips(batch: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
+                def _filter_paywall_skips(
+                    batch: list[dict[str, Any]],
+                ) -> tuple[list[dict[str, Any]], int]:
                     """Separate paywalled articles from the batch and record skip metadata."""
                     nonlocal site_articles_local, site_details, site_paywalls
                     if not batch:
                         return batch, 0
 
-                    paywall_skips = [article for article in batch if article.get('skip_ingest')]
+                    paywall_skips = [
+                        article for article in batch if article.get("skip_ingest")
+                    ]
                     if paywall_skips:
                         for article in paywall_skips:
-                            metadata = article.setdefault('extraction_metadata', {})
-                            paywall_meta = metadata.setdefault('paywall_detection', {})
-                            paywall_meta['skipped'] = True
-                            article['paywall_flag'] = True
-                            article['ingestion_status'] = 'paywall_skipped'
+                            metadata = article.setdefault("extraction_metadata", {})
+                            paywall_meta = metadata.setdefault("paywall_detection", {})
+                            paywall_meta["skipped"] = True
+                            article["paywall_flag"] = True
+                            article["ingestion_status"] = "paywall_skipped"
                         site_articles_local.extend(paywall_skips)
                         site_details.extend(
-                            {'url': article.get('url'), 'status': 'paywall_skipped'}
+                            {"url": article.get("url"), "status": "paywall_skipped"}
                             for article in paywall_skips
                         )
                         site_paywalls += len(paywall_skips)
 
-                    remaining = [article for article in batch if not article.get('skip_ingest')]
+                    remaining = [
+                        article for article in batch if not article.get("skip_ingest")
+                    ]
                     return remaining, len(paywall_skips)
 
                 try:
-                    if profile_override and profile_override.get("engine", "crawl4ai") != "generic":
-                        budget_hint = remaining_budget if remaining_budget is not None else max_articles_per_site
+                    if (
+                        profile_override
+                        and profile_override.get("engine", "crawl4ai") != "generic"
+                    ):
+                        budget_hint = (
+                            remaining_budget
+                            if remaining_budget is not None
+                            else max_articles_per_site
+                        )
                         raw_batch = await self._crawl_with_profile(
                             site_config,
                             profile_override,
@@ -783,7 +917,11 @@ class CrawlerEngine:
 
                         filtered_batch: list[dict[str, Any]] = []
                         for article in raw_batch or []:
-                            key = article.get('url_hash') or article.get('normalized_url') or article.get('url')
+                            key = (
+                                article.get("url_hash")
+                                or article.get("normalized_url")
+                                or article.get("url")
+                            )
                             if key and key in seen_keys:
                                 continue
                             if key:
@@ -791,29 +929,47 @@ class CrawlerEngine:
                             filtered_batch.append(article)
 
                         if filtered_batch:
-                            filtered_batch, paywall_skipped = _filter_paywall_skips(filtered_batch)
+                            filtered_batch, paywall_skipped = _filter_paywall_skips(
+                                filtered_batch
+                            )
 
                             if not filtered_batch:
                                 if paywall_skipped:
-                                    exhaustion_reason = exhaustion_reason or "paywalls_only"
+                                    exhaustion_reason = (
+                                        exhaustion_reason or "paywalls_only"
+                                    )
                                 else:
-                                    await self._submit_hitl_candidates(filtered_batch, site_config)
-                                    exhaustion_reason = exhaustion_reason or "no_new_candidates"
+                                    await self._submit_hitl_candidates(
+                                        filtered_batch, site_config
+                                    )
+                                    exhaustion_reason = (
+                                        exhaustion_reason or "no_new_candidates"
+                                    )
                             else:
-                                take = remaining_budget if remaining_budget is not None else None
+                                take = (
+                                    remaining_budget
+                                    if remaining_budget is not None
+                                    else None
+                                )
                                 if take is not None:
                                     filtered_batch = filtered_batch[:take]
 
                                 site_candidates += len(filtered_batch)
-                                ingestion_result = await self._ingest_articles(filtered_batch)
+                                ingestion_result = await self._ingest_articles(
+                                    filtered_batch
+                                )
                                 site_articles_local.extend(filtered_batch)
-                                site_details.extend(ingestion_result.get('details', []))
-                                site_ingested += ingestion_result['new_articles']
-                                site_duplicates += ingestion_result['duplicates']
-                                site_errors += ingestion_result['errors']
+                                site_details.extend(ingestion_result.get("details", []))
+                                site_ingested += ingestion_result["new_articles"]
+                                site_duplicates += ingestion_result["duplicates"]
+                                site_errors += ingestion_result["errors"]
 
                                 if remaining_budget is not None:
-                                    remaining_budget = max(remaining_budget - ingestion_result['new_articles'], 0)
+                                    remaining_budget = max(
+                                        remaining_budget
+                                        - ingestion_result["new_articles"],
+                                        0,
+                                    )
 
                         exhaustion_reason = exhaustion_reason or "profile_completed"
                     else:
@@ -841,18 +997,27 @@ class CrawlerEngine:
 
                             filtered_batch: list[dict[str, Any]] = []
                             for article in raw_batch:
-                                key = article.get('url_hash') or article.get('normalized_url') or article.get('url')
+                                key = (
+                                    article.get("url_hash")
+                                    or article.get("normalized_url")
+                                    or article.get("url")
+                                )
                                 if key and key in seen_keys:
                                     continue
                                 if key:
                                     seen_keys.add(key)
                                 filtered_batch.append(article)
 
-                            filtered_batch, paywall_skipped = _filter_paywall_skips(filtered_batch)
+                            filtered_batch, paywall_skipped = _filter_paywall_skips(
+                                filtered_batch
+                            )
 
                             if not filtered_batch:
                                 if paywall_skipped:
-                                    if remaining_budget is not None and remaining_budget <= 0:
+                                    if (
+                                        remaining_budget is not None
+                                        and remaining_budget <= 0
+                                    ):
                                         exhaustion_reason = "limit_reached"
                                         break
                                     continue
@@ -862,30 +1027,42 @@ class CrawlerEngine:
                             if remaining_budget is not None:
                                 filtered_batch = filtered_batch[:remaining_budget]
 
-                            await self._submit_hitl_candidates(filtered_batch, site_config)
+                            await self._submit_hitl_candidates(
+                                filtered_batch, site_config
+                            )
                             site_candidates += len(filtered_batch)
 
-                            ingestion_result = await self._ingest_articles(filtered_batch)
+                            ingestion_result = await self._ingest_articles(
+                                filtered_batch
+                            )
                             site_articles_local.extend(filtered_batch)
-                            site_details.extend(ingestion_result.get('details', []))
-                            site_ingested += ingestion_result['new_articles']
-                            site_duplicates += ingestion_result['duplicates']
-                            site_errors += ingestion_result['errors']
+                            site_details.extend(ingestion_result.get("details", []))
+                            site_ingested += ingestion_result["new_articles"]
+                            site_duplicates += ingestion_result["duplicates"]
+                            site_errors += ingestion_result["errors"]
 
                             if remaining_budget is not None:
-                                remaining_budget = max(remaining_budget - ingestion_result['new_articles'], 0)
+                                remaining_budget = max(
+                                    remaining_budget - ingestion_result["new_articles"],
+                                    0,
+                                )
 
-                            if ingestion_result['new_articles'] == 0:
+                            if ingestion_result["new_articles"] == 0:
                                 exhaustion_reason = "ingestion_stalled"
                                 break
 
-                        if exhaustion_reason is None and site_ingested == 0 and site_paywalls > 0:
+                        if (
+                            exhaustion_reason is None
+                            and site_ingested == 0
+                            and site_paywalls > 0
+                        ):
                             exhaustion_reason = "paywalls_only"
 
                         if exhaustion_reason is None:
                             exhaustion_reason = (
                                 "limit_reached"
-                                if remaining_budget is not None and remaining_budget <= 0
+                                if remaining_budget is not None
+                                and remaining_budget <= 0
                                 else None
                             )
 
@@ -974,16 +1151,32 @@ class CrawlerEngine:
             "processing_time_seconds": total_time,
             "articles_per_second": articles_per_second,
             "strategy_breakdown": self.performance_metrics["mode_usage"],
-            "site_breakdown": {domain: metrics["ingested"] for domain, metrics in site_metrics.items()},
-            "site_attempted_breakdown": {domain: metrics["attempted"] for domain, metrics in site_metrics.items()},
+            "site_breakdown": {
+                domain: metrics["ingested"] for domain, metrics in site_metrics.items()
+            },
+            "site_attempted_breakdown": {
+                domain: metrics["attempted"] for domain, metrics in site_metrics.items()
+            },
             "site_candidate_breakdown": {
                 domain: metrics["candidates"]
                 for domain, metrics in site_metrics.items()
                 if metrics["candidates"]
             },
-            "site_duplicate_breakdown": {domain: metrics["duplicates"] for domain, metrics in site_metrics.items() if metrics["duplicates"]},
-            "site_error_breakdown": {domain: metrics["errors"] for domain, metrics in site_metrics.items() if metrics["errors"]},
-            "site_paywall_breakdown": {domain: metrics["paywalls"] for domain, metrics in site_metrics.items() if metrics["paywalls"]},
+            "site_duplicate_breakdown": {
+                domain: metrics["duplicates"]
+                for domain, metrics in site_metrics.items()
+                if metrics["duplicates"]
+            },
+            "site_error_breakdown": {
+                domain: metrics["errors"]
+                for domain, metrics in site_metrics.items()
+                if metrics["errors"]
+            },
+            "site_paywall_breakdown": {
+                domain: metrics["paywalls"]
+                for domain, metrics in site_metrics.items()
+                if metrics["paywalls"]
+            },
             "site_exhaustion": {
                 domain: metrics["exhaustion_reason"]
                 for domain, metrics in site_metrics.items()
@@ -1010,38 +1203,41 @@ class CrawlerEngine:
         )
         return summary
 
-    def _build_hitl_candidate_payload(self, article: dict, site_config: SiteConfig | None) -> dict[str, Any] | None:
+    def _build_hitl_candidate_payload(
+        self, article: dict, site_config: SiteConfig | None
+    ) -> dict[str, Any] | None:
         """Create the payload expected by the HITL candidate endpoint."""
-        url = article.get('url')
+        url = article.get("url")
         if not url:
             return None
 
-        extracted_text = article.get('content') or article.get('extracted_text') or ""
+        extracted_text = article.get("content") or article.get("extracted_text") or ""
         features: dict[str, Any] = {}
         if extracted_text:
             features["word_count"] = len(extracted_text.split())
 
-        extraction_meta = article.get('extraction_metadata') or {}
-        link_density = extraction_meta.get('link_density')
+        extraction_meta = article.get("extraction_metadata") or {}
+        link_density = extraction_meta.get("link_density")
         if isinstance(link_density, (int, float)):
             features["link_density"] = float(link_density)
 
-        if article.get('confidence') is not None:
-            features["confidence"] = article.get('confidence')
-        if article.get('paywall_flag') is not None:
-            features["paywall_flag"] = bool(article.get('paywall_flag'))
-        if article.get('language'):
-            features["language"] = article.get('language')
+        if article.get("confidence") is not None:
+            features["confidence"] = article.get("confidence")
+        if article.get("paywall_flag") is not None:
+            features["paywall_flag"] = bool(article.get("paywall_flag"))
+        if article.get("language"):
+            features["language"] = article.get("language")
 
         candidate = {
             "url": url,
-            "site_id": article.get('source_id') or getattr(site_config, "source_id", None),
-            "extracted_title": article.get('title') or article.get('extracted_title'),
+            "site_id": article.get("source_id")
+            or getattr(site_config, "source_id", None),
+            "extracted_title": article.get("title") or article.get("extracted_title"),
             "extracted_text": extracted_text,
-            "raw_html_ref": article.get('raw_html_ref'),
+            "raw_html_ref": article.get("raw_html_ref"),
             "features": features or None,
-            "crawler_ts": article.get('timestamp') or datetime.now(UTC).isoformat(),
-            "crawler_job_id": article.get('crawler_job_id'),
+            "crawler_ts": article.get("timestamp") or datetime.now(UTC).isoformat(),
+            "crawler_job_id": article.get("crawler_job_id"),
         }
         return candidate
 
@@ -1056,7 +1252,9 @@ class CrawlerEngine:
         except Exception as exc:  # noqa: BLE001 - avoid failing the crawl on HITL issues
             self._hitl_failure_streak += 1
             if self._hitl_failure_streak == 1:
-                logger.warning("HITL candidate submission failed (%s): %s", payload.get('url'), exc)
+                logger.warning(
+                    "HITL candidate submission failed (%s): %s", payload.get("url"), exc
+                )
             if self._hitl_failure_streak >= 3:
                 self._hitl_suspended_until = time.time() + self.hitl_backoff_seconds
                 logger.warning(
@@ -1066,7 +1264,9 @@ class CrawlerEngine:
                 )
             return False
 
-    async def _submit_hitl_candidates(self, articles: list[dict], site_config: SiteConfig | None) -> None:
+    async def _submit_hitl_candidates(
+        self, articles: list[dict], site_config: SiteConfig | None
+    ) -> None:
         """Submit a batch of candidates to the HITL service and optionally log queue depth."""
         if not self.hitl_enabled or not self.hitl_base_url:
             return
@@ -1101,7 +1301,9 @@ class CrawlerEngine:
 
         def _fetch() -> dict[str, Any] | None:
             try:
-                response = requests.get(f"{self.hitl_base_url}/api/stats", timeout=(2, 6))
+                response = requests.get(
+                    f"{self.hitl_base_url}/api/stats", timeout=(2, 6)
+                )
                 response.raise_for_status()
                 return response.json()
             except Exception as exc:  # noqa: BLE001 - log softly, continue crawl
@@ -1129,30 +1331,32 @@ class CrawlerEngine:
             try:
                 # Prepare article payload for ingestion
                 article_payload = {
-                    'url': article.get('url', ''),
-                    'normalized_url': article.get('normalized_url'),
-                    'title': article.get('title', ''),
-                    'content': article.get('content', ''),
-                    'domain': article.get('domain', ''),
-                    'publisher_meta': article.get('publisher_meta', {}),
-                    'confidence': article.get('confidence', 0.5),
-                    'paywall_flag': article.get('paywall_flag', False),
-                    'extraction_metadata': article.get('extraction_metadata', {}),
-                    'extracted_metadata': article.get('extracted_metadata', {}),
-                    'structured_metadata': article.get('structured_metadata', {}),
-                    'language': article.get('language'),
-                    'authors': article.get('authors', []),
-                    'section': article.get('section'),
-                    'tags': article.get('tags', []),
-                    'publication_date': article.get('publication_date'),
-                    'raw_html_ref': article.get('raw_html_ref'),
-                    'timestamp': article.get('timestamp'),
-                    'url_hash': article.get('url_hash'),
-                    'url_hash_algorithm': article.get('url_hash_algorithm'),
-                    'canonical': article.get('canonical'),
-                    'needs_review': article.get('needs_review'),
-                    'review_reasons': article.get('extraction_metadata', {}).get('review_reasons', []),
-                    'disable_dedupe': article.get('disable_dedupe'),
+                    "url": article.get("url", ""),
+                    "normalized_url": article.get("normalized_url"),
+                    "title": article.get("title", ""),
+                    "content": article.get("content", ""),
+                    "domain": article.get("domain", ""),
+                    "publisher_meta": article.get("publisher_meta", {}),
+                    "confidence": article.get("confidence", 0.5),
+                    "paywall_flag": article.get("paywall_flag", False),
+                    "extraction_metadata": article.get("extraction_metadata", {}),
+                    "extracted_metadata": article.get("extracted_metadata", {}),
+                    "structured_metadata": article.get("structured_metadata", {}),
+                    "language": article.get("language"),
+                    "authors": article.get("authors", []),
+                    "section": article.get("section"),
+                    "tags": article.get("tags", []),
+                    "publication_date": article.get("publication_date"),
+                    "raw_html_ref": article.get("raw_html_ref"),
+                    "timestamp": article.get("timestamp"),
+                    "url_hash": article.get("url_hash"),
+                    "url_hash_algorithm": article.get("url_hash_algorithm"),
+                    "canonical": article.get("canonical"),
+                    "needs_review": article.get("needs_review"),
+                    "review_reasons": article.get("extraction_metadata", {}).get(
+                        "review_reasons", []
+                    ),
+                    "disable_dedupe": article.get("disable_dedupe"),
                 }
 
                 # Build SQL statements for source upsert and article insertion
@@ -1164,23 +1368,29 @@ class CrawlerEngine:
                 """
 
                 source_params = (
-                    article.get('source_name', article.get('domain', 'unknown')),
-                    article.get('domain', 'unknown'),
+                    article.get("source_name", article.get("domain", "unknown")),
+                    article.get("domain", "unknown"),
                     f"https://{article.get('domain', 'unknown')}",
-                    json.dumps({'crawling_strategy': 'unified_crawler', 'last_crawled': article.get('timestamp')})
+                    json.dumps(
+                        {
+                            "crawling_strategy": "unified_crawler",
+                            "last_crawled": article.get("timestamp"),
+                        }
+                    ),
                 )
 
                 # Article insertion SQL (will be handled by memory agent)
                 # The memory agent handles the article insertion via save_article
 
-                statements = [
-                    [source_sql, list(source_params)]
-                ]
+                statements = [[source_sql, list(source_params)]]
 
                 safe_article_payload = make_json_safe(article_payload)
 
                 if lxml_etree is not None:
-                    def _find_non_jsonable(value: Any, path: str = "payload") -> str | None:
+
+                    def _find_non_jsonable(
+                        value: Any, path: str = "payload"
+                    ) -> str | None:
                         if isinstance(value, (str, int, float, bool)) or value is None:
                             return None
                         if isinstance(value, bytes):
@@ -1191,7 +1401,9 @@ class CrawlerEngine:
                                 if found:
                                     return found
                             return None
-                        if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+                        if isinstance(value, Sequence) and not isinstance(
+                            value, (str, bytes, bytearray)
+                        ):
                             for index, item in enumerate(value):
                                 found = _find_non_jsonable(item, f"{path}[{index}]")
                                 if found:
@@ -1203,22 +1415,27 @@ class CrawlerEngine:
                                 if found:
                                     return found
                             return None
-                        if hasattr(lxml_etree, "_Element") and isinstance(value, lxml_etree._Element):  # type: ignore[attr-defined]
+                        if hasattr(lxml_etree, "_Element") and isinstance(
+                            value, lxml_etree._Element
+                        ):  # type: ignore[attr-defined]
                             return path
                         return None
 
                     non_jsonable_path = _find_non_jsonable(safe_article_payload)
                     if non_jsonable_path:
-                        logger.warning("Non-JSONable element present after sanitisation at %s", non_jsonable_path)
+                        logger.warning(
+                            "Non-JSONable element present after sanitisation at %s",
+                            non_jsonable_path,
+                        )
 
                 payload = {
-                    'agent': 'memory',
-                    'tool': 'ingest_article',
-                    'args': [],
-                    'kwargs': {
-                        'article_payload': safe_article_payload,
-                        'statements': statements
-                    }
+                    "agent": "memory",
+                    "tool": "ingest_article",
+                    "args": [],
+                    "kwargs": {
+                        "article_payload": safe_article_payload,
+                        "statements": statements,
+                    },
                 }
 
                 payload = make_json_safe(payload)
@@ -1234,50 +1451,65 @@ class CrawlerEngine:
                 response.raise_for_status()
                 result = response.json()
 
-                outer_status = result.get('status')
-                inner_payload = result.get('data') if isinstance(result.get('data'), dict) else {}
+                outer_status = result.get("status")
+                inner_payload = (
+                    result.get("data") if isinstance(result.get("data"), dict) else {}
+                )
                 effective_payload = inner_payload if inner_payload else result
-                inner_status = effective_payload.get('status', outer_status)
+                inner_status = effective_payload.get("status", outer_status)
 
-                if outer_status in {"ok", "success"} and inner_status in {"ok", "success"}:
-                    if effective_payload.get('duplicate'):
+                if outer_status in {"ok", "success"} and inner_status in {
+                    "ok",
+                    "success",
+                }:
+                    if effective_payload.get("duplicate"):
                         duplicates += 1
-                        article['ingestion_status'] = 'duplicate'
+                        article["ingestion_status"] = "duplicate"
                         logger.debug(f"Duplicate article skipped: {article.get('url')}")
                     else:
                         new_articles += 1
-                        article['ingestion_status'] = 'new'
+                        article["ingestion_status"] = "new"
                         logger.debug(f"New article ingested: {article.get('url')}")
-                    details.append({
-                        'url': article.get('url'),
-                        'status': article.get('ingestion_status'),
-                    })
+                    details.append(
+                        {
+                            "url": article.get("url"),
+                            "status": article.get("ingestion_status"),
+                        }
+                    )
                 else:
                     errors += 1
-                    article['ingestion_status'] = 'error'
-                    details.append({
-                        'url': article.get('url'),
-                        'status': 'error',
-                        'error': effective_payload.get('error') or result,
-                    })
-                    logger.warning(f"Failed to ingest article {article.get('url')}: {result}")
+                    article["ingestion_status"] = "error"
+                    details.append(
+                        {
+                            "url": article.get("url"),
+                            "status": "error",
+                            "error": effective_payload.get("error") or result,
+                        }
+                    )
+                    logger.warning(
+                        f"Failed to ingest article {article.get('url')}: {result}"
+                    )
 
             except Exception as e:
                 errors += 1
-                article['ingestion_status'] = 'error'
-                details.append({
-                    'url': article.get('url'),
-                    'status': 'error',
-                    'error': str(e),
-                })
-                logger.warning(f"Error ingesting article {article.get('url', 'unknown')}: {e}")
+                article["ingestion_status"] = "error"
+                details.append(
+                    {
+                        "url": article.get("url"),
+                        "status": "error",
+                        "error": str(e),
+                    }
+                )
+                logger.warning(
+                    f"Error ingesting article {article.get('url', 'unknown')}: {e}"
+                )
                 continue
 
         return {
-            'new_articles': new_articles,
-            'duplicates': duplicates,
-            'errors': errors,
-            'details': details,
+            "new_articles": new_articles,
+            "duplicates": duplicates,
+            "errors": errors,
+            "details": details,
         }
 
     def get_performance_report(self) -> dict[str, Any]:
@@ -1287,5 +1519,5 @@ class CrawlerEngine:
             "sites_crawled": self.performance_metrics["sites_crawled"],
             "errors": self.performance_metrics["errors"],
             "mode_usage": self.performance_metrics["mode_usage"],
-            "uptime_seconds": time.time() - self.performance_metrics["start_time"]
+            "uptime_seconds": time.time() - self.performance_metrics["start_time"],
         }

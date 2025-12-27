@@ -30,3 +30,17 @@ services:
       interval: 2s
       timeout: 3s
       retries: 20
+
+  chroma:
+    image: chromadb/chromadb:0.4.24
+    # Force Chroma to listen on 3307 inside the container so it never
+    # collides with the MCP bus (8000). Expose the canonical host port
+    # 3307 to follow project defaults and avoid any accidental 8000 usage.
+    command: ["chroma", "run", "--host", "0.0.0.0", "--port", "3307"]
+    ports:
+      - "3307:3307"
+    healthcheck:
+      test: ["CMD", "curl", "-sS", "http://127.0.0.1:3307/" ]
+      interval: 2s
+      timeout: 3s
+      retries: 20

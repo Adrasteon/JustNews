@@ -40,49 +40,61 @@ class DatabaseConnectionPool:
         # MariaDB settings and overlaying any overrides provided via ``config``.
         base_config = get_db_config()
         if config:
-            mariadb_section = base_config.get('mariadb', {})
-            mariadb_section.update({
-                'host': config.get('host', mariadb_section.get('host')),
-                'port': config.get('port', mariadb_section.get('port', 3306)),
-                'database': config.get('database', mariadb_section.get('database')),
-                'user': config.get('user', mariadb_section.get('user')),
-                'password': config.get('password', mariadb_section.get('password')),
-            })
+            mariadb_section = base_config.get("mariadb", {})
+            mariadb_section.update(
+                {
+                    "host": config.get("host", mariadb_section.get("host")),
+                    "port": config.get("port", mariadb_section.get("port", 3306)),
+                    "database": config.get("database", mariadb_section.get("database")),
+                    "user": config.get("user", mariadb_section.get("user")),
+                    "password": config.get("password", mariadb_section.get("password")),
+                }
+            )
 
-            pool_section = base_config.setdefault('connection_pool', {})
-            pool_section['min_connections'] = config.get('min_connections', pool_section.get('min_connections', 1))
-            pool_section['max_connections'] = config.get('max_connections', pool_section.get('max_connections', 20))
-            pool_section['connection_timeout_seconds'] = config.get(
-                'connection_timeout_seconds', pool_section.get('connection_timeout_seconds', 3.0)
+            pool_section = base_config.setdefault("connection_pool", {})
+            pool_section["min_connections"] = config.get(
+                "min_connections", pool_section.get("min_connections", 1)
             )
-            pool_section['command_timeout_seconds'] = config.get(
-                'command_timeout_seconds', pool_section.get('command_timeout_seconds', 30.0)
+            pool_section["max_connections"] = config.get(
+                "max_connections", pool_section.get("max_connections", 20)
             )
-            pool_section['health_check_interval'] = config.get(
-                'health_check_interval', pool_section.get('health_check_interval', 30)
+            pool_section["connection_timeout_seconds"] = config.get(
+                "connection_timeout_seconds",
+                pool_section.get("connection_timeout_seconds", 3.0),
             )
-            pool_section['max_retries'] = config.get('max_retries', pool_section.get('max_retries', 3))
-            pool_section['retry_delay'] = config.get('retry_delay', pool_section.get('retry_delay', 1.0))
+            pool_section["command_timeout_seconds"] = config.get(
+                "command_timeout_seconds",
+                pool_section.get("command_timeout_seconds", 30.0),
+            )
+            pool_section["health_check_interval"] = config.get(
+                "health_check_interval", pool_section.get("health_check_interval", 30)
+            )
+            pool_section["max_retries"] = config.get(
+                "max_retries", pool_section.get("max_retries", 3)
+            )
+            pool_section["retry_delay"] = config.get(
+                "retry_delay", pool_section.get("retry_delay", 1.0)
+            )
 
         self.service = create_database_service(base_config)
-        self.config = base_config.get('mariadb', {})
+        self.config = base_config.get("mariadb", {})
 
-        pool_config = base_config.get('connection_pool', {})
-        self.min_connections = pool_config.get('min_connections', 1)
-        self.max_connections = pool_config.get('max_connections', 20)
-        self.health_check_interval = pool_config.get('health_check_interval', 30)
-        self.max_retries = pool_config.get('max_retries', 3)
-        self.retry_delay = pool_config.get('retry_delay', 1.0)
+        pool_config = base_config.get("connection_pool", {})
+        self.min_connections = pool_config.get("min_connections", 1)
+        self.max_connections = pool_config.get("max_connections", 20)
+        self.health_check_interval = pool_config.get("health_check_interval", 30)
+        self.max_retries = pool_config.get("max_retries", 3)
+        self.retry_delay = pool_config.get("retry_delay", 1.0)
 
         # Performance metrics
         self.metrics = {
-            'connections_created': 0,
-            'connections_destroyed': 0,
-            'connections_acquired': 0,
-            'connections_released': 0,
-            'connection_errors': 0,
-            'health_check_failures': 0,
-            'failover_events': 0
+            "connections_created": 0,
+            "connections_destroyed": 0,
+            "connections_acquired": 0,
+            "connections_released": 0,
+            "connection_errors": 0,
+            "health_check_failures": 0,
+            "failover_events": 0,
         }
 
         # Health monitoring
@@ -99,7 +111,9 @@ class DatabaseConnectionPool:
         try:
             if self.service:
                 self.is_healthy = True
-                logger.info("Database connection service is available via migrated service")
+                logger.info(
+                    "Database connection service is available via migrated service"
+                )
             else:
                 raise RuntimeError("Migrated database service is unavailable")
         except Exception as e:
@@ -111,17 +125,29 @@ class DatabaseConnectionPool:
         """Perform health check on the database connection"""
         try:
             if self.service:
-                conn = self.service.mb_conn
-                cursor = conn.cursor()
+                # Use a per-call cursor to avoid interfering with other callers
+                cursor, conn = self.service.get_safe_cursor(
+                    per_call=True, buffered=True
+                )
             else:
                 raise Exception("No database service configured")
-            cursor.execute("SELECT 1")
-            cursor.fetchone()
-            cursor.close()
+            try:
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+            finally:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+                try:
+                    if conn:
+                        conn.close()
+                except Exception:
+                    pass
             return True
         except Exception as e:
             logger.warning(f"Health check failed: {e}")
-            self.metrics['health_check_failures'] += 1
+            self.metrics["health_check_failures"] += 1
             return False
 
     def _get_healthy_connection(self):
@@ -138,7 +164,7 @@ class DatabaseConnectionPool:
                     conn = self.service.mb_conn
                 else:
                     raise Exception("No database service available")
-                self.metrics['connections_acquired'] += 1
+                self.metrics["connections_acquired"] += 1
                 return conn
             except Exception as e:
                 logger.warning(f"Failed to get connection from migrated service: {e}")
@@ -158,15 +184,17 @@ class DatabaseConnectionPool:
             conn = self._get_healthy_connection()
             yield conn
         except Exception as e:
-            self.metrics['connection_errors'] += 1
+            self.metrics["connection_errors"] += 1
             logger.error(f"Database connection error: {e}")
             raise
         finally:
             # No explicit return-to-pool needed for migrated service
             if conn:
-                self.metrics['connections_released'] += 1
+                self.metrics["connections_released"] += 1
 
-    def execute_query(self, query: str, params: tuple = None, fetch: bool = True) -> list[tuple]:
+    def execute_query(
+        self, query: str, params: tuple = None, fetch: bool = True
+    ) -> list[tuple]:
         """
         Execute a database query
 
@@ -202,7 +230,9 @@ class DatabaseConnectionPool:
                 except Exception:
                     pass
 
-    async def execute_query_async(self, query: str, params: tuple = None, fetch: bool = True) -> list[dict]:
+    async def execute_query_async(
+        self, query: str, params: tuple = None, fetch: bool = True
+    ) -> list[dict]:
         """
         Execute a database query asynchronously
 
@@ -229,24 +259,29 @@ class DatabaseConnectionPool:
         """
         return {
             **self.metrics,
-            'total_connections': self.max_connections,
-            'available_connections': self.max_connections,  # Simplified for testing
-            'used_connections': 0,  # Simplified for testing
-            'is_healthy': self.is_healthy,
-            'backup_pools_count': len(self.backup_pools)
+            "total_connections": self.max_connections,
+            "available_connections": self.max_connections,  # Simplified for testing
+            "used_connections": 0,  # Simplified for testing
+            "is_healthy": self.is_healthy,
+            "backup_pools_count": len(self.backup_pools),
         }
 
     def _health_check(self, connection) -> bool:
         """Perform health check on a specific connection"""
         try:
-            cursor = connection.cursor()
-            cursor.execute("SELECT 1")
-            cursor.fetchone()
-            cursor.close()
+            try:
+                cursor = connection.cursor()
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+            finally:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
             return True
         except Exception as e:
             logger.warning(f"Health check failed: {e}")
-            self.metrics['health_check_failures'] += 1
+            self.metrics["health_check_failures"] += 1
             return False
 
     def close(self):

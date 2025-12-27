@@ -28,28 +28,30 @@ logger = get_logger(__name__)
 _engine: Any | None = None
 _enhanced_engine: Any | None = None
 
+
 def get_reasoning_engine():
     """Get or create the global reasoning engine instance."""
     global _engine
     if _engine is None:
         from .reasoning_engine import ReasoningConfig, ReasoningEngine
+
         config = ReasoningConfig()
         _engine = ReasoningEngine(config)
     return _engine
+
 
 def get_enhanced_engine():
     """Get or create the global enhanced reasoning engine instance."""
     global _enhanced_engine
     if _enhanced_engine is None:
         from .reasoning_engine import EnhancedReasoningEngine
+
         base_engine = get_reasoning_engine()
         _enhanced_engine = EnhancedReasoningEngine(base_engine)
     return _enhanced_engine
 
-async def process_reasoning_request(
-    operation_type: str,
-    **kwargs
-) -> dict[str, Any]:
+
+async def process_reasoning_request(operation_type: str, **kwargs) -> dict[str, Any]:
     """
     Process a reasoning request using the reasoning engine.
 
@@ -75,8 +77,7 @@ async def process_reasoning_request(
             result = await engine.evaluate_contradiction(kwargs.get("statements", []))
         elif operation_type == "validate_claim":
             result = await validate_claim(
-                kwargs.get("claim", ""),
-                kwargs.get("context", {})
+                kwargs.get("claim", ""), kwargs.get("context", {})
             )
         elif operation_type == "explain":
             result = await explain_reasoning(kwargs.get("query", ""))
@@ -89,6 +90,7 @@ async def process_reasoning_request(
     except Exception as e:
         logger.error(f"❌ {operation_type} reasoning operation failed: {e}")
         return {"error": str(e)}
+
 
 async def add_fact(fact_data: dict[str, Any]) -> dict[str, Any]:
     """
@@ -113,10 +115,7 @@ async def add_fact(fact_data: dict[str, Any]) -> dict[str, Any]:
         result = await engine.add_fact(fact_data)
 
         # Log feedback for training
-        engine.log_feedback("add_fact", {
-            "fact_data": fact_data,
-            "result": str(result)
-        })
+        engine.log_feedback("add_fact", {"fact_data": fact_data, "result": str(result)})
 
         return {
             "success": True,
@@ -125,13 +124,14 @@ async def add_fact(fact_data: dict[str, Any]) -> dict[str, Any]:
             "analysis_metadata": {
                 "operation": "add_fact",
                 "timestamp": datetime.now().isoformat(),
-                "analyzer_version": "reasoning_v2_add_fact"
-            }
+                "analyzer_version": "reasoning_v2_add_fact",
+            },
         }
 
     except Exception as e:
         logger.error(f"Error adding fact: {e}")
         return {"error": str(e)}
+
 
 async def add_rule(rule: str) -> dict[str, Any]:
     """
@@ -156,10 +156,7 @@ async def add_rule(rule: str) -> dict[str, Any]:
         result = await engine.add_rule(rule)
 
         # Log feedback for training
-        engine.log_feedback("add_rule", {
-            "rule": rule,
-            "result": str(result)
-        })
+        engine.log_feedback("add_rule", {"rule": rule, "result": str(result)})
 
         return {
             "success": True,
@@ -168,13 +165,14 @@ async def add_rule(rule: str) -> dict[str, Any]:
             "analysis_metadata": {
                 "operation": "add_rule",
                 "timestamp": datetime.now().isoformat(),
-                "analyzer_version": "reasoning_v2_add_rule"
-            }
+                "analyzer_version": "reasoning_v2_add_rule",
+            },
         }
 
     except Exception as e:
         logger.error(f"Error adding rule: {e}")
         return {"error": str(e)}
+
 
 async def query(query_str: str) -> dict[str, Any]:
     """
@@ -199,10 +197,7 @@ async def query(query_str: str) -> dict[str, Any]:
         result = await engine.query(query_str)
 
         # Log feedback for training
-        engine.log_feedback("query", {
-            "query": query_str,
-            "result": str(result)
-        })
+        engine.log_feedback("query", {"query": query_str, "result": str(result)})
 
         return {
             "success": True,
@@ -211,13 +206,14 @@ async def query(query_str: str) -> dict[str, Any]:
             "analysis_metadata": {
                 "operation": "query",
                 "timestamp": datetime.now().isoformat(),
-                "analyzer_version": "reasoning_v2_query"
-            }
+                "analyzer_version": "reasoning_v2_query",
+            },
         }
 
     except Exception as e:
         logger.error(f"Error executing query: {e}")
         return {"error": str(e)}
+
 
 async def evaluate_contradiction(statements: list[str]) -> dict[str, Any]:
     """
@@ -242,18 +238,21 @@ async def evaluate_contradiction(statements: list[str]) -> dict[str, Any]:
         result = await engine.evaluate_contradiction(statements)
 
         # Log feedback for training
-        engine.log_feedback("evaluate_contradiction", {
-            "statements_count": len(statements),
-            "has_contradictions": result.get("has_contradictions", False),
-            "contradictions_count": len(result.get("contradictions", []))
-        })
+        engine.log_feedback(
+            "evaluate_contradiction",
+            {
+                "statements_count": len(statements),
+                "has_contradictions": result.get("has_contradictions", False),
+                "contradictions_count": len(result.get("contradictions", [])),
+            },
+        )
 
         # Add metadata
         result["analysis_metadata"] = {
             "operation": "evaluate_contradiction",
             "statements_count": len(statements),
             "timestamp": datetime.now().isoformat(),
-            "analyzer_version": "reasoning_v2_contradiction"
+            "analyzer_version": "reasoning_v2_contradiction",
         }
 
         return result
@@ -262,7 +261,10 @@ async def evaluate_contradiction(statements: list[str]) -> dict[str, Any]:
         logger.error(f"Error evaluating contradictions: {e}")
         return {"error": str(e)}
 
-async def validate_claim(claim: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+
+async def validate_claim(
+    claim: str, context: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """
     Validate a news claim against known facts and rules.
 
@@ -286,7 +288,9 @@ async def validate_claim(claim: str, context: dict[str, Any] | None = None) -> d
         enhanced = get_enhanced_engine()
         if enhanced:
             try:
-                validation_result = await enhanced.validate_news_claim_with_context(claim, context or {})
+                validation_result = await enhanced.validate_news_claim_with_context(
+                    claim, context or {}
+                )
             except Exception:
                 validation_result = None
 
@@ -306,23 +310,28 @@ async def validate_claim(claim: str, context: dict[str, Any] | None = None) -> d
                 "context": context,
                 "valid": not contradiction_result["has_contradictions"],
                 "contradictions": contradiction_result["contradictions"],
-                "confidence": 1.0 - (len(contradiction_result["contradictions"]) * 0.2)
+                "confidence": 1.0 - (len(contradiction_result["contradictions"]) * 0.2),
             }
 
         # Log feedback for training
-        engine.log_feedback("validate_claim", {
-            "claim": claim,
-            "valid": validation_result.get("valid", False),
-            "contradictions_count": len(validation_result.get("contradictions", [])),
-            "confidence": validation_result.get("confidence", 0.0)
-        })
+        engine.log_feedback(
+            "validate_claim",
+            {
+                "claim": claim,
+                "valid": validation_result.get("valid", False),
+                "contradictions_count": len(
+                    validation_result.get("contradictions", [])
+                ),
+                "confidence": validation_result.get("confidence", 0.0),
+            },
+        )
 
         # Add metadata
         validation_result["analysis_metadata"] = {
             "operation": "validate_claim",
             "timestamp": datetime.now().isoformat(),
             "analyzer_version": "reasoning_v2_validation",
-            "enhanced_used": enhanced is not None
+            "enhanced_used": enhanced is not None,
         }
 
         return validation_result
@@ -330,6 +339,7 @@ async def validate_claim(claim: str, context: dict[str, Any] | None = None) -> d
     except Exception as e:
         logger.error(f"Error validating claim: {e}")
         return {"error": str(e)}
+
 
 async def explain_reasoning(query: str) -> dict[str, Any]:
     """
@@ -362,26 +372,25 @@ async def explain_reasoning(query: str) -> dict[str, Any]:
                 f"1. Executed query: '{query}'",
                 f"2. Applied {len(engine.rules_store)} logical rules",
                 f"3. Checked against {len(engine.facts_store)} known facts",
-                f"4. Result: {result}"
+                f"4. Result: {result}",
             ],
             "facts_used": list(engine.facts_store.keys()),
             "rules_applied": engine.rules_store,
             "confidence": 0.8 if result else 0.2,
-            "enhanced_available": enhanced is not None
+            "enhanced_available": enhanced is not None,
         }
 
         # Log feedback for training
-        engine.log_feedback("explain_reasoning", {
-            "query": query,
-            "result": str(result),
-            "explanation_provided": True
-        })
+        engine.log_feedback(
+            "explain_reasoning",
+            {"query": query, "result": str(result), "explanation_provided": True},
+        )
 
         # Add metadata
         explanation["analysis_metadata"] = {
             "operation": "explain_reasoning",
             "timestamp": datetime.now().isoformat(),
-            "analyzer_version": "reasoning_v2_explanation"
+            "analyzer_version": "reasoning_v2_explanation",
         }
 
         return explanation
@@ -390,7 +399,10 @@ async def explain_reasoning(query: str) -> dict[str, Any]:
         logger.error(f"Error explaining reasoning: {e}")
         return {"error": str(e)}
 
-async def pipeline_validate(assessment: dict[str, Any], article_metadata: dict[str, Any] | None = None) -> dict[str, Any]:
+
+async def pipeline_validate(
+    assessment: dict[str, Any], article_metadata: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """
     Run the three-stage pipeline: neural assessment -> reasoning -> integrated decision.
 
@@ -424,8 +436,10 @@ async def pipeline_validate(assessment: dict[str, Any], article_metadata: dict[s
         if enhanced:
             try:
                 logic_res = await enhanced.validate_news_claim_with_context(
-                    claim=assessment.get("extracted_claims", [{}])[0] if assessment.get("extracted_claims") else "",
-                    article_metadata=article_metadata or {}
+                    claim=assessment.get("extracted_claims", [{}])[0]
+                    if assessment.get("extracted_claims")
+                    else "",
+                    article_metadata=article_metadata or {},
                 )
             except Exception:
                 logic_res = None
@@ -435,48 +449,71 @@ async def pipeline_validate(assessment: dict[str, Any], article_metadata: dict[s
         if logic_res is None:
             # Fallback: aggregate evaluation
             test_statements = list(engine.facts_store.values()) + engine.rules_store
-            contradiction_res = await engine.evaluate_contradiction([str(s) for s in test_statements])
+            contradiction_res = await engine.evaluate_contradiction(
+                [str(s) for s in test_statements]
+            )
             logic_res = {
                 "logical_validation": {
-                    "consistency_check": "PASS" if not contradiction_res.get("has_contradictions") else "FAIL",
+                    "consistency_check": "PASS"
+                    if not contradiction_res.get("has_contradictions")
+                    else "FAIL",
                     "rule_compliance": "UNKNOWN",
-                    "temporal_validity": True
+                    "temporal_validity": True,
                 },
                 "orchestration_decision": {
                     "consensus_confidence": assessment.get("confidence", 0.5),
                     "escalation_required": False,
-                    "recommended_action": "REVIEW" if contradiction_res.get("has_contradictions") else "APPROVE"
-                }
+                    "recommended_action": "REVIEW"
+                    if contradiction_res.get("has_contradictions")
+                    else "APPROVE",
+                },
             }
 
         # Stage 3: Integrated decision
-        overall_confidence = float(assessment.get("confidence", 0.5)) * 0.6 + float(logic_res.get("orchestration_decision", {}).get("consensus_confidence", 0.0)) * 0.4
+        overall_confidence = (
+            float(assessment.get("confidence", 0.5)) * 0.6
+            + float(
+                logic_res.get("orchestration_decision", {}).get(
+                    "consensus_confidence", 0.0
+                )
+            )
+            * 0.4
+        )
 
         final = {
             "version": "1.0",
             "overall_confidence": overall_confidence,
-            "verification_status": logic_res.get("orchestration_decision", {}).get("recommended_action", "UNKNOWN"),
+            "verification_status": logic_res.get("orchestration_decision", {}).get(
+                "recommended_action", "UNKNOWN"
+            ),
             "explanation": logic_res.get("logical_validation", {}),
             "neural_assessment": assessment,
             "logical_validation": logic_res.get("logical_validation", {}),
             "processing_summary": {
                 "fact_checker_confidence": assessment.get("confidence", 0.5),
-                "reasoning_validation": logic_res.get("orchestration_decision", {}).get("consensus_confidence", 0.0),
-                "final_recommendation": logic_res.get("orchestration_decision", {}).get("recommended_action", "UNKNOWN")
-            }
+                "reasoning_validation": logic_res.get("orchestration_decision", {}).get(
+                    "consensus_confidence", 0.0
+                ),
+                "final_recommendation": logic_res.get("orchestration_decision", {}).get(
+                    "recommended_action", "UNKNOWN"
+                ),
+            },
         }
 
         # Log feedback for training
-        engine.log_feedback("pipeline_validate", {
-            "final_overall_confidence": final["overall_confidence"],
-            "verification_status": final["verification_status"]
-        })
+        engine.log_feedback(
+            "pipeline_validate",
+            {
+                "final_overall_confidence": final["overall_confidence"],
+                "verification_status": final["verification_status"],
+            },
+        )
 
         # Add metadata
         final["analysis_metadata"] = {
             "operation": "pipeline_validate",
             "timestamp": datetime.now().isoformat(),
-            "analyzer_version": "reasoning_v2_pipeline"
+            "analyzer_version": "reasoning_v2_pipeline",
         }
 
         return final
@@ -484,6 +521,7 @@ async def pipeline_validate(assessment: dict[str, Any], article_metadata: dict[s
     except Exception as e:
         logger.error(f"Error in pipeline validation: {e}")
         return {"error": str(e)}
+
 
 # Utility functions
 def get_performance_stats() -> dict[str, Any]:
@@ -495,6 +533,7 @@ def get_performance_stats() -> dict[str, Any]:
         logger.error(f"Error getting performance stats: {e}")
         return {"error": str(e), "engine_available": False}
 
+
 def get_model_status() -> dict[str, Any]:
     """Get status of reasoning components."""
     try:
@@ -504,11 +543,12 @@ def get_model_status() -> dict[str, Any]:
             "engine_available": engine is not None,
             "enhanced_available": enhanced is not None,
             "facts_count": len(engine.facts_store) if engine else 0,
-            "rules_count": len(engine.rules_store) if engine else 0
+            "rules_count": len(engine.rules_store) if engine else 0,
         }
     except Exception as e:
         logger.error(f"Error getting model status: {e}")
         return {"error": str(e), "components_available": False}
+
 
 def log_feedback(feedback_data: dict[str, Any]) -> dict[str, Any]:
     """Log user feedback for model improvement."""
@@ -519,6 +559,7 @@ def log_feedback(feedback_data: dict[str, Any]) -> dict[str, Any]:
         logger.error(f"Error logging feedback: {e}")
         return {"error": str(e), "logged": False}
 
+
 def get_facts() -> dict[str, Any]:
     """Retrieve all stored facts."""
     try:
@@ -527,6 +568,7 @@ def get_facts() -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Error getting facts: {e}")
         return {"error": str(e), "facts": {}}
+
 
 def get_rules() -> list[str]:
     """Retrieve all stored rules."""
@@ -537,6 +579,7 @@ def get_rules() -> list[str]:
         logger.error(f"Error getting rules: {e}")
         return []
 
+
 def clear_knowledge_base() -> dict[str, Any]:
     """Clear all facts and rules from the knowledge base."""
     try:
@@ -546,6 +589,7 @@ def clear_knowledge_base() -> dict[str, Any]:
         logger.error(f"Error clearing knowledge base: {e}")
         return {"error": str(e), "cleared": False}
 
+
 def get_training_status() -> dict[str, Any]:
     """Get online training status for reasoning models."""
     try:
@@ -554,6 +598,7 @@ def get_training_status() -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Error getting training status: {e}")
         return {"error": str(e), "online_training_enabled": False}
+
 
 async def health_check() -> dict[str, Any]:
     """
@@ -573,22 +618,28 @@ async def health_check() -> dict[str, Any]:
                 "reasoning_engine": "healthy" if engine else "unhealthy",
                 "enhanced_engine": "healthy" if enhanced else "degraded",
                 "facts_store": "healthy",
-                "rules_store": "healthy"
+                "rules_store": "healthy",
             },
             "facts_count": len(engine.facts_store) if engine else 0,
-            "rules_count": len(engine.rules_store) if engine else 0
+            "rules_count": len(engine.rules_store) if engine else 0,
         }
 
         # Check for any unhealthy components
-        unhealthy_components = [k for k, v in health_status["components"].items() if v == "unhealthy"]
+        unhealthy_components = [
+            k for k, v in health_status["components"].items() if v == "unhealthy"
+        ]
         if unhealthy_components:
             health_status["overall_status"] = "unhealthy"
-            health_status["issues"] = [f"Component {comp} is unhealthy" for comp in unhealthy_components]
+            health_status["issues"] = [
+                f"Component {comp} is unhealthy" for comp in unhealthy_components
+            ]
 
         # Check minimum functionality
         if not engine:
             health_status["overall_status"] = "unhealthy"
-            health_status["issues"] = health_status.get("issues", []) + ["Reasoning engine not available"]
+            health_status["issues"] = health_status.get("issues", []) + [
+                "Reasoning engine not available"
+            ]
 
         logger.info(f"🏥 Reasoning health check: {health_status['overall_status']}")
         return health_status
@@ -598,10 +649,13 @@ async def health_check() -> dict[str, Any]:
         return {
             "timestamp": datetime.now().isoformat(),
             "overall_status": "unhealthy",
-            "error": str(e)
+            "error": str(e),
         }
 
-def validate_reasoning_result(result: dict[str, Any], expected_fields: list[str] | None = None) -> bool:
+
+def validate_reasoning_result(
+    result: dict[str, Any], expected_fields: list[str] | None = None
+) -> bool:
     """
     Validate reasoning result structure.
 
@@ -624,6 +678,7 @@ def validate_reasoning_result(result: dict[str, Any], expected_fields: list[str]
     # Basic validation for common fields
     common_fields = ["analysis_metadata", "timestamp"]
     return any(field in result for field in common_fields)
+
 
 def format_reasoning_output(result: dict[str, Any], format_type: str = "json") -> str:
     """
@@ -700,25 +755,26 @@ def format_reasoning_output(result: dict[str, Any], format_type: str = "json") -
     except Exception as e:
         return f"Formatting error: {e}"
 
+
 # Export main functions
 __all__ = [
-    'add_fact',
-    'add_rule',
-    'query',
-    'evaluate_contradiction',
-    'validate_claim',
-    'explain_reasoning',
-    'pipeline_validate',
-    'get_performance_stats',
-    'get_model_status',
-    'log_feedback',
-    'get_facts',
-    'get_rules',
-    'clear_knowledge_base',
-    'get_training_status',
-    'health_check',
-    'validate_reasoning_result',
-    'format_reasoning_output',
-    'get_reasoning_engine',
-    'get_enhanced_engine'
+    "add_fact",
+    "add_rule",
+    "query",
+    "evaluate_contradiction",
+    "validate_claim",
+    "explain_reasoning",
+    "pipeline_validate",
+    "get_performance_stats",
+    "get_model_status",
+    "log_feedback",
+    "get_facts",
+    "get_rules",
+    "clear_knowledge_base",
+    "get_training_status",
+    "health_check",
+    "validate_reasoning_result",
+    "format_reasoning_output",
+    "get_reasoning_engine",
+    "get_enhanced_engine",
 ]

@@ -32,9 +32,11 @@ from common.observability import get_logger
 
 logger = get_logger(__name__)
 
+
 @dataclass
 class PerformanceMetrics:
     """Comprehensive performance metrics data structure"""
+
     timestamp: datetime
     agent_name: str
     operation: str
@@ -48,9 +50,11 @@ class PerformanceMetrics:
     power_draw_w: float
     throughput_items_per_s: float
 
+
 @dataclass
 class AnalyticsSummary:
     """Analytics summary with trends and insights"""
+
     time_range_hours: int
     total_operations: int
     avg_processing_time_s: float
@@ -61,6 +65,7 @@ class AnalyticsSummary:
     bottleneck_indicators: list[str]
     optimization_recommendations: list[str]
     performance_trends: dict[str, Any]
+
 
 class AdvancedAnalyticsEngine:
     """
@@ -73,7 +78,9 @@ class AdvancedAnalyticsEngine:
         self.analysis_interval_s = analysis_interval_s
 
         # Data storage
-        self.metrics_buffer = deque(maxlen=10000)  # Recent metrics for real-time analysis
+        self.metrics_buffer = deque(
+            maxlen=10000
+        )  # Recent metrics for real-time analysis
         self.historical_data = defaultdict(list)  # Agent-specific historical data
         self.performance_trends = {}
         self.bottleneck_history = deque(maxlen=100)
@@ -123,9 +130,12 @@ class AdvancedAnalyticsEngine:
             # Keep only recent history
             cutoff_time = datetime.now() - timedelta(hours=self.max_history_hours)
             self.historical_data[agent_key] = [
-                m for m in self.historical_data[agent_key]
-                if isinstance(m['timestamp'], str) and datetime.fromisoformat(m['timestamp']) > cutoff_time or
-                isinstance(m['timestamp'], datetime) and m['timestamp'] > cutoff_time
+                m
+                for m in self.historical_data[agent_key]
+                if isinstance(m["timestamp"], str)
+                and datetime.fromisoformat(m["timestamp"]) > cutoff_time
+                or isinstance(m["timestamp"], datetime)
+                and m["timestamp"] > cutoff_time
             ]
 
     def get_real_time_analytics(self, hours: int = 1) -> AnalyticsSummary:
@@ -133,8 +143,7 @@ class AdvancedAnalyticsEngine:
         with self.lock:
             cutoff_time = datetime.now() - timedelta(hours=hours)
             recent_metrics = [
-                m for m in self.metrics_buffer
-                if m.timestamp > cutoff_time
+                m for m in self.metrics_buffer if m.timestamp > cutoff_time
             ]
 
             if not recent_metrics:
@@ -148,7 +157,7 @@ class AdvancedAnalyticsEngine:
                     avg_gpu_utilization_pct=0.0,
                     bottleneck_indicators=[],
                     optimization_recommendations=[],
-                    performance_trends={}
+                    performance_trends={},
                 )
 
             # Calculate metrics
@@ -159,13 +168,21 @@ class AdvancedAnalyticsEngine:
             avg_processing_time = np.mean([m.processing_time_s for m in recent_metrics])
             avg_throughput = np.mean([m.throughput_items_per_s for m in recent_metrics])
             peak_memory = max([m.gpu_memory_allocated_mb for m in recent_metrics])
-            avg_utilization = np.mean([m.gpu_utilization_pct for m in recent_metrics if m.gpu_utilization_pct is not None])
+            avg_utilization = np.mean(
+                [
+                    m.gpu_utilization_pct
+                    for m in recent_metrics
+                    if m.gpu_utilization_pct is not None
+                ]
+            )
 
             # Detect bottlenecks
             bottlenecks = self._detect_bottlenecks(recent_metrics)
 
             # Generate recommendations
-            recommendations = self._generate_recommendations(recent_metrics, bottlenecks)
+            recommendations = self._generate_recommendations(
+                recent_metrics, bottlenecks
+            )
 
             # Calculate trends
             trends = self._calculate_trends(recent_metrics)
@@ -180,10 +197,12 @@ class AdvancedAnalyticsEngine:
                 avg_gpu_utilization_pct=avg_utilization,
                 bottleneck_indicators=bottlenecks,
                 optimization_recommendations=recommendations,
-                performance_trends=trends
+                performance_trends=trends,
             )
 
-    def get_agent_performance_profile(self, agent_name: str, hours: int = 24) -> dict[str, Any]:
+    def get_agent_performance_profile(
+        self, agent_name: str, hours: int = 24
+    ) -> dict[str, Any]:
         """Get detailed performance profile for a specific agent"""
         with self.lock:
             agent_data = []
@@ -191,9 +210,16 @@ class AdvancedAnalyticsEngine:
                 if key.startswith(f"{agent_name}_"):
                     cutoff_time = datetime.now() - timedelta(hours=hours)
                     recent_metrics = [
-                        m for m in metrics
-                        if (isinstance(m['timestamp'], str) and datetime.fromisoformat(m['timestamp']) > cutoff_time) or
-                        (isinstance(m['timestamp'], datetime) and m['timestamp'] > cutoff_time)
+                        m
+                        for m in metrics
+                        if (
+                            isinstance(m["timestamp"], str)
+                            and datetime.fromisoformat(m["timestamp"]) > cutoff_time
+                        )
+                        or (
+                            isinstance(m["timestamp"], datetime)
+                            and m["timestamp"] > cutoff_time
+                        )
                     ]
                     agent_data.extend(recent_metrics)
 
@@ -208,22 +234,22 @@ class AdvancedAnalyticsEngine:
                 "agent_name": agent_name,
                 "time_range_hours": hours,
                 "total_operations": len(df),
-                "operations_breakdown": df['operation'].value_counts().to_dict(),
+                "operations_breakdown": df["operation"].value_counts().to_dict(),
                 "performance_stats": {
-                    "avg_processing_time_s": df['processing_time_s'].mean(),
-                    "median_processing_time_s": df['processing_time_s'].median(),
-                    "p95_processing_time_s": df['processing_time_s'].quantile(0.95),
-                    "avg_throughput_items_per_s": df['throughput_items_per_s'].mean(),
-                    "success_rate_pct": (df['success'].sum() / len(df)) * 100,
-                    "peak_memory_mb": df['gpu_memory_allocated_mb'].max(),
-                    "avg_memory_mb": df['gpu_memory_allocated_mb'].mean(),
+                    "avg_processing_time_s": df["processing_time_s"].mean(),
+                    "median_processing_time_s": df["processing_time_s"].median(),
+                    "p95_processing_time_s": df["processing_time_s"].quantile(0.95),
+                    "avg_throughput_items_per_s": df["throughput_items_per_s"].mean(),
+                    "success_rate_pct": (df["success"].sum() / len(df)) * 100,
+                    "peak_memory_mb": df["gpu_memory_allocated_mb"].max(),
+                    "avg_memory_mb": df["gpu_memory_allocated_mb"].mean(),
                 },
-                "bottlenecks": self._detect_bottlenecks([
-                    PerformanceMetrics(**row) for _, row in df.iterrows()
-                ]),
-                "recommendations": self._generate_recommendations([
-                    PerformanceMetrics(**row) for _, row in df.iterrows()
-                ], [])
+                "bottlenecks": self._detect_bottlenecks(
+                    [PerformanceMetrics(**row) for _, row in df.iterrows()]
+                ),
+                "recommendations": self._generate_recommendations(
+                    [PerformanceMetrics(**row) for _, row in df.iterrows()], []
+                ),
             }
 
             return profile
@@ -235,9 +261,13 @@ class AdvancedAnalyticsEngine:
         # Calculate health score based on multiple factors
         health_factors = {
             "success_rate": min(100, analytics.success_rate_pct),
-            "processing_efficiency": max(0, 100 - (analytics.avg_processing_time_s * 10)),  # Lower time = higher score
+            "processing_efficiency": max(
+                0, 100 - (analytics.avg_processing_time_s * 10)
+            ),  # Lower time = higher score
             "resource_utilization": min(100, analytics.avg_gpu_utilization_pct or 0),
-            "memory_efficiency": max(0, 100 - (analytics.peak_gpu_memory_mb / 24000) * 100),  # RTX3090 has 24GB
+            "memory_efficiency": max(
+                0, 100 - (analytics.peak_gpu_memory_mb / 24000) * 100
+            ),  # RTX3090 has 24GB
         }
 
         overall_health = np.mean(list(health_factors.values()))
@@ -245,18 +275,27 @@ class AdvancedAnalyticsEngine:
         # Get advanced optimization recommendations
         try:
             from .advanced_optimization import generate_optimization_recommendations
-            optimization_recommendations = generate_optimization_recommendations(hours=1)
+
+            optimization_recommendations = generate_optimization_recommendations(
+                hours=1
+            )
             # Convert to simple list for backward compatibility
-            simple_recommendations = [rec.title for rec in optimization_recommendations[:5]]
+            simple_recommendations = [
+                rec.title for rec in optimization_recommendations[:5]
+            ]
         except Exception:
             simple_recommendations = analytics.optimization_recommendations
 
         return {
             "overall_health_score": overall_health,
             "health_factors": health_factors,
-            "status": "healthy" if overall_health >= 80 else "warning" if overall_health >= 60 else "critical",
+            "status": "healthy"
+            if overall_health >= 80
+            else "warning"
+            if overall_health >= 60
+            else "critical",
             "bottlenecks": analytics.bottleneck_indicators,
-            "recommendations": simple_recommendations
+            "recommendations": simple_recommendations,
         }
 
     def _detect_bottlenecks(self, metrics: list[PerformanceMetrics]) -> list[str]:
@@ -282,13 +321,21 @@ class AdvancedAnalyticsEngine:
             bottlenecks.append(f"Low success rate: {success_rate:.1%}")
 
         # GPU utilization bottleneck
-        avg_util = np.mean([m.gpu_utilization_pct for m in metrics if m.gpu_utilization_pct is not None])
+        avg_util = np.mean(
+            [
+                m.gpu_utilization_pct
+                for m in metrics
+                if m.gpu_utilization_pct is not None
+            ]
+        )
         if avg_util and avg_util < 50:  # Less than 50% utilization
             bottlenecks.append(f"Low GPU utilization: {avg_util:.1f}% average")
 
         return bottlenecks
 
-    def _generate_recommendations(self, metrics: list[PerformanceMetrics], bottlenecks: list[str]) -> list[str]:
+    def _generate_recommendations(
+        self, metrics: list[PerformanceMetrics], bottlenecks: list[str]
+    ) -> list[str]:
         """Generate optimization recommendations"""
         recommendations = []
 
@@ -298,17 +345,29 @@ class AdvancedAnalyticsEngine:
         # Analyze bottlenecks and generate specific recommendations
         for bottleneck in bottlenecks:
             if "processing time" in bottleneck:
-                recommendations.append("Consider increasing batch sizes for better GPU utilization")
-                recommendations.append("Review model quantization settings for faster inference")
+                recommendations.append(
+                    "Consider increasing batch sizes for better GPU utilization"
+                )
+                recommendations.append(
+                    "Review model quantization settings for faster inference"
+                )
             elif "memory usage" in bottleneck:
                 recommendations.append("Implement model offloading for large models")
-                recommendations.append("Consider gradient checkpointing to reduce memory footprint")
+                recommendations.append(
+                    "Consider gradient checkpointing to reduce memory footprint"
+                )
             elif "success rate" in bottleneck:
-                recommendations.append("Review error handling and implement retry mechanisms")
+                recommendations.append(
+                    "Review error handling and implement retry mechanisms"
+                )
                 recommendations.append("Check model loading and GPU memory allocation")
             elif "GPU utilization" in bottleneck:
-                recommendations.append("Optimize batch sizes for better GPU parallelism")
-                recommendations.append("Consider concurrent processing for I/O bound operations")
+                recommendations.append(
+                    "Optimize batch sizes for better GPU parallelism"
+                )
+                recommendations.append(
+                    "Consider concurrent processing for I/O bound operations"
+                )
 
         # General recommendations based on metrics
         avg_batch_size = np.mean([m.batch_size for m in metrics])
@@ -316,9 +375,13 @@ class AdvancedAnalyticsEngine:
             recommendations.append("Increase batch sizes to improve GPU utilization")
 
         # Temperature monitoring
-        avg_temp = np.mean([m.temperature_c for m in metrics if m.temperature_c is not None])
+        avg_temp = np.mean(
+            [m.temperature_c for m in metrics if m.temperature_c is not None]
+        )
         if avg_temp and avg_temp > 80:
-            recommendations.append("Monitor GPU temperature - consider cooling optimization")
+            recommendations.append(
+                "Monitor GPU temperature - consider cooling optimization"
+            )
 
         return list(set(recommendations))  # Remove duplicates
 
@@ -335,10 +398,21 @@ class AdvancedAnalyticsEngine:
         throughputs = [m.throughput_items_per_s for m in sorted_metrics]
 
         trends = {
-            "processing_time_trend": "improving" if times[-1] < np.mean(times[:-5]) else "degrading",
-            "throughput_trend": "improving" if throughputs[-1] > np.mean(throughputs[:-5]) else "degrading",
-            "processing_time_change_pct": ((times[-1] - np.mean(times[:-5])) / np.mean(times[:-5])) * 100,
-            "throughput_change_pct": ((throughputs[-1] - np.mean(throughputs[:-5])) / np.mean(throughputs[:-5])) * 100,
+            "processing_time_trend": "improving"
+            if times[-1] < np.mean(times[:-5])
+            else "degrading",
+            "throughput_trend": "improving"
+            if throughputs[-1] > np.mean(throughputs[:-5])
+            else "degrading",
+            "processing_time_change_pct": (
+                (times[-1] - np.mean(times[:-5])) / np.mean(times[:-5])
+            )
+            * 100,
+            "throughput_change_pct": (
+                (throughputs[-1] - np.mean(throughputs[:-5]))
+                / np.mean(throughputs[:-5])
+            )
+            * 100,
         }
 
         return trends
@@ -350,7 +424,9 @@ class AdvancedAnalyticsEngine:
                 current_time = datetime.now()
 
                 # Perform analysis every interval
-                if (current_time - self.last_analysis_time).seconds >= self.analysis_interval_s:
+                if (
+                    current_time - self.last_analysis_time
+                ).seconds >= self.analysis_interval_s:
                     self._perform_periodic_analysis()
                     self.last_analysis_time = current_time
 
@@ -372,11 +448,13 @@ class AdvancedAnalyticsEngine:
 
             # Store bottleneck history
             if analytics.bottleneck_indicators:
-                self.bottleneck_history.append({
-                    "timestamp": datetime.now(),
-                    "bottlenecks": analytics.bottleneck_indicators,
-                    "health_score": self.system_health_score
-                })
+                self.bottleneck_history.append(
+                    {
+                        "timestamp": datetime.now(),
+                        "bottlenecks": analytics.bottleneck_indicators,
+                        "health_score": self.system_health_score,
+                    }
+                )
 
             # Update recommendations
             self.optimization_recommendations = analytics.optimization_recommendations
@@ -393,11 +471,13 @@ class AdvancedAnalyticsEngine:
             snapshot = {
                 "timestamp": datetime.now().isoformat(),
                 "analytics": asdict(analytics),
-                "system_health": self.get_system_health_score()
+                "system_health": self.get_system_health_score(),
             }
 
-            snapshot_file = self.data_dir / f"analytics_snapshot_{int(time.time())}.json"
-            with open(snapshot_file, 'w') as f:
+            snapshot_file = (
+                self.data_dir / f"analytics_snapshot_{int(time.time())}.json"
+            )
+            with open(snapshot_file, "w") as f:
                 json.dump(snapshot, f, indent=2, default=str)
 
             # Clean up old snapshots (keep last 24 hours)
@@ -415,7 +495,14 @@ class AdvancedAnalyticsEngine:
 
         # Get per-agent profiles
         agent_profiles = {}
-        for agent_name in ["scout", "analyst", "synthesizer", "fact_checker", "newsreader", "memory"]:
+        for agent_name in [
+            "scout",
+            "analyst",
+            "synthesizer",
+            "fact_checker",
+            "newsreader",
+            "memory",
+        ]:
             profile = self.get_agent_performance_profile(agent_name, hours=hours)
             if "error" not in profile:
                 agent_profiles[agent_name] = profile
@@ -427,21 +514,25 @@ class AdvancedAnalyticsEngine:
             "system_health": self.get_system_health_score(),
             "agent_profiles": agent_profiles,
             "bottleneck_history": list(self.bottleneck_history),
-            "recommendations": self.optimization_recommendations
+            "recommendations": self.optimization_recommendations,
         }
 
         return report
 
+
 # Global analytics engine instance
 analytics_engine = AdvancedAnalyticsEngine()
+
 
 def get_analytics_engine() -> AdvancedAnalyticsEngine:
     """Get the global analytics engine instance"""
     return analytics_engine
 
+
 def start_analytics_engine():
     """Start the global analytics engine"""
     analytics_engine.start()
+
 
 def stop_analytics_engine():
     """Stop the global analytics engine"""

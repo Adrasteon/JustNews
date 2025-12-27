@@ -28,6 +28,7 @@ agents/hitl_service/*.db
 .vscode/
 .env
 global.env
+secrets.env
 model_store
 
 # Ignore any local model caches in agents/ directories
@@ -53,6 +54,9 @@ archive/experimental/
 
 # CI and test artifacts
 coverage.xml
+
+# Ignore generated test telemetry/log json artifacts created by tests
+tests/tmp_agg/*.json
 
 # Archive artifacts and deprecated docs
 infrastructure/archives/
@@ -84,11 +88,20 @@ third_party/**
 
 # Local wheel build scratch space (e.g., bitsandbytes)
 .build/
+# Local build outputs
+build/
 
 # Ignore runtime model caches and large model blobs
 models/**
 model_store/**
 
 # Training artifacts
-output/qlora_adapters/
+output/
 
+global.env
+
+# Archived Qwen2 artifacts (legacy)
+/config/legacy/
+/scripts/legacy/
+# Ignore any legacy Qwen2 adapter artifacts in model_store
+model_store/adapters/**/qwen2_*

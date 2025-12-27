@@ -6,7 +6,9 @@ import uuid
 import pytest
 
 
-def _import_hitl_module(tmp_path, monkeypatch, extra_env: dict[str, str | None] | None = None):
+def _import_hitl_module(
+    tmp_path, monkeypatch, extra_env: dict[str, str | None] | None = None
+):
     db_path = tmp_path / f"hitl_ingest_{uuid.uuid4().hex}.db"
     monkeypatch.setenv("HITL_DB_PATH", str(db_path))
 
@@ -92,7 +94,10 @@ async def test_dispatch_ingest_calls_mcp_and_updates_db(tmp_path, monkeypatch):
     # Verify DB ingestion_status updated to 'enqueued' and ingest_enqueued_at set
     conn = sqlite3.connect(hitl_module.DB_PATH)
     cur = conn.cursor()
-    cur.execute("SELECT ingestion_status, ingest_enqueued_at FROM hitl_labels WHERE id=?", (label_id,))
+    cur.execute(
+        "SELECT ingestion_status, ingest_enqueued_at FROM hitl_labels WHERE id=?",
+        (label_id,),
+    )
     row = cur.fetchone()
     conn.close()
     assert row is not None

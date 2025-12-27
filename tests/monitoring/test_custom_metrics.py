@@ -1,8 +1,16 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from prometheus_client import CollectorRegistry
 
+from monitoring.core.custom_metrics import (
+    ContentMetrics,
+    ContentType,
+    CustomMetrics,
+    ProcessingStage,
+    QualityMetric,
+    SentimentType,
+)
 from monitoring.core.metrics_collector import EnhancedMetricsCollector
-from monitoring.core.custom_metrics import CustomMetrics, ContentMetrics, ContentType, QualityMetric, ProcessingStage, SentimentType
 
 
 def test_record_content_ingestion_and_stage():
@@ -11,7 +19,9 @@ def test_record_content_ingestion_and_stage():
     cm = CustomMetrics("cm-agent", collector)
 
     # Record ingestion with id
-    cm.record_content_ingestion(ContentType.ARTICLE, "rss", "sourceA", content_id="cid1")
+    cm.record_content_ingestion(
+        ContentType.ARTICLE, "rss", "sourceA", content_id="cid1"
+    )
     assert "cid1" in cm._processing_start_times
 
     # Simulate a short processing stage
@@ -25,7 +35,7 @@ def test_record_complete_content_metrics_and_stats():
     collector = EnhancedMetricsCollector("cm-agent2", registry=registry)
     cm = CustomMetrics("cm-agent2", collector)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     metrics = ContentMetrics(
         content_id="abc",
         content_type=ContentType.ARTICLE,
@@ -37,7 +47,7 @@ def test_record_complete_content_metrics_and_stats():
         sentiment=SentimentType.POSITIVE,
         bias_score=0.1,
         fact_check_result="ok",
-        timestamp=now
+        timestamp=now,
     )
 
     cm.record_complete_content_metrics(metrics)

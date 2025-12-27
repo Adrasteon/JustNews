@@ -33,6 +33,7 @@ from tests.test_utils import (
 # BASE TEST CLASSES
 # ============================================================================
 
+
 class BaseAgentTest:
     """Base class for agent testing"""
 
@@ -43,7 +44,9 @@ class BaseAgentTest:
         self.sample_articles = TestDataGenerator.generate_articles(3)
         self.mock_response = mock_mcp_bus_response
 
-    def assert_agent_response_valid(self, response: dict, expected_keys: list[str] | None = None):
+    def assert_agent_response_valid(
+        self, response: dict, expected_keys: list[str] | None = None
+    ):
         """Assert that agent response follows expected structure"""
         CustomAssertions.assert_mcp_response_valid(response)
 
@@ -54,11 +57,20 @@ class BaseAgentTest:
                 assert key in data, f"Expected key '{key}' not found in response data"
         else:
             # Default check for expected content keys
-            expected_keys = ["sentiment", "verdict", "summary", "entities", "topics", "credibility_score", "agents"]
+            expected_keys = [
+                "sentiment",
+                "verdict",
+                "summary",
+                "entities",
+                "topics",
+                "credibility_score",
+                "agents",
+            ]
             assert "result" in response.get("data", {}) or any(
-                key in response.get("data", {})
-                for key in expected_keys
-            ), f"Response data missing expected content. Expected one of: {expected_keys}"
+                key in response.get("data", {}) for key in expected_keys
+            ), (
+                f"Response data missing expected content. Expected one of: {expected_keys}"
+            )
 
     async def call_agent_tool(self, agent_name: str, tool_name: str, **kwargs):
         """Helper to call agent tool through mock bus"""
@@ -74,21 +86,20 @@ class AsyncAgentTest(BaseAgentTest):
         yield
 
     async def assert_async_agent_operation(
-        self,
-        operation: Callable,
-        timeout: float = 5.0
+        self, operation: Callable, timeout: float = 5.0
     ):
         """Assert async agent operation completes successfully"""
         await AsyncTestHelper.assert_eventually_true(
             lambda: True,  # Placeholder - implement actual condition
             timeout=timeout,
-            message="Agent operation did not complete"
+            message="Agent operation did not complete",
         )
 
 
 # ============================================================================
 # AGENT-SPECIFIC TEST CLASSES
 # ============================================================================
+
 
 class TestAnalystAgent(AsyncAgentTest):
     """Test class for Analyst agent"""
@@ -98,8 +109,7 @@ class TestAnalystAgent(AsyncAgentTest):
         """Test sentiment analysis functionality"""
         for article in sample_articles:
             response = await self.call_agent_tool(
-                "analyst", "analyze_sentiment",
-                content=article["content"]
+                "analyst", "analyze_sentiment", content=article["content"]
             )
 
             self.assert_agent_response_valid(response)
@@ -113,8 +123,7 @@ class TestAnalystAgent(AsyncAgentTest):
         """Test entity extraction functionality"""
         article = sample_articles[0]
         response = await self.call_agent_tool(
-            "analyst", "extract_entities",
-            content=article["content"]
+            "analyst", "extract_entities", content=article["content"]
         )
 
         self.assert_agent_response_valid(response)
@@ -130,8 +139,9 @@ class TestAnalystAgent(AsyncAgentTest):
 
         async def analyze_sample():
             return await self.call_agent_tool(
-                "analyst", "analyze_sentiment",
-                content="Sample news content for performance testing."
+                "analyst",
+                "analyze_sentiment",
+                content="Sample news content for performance testing.",
             )
 
         metrics = await tester.measure_async_operation(analyze_sample, iterations=5)
@@ -146,8 +156,7 @@ class TestFactCheckerAgent(AsyncAgentTest):
         """Test fact verification functionality"""
         article = sample_articles[0]
         response = await self.call_agent_tool(
-            "fact_checker", "verify_facts",
-            content=article["content"]
+            "fact_checker", "verify_facts", content=article["content"]
         )
 
         self.assert_agent_response_valid(response)
@@ -160,8 +169,7 @@ class TestFactCheckerAgent(AsyncAgentTest):
     async def test_source_credibility(self, sample_articles):
         """Test source credibility assessment"""
         response = await self.call_agent_tool(
-            "fact_checker", "assess_credibility",
-            source="reputable-news.com"
+            "fact_checker", "assess_credibility", source="reputable-news.com"
         )
 
         self.assert_agent_response_valid(response)
@@ -178,9 +186,10 @@ class TestSynthesizerAgent(AsyncAgentTest):
         """Test content synthesis functionality"""
         articles_content = [art["content"] for art in sample_articles]
         response = await self.call_agent_tool(
-            "synthesizer", "synthesize_summary",
+            "synthesizer",
+            "synthesize_summary",
             articles=articles_content,
-            max_length=100
+            max_length=100,
         )
 
         self.assert_agent_response_valid(response)
@@ -194,8 +203,7 @@ class TestSynthesizerAgent(AsyncAgentTest):
         """Test topic modeling functionality"""
         articles_content = [art["content"] for art in sample_articles]
         response = await self.call_agent_tool(
-            "synthesizer", "extract_topics",
-            articles=articles_content
+            "synthesizer", "extract_topics", articles=articles_content
         )
 
         self.assert_agent_response_valid(response)
@@ -207,6 +215,7 @@ class TestSynthesizerAgent(AsyncAgentTest):
 # ============================================================================
 # MCP COMMUNICATION TESTS
 # ============================================================================
+
 
 class TestMCPCommunication(BaseAgentTest):
     """Test MCP Bus communication patterns"""
@@ -233,7 +242,9 @@ class TestMCPCommunication(BaseAgentTest):
     @pytest.mark.asyncio
     async def test_tool_call_routing(self):
         """Test that tool calls are routed correctly"""
-        response = await self.call_agent_tool("analyst", "analyze_sentiment", content="test")
+        response = await self.call_agent_tool(
+            "analyst", "analyze_sentiment", content="test"
+        )
         self.assert_agent_response_valid(response)
 
         # Verify call was recorded
@@ -247,6 +258,7 @@ class TestMCPCommunication(BaseAgentTest):
 # INTEGRATION TESTS
 # ============================================================================
 
+
 class TestAgentIntegration(AsyncAgentTest):
     """Integration tests for agent workflows"""
 
@@ -258,23 +270,22 @@ class TestAgentIntegration(AsyncAgentTest):
 
         # Step 1: Sentiment analysis
         sentiment_response = await self.call_agent_tool(
-            "analyst", "analyze_sentiment",
-            content=article["content"]
+            "analyst", "analyze_sentiment", content=article["content"]
         )
         self.assert_agent_response_valid(sentiment_response)
 
         # Step 2: Fact checking
         fact_response = await self.call_agent_tool(
-            "fact_checker", "verify_facts",
-            content=article["content"]
+            "fact_checker", "verify_facts", content=article["content"]
         )
         self.assert_agent_response_valid(fact_response)
 
         # Step 3: Synthesis
         synthesis_response = await self.call_agent_tool(
-            "synthesizer", "synthesize_summary",
+            "synthesizer",
+            "synthesize_summary",
             articles=[article["content"]],
-            sentiment=sentiment_response["data"]["sentiment"]
+            sentiment=sentiment_response["data"]["sentiment"],
         )
         self.assert_agent_response_valid(synthesis_response)
 
@@ -287,8 +298,9 @@ class TestAgentIntegration(AsyncAgentTest):
         """Test error handling across agents"""
         # Test with invalid input
         response = await self.call_agent_tool(
-            "analyst", "analyze_sentiment",
-            content=""  # Empty content
+            "analyst",
+            "analyze_sentiment",
+            content="",  # Empty content
         )
 
         # Should still return valid response structure
@@ -299,6 +311,7 @@ class TestAgentIntegration(AsyncAgentTest):
 # ============================================================================
 # PERFORMANCE TESTS
 # ============================================================================
+
 
 class TestAgentPerformance(BaseAgentTest):
     """Performance tests for agents"""
@@ -311,8 +324,7 @@ class TestAgentPerformance(BaseAgentTest):
 
         async def measure_response():
             return await self.call_agent_tool(
-                "analyst", "analyze_sentiment",
-                content="Performance test content."
+                "analyst", "analyze_sentiment", content="Performance test content."
             )
 
         metrics = await tester.measure_async_operation(measure_response, iterations=10)
@@ -320,6 +332,7 @@ class TestAgentPerformance(BaseAgentTest):
 
     @pytest.mark.performance
     @pytest.mark.gpu
+    @pytest.mark.asyncio
     async def test_gpu_accelerated_performance(self):
         """Test GPU-accelerated agent performance"""
         if not TestConfig.is_gpu_available():
@@ -330,8 +343,7 @@ class TestAgentPerformance(BaseAgentTest):
 
         async def gpu_operation():
             return await self.call_agent_tool(
-                "analyst", "gpu_analyze",
-                content="GPU performance test content."
+                "analyst", "gpu_analyze", content="GPU performance test content."
             )
 
         metrics = await tester.measure_async_operation(gpu_operation, iterations=5)
@@ -343,12 +355,13 @@ class TestAgentPerformance(BaseAgentTest):
 # UTILITY FUNCTIONS
 # ============================================================================
 
+
 def parametrize_agent_tests(*agent_tools):
     """Parametrize tests across multiple agent tools"""
     return pytest.mark.parametrize(
         "agent,tool",
         agent_tools,
-        ids=[f"{agent}_{tool}" for agent, tool in agent_tools]
+        ids=[f"{agent}_{tool}" for agent, tool in agent_tools],
     )
 
 
@@ -357,16 +370,16 @@ def create_agent_test_data(agent_type: str) -> dict[str, Any]:
     test_data = {
         "analyst": {
             "content": "Sample news content for analysis.",
-            "expected_tools": ["analyze_sentiment", "extract_entities"]
+            "expected_tools": ["analyze_sentiment", "extract_entities"],
         },
         "fact_checker": {
             "content": "Factual statement to verify.",
-            "expected_tools": ["verify_facts", "assess_credibility"]
+            "expected_tools": ["verify_facts", "assess_credibility"],
         },
         "synthesizer": {
             "articles": ["Article 1 content", "Article 2 content"],
-            "expected_tools": ["synthesize_summary", "extract_topics"]
-        }
+            "expected_tools": ["synthesize_summary", "extract_topics"],
+        },
     }
 
     return test_data.get(agent_type, {})

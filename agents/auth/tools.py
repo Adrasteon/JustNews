@@ -32,15 +32,10 @@ def authenticate_user(username_or_email: str, password: str) -> dict[str, Any] |
         Dict containing authentication tokens and user info, or None if authentication fails
     """
     try:
-        payload = {
-            "username_or_email": username_or_email,
-            "password": password
-        }
+        payload = {"username_or_email": username_or_email, "password": password}
 
         response = requests.post(
-            f"{AUTH_SERVICE_URL}/auth/login",
-            json=payload,
-            timeout=AUTH_SERVICE_TIMEOUT
+            f"{AUTH_SERVICE_URL}/auth/login", json=payload, timeout=AUTH_SERVICE_TIMEOUT
         )
 
         if response.status_code == 200:
@@ -48,7 +43,9 @@ def authenticate_user(username_or_email: str, password: str) -> dict[str, Any] |
             logger.info(f"User authenticated: {username_or_email}")
             return data
         else:
-            logger.warning(f"Authentication failed for user: {username_or_email} - {response.status_code}")
+            logger.warning(
+                f"Authentication failed for user: {username_or_email} - {response.status_code}"
+            )
             return None
 
     except Exception as e:
@@ -77,15 +74,13 @@ def validate_access_token(token: str) -> dict[str, Any] | None:
                     "username": user["username"],
                     "email": user["email"],
                     "role": user["role"],
-                    "status": user["status"]
+                    "status": user["status"],
                 }
 
         # Fallback to service validation
         headers = {"Authorization": f"Bearer {token}"}
         response = requests.get(
-            f"{AUTH_SERVICE_URL}/auth/me",
-            headers=headers,
-            timeout=AUTH_SERVICE_TIMEOUT
+            f"{AUTH_SERVICE_URL}/auth/me", headers=headers, timeout=AUTH_SERVICE_TIMEOUT
         )
 
         if response.status_code == 200:
@@ -95,7 +90,7 @@ def validate_access_token(token: str) -> dict[str, Any] | None:
                 "username": data["username"],
                 "email": data["email"],
                 "role": data["role"],
-                "status": data["status"]
+                "status": data["status"],
             }
         else:
             logger.warning(f"Token validation failed - {response.status_code}")
@@ -122,7 +117,7 @@ def refresh_user_token(refresh_token: str) -> dict[str, Any] | None:
         response = requests.post(
             f"{AUTH_SERVICE_URL}/auth/refresh",
             json=payload,
-            timeout=AUTH_SERVICE_TIMEOUT
+            timeout=AUTH_SERVICE_TIMEOUT,
         )
 
         if response.status_code == 200:
@@ -158,11 +153,7 @@ def check_user_permission(user_id: int, required_role: str) -> bool:
             return False
 
         # Check role hierarchy
-        role_hierarchy = {
-            "user": 1,
-            "moderator": 2,
-            "admin": 3
-        }
+        role_hierarchy = {"user": 1, "moderator": 2, "admin": 3}
 
         user_level = role_hierarchy.get(user["role"], 0)
         required_level = role_hierarchy.get(required_role, 999)
@@ -195,7 +186,7 @@ def get_user_profile(user_id: int) -> dict[str, Any] | None:
                 "role": user["role"],
                 "status": user["status"],
                 "created_at": user["created_at"],
-                "last_login": user["last_login"]
+                "last_login": user["last_login"],
             }
         return None
 
@@ -212,32 +203,25 @@ def check_auth_service_health() -> dict[str, Any]:
         Dict containing health status information
     """
     try:
-        response = requests.get(
-            f"{AUTH_SERVICE_URL}/health",
-            timeout=10
-        )
+        response = requests.get(f"{AUTH_SERVICE_URL}/health", timeout=10)
 
         if response.status_code == 200:
             return {
                 "status": "healthy",
                 "service": "auth",
                 "response_time": response.elapsed.total_seconds(),
-                "details": response.json()
+                "details": response.json(),
             }
         else:
             return {
                 "status": "unhealthy",
                 "service": "auth",
                 "error": f"HTTP {response.status_code}",
-                "details": response.text
+                "details": response.text,
             }
 
     except Exception as e:
-        return {
-            "status": "error",
-            "service": "auth",
-            "error": str(e)
-        }
+        return {"status": "error", "service": "auth", "error": str(e)}
 
 
 def create_user_account(user_data: dict[str, Any]) -> int | None:
@@ -254,16 +238,20 @@ def create_user_account(user_data: dict[str, Any]) -> int | None:
         response = requests.post(
             f"{AUTH_SERVICE_URL}/auth/register",
             json=user_data,
-            timeout=AUTH_SERVICE_TIMEOUT
+            timeout=AUTH_SERVICE_TIMEOUT,
         )
 
         if response.status_code == 200:
             data = response.json()
             user_id = data.get("user_id")
-            logger.info(f"User account created: {user_data.get('username')} (ID: {user_id})")
+            logger.info(
+                f"User account created: {user_data.get('username')} (ID: {user_id})"
+            )
             return user_id
         else:
-            logger.warning(f"User creation failed - {response.status_code}: {response.text}")
+            logger.warning(
+                f"User creation failed - {response.status_code}: {response.text}"
+            )
             return None
 
     except Exception as e:
@@ -287,14 +275,16 @@ def initiate_password_reset(email: str) -> bool:
         response = requests.post(
             f"{AUTH_SERVICE_URL}/auth/password-reset",
             json=payload,
-            timeout=AUTH_SERVICE_TIMEOUT
+            timeout=AUTH_SERVICE_TIMEOUT,
         )
 
         success = response.status_code == 200
         if success:
             logger.info(f"Password reset initiated for: {email}")
         else:
-            logger.warning(f"Password reset failed for {email} - {response.status_code}")
+            logger.warning(
+                f"Password reset failed for {email} - {response.status_code}"
+            )
 
         return success
 
@@ -322,7 +312,7 @@ def logout_user_session(refresh_token: str, access_token: str) -> bool:
             f"{AUTH_SERVICE_URL}/auth/logout",
             json=payload,
             headers=headers,
-            timeout=AUTH_SERVICE_TIMEOUT
+            timeout=AUTH_SERVICE_TIMEOUT,
         )
 
         success = response.status_code == 200

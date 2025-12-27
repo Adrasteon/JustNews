@@ -12,5 +12,7 @@ from typing import Any
 
 
 class UltraFastBBCCrawler:
-    async def run_ultra_fast_crawl(self, max_articles: int, *, skip_ingestion: bool = False) -> dict[str, Any]:
+    async def run_ultra_fast_crawl(
+        self, max_articles: int, *, skip_ingestion: bool = False
+    ) -> dict[str, Any]:
         raise NotImplementedError("UltraFastBBCCrawler is currently not implemented")

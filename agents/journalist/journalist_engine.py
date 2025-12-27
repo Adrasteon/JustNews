@@ -6,15 +6,17 @@ Crawl4AI server (systemd managed) via a bridge. It exposes a small async API
 that mirrors scout responsibilities but centralizes heavy LLM & browser work
 in a separate process.
 """
+
 from __future__ import annotations
 
 import asyncio
 import os
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 from agents.c4ai.bridge import crawl_via_local_server
-from agents.journalist.mistral_adapter import JournalistMistralAdapter
+from agents.common.mistral_adapter import MistralAdapter
+from agents.journalist.mistral_adapter import SYSTEM_PROMPT
 from common.observability import get_logger
 
 logger = get_logger(__name__)
@@ -35,19 +37,32 @@ class JournalistConfig:
         or f"http://{os.getenv('CRAWL4AI_HOST', '127.0.0.1')}:{os.getenv('CRAWL4AI_PORT', '3308')}"
     )
     default_mode: str = "standard"
-    use_llm_extraction: bool = os.getenv("CRAWL4AI_USE_LLM", "true").lower() in ("1", "true", "yes")
+    use_llm_extraction: bool = os.getenv("CRAWL4AI_USE_LLM", "true").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
 
 
 class JournalistEngine:
     def __init__(self, config: JournalistConfig | None = None):
         self.config = config or JournalistConfig()
         self._shutdown = False
-        self._mistral_adapter = JournalistMistralAdapter()
+        # Use shared MistralAdapter wrapper for consistent dry-run and modelstore behavior
+        self._mistral_adapter = MistralAdapter(
+            agent="journalist",
+            adapter_name="mistral_journalist_v1",
+            system_prompt=SYSTEM_PROMPT,
+        )
 
-    async def crawl_and_analyze(self, url: str, mode: str | None = None) -> dict[str, Any]:
+    async def crawl_and_analyze(
+        self, url: str, mode: str | None = None
+    ) -> dict[str, Any]:
         mode = mode or self.config.default_mode
         # Use the bridge helper to call the local Crawl4AI server
-        results = await crawl_via_local_server(url, mode=mode, use_llm=self.config.use_llm_extraction)
+        results = await crawl_via_local_server(
+            url, mode=mode, use_llm=self.config.use_llm_extraction
+        )
         if self.config.use_llm_extraction:
             brief = await asyncio.to_thread(self._generate_llm_brief, results)
             if brief:
@@ -61,7 +76,7 @@ class JournalistEngine:
         await asyncio.sleep(0)
 
     # Internal helpers -----------------------------------------------------
-    def _generate_llm_brief(self, payload: dict[str, Any]) -> Dict[str, Any] | None:
+    def _generate_llm_brief(self, payload: dict[str, Any]) -> dict[str, Any] | None:
         if not payload or not getattr(self, "_mistral_adapter", None):
             return None
         try:
@@ -69,7 +84,9 @@ class JournalistEngine:
             html = payload.get("html") if isinstance(payload, dict) else None
             title = payload.get("title") if isinstance(payload, dict) else None
             url = payload.get("url") if isinstance(payload, dict) else None
-            return self._mistral_adapter.generate_story_brief(markdown, html, url=url, title=title)
+            return self._mistral_adapter.generate_story_brief(
+                markdown, html, url=url, title=title
+            )
         except Exception as exc:
             logger.debug("Journalist Mistral adapter failed: %s", exc)
             return None

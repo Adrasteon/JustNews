@@ -41,7 +41,7 @@ spec:
             memory: {{ .Values.chromadb.resources.requests.memory }}
         livenessProbe:
           httpGet:
-            path: /api/v1/heartbeat
+            path: /api/v2/auth/identity
             port: 8000
           initialDelaySeconds: 30
           periodSeconds: 10
@@ -49,7 +49,7 @@ spec:
           failureThreshold: 6
         readinessProbe:
           httpGet:
-            path: /api/v1/heartbeat
+            path: /api/v2/auth/identity
             port: 8000
           initialDelaySeconds: 5
           periodSeconds: 5

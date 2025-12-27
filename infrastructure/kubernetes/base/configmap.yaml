@@ -12,7 +12,7 @@ data:
 
   # Vector Database Configuration
   CHROMA_HOST: "chromadb-service"
-  CHROMA_PORT: "8000"
+  CHROMA_PORT: "3307"
 
   # Redis Configuration
   REDIS_HOST: "redis-service"

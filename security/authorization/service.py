@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 class PermissionLevel(Enum):
     """Permission levels"""
+
     READ = "read"
     WRITE = "write"
     DELETE = "delete"
@@ -28,6 +29,7 @@ class PermissionLevel(Enum):
 
 class Role(BaseModel):
     """Role definition"""
+
     name: str
     description: str
     permissions: list[str] = Field(default_factory=list)
@@ -36,6 +38,7 @@ class Role(BaseModel):
 
 class Permission(BaseModel):
     """Permission definition"""
+
     name: str
     description: str
     resource: str  # Resource pattern (e.g., "articles:*", "users:123")
@@ -45,6 +48,7 @@ class Permission(BaseModel):
 @dataclass
 class RoleHierarchy:
     """Role hierarchy for inheritance"""
+
     roles: dict[str, Role]
     permissions: dict[str, Permission]
 
@@ -85,11 +89,12 @@ class AuthorizationService:
     def __init__(self, config: SecurityConfig):
         self.config = config
         self._role_hierarchy = RoleHierarchy(
-            roles=self._get_default_roles(),
-            permissions=self._get_default_permissions()
+            roles=self._get_default_roles(), permissions=self._get_default_permissions()
         )
         self._user_roles: dict[int, list[str]] = {}  # user_id -> roles
-        self._resource_permissions: dict[str, dict[str, list[str]]] = {}  # resource -> action -> roles
+        self._resource_permissions: dict[
+            str, dict[str, list[str]]
+        ] = {}  # resource -> action -> roles
 
     def _get_default_roles(self) -> dict[str, Role]:
         """Get default role definitions"""
@@ -101,8 +106,8 @@ class AuthorizationService:
                     "articles:read",
                     "comments:read",
                     "profile:read",
-                    "profile:write"
-                ]
+                    "profile:write",
+                ],
             ),
             "moderator": Role(
                 name="moderator",
@@ -114,30 +119,22 @@ class AuthorizationService:
                     "comments:write",
                     "comments:delete",
                     "users:read",
-                    "reports:read"
+                    "reports:read",
                 ],
-                inherits_from=["user"]
+                inherits_from=["user"],
             ),
             "admin": Role(
                 name="admin",
                 description="System administrator",
-                permissions=[
-                    "users:*",
-                    "system:*",
-                    "audit:*"
-                ],
-                inherits_from=["moderator"]
+                permissions=["users:*", "system:*", "audit:*"],
+                inherits_from=["moderator"],
             ),
             "analyst": Role(
                 name="analyst",
                 description="Data analyst",
-                permissions=[
-                    "analytics:read",
-                    "reports:read",
-                    "data:export"
-                ],
-                inherits_from=["user"]
-            )
+                permissions=["analytics:read", "reports:read", "data:export"],
+                inherits_from=["user"],
+            ),
         }
 
     def _get_default_permissions(self) -> dict[str, Permission]:
@@ -147,68 +144,68 @@ class AuthorizationService:
                 name="articles:read",
                 description="Read articles",
                 resource="articles",
-                actions=["read"]
+                actions=["read"],
             ),
             "articles:write": Permission(
                 name="articles:write",
                 description="Create and edit articles",
                 resource="articles",
-                actions=["write"]
+                actions=["write"],
             ),
             "articles:delete": Permission(
                 name="articles:delete",
                 description="Delete articles",
                 resource="articles",
-                actions=["delete"]
+                actions=["delete"],
             ),
             "comments:read": Permission(
                 name="comments:read",
                 description="Read comments",
                 resource="comments",
-                actions=["read"]
+                actions=["read"],
             ),
             "comments:write": Permission(
                 name="comments:write",
                 description="Create comments",
                 resource="comments",
-                actions=["write"]
+                actions=["write"],
             ),
             "comments:delete": Permission(
                 name="comments:delete",
                 description="Delete comments",
                 resource="comments",
-                actions=["delete"]
+                actions=["delete"],
             ),
             "users:read": Permission(
                 name="users:read",
                 description="Read user information",
                 resource="users",
-                actions=["read"]
+                actions=["read"],
             ),
             "users:write": Permission(
                 name="users:write",
                 description="Modify user information",
                 resource="users",
-                actions=["write"]
+                actions=["write"],
             ),
             "users:delete": Permission(
                 name="users:delete",
                 description="Delete users",
                 resource="users",
-                actions=["delete"]
+                actions=["delete"],
             ),
             "system:*": Permission(
                 name="system:*",
                 description="Full system access",
                 resource="system",
-                actions=["*"]
+                actions=["*"],
             ),
             "audit:*": Permission(
                 name="audit:*",
                 description="Audit log access",
                 resource="audit",
-                actions=["*"]
-            )
+                actions=["*"],
+            ),
         }
 
     async def initialize(self) -> None:
@@ -221,8 +218,9 @@ class AuthorizationService:
         await self._save_role_data()
         logger.info("AuthorizationService shutdown")
 
-    async def check_permission(self, user_id: int, permission: str,
-                             resource: str | None = None) -> bool:
+    async def check_permission(
+        self, user_id: int, permission: str, resource: str | None = None
+    ) -> bool:
         """
         Check if user has specific permission
 
@@ -242,7 +240,9 @@ class AuthorizationService:
             for role in user_roles:
                 if self._role_hierarchy.has_permission(role, permission):
                     # Additional resource-level check if needed
-                    if resource and not self._check_resource_permission(role, permission, resource):
+                    if resource and not self._check_resource_permission(
+                        role, permission, resource
+                    ):
                         continue
                     return True
 
@@ -373,7 +373,9 @@ class AuthorizationService:
         # Check if role is assigned to any users
         for user_roles in self._user_roles.values():
             if role_name in user_roles:
-                raise AuthorizationError(f"Cannot delete role '{role_name}' - it is assigned to users")
+                raise AuthorizationError(
+                    f"Cannot delete role '{role_name}' - it is assigned to users"
+                )
 
         del self._role_hierarchy.roles[role_name]
         await self._save_role_data()
@@ -419,7 +421,9 @@ class AuthorizationService:
             await self._save_role_data()
             logger.info(f"Added permission '{permission}' to role '{role_name}'")
 
-    async def remove_permission_from_role(self, role_name: str, permission: str) -> None:
+    async def remove_permission_from_role(
+        self, role_name: str, permission: str
+    ) -> None:
         """
         Remove permission from role
 
@@ -432,7 +436,9 @@ class AuthorizationService:
             if permission in role.permissions:
                 role.permissions.remove(permission)
                 await self._save_role_data()
-                logger.info(f"Removed permission '{permission}' from role '{role_name}'")
+                logger.info(
+                    f"Removed permission '{permission}' from role '{role_name}'"
+                )
 
     async def get_all_roles(self) -> dict[str, dict[str, Any]]:
         """
@@ -446,7 +452,7 @@ class AuthorizationService:
                 "name": role.name,
                 "description": role.description,
                 "permissions": role.permissions,
-                "inherits_from": role.inherits_from
+                "inherits_from": role.inherits_from,
             }
             for name, role in self._role_hierarchy.roles.items()
         }
@@ -463,7 +469,7 @@ class AuthorizationService:
                 "name": perm.name,
                 "description": perm.description,
                 "resource": perm.resource,
-                "actions": perm.actions
+                "actions": perm.actions,
             }
             for name, perm in self._role_hierarchy.permissions.items()
         }
@@ -484,7 +490,9 @@ class AuthorizationService:
                 user_ids.append(user_id)
         return user_ids
 
-    def _check_resource_permission(self, role: str, permission: str, resource: str) -> bool:
+    def _check_resource_permission(
+        self, role: str, permission: str, resource: str
+    ) -> bool:
         """
         Check resource-level permission
 
@@ -508,7 +516,9 @@ class AuthorizationService:
 
         return role in allowed_roles
 
-    async def set_resource_permission(self, resource: str, action: str, roles: list[str]) -> None:
+    async def set_resource_permission(
+        self, resource: str, action: str, roles: list[str]
+    ) -> None:
         """
         Set resource-level permission
 
@@ -535,7 +545,7 @@ class AuthorizationService:
             "total_roles": len(self._role_hierarchy.roles),
             "total_permissions": len(self._role_hierarchy.permissions),
             "users_with_roles": len(self._user_roles),
-            "resource_permissions": len(self._resource_permissions)
+            "resource_permissions": len(self._resource_permissions),
         }
 
     async def _load_role_data(self) -> None:
@@ -560,8 +570,10 @@ class AuthorizationService:
                 # Load resource permissions
                 self._resource_permissions = data.get("resource_permissions", {})
 
-                logger.info(f"Loaded authorization data: {len(self._role_hierarchy.roles)} roles, "
-                          f"{len(self._user_roles)} users with roles")
+                logger.info(
+                    f"Loaded authorization data: {len(self._role_hierarchy.roles)} roles, "
+                    f"{len(self._user_roles)} users with roles"
+                )
 
         except FileNotFoundError:
             logger.info("No authorization data file found, using defaults")
@@ -577,7 +589,7 @@ class AuthorizationService:
                         "name": role.name,
                         "description": role.description,
                         "permissions": role.permissions,
-                        "inherits_from": role.inherits_from
+                        "inherits_from": role.inherits_from,
                     }
                     for name, role in self._role_hierarchy.roles.items()
                 },
@@ -586,12 +598,12 @@ class AuthorizationService:
                         "name": perm.name,
                         "description": perm.description,
                         "resource": perm.resource,
-                        "actions": perm.actions
+                        "actions": perm.actions,
                     }
                     for name, perm in self._role_hierarchy.permissions.items()
                 },
                 "user_roles": self._user_roles,
-                "resource_permissions": self._resource_permissions
+                "resource_permissions": self._resource_permissions,
             }
 
             async with aiofiles.open("data/authorization.json", "w") as f:

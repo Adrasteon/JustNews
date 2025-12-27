@@ -1,4 +1,5 @@
 """Paywall detection helper for the crawler."""
+
 from __future__ import annotations
 
 import asyncio
@@ -105,7 +106,9 @@ class PaywallDetector:
         )
         return result
 
-    async def _remote_check(self, *, url: str, text: str) -> PaywallDetectionResult | None:
+    async def _remote_check(
+        self, *, url: str, text: str
+    ) -> PaywallDetectionResult | None:
         """Offload analysis to the Analyst agent via MCP bus."""
         truncated = text[: self.max_remote_chars]
 

@@ -21,7 +21,7 @@ def backup_mariadb_data(db_service, backup_dir: Path):
     """Backup article-related tables from MariaDB"""
     cursor = db_service.mb_conn.cursor(dictionary=True)
 
-    tables_to_backup = ['articles', 'article_source_map', 'crawler_performance']
+    tables_to_backup = ["articles", "article_source_map", "crawler_performance"]
 
     for table in tables_to_backup:
         print(f"📦 Backing up {table}...")
@@ -32,7 +32,7 @@ def backup_mariadb_data(db_service, backup_dir: Path):
 
         # Save to JSON
         backup_file = backup_dir / f"{table}_backup.json"
-        with open(backup_file, 'w', encoding='utf-8') as f:
+        with open(backup_file, "w", encoding="utf-8") as f:
             json.dump(rows, f, indent=2, default=str, ensure_ascii=False)
 
         print(f"   Saved {len(rows)} records to {backup_file}")
@@ -44,22 +44,22 @@ def backup_chromadb_data(backup_dir: Path):
     """Backup ChromaDB articles collection"""
     print("📦 Backing up ChromaDB articles collection...")
 
-    client = chromadb.HttpClient(host='localhost', port=3307)
-    collection = client.get_collection('articles')
+    client = chromadb.HttpClient(host="localhost", port=3307)
+    collection = client.get_collection("articles")
 
     # Get all data
-    result = collection.get(include=['documents', 'metadatas', 'embeddings'])
+    result = collection.get(include=["documents", "metadatas", "embeddings"])
 
     # Save to JSON
     backup_data = {
-        'ids': result['ids'],
-        'documents': result['documents'],
-        'metadatas': result['metadatas'],
-        'embeddings': result['embeddings']
+        "ids": result["ids"],
+        "documents": result["documents"],
+        "metadatas": result["metadatas"],
+        "embeddings": result["embeddings"],
     }
 
     backup_file = backup_dir / "chromadb_articles_backup.json"
-    with open(backup_file, 'w', encoding='utf-8') as f:
+    with open(backup_file, "w", encoding="utf-8") as f:
         json.dump(backup_data, f, indent=2, default=str, ensure_ascii=False)
 
     print(f"   Saved {len(result['ids'])} documents to {backup_file}")

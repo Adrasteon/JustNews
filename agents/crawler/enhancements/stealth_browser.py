@@ -6,6 +6,7 @@ requests, which is sufficient for a large fraction of soft anti-bot systems.
 The profiles are intentionally lightweight so they can be serialised in
 configuration files when required.
 """
+
 from __future__ import annotations
 
 import random
@@ -83,7 +84,7 @@ class StealthBrowserFactory:
         self._profiles = []
         for profile in raw_profiles:
             # Handle both dict and StealthProfileConfig objects
-            if hasattr(profile, 'model_dump'):
+            if hasattr(profile, "model_dump"):
                 # It's a Pydantic model, convert to dict
                 profile_dict = profile.model_dump()
             else:
@@ -94,8 +95,12 @@ class StealthBrowserFactory:
                 self._profiles.append(
                     StealthProfile(
                         user_agent=profile_dict["user_agent"],
-                        accept_language=profile_dict.get("accept_language", "en-US,en;q=0.9"),
-                        accept_encoding=profile_dict.get("accept_encoding", "gzip, deflate, br"),
+                        accept_language=profile_dict.get(
+                            "accept_language", "en-US,en;q=0.9"
+                        ),
+                        accept_encoding=profile_dict.get(
+                            "accept_encoding", "gzip, deflate, br"
+                        ),
                         headers=profile_dict.get("headers", {}),
                     )
                 )

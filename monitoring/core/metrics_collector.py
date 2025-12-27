@@ -11,7 +11,7 @@ import statistics
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 
@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 class MetricType(Enum):
     """Types of metrics collected"""
+
     BUSINESS = "business"
     PERFORMANCE = "performance"
     SYSTEM = "system"
@@ -40,6 +41,7 @@ class MetricType(Enum):
 
 class AlertSeverity(Enum):
     """Alert severity levels"""
+
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -49,6 +51,7 @@ class AlertSeverity(Enum):
 @dataclass
 class MetricThreshold:
     """Threshold configuration for alerting"""
+
     warning_threshold: float
     critical_threshold: float
     direction: str = "above"  # "above", "below", or "outside"
@@ -59,6 +62,7 @@ class MetricThreshold:
 @dataclass
 class AlertRule:
     """Alert rule configuration"""
+
     name: str
     metric_name: str
     thresholds: MetricThreshold
@@ -71,6 +75,7 @@ class AlertRule:
 @dataclass
 class Alert:
     """Alert instance"""
+
     rule_name: str
     severity: AlertSeverity
     message: str
@@ -130,187 +135,187 @@ class EnhancedMetricsCollector:
         """Initialize enhanced Prometheus metrics"""
         # Business metrics
         self.content_processed_total = Counter(
-            'justnews_content_processed_total',
-            'Total content items processed',
-            ['agent', 'content_type', 'processing_stage'],
-            registry=self.registry
+            "justnews_content_processed_total",
+            "Total content items processed",
+            ["agent", "content_type", "processing_stage"],
+            registry=self.registry,
         )
 
         self.content_quality_score = Histogram(
-            'justnews_content_quality_score',
-            'Content quality score distribution',
-            ['agent', 'content_type', 'quality_metric'],
+            "justnews_content_quality_score",
+            "Content quality score distribution",
+            ["agent", "content_type", "quality_metric"],
             buckets=[0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
-            registry=self.registry
+            registry=self.registry,
         )
 
         # Performance metrics
         self.operation_latency = Histogram(
-            'justnews_operation_latency_seconds',
-            'Operation latency in seconds',
-            ['agent', 'operation_type', 'operation_category'],
+            "justnews_operation_latency_seconds",
+            "Operation latency in seconds",
+            ["agent", "operation_type", "operation_category"],
             buckets=[0.001, 0.01, 0.1, 1.0, 5.0, 10.0, 30.0],
-            registry=self.registry
+            registry=self.registry,
         )
 
         self.throughput_rate = Gauge(
-            'justnews_throughput_rate_per_second',
-            'Operations per second',
-            ['agent', 'operation_type'],
-            registry=self.registry
+            "justnews_throughput_rate_per_second",
+            "Operations per second",
+            ["agent", "operation_type"],
+            registry=self.registry,
         )
 
         # System health metrics
         self.health_score = Gauge(
-            'justnews_health_score',
-            'Overall health score (0-100)',
-            ['agent', 'health_component'],
-            registry=self.registry
+            "justnews_health_score",
+            "Overall health score (0-100)",
+            ["agent", "health_component"],
+            registry=self.registry,
         )
 
         self.error_rate = Gauge(
-            'justnews_error_rate_percentage',
-            'Error rate as percentage',
-            ['agent', 'error_category'],
-            registry=self.registry
+            "justnews_error_rate_percentage",
+            "Error rate as percentage",
+            ["agent", "error_category"],
+            registry=self.registry,
         )
 
         # Resource utilization
         self.resource_utilization = Gauge(
-            'justnews_resource_utilization_percent',
-            'Resource utilization percentage',
-            ['agent', 'resource_type', 'resource_name'],
-            registry=self.registry
+            "justnews_resource_utilization_percent",
+            "Resource utilization percentage",
+            ["agent", "resource_type", "resource_name"],
+            registry=self.registry,
         )
 
     def _init_business_metrics(self):
         """Initialize business-specific metrics"""
         # Content processing metrics
         self.articles_processed = Counter(
-            'justnews_articles_processed_total',
-            'Total articles processed',
-            ['agent', 'source_type', 'processing_result'],
-            registry=self.registry
+            "justnews_articles_processed_total",
+            "Total articles processed",
+            ["agent", "source_type", "processing_result"],
+            registry=self.registry,
         )
 
         self.fact_checks_performed = Counter(
-            'justnews_fact_checks_total',
-            'Total fact checks performed',
-            ['agent', 'check_type', 'result'],
-            registry=self.registry
+            "justnews_fact_checks_total",
+            "Total fact checks performed",
+            ["agent", "check_type", "result"],
+            registry=self.registry,
         )
 
         self.sentiment_analysis_count = Counter(
-            'justnews_sentiment_analysis_total',
-            'Total sentiment analyses performed',
-            ['agent', 'sentiment_type', 'confidence_level'],
-            registry=self.registry
+            "justnews_sentiment_analysis_total",
+            "Total sentiment analyses performed",
+            ["agent", "sentiment_type", "confidence_level"],
+            registry=self.registry,
         )
 
         # Quality metrics
         self.content_accuracy_score = Histogram(
-            'justnews_content_accuracy_score',
-            'Content accuracy score distribution',
-            ['agent', 'verification_method'],
+            "justnews_content_accuracy_score",
+            "Content accuracy score distribution",
+            ["agent", "verification_method"],
             buckets=[0.0, 0.5, 0.7, 0.8, 0.9, 0.95, 1.0],
-            registry=self.registry
+            registry=self.registry,
         )
 
         self.bias_detection_score = Histogram(
-            'justnews_bias_detection_score',
-            'Bias detection confidence score',
-            ['agent', 'bias_type'],
+            "justnews_bias_detection_score",
+            "Bias detection confidence score",
+            ["agent", "bias_type"],
             buckets=[0.0, 0.3, 0.5, 0.7, 0.9, 1.0],
-            registry=self.registry
+            registry=self.registry,
         )
 
     def _init_performance_metrics(self):
         """Initialize advanced performance metrics"""
         # Memory and GC metrics
         self.memory_pressure = Gauge(
-            'justnews_memory_pressure_percent',
-            'Memory pressure percentage',
-            ['agent', 'memory_pool'],
-            registry=self.registry
+            "justnews_memory_pressure_percent",
+            "Memory pressure percentage",
+            ["agent", "memory_pool"],
+            registry=self.registry,
         )
 
         self.gc_collections_total = Counter(
-            'justnews_gc_collections_total',
-            'Total garbage collections',
-            ['agent', 'generation'],
-            registry=self.registry
+            "justnews_gc_collections_total",
+            "Total garbage collections",
+            ["agent", "generation"],
+            registry=self.registry,
         )
 
         # Threading metrics
         self.active_threads = Gauge(
-            'justnews_active_threads',
-            'Number of active threads',
-            ['agent', 'thread_pool'],
-            registry=self.registry
+            "justnews_active_threads",
+            "Number of active threads",
+            ["agent", "thread_pool"],
+            registry=self.registry,
         )
 
         self.thread_queue_size = Gauge(
-            'justnews_thread_queue_size',
-            'Thread pool queue size',
-            ['agent', 'thread_pool'],
-            registry=self.registry
+            "justnews_thread_queue_size",
+            "Thread pool queue size",
+            ["agent", "thread_pool"],
+            registry=self.registry,
         )
 
         # I/O metrics
         self.io_operations_total = Counter(
-            'justnews_io_operations_total',
-            'Total I/O operations',
-            ['agent', 'io_type', 'operation'],
-            registry=self.registry
+            "justnews_io_operations_total",
+            "Total I/O operations",
+            ["agent", "io_type", "operation"],
+            registry=self.registry,
         )
 
         self.io_latency = Histogram(
-            'justnews_io_latency_seconds',
-            'I/O operation latency',
-            ['agent', 'io_type', 'operation'],
+            "justnews_io_latency_seconds",
+            "I/O operation latency",
+            ["agent", "io_type", "operation"],
             buckets=[0.001, 0.01, 0.1, 1.0, 5.0],
-            registry=self.registry
+            registry=self.registry,
         )
 
     def _init_security_metrics(self):
         """Initialize security and compliance metrics"""
         # Authentication metrics
         self.auth_attempts_total = Counter(
-            'justnews_auth_attempts_total',
-            'Total authentication attempts',
-            ['agent', 'auth_method', 'result'],
-            registry=self.registry
+            "justnews_auth_attempts_total",
+            "Total authentication attempts",
+            ["agent", "auth_method", "result"],
+            registry=self.registry,
         )
 
         self.auth_failures_total = Counter(
-            'justnews_auth_failures_total',
-            'Total authentication failures',
-            ['agent', 'auth_method', 'failure_reason'],
-            registry=self.registry
+            "justnews_auth_failures_total",
+            "Total authentication failures",
+            ["agent", "auth_method", "failure_reason"],
+            registry=self.registry,
         )
 
         # Access control metrics
         self.access_denied_total = Counter(
-            'justnews_access_denied_total',
-            'Total access denied events',
-            ['agent', 'resource_type', 'reason'],
-            registry=self.registry
+            "justnews_access_denied_total",
+            "Total access denied events",
+            ["agent", "resource_type", "reason"],
+            registry=self.registry,
         )
 
         # Data protection metrics
         self.data_encryption_operations = Counter(
-            'justnews_data_encryption_operations_total',
-            'Total data encryption/decryption operations',
-            ['agent', 'operation_type', 'data_type'],
-            registry=self.registry
+            "justnews_data_encryption_operations_total",
+            "Total data encryption/decryption operations",
+            ["agent", "operation_type", "data_type"],
+            registry=self.registry,
         )
 
         # Compliance metrics
         self.compliance_checks_total = Counter(
-            'justnews_compliance_checks_total',
-            'Total compliance checks performed',
-            ['agent', 'compliance_type', 'result'],
-            registry=self.registry
+            "justnews_compliance_checks_total",
+            "Total compliance checks performed",
+            ["agent", "compliance_type", "result"],
+            registry=self.registry,
         )
 
     async def start_monitoring(self):
@@ -332,7 +337,7 @@ class EnhancedMetricsCollector:
             self._monitoring_task or asyncio.sleep(0),
             self._alerting_task or asyncio.sleep(0),
             self._cleanup_task or asyncio.sleep(0),
-            return_exceptions=True
+            return_exceptions=True,
         )
 
     async def _monitoring_loop(self):
@@ -388,8 +393,7 @@ class EnhancedMetricsCollector:
             memory_pressure = (memory_info.rss / total_memory) * 100
 
             self.memory_pressure.labels(
-                agent=self.agent_name,
-                memory_pool='process'
+                agent=self.agent_name, memory_pool="process"
             ).set(memory_pressure)
 
             # CPU utilization by core
@@ -397,8 +401,8 @@ class EnhancedMetricsCollector:
             for i, cpu_percent in enumerate(cpu_percents):
                 self.resource_utilization.labels(
                     agent=self.agent_name,
-                    resource_type='cpu',
-                    resource_name=f'core_{i}'
+                    resource_type="cpu",
+                    resource_name=f"core_{i}",
                 ).set(cpu_percent)
 
             # Disk I/O
@@ -406,14 +410,14 @@ class EnhancedMetricsCollector:
             if disk_io:
                 self.resource_utilization.labels(
                     agent=self.agent_name,
-                    resource_type='disk',
-                    resource_name='read_bytes'
+                    resource_type="disk",
+                    resource_name="read_bytes",
                 ).set(disk_io.read_bytes)
 
                 self.resource_utilization.labels(
                     agent=self.agent_name,
-                    resource_type='disk',
-                    resource_name='write_bytes'
+                    resource_type="disk",
+                    resource_name="write_bytes",
                 ).set(disk_io.write_bytes)
 
             # Network I/O
@@ -421,14 +425,14 @@ class EnhancedMetricsCollector:
             if net_io:
                 self.resource_utilization.labels(
                     agent=self.agent_name,
-                    resource_type='network',
-                    resource_name='bytes_sent'
+                    resource_type="network",
+                    resource_name="bytes_sent",
                 ).set(net_io.bytes_sent)
 
                 self.resource_utilization.labels(
                     agent=self.agent_name,
-                    resource_type='network',
-                    resource_name='bytes_recv'
+                    resource_type="network",
+                    resource_name="bytes_recv",
                 ).set(net_io.bytes_recv)
 
         except Exception as e:
@@ -438,18 +442,17 @@ class EnhancedMetricsCollector:
         """Update performance metrics"""
         try:
             # Threading metrics
-            self.active_threads.labels(
-                agent=self.agent_name,
-                thread_pool='main'
-            ).set(threading.active_count())
+            self.active_threads.labels(agent=self.agent_name, thread_pool="main").set(
+                threading.active_count()
+            )
 
             # GC metrics (if available)
             try:
                 import gc
+
                 for i, count in enumerate(gc.get_count()):
                     self.gc_collections_total.labels(
-                        agent=self.agent_name,
-                        generation=str(i)
+                        agent=self.agent_name, generation=str(i)
                     ).inc(count)
             except ImportError:
                 pass
@@ -470,7 +473,9 @@ class EnhancedMetricsCollector:
                     continue
 
                 avg = statistics.mean(recent_values)
-                std_dev = statistics.stdev(recent_values) if len(recent_values) > 1 else 0
+                std_dev = (
+                    statistics.stdev(recent_values) if len(recent_values) > 1 else 0
+                )
 
                 # Check for anomalies (3 sigma rule)
                 threshold = self._anomaly_thresholds.get(metric_name, 3.0)
@@ -523,31 +528,35 @@ class EnhancedMetricsCollector:
                         threshold = thresholds.warning_threshold
 
                 if alert_triggered:
-                    await self._trigger_alert(
-                        rule, severity, current_value, threshold
-                    )
+                    await self._trigger_alert(rule, severity, current_value, threshold)
 
         except Exception as e:
             logger.error(f"Error evaluating alert rules: {e}")
 
-    async def _trigger_anomaly_alert(self, metric_name: str, current_value: float,
-                                   avg: float, std_dev: float):
+    async def _trigger_anomaly_alert(
+        self, metric_name: str, current_value: float, avg: float, std_dev: float
+    ):
         """Trigger an anomaly alert"""
         alert = Alert(
             rule_name=f"anomaly_{metric_name}",
             severity=AlertSeverity.WARNING,
             message=f"Anomaly detected in {metric_name}: {current_value:.2f} "
-                   f"(avg: {avg:.2f}, std_dev: {std_dev:.2f})",
+            f"(avg: {avg:.2f}, std_dev: {std_dev:.2f})",
             value=current_value,
             threshold=avg + (3 * std_dev),
-            timestamp=datetime.now(timezone.utc),
-            labels={"metric": metric_name, "type": "anomaly"}
+            timestamp=datetime.now(UTC),
+            labels={"metric": metric_name, "type": "anomaly"},
         )
 
         await self._handle_alert(alert)
 
-    async def _trigger_alert(self, rule: AlertRule, severity: AlertSeverity,
-                           current_value: float, threshold: float):
+    async def _trigger_alert(
+        self,
+        rule: AlertRule,
+        severity: AlertSeverity,
+        current_value: float,
+        threshold: float,
+    ):
         """Trigger a configured alert"""
         alert_key = f"{rule.name}_{severity.value}"
 
@@ -561,8 +570,8 @@ class EnhancedMetricsCollector:
             message=rule.description,
             value=current_value,
             threshold=threshold,
-            timestamp=datetime.now(timezone.utc),
-            labels=rule.labels
+            timestamp=datetime.now(UTC),
+            labels=rule.labels,
         )
 
         self._active_alerts[alert_key] = alert
@@ -585,7 +594,7 @@ class EnhancedMetricsCollector:
     async def _cleanup_old_data(self):
         """Clean up old metric history and resolved alerts"""
         try:
-            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
+            cutoff_time = datetime.now(UTC) - timedelta(hours=24)
 
             # Clean up old metric history
             for metric_name in self._metric_history:
@@ -597,8 +606,10 @@ class EnhancedMetricsCollector:
 
             # Clean up old resolved alerts
             resolved_alerts = [
-                alert_key for alert_key, alert in self._active_alerts.items()
-                if alert.resolved and alert.resolved_at
+                alert_key
+                for alert_key, alert in self._active_alerts.items()
+                if alert.resolved
+                and alert.resolved_at
                 and alert.resolved_at < cutoff_time
             ]
 
@@ -610,8 +621,9 @@ class EnhancedMetricsCollector:
 
     # Public API methods
 
-    def record_business_metric(self, metric_type: str, value: float,
-                             labels: dict[str, str] = None):
+    def record_business_metric(
+        self, metric_type: str, value: float, labels: dict[str, str] = None
+    ):
         """Record a business metric"""
         labels = labels or {}
 
@@ -619,12 +631,13 @@ class EnhancedMetricsCollector:
         if metric_type not in self._metric_history:
             self._metric_history[metric_type] = []
 
-        self._metric_history[metric_type].append((datetime.now(timezone.utc), value))
+        self._metric_history[metric_type].append((datetime.now(UTC), value))
 
         # Keep only recent history
-        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=24)
         self._metric_history[metric_type] = [
-            (ts, val) for ts, val in self._metric_history[metric_type]
+            (ts, val)
+            for ts, val in self._metric_history[metric_type]
             if ts > cutoff_time
         ]
 
@@ -632,31 +645,32 @@ class EnhancedMetricsCollector:
         if metric_type == "content_processed":
             self.content_processed_total.labels(
                 agent=self.agent_name,
-                content_type=labels.get('content_type', 'unknown'),
-                processing_stage=labels.get('stage', 'unknown')
+                content_type=labels.get("content_type", "unknown"),
+                processing_stage=labels.get("stage", "unknown"),
             ).inc()
 
         elif metric_type == "content_quality":
             self.content_quality_score.labels(
                 agent=self.agent_name,
-                content_type=labels.get('content_type', 'unknown'),
-                quality_metric=labels.get('metric', 'unknown')
+                content_type=labels.get("content_type", "unknown"),
+                quality_metric=labels.get("metric", "unknown"),
             ).observe(value)
 
         elif metric_type == "articles_processed":
             self.articles_processed.labels(
                 agent=self.agent_name,
-                source_type=labels.get('source_type', 'unknown'),
-                processing_result=labels.get('result', 'unknown')
+                source_type=labels.get("source_type", "unknown"),
+                processing_result=labels.get("result", "unknown"),
             ).inc()
 
-    def record_performance_metric(self, operation_type: str, duration: float,
-                                category: str = "general"):
+    def record_performance_metric(
+        self, operation_type: str, duration: float, category: str = "general"
+    ):
         """Record a performance metric"""
         self.operation_latency.labels(
             agent=self.agent_name,
             operation_type=operation_type,
-            operation_category=category
+            operation_category=category,
         ).observe(duration)
 
         # Update throughput (simple moving average)
@@ -666,8 +680,8 @@ class EnhancedMetricsCollector:
             # Exponential moving average
             alpha = 0.1
             self._performance_baselines[operation_type] = (
-                alpha * duration +
-                (1 - alpha) * self._performance_baselines[operation_type]
+                alpha * duration
+                + (1 - alpha) * self._performance_baselines[operation_type]
             )
 
     def add_alert_rule(self, rule: AlertRule):
@@ -696,7 +710,7 @@ class EnhancedMetricsCollector:
         """Resolve an active alert"""
         if alert_key in self._active_alerts:
             self._active_alerts[alert_key].resolved = True
-            self._active_alerts[alert_key].resolved_at = datetime.now(timezone.utc)
+            self._active_alerts[alert_key].resolved_at = datetime.now(UTC)
 
     def get_health_score(self) -> float:
         """Calculate overall health score"""
@@ -716,12 +730,13 @@ class EnhancedMetricsCollector:
             "total_metrics": len(self._custom_metrics),
             "alert_rules": len(self._alert_rules),
             "performance_baselines": len(self._performance_baselines),
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
 
 # Global enhanced metrics instance
 _enhanced_metrics_instances: dict[str, EnhancedMetricsCollector] = {}
+
 
 def get_enhanced_metrics_collector(agent_name: str) -> EnhancedMetricsCollector:
     """Get or create enhanced metrics collector for an agent"""
@@ -729,6 +744,7 @@ def get_enhanced_metrics_collector(agent_name: str) -> EnhancedMetricsCollector:
         _enhanced_metrics_instances[agent_name] = EnhancedMetricsCollector(agent_name)
 
     return _enhanced_metrics_instances[agent_name]
+
 
 def init_enhanced_metrics_for_agent(agent_name: str) -> EnhancedMetricsCollector:
     """Initialize enhanced metrics for a specific agent"""

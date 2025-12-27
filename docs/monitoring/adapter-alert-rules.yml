@@ -1,0 +1,59 @@
+groups:
+  - name: adapter_alerts
+    rules:
+      # Record p95 latency per adapter (using histogram_quantile) for easier alerts
+      - record: adapter_infer_p95_seconds
+        expr: |
+          histogram_quantile(0.95, sum(rate(justnews_custom_histogram_openai_infer_latency_seconds_bucket[5m])) by (le, agent))
+
+      - record: adapter_infer_p95_seconds_hf
+        expr: |
+          histogram_quantile(0.95, sum(rate(justnews_custom_histogram_hf_infer_latency_seconds_bucket[5m])) by (le, agent))
+
+      # Alert when p95 latency crosses a threshold for sustained period
+      - alert: AdapterOpenAIP95High
+        expr: adapter_infer_p95_seconds > 2.0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OpenAI adapter p95 latency is high ({{ $labels.agent }})"
+          description: "Adapter p95 latency for {{ $labels.agent }} is > 2.0s for 5m. Check model, batching and GPU utilization."
+
+      - alert: AdapterHFP95High
+        expr: adapter_infer_p95_seconds_hf > 2.0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HF adapter p95 latency is high ({{ $labels.agent }})"
+          description: "HF adapter p95 latency for {{ $labels.agent }} is > 2.0s for 5m. Investigate worker pool sizing and model quantization."
+
+      # Alert on elevated error rates — guard with a minimum request volume to avoid noise
+      - alert: AdapterErrorRateHigh
+        expr: |
+          (
+            sum(rate(justnews_custom_counter_openai_infer_errors[5m])) by (agent)
+            /
+            sum(rate(justnews_custom_counter_openai_infer_success[5m]) + rate(justnews_custom_counter_openai_infer_errors[5m])) by (agent)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Adapter error rate above 5% ({{ $labels.agent }})"
+          description: "Adapter {{ $labels.agent }} shows an error rate > 5% over 5m. Action: investigate error logs, upstream provider failures, or throttling."
+
+      - alert: AdapterErrorRateHighHF
+        expr: |
+          (
+            sum(rate(justnews_custom_counter_hf_infer_errors[5m])) by (agent)
+            /
+            sum(rate(justnews_custom_counter_hf_infer_success[5m]) + rate(justnews_custom_counter_hf_infer_errors[5m])) by (agent)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "HF adapter error rate above 5% ({{ $labels.agent }})"
+          description: "HF adapter {{ $labels.agent }} shows an error rate > 5% over 5m. Investigate worker health and model availability."

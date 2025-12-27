@@ -8,7 +8,7 @@ encryption, compliance monitoring, and security event tracking.
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from .authentication.service import AuthenticationService
@@ -23,6 +23,8 @@ from .models import (
 from .monitoring.service import SecurityMonitor
 
 logger = logging.getLogger(__name__)
+
+
 class SecurityManager:
     # Duplicate class documentation and initializer removed (keeps a single, canonical __init__)
     """
@@ -61,11 +63,13 @@ class SecurityManager:
                 self.authz_service.initialize(),
                 self.encrypt_service.initialize(),
                 self.compliance_service.initialize(),
-                self.monitor_service.initialize()
+                self.monitor_service.initialize(),
             )
 
             # Start session cleanup task
-            self._session_cleanup_task = asyncio.create_task(self._cleanup_expired_sessions())
+            self._session_cleanup_task = asyncio.create_task(
+                self._cleanup_expired_sessions()
+            )
 
             self._initialized = True
             logger.info("SecurityManager fully initialized")
@@ -95,7 +99,7 @@ class SecurityManager:
                 self.encrypt_service.shutdown(),
                 self.compliance_service.shutdown(),
                 self.monitor_service.shutdown(),
-                return_exceptions=True
+                return_exceptions=True,
             )
 
             self._initialized = False
@@ -116,7 +120,7 @@ class SecurityManager:
                 event_type="operation_failed",
                 user_id=user_id,
                 details={"operation": operation, "error": str(e)},
-                severity="warning"
+                severity="warning",
             )
             raise
         finally:
@@ -124,12 +128,16 @@ class SecurityManager:
             await self.monitor_service.log_security_event(
                 event_type="operation_completed",
                 user_id=user_id,
-                details={"operation": operation}
+                details={"operation": operation},
             )
 
-    async def authenticate_user(self, username: str, password: str,
-                              ip_address: str | None = None,
-                              user_agent: str | None = None) -> dict[str, Any]:
+    async def authenticate_user(
+        self,
+        username: str,
+        password: str,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> dict[str, Any]:
         """
         Authenticate user and return tokens
 
@@ -152,11 +160,11 @@ class SecurityManager:
             # Check if account is locked
             if user_data.get("locked_until"):
                 locked_until = datetime.fromisoformat(user_data["locked_until"])
-                if locked_until > datetime.now(timezone.utc):
+                if locked_until > datetime.now(UTC):
                     await self.monitor_service.log_security_event(
                         "authentication_blocked",
                         user_data["id"],
-                        {"reason": "account_locked", "ip_address": ip_address}
+                        {"reason": "account_locked", "ip_address": ip_address},
                     )
                     raise AuthenticationError("Account is temporarily locked")
 
@@ -168,14 +176,18 @@ class SecurityManager:
                 permissions=[],  # Will be populated by authz service
                 session_id=self._generate_session_id(),
                 ip_address=ip_address,
-                user_agent=user_agent
+                user_agent=user_agent,
             )
 
             # Get user permissions
-            context.permissions = await self.authz_service.get_user_permissions(user_data["id"])
+            context.permissions = await self.authz_service.get_user_permissions(
+                user_data["id"]
+            )
 
             # Generate tokens
-            tokens = await self.auth_service.generate_tokens(user_data["id"], user_data["roles"])
+            tokens = await self.auth_service.generate_tokens(
+                user_data["id"], user_data["roles"]
+            )
 
             # Store active session
             self._active_sessions[context.session_id] = context
@@ -184,7 +196,7 @@ class SecurityManager:
             await self.monitor_service.log_security_event(
                 "authentication_success",
                 user_data["id"],
-                {"ip_address": ip_address, "user_agent": user_agent}
+                {"ip_address": ip_address, "user_agent": user_agent},
             )
 
             # Update last login
@@ -200,8 +212,8 @@ class SecurityManager:
                     "username": user_data["username"],
                     "email": user_data["email"],
                     "roles": user_data["roles"],
-                    "mfa_enabled": user_data.get("mfa_enabled", False)
-                }
+                    "mfa_enabled": user_data.get("mfa_enabled", False),
+                },
             }
 
         except Exception as e:
@@ -209,7 +221,7 @@ class SecurityManager:
             await self.monitor_service.log_security_event(
                 "authentication_failure",
                 None,  # No user ID for failed auth
-                {"username": username, "ip_address": ip_address, "error": str(e)}
+                {"username": username, "ip_address": ip_address, "error": str(e)},
             )
             raise
 
@@ -248,8 +260,9 @@ class SecurityManager:
             # Chain the source exception for clarity
             raise AuthenticationError("Invalid token") from e
 
-    async def check_permission(self, user_id: int, permission: str,
-                             resource: str | None = None) -> bool:
+    async def check_permission(
+        self, user_id: int, permission: str, resource: str | None = None
+    ) -> bool:
         """
         Check if user has specific permission
 
@@ -262,17 +275,15 @@ class SecurityManager:
             True if user has permission, False otherwise
         """
         try:
-            allowed = await self.authz_service.check_permission(user_id, permission, resource)
+            allowed = await self.authz_service.check_permission(
+                user_id, permission, resource
+            )
 
             # Log permission check
             await self.monitor_service.log_security_event(
                 "permission_check",
                 user_id,
-                {
-                    "permission": permission,
-                    "resource": resource,
-                    "allowed": allowed
-                }
+                {"permission": permission, "resource": resource, "allowed": allowed},
             )
 
             return allowed
@@ -299,7 +310,7 @@ class SecurityManager:
             await self.monitor_service.log_security_event(
                 "data_encryption",
                 None,
-                {"key_id": key_id, "data_size": len(str(data)) if data else 0}
+                {"key_id": key_id, "data_size": len(str(data)) if data else 0},
             )
 
             return encrypted
@@ -308,7 +319,9 @@ class SecurityManager:
             logger.error(f"Data encryption failed: {e}")
             raise
 
-    async def decrypt_data(self, encrypted_data: str, key_id: str | None = None) -> str | bytes:
+    async def decrypt_data(
+        self, encrypted_data: str, key_id: str | None = None
+    ) -> str | bytes:
         """
         Decrypt sensitive data
 
@@ -326,7 +339,7 @@ class SecurityManager:
             await self.monitor_service.log_security_event(
                 "data_decryption",
                 None,
-                {"key_id": key_id, "data_size": len(encrypted_data)}
+                {"key_id": key_id, "data_size": len(encrypted_data)},
             )
 
             return decrypted
@@ -335,8 +348,9 @@ class SecurityManager:
             logger.error(f"Data decryption failed: {e}")
             raise
 
-    async def log_compliance_event(self, event_type: str, user_id: int | None,
-                                 data: dict[str, Any]) -> None:
+    async def log_compliance_event(
+        self, event_type: str, user_id: int | None, data: dict[str, Any]
+    ) -> None:
         """
         Log compliance-related event
 
@@ -349,9 +363,7 @@ class SecurityManager:
 
         # Also log to security monitor
         await self.monitor_service.log_security_event(
-            f"compliance_{event_type}",
-            user_id,
-            data
+            f"compliance_{event_type}", user_id, data
         )
 
     async def get_security_status(self) -> dict[str, Any]:
@@ -378,7 +390,7 @@ class SecurityManager:
                 ("authorization", authz_status),
                 ("encryption", encrypt_status),
                 ("compliance", compliance_status),
-                ("monitoring", monitor_status)
+                ("monitoring", monitor_status),
             ]:
                 if status.get("status") != "healthy":
                     overall_status = "degraded"
@@ -391,11 +403,11 @@ class SecurityManager:
                     "authorization": authz_status,
                     "encryption": encrypt_status,
                     "compliance": compliance_status,
-                    "monitoring": monitor_status
+                    "monitoring": monitor_status,
                 },
                 "active_sessions": len(self._active_sessions),
                 "issues": issues,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
         except Exception as e:
@@ -403,10 +415,12 @@ class SecurityManager:
             return {
                 "overall_status": "error",
                 "error": str(e),
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
-    async def _create_security_context(self, user_id: int, operation: str) -> SecurityContext:
+    async def _create_security_context(
+        self, user_id: int, operation: str
+    ) -> SecurityContext:
         """Create security context for operation"""
         # Get user info
         user_info = await self.auth_service.get_user_info(user_id)
@@ -420,18 +434,21 @@ class SecurityManager:
             roles=user_info["roles"],
             permissions=permissions,
             session_id=self._generate_session_id(),
-            timestamp=datetime.now(timezone.utc)
+            timestamp=datetime.now(UTC),
         )
 
     def _generate_session_id(self) -> str:
         """Generate unique session ID"""
         import secrets
+
         return secrets.token_urlsafe(32)
 
     def _is_session_expired(self, context: SecurityContext) -> bool:
         """Check if session is expired"""
-        expiration = context.timestamp + timedelta(minutes=self.config.session_timeout_minutes)
-        return datetime.now(timezone.utc) > expiration
+        expiration = context.timestamp + timedelta(
+            minutes=self.config.session_timeout_minutes
+        )
+        return datetime.now(UTC) > expiration
 
     async def _cleanup_expired_sessions(self) -> None:
         """Background task to cleanup expired sessions"""
@@ -440,10 +457,12 @@ class SecurityManager:
                 await asyncio.sleep(300)  # Check every 5 minutes
 
                 expired_sessions = []
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
 
                 for session_id, context in self._active_sessions.items():
-                    expiration = context.timestamp + timedelta(minutes=self.config.session_timeout_minutes)
+                    expiration = context.timestamp + timedelta(
+                        minutes=self.config.session_timeout_minutes
+                    )
                     if now > expiration:
                         expired_sessions.append(session_id)
 

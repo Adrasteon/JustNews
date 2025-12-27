@@ -1,6 +1,7 @@
 """
 Tools and utilities for the Crawler Agent.
 """
+
 from datetime import datetime
 from typing import Any
 
@@ -24,12 +25,12 @@ def get_crawler_info(*args, **kwargs) -> dict[str, Any]:
             "generic_crawling",
             "multi_site_concurrent_crawling",
             "performance_monitoring",
-            "database_driven_source_management"
+            "database_driven_source_management",
         ],
         "supported_strategies": ["ultra_fast", "ai_enhanced", "generic"],
         "performance_metrics": crawler.get_performance_report(),
         "database_connected": True,  # Assume connected if no exception
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
 
@@ -37,6 +38,7 @@ def reset_performance_metrics():
     """Reset performance metrics for the crawler"""
     try:
         from ..performance_monitoring import reset_performance_metrics as reset
+
         reset()
     except ImportError:
         # Performance monitoring might not be available
@@ -44,7 +46,7 @@ def reset_performance_metrics():
 
 
 __all__ = [
-    'get_crawler_info',
-    'reset_performance_metrics',
-    'extract_article_content',
+    "get_crawler_info",
+    "reset_performance_metrics",
+    "extract_article_content",
 ]

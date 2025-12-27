@@ -24,6 +24,7 @@ EXCLUDES=(
   --exclude-dir=.git
   --exclude-dir=logs
   --exclude-dir=artifacts
+  --exclude-dir=docs
   --exclude-dir=.mypy_cache
   --exclude-dir=__pycache__
 )
@@ -39,7 +40,7 @@ for pat in "${PATTERNS[@]}"; do
   # Use git grep when available (faster/accurate), fall back to grep -R
   if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     # Use git grep and explicitly exclude logs/artifacts and this script file
-    matches=$(git grep -n --untracked -I -e "$pat" -- ':!logs' ':!artifacts' "${IGNORED_FILES[@]}" || true)
+    matches=$(git grep -n --untracked -I -e "$pat" -- ':!logs' ':!artifacts' ':!docs' "${IGNORED_FILES[@]}" || true)
   else
     matches=$(grep -R --line-number -I "$pat" . ${EXCLUDES[*]} | grep -v "scripts/dev/check_canonical_env.sh" || true)
   fi

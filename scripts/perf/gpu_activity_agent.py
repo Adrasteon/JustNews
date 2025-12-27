@@ -29,27 +29,33 @@ import shlex
 import subprocess
 import time
 
-PID_TELEMETRY = '/tmp/gpu_telemetry.pid'
-PID_EXPORTER = '/tmp/gpu_telemetry_exporter.pid'
+PID_TELEMETRY = "/tmp/gpu_telemetry.pid"
+PID_EXPORTER = "/tmp/gpu_telemetry_exporter.pid"
 
 
 def run_cmd(cmd, capture=False):
     if capture:
         try:
             out = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-            return out.decode('utf-8', errors='ignore')
+            return out.decode("utf-8", errors="ignore")
         except Exception:
-            return ''
+            return ""
     else:
         return subprocess.call(cmd)
 
 
 def get_gpu_util() -> float | None:
     try:
-        out = subprocess.check_output([
-            'nvidia-smi', '--query-gpu=utilization.gpu', '--format=csv,noheader,nounits'
-        ], stderr=subprocess.DEVNULL, timeout=1.0)
-        s = out.decode('utf-8', errors='ignore').strip().splitlines()[0].strip()
+        out = subprocess.check_output(
+            [
+                "nvidia-smi",
+                "--query-gpu=utilization.gpu",
+                "--format=csv,noheader,nounits",
+            ],
+            stderr=subprocess.DEVNULL,
+            timeout=1.0,
+        )
+        s = out.decode("utf-8", errors="ignore").strip().splitlines()[0].strip()
         return float(s) if s else None
     except Exception:
         return None
@@ -71,22 +77,22 @@ def is_running(pidfile: str) -> bool:
         return False
 
 
-def start_telemetry(out_dir='/var/log/justnews-perf') -> None:
+def start_telemetry(out_dir="/var/log/justnews-perf") -> None:
     if is_running(PID_TELEMETRY):
-        print('telemetry already running')
+        print("telemetry already running")
         return
     os.makedirs(out_dir, exist_ok=True)
-    cmd = f'nohup ./scripts/perf/gpu_telemetry.sh {shlex.quote(out_dir)} > {shlex.quote(out_dir)}/gpu_telemetry_launcher.log 2>&1 & echo $!'
-    pid = run_cmd(['bash', '-lc', cmd], capture=True).strip()
+    cmd = f"nohup ./scripts/perf/gpu_telemetry.sh {shlex.quote(out_dir)} > {shlex.quote(out_dir)}/gpu_telemetry_launcher.log 2>&1 & echo $!"
+    pid = run_cmd(["bash", "-lc", cmd], capture=True).strip()
     if pid:
-        with open(PID_TELEMETRY, 'w') as f:
+        with open(PID_TELEMETRY, "w") as f:
             f.write(pid)
-        print('started telemetry pid', pid)
+        print("started telemetry pid", pid)
 
 
 def stop_telemetry() -> None:
     if not os.path.exists(PID_TELEMETRY):
-        print('telemetry not running')
+        print("telemetry not running")
         return
     try:
         with open(PID_TELEMETRY) as f:
@@ -104,26 +110,26 @@ def stop_telemetry() -> None:
         os.remove(PID_TELEMETRY)
     except Exception:
         pass
-    print('stopped telemetry')
+    print("stopped telemetry")
 
 
 def start_exporter(port=9118, interval=1.0):
     if is_running(PID_EXPORTER):
-        print('exporter already running')
+        print("exporter already running")
         return
     # prefer a configured python interpreter (set via service env /etc/default)
-    py = os.environ.get('JN_PYTHON_BIN') or os.environ.get('PYTHON_BIN') or 'python3'
-    cmd = f'nohup {py} scripts/perf/gpu_telemetry_exporter.py --port {int(port)} --interval {float(interval)} > /var/log/justnews-perf/gpu_telemetry_exporter.log 2>&1 & echo $!'
-    pid = run_cmd(['bash', '-lc', cmd], capture=True).strip()
+    py = os.environ.get("JN_PYTHON_BIN") or os.environ.get("PYTHON_BIN") or "python3"
+    cmd = f"nohup {py} scripts/perf/gpu_telemetry_exporter.py --port {int(port)} --interval {float(interval)} > /var/log/justnews-perf/gpu_telemetry_exporter.log 2>&1 & echo $!"
+    pid = run_cmd(["bash", "-lc", cmd], capture=True).strip()
     if pid:
-        with open(PID_EXPORTER, 'w') as f:
+        with open(PID_EXPORTER, "w") as f:
             f.write(pid)
-        print('started exporter pid', pid)
+        print("started exporter pid", pid)
 
 
 def stop_exporter():
     if not os.path.exists(PID_EXPORTER):
-        print('exporter not running')
+        print("exporter not running")
         return
     try:
         with open(PID_EXPORTER) as f:
@@ -141,39 +147,64 @@ def stop_exporter():
         os.remove(PID_EXPORTER)
     except Exception:
         pass
-    print('stopped exporter')
+    print("stopped exporter")
 
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--start-util', type=float, default=20.0, help='GPU util %% to consider active')
-    p.add_argument('--start-seconds', type=int, default=5, help='Seconds of sustained activity before starting telemetry')
-    p.add_argument('--stop-util', type=float, default=10.0, help='GPU util %% threshold to consider idle')
-    p.add_argument('--stop-seconds', type=int, default=10, help='Seconds of sustained idle before stopping telemetry')
-    p.add_argument('--out-dir', type=str, default='/var/log/justnews-perf')
-    p.add_argument('--exporter-port', type=int, default=9118)
-    p.add_argument('--exporter-interval', type=float, default=1.0)
-    p.add_argument('--poll-interval', type=float, default=1.0)
-    p.add_argument('--test', action='store_true', help='Simulate a short load spike for testing start/stop behavior')
+    p.add_argument(
+        "--start-util", type=float, default=20.0, help="GPU util %% to consider active"
+    )
+    p.add_argument(
+        "--start-seconds",
+        type=int,
+        default=5,
+        help="Seconds of sustained activity before starting telemetry",
+    )
+    p.add_argument(
+        "--stop-util",
+        type=float,
+        default=10.0,
+        help="GPU util %% threshold to consider idle",
+    )
+    p.add_argument(
+        "--stop-seconds",
+        type=int,
+        default=10,
+        help="Seconds of sustained idle before stopping telemetry",
+    )
+    p.add_argument("--out-dir", type=str, default="/var/log/justnews-perf")
+    p.add_argument("--exporter-port", type=int, default=9118)
+    p.add_argument("--exporter-interval", type=float, default=1.0)
+    p.add_argument("--poll-interval", type=float, default=1.0)
+    p.add_argument(
+        "--test",
+        action="store_true",
+        help="Simulate a short load spike for testing start/stop behavior",
+    )
     args = p.parse_args()
 
     active_counter = 0
     idle_counter = 0
     telemetry_active = False
 
-    print('GPU activity agent starting — polling nvidia-smi every', args.poll_interval, 's')
+    print(
+        "GPU activity agent starting — polling nvidia-smi every",
+        args.poll_interval,
+        "s",
+    )
 
     if args.test:
         # simulate a load spike for quick test
-        print('TEST MODE: simulating load spike')
+        print("TEST MODE: simulating load spike")
         # start telemetry immediately
         start_exporter(port=args.exporter_port, interval=args.exporter_interval)
         start_telemetry(out_dir=args.out_dir)
-        print('Sleeping 5s with telemetry active (test)')
+        print("Sleeping 5s with telemetry active (test)")
         time.sleep(5)
         stop_telemetry()
         stop_exporter()
-        print('TEST finished')
+        print("TEST finished")
         return
 
     try:
@@ -185,7 +216,7 @@ def main():
                 continue
 
             # print a concise line for visibility
-            print(f'gpu util={util:.1f}% (active? {telemetry_active})')
+            print(f"gpu util={util:.1f}% (active? {telemetry_active})")
 
             if not telemetry_active and util >= args.start_util:
                 active_counter += 1
@@ -200,14 +231,14 @@ def main():
                 idle_counter = 0
 
             if not telemetry_active and active_counter >= args.start_seconds:
-                print('Sustained activity detected — starting telemetry + exporter')
+                print("Sustained activity detected — starting telemetry + exporter")
                 start_exporter(port=args.exporter_port, interval=args.exporter_interval)
                 start_telemetry(out_dir=args.out_dir)
                 telemetry_active = True
                 active_counter = 0
 
             if telemetry_active and idle_counter >= args.stop_seconds:
-                print('Sustained idle detected — stopping telemetry + exporter')
+                print("Sustained idle detected — stopping telemetry + exporter")
                 stop_telemetry()
                 stop_exporter()
                 telemetry_active = False
@@ -216,10 +247,10 @@ def main():
             time.sleep(args.poll_interval)
 
     except KeyboardInterrupt:
-        print('Interrupted — cleaning up')
+        print("Interrupted — cleaning up")
         stop_telemetry()
         stop_exporter()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

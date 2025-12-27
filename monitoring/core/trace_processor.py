@@ -27,9 +27,11 @@ from .trace_collector import TraceData, TraceSpan
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class ServiceDependency:
     """Represents a dependency between services"""
+
     source_service: str
     target_service: str
     operation: str
@@ -40,9 +42,11 @@ class ServiceDependency:
     error_rate: float = 0.0
     last_seen: datetime = field(default_factory=datetime.now)
 
+
 @dataclass
 class PerformanceBottleneck:
     """Identifies performance bottlenecks in traces"""
+
     service_name: str
     operation: str
     bottleneck_type: str  # "latency", "error_rate", "throughput"
@@ -52,9 +56,11 @@ class PerformanceBottleneck:
     recommendations: list[str]
     detected_at: datetime = field(default_factory=datetime.now)
 
+
 @dataclass
 class TraceAnalysis:
     """Analysis results for a trace"""
+
     trace_id: str
     total_duration_ms: float
     span_count: int
@@ -65,6 +71,7 @@ class TraceAnalysis:
     service_dependencies: list[ServiceDependency]
     recommendations: list[str]
     analyzed_at: datetime = field(default_factory=datetime.now)
+
 
 class TraceProcessor:
     """
@@ -78,7 +85,9 @@ class TraceProcessor:
     - Anomaly detection in trace patterns
     """
 
-    def __init__(self, max_trace_buffer: int = 10000, analysis_window_minutes: int = 60):
+    def __init__(
+        self, max_trace_buffer: int = 10000, analysis_window_minutes: int = 60
+    ):
         self.max_trace_buffer = max_trace_buffer
         self.analysis_window_minutes = analysis_window_minutes
 
@@ -90,9 +99,9 @@ class TraceProcessor:
         self.service_dependencies: dict[tuple[str, str], ServiceDependency] = {}
         self.performance_baselines: dict[str, dict[str, float]] = {}
         self.anomaly_thresholds: dict[str, float] = {
-            'latency_p95': 2.0,  # 2x baseline
-            'error_rate': 0.05,  # 5% error rate threshold
-            'span_count': 3.0    # 3x baseline span count
+            "latency_p95": 2.0,  # 2x baseline
+            "error_rate": 0.05,  # 5% error rate threshold
+            "span_count": 3.0,  # 3x baseline span count
         }
 
         # Performance tracking
@@ -139,7 +148,9 @@ class TraceProcessor:
         # Calculate basic metrics
         total_duration = trace_data.duration_ms or 0
         span_count = len(trace_data.spans)
-        service_count = len({span.service_name for span in trace_data.spans if span.service_name})
+        service_count = len(
+            {span.service_name for span in trace_data.spans if span.service_name}
+        )
         error_count = sum(1 for span in trace_data.spans if span.status != "ok")
 
         # Find critical path
@@ -163,7 +174,7 @@ class TraceProcessor:
             critical_path=critical_path,
             bottlenecks=bottlenecks,
             service_dependencies=dependencies,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
     def _find_critical_path(self, trace_data: TraceData) -> list[str]:
@@ -177,8 +188,8 @@ class TraceProcessor:
 
         for span in trace_data.spans:
             span_graph[span.span_id] = {
-                'children': [],
-                'duration': span.duration_ms or 0
+                "children": [],
+                "duration": span.duration_ms or 0,
             }
             span_durations[span.span_id] = span.duration_ms or 0
 
@@ -186,7 +197,7 @@ class TraceProcessor:
         for span in trace_data.spans:
             if span.parent_span_id:
                 if span.parent_span_id in span_graph:
-                    span_graph[span.parent_span_id]['children'].append(span.span_id)
+                    span_graph[span.parent_span_id]["children"].append(span.span_id)
 
         # Find critical path using dynamic programming
         def get_critical_path(span_id: str) -> tuple[list[str], float]:
@@ -194,15 +205,15 @@ class TraceProcessor:
                 return [span_id], 0
 
             node = span_graph[span_id]
-            if not node['children']:
-                return [span_id], node['duration']
+            if not node["children"]:
+                return [span_id], node["duration"]
 
             max_path = []
             max_duration = 0
 
-            for child_id in node['children']:
+            for child_id in node["children"]:
                 child_path, child_duration = get_critical_path(child_id)
-                total_duration = node['duration'] + child_duration
+                total_duration = node["duration"] + child_duration
 
                 if total_duration > max_duration:
                     max_duration = total_duration
@@ -258,9 +269,14 @@ class TraceProcessor:
 
         # Check against baseline
         baseline_key = f"{span.service_name}:{span.operation}"
-        baseline_duration = self.performance_baselines.get(baseline_key, {}).get('p95', 0)
+        baseline_duration = self.performance_baselines.get(baseline_key, {}).get(
+            "p95", 0
+        )
 
-        if baseline_duration > 0 and duration > baseline_duration * self.anomaly_thresholds['latency_p95']:
+        if (
+            baseline_duration > 0
+            and duration > baseline_duration * self.anomaly_thresholds["latency_p95"]
+        ):
             return PerformanceBottleneck(
                 service_name=span.service_name,
                 operation=span.operation,
@@ -268,16 +284,16 @@ class TraceProcessor:
                 severity="high" if duration > baseline_duration * 3 else "medium",
                 description=f"Span duration {duration:.2f}ms exceeds baseline P95 {baseline_duration:.2f}ms",
                 evidence={
-                    'span_id': span.span_id,
-                    'actual_duration': duration,
-                    'baseline_p95': baseline_duration,
-                    'ratio': duration / baseline_duration
+                    "span_id": span.span_id,
+                    "actual_duration": duration,
+                    "baseline_p95": baseline_duration,
+                    "ratio": duration / baseline_duration,
                 },
                 recommendations=[
                     "Consider optimizing the operation",
                     "Check for resource contention",
-                    "Review error handling and retries"
-                ]
+                    "Review error handling and retries",
+                ],
             )
 
         # Check for errors
@@ -289,20 +305,22 @@ class TraceProcessor:
                 severity="medium",
                 description=f"Span completed with error status: {span.status}",
                 evidence={
-                    'span_id': span.span_id,
-                    'status': span.status,
-                    'attributes': span.attributes
+                    "span_id": span.span_id,
+                    "status": span.status,
+                    "attributes": span.attributes,
                 },
                 recommendations=[
                     "Investigate error cause",
                     "Add retry logic if appropriate",
-                    "Improve error handling"
-                ]
+                    "Improve error handling",
+                ],
             )
 
         return None
 
-    def _analyze_service_bottleneck(self, service_name: str, spans: list[TraceSpan]) -> PerformanceBottleneck | None:
+    def _analyze_service_bottleneck(
+        self, service_name: str, spans: list[TraceSpan]
+    ) -> PerformanceBottleneck | None:
         """Analyze service-level bottlenecks"""
         if not spans:
             return None
@@ -313,7 +331,7 @@ class TraceProcessor:
         error_rate = error_count / len(spans)
 
         # Check error rate threshold
-        if error_rate > self.anomaly_thresholds['error_rate']:
+        if error_rate > self.anomaly_thresholds["error_rate"]:
             return PerformanceBottleneck(
                 service_name=service_name,
                 operation="service_overall",
@@ -321,17 +339,17 @@ class TraceProcessor:
                 severity="critical" if error_rate > 0.1 else "high",
                 description=f"Service error rate {error_rate:.2%} exceeds threshold {self.anomaly_thresholds['error_rate']:.2%}",
                 evidence={
-                    'total_spans': len(spans),
-                    'error_count': error_count,
-                    'error_rate': error_rate,
-                    'avg_duration': statistics.mean(durations) if durations else 0
+                    "total_spans": len(spans),
+                    "error_count": error_count,
+                    "error_rate": error_rate,
+                    "avg_duration": statistics.mean(durations) if durations else 0,
                 },
                 recommendations=[
                     "Investigate service health",
                     "Check upstream dependencies",
                     "Review recent deployments",
-                    "Monitor resource utilization"
-                ]
+                    "Monitor resource utilization",
+                ],
             )
 
         return None
@@ -348,7 +366,7 @@ class TraceProcessor:
                 # Find parent span
                 parent_span = next(
                     (s for s in trace_data.spans if s.span_id == span.parent_span_id),
-                    None
+                    None,
                 )
                 if parent_span and parent_span.service_name != span.service_name:
                     service_calls[parent_span.service_name][span.service_name].append(
@@ -369,7 +387,7 @@ class TraceProcessor:
                     total_duration_ms=sum(durations),
                     avg_duration_ms=statistics.mean(durations) if durations else 0,
                     error_count=errors,
-                    error_rate=errors / len(span_pairs) if span_pairs else 0
+                    error_rate=errors / len(span_pairs) if span_pairs else 0,
                 )
                 dependencies.append(dependency)
 
@@ -388,9 +406,9 @@ class TraceProcessor:
                 # Update rolling averages
                 total_calls = existing.call_count + dep.call_count
                 existing.avg_duration_ms = (
-                    (existing.avg_duration_ms * existing.call_count + dep.total_duration_ms) /
-                    total_calls
-                )
+                    existing.avg_duration_ms * existing.call_count
+                    + dep.total_duration_ms
+                ) / total_calls
                 existing.call_count = total_calls
                 existing.error_count += dep.error_count
                 existing.error_rate = existing.error_count / total_calls
@@ -401,7 +419,8 @@ class TraceProcessor:
         # Get traces from analysis window
         cutoff_time = datetime.now() - timedelta(minutes=self.analysis_window_minutes)
         recent_traces = [
-            trace for trace in self.processed_traces
+            trace
+            for trace in self.processed_traces
             if trace.end_time and trace.end_time > cutoff_time
         ]
 
@@ -423,26 +442,33 @@ class TraceProcessor:
                 p99 = sorted_durations[int(len(sorted_durations) * 0.99)]
 
                 self.performance_baselines[key] = {
-                    'p50': p50,
-                    'p95': p95,
-                    'p99': p99,
-                    'count': len(durations),
-                    'updated_at': datetime.now()
+                    "p50": p50,
+                    "p95": p95,
+                    "p99": p99,
+                    "count": len(durations),
+                    "updated_at": datetime.now(),
                 }
 
-    def _generate_recommendations(self, trace_data: TraceData,
-                                bottlenecks: list[PerformanceBottleneck]) -> list[str]:
+    def _generate_recommendations(
+        self, trace_data: TraceData, bottlenecks: list[PerformanceBottleneck]
+    ) -> list[str]:
         """Generate recommendations based on trace analysis"""
         recommendations = []
 
         # Duration-based recommendations
         if trace_data.duration_ms and trace_data.duration_ms > 5000:  # 5 seconds
-            recommendations.append("Consider optimizing overall request processing time")
+            recommendations.append(
+                "Consider optimizing overall request processing time"
+            )
 
         # Error-based recommendations
-        error_rate = sum(1 for span in trace_data.spans if span.status != "ok") / len(trace_data.spans)
+        error_rate = sum(1 for span in trace_data.spans if span.status != "ok") / len(
+            trace_data.spans
+        )
         if error_rate > 0.1:
-            recommendations.append("High error rate detected - investigate service health")
+            recommendations.append(
+                "High error rate detected - investigate service health"
+            )
 
         # Bottleneck-based recommendations
         for bottleneck in bottlenecks:
@@ -450,7 +476,9 @@ class TraceProcessor:
 
         # Service count recommendations
         if trace_data.service_count > 10:
-            recommendations.append("High service coupling detected - consider service consolidation")
+            recommendations.append(
+                "High service coupling detected - consider service consolidation"
+            )
 
         return list(set(recommendations))  # Remove duplicates
 
@@ -478,20 +506,24 @@ class TraceProcessor:
         if not self.analysis_times:
             avg_analysis_time = 0
         else:
-            avg_analysis_time = statistics.mean(self.analysis_times[-100:])  # Last 100 analyses
+            avg_analysis_time = statistics.mean(
+                self.analysis_times[-100:]
+            )  # Last 100 analyses
 
         return {
-            'processed_traces': len(self.processed_traces),
-            'active_traces': len(self.trace_index),
-            'service_dependencies': len(self.service_dependencies),
-            'performance_baselines': len(self.performance_baselines),
-            'bottleneck_count': self.bottleneck_count,
-            'anomaly_count': self.anomaly_count,
-            'avg_analysis_time_ms': avg_analysis_time * 1000,
-            'max_trace_buffer': self.max_trace_buffer
+            "processed_traces": len(self.processed_traces),
+            "active_traces": len(self.trace_index),
+            "service_dependencies": len(self.service_dependencies),
+            "performance_baselines": len(self.performance_baselines),
+            "bottleneck_count": self.bottleneck_count,
+            "anomaly_count": self.anomaly_count,
+            "avg_analysis_time_ms": avg_analysis_time * 1000,
+            "max_trace_buffer": self.max_trace_buffer,
         }
 
-    def find_similar_traces(self, trace_id: str, limit: int = 5) -> list[tuple[str, float]]:
+    def find_similar_traces(
+        self, trace_id: str, limit: int = 5
+    ) -> list[tuple[str, float]]:
         """
         Find traces similar to the given trace based on structure and performance.
 
@@ -519,21 +551,33 @@ class TraceProcessor:
         similarities.sort(key=lambda x: x[1], reverse=True)
         return similarities[:limit]
 
-    def _calculate_trace_similarity(self, trace1: TraceData, trace2: TraceData) -> float:
+    def _calculate_trace_similarity(
+        self, trace1: TraceData, trace2: TraceData
+    ) -> float:
         """Calculate similarity score between two traces"""
         # Simple similarity based on span count, service count, and duration
-        span_similarity = 1 - abs(len(trace1.spans) - len(trace2.spans)) / max(len(trace1.spans), len(trace2.spans), 1)
-        service_similarity = 1 - abs(trace1.service_count - trace2.service_count) / max(trace1.service_count, trace2.service_count, 1)
+        span_similarity = 1 - abs(len(trace1.spans) - len(trace2.spans)) / max(
+            len(trace1.spans), len(trace2.spans), 1
+        )
+        service_similarity = 1 - abs(trace1.service_count - trace2.service_count) / max(
+            trace1.service_count, trace2.service_count, 1
+        )
 
         duration1 = trace1.duration_ms or 0
         duration2 = trace2.duration_ms or 0
-        duration_similarity = 1 - abs(duration1 - duration2) / max(duration1, duration2, 1)
+        duration_similarity = 1 - abs(duration1 - duration2) / max(
+            duration1, duration2, 1
+        )
 
         # Weighted average
-        return (span_similarity * 0.4 + service_similarity * 0.3 + duration_similarity * 0.3)
+        return (
+            span_similarity * 0.4 + service_similarity * 0.3 + duration_similarity * 0.3
+        )
+
 
 # Global processor instance
 _processor = None
+
 
 def get_trace_processor() -> TraceProcessor:
     """Get or create global trace processor instance"""

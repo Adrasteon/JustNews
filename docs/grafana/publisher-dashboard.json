@@ -1,0 +1,20 @@
+{
+  "title": "Publisher: E2E & Publishing Metrics",
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Publish success/failure count",
+      "targets": [
+        { "expr": "justnews_stage_b_publishing_total{result=\"success\"}", "legendFormat": "success" },
+        { "expr": "justnews_stage_b_publishing_total{result=\"failure\"}", "legendFormat": "failure" }
+      ]
+    },
+    {
+      "type": "graph",
+      "title": "Publish latency (s)",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(justnews_stage_b_publishing_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p95" }
+      ]
+    }
+  ]
+}

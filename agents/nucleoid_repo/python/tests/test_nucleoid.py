@@ -10,6 +10,7 @@ def setup():
     # Initialize the Nucleoid class
     return Nucleoid()
 
+
 def test_give_variable_value(setup):
     # Use the initialized Nucleoid instance
     nucleoid = setup

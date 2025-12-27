@@ -84,7 +84,9 @@ class VectorEngine:
             raise
 
         if model is None:
-            logger.error("Vector engine could not load embedding model during %s", reason)
+            logger.error(
+                "Vector engine could not load embedding model during %s", reason
+            )
             with self._model_lock:
                 self._embedding_model = None
             return

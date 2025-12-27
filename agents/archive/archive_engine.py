@@ -55,18 +55,18 @@ class ArchiveEngine:
                 "type": "local",
                 "local_path": "./archive_storage",
                 "kg_storage_path": "./kg_storage",
-                "entity_cache_path": "./entity_cache"
+                "entity_cache_path": "./entity_cache",
             },
             "knowledge_graph": {
                 "enabled": True,
                 "temporal_tracking": True,
-                "entity_linking": True
+                "entity_linking": True,
             },
             "entity_linking": {
                 "enabled": True,
                 "external_kbs": ["wikidata"],
-                "cache_enabled": True
-            }
+                "cache_enabled": True,
+            },
         }
 
     def _init_storage_manager(self):
@@ -80,9 +80,11 @@ class ArchiveEngine:
         kg_config = self.config.get("knowledge_graph", {})
         if kg_config.get("enabled", True):
             kg_storage_path = self.config["storage"]["kg_storage_path"]
-            backend = kg_config.get('backend') or os.environ.get('KG_BACKEND', 'db')
+            backend = kg_config.get("backend") or os.environ.get("KG_BACKEND", "db")
             # Default to DB-backed KG for production + scalability
-            self.kg_manager = KnowledgeGraphManager(kg_storage_path=kg_storage_path, backend=backend)
+            self.kg_manager = KnowledgeGraphManager(
+                kg_storage_path=kg_storage_path, backend=backend
+            )
             self.logger.info("Knowledge graph manager initialized")
         else:
             self.kg_manager = None
@@ -92,7 +94,9 @@ class ArchiveEngine:
         el_config = self.config.get("entity_linking", {})
         if el_config.get("enabled", True) and self.kg_manager:
             cache_path = self.config["storage"]["entity_cache_path"]
-            self.entity_linker = EntityLinkerManager(self.kg_manager, cache_dir=cache_path)
+            self.entity_linker = EntityLinkerManager(
+                self.kg_manager, cache_dir=cache_path
+            )
             self.logger.info("Entity linker manager initialized")
         else:
             self.entity_linker = None
@@ -108,10 +112,14 @@ class ArchiveEngine:
             Archive summary with statistics and storage keys
         """
         try:
-            self.logger.info(f"Archiving {len(crawler_results.get('articles', []))} articles")
+            self.logger.info(
+                f"Archiving {len(crawler_results.get('articles', []))} articles"
+            )
 
             # Archive articles using the manager
-            archive_summary = await self.archive_manager.archive_from_crawler(crawler_results)
+            archive_summary = await self.archive_manager.archive_from_crawler(
+                crawler_results
+            )
 
             # Enhance with knowledge graph if enabled
             if self.kg_manager and crawler_results.get("articles"):
@@ -134,10 +142,14 @@ class ArchiveEngine:
             for article in articles:
                 # Extract entities and relationships
                 entities = await self.kg_manager.extract_entities(article)
-                relationships = await self.kg_manager.extract_relationships(article, entities)
+                relationships = await self.kg_manager.extract_relationships(
+                    article, entities
+                )
 
                 # Store in knowledge graph
-                await self.kg_manager.store_article_entities(article, entities, relationships)
+                await self.kg_manager.store_article_entities(
+                    article, entities, relationships
+                )
 
             self.logger.debug("Knowledge graph enhancement completed")
 
@@ -168,7 +180,9 @@ class ArchiveEngine:
             Article data or None if not found
         """
         try:
-            article_data = await self.archive_manager.storage_manager.retrieve_article(storage_key)
+            article_data = await self.archive_manager.storage_manager.retrieve_article(
+                storage_key
+            )
 
             if article_data and self.kg_manager:
                 # Enhance with knowledge graph data
@@ -182,7 +196,9 @@ class ArchiveEngine:
             self.logger.error(f"Error retrieving article {storage_key}: {e}")
             raise
 
-    async def search_archive(self, query: str, filters: dict[str, Any] | None = None) -> list[str]:
+    async def search_archive(
+        self, query: str, filters: dict[str, Any] | None = None
+    ) -> list[str]:
         """
         Search archived articles by metadata and content.
 
@@ -197,7 +213,9 @@ class ArchiveEngine:
             filters = filters or {}
 
             # Search using metadata index
-            storage_keys = await self.archive_manager.metadata_index.search_articles(query, filters)
+            storage_keys = await self.archive_manager.metadata_index.search_articles(
+                query, filters
+            )
 
             # Enhance search with knowledge graph if available
             if self.kg_manager and not storage_keys:
@@ -236,13 +254,19 @@ class ArchiveEngine:
             article_data.setdefault("news_score", 0.7)
 
             # Store the article
-            storage_key = await self.archive_manager.storage_manager.store_article(article_data)
+            storage_key = await self.archive_manager.storage_manager.store_article(
+                article_data
+            )
 
             # Enhance with KG and entity linking
             if self.kg_manager:
                 entities = await self.kg_manager.extract_entities(article_data)
-                relationships = await self.kg_manager.extract_relationships(article_data, entities)
-                await self.kg_manager.store_article_entities(article_data, entities, relationships)
+                relationships = await self.kg_manager.extract_relationships(
+                    article_data, entities
+                )
+                await self.kg_manager.store_article_entities(
+                    article_data, entities, relationships
+                )
 
             if self.entity_linker:
                 linked_entities = await self.entity_linker.link_entities(article_data)
@@ -276,12 +300,12 @@ class ArchiveEngine:
 
             # Get Knowledge Graph statistics
             kg_stats = {}
-            if self.kg_manager and hasattr(self.kg_manager, 'get_statistics'):
+            if self.kg_manager and hasattr(self.kg_manager, "get_statistics"):
                 kg_stats = self.kg_manager.get_statistics()
 
             # Get entity linking statistics
             el_stats = {}
-            if self.entity_linker and hasattr(self.entity_linker, 'get_statistics'):
+            if self.entity_linker and hasattr(self.entity_linker, "get_statistics"):
                 el_stats = self.entity_linker.get_statistics()
 
             stats = {
@@ -296,7 +320,7 @@ class ArchiveEngine:
                 "entity_linking_stats": el_stats,
                 "archive_manager_initialized": True,
                 "phase3_integration": True,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
             return stats
@@ -316,7 +340,7 @@ class ArchiveEngine:
             health = {
                 "status": "healthy",
                 "timestamp": datetime.now().isoformat(),
-                "components": {}
+                "components": {},
             }
 
             # Check storage manager
@@ -324,10 +348,13 @@ class ArchiveEngine:
                 storage_stats = self.get_archive_stats()
                 health["components"]["storage"] = {
                     "status": "healthy",
-                    "articles_count": storage_stats.get("total_archived_articles", 0)
+                    "articles_count": storage_stats.get("total_archived_articles", 0),
                 }
             except Exception as e:
-                health["components"]["storage"] = {"status": "unhealthy", "error": str(e)}
+                health["components"]["storage"] = {
+                    "status": "unhealthy",
+                    "error": str(e),
+                }
                 health["status"] = "degraded"
 
             # Check knowledge graph
@@ -336,7 +363,10 @@ class ArchiveEngine:
                     kg_health = await self.kg_manager.health_check()
                     health["components"]["knowledge_graph"] = kg_health
                 except Exception as e:
-                    health["components"]["knowledge_graph"] = {"status": "unhealthy", "error": str(e)}
+                    health["components"]["knowledge_graph"] = {
+                        "status": "unhealthy",
+                        "error": str(e),
+                    }
                     health["status"] = "degraded"
             else:
                 health["components"]["knowledge_graph"] = {"status": "disabled"}
@@ -347,7 +377,10 @@ class ArchiveEngine:
                     el_health = await self.entity_linker.health_check()
                     health["components"]["entity_linker"] = el_health
                 except Exception as e:
-                    health["components"]["entity_linker"] = {"status": "unhealthy", "error": str(e)}
+                    health["components"]["entity_linker"] = {
+                        "status": "unhealthy",
+                        "error": str(e),
+                    }
                     health["status"] = "degraded"
             else:
                 health["components"]["entity_linker"] = {"status": "disabled"}
@@ -359,7 +392,7 @@ class ArchiveEngine:
             return {
                 "status": "unhealthy",
                 "error": str(e),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
 

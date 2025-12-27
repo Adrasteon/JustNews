@@ -42,6 +42,7 @@ from common.observability import get_logger
 # Configure centralized logging
 logger = get_logger(__name__)
 
+
 async def run_phase3_comprehensive_demo():
     """Run comprehensive Phase 3 demonstration"""
 
@@ -57,12 +58,12 @@ async def run_phase3_comprehensive_demo():
     archive_config = {
         "type": "local",
         "local_path": "./archive_storage",
-        "kg_storage_path": "./kg_storage"
+        "kg_storage_path": "./kg_storage",
     }
     archive_manager = ArchiveManager(archive_config)
 
     # Direct Knowledge Graph access for advanced queries (DB-backed by default)
-    kg_manager = KnowledgeGraphManager("./kg_storage", backend='db')
+    kg_manager = KnowledgeGraphManager("./kg_storage", backend="db")
 
     print("✅ Phase 3 components initialized")
 
@@ -79,7 +80,7 @@ async def run_phase3_comprehensive_demo():
             "timestamp": (datetime.now() - timedelta(hours=2)).isoformat(),
             "publisher_meta": {"publisher": "BBC News"},
             "news_score": 0.95,
-            "extraction_method": "generic_dom"
+            "extraction_method": "generic_dom",
         },
         {
             "url": "https://www.reuters.com/business/microsoft-openai-partnership-2024",
@@ -90,7 +91,7 @@ async def run_phase3_comprehensive_demo():
             "timestamp": (datetime.now() - timedelta(hours=4)).isoformat(),
             "publisher_meta": {"publisher": "Reuters"},
             "news_score": 0.9,
-            "extraction_method": "generic_dom"
+            "extraction_method": "generic_dom",
         },
         {
             "url": "https://www.nytimes.com/world/europe/ukraine-russia-peace-talks",
@@ -101,7 +102,7 @@ async def run_phase3_comprehensive_demo():
             "timestamp": (datetime.now() - timedelta(hours=6)).isoformat(),
             "publisher_meta": {"publisher": "The New York Times"},
             "news_score": 0.85,
-            "extraction_method": "generic_dom"
+            "extraction_method": "generic_dom",
         },
         {
             "url": "https://www.wsj.com/business/apple-new-product-launch",
@@ -112,7 +113,7 @@ async def run_phase3_comprehensive_demo():
             "timestamp": (datetime.now() - timedelta(hours=8)).isoformat(),
             "publisher_meta": {"publisher": "The Wall Street Journal"},
             "news_score": 0.8,
-            "extraction_method": "generic_dom"
+            "extraction_method": "generic_dom",
         },
         {
             "url": "https://www.theguardian.com/environment/climate-crisis-cop29",
@@ -123,8 +124,8 @@ async def run_phase3_comprehensive_demo():
             "timestamp": (datetime.now() - timedelta(hours=12)).isoformat(),
             "publisher_meta": {"publisher": "The Guardian"},
             "news_score": 0.88,
-            "extraction_method": "generic_dom"
-        }
+            "extraction_method": "generic_dom",
+        },
     ]
 
     crawler_results = {
@@ -133,10 +134,12 @@ async def run_phase3_comprehensive_demo():
         "total_articles": len(test_articles),
         "processing_time_seconds": 67.8,
         "articles_per_second": 0.074,  # Simulating slower, more thorough processing
-        "articles": test_articles
+        "articles": test_articles,
     }
 
-    print(f"📄 Test dataset: {len(test_articles)} articles from {crawler_results['sites_crawled']} news sources")
+    print(
+        f"📄 Test dataset: {len(test_articles)} articles from {crawler_results['sites_crawled']} news sources"
+    )
 
     # Phase 1: Archive the articles
     print("\n💾 Phase 3.1: Archiving articles with provenance tracking...")
@@ -145,7 +148,9 @@ async def run_phase3_comprehensive_demo():
     print("✅ Archiving complete!")
     print(f"   📊 Articles archived: {archive_summary.get('articles_archived', 0)}")
     print(".2f")
-    print(f"   🏷️ Storage keys generated: {len(archive_summary.get('storage_keys', []))}")
+    print(
+        f"   🏷️ Storage keys generated: {len(archive_summary.get('storage_keys', []))}"
+    )
 
     # Phase 2: Knowledge Graph Processing
     print("\n🧠 Phase 3.2: Processing through Knowledge Graph...")
@@ -154,7 +159,9 @@ async def run_phase3_comprehensive_demo():
         kg_results = archive_summary["knowledge_graph"]
         print("✅ Knowledge Graph processing complete!")
         print(f"   📊 Articles processed: {kg_results.get('articles_processed', 0)}")
-        print(f"   🏷️ Entities extracted: {kg_results.get('total_entities_extracted', 0)}")
+        print(
+            f"   🏷️ Entities extracted: {kg_results.get('total_entities_extracted', 0)}"
+        )
         print(".1f")
 
         # Display graph statistics
@@ -169,7 +176,9 @@ async def run_phase3_comprehensive_demo():
     all_entities = kg_manager.kg.query_entities(limit=20)
     print(f"\n🏷️ Extracted Entities ({len(all_entities)} total):")
     for entity in all_entities[:10]:  # Show first 10
-        print(f"   {entity['name']} ({entity['entity_type']}) - mentioned {entity['mention_count']} times")
+        print(
+            f"   {entity['name']} ({entity['entity_type']}) - mentioned {entity['mention_count']} times"
+        )
 
     # Query specific entity types
     persons = kg_manager.kg.query_entities("PERSON", limit=10)
@@ -203,22 +212,26 @@ async def run_phase3_comprehensive_demo():
     # Phase 5: Demonstrate Archive Retrieval
     print("\n📚 Phase 3.5: Archive Retrieval Demonstration...")
 
-    if archive_summary.get('storage_keys'):
-        sample_key = archive_summary['storage_keys'][0]
+    if archive_summary.get("storage_keys"):
+        sample_key = archive_summary["storage_keys"][0]
         print(f"Retrieving sample article: {sample_key}")
 
         retrieved = await archive_manager.storage_manager.retrieve_article(sample_key)
         if retrieved:
-            article_data = retrieved.get('article_data', {})
+            article_data = retrieved.get("article_data", {})
             print("✅ Article retrieved successfully!")
             print(f"   Title: {article_data.get('title', 'Unknown')}")
             print(f"   Domain: {article_data.get('domain', 'Unknown')}")
-            print(f"   Publisher: {article_data.get('publisher_meta', {}).get('publisher', 'Unknown')}")
+            print(
+                f"   Publisher: {article_data.get('publisher_meta', {}).get('publisher', 'Unknown')}"
+            )
 
             # Show archive metadata
-            archive_meta = retrieved.get('archive_metadata', {})
+            archive_meta = retrieved.get("archive_metadata", {})
             print(f"   Archived: {archive_meta.get('archived_at', 'Unknown')}")
-            print(f"   Provenance: {archive_meta.get('provenance', {}).get('source_system', 'Unknown')}")
+            print(
+                f"   Provenance: {archive_meta.get('provenance', {}).get('source_system', 'Unknown')}"
+            )
 
     # Phase 6: Summary and Next Steps
     print("\n🎉 Phase 3 Comprehensive Demo Complete!")
@@ -251,8 +264,9 @@ async def run_phase3_comprehensive_demo():
         "phase3_demo_complete": True,
         "archive_summary": archive_summary,
         "knowledge_graph_stats": final_stats,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
+
 
 async def main():
     """Main entry point"""
@@ -261,7 +275,7 @@ async def main():
 
         # Save demo results
         output_file = Path("./phase3_demo_results.json")
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2, default=str, ensure_ascii=False)
 
         print(f"\n💾 Demo results saved to: {output_file}")
@@ -269,6 +283,7 @@ async def main():
     except Exception as e:
         logger.error(f"Phase 3 demo failed: {e}")
         raise
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Basic documentation policy enforcement for CI lint runs."""
+
 from __future__ import annotations
 
 import sys

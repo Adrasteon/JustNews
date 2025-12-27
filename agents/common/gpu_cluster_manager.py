@@ -28,6 +28,7 @@ from common.observability import get_logger
 try:
     import psutil
     import torch
+
     GPU_AVAILABLE = torch.cuda.is_available()
     TORCH_AVAILABLE = True
 except ImportError:
@@ -41,30 +42,37 @@ GPUTIL_AVAILABLE = False
 GPUtil = None
 try:
     import GPUtil  # type: ignore
+
     GPUTIL_AVAILABLE = True
 except ImportError:
     pass
 
 logger = get_logger(__name__)
 
+
 class ClusterStatus(Enum):
     """Cluster operational status"""
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     CRITICAL = "critical"
     MAINTENANCE = "maintenance"
 
+
 class GPUStatus(Enum):
     """Individual GPU status"""
+
     AVAILABLE = "available"
     ALLOCATED = "allocated"
     UNAVAILABLE = "unavailable"
     MAINTENANCE = "maintenance"
     FAILED = "failed"
 
+
 @dataclass
 class GPUInfo:
     """Information about a GPU in the cluster"""
+
     device_id: int
     name: str
     memory_total_gb: float
@@ -78,9 +86,11 @@ class GPUInfo:
     allocation_count: int = 0
     failure_count: int = 0
 
+
 @dataclass
 class ClusterAllocation:
     """GPU cluster allocation record"""
+
     allocation_id: str
     agent_name: str
     requested_memory_gb: float
@@ -90,9 +100,11 @@ class ClusterAllocation:
     expected_completion_time: datetime | None = None
     status: str = "active"
 
+
 @dataclass
 class ClusterMetrics:
     """Cluster-wide performance metrics"""
+
     total_gpus: int
     available_gpus: int
     allocated_gpus: int
@@ -103,6 +115,7 @@ class ClusterMetrics:
     cluster_efficiency: float
     load_balance_score: float
     last_updated: datetime
+
 
 class GPUClusterManager:
     """
@@ -134,7 +147,7 @@ class GPUClusterManager:
             average_utilization=0.0,
             cluster_efficiency=0.0,
             load_balance_score=0.0,
-            last_updated=datetime.now()
+            last_updated=datetime.now(),
         )
 
         # Configuration
@@ -177,7 +190,9 @@ class GPUClusterManager:
                 gpu_info = self._get_gpu_info(i)
                 if gpu_info:
                     self.gpus[i] = gpu_info
-                    logger.info(f"GPU {i}: {gpu_info.name} - {gpu_info.memory_total_gb:.1f}GB")
+                    logger.info(
+                        f"GPU {i}: {gpu_info.name} - {gpu_info.memory_total_gb:.1f}GB"
+                    )
 
             self._update_cluster_metrics()
 
@@ -201,7 +216,7 @@ class GPUClusterManager:
                 temperature_c=50.0 + (i * 5),
                 power_draw_w=150.0 + (i * 20),
                 status=GPUStatus.AVAILABLE,
-                last_updated=datetime.now()
+                last_updated=datetime.now(),
             )
             self.gpus[i] = gpu_info
 
@@ -258,15 +273,20 @@ class GPUClusterManager:
                 temperature_c=temperature,
                 power_draw_w=power_draw,
                 status=GPUStatus.AVAILABLE,
-                last_updated=datetime.now()
+                last_updated=datetime.now(),
             )
 
         except Exception as e:
             logger.error(f"Error getting GPU info for device {device_id}: {e}")
             return None
 
-    def request_cluster_allocation(self, agent_name: str, requested_memory_gb: float,
-                                 model_type: str = "general", priority: str = "normal") -> dict[str, Any]:
+    def request_cluster_allocation(
+        self,
+        agent_name: str,
+        requested_memory_gb: float,
+        model_type: str = "general",
+        priority: str = "normal",
+    ) -> dict[str, Any]:
         """
         Request GPU allocation from the cluster
 
@@ -285,9 +305,9 @@ class GPUClusterManager:
             # Check cluster health
             if self.get_cluster_status() == ClusterStatus.CRITICAL:
                 return {
-                    'status': 'failed',
-                    'message': 'Cluster is in critical state',
-                    'allocation_id': allocation_id
+                    "status": "failed",
+                    "message": "Cluster is in critical state",
+                    "allocation_id": allocation_id,
                 }
 
             # Find optimal GPU allocation
@@ -295,15 +315,15 @@ class GPUClusterManager:
                 requested_memory_gb, model_type, priority
             )
 
-            if not allocation_result['success']:
+            if not allocation_result["success"]:
                 return {
-                    'status': 'failed',
-                    'message': allocation_result['message'],
-                    'allocation_id': allocation_id
+                    "status": "failed",
+                    "message": allocation_result["message"],
+                    "allocation_id": allocation_id,
                 }
 
             # Create allocation record
-            allocated_gpus = allocation_result['gpus']
+            allocated_gpus = allocation_result["gpus"]
             total_allocated_memory = sum(
                 self.gpus[gpu_id].memory_free_gb for gpu_id in allocated_gpus
             )
@@ -313,8 +333,10 @@ class GPUClusterManager:
                 agent_name=agent_name,
                 requested_memory_gb=requested_memory_gb,
                 allocated_gpus=allocated_gpus,
-                total_allocated_memory_gb=min(total_allocated_memory, requested_memory_gb),
-                allocation_time=datetime.now()
+                total_allocated_memory_gb=min(
+                    total_allocated_memory, requested_memory_gb
+                ),
+                allocation_time=datetime.now(),
             )
 
             # Update GPU status
@@ -330,40 +352,41 @@ class GPUClusterManager:
 
             self._update_cluster_metrics()
 
-            logger.info(f"✅ Cluster allocation successful: {allocation_id} -> GPUs {allocated_gpus}")
+            logger.info(
+                f"✅ Cluster allocation successful: {allocation_id} -> GPUs {allocated_gpus}"
+            )
 
             return {
-                'status': 'allocated',
-                'allocation_id': allocation_id,
-                'gpus': allocated_gpus,
-                'primary_gpu': allocated_gpus[0],
-                'total_memory_gb': allocation.total_allocated_memory_gb,
-                'allocation_time': allocation.allocation_time.isoformat()
+                "status": "allocated",
+                "allocation_id": allocation_id,
+                "gpus": allocated_gpus,
+                "primary_gpu": allocated_gpus[0],
+                "total_memory_gb": allocation.total_allocated_memory_gb,
+                "allocation_time": allocation.allocation_time.isoformat(),
             }
 
         except Exception as e:
             logger.error(f"Error in cluster allocation: {e}")
             return {
-                'status': 'error',
-                'message': f'Allocation failed: {str(e)}',
-                'allocation_id': f"alloc_{int(time.time())}_{agent_name}"
+                "status": "error",
+                "message": f"Allocation failed: {str(e)}",
+                "allocation_id": f"alloc_{int(time.time())}_{agent_name}",
             }
 
-    def _find_optimal_allocation(self, requested_memory_gb: float, model_type: str,
-                               priority: str) -> dict[str, Any]:
+    def _find_optimal_allocation(
+        self, requested_memory_gb: float, model_type: str, priority: str
+    ) -> dict[str, Any]:
         """Find optimal GPU allocation for the request"""
         try:
             # Get available GPUs
             available_gpus = [
-                gpu_id for gpu_id, gpu in self.gpus.items()
+                gpu_id
+                for gpu_id, gpu in self.gpus.items()
                 if gpu.status == GPUStatus.AVAILABLE and gpu.memory_free_gb >= 1.0
             ]
 
             if not available_gpus:
-                return {
-                    'success': False,
-                    'message': 'No GPUs available for allocation'
-                }
+                return {"success": False, "message": "No GPUs available for allocation"}
 
             # Sort GPUs by available memory and utilization
             gpu_scores = {}
@@ -372,9 +395,13 @@ class GPUClusterManager:
                 # Score based on memory availability and current utilization
                 memory_score = min(1.0, gpu.memory_free_gb / requested_memory_gb)
                 utilization_penalty = gpu.utilization_percent / 100.0
-                temperature_penalty = max(0, (gpu.temperature_c - 70) / 30)  # Penalty above 70C
+                temperature_penalty = max(
+                    0, (gpu.temperature_c - 70) / 30
+                )  # Penalty above 70C
 
-                gpu_scores[gpu_id] = memory_score - utilization_penalty - temperature_penalty
+                gpu_scores[gpu_id] = (
+                    memory_score - utilization_penalty - temperature_penalty
+                )
 
             # Sort by score (highest first)
             sorted_gpus = sorted(gpu_scores.items(), key=lambda x: x[1], reverse=True)
@@ -387,27 +414,31 @@ class GPUClusterManager:
             elif requested_memory_gb <= 16:  # Two GPUs
                 selected_gpus = [gpu[0] for gpu in sorted_gpus[:2]]
             else:  # Three or more GPUs for large models
-                selected_gpus = [gpu[0] for gpu in sorted_gpus[:min(4, len(sorted_gpus))]]
+                selected_gpus = [
+                    gpu[0] for gpu in sorted_gpus[: min(4, len(sorted_gpus))]
+                ]
 
             # Verify total memory availability
-            total_available = sum(self.gpus[gpu_id].memory_free_gb for gpu_id in selected_gpus)
+            total_available = sum(
+                self.gpus[gpu_id].memory_free_gb for gpu_id in selected_gpus
+            )
             if total_available < requested_memory_gb:
                 return {
-                    'success': False,
-                    'message': f'Insufficient memory: {total_available:.1f}GB available, {requested_memory_gb}GB requested'
+                    "success": False,
+                    "message": f"Insufficient memory: {total_available:.1f}GB available, {requested_memory_gb}GB requested",
                 }
 
             return {
-                'success': True,
-                'gpus': selected_gpus,
-                'total_memory': total_available
+                "success": True,
+                "gpus": selected_gpus,
+                "total_memory": total_available,
             }
 
         except Exception as e:
             logger.error(f"Error finding optimal allocation: {e}")
             return {
-                'success': False,
-                'message': f'Allocation optimization failed: {str(e)}'
+                "success": False,
+                "message": f"Allocation optimization failed: {str(e)}",
             }
 
     def release_cluster_allocation(self, allocation_id: str) -> bool:
@@ -443,8 +474,12 @@ class GPUClusterManager:
             if not self.gpus:
                 return ClusterStatus.CRITICAL
 
-            available_gpus = sum(1 for gpu in self.gpus.values() if gpu.status == GPUStatus.AVAILABLE)
-            failed_gpus = sum(1 for gpu in self.gpus.values() if gpu.status == GPUStatus.FAILED)
+            available_gpus = sum(
+                1 for gpu in self.gpus.values() if gpu.status == GPUStatus.AVAILABLE
+            )
+            failed_gpus = sum(
+                1 for gpu in self.gpus.values() if gpu.status == GPUStatus.FAILED
+            )
 
             total_gpus = len(self.gpus)
 
@@ -471,21 +506,31 @@ class GPUClusterManager:
                 return
 
             total_gpus = len(self.gpus)
-            available_gpus = sum(1 for gpu in self.gpus.values() if gpu.status == GPUStatus.AVAILABLE)
-            allocated_gpus = sum(1 for gpu in self.gpus.values() if gpu.status == GPUStatus.ALLOCATED)
+            available_gpus = sum(
+                1 for gpu in self.gpus.values() if gpu.status == GPUStatus.AVAILABLE
+            )
+            allocated_gpus = sum(
+                1 for gpu in self.gpus.values() if gpu.status == GPUStatus.ALLOCATED
+            )
 
             total_memory = sum(gpu.memory_total_gb for gpu in self.gpus.values())
             available_memory = sum(gpu.memory_free_gb for gpu in self.gpus.values())
             allocated_memory = sum(gpu.memory_used_gb for gpu in self.gpus.values())
 
-            avg_utilization = np.mean([gpu.utilization_percent for gpu in self.gpus.values()])
+            avg_utilization = np.mean(
+                [gpu.utilization_percent for gpu in self.gpus.values()]
+            )
 
             # Calculate cluster efficiency (utilization vs available memory ratio)
-            cluster_efficiency = (allocated_memory / total_memory) if total_memory > 0 else 0
+            cluster_efficiency = (
+                (allocated_memory / total_memory) if total_memory > 0 else 0
+            )
 
             # Calculate load balance score (lower variance = better balance)
             utilizations = [gpu.utilization_percent for gpu in self.gpus.values()]
-            load_balance_score = 1.0 - (np.std(utilizations) / 100.0) if utilizations else 0
+            load_balance_score = (
+                1.0 - (np.std(utilizations) / 100.0) if utilizations else 0
+            )
 
             self.cluster_metrics = ClusterMetrics(
                 total_gpus=total_gpus,
@@ -497,7 +542,7 @@ class GPUClusterManager:
                 average_utilization=avg_utilization,
                 cluster_efficiency=cluster_efficiency,
                 load_balance_score=load_balance_score,
-                last_updated=datetime.now()
+                last_updated=datetime.now(),
             )
 
         except Exception as e:
@@ -509,7 +554,9 @@ class GPUClusterManager:
             return
 
         self.running = True
-        self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+        self.monitoring_thread = threading.Thread(
+            target=self._monitoring_loop, daemon=True
+        )
         self.monitoring_thread.start()
         logger.info("📊 Cluster monitoring started")
 
@@ -553,7 +600,10 @@ class GPUClusterManager:
                     updated_info.failure_count = self.gpus[gpu_id].failure_count
 
                     # Check for GPU failure
-                    if self.gpus[gpu_id].status != GPUStatus.FAILED and updated_info.status == GPUStatus.FAILED:
+                    if (
+                        self.gpus[gpu_id].status != GPUStatus.FAILED
+                        and updated_info.status == GPUStatus.FAILED
+                    ):
                         updated_info.failure_count += 1
                         logger.warning(f"GPU {gpu_id} marked as failed")
 
@@ -573,17 +623,23 @@ class GPUClusterManager:
         if not self.failover_enabled:
             return
 
-        failed_gpus = [gpu_id for gpu_id, gpu in self.gpus.items() if gpu.status == GPUStatus.FAILED]
+        failed_gpus = [
+            gpu_id
+            for gpu_id, gpu in self.gpus.items()
+            if gpu.status == GPUStatus.FAILED
+        ]
 
         if failed_gpus:
             logger.warning(f"Detected {len(failed_gpus)} failed GPUs: {failed_gpus}")
 
             # Record failure event
             failure_event = {
-                'timestamp': datetime.now(),
-                'failed_gpus': failed_gpus,
-                'cluster_status': self.get_cluster_status().value,
-                'active_allocations': len([a for a in self.allocations.values() if a.status == 'active'])
+                "timestamp": datetime.now(),
+                "failed_gpus": failed_gpus,
+                "cluster_status": self.get_cluster_status().value,
+                "active_allocations": len(
+                    [a for a in self.allocations.values() if a.status == "active"]
+                ),
             }
             self.failure_events.append(failure_event)
 
@@ -595,14 +651,16 @@ class GPUClusterManager:
         affected_allocations = []
 
         for alloc_id, allocation in self.allocations.items():
-            if allocation.status == 'active' and any(gpu in failed_gpus for gpu in allocation.allocated_gpus):
+            if allocation.status == "active" and any(
+                gpu in failed_gpus for gpu in allocation.allocated_gpus
+            ):
                 affected_allocations.append(alloc_id)
 
         for alloc_id in affected_allocations:
             logger.info(f"Triggering failover for allocation {alloc_id}")
             # In a real implementation, this would attempt to reallocate to healthy GPUs
             # For now, we'll mark as failed
-            self.allocations[alloc_id].status = 'failed'
+            self.allocations[alloc_id].status = "failed"
 
     def _cleanup_expired_allocations(self):
         """Clean up expired allocations"""
@@ -610,9 +668,11 @@ class GPUClusterManager:
         expired_allocations = []
 
         for alloc_id, allocation in self.allocations.items():
-            if allocation.status == 'active':
+            if allocation.status == "active":
                 allocation_duration = current_time - allocation.allocation_time
-                if allocation_duration.total_seconds() > (self.max_allocation_time_hours * 3600):
+                if allocation_duration.total_seconds() > (
+                    self.max_allocation_time_hours * 3600
+                ):
                     expired_allocations.append(alloc_id)
 
         for alloc_id in expired_allocations:
@@ -625,33 +685,35 @@ class GPUClusterManager:
             metrics = self.get_cluster_metrics()
 
             report = {
-                'cluster_id': self.cluster_id,
-                'status': self.get_cluster_status().value,
-                'timestamp': datetime.now().isoformat(),
-                'metrics': asdict(metrics),
-                'gpus': {
+                "cluster_id": self.cluster_id,
+                "status": self.get_cluster_status().value,
+                "timestamp": datetime.now().isoformat(),
+                "metrics": asdict(metrics),
+                "gpus": {
                     gpu_id: {
-                        'name': gpu.name,
-                        'status': gpu.status.value,
-                        'memory_total_gb': gpu.memory_total_gb,
-                        'memory_free_gb': gpu.memory_free_gb,
-                        'utilization_percent': gpu.utilization_percent,
-                        'temperature_c': gpu.temperature_c,
-                        'allocation_count': gpu.allocation_count,
-                        'failure_count': gpu.failure_count
+                        "name": gpu.name,
+                        "status": gpu.status.value,
+                        "memory_total_gb": gpu.memory_total_gb,
+                        "memory_free_gb": gpu.memory_free_gb,
+                        "utilization_percent": gpu.utilization_percent,
+                        "temperature_c": gpu.temperature_c,
+                        "allocation_count": gpu.allocation_count,
+                        "failure_count": gpu.failure_count,
                     }
                     for gpu_id, gpu in self.gpus.items()
                 },
-                'active_allocations': len([a for a in self.allocations.values() if a.status == 'active']),
-                'total_allocations': len(self.allocations),
-                'recent_failures': len(list(self.failure_events))
+                "active_allocations": len(
+                    [a for a in self.allocations.values() if a.status == "active"]
+                ),
+                "total_allocations": len(self.allocations),
+                "recent_failures": len(list(self.failure_events)),
             }
 
             return report
 
         except Exception as e:
             logger.error(f"Error generating cluster report: {e}")
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     def _load_cluster_config(self):
         """Load cluster configuration"""
@@ -660,11 +722,13 @@ class GPUClusterManager:
                 with open(self.cluster_config_path) as f:
                     config = json.load(f)
 
-                self.max_allocation_time_hours = config.get('max_allocation_time_hours', 24)
-                self.health_check_interval_s = config.get('health_check_interval_s', 30)
-                self.load_balance_threshold = config.get('load_balance_threshold', 0.8)
-                self.failover_enabled = config.get('failover_enabled', True)
-                self.auto_scaling_enabled = config.get('auto_scaling_enabled', True)
+                self.max_allocation_time_hours = config.get(
+                    "max_allocation_time_hours", 24
+                )
+                self.health_check_interval_s = config.get("health_check_interval_s", 30)
+                self.load_balance_threshold = config.get("load_balance_threshold", 0.8)
+                self.failover_enabled = config.get("failover_enabled", True)
+                self.auto_scaling_enabled = config.get("auto_scaling_enabled", True)
 
                 logger.info("✅ Cluster configuration loaded")
 
@@ -675,15 +739,15 @@ class GPUClusterManager:
         """Save cluster configuration"""
         try:
             config = {
-                'max_allocation_time_hours': self.max_allocation_time_hours,
-                'health_check_interval_s': self.health_check_interval_s,
-                'load_balance_threshold': self.load_balance_threshold,
-                'failover_enabled': self.failover_enabled,
-                'auto_scaling_enabled': self.auto_scaling_enabled,
-                'saved_at': datetime.now().isoformat()
+                "max_allocation_time_hours": self.max_allocation_time_hours,
+                "health_check_interval_s": self.health_check_interval_s,
+                "load_balance_threshold": self.load_balance_threshold,
+                "failover_enabled": self.failover_enabled,
+                "auto_scaling_enabled": self.auto_scaling_enabled,
+                "saved_at": datetime.now().isoformat(),
             }
 
-            with open(self.cluster_config_path, 'w') as f:
+            with open(self.cluster_config_path, "w") as f:
                 json.dump(config, f, indent=2)
 
             logger.info("💾 Cluster configuration saved")
@@ -691,9 +755,11 @@ class GPUClusterManager:
         except Exception as e:
             logger.error(f"Failed to save cluster config: {e}")
 
+
 # Global cluster manager instance
 _cluster_manager: GPUClusterManager | None = None
 _cluster_lock = threading.Lock()
+
 
 def get_gpu_cluster_manager() -> GPUClusterManager:
     """Get the global GPU cluster manager instance"""
@@ -703,32 +769,45 @@ def get_gpu_cluster_manager() -> GPUClusterManager:
             _cluster_manager = GPUClusterManager()
         return _cluster_manager
 
-def request_cluster_allocation(agent_name: str, memory_gb: float,
-                              model_type: str = "general", priority: str = "normal") -> dict[str, Any]:
+
+def request_cluster_allocation(
+    agent_name: str,
+    memory_gb: float,
+    model_type: str = "general",
+    priority: str = "normal",
+) -> dict[str, Any]:
     """Request GPU allocation from the cluster"""
     manager = get_gpu_cluster_manager()
-    return manager.request_cluster_allocation(agent_name, memory_gb, model_type, priority)
+    return manager.request_cluster_allocation(
+        agent_name, memory_gb, model_type, priority
+    )
+
 
 def release_cluster_allocation(allocation_id: str) -> bool:
     """Release a cluster allocation"""
     manager = get_gpu_cluster_manager()
     return manager.release_cluster_allocation(allocation_id)
 
+
 def get_cluster_status() -> dict[str, Any]:
     """Get cluster status and metrics"""
     manager = get_gpu_cluster_manager()
     metrics = manager.get_cluster_metrics()
     return {
-        'status': manager.get_cluster_status().value,
-        'metrics': asdict(metrics),
-        'gpu_count': len(manager.gpus),
-        'available_gpus': sum(1 for gpu in manager.gpus.values() if gpu.status == GPUStatus.AVAILABLE)
+        "status": manager.get_cluster_status().value,
+        "metrics": asdict(metrics),
+        "gpu_count": len(manager.gpus),
+        "available_gpus": sum(
+            1 for gpu in manager.gpus.values() if gpu.status == GPUStatus.AVAILABLE
+        ),
     }
+
 
 def get_cluster_report() -> dict[str, Any]:
     """Get comprehensive cluster report"""
     manager = get_gpu_cluster_manager()
     return manager.get_cluster_report()
+
 
 # Initialize cluster manager on import
 _cluster_manager = get_gpu_cluster_manager()

@@ -15,7 +15,10 @@ def main() -> None:
     try:
         import uvicorn
     except Exception as exc:  # pragma: no cover - runtime guard
-        print("uvicorn is required to run the Crawl4AI bridge (install uvicorn)", file=sys.stderr)
+        print(
+            "uvicorn is required to run the Crawl4AI bridge (install uvicorn)",
+            file=sys.stderr,
+        )
         raise SystemExit(2) from exc
 
     # Use programmatic run to avoid shell/argline issues

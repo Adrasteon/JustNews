@@ -106,6 +106,51 @@ scripts/run_with_env.sh python -m pytest tests/e2e/test_orchestrator_real_e2e.py
 
 The helper looks for `/etc/justnews/global.env` first and falls back to the repo copy, exporting every variable (MariaDB, ChromaDB, model paths, etc.) before exec-ing your command.
 
+### Running optional / infra-dependent tests 🔧
+Some tests are skipped by default when required infra or optional dependencies aren't available (GPU, ChromaDB, vLLM, Playwright, Docker). Use `scripts/run_tests_with_env.sh` to flip common toggles and run pytest with sensible defaults.
+
+Examples:
+
+- Run fast unit tests locally (default):
+
+```bash
+scripts/run_tests_with_env.sh local -- -k "not integration" -q
+```
+
+- Run GPU tests (enable GPU toggles):
+
+```bash
+scripts/run_tests_with_env.sh gpu -- -q
+```
+
+- Run live ChromaDB integration smoke tests (requires `MODEL_STORE_ROOT` and a running ChromaDB):
+
+```bash
+scripts/run_tests_with_env.sh chroma-live -- -q tests/integration/test_chromadb_live.py -k chroma
+```
+
+- Run vLLM smoke tests (point `VLLM_BASE_URL` to your running server first):
+
+```bash
+# Ensure VLLM_BASE_URL is set in your env or /etc/justnews/global.env
+scripts/run_tests_with_env.sh vllm -- -q tests/integration/test_vllm_mistral_7b_smoke.py -k chat_completion
+```
+
+- Run Redis-dependent E2E tests (point `REDIS_URL` to your Redis instance if needed):
+
+```bash
+# Uses REDIS_URL (default: redis://127.0.0.1:6379)
+scripts/run_tests_with_env.sh redis -- -q tests/e2e/test_docker_poc_representative.py -k redis
+```
+
+- Run all optional tests (GPU, Chroma, Playwright, strict deprecation checks):
+
+```bash
+scripts/run_tests_with_env.sh all -- -q
+```
+
+If you prefer to flip env vars manually, see the `# --- Tests & toggles ---` section in `/etc/justnews/global.env` for the available toggles.
+
 ### Available Commands
 ```bash
 make help          # Show all available commands

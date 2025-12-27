@@ -45,6 +45,12 @@ case "$PRESET" in
     echo "Enabling Playwright UI tests (ENABLE_PLAYWRIGHT_TESTS=1)"
     export ENABLE_PLAYWRIGHT_TESTS=1
     ;;
+  redis)
+    echo "Enabling Redis-dependent tests (set REDIS_URL or use local Redis)"
+    export REDIS_URL=${REDIS_URL:-redis://127.0.0.1:6379}
+    # Indicate Docker available as many Redis-based E2E runs use containers
+    export DOCKER_AVAILABLE=1
+    ;;
   all)
     echo "Enabling all optional tests (GPU, Chroma live, Playwright, strict deprecations)"
     export TEST_GPU_AVAILABLE=true

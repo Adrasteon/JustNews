@@ -18,9 +18,9 @@ those helpers and exposes `/metrics` will publish the counters when Prometheus s
 
 1. Ensure the agents that participate in Stage 4 expose `/metrics`.
 
-   - Every systemd unit started via `infrastructure/systemd/scripts/enable_all.sh` already runs a FastAPI service with Prometheus middleware.
+  - Every systemd unit started via `infrastructure/systemd/scripts/enable_all.sh` already runs a FastAPI service with Prometheus middleware.
 
-   - The editorial harness job typically runs via cron or CI (`scripts/dev/run_agent_chain_harness.py`). Pair it with a Pushgateway or textfile exporter so counters persist between runs.
+  - The editorial harness job typically runs via cron or CI (`scripts/dev/run_agent_chain_harness.py`). Pair it with a Pushgateway or textfile exporter so counters persist between runs.
 
 1. Add (or extend) a Prometheus scrape job that hits those ports. Example for the crawler host:
 
@@ -47,7 +47,7 @@ metrics_path: /metrics scrape_interval: 30s static_configs:
 
 1. When the harness is a short-lived batch job, push its counters so data survives between runs.
 
-   - **Pushgateway**
+  - **Pushgateway**
 
 ```bash PROM_PUSH_GATEWAY=http://prometheus-pushgateway:9091 \ python - <<'PY'
 from prometheus_client import CollectorRegistry, push_to_gateway from
@@ -81,13 +81,13 @@ docs/grafana/provisioning/dashboards.yml /etc/grafana/provisioning/dashboards/ s
 
 1. Confirm the panels render:
 
-   - Outcomes per second should show accepted, follow-up, and error series after each run.
+  - Outcomes per second should show accepted, follow-up, and error series after each run.
 
-   - Acceptance ratio (5m rolling) must remain within 0–1 (alert if < 0.6).
+  - Acceptance ratio (5m rolling) must remain within 0–1 (alert if < 0.6).
 
-   - Acceptance distribution visualizes histogram buckets (`<= 0.2`, `<= 0.4`, etc.).
+  - Acceptance distribution visualizes histogram buckets (`<= 0.2`, `<= 0.4`, etc.).
 
-   - Harness runs (24h) reflects the cumulative executions for the window.
+  - Harness runs (24h) reflects the cumulative executions for the window.
 
 1. Use Grafana Explore to run `sum(increase(justnews_stage_b_editorial_harness_total[6h])) by (result)` when validating new scrapes.
 

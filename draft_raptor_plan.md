@@ -82,33 +82,33 @@
 
   - `facebook/bart-large-cnn`: 3.0GB (quantized 8-bit: ~2.2GB)
 
- - These are approximate values; `gpu_orchestrator` should collect telemetry and refine them.
+- These are approximate values; `gpu_orchestrator` should collect telemetry and refine them.
 
 ## 6.1 GPU Orchestrator & Model Preload Policy Recommendation
 
 - Orchestrator `policy` should include model memory estimates for each model in `AGENT_MODEL_MAP.json` for accurate preload & allocation. `mps_allocation_config.json` should contain model-level approximate VRAM requirements.
 
- - Orchestrator `policy` should include model memory estimates for each model in `AGENT_MODEL_MAP.json` for accurate preload & allocation. `mps_allocation_config.json` should contain model-level approximate VRAM requirements and a `model_vram` section or a `model_registry` that maps model_id -> {approx_vram_mb, quantized_variants}.
+- Orchestrator `policy` should include model memory estimates for each model in `AGENT_MODEL_MAP.json` for accurate preload & allocation. `mps_allocation_config.json` should contain model-level approximate VRAM requirements and a `model_vram` section or a `model_registry` that maps model_id -> {approx_vram_mb, quantized_variants}.
 
 - Add support to orchestrator to read `model_store` metadata for `approx_vram_mb` and `quantized_variants` to calculate safe allocations.
 
- - Orchestrator: when checking model preload or granting GPU leases, prefer quantized variants if memory is constrained; fallback to CPU-only mode for real-time requests if no GPU support is available.
+- Orchestrator: when checking model preload or granting GPU leases, prefer quantized variants if memory is constrained; fallback to CPU-only mode for real-time requests if no GPU support is available.
 
- - Orchestrator should have a 'quality' vs 'latency' preference: 'real-time' uses `default` smaller or quantized models, while 'batch' or 'high-quality' uses larger models when allowed by policy.
+- Orchestrator should have a 'quality' vs 'latency' preference: 'real-time' uses `default` smaller or quantized models, while 'batch' or 'high-quality' uses larger models when allowed by policy.
 
 - If `STRICT_MODEL_STORE=1`, orchestrator must fail preload if memory can't be met, otherwise fallback to CPU-only mode or smaller quantized models.
 
 - Provide `allowed_variants` per agent in `AGENT_MODEL_MAP.json` (e.g., `flan-t5-small` default, `flan-t5-base` optional, `flan-t5-large` reserved for batch jobs) and adjust `mps_allocation_config.json` accordingly.
 
- - Provide `allowed_variants` per agent (see `AGENT_MODEL_RECOMMENDED.json`) and adjust `mps_allocation_config.json` accordingly; orchestrator should be able to choose the quantized or base variant based on policy & runtime load.
+- Provide `allowed_variants` per agent (see `AGENT_MODEL_RECOMMENDED.json`) and adjust `mps_allocation_config.json` accordingly; orchestrator should be able to choose the quantized or base variant based on policy & runtime load.
 
- - [ ] A6: Add quantized/PEFT-ready model variants to `model_store` (e.g., 8-bit `flan-t5-small` or `base`), update `model_store` metadata with `approx_vram_mb`, `quantized_variants`, and `peft_support` flags.
+- [ ] A6: Add quantized/PEFT-ready model variants to `model_store` (e.g., 8-bit `flan-t5-small` or `base`), update `model_store` metadata with `approx_vram_mb`, `quantized_variants`, and `peft_support` flags.
 
- - [ ] A6: Add quantized/PEFT-ready model variants to `model_store` (e.g., 8-bit `flan-t5-small` or `base`), update `model_store` metadata with `approx_vram_mb`, `quantized_variants`, and `peft_support` flags, and publish an `AGENT_MODEL_RECOMMENDED.json`.
+- [ ] A6: Add quantized/PEFT-ready model variants to `model_store` (e.g., 8-bit `flan-t5-small` or `base`), update `model_store` metadata with `approx_vram_mb`, `quantized_variants`, and `peft_support` flags, and publish an `AGENT_MODEL_RECOMMENDED.json`.
 
- - [ ] B5: Add GPU orchestrator detection of quantized models and allow dynamic selection based on `policy` and `real-time` vs `batch` mode.
+- [ ] B5: Add GPU orchestrator detection of quantized models and allow dynamic selection based on `policy` and `real-time` vs `batch` mode.
 
- - [ ] C4: Add a `model_health` probe that checks quantized model inference parity for each agent in production and populates `gpu_orchestrator` metrics.
+- [ ] C4: Add a `model_health` probe that checks quantized model inference parity for each agent in production and populates `gpu_orchestrator` metrics.
 
 # Draft Raptor Plan
 

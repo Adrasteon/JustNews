@@ -609,13 +609,13 @@ global.env (1.1)
 
 1. `/health` endpoints return 200 OK for:
 
-   - MCP Bus (8017)
+  - MCP Bus (8017)
 
-   - GPU Orchestrator (8014, plus /ready → 200)
+  - GPU Orchestrator (8014, plus /ready → 200)
 
-   - Crawler (8015)
+  - Crawler (8015)
 
-   - Crawler Control (8016)
+  - Crawler Control (8016)
 
 1. `articles` table has >100 rows
 

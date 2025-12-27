@@ -201,9 +201,9 @@ engine. Only the leader performs lifecycle enforcement and reclaimer passes. Lea
 DB advisory lock and the engine logs leader transitions.
  ### Phase 6 — Worker + lease usage and job lifecycle (IMPLEMENTED)
 
- - Worker implementation completed. `agents/gpu_orchestrator/worker.py` implements a simple worker that claims messages, requests leases from the engine, updates orchestrator_jobs status transitions and releases leases.
+- Worker implementation completed. `agents/gpu_orchestrator/worker.py` implements a simple worker that claims messages, requests leases from the engine, updates orchestrator_jobs status transitions and releases leases.
 
- - Integration tests added: tests/integration/test_worker_flow.py verifies worker end-to-end behavior (claimed -> done, failure handling, lease denial behavior).
+- Integration tests added: tests/integration/test_worker_flow.py verifies worker end-to-end behavior (claimed -> done, failure handling, lease denial behavior).
 
 ### Phase 7 — E2E integration, production hardening & operator runbook
 

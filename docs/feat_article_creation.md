@@ -1,20 +1,20 @@
- - `scripts/fact_check_cluster.py` exists to exercise fact-checks for each article in a cluster and produce a cluster summary with per-article `source_fact_checks`
+- `scripts/fact_check_cluster.py` exists to exercise fact-checks for each article in a cluster and produce a cluster summary with per-article `source_fact_checks`
 
- - `scripts/reason_cluster.py` exists to run the reasoning agent on a cluster and preview the `reasoning_plan` results
+- `scripts/reason_cluster.py` exists to run the reasoning agent on a cluster and preview the `reasoning_plan` results
 
- - `scripts/synthesize_cluster.py` exists to exercise the `POST /synthesize_and_publish` endpoint for debugging and local runs
+- `scripts/synthesize_cluster.py` exists to exercise the `POST /synthesize_and_publish` endpoint for debugging and local runs
 
- - `scripts/fact_check_article.py` provides a convenience wrapper to run `generate_analysis_report()` on a single text
+- `scripts/fact_check_article.py` provides a convenience wrapper to run `generate_analysis_report()` on a single text
 
- - Add an integration path: `tests/integration/test_analysis_synthesis_flow.py` that demonstrates Analyst + SynthesisService usage with mocked LLM & Chroma.
+- Add an integration path: `tests/integration/test_analysis_synthesis_flow.py` that demonstrates Analyst + SynthesisService usage with mocked LLM & Chroma.
 
- - `tests/agents/synthesizer/test_persistence.py` tests persistence to `articles` and `synthesized_articles` and adding Chroma embeddings (mocked)
+- `tests/agents/synthesizer/test_persistence.py` tests persistence to `articles` and `synthesized_articles` and adding Chroma embeddings (mocked)
 
- - `tests/agents/synthesizer/test_job_api.py` tests the asynchronous job API for `POST /api/v1/articles/synthesize` and `GET job`.
+- `tests/agents/synthesizer/test_job_api.py` tests the asynchronous job API for `POST /api/v1/articles/synthesize` and `GET job`.
 
- - Add an `integration` marked job in `.github/workflows/pytest.yml` that runs the integration workflows in a dedicated runner
+- Add an `integration` marked job in `.github/workflows/pytest.yml` that runs the integration workflows in a dedicated runner
 
- - Add `scripts/ops/apply_synthesis_migration.sh` to apply the migrations `004` and `005` in an audited way
+- Add `scripts/ops/apply_synthesis_migration.sh` to apply the migrations `004` and `005` in an audited way
 
 # Feature: Article Creation Workflow (feat/article_creation)
 
@@ -141,13 +141,13 @@ A. DB Model choices (Two options):
 
 - Option B (new `synthesized_articles` table): dedicated table for synthesized content and traceability metadata.
 
- - Option B (new `synthesized_articles` table): dedicated table for synthesized content and traceability metadata.
+- Option B (new `synthesized_articles` table): dedicated table for synthesized content and traceability metadata.
 
 Status: BOTH OPTIONS IMPLEMENTED
 
- - Option A (extend `articles`): `Article` model in `database/models/migrated_models.py` now contains synthesis and publishing fields such as `is_synthesized`, `input_cluster_ids`, `synth_model`, `synth_version`, `synth_prompt_id`, `synth_trace`, `critic_result`, `fact_check_status` and publishing metadata (`is_published`, `published_at`, `created_by`). A database migration `004_add_synthesis_fields.sql` adds these columns to the `articles` table (MariaDB compatible).
+- Option A (extend `articles`): `Article` model in `database/models/migrated_models.py` now contains synthesis and publishing fields such as `is_synthesized`, `input_cluster_ids`, `synth_model`, `synth_version`, `synth_prompt_id`, `synth_trace`, `critic_result`, `fact_check_status` and publishing metadata (`is_published`, `published_at`, `created_by`). A database migration `004_add_synthesis_fields.sql` adds these columns to the `articles` table (MariaDB compatible).
 
- - Option B (new table): A dedicated `synthesized_articles` table and model `SynthesizedArticle` implemented in `database/models/migrated_models.py`. Migration `005_create_synthesized_articles_table.sql` creates the `synthesized_articles` table and includes traceability and editorial fields.
+- Option B (new table): A dedicated `synthesized_articles` table and model `SynthesizedArticle` implemented in `database/models/migrated_models.py`. Migration `005_create_synthesized_articles_table.sql` creates the `synthesized_articles` table and includes traceability and editorial fields.
 
 Migrations (implemented):
 
@@ -203,15 +203,15 @@ Analyst-related fields (article-level and cluster-level)
 
 - `analysis_summary` TEXT (clean summary of the analysis useful for human editors and for the SynthesisService to use)
 
- - `source_fact_checks` JSON: list per ingested article of {article_id, fact_check_status, fact_check_trace, primary_claims} for auditing provenance
+- `source_fact_checks` JSON: list per ingested article of {article_id, fact_check_status, fact_check_trace, primary_claims} for auditing provenance
 
- - `cluster_fact_check_summary` JSON: aggregated cluster-level fact check metrics (e.g. percent_verified_sources, flagged_sources_count)
+- `cluster_fact_check_summary` JSON: aggregated cluster-level fact check metrics (e.g. percent_verified_sources, flagged_sources_count)
 
- - `reasoning_plan` JSON: generated by Reasoning agent, including prioritized source list, outline, and claim prioritization
+- `reasoning_plan` JSON: generated by Reasoning agent, including prioritized source list, outline, and claim prioritization
 
- - `reasoning_version` VARCHAR
+- `reasoning_version` VARCHAR
 
- - `reasoning_score` FLOAT
+- `reasoning_score` FLOAT
 
 Migrations (deferred):
 
@@ -221,7 +221,7 @@ Migrations (deferred):
 
 - Once agent outputs are finalized, add migration scripts under `database/core/migrations/` that are idempotent, reversible, and support safe deployment strategies.
 
- - The migrations created for this feature (see above) are included in `database/migrations/` and are ready for operator review and staging run: `004_add_synthesis_fields.sql` and `005_create_synthesized_articles_table.sql`.
+- The migrations created for this feature (see above) are included in `database/migrations/` and are ready for operator review and staging run: `004_add_synthesis_fields.sql` and `005_create_synthesized_articles_table.sql`.
 
 Model Class Changes:
 
@@ -241,11 +241,11 @@ Responsibilities:
 
 - Call `ClusterFetcher` to collect article content and metadata
 
- - Call `ClusterFetcher` to collect article content and metadata (now integrated with `Analyst` via `agents/analyst/tools.generate_analysis_report(cluster_id=...)`)
+- Call `ClusterFetcher` to collect article content and metadata (now integrated with `Analyst` via `agents/analyst/tools.generate_analysis_report(cluster_id=...)`)
 
 - Call `Analyst` to get per-article and cluster-level analysis summaries used to guide the prompt and synthesis strategy
 
- - Call `Reasoning` to obtain a `reasoning_plan` which determines the draft structure, prioritized sources, and excluded content
+- Call `Reasoning` to obtain a `reasoning_plan` which determines the draft structure, prioritized sources, and excluded content
 
 - Build prompt using defined templates (templates stored in repo or DB; ensure version/ID captured)
 
@@ -255,7 +255,7 @@ Responsibilities:
 
 - `DraftArticle` must include an `analysis_summary` derived from Analyst output, showing aggregated language/sentiment/bias scores and entity counts used to bias prompt and mark sections for fact-checking.
 
- - `DraftArticle` should include a `reasoning_plan_id` or `reasoning_plan` snippet indicating why certain sources were included or excluded, and summaries of prioritized claims.
+- `DraftArticle` should include a `reasoning_plan_id` or `reasoning_plan` snippet indicating why certain sources were included or excluded, and summaries of prioritized claims.
 
 - Log metrics and produce observability signals
 
@@ -501,9 +501,9 @@ Implementation considerations & complexity:
 
 - The fact-checker will likely combine multiple resources: curated internal knowledge graphs, external fact-checking APIs, newswire datasets, and trusted data sources. Establishing reliable sources and maintaining coverage across topics is a long-term effort.
 
- - The fact-checker will likely combine multiple resources: curated internal knowledge graphs, external fact-checking APIs, newswire datasets, and trusted data sources. Establishing reliable sources and maintaining coverage across topics is a long-term effort.
+- The fact-checker will likely combine multiple resources: curated internal knowledge graphs, external fact-checking APIs, newswire datasets, and trusted data sources. Establishing reliable sources and maintaining coverage across topics is a long-term effort.
 
- - The fact-checker must evaluate and return per-source verdicts to allow full traceability for the final synthesized article: for each article in the input cluster a `source_fact_check` record must be produced and stored.
+- The fact-checker must evaluate and return per-source verdicts to allow full traceability for the final synthesized article: for each article in the input cluster a `source_fact_check` record must be produced and stored.
 
 - For scalable verification, introduce caching of evidence and results (with TTL), dedup of requests, and batch verification of claims for cluster-level efficiency.
 
@@ -561,7 +561,7 @@ Integration & rollout policy:
 
 - Prioritize high-risk claim categories (public figures, numbers, legal/medical statements) in early rollout phases.
 
- - Use analyst-generated entity metadata and detected claims to seed fact-checking (e.g., verify entity-based claims or flagged low-confidence statements)
+- Use analyst-generated entity metadata and detected claims to seed fact-checking (e.g., verify entity-based claims or flagged low-confidence statements)
 
 ---
 
@@ -579,23 +579,23 @@ Integration & rollout policy:
 
 - POST `/api/v1/articles/synthesize` { cluster_id | article_ids, options } -> returns a job_id / draft.
 
- - POST `/api/v1/articles/synthesize` { cluster_id | article_ids, options } -> returns a job id for asynchronous processing. Use `GET /api/v1/articles/synthesize/{job_id}` to poll for status and results.
+- POST `/api/v1/articles/synthesize` { cluster_id | article_ids, options } -> returns a job id for asynchronous processing. Use `GET /api/v1/articles/synthesize/{job_id}` to poll for status and results.
 
- - POST `/api/v1/articles/analyze` { article_ids | cluster_id } -> returns analysis results for articles & cluster
+- POST `/api/v1/articles/analyze` { article_ids | cluster_id } -> returns analysis results for articles & cluster
 
- - POST `/api/v1/articles/fact_check` { article_ids | cluster_id } -> runs fact-check for each article and returns `source_fact_checks` and `cluster_fact_check_summary`
+- POST `/api/v1/articles/fact_check` { article_ids | cluster_id } -> runs fact-check for each article and returns `source_fact_checks` and `cluster_fact_check_summary`
 
- - POST `/api/v1/articles/reason` { article_ids | cluster_id } -> produces a `reasoning_plan` and returns a `reasoning_plan_id` and summarized plan
+- POST `/api/v1/articles/reason` { article_ids | cluster_id } -> produces a `reasoning_plan` and returns a `reasoning_plan_id` and summarized plan
 
- - GET `/api/v1/articles/:id/reasoning` -> retrieve reasoning plan for article/cluster
+- GET `/api/v1/articles/:id/reasoning` -> retrieve reasoning plan for article/cluster
 
- - GET `/api/v1/articles/:id/analysis` -> returns analysis metadata for a single article
+- GET `/api/v1/articles/:id/analysis` -> returns analysis metadata for a single article
 
 - GET `/api/v1/articles/synthesize/{job_id}` -> job status + preview + critic_result
 
 - GET `/api/v1/articles/:id/draft` -> retrieve a draft article
 
- - GET `/api/v1/articles/drafts` -> list of drafts for Chief Editor review (supports both Option A and Option B persistence)
+- GET `/api/v1/articles/drafts` -> list of drafts for Chief Editor review (supports both Option A and Option B persistence)
 
 - POST `/api/v1/articles/:id/publish` -> publish (Chief Editor or automated if gate allows)
 
@@ -605,7 +605,7 @@ Script for debugging:
 
 - `scripts/analyze_cluster.py` should exist to exercise `Analyst` locally and preview analysis results
 
- - **✅ IMPLEMENTED**: `scripts/analyze_cluster.py` exists to exercise `Analyst` locally. Use `--cluster-id` to fetch cluster articles and run analysis including per-article fact-checks.
+- **✅ IMPLEMENTED**: `scripts/analyze_cluster.py` exists to exercise `Analyst` locally. Use `--cluster-id` to fetch cluster articles and run analysis including per-article fact-checks.
 
 - `scripts/fact_check_article.py` should exist to run fact-checks locally against a sample dataset and to debug evidence collection
 
@@ -751,15 +751,15 @@ Script for debugging:
 
 - Implement `ClusterFetcher`
 
- - ✅ IMPLEMENTED: `ClusterFetcher` (file: `agents/cluster_fetcher/cluster_fetcher.py`)
+- ✅ IMPLEMENTED: `ClusterFetcher` (file: `agents/cluster_fetcher/cluster_fetcher.py`)
 
-   - Provides `ClusterFetcher.fetch_cluster(cluster_id|article_ids)` returning normalized `ArticleRecord` objects
+  - Provides `ClusterFetcher.fetch_cluster(cluster_id|article_ids)` returning normalized `ArticleRecord` objects
 
-   - Supports transparent integration with `archive_storage/transparency` clusters and direct article IDs
+  - Supports transparent integration with `archive_storage/transparency` clusters and direct article IDs
 
-   - Includes de-duplication by URL
+  - Includes de-duplication by URL
 
-   - Unit tests provided in `tests/agents/cluster_fetcher/test_cluster_fetcher.py` (3 passing tests)
+  - Unit tests provided in `tests/agents/cluster_fetcher/test_cluster_fetcher.py` (3 passing tests)
 
 - ✅ **COMPLETED**: Implement `Analyst` agent skeleton & unit tests
 
@@ -805,9 +805,9 @@ Script for debugging:
 
 - Owner: `agents/journalist`, `agents/synthesizer`, and `database` owners together
 
- - Owner: `agents/journalist`, `agents/synthesizer`, `agents/fact_checker`, and `database` owners together
+- Owner: `agents/journalist`, `agents/synthesizer`, `agents/fact_checker`, and `database` owners together
 
- - Owner: `agents/journalist`, `agents/synthesizer`, `agents/reasoning`, `agents/fact_checker`, and `database` owners together
+- Owner: `agents/journalist`, `agents/synthesizer`, `agents/reasoning`, `agents/fact_checker`, and `database` owners together
 
 - Timeline: break down into 2-week sprints:
 

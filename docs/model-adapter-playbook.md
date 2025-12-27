@@ -89,37 +89,37 @@ Where the repo stands now (examples):
 
 1. Design + Spec
 
-   - Add `agents/common/adapter_base.py` and `docs/adapter_spec.md` with the lifecycle and config.
+  - Add `agents/common/adapter_base.py` and `docs/adapter_spec.md` with the lifecycle and config.
 
 1. Template & Mock
 
-   - Create `MockAdapter` that returns deterministic outputs and supports simulated latency/failures. The repo already contains dry-run test helpers and per-agent mocks for JSON shapes; make `agents/common/mock_adapter.py` a canonical mock implementation to reuse across agent tests and CI if you pick option A below.
+  - Create `MockAdapter` that returns deterministic outputs and supports simulated latency/failures. The repo already contains dry-run test helpers and per-agent mocks for JSON shapes; make `agents/common/mock_adapter.py` a canonical mock implementation to reuse across agent tests and CI if you pick option A below.
 
 1. Implement one real adapter
 
-   - Option A: OpenAI (fastest — needs API key)
+  - Option A: OpenAI (fastest — needs API key)
 
-   - Option B: HuggingFace local (bitsandbytes/accelerate) for on-prem inference
+  - Option B: HuggingFace local (bitsandbytes/accelerate) for on-prem inference
 
-   - Option C: litellm or other hosted adapters already in the stack
+  - Option C: litellm or other hosted adapters already in the stack
 
 1. Testing (what's in place and what to add)
 
-   - Already added: dry-run focused adapter tests in `tests/adapters/test_mistral_adapter.py` and per-agent dry-run engine tests (e.g. `tests/agents/test_*_mistral_engine.py`). These run safely inside the canonical conda env using the project wrapper `scripts/dev/run_pytest_conda.sh`.
+  - Already added: dry-run focused adapter tests in `tests/adapters/test_mistral_adapter.py` and per-agent dry-run engine tests (e.g. `tests/agents/test_*_mistral_engine.py`). These run safely inside the canonical conda env using the project wrapper `scripts/dev/run_pytest_conda.sh`.
 
-   - CI: a GH Actions workflow was added at `.github/workflows/mistral-dryrun-tests.yml` to run the adapter + engine dry-run tests in `${CANONICAL_ENV:-justnews-py312}` on PRs.
+  - CI: a GH Actions workflow was added at `.github/workflows/mistral-dryrun-tests.yml` to run the adapter + engine dry-run tests in `${CANONICAL_ENV:-justnews-py312}` on PRs.
 
-   - Additional recommendations: add `tests/adapters/test_mock_adapter.py` and `tests/adapters/test_base.py` for the BaseAdapter + MockAdapter once created, and include smoke fixtures that exercise JSON schema stability so prompt-schema drift is caught by CI.
+  - Additional recommendations: add `tests/adapters/test_mock_adapter.py` and `tests/adapters/test_base.py` for the BaseAdapter + MockAdapter once created, and include smoke fixtures that exercise JSON schema stability so prompt-schema drift is caught by CI.
 
 1. Integrate with orchestrator
 
-   - Update `AGENT_MODEL_MAP.json` for mapping
+  - Update `AGENT_MODEL_MAP.json` for mapping
 
-   - Add orchestrator logic to schedule adapter.load/unload per GPU plan
+  - Add orchestrator logic to schedule adapter.load/unload per GPU plan
 
 1. CI & Canary flows
 
-   - Add GH job running adapter unit tests and mock smoke-suite.
+  - Add GH job running adapter unit tests and mock smoke-suite.
 
 ## 4) Example adapter sketches
 

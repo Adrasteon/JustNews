@@ -42,29 +42,29 @@ standards and exceeds industry benchmarks. Our target is **>90% quality score** 
 
 1. **Description Score (50%)**: Based on average description length
 
-   - 200+ characters = 100 points
+  - 200+ characters = 100 points
 
-   - 150-199 characters = 75 points
+  - 150-199 characters = 75 points
 
-   - 100-149 characters = 50 points
+  - 100-149 characters = 50 points
 
-   - <100 characters = 0 points
+  - <100 characters = 0 points
 
 1. **Tagging Score (50%)**: Based on percentage of tagged documents
 
-   - 100% tagged = 100 points
+  - 100% tagged = 100 points
 
-   - 90-99% tagged = 90 points
+  - 90-99% tagged = 90 points
 
-   - <90% tagged = penalty applied
+  - <90% tagged = penalty applied
 
 1. **Issue Penalty**: -5 points per quality issue
 
-   - Missing description (<50 chars)
+  - Missing description (<50 chars)
 
-   - Missing tags
+  - Missing tags
 
-   - Missing word count
+  - Missing word count
 
 ---
 
@@ -94,29 +94,29 @@ JustNews/
 
 1. **Main Documentation** (Critical Priority)
 
-   - README.md, CHANGELOG.md
+  - README.md, CHANGELOG.md
 
-   - Installation and deployment guides
+  - Installation and deployment guides
 
 1. **Agent Documentation** (High Priority)
 
-   - Individual agent specifications
+  - Individual agent specifications
 
-   - API documentation and endpoints
+  - API documentation and endpoints
 
 1. **Technical Reports** (Medium Priority)
 
-   - Performance analysis
+  - Performance analysis
 
-   - Architecture documentation
+  - Architecture documentation
 
-   - Development reports
+  - Development reports
 
 1. **Maintenance Documentation** (Low Priority)
 
-   - Troubleshooting guides
+  - Troubleshooting guides
 
-   - Backup and recovery procedures
+  - Backup and recovery procedures
 
 ---
 

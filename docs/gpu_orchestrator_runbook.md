@@ -231,15 +231,15 @@ Steps:
 
 1. Set maintenance flag (API toggle) so admission controller rejects new GPU jobs.
 
-   - POST /control/maintenance {"mode": "drain"}
+  - POST /control/maintenance {"mode": "drain"}
 
 1. Pause new consumer reads while allowing in-flight jobs to complete.
 
-   - redis-cli XGROUP SETID stream:orchestrator:inference_jobs cg:inference >
+  - redis-cli XGROUP SETID stream:orchestrator:inference_jobs cg:inference >
 
 1. Monitor pending jobs and leases until the running/pending counts drop to 0.
 
-   - curl http://localhost:8008/metrics | grep gpu_orchestrator_pending_jobs
+  - curl http://localhost:8008/metrics | grep gpu_orchestrator_pending_jobs
 
 1. Stop worker pools cleanly via API: POST /pools/stop-all
 
@@ -271,9 +271,9 @@ Steps:
 
 1. If pool does not stop within configured grace period, force-stop via orchestrator process:
 
-   - engine.stop_worker_pool(pool_id)
+  - engine.stop_worker_pool(pool_id)
 
-   - Optionally SSH to host and kill process PID
+  - Optionally SSH to host and kill process PID
 
 1. Confirm pool removed and leases released: GET /leases (no entries for pool_id)
 
@@ -297,7 +297,7 @@ Steps (manual & with caution):
 
 1. If lock is stale and safe to remove, run: SELECT RELEASE_LOCK('gpu_orchestrator_leader');
 
-   - Do NOT release live locks unless you have confirmed the previous leader has fully stopped.
+  - Do NOT release live locks unless you have confirmed the previous leader has fully stopped.
 
 1. Start orchestrator and confirm it becomes leader and rehydrates pools
 

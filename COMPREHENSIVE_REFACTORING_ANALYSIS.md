@@ -82,11 +82,11 @@ component/
 
 **Progress Summary**:
 
- - **Unified Deployment Framework**: Single entry point supporting systemd only (Kubernetes and Docker Compose deprecated/archived)
+- **Unified Deployment Framework**: Single entry point supporting systemd only (Kubernetes and Docker Compose deprecated/archived)
 
 - **Infrastructure as Code**: Declarative service definitions with comprehensive validation
 
- - **Multi-Platform Support**: systemd (production) (Docker Compose and Kubernetes deprecated)
+- **Multi-Platform Support**: systemd (production) (Docker Compose and Kubernetes deprecated)
 
 - **Automated Provisioning**: Environment-specific configuration generation with Jinja2 templates
 

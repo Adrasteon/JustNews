@@ -75,15 +75,15 @@ Deployment notes:
 
 - Configure runtime variables in `/etc/justnews/global.env` or a per-instance env file `/etc/justnews/crawl4ai.env`. Important variables:
 
-	- CRAWL4AI_HOST (default 127.0.0.1)
+  - CRAWL4AI_HOST (default 127.0.0.1)
 
-	- CRAWL4AI_PORT (default 3308)
+  - CRAWL4AI_PORT (default 3308)
 
-	- CRAWL4AI_BASE_URL (optional override)
+  - CRAWL4AI_BASE_URL (optional override)
 
-	- CRAWL4AI_USE_LLM (true/false)
+  - CRAWL4AI_USE_LLM (true/false)
 
-	- CRAWL4AI_MODEL_CACHE_DIR (local model cache directory)
+  - CRAWL4AI_MODEL_CACHE_DIR (local model cache directory)
 
 If you previously used the standalone unit `infrastructure/systemd/crawl4ai- bridge.service`, switch to
 `justnews@crawl4ai` to avoid duplication. The repository includes an agent wrapper at `agents/crawl4ai/main.py` which

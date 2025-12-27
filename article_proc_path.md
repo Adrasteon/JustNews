@@ -22,75 +22,75 @@ Based on the tests and workflow verified on 2025-11-14.
 
 1. **Crawler** builds HITL candidate payload:
 
-   - Converts `site_id` from int to string
+  - Converts `site_id` from int to string
 
-   - Includes `extracted_text`, `extracted_title`, `url`
+  - Includes `extracted_text`, `extracted_title`, `url`
 
-   - Adds `features` (word_count, confidence, paywall_flag, language)
+  - Adds `features` (word_count, confidence, paywall_flag, language)
 
-   - Attaches `raw_html_ref` for archive storage
+  - Attaches `raw_html_ref` for archive storage
 
 1. **Crawler** POSTs candidate to `http://127.0.0.1:8040/api/candidates`
 
 1. **HITL Service** receives candidate:
 
-   - Stores in `hitl_staging.db` → `hitl_candidates` table
+  - Stores in `hitl_staging.db` → `hitl_candidates` table
 
-   - Sets status to `pending`
+  - Sets status to `pending`
 
-   - Optionally forwards to `HITL_CANDIDATE_FORWARD_AGENT` (if configured)
+  - Optionally forwards to `HITL_CANDIDATE_FORWARD_AGENT` (if configured)
 
 1. **HITL Service** serves candidate via `/api/next`:
 
-   - Prioritizes by `HITL_PRIORITY_SITES` if configured
+  - Prioritizes by `HITL_PRIORITY_SITES` if configured
 
-   - Returns batch to UI or API consumer
+  - Returns batch to UI or API consumer
 
-   - Marks as `in_review` when fetched
+  - Marks as `in_review` when fetched
 
 1. **Annotator** (human or automated) labels via `/api/label`:
 
-   - Submits: `candidate_id`, `label` (valid_news/messy_news/not_news), `cleaned_text`, `annotator_id`
+  - Submits: `candidate_id`, `label` (valid_news/messy_news/not_news), `cleaned_text`, `annotator_id`
 
 1. **HITL Service** processes label:
 
-   - Stores in `hitl_labels` table with `label_id`
+  - Stores in `hitl_labels` table with `label_id`
 
-   - Builds `ingest_payload` with full candidate data + label
+  - Builds `ingest_payload` with full candidate data + label
 
-   - Builds `training_payload` for ML system
+  - Builds `training_payload` for ML system
 
-   - Optionally samples for QA queue (~10% rate)
+  - Optionally samples for QA queue (~10% rate)
 
 1. **HITL Service** dispatches asynchronously:
 
     - **Ingest Forward** (if `HITL_FORWARD_AGENT`/`_TOOL` set):
 
-       - Calls MCP Bus: `POST /call` → `{agent: "archive", tool: "queue_article", payload: ingest_payload}`
+      - Calls MCP Bus: `POST /call` → `{agent: "archive", tool: "queue_article", payload: ingest_payload}`
 
-       - Retries 3x with exponential backoff on failure
+      - Retries 3x with exponential backoff on failure
 
-       - Updates `ingestion_status`: `pending` → `enqueued` (success) or `error` (failure)
+      - Updates `ingestion_status`: `pending` → `enqueued` (success) or `error` (failure)
 
-   - **Training Forward** (if `HITL_TRAINING_FORWARD_AGENT`/`_TOOL` set):
+  - **Training Forward** (if `HITL_TRAINING_FORWARD_AGENT`/`_TOOL` set):
 
-     - Calls MCP Bus → training system
+    - Calls MCP Bus → training system
 
-     - Payload includes label + candidate for model retraining
+    - Payload includes label + candidate for model retraining
 
-   - Both forwards happen in parallel via `asyncio.create_task()`
+  - Both forwards happen in parallel via `asyncio.create_task()`
 
 1. **Archive Agent**:
 
-   - Receives `ingest_payload` via MCP Bus using the `queue_article` tool
+  - Receives `ingest_payload` via MCP Bus using the `queue_article` tool
 
-   - Normalizes metadata (url hashing, canonicalization, annotator context)
+  - Normalizes metadata (url hashing, canonicalization, annotator context)
 
-   - Verifies / copies `raw_html_ref` artefacts into `archive_storage/raw_html` and emits `raw_html_*` counters
+  - Verifies / copies `raw_html_ref` artefacts into `archive_storage/raw_html` and emits `raw_html_*` counters
 
-   - Stores article + embeddings via `agents.memory.tools.save_article` (MariaDB + ChromaDB)
+  - Stores article + embeddings via `agents.memory.tools.save_article` (MariaDB + ChromaDB)
 
-   - Emits `ingest_success_total` / `ingest_latency_seconds` metrics and reports duplicates (dashboard wiring next)
+  - Emits `ingest_success_total` / `ingest_latency_seconds` metrics and reports duplicates (dashboard wiring next)
 
 ### Path 3: Training Feedback Loop
 
@@ -98,17 +98,17 @@ Based on the tests and workflow verified on 2025-11-14.
 
 1. **Training System** (when implemented):
 
-   - Receives labeled examples
+  - Receives labeled examples
 
-   - Updates models (classification, extraction, etc.)
+  - Updates models (classification, extraction, etc.)
 
-   - Increments `justnews_training_examples_total{example_type="hitl_label"}`
+  - Increments `justnews_training_examples_total{example_type="hitl_label"}`
 
 1. **GPU Orchestrator** manages model deployment:
 
-   - New models pushed to `model_store/`
+  - New models pushed to `model_store/`
 
-   - Agents reload models on next inference request
+  - Agents reload models on next inference request
 
 ### Path 4: QA Review (Sampled)
 
@@ -118,9 +118,9 @@ Based on the tests and workflow verified on 2025-11-14.
 
 1. **QA Reviewer** submits review via `/api/qa/review`:
 
-   - `status`: `pass` or `fail`
+  - `status`: `pass` or `fail`
 
-   - `notes`: optional feedback
+  - `notes`: optional feedback
 
 1. Failed QA items trigger alerts if failure rate exceeds threshold
 

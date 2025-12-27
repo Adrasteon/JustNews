@@ -10,71 +10,71 @@ This is a comprehensive index of all JustNews documentation, organized by topic 
 
 1. [Setup Guide](./operations/SETUP_GUIDE.md) — Complete installation from scratch
 
-   - Python 3.12 and Miniconda setup
+  - Python 3.12 and Miniconda setup
 
-   - Conda environment creation
+  - Conda environment creation
 
-   - Global environment configuration
+  - Global environment configuration
 
-   - Vault OSS installation and initialization
+  - Vault OSS installation and initialization
 
-   - MariaDB database setup
+  - MariaDB database setup
 
-   - ChromaDB vector database setup
+  - ChromaDB vector database setup
 
-   - Verification and testing
+  - Verification and testing
 
-   - Systemd integration
+  - Systemd integration
 
 1. [Environment Configuration](./operations/ENVIRONMENT_CONFIG.md) — Understanding and managing configuration
 
-   - Global.env file structure
+  - Global.env file structure
 
-   - Secrets management integration
+  - Secrets management integration
 
-   - Environment variable reference
+  - Environment variable reference
 
-   - Troubleshooting common config issues
+  - Troubleshooting common config issues
 
 1. [Vault Administration](./operations/VAULT_SETUP.md) — Managing secrets securely
 
-   - Vault architecture and design
+  - Vault architecture and design
 
-   - AppRole authentication setup
+  - AppRole authentication setup
 
-   - Secret creation and rotation
+  - Secret creation and rotation
 
-   - Emergency procedures
+  - Emergency procedures
 
-   - Integration with systemd services
+  - Integration with systemd services
 
 1. [Troubleshooting](./operations/TROUBLESHOOTING.md) — When things go wrong
 
-   - Service health checks
+  - Service health checks
 
-   - Common issues and fixes
+  - Common issues and fixes
 
-   - Emergency recovery procedures
+  - Emergency recovery procedures
 
-   - Performance monitoring
+  - Performance monitoring
 
 1. [Monitoring Infrastructure](./operations/MONITORING_INFRASTRUCTURE.md) — Setting up Prometheus and Grafana
 
-   - Pre-configured dashboards and configuration
+  - Pre-configured dashboards and configuration
 
-   - Integration with service monitoring
+  - Integration with service monitoring
 
-   - Dashboard usage guide
+  - Dashboard usage guide
 
 1. **[Monitoring Quick Deploy](./operations/MONITORING_QUICK_DEPLOY.md)** — **⭐ Start here for quick deployment**
 
-   - One-command deployment script
+  - One-command deployment script
 
-   - Full automation of installation and setup
+  - Full automation of installation and setup
 
-   - Step-by-step guide for deployment
+  - Step-by-step guide for deployment
 
-   - Troubleshooting tips
+  - Troubleshooting tips
 
 ## 📋 For Operations / System Administrators
 
@@ -315,21 +315,21 @@ infrastructure/
 
 1. **Check the docs first**:
 
-   - [Troubleshooting Guide](./operations/TROUBLESHOOTING.md) — Common issues
+  - [Troubleshooting Guide](./operations/TROUBLESHOOTING.md) — Common issues
 
-   - [FAQ](#) — Frequently asked questions
+  - [FAQ](#) — Frequently asked questions
 
-   - [Glossary](#) — Key terms
+  - [Glossary](#) — Key terms
 
 1. **Review relevant documentation**:
 
-   - Installation issues → [Setup Guide](./operations/SETUP_GUIDE.md)
+  - Installation issues → [Setup Guide](./operations/SETUP_GUIDE.md)
 
-   - Configuration issues → [Environment Configuration](./operations/ENVIRONMENT_CONFIG.md)
+  - Configuration issues → [Environment Configuration](./operations/ENVIRONMENT_CONFIG.md)
 
-   - Secrets issues → [Vault Setup](./operations/VAULT_SETUP.md)
+  - Secrets issues → [Vault Setup](./operations/VAULT_SETUP.md)
 
-   - Service issues → [Troubleshooting](./operations/TROUBLESHOOTING.md)
+  - Service issues → [Troubleshooting](./operations/TROUBLESHOOTING.md)
 
 1. **Check logs**:
 

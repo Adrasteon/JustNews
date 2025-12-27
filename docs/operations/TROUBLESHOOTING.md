@@ -859,10 +859,10 @@ mysql -u root < /tmp/backup.sql
 
 1. **Consult Docs**:
 
-   - Vault: `docs/operations/VAULT_SETUP.md`
+  - Vault: `docs/operations/VAULT_SETUP.md`
 
-   - Setup: `docs/operations/SETUP_GUIDE.md`
+  - Setup: `docs/operations/SETUP_GUIDE.md`
 
-   - Environment: `docs/operations/ENVIRONMENT_CONFIG.md`
+  - Environment: `docs/operations/ENVIRONMENT_CONFIG.md`
 
 1. **Enable Debug**: Set `set -x` in shell scripts or `--verbose` in commands

@@ -195,7 +195,7 @@ A7. Baseline validation (refactor sanity)
 
   - Use any provided helpers under `infrastructure/systemd/scripts/` (e.g., status panels, `health_check.sh --panel`).
 
- - Confirm MPS is active: `pgrep -x nvidia-cuda-mps-control` is running; Orchestrator MPS endpoints report enabled.
+- Confirm MPS is active: `pgrep -x nvidia-cuda-mps-control` is running; Orchestrator MPS endpoints report enabled.
 
 A8. Stabilize and document
 

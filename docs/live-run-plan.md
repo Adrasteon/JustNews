@@ -56,63 +56,63 @@ Stages and success criteria:
 
 1. Stage 0 — Setup & baseline
 
-   - **Status:** ✅ Complete. Dev setup instructions (`docs/dev-setup.md`) and smoke test `tests/smoke/test_stage0_env.py` validate the canonical conda env, compose stack, and required repo files. Canary URL list lives in `scripts/dev/canary_urls.txt` to keep runs deterministic.
+- **Status:** ✅ Complete. Dev setup instructions (`docs/dev-setup.md`) and smoke test `tests/smoke/test_stage0_env.py` validate the canonical conda env, compose stack, and required repo files. Canary URL list lives in `scripts/dev/canary_urls.txt` to keep runs deterministic.
 
-   - Reproducible branch and deterministic dev environment
+- Reproducible branch and deterministic dev environment
 
-   - Services: MariaDB, Redis, Chroma (brought up via `scripts/dev/docker-compose.e2e.yml`)
+- Services: MariaDB, Redis, Chroma (brought up via `scripts/dev/docker-compose.e2e.yml`)
 
-   - Systemd-managed agent fleet can be cycled with `infrastructure/systemd/scripts/enable_all.sh` (wrappers install into `/usr/local/bin` for sudo operators)
+- Systemd-managed agent fleet can be cycled with `infrastructure/systemd/scripts/enable_all.sh` (wrappers install into `/usr/local/bin` for sudo operators)
 
-   - Tests: unit + smoke tests run locally
+- Tests: unit + smoke tests run locally
 
 1. Stage 1 — Crawl & fetch verification
 
-   - **Status:** 🟡 Partially complete. Crawl4AI is the primary runner (`agents/crawler/crawl4ai_adapter.py` + `scripts/ops/run_crawl_schedule.py`) and profile-driven scheduling is live (`config/crawl_profiles/`). Crawler → HITL flow, metadata payloads, and adaptive metrics are documented in `article_proc_path.md` and `crawl_and_scrape_stack.md`.
+- **Status:** 🟡 Partially complete. Crawl4AI is the primary runner (`agents/crawler/crawl4ai_adapter.py` + `scripts/ops/run_crawl_schedule.py`) and profile-driven scheduling is live (`config/crawl_profiles/`). Crawler → HITL flow, metadata payloads, and adaptive metrics are documented in `article_proc_path.md` and `crawl_and_scrape_stack.md`.
 
-   - Verify fetchers write raw HTML and metadata. Raw HTML references (`raw_html_ref`) are generated, but confirmation that `archive_storage/raw_html` holds every payload still depends on the archive agent wiring.
+- Verify fetchers write raw HTML and metadata. Raw HTML references (`raw_html_ref`) are generated, but confirmation that `archive_storage/raw_html` holds every payload still depends on the archive agent wiring.
 
-   - Metrics: Stage B counters exist (see `common/stage_b_metrics.py`), yet no Grafana panel currently visualizes fetch success/latency.
+- Metrics: Stage B counters exist (see `common/stage_b_metrics.py`), yet no Grafana panel currently visualizes fetch success/latency.
 
 1. Stage 2 — Ingestion & normalization
 
-   - **Status:** 🟡 Archive → Stage B wired. HITL service (`agents/hitl_service`) now drives `archive.queue_article`, and the archive agent records raw HTML snapshots plus ingest metrics (`tests/agents/test_archive_ingest_pipeline.py`, `tests/agents/test_archive_raw_html_snapshot.py`).
+- **Status:** 🟡 Archive → Stage B wired. HITL service (`agents/hitl_service`) now drives `archive.queue_article`, and the archive agent records raw HTML snapshots plus ingest metrics (`tests/agents/test_archive_ingest_pipeline.py`, `tests/agents/test_archive_raw_html_snapshot.py`).
 
-   - Normalize raw HTML into canonical records once archive agent accepts the payload and persists normalized shapes.
+- Normalize raw HTML into canonical records once archive agent accepts the payload and persists normalized shapes.
 
-   - Metrics: ingest success rate, processing time → counters exist but still need Grafana wiring and DB visibility gates.
+- Metrics: ingest success rate, processing time → counters exist but still need Grafana wiring and DB visibility gates.
 
 1. Stage 3 — Parsing & structure extraction
 
-   - **Status:** 🟡 Fixtures in CI. Trafilatura-first extraction remains the default with readability/jusText fallbacks, and deterministic assertions now live in `tests/parsing/test_canary_articles.py` powered by `tests/fixtures/canary_articles/` (promoted from `output/canary_*`).
+- **Status:** 🟡 Fixtures in CI. Trafilatura-first extraction remains the default with readability/jusText fallbacks, and deterministic assertions now live in `tests/parsing/test_canary_articles.py` powered by `tests/fixtures/canary_articles/` (promoted from `output/canary_*`).
 
-   - Extract title, author, publish_date, body via Stage B pipeline hooks; broaden fixtures to cover author/date edge cases and ensure normalized-feed linkage.
+- Extract title, author, publish_date, body via Stage B pipeline hooks; broaden fixtures to cover author/date edge cases and ensure normalized-feed linkage.
 
-   - Tests validating extraction correctness on a canary dataset exist; next step is extending coverage and adding automated refresh jobs for new canaries.
+- Tests validating extraction correctness on a canary dataset exist; next step is extending coverage and adding automated refresh jobs for new canaries.
 
 1. Stage 4 — Reasoning, fact-check and editorial agents
 
-   - **Status:** 🟡 Harness hitting DB. Agents (journalist, fact_checker, synthesizer, etc.) keep their standardized engines/dry-run tests (`tests/agents/test_*_mistral_engine.py`), the harness still powers integration tests (`agents/common/agent_chain_harness.py`, `tests/integration/test_agent_chain_harness.py`), and a new repository/runner pair now fetches normalized rows directly from MariaDB (`agents/common/normalized_article_repository.py`, `agents/common/editorial_harness_runner.py`, `scripts/dev/run_agent_chain_harness.py`).
+- **Status:** 🟡 Harness hitting DB. Agents (journalist, fact_checker, synthesizer, etc.) keep their standardized engines/dry-run tests (`tests/agents/test_*_mistral_engine.py`), the harness still powers integration tests (`agents/common/agent_chain_harness.py`, `tests/integration/test_agent_chain_harness.py`), and a new repository/runner pair now fetches normalized rows directly from MariaDB (`agents/common/normalized_article_repository.py`, `agents/common/editorial_harness_runner.py`, `scripts/dev/run_agent_chain_harness.py`).
 
-   - Agent chain produces a draft/brief/fact-check bundle from live records, persists traces back to `articles` (fact_check_trace/synth_trace), and emits acceptance metrics; the nightly workflow `.github/workflows/editorial-harness.yml` plus `scripts/dev/bootstrap_editorial_harness_db.py` keeps the dry-run exercising DB/Chroma while we plumb stored drafts into the publisher checklist (see `docs/editorial_harness_runbook.md`).
+- Agent chain produces a draft/brief/fact-check bundle from live records, persists traces back to `articles` (fact_check_trace/synth_trace), and emits acceptance metrics; the nightly workflow `.github/workflows/editorial-harness.yml` plus `scripts/dev/bootstrap_editorial_harness_db.py` keeps the dry-run exercising DB/Chroma while we plumb stored drafts into the publisher checklist (see `docs/editorial_harness_runbook.md`).
 
-   - Metrics: Stage B counters now expose `justnews_stage_b_editorial_harness_*`; follow `docs/grafana/editorial-harness-wiring.md` to import the dashboard, connect Prometheus, and track longitudinal acceptance trends.
+- Metrics: Stage B counters now expose `justnews_stage_b_editorial_harness_*`; follow `docs/grafana/editorial-harness-wiring.md` to import the dashboard, connect Prometheus, and track longitudinal acceptance trends.
 
 1. Stage 5 — Publishing & end-to-end verification
 
-   - **Status:** 🟡 Partially started. The repository now includes a minimal Django-based publisher app (`agents/publisher`) with ingestion tooling and sample content allowing local publish/testing. This is a major step towards full e2e publishing verification.
+- **Status:** 🟡 Partially started. The repository now includes a minimal Django-based publisher app (`agents/publisher`) with ingestion tooling and sample content allowing local publish/testing. This is a major step towards full e2e publishing verification.
 
-   - Evidence: `agents/publisher/manage.py`, `agents/publisher/news/views.py`, `agents/publisher/news/sample_articles.json`, initial migrations and tests are present on `dev/live-run-tests`.
+- Evidence: `agents/publisher/manage.py`, `agents/publisher/news/views.py`, `agents/publisher/news/sample_articles.json`, initial migrations and tests are present on `dev/live-run-tests`.
 
-   - Gaps: integration with editorial agents, automated e2e tests that exercise the full pipeline (crawl → ingest → parse → editorial → publish), production-grade site validation, and CI gates are pending.
+- Gaps: integration with editorial agents, automated e2e tests that exercise the full pipeline (crawl → ingest → parse → editorial → publish), production-grade site validation, and CI gates are pending.
 
 1. Observability & test harness
 
-   - **Status:** 🟢 Foundations ship with the repo. Grafana dashboards plus provisioning manifests live under `docs/grafana/` (including the new `editorial-harness-dashboard.json` that surfaces Stage 4 acceptance metrics), adapter alert rules are codified in `docs/monitoring/adapter-alert-rules.yml`, and tracing glue is updated in `monitoring/core/trace_collector.py`. The production instance now sources its Business Metrics, JustNews Operations, and JustNews System Overview dashboards directly from `monitoring/dashboards/generated/` and only those three dashboards remain published.
+- **Status:** 🟢 Foundations ship with the repo. Grafana dashboards plus provisioning manifests live under `docs/grafana/` (including the new `editorial-harness-dashboard.json` that surfaces Stage 4 acceptance metrics), adapter alert rules are codified in `docs/monitoring/adapter-alert-rules.yml`, and tracing glue is updated in `monitoring/core/trace_collector.py`. The production instance now sources its Business Metrics, JustNews Operations, and JustNews System Overview dashboards directly from `monitoring/dashboards/generated/` and only those three dashboards remain published.
 
-   - Metrics, traces (correlation IDs), dashboards — need wiring to the new Grafana configs and exporter jobs.
+- Metrics, traces (correlation IDs), dashboards — need wiring to the new Grafana configs and exporter jobs.
 
-   - Canary dataset for E2E automation — partially addressed via `scripts/dev/canary_urls.txt`, but no automated crawl→publish harness yet.
+- Canary dataset for E2E automation — partially addressed via `scripts/dev/canary_urls.txt`, but no automated crawl→publish harness yet.
 
    ### Note: GPU tests are disabled by default (safety)
 

@@ -65,7 +65,7 @@ Notes:
 
 - `agents/cluster_fetcher/ClusterFetcher` — harvests cluster content and normalizes article records.
 
- - `agents/crawler/CrawlerEngine` & `GenericSiteCrawler` — initial webcrawl, scraping and article extraction. They apply a multi-tier extraction pipeline (`agents/crawler/extraction.py`) and simple heuristics that mark `needs_review` when the content is short (below `ARTICLE_MIN_WORDS`) or has a low text-to-HTML ratio (`ARTICLE_MIN_TEXT_HTML_RATIO`). Paywall detection and `skip_ingest` are used to avoid ingesting behind-paywall pages unless explicitly permitted.
+- `agents/crawler/CrawlerEngine` & `GenericSiteCrawler` — initial webcrawl, scraping and article extraction. They apply a multi-tier extraction pipeline (`agents/crawler/extraction.py`) and simple heuristics that mark `needs_review` when the content is short (below `ARTICLE_MIN_WORDS`) or has a low text-to-HTML ratio (`ARTICLE_MIN_TEXT_HTML_RATIO`). Paywall detection and `skip_ingest` are used to avoid ingesting behind-paywall pages unless explicitly permitted.
 
 - `agents/analyst/AnalystEngine` — extracts claims, runs per-article fact checks, and outputs `AnalysisReport` with `source_fact_checks` and `cluster_fact_check_summary`.
 
@@ -81,7 +81,7 @@ Notes:
 
 - `database` migrations 004/005/006 — schema changes for extended `articles`, new `synthesized_articles`, and job store.
 
- - `scripts/ops/run_crawl_schedule.py` — scheduler and orchestrator for large-scale crawls. It builds schedules from `config/crawl_schedule.yaml`, enforces budgets, publishes Prometheus textfile metrics, and submits crawler jobs. This script is the canonical production entrypoint for scheduled crawling and should be used in production timers and CI smoke tests.
+- `scripts/ops/run_crawl_schedule.py` — scheduler and orchestrator for large-scale crawls. It builds schedules from `config/crawl_schedule.yaml`, enforces budgets, publishes Prometheus textfile metrics, and submits crawler jobs. This script is the canonical production entrypoint for scheduled crawling and should be used in production timers and CI smoke tests.
 
 ---
 
@@ -101,26 +101,26 @@ Endpoints:
 
 - `POST /admin/set_publishing_config` — sets config via the `ConfigurationManager` and persists when requested.
 
- - Authentication: `GET` and `POST` admin endpoints support two modes and will accept either:
-	 1. A legacy static API key via `Authorization: Bearer <ADMIN_API_KEY>` or `X-Admin-API-Key: <key>` (suitable for simple/local deployments), or
-	 1. A role-based JWT Bearer token (when `ADMIN_API_KEY` is not set). The token must validate (`verify_token`) and the user must have `role=admin`.
+- Authentication: `GET` and `POST` admin endpoints support two modes and will accept either:
+  1. A legacy static API key via `Authorization: Bearer <ADMIN_API_KEY>` or `X-Admin-API-Key: <key>` (suitable for simple/local deployments), or
+  1. A role-based JWT Bearer token (when `ADMIN_API_KEY` is not set). The token must validate (`verify_token`) and the user must have `role=admin`.
 
 Implementation note: the dashboard uses a runtime import of `agents.common.auth_models` so tests can monkeypatch
 `verify_token` and `get_user_by_id`. A recent fix ensures the `GET /admin/get_publishing_config` codepath properly
 extracts and verifies JWTs — invalid tokens now correctly return HTTP 401 (the behaviour asserted by
 `tests/agents/dashboard/test_admin_jwt_auth.py`).
 
- - Audit log: admin changes are appended to `logs/audit/publishing_config_changes.jsonl` for traceability. When admin JWTs are used those admin actions include `user_id`/`username` in the audit entry; we recommend extending audit entries to capture requestor identity and IP address for richer traceability (tracked as a follow-up).
+- Audit log: admin changes are appended to `logs/audit/publishing_config_changes.jsonl` for traceability. When admin JWTs are used those admin actions include `user_id`/`username` in the audit entry; we recommend extending audit entries to capture requestor identity and IP address for richer traceability (tracked as a follow-up).
 
- - Reload endpoint protection: the common `/admin/reload` endpoint can now be registered as `require_admin=True` which enforces the same admin auth (static `ADMIN_API_KEY` or `role=admin` JWT) when used by agents like the dashboard. The dashboard uses `require_admin=True` by default for `/admin/reload` to prevent unauthorised runtime reloads.
+- Reload endpoint protection: the common `/admin/reload` endpoint can now be registered as `require_admin=True` which enforces the same admin auth (static `ADMIN_API_KEY` or `role=admin` JWT) when used by agents like the dashboard. The dashboard uses `require_admin=True` by default for `/admin/reload` to prevent unauthorised runtime reloads.
 
 Operator notes:
 
- - To enable admin authentication set `ADMIN_API_KEY` in `/etc/justnews/global.env` or the deployment environment. The endpoints will require the header: `Authorization: Bearer <ADMIN_API_KEY>` or `X-Admin-API-Key: <ADMIN_API_KEY>`. If you prefer per-user authorization and auditing, omit the `ADMIN_API_KEY` and enforce role-based JWTs via the `agents/common/auth_api` endpoints instead.
+- To enable admin authentication set `ADMIN_API_KEY` in `/etc/justnews/global.env` or the deployment environment. The endpoints will require the header: `Authorization: Bearer <ADMIN_API_KEY>` or `X-Admin-API-Key: <ADMIN_API_KEY>`. If you prefer per-user authorization and auditing, omit the `ADMIN_API_KEY` and enforce role-based JWTs via the `agents/common/auth_api` endpoints instead.
 
- - Tests: Add `tests/agents/dashboard/test_admin_jwt_auth.py` which validates JWT admin flows for `/admin/get_publishing_config`, `/admin/set_publishing_config` and `/admin/reload` (the latter validates admin auth succeeds even if no reload handlers are registered, proving auth is enforced).
+- Tests: Add `tests/agents/dashboard/test_admin_jwt_auth.py` which validates JWT admin flows for `/admin/get_publishing_config`, `/admin/set_publishing_config` and `/admin/reload` (the latter validates admin auth succeeds even if no reload handlers are registered, proving auth is enforced).
 
- - Add to Systemd env example: `infrastructure/systemd/examples/dashboard.env.example`: set `ADMIN_API_KEY` for the dashboard to enforce admin authentication. Rotate the key regularly and use an audit log retention policy in `monitoring/`. For production, prefer a JWT-based model and short-lived tokens.
+- Add to Systemd env example: `infrastructure/systemd/examples/dashboard.env.example`: set `ADMIN_API_KEY` for the dashboard to enforce admin authentication. Rotate the key regularly and use an audit log retention policy in `monitoring/`. For production, prefer a JWT-based model and short-lived tokens.
 
 - For production rollouts prefer an internal-only API gateway that enforces authentication and mTLS instead of a single static key; this is especially important for multi-user environments. Rotate keys using the `ConfigurationManager` and store audit logs in `logs/audit` (retention managed by infra).
 
@@ -172,9 +172,9 @@ Migration summary:
 
 - Critic policies with severity `block` or `must_edit` will prevent publishing and escalate to HITL. Critic results are stored as `critic_result` JSON with detailed messages.
 
- - Training-forward & HITL labeling: The HITL staging service (`agents/hitl_service`) collects reviewer decisions and can forward labels to the `training_system` when `HITL_TRAINING_FORWARD_AGENT` is configured. The integration test suite should assert that labeled HITL outputs can be exported and used to retrain extractors/classifiers in `training_system`.
+- Training-forward & HITL labeling: The HITL staging service (`agents/hitl_service`) collects reviewer decisions and can forward labels to the `training_system` when `HITL_TRAINING_FORWARD_AGENT` is configured. The integration test suite should assert that labeled HITL outputs can be exported and used to retrain extractors/classifiers in `training_system`.
 
- - Evidence audit integration: If `EVIDENCE_AUDIT_BASE_URL` is set and accessible it should be used as a canonical evidence provenance store. If unavailable, fact-checkers must conservatively default to `needs_review` rather than `passed` to avoid unsafe auto-publishing.
+- Evidence audit integration: If `EVIDENCE_AUDIT_BASE_URL` is set and accessible it should be used as a canonical evidence provenance store. If unavailable, fact-checkers must conservatively default to `needs_review` rather than `passed` to avoid unsafe auto-publishing.
 
 ---
 
@@ -206,7 +206,7 @@ articles become available for downstream clustering, analysis, fact-check, and u
 
 - Job store: `agents/synthesizer/job_store.py` supports in-memory or DB persistence. Default for production: DB-based table migration 006.
 
- - Retry & job recovery: DB-backed job store must be used in production to handle restarts, retries and backoffs. Integration tests should validate that state persists through agent restarts and that scheduled retries follow retry policies in `agents/synthesizer/job_store.py`.
+- Retry & job recovery: DB-backed job store must be used in production to handle restarts, retries and backoffs. Integration tests should validate that state persists through agent restarts and that scheduled retries follow retry policies in `agents/synthesizer/job_store.py`.
 
 ---
 
@@ -232,9 +232,9 @@ articles become available for downstream clustering, analysis, fact-check, and u
 
 - `scripts/ops/apply_synthesis_migration.sh`: audited apply for DB migrations 004–006.
 
- - `scripts/ops/run_crawl_schedule.py`: schedule orchestration for crawls — builds windows from `config/crawl_schedule.yaml`, enforces budgets, and publishes scheduler metrics to Prometheus via textfile exports. Use this script for production scheduled crawling and CI smoke tests.
+- `scripts/ops/run_crawl_schedule.py`: schedule orchestration for crawls — builds windows from `config/crawl_schedule.yaml`, enforces budgets, and publishes scheduler metrics to Prometheus via textfile exports. Use this script for production scheduled crawling and CI smoke tests.
 
- - `scripts/chroma_diagnose.py` / `scripts/chroma_bootstrap.py`: helper scripts to ensure the Chroma tenant and 'articles' collection are available for the memory agent; include these in the E2E integration docs.
+- `scripts/chroma_diagnose.py` / `scripts/chroma_bootstrap.py`: helper scripts to ensure the Chroma tenant and 'articles' collection are available for the memory agent; include these in the E2E integration docs.
 
 ---
 
@@ -242,11 +242,11 @@ articles become available for downstream clustering, analysis, fact-check, and u
 
 - Log: `synthesis_job_id`, `cluster_id`, `draft_id`, `model_version`, `start`/`end` times, `critic_result`, `fact_check_status`, `published`boolean.
 
- - Metrics: `synthesis_jobs_started`, `synthesis_jobs_published`, `analysis_latency`, `reasoning_latency`, `fact_check_pass_rate`.
+- Metrics: `synthesis_jobs_started`, `synthesis_jobs_published`, `analysis_latency`, `reasoning_latency`, `fact_check_pass_rate`.
 
- - Scheduler metrics: `justnews_crawler_scheduler_*` and adaptive metrics (`justnews_crawler_scheduler_adaptive_*`) produced by `scripts/ops/run_crawl_schedule.py` and `agents/crawler/adaptive_metrics`.
+- Scheduler metrics: `justnews_crawler_scheduler_*` and adaptive metrics (`justnews_crawler_scheduler_adaptive_*`) produced by `scripts/ops/run_crawl_schedule.py` and `agents/crawler/adaptive_metrics`.
 
- - Rate Limiting: Public API endpoints (`/api/public/*`) are protected by an in-memory rate limiter for ad-hoc deployments; production deployments should configure `REDIS_URL` so the router uses a Redis-backed rate limiter (consistent across replicas). The search router enforces `max_requests=20` per minute by default for public API requests. Unit tests exist in `tests/agents/dashboard/test_rate_limiting.py` to check both in-memory and Redis-backed behavior (with a fake Redis object in tests).
+- Rate Limiting: Public API endpoints (`/api/public/*`) are protected by an in-memory rate limiter for ad-hoc deployments; production deployments should configure `REDIS_URL` so the router uses a Redis-backed rate limiter (consistent across replicas). The search router enforces `max_requests=20` per minute by default for public API requests. Unit tests exist in `tests/agents/dashboard/test_rate_limiting.py` to check both in-memory and Redis-backed behavior (with a fake Redis object in tests).
 
 - Use Prometheus and Grafana dashboards to monitor the above metrics.
 
@@ -260,11 +260,11 @@ articles become available for downstream clustering, analysis, fact-check, and u
 
 - Make sure the Evidence Audit service is accessible in production; otherwise, any fact-check downstream errors should default to `needs_review`.
 
- - Retention & Backfill:
+- Retention & Backfill:
 
-	 - Raw HTML archival in `archive_storage/raw_html/` is the forensic record. Implement retention (cleanup) & backfill scripts in `scripts/ops/` to manage storage and ensure reproducible extraction runs.
+  - Raw HTML archival in `archive_storage/raw_html/` is the forensic record. Implement retention (cleanup) & backfill scripts in `scripts/ops/` to manage storage and ensure reproducible extraction runs.
 
- - Deprecated components: ultra-fast per-site crawlers (e.g., `agents/sites/bbc_crawler.py`) are kept as stubs and flagged for deprecation. The recommended path is to migrate specialized behaviour into `config/crawl_profiles` and the `crawl4ai_adapter` so adaptive Crawl4AI is the canonical strategy.
+- Deprecated components: ultra-fast per-site crawlers (e.g., `agents/sites/bbc_crawler.py`) are kept as stubs and flagged for deprecation. The recommended path is to migrate specialized behaviour into `config/crawl_profiles` and the `crawl4ai_adapter` so adaptive Crawl4AI is the canonical strategy.
 
 ---
 
@@ -282,7 +282,7 @@ articles become available for downstream clustering, analysis, fact-check, and u
 
 ## Known Gaps & Action Items (Post-Review)
 
- - CI: The repository now includes a GitHub Actions file `.github/workflows/integration-chroma-mariadb.yml` which spins up MariaDB and Chroma and runs a smoke test for `agents.memory` saving articles into Chroma. This ensures chroma/mariaDB-based flows are exercised in CI (requires enabling workflows on PRs for feature branch).
+- CI: The repository now includes a GitHub Actions file `.github/workflows/integration-chroma-mariadb.yml` which spins up MariaDB and Chroma and runs a smoke test for `agents.memory` saving articles into Chroma. This ensures chroma/mariaDB-based flows are exercised in CI (requires enabling workflows on PRs for feature branch).
 
 ## Next steps
 

@@ -27,51 +27,51 @@ referencing, and maintenance tools for all 140+ markdown documents across the co
 
 1. **Automated Discovery System** (`catalogue_expansion.py`)
 
-   - Scans entire codebase for .md files
+- Scans entire codebase for .md files
 
-   - Extracts metadata (title, description, tags, word count)
+- Extracts metadata (title, description, tags, word count)
 
-   - Categorizes documents automatically
+- Categorizes documents automatically
 
-   - Incremental updates to avoid rebuilds
+- Incremental updates to avoid rebuilds
 
 1. **Machine-Readable Catalogue** (`docs_catalogue_v2.json`)
 
-   - JSON format for programmatic access
+- JSON format for programmatic access
 
-   - Comprehensive metadata for each document
+- Comprehensive metadata for each document
 
-   - Search index with tags and keywords
+- Search index with tags and keywords
 
-   - Cross-reference mapping
+- Cross-reference mapping
 
 1. **Human-Readable Catalogue** (`DOCUMENTATION_CATALOGUE.md`)
 
-   - Markdown format for easy browsing
+- Markdown format for easy browsing
 
-   - Table of contents with navigation
+- Table of contents with navigation
 
-   - Category-based organization
+- Category-based organization
 
-   - Search and filtering capabilities
+- Search and filtering capabilities
 
 1. **Maintenance Tools** (`catalogue_maintenance.py`)
 
-   - Health monitoring and validation
+- Health monitoring and validation
 
-   - Advanced search and filtering
+- Advanced search and filtering
 
-   - Cross-reference analysis
+- Cross-reference analysis
 
-   - Performance reporting
+- Performance reporting
 
 1. **Interactive Navigator** (`docs_navigator.py`)
 
-   - Command-line interface for exploration
+- Command-line interface for exploration
 
-   - Real-time search and navigation
+- Real-time search and navigation
 
-   - Status tracking and reporting
+- Status tracking and reporting
 
 ## 🚀 Quick Start
 

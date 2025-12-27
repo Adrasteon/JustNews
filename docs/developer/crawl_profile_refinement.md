@@ -6,7 +6,7 @@ on the publisher site.
 
 ## 1. Environment Checklist
 
- - Activate the project environment: `conda run -n ${CANONICAL_ENV:-justnews-py312} ...` or use the preconfigured tasks in the repo.
+- Activate the project environment: `conda run -n ${CANONICAL_ENV:-justnews-py312} ...` or use the preconfigured tasks in the repo.
 
 - Ensure Playwright browsers are installed for the environment (`playwright install chromium`).
 

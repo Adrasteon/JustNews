@@ -15,27 +15,27 @@ issues, and optimization of GPU resource usage.
 
 1. **GPU Metrics Exporter** (`gpu_metrics_exporter.py`)
 
-   - Custom Python-based exporter using NVIDIA Management Library (NVML) via `nvidia-smi`
+  - Custom Python-based exporter using NVIDIA Management Library (NVML) via `nvidia-smi`
 
-   - HTTP server exposing Prometheus-formatted metrics on port 9400
+  - HTTP server exposing Prometheus-formatted metrics on port 9400
 
-   - Automatic background operation with health checks
+  - Automatic background operation with health checks
 
 1. **Prometheus Integration**
 
-   - GPU exporter added to scrape targets
+  - GPU exporter added to scrape targets
 
-   - 15-second scrape interval for real-time monitoring
+  - 15-second scrape interval for real-time monitoring
 
-   - Metrics stored with full retention policy
+  - Metrics stored with full retention policy
 
 1. **Grafana Visualization**
 
-   - 6 dedicated GPU panels in JustNews Operations Dashboard
+  - 6 dedicated GPU panels in JustNews Operations Dashboard
 
-   - Real-time gauges, stats, tables, and time series charts
+  - Real-time gauges, stats, tables, and time series charts
 
-   - Color-coded thresholds for easy issue identification
+  - Color-coded thresholds for easy issue identification
 
 ## GPU Metrics Available
 
@@ -162,17 +162,17 @@ The GPU monitoring is automatically configured when the monitoring stack is inst
 
 ```yaml
 
-   - job_name: nvidia-gpu-exporter
+  - job_name: nvidia-gpu-exporter
 static_configs:
 
-       - targets: ['127.0.0.1:9400']
+      - targets: ['127.0.0.1:9400']
 metrics_path: /metrics ```
 
 1. **Grafana Dashboard**
 
-   - Automatically provisioned from `monitoring/dashboards/generated/`
+  - Automatically provisioned from `monitoring/dashboards/generated/`
 
-   - 6 GPU panels integrated into JustNews Operations Dashboard
+  - 6 GPU panels integrated into JustNews Operations Dashboard
 
 ### Manual Verification
 

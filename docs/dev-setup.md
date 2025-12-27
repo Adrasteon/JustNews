@@ -5,11 +5,11 @@ flow. Use this on a development machine with Docker and the recommended conda en
 
 Prerequisites
 
- - Docker / docker-compose or equivalent
+- Docker / docker-compose or equivalent
 
- - git
+- git
 
- - conda or mamba (recommended: Python 3.12 environment)
+- conda or mamba (recommended: Python 3.12 environment)
 
 Create the Python environment
 

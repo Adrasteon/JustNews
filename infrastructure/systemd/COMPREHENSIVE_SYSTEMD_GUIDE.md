@@ -106,9 +106,9 @@ ls -la /tmp/nvidia-mps/
 
 1. **Environment Configuration**:
 
-   - Global: `ENABLE_MPS=true` in `/etc/justnews/global.env`
+  - Global: `ENABLE_MPS=true` in `/etc/justnews/global.env`
 
-   - GPU Orchestrator: `ENABLE_MPS=true` and `ENABLE_NVML=true` in `/etc/justnews/gpu_orchestrator.env`
+  - GPU Orchestrator: `ENABLE_MPS=true` and `ENABLE_NVML=true` in `/etc/justnews/gpu_orchestrator.env`
 
 1. **Validate Configuration**:
 

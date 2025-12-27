@@ -8,10 +8,15 @@ if command -v conda >/dev/null 2>&1; then
     # If the environment exists, run tests inside it
     if conda env list 2>/dev/null | awk '{print $1}' | grep -xq "$CANONICAL_ENV"; then
         echo "Running pytest inside conda env: $CANONICAL_ENV"
-        # If no pytest args were provided, default to quiet output (-q) so the
-        # terminal shows progress (dots) and it's clear tests are running.
+        # If no pytest args were provided, detect interactive TTY sessions and
+        # show per-test names (-vv) for better progress visibility. In CI or
+        # non-interactive environments we stay quiet with -q to reduce log noise.
         if [ "$#" -eq 0 ]; then
-            PYTEST_ARGS=("-q")
+            if [ -t 1 ] && [ "${CI:-}" != "true" ]; then
+                PYTEST_ARGS=("-vv")
+            else
+                PYTEST_ARGS=("-q")
+            fi
         else
             PYTEST_ARGS=("$@")
         fi

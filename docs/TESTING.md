@@ -11,7 +11,7 @@ High-level steps
 
 1. Use the helper runner to load project env vars and run pytest
 
-Note: Running `./scripts/dev/pytest.sh` with no arguments will now default to `pytest -q` so you get visible progress (dots) in your terminal; pass explicit pytest args to override this behavior.
+Note: Running `./scripts/dev/pytest.sh` with no arguments will now default to `pytest -vv` when run in an interactive terminal (TTY) so you see per-test names and progress; in CI or non-interactive sessions it defaults to `pytest -q`. Pass explicit pytest args to override this behavior.
 
 Bring up services ----------------- The repository includes a helper compose file used by CI and local engineers.
 

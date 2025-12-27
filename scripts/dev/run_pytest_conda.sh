@@ -8,7 +8,14 @@ if command -v conda >/dev/null 2>&1; then
     # If the environment exists, run tests inside it
     if conda env list 2>/dev/null | awk '{print $1}' | grep -xq "$CANONICAL_ENV"; then
         echo "Running pytest inside conda env: $CANONICAL_ENV"
-        conda run -n "$CANONICAL_ENV" pytest "$@"
+        # If no pytest args were provided, default to quiet output (-q) so the
+        # terminal shows progress (dots) and it's clear tests are running.
+        if [ "$#" -eq 0 ]; then
+            PYTEST_ARGS=("-q")
+        else
+            PYTEST_ARGS=("$@")
+        fi
+        conda run -n "$CANONICAL_ENV" pytest "${PYTEST_ARGS[@]}"
         exit $?
     fi
 fi

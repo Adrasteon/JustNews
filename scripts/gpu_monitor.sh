@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 # Simple GPU + memory monitor that appends sampling data to a log file
-# Usage: scripts/gpu_monitor.sh /tmp/gpu_monitor.log [interval_seconds]
+# Usage: scripts/gpu_monitor.sh [logfile] [interval_seconds]
+# Default logfile is <repo_root>/run/gpu_monitor.log
 set -euo pipefail
 
-LOG=${1:-/tmp/gpu_monitor.log}
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+RUN_DIR="$ROOT_DIR/run"
+mkdir -p "$RUN_DIR"
+LOG=${1:-"$RUN_DIR/gpu_monitor.log"}
+# ensure logfile exists and has sane perms
+touch "$LOG"
+chmod 0644 "$LOG"
 INTERVAL=${2:-1}
 
 echo "Starting GPU monitor: logging to $LOG (interval=${INTERVAL}s)"

@@ -1,0 +1,10 @@
+/home/adra/JustNews/run/gpu_monitor.log {
+    daily
+    rotate 14
+    compress
+    missingok
+    notifempty
+    copytruncate
+    create 0644 adra adra
+    dateext
+}

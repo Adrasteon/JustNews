@@ -230,6 +230,19 @@ def health_check() -> dict[str, Any]:
         health_status = engine.get_health_status()
         stats = engine.get_stats()
 
+        # Build agent components from engine-provided agent_details (best-effort)
+        agent_details = health_status.get("agent_details", [])
+        agents_component = {
+            "status": "healthy",
+            "registered_agents": len(engine.agents),
+            "details": agent_details,
+        }
+        # Determine agent component status
+        for a in agent_details:
+            if a.get("status") not in ("healthy", "unknown"):
+                agents_component["status"] = "degraded"
+                break
+
         # Check for critical issues
         issues = []
         if health_status.get("circuit_breaker_active", False):
@@ -238,14 +251,18 @@ def health_check() -> dict[str, Any]:
         if len(engine.agents) == 0:
             issues.append("No agents currently registered")
 
+        if agents_component.get("status") == "degraded":
+            issues.append("One or more registered agents reported unhealthy or unreachable")
+
         result = {
             "timestamp": time.time(),
-            "overall_status": "healthy" if not issues else "degraded",
+            "overall_status": health_status.get("status", "degraded"),
             "components": {
                 "agent_registry": {
-                    "status": "healthy",
+                    "status": "healthy" if len(engine.agents) > 0 else "degraded",
                     "registered_agents": len(engine.agents),
                 },
+                "agents": agents_component,
                 "circuit_breaker": {
                     "status": "healthy"
                     if not health_status.get("circuit_breaker_active")
@@ -260,6 +277,20 @@ def health_check() -> dict[str, Any]:
             "issues": issues,
             "stats": stats,
         }
+
+        # Emit metrics for overall and per-agent health (best-effort)
+        try:
+            from common.metrics import JustNewsMetrics
+
+            m = JustNewsMetrics("mcp_bus")
+            # overall
+            m.set_health_status(result.get("overall_status", "unknown"), target="overall", agent="mcp_bus")
+            # per-agent
+            for a in agent_details:
+                status = a.get("status", "unknown")
+                m.set_health_status(status, target="per_agent", agent=a.get("agent"))
+        except Exception:
+            logger.debug("Prometheus metrics not emitted for MCP Bus health (optional)")
 
         logger.debug(f"Health check completed: {result['overall_status']}")
         return result

@@ -463,45 +463,78 @@ Governance notes and rate-limit reviews belong in `logs/governance/crawl_terms_a
 
 ## Script Index (categorized)
 
-This index lists the primary startup scripts, useful utility scripts, developer-only helpers, and deprecated scripts referenced by the systemd deployment. Use the Startup sequence list when bringing up the full system; consult Utilities for operational tasks and Dev for local development aids.
+This index lists the primary startup scripts, useful utility scripts, developer-only helpers, and deprecated scripts
+referenced by the systemd deployment. Use the Startup sequence list when bringing up the full system; consult Utilities
+for operational tasks and Dev for local development aids.
 
 ### A — Startup sequence (use order)
+
 1. `infrastructure/systemd/canonical_system_startup.sh` — Top-level bring-up helper (env checks, reset/start, monitoring provisioning, consolidated health check).
-2. `infrastructure/systemd/scripts/ensure_global_python_bin.sh` — Ensure `PYTHON_BIN` is present in `/etc/justnews/global.env` (idempotent).
-3. `infrastructure/systemd/preflight.sh` — Node preflight checks (tools, GPU, ports, conda env) — run as a dry-run pre-check.
-4. `infrastructure/systemd/reset_and_start.sh` — Orchestration: stop/disable, free ports, reinstall templates/scripts (optional), daemon-reload, and fresh-start (calls `enable_all.sh fresh`).
-5. `infrastructure/systemd/scripts/enable_all.sh` — Enable/start services in canonical order (GPU Orchestrator → MCP Bus → agents) with readiness gating.
-6. `infrastructure/systemd/scripts/justnews-start-agent.sh` — Agent startup wrapper used by `justnews@.service`.
-7. `infrastructure/systemd/scripts/wait_for_mcp.sh` — Wait for MCP Bus `/health` before dependent agents start.
-8. `infrastructure/systemd/scripts/install_monitoring_stack.sh` — Provision Prometheus/Grafana/node_exporter (invoked by canonical startup when needed).
-9. `infrastructure/systemd/cold_start.sh` — Cold-boot helper for post-reboot flow (installs wrappers/units, starts orchestrator first, then all services, runs health checks).
-10. `infrastructure/systemd/scripts/health_check.sh` — Consolidated health validation run after startup.
+
+1. `infrastructure/systemd/scripts/ensure_global_python_bin.sh` — Ensure `PYTHON_BIN` is present in `/etc/justnews/global.env` (idempotent).
+
+1. `infrastructure/systemd/preflight.sh` — Node preflight checks (tools, GPU, ports, conda env) — run as a dry-run pre-check.
+
+1. `infrastructure/systemd/reset_and_start.sh` — Orchestration: stop/disable, free ports, reinstall templates/scripts (optional), daemon-reload, and fresh-start (calls `enable_all.sh fresh`).
+
+1. `infrastructure/systemd/scripts/enable_all.sh` — Enable/start services in canonical order (GPU Orchestrator → MCP Bus → agents) with readiness gating.
+
+1. `infrastructure/systemd/scripts/justnews-start-agent.sh` — Agent startup wrapper used by `justnews@.service`.
+
+1. `infrastructure/systemd/scripts/wait_for_mcp.sh` — Wait for MCP Bus `/health` before dependent agents start.
+
+1. `infrastructure/systemd/scripts/install_monitoring_stack.sh` — Provision Prometheus/Grafana/node_exporter (invoked by canonical startup when needed).
+
+1. `infrastructure/systemd/cold_start.sh` — Cold-boot helper for post-reboot flow (installs wrappers/units, starts orchestrator first, then all services, runs health checks).
+
+1. `infrastructure/systemd/scripts/health_check.sh` — Consolidated health validation run after startup.
 
 ### B — Utility scripts (one-line descriptions)
+
 - `infrastructure/systemd/scripts/ensure_global_python_bin.sh` — Ensure `PYTHON_BIN` exists in `/etc/justnews/global.env`.
+
 - `infrastructure/systemd/scripts/check_protobuf_version.py` — Verify protobuf runtime compatibility.
+
 - `infrastructure/systemd/scripts/install_monitoring_stack.sh` — Idempotent provisioning of Prometheus/Grafana/node_exporter.
+
 - `scripts/install_alertmanager_unit.sh` — Idempotent installer for host-level Alertmanager systemd unit (backups to `/var/backups/justnews/alertmanager/`).
+
 - `infrastructure/systemd/scripts/collect_startup_diagnostics.sh` — Gather logs, systemd status, and `nvidia-smi` for debugging startup issues.
+
 - `infrastructure/systemd/scripts/justnews-preflight-check.sh` — Small preflight helper installed to `/usr/local/bin` for operators.
+
 - `infrastructure/systemd/scripts/justnews-boot-smoke.sh` & `infrastructure/systemd/helpers/boot_smoke_test.sh` — Boot-time smoke test helpers (timer-driven).
+
 - `infrastructure/systemd/scripts/check_db_services.sh` — Database connectivity helpers used by startup probes.
+
 - `infrastructure/systemd/scripts/migrate_project_root.sh` — Migrate `SERVICE_DIR` and optionally create compatibility symlink when repo path changes.
+
 - `infrastructure/systemd/scripts/run_and_monitor.sh` — Wrapper to run canonical startup and monitor progress.
+
 - `infrastructure/systemd/scripts/build_service_venv.sh` — Helper to build per-service virtualenvs for packaging/ops.
+
 - `scripts/run_with_env.sh` — Export project env and run commands with consistent vars for startup & tests.
+
 - `scripts/bootstrap_conda_env.sh` — Idempotent bootstrap of canonical conda env (used when `AUTO_BOOTSTRAP_CONDA=1`).
 
 ### C — Dev-only scripts (local development & test helpers)
+
 - `scripts/dev/run_pytest_conda.sh`, `scripts/dev/run_full_pytest_safe.sh`, `scripts/dev/pytest.sh` — Run tests inside canonical conda env with safe defaults.
+
 - `scripts/run_tests_with_env.sh` — Convenience wrapper to run test subsets (GPU, Chroma, vLLM, etc.).
+
 - `scripts/launch_vllm_mistral_7b.sh` (and similar) — vLLM local smoke runner for development/testing.
+
 - `infrastructure/monitoring/dev-docker-compose.yaml` — Dev telemetry compose file (opt-in, not for production deployments).
+
 - Misc `scripts/dev/*` utilities — developer convenience, CI simulation, and local run helpers.
 
 ### D — Deprecated / legacy scripts (do not use for new deployments)
+
 - `infrastructure/systemd/setup_postgresql.sh` — Legacy PostgreSQL setup (project migrated to MariaDB; deprecated).
+
 - `infrastructure/systemd/complete_postgresql.sh` — Legacy PostgreSQL helper (deprecated).
+
 - Any legacy Kubernetes / Docker Compose deployment assets in `infrastructure/archives/` — archived & deprecated in favor of systemd flows.
 
 ---

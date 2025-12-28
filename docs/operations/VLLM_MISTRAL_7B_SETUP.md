@@ -111,7 +111,6 @@ configuration is `config/vllm_mistral_7b.yaml` which should be used for producti
 
 - Fallback config (Mistral-7B + adapters) - use `config/vllm_mistral_7b.yaml` for runtime fallbacks
 
-
 ### Local dev: starting vLLM and running smoke tests
 
 ### Tests & Validation (developer)
@@ -125,11 +124,15 @@ configuration is `config/vllm_mistral_7b.yaml` which should be used for producti
 ```bash
 conda run -n justnews-py312 pytest -q tests/integration/test_vllm_mistral_7b_smoke.py -q
 conda run -n justnews-py312 pytest -q tests/agents/gpu_orchestrator/test_model_lifecycle.py -q
+
 ```
 
 - **Test best practices**:
+
   - For integration smoke tests, use `./scripts/wait_for_vllm.sh` to ensure the server is ready before running tests.
+
   - Use `VLLM_SKIP_START=1` and `CUDA_VISIBLE_DEVICES=""` for CI or environments without GPUs to avoid starting a GPU-heavy server.
+
   - Tests that need vLLM running should only be executed on a GPU-capable host (local dev or gated GPU CI).
 
 ## Ensure VLLM_BASE_URL is set in your env or /etc/justnews/global.env
@@ -139,22 +142,27 @@ For local development, start the vLLM server and wait for it to be ready before 
 Examples:
 
 ```bash
-# start vLLM (from repo root) - conservative GPU usage
+
+## start vLLM (from repo root) - conservative GPU usage
+
 VLLM_QUANTIZATION= VLLM_GPU_MEMORY_UTIL=0.6 ./scripts/launch_vllm_mistral_7b.sh > run/vllm_mistral_fp16.log 2>&1 &
 
-# wait for the server to be healthy (includes models endpoint check; accepts optional API key)
+## wait for the server to be healthy (includes models endpoint check; accepts optional API key)
+
 ./scripts/wait_for_vllm.sh --base-url http://127.0.0.1:7060 --api-key "$VLLM_API_KEY" --timeout 30
 
-# Run smoke tests (ensure VLLM_API_KEY is exported in the same shell)
+## Run smoke tests (ensure VLLM_API_KEY is exported in the same shell)
+
 export VLLM_API_KEY=REPLACE_WITH_YOUR_VLLM_API_KEY
 ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV:-justnews-py312} pytest -q tests/integration/test_vllm_mistral_7b_smoke.py -k chat_completion
+
 ```
 
 Notes:
 
 - CI runners typically do not have GPUs available; running the full vLLM server in CI is not recommended unless special GPU-enabled runners are provisioned. Instead, use the 'mistral-dryrun' job for adapter dry-run tests; the smoke test is intended for local dev or gated GPU CI.
-- The smoke test now includes short retry/backoff logic for transient readiness/auth races and validates model responses more robustly.
 
+- The smoke test now includes short retry/backoff logic for transient readiness/auth races and validates model responses more robustly.
 
 ### Agent Model Mappings
 
@@ -166,25 +174,27 @@ Notes:
 
 #### AGENT_MODEL_RECOMMENDED.json
 
-Orchestrator-managed model deployments
---------------------------------------
+Orchestrator-managed model deployments --------------------------------------
 
-We recommend deploying the canonical Mistral-7B model under control of the `gpu_orchestrator` agent. The orchestrator will read `config/vllm_mistral_7b.yaml` and attempt to start the model using the `service.systemd_unit` listed in the config; fallback to the local vLLM process is supported when systemd is not available.
+We recommend deploying the canonical Mistral-7B model under control of the `gpu_orchestrator` agent. The orchestrator
+will read `config/vllm_mistral_7b.yaml` and attempt to start the model using the `service.systemd_unit` listed in the
+config; fallback to the local vLLM process is supported when systemd is not available.
 
 Key operational steps:
 
 - Place the systemd unit example in `infrastructure/systemd/vllm-mistral-7b.service.example` under `/etc/systemd/system/vllm-mistral-7b.service` and enable it:
 
-```
+```bash
+
 sudo cp infrastructure/systemd/vllm-mistral-7b.service.example /etc/systemd/system/vllm-mistral-7b.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now vllm-mistral-7b.service
+
 ```
 
 - The `gpu_orchestrator` will collect adapters listed in `AGENT_MODEL_MAP.json` and expose `adapter_paths` on the `ModelSpec` for downstream adapter mounting (PEFT/LoRA) where supported by the runtime.
 
 - Monitoring and safety: the orchestrator will only start the model when sufficient GPU headroom exists and will monitor logs for CUDA OOM. It exports metrics `gpu_orchestrator_vllm_restarts_total`, `gpu_orchestrator_vllm_ooms_total`, and `gpu_orchestrator_vllm_status`.
-
 
 - Each agent now has:
 

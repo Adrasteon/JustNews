@@ -272,16 +272,91 @@ class MCPBusEngine:
         """
         Get comprehensive health status of the MCP Bus.
 
+        This includes probing registered agents' /health endpoints (when
+        the requests library is available) and returning per-agent status
+        and response times. If requests is unavailable, agent health will
+        be reported as 'unknown'.
+
         Returns:
             Dict containing health information
         """
+        # Basic status
+        circuit_active = any(
+            state.get("open_until", 0) > time.time()
+            for state in self.circuit_breaker_state.values()
+        )
+
+        # Probe registered agents for their health (best-effort)
+        agent_details: list[dict[str, Any]] = []
+        any_unhealthy = False
+
+        if not self.agents:
+            # No agents registered
+            return {
+                "status": "degraded",
+                "registered_agents": 0,
+                "circuit_breaker_active": circuit_active,
+                "agent_details": [],
+                "timestamp": time.time(),
+            }
+
+        if requests is None:
+            # Can't perform HTTP probes without requests
+            for name in self.agents.keys():
+                agent_details.append(
+                    {"agent": name, "status": "unknown", "reason": "requests_unavailable"}
+                )
+        else:
+            for name, address in self.agents.items():
+                url = address.rstrip("/") + "/health"
+                try:
+                    start = time.time()
+                    resp = requests.get(url, timeout=1.0)
+                    elapsed = time.time() - start
+
+                    if resp.ok:
+                        # Try to parse JSON overall_status if present
+                        status = "healthy"
+                        try:
+                            data = resp.json()
+                            if isinstance(data, dict) and "overall_status" in data:
+                                status = data.get("overall_status") or status
+                        except Exception:
+                            # Ignore JSON parse errors — still consider OK
+                            pass
+
+                        agent_details.append(
+                            {"agent": name, "status": status, "response_time": round(elapsed, 4)}
+                        )
+                        if status != "healthy":
+                            any_unhealthy = True
+                    else:
+                        agent_details.append(
+                            {"agent": name, "status": "unhealthy", "status_code": resp.status_code}
+                        )
+                        any_unhealthy = True
+
+                except Exception as e:
+                    agent_details.append(
+                        {"agent": name, "status": "unreachable", "error": str(e)}
+                    )
+                    any_unhealthy = True
+
+        overall = "healthy"
+        issues = []
+        if circuit_active:
+            overall = "degraded"
+            issues.append("Circuit breaker active for one or more agents")
+        if any_unhealthy:
+            overall = "degraded"
+            issues.append("One or more registered agents reported unhealthy or unreachable")
+
         return {
-            "status": "healthy",
+            "status": overall,
             "registered_agents": len(self.agents),
-            "circuit_breaker_active": any(
-                state.get("open_until", 0) > time.time()
-                for state in self.circuit_breaker_state.values()
-            ),
+            "circuit_breaker_active": circuit_active,
+            "agent_details": agent_details,
+            "issues": issues,
             "timestamp": time.time(),
         }
 

@@ -14,7 +14,8 @@ instanced units.
 
   - Wait for READY: `curl -fsS http://127.0.0.1:8014/ready` → HTTP 200
 
-2) Start the MCP Bus next (this will gate other agents and—if enabled via `AUTO_INSTALL_ALERTMANAGER=1` in `/etc/justnews/global.env`—attempt to install and enable the host-level Alertmanager systemd unit idempotently):
+2) Start the MCP Bus next (this will gate other agents and—if enabled via `AUTO_INSTALL_ALERTMANAGER=1` in
+`/etc/justnews/global.env`—attempt to install and enable the host-level Alertmanager systemd unit idempotently):
 
   - `sudo systemctl enable --now justnews@mcp_bus`
 
@@ -25,7 +26,6 @@ instanced units.
 4) Check health:
 
   - `sudo ./infrastructure/systemd/scripts/health_check.sh`
-
 
 Note: The Alertmanager installer invoked by the startup flow is idempotent and will back up existing unit files to `/var/backups/justnews/alertmanager/` before replacing them; enable the opt-in behaviour only on controlled admin hosts.
 Troubleshooting? See the Quick Reference and Comprehensive guide below.
@@ -170,11 +170,15 @@ See Quick Reference for the full port map and more examples.
 
 ## Monitoring stack (Prometheus + Grafana + node_exporter + Alertmanager)
 
-We now include an integrated monitoring and alerting stack with example configurations and provisioning for Prometheus, Grafana, and Alertmanager. Key additions:
+We now include an integrated monitoring and alerting stack with example configurations and provisioning for Prometheus,
+Grafana, and Alertmanager. Key additions:
 
 - Prometheus alert rules for MCP Bus health: `monitoring/alerts/mcp_bus_alerts.yml` (MCPBusOverallDegraded, MCPBusAgentUnreachable, MCPBusAgentDegraded).
+
 - Grafana system overview dashboard includes MCP Bus panels (overall health stat, degraded agent count, agent status table) and is provisioned from `monitoring/dashboards/generated/system_overview_dashboard.json`.
+
 - Alertmanager example config and templates: `monitoring/alertmanager/alertmanager.example.yml` and `monitoring/alertmanager/mcp_bus_templates.tmpl`.
+
 - An idempotent Alertmanager installer script and Makefile helpers are available for operators to provision Alertmanager safely.
 
 The monitoring assets live under `infrastructure/systemd/monitoring`. Install and manage them with:

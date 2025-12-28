@@ -120,33 +120,37 @@ monitoring/
 
 - ⚠️ **Alerting**: Rules exist; **AlertManager** is recommended for routing and notification (see `monitoring/alertmanager/alertmanager.example.yml`).
 
-  Installation quickstart (idempotent):
+Installation quickstart (idempotent):
 
   1. Install Alertmanager and any required dependencies (the repo provides an installer and Makefile helpers):
 
-     - Run `make alertmanager-install` to apt-install (or download a release) and copy example configs.
-     - Use `make alertmanager-install-unit` to install the example systemd unit to `/etc/systemd/system/alertmanager.service` (idempotent copy).
-     - Or run the idempotent installer script directly: `sudo ./scripts/install_alertmanager_unit.sh --enable` which will back up an existing unit file and enable/start the service.
+    - Run `make alertmanager-install` to apt-install (or download a release) and copy example configs.
 
-  2. Configure receivers in `/etc/alertmanager/alertmanager.yml` and place templates in `/etc/alertmanager/templates/` (example in `monitoring/alertmanager/alertmanager.example.yml`).
+    - Use `make alertmanager-install-unit` to install the example systemd unit to `/etc/systemd/system/alertmanager.service` (idempotent copy).
 
-  3. Reload systemd and start Alertmanager: `sudo systemctl daemon-reload && sudo systemctl enable --now alertmanager.service` (the installer can do this with `--enable`).
+    - Or run the idempotent installer script directly: `sudo ./scripts/install_alertmanager_unit.sh --enable` which will back up an existing unit file and enable/start the service.
 
-  4. Validate: `make alertmanager-status` shows service status and API health.  
+  1. Configure receivers in `/etc/alertmanager/alertmanager.yml` and place templates in `/etc/alertmanager/templates/` (example in `monitoring/alertmanager/alertmanager.example.yml`).
 
-  5. Validate alert routing: send a test alert with `make alertmanager-test`.
+  1. Reload systemd and start Alertmanager: `sudo systemctl daemon-reload && sudo systemctl enable --now alertmanager.service` (the installer can do this with `--enable`).
 
-  Notes:
+  1. Validate: `make alertmanager-status` shows service status and API health.
+
+  1. Validate alert routing: send a test alert with `make alertmanager-test`.
+
+Notes:
+
   - The installer script is idempotent and will back up existing unit files into `/var/backups/justnews/alertmanager/` before replacing.
+
   - Update the example config with your Slack/webhook/email credentials before enabling in production.
 
-AUTO_INSTALL_ALERTMANAGER environment toggle
--------------------------------------------
+AUTO_INSTALL_ALERTMANAGER environment toggle -------------------------------------------
 
 - You can opt-in to the Alertmanager systemd unit installation as part of the standard agent startup by setting the environment variable `AUTO_INSTALL_ALERTMANAGER=1` in `/etc/justnews/global.env`.
-- This runs only when the `mcp_bus` agent starts (to avoid multiple hosts attempting to manage a single host-level unit) and executes the idempotent `scripts/install_alertmanager_unit.sh --enable` script.
-- Default behavior is disabled (`AUTO_INSTALL_ALERTMANAGER=0`). Use in controlled admin environments only.
 
+- This runs only when the `mcp_bus` agent starts (to avoid multiple hosts attempting to manage a single host-level unit) and executes the idempotent `scripts/install_alertmanager_unit.sh --enable` script.
+
+- Default behavior is disabled (`AUTO_INSTALL_ALERTMANAGER=0`). Use in controlled admin environments only.
 
 ## Recommendations
 

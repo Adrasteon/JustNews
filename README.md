@@ -76,8 +76,9 @@ sudo infrastructure/systemd/canonical_system_startup.sh
 
 ```
 
-**One-page User/Dev System Start Guide (printable):** `infrastructure/systemd/USER_DEV_SYSTEM_START_GUIDE.md` — view with `less infrastructure/systemd/USER_DEV_SYSTEM_START_GUIDE.md` or open in your editor for a concise startup & verification checklist.
-
+**One-page User/Dev System Start Guide (printable):** `infrastructure/systemd/USER_DEV_SYSTEM_START_GUIDE.md` — view
+with `less infrastructure/systemd/USER_DEV_SYSTEM_START_GUIDE.md` or open in your editor for a concise startup &
+verification checklist.
 
 ## 📋 System Architecture
 
@@ -212,7 +213,8 @@ Environment variables:
 
 ```
 
-**Monitoring checks:** run `make monitoring-check` to execute the automated checks validating Prometheus rules and Grafana dashboard JSON (requires Python test dependencies and `pytest`).
+**Monitoring checks:** run `make monitoring-check` to execute the automated checks validating Prometheus rules and
+Grafana dashboard JSON (requires Python test dependencies and `pytest`).
 
 ### Conda Environment Management
 

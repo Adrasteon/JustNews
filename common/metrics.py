@@ -201,6 +201,42 @@ class JustNewsMetrics:
             registry=self.registry,
         )
 
+        # Agent & bus health metric (0=healthy,1=degraded,2=unhealthy,3=unreachable,4=unknown)
+        self.agent_health_status = Gauge(
+            "justnews_agent_health_status",
+            "Health status of agents and overall bus (0=healthy,1=degraded,2=unhealthy,3=unreachable,4=unknown)",
+            ["agent", "agent_display_name", "target"],
+            registry=self.registry,
+        )
+
+    def set_health_status(self, status: str, target: str = "overall", agent: str | None = None, response_time: float | None = None) -> None:
+        """Set health status for an agent or the overall bus.
+
+        Args:
+            status: Human readable status ('healthy', 'degraded', 'unhealthy', 'unreachable', 'unknown')
+            target: 'overall' or 'per_agent'
+            agent: Agent name (for per-agent targets). If None, defaults to this metrics' agent.
+            response_time: Optional probe response time (not stored, but preserved for possible future use)
+        """
+        mapping = {
+            "healthy": 0,
+            "degraded": 1,
+            "unhealthy": 2,
+            "unreachable": 3,
+            "unknown": 4,
+        }
+
+        value = mapping.get(status, 4)
+        agent_label = agent or self.agent_name
+
+        try:
+            self.agent_health_status.labels(
+                agent=agent_label, agent_display_name=self.display_name, target=target
+            ).set(value)
+        except Exception as e:
+            logger.debug("Failed to set health metric: %s", e)
+
+
     def _init_system_metrics(self):
         """Initialize system-level metrics."""
         # Memory usage with enhanced labels

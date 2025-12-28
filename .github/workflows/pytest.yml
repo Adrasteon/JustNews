@@ -128,6 +128,36 @@ jobs:
         run: |
           ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q
 
+  monitoring:
+    name: Monitoring checks
+    needs: [processing_check, check-global-env]
+    runs-on: ubuntu-latest
+    env:
+      CANONICAL_ENV: justnews-py312
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: '3.12'
+          auto-activate-base: false
+
+      - name: Create / update conda environment
+        run: |
+          conda env list
+          conda env create -f environment.yml -n ${CANONICAL_ENV} || conda env update -f environment.yml -n ${CANONICAL_ENV} || true
+
+      - name: Install dependencies (conda)
+        run: |
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install --upgrade pip
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install -r requirements.txt || true
+
+      - name: Run monitoring tests (conda)
+        run: |
+          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q tests/monitoring
+
   integration_smoke:
     name: "Integration smoke: synthesize -> publish -> public API (mocked)"
     needs: [processing_check, lint, check-global-env]

@@ -400,6 +400,10 @@ alertmanager-install:
 	@sudo systemctl daemon-reload || true
 	$(call log_success,"Alertmanager install step complete; run 'make alertmanager-enable' to start the service")
 
+monitoring-check:
+	$(call log_info,"Run monitoring sanity checks (prometheus rules + grafana dashboard JSON)")
+	$(RUN_PY) -m pytest tests/monitoring -q
+	$(call log_success,"Monitoring checks completed")
 alertmanager-enable:
 	$(call log_info,"Enabling and starting Alertmanager (requires sudo)")
 	@sudo systemctl enable --now alertmanager.service

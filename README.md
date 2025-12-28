@@ -209,6 +209,8 @@ Environment variables:
 
 ```
 
+**Monitoring checks:** run `make monitoring-check` to execute the automated checks validating Prometheus rules and Grafana dashboard JSON (requires Python test dependencies and `pytest`).
+
 ### Conda Environment Management
 
 ```bash

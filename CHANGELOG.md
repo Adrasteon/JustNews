@@ -24,7 +24,7 @@ All notable changes to this project will be documented in this file.
 
 - **✅** Monitoring: Added Prometheus alerts for MCP Bus overall and per-agent degraded/unreachable conditions; added Grafana panels (Overall, Degraded Count, Agent Status table).
 
-- **✅** Alertmanager: added example Alertmanager config, an Alertmanager message template, an idempotent systemd unit installer script (`scripts/install_alertmanager_unit.sh`), and Makefile helpers to install/enable/test Alertmanager locally.
+- **✅** Alertmanager: added example Alertmanager config, an Alertmanager message template, an idempotent systemd unit installer script (`scripts/install_alertmanager_unit.sh`), Makefile helpers to install/enable/test Alertmanager locally, and an opt-in startup integration (`AUTO_INSTALL_ALERTMANAGER`) for the MCP Bus startup sequence.
 
 Status: **MISTRAL-7B + MCP BUS HEALTH READY**
 

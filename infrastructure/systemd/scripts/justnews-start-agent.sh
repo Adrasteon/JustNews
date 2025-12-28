@@ -219,6 +219,19 @@ setup_environment() {
         fi
     fi
 
+    # Optionally install and enable Alertmanager systemd unit on central host.
+    # Controlled by AUTO_INSTALL_ALERTMANAGER (default: 0). Only runs when starting the MCP Bus to
+    # avoid multiple nodes attempting to manage the host-level systemd unit.
+    if [[ "${AUTO_INSTALL_ALERTMANAGER:-0}" == "1" && "${agent}" == "mcp_bus" ]]; then
+        if [[ -x "${PROJECT_ROOT}/scripts/install_alertmanager_unit.sh" ]]; then
+            log_info "AUTO_INSTALL_ALERTMANAGER=1 and agent=mcp_bus: installing/enabling Alertmanager unit"
+            # Run idempotent installer; do not fail startup if Alertmanager install fails.
+            "${PROJECT_ROOT}/scripts/install_alertmanager_unit.sh" --enable || log_warning "Alertmanager unit installer failed or returned an error"
+        else
+            log_warning "Alertmanager installer script not found at ${PROJECT_ROOT}/scripts/install_alertmanager_unit.sh"
+        fi
+    fi
+
     log_success "Environment setup complete"
 }
 

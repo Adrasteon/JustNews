@@ -295,9 +295,13 @@ X-RateLimit-Reset: 1634900000
 
 ### Redis & multi-replica rate limiting
 
-- To enable consistent rate limiting across replicas, set `REDIS_URL` in your environment (e.g. `redis://:password@redis:6379/0`). The public search router in `agents/dashboard/search_api.py` will prefer a Redis-backed limiter (fixed-window INCR+EXPIRE) and fall back to the in-memory limiter if `REDIS_URL` is not configured.
+- To enable consistent rate limiting across replicas, set `REDIS_URL` in your environment (e.g. `redis://:password@redis:6379/0`).
 
-- For high-volume production systems where exact token-bucket semantics and per-request atomicity are required, implement a Redis Lua script for atomic INCR+EXPIRE operations or use a dedicated rate limiter proxy (for example Kong or Envoy with a Redis rate limiter).
+- The public search router in `agents/dashboard/search_api.py` prefers a Redis-backed limiter (fixed-window INCR+EXPIRE) and falls back to the in-memory limiter when `REDIS_URL` is not configured.
+
+- For high-volume production systems where exact token-bucket semantics and per-request atomicity are required, implement a Redis Lua script to perform atomic INCR+EXPIRE operations.
+
+- Alternatively, use a dedicated rate limiter proxy such as Kong or Envoy (with a Redis-backed rate limiter) for scalable enforcement.
 
 ```
 

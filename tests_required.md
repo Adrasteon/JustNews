@@ -57,47 +57,47 @@ explains why it matters and gives suggested tests / next actions to increase cov
 
 1. monitoring/core/trace_analyzer.py — 274 total, 274 uncovered, line-rate 0.0
 
-    - Tests to add: trace analysis logic, heuristics, and outputs.
+  - Tests to add: trace analysis logic, heuristics, and outputs.
 
 1. security/compliance/service.py — 274 total, 274 uncovered, line-rate 0.0
 
-    - Tests to add: compliance rule checks, policy decision unit tests.
+  - Tests to add: compliance rule checks, policy decision unit tests.
 
 1. security/encryption/service.py — 266 total, 266 uncovered, line-rate 0.0
 
-    - Tests to add: encryption/decryption paths, key handling with test keys.
+  - Tests to add: encryption/decryption paths, key handling with test keys.
 
 1. security/monitoring/service.py — 266 total, 266 uncovered, line-rate 0.0
 
-    - Tests to add: alerting and policy-monitoring tests.
+  - Tests to add: alerting and policy-monitoring tests.
 
 1. monitoring/core/log_analyzer.py — 260 total, 260 uncovered, line-rate 0.0
 
-    - Tests to add: log pattern detection, statistical checks.
+  - Tests to add: log pattern detection, statistical checks.
 
 1. training_system/core/training_coordinator.py — 368 total, 258 uncovered, line-rate 0.2989
 
-    - Tests to add: training task lifecycle, DB interactions (mock DB), error/retry flows.
+  - Tests to add: training task lifecycle, DB interactions (mock DB), error/retry flows.
 
 1. config/test_config_system.py — 256 total, 256 uncovered, line-rate 0.0
 
-    - Tests to add: unit tests for config helpers, schema checks.
+  - Tests to add: unit tests for config helpers, schema checks.
 
 1. agents/sites/generic_site_crawler.py — 353 total, 254 uncovered, line-rate 0.2805
 
-    - Tests to add: parsing edge-cases, fallback scraping flows and error handling.
+  - Tests to add: parsing edge-cases, fallback scraping flows and error handling.
 
 1. config/validation/__init__.py — 290 total, 244 uncovered, line-rate 0.1586
 
-    - Tests to add: validation chains and error messages.
+  - Tests to add: validation chains and error messages.
 
 1. agents/hitl_service/app.py — 563 total, 244 uncovered, line-rate 0.5666
 
-    - Tests to add: API endpoint tests for HITL ingest/QA/training paths.
+  - Tests to add: API endpoint tests for HITL ingest/QA/training paths.
 
 1. monitoring/core/trace_processor.py — 242 total, 242 uncovered, line-rate 0.0
 
-    - Tests to add: trace processing unit tests, correctness of transforms.
+  - Tests to add: trace processing unit tests, correctness of transforms.
 
 (See coverage.xml for a longer list — several monitoring/* and security/* files are completely untested.)
 

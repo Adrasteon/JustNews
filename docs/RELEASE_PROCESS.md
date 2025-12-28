@@ -31,7 +31,9 @@ current last_updated: 2025-10-18 ---
 
 1. **Create release branch:**
 
-```bash git checkout -b release/0.8.0 ```
+```
+bash git checkout -b release/0.8.0
+```
 
 1. **Update version numbers:**
 
@@ -44,7 +46,9 @@ current last_updated: 2025-10-18 ---
 
 1. **Commit changes:**
 
-```bash git add . git commit -m "Release 0.8.0: Beta release candidate" ```
+```
+bash git add . git commit -m "Release 0.8.0: Beta release candidate"
+```
 
 1. **Create annotated tag:**
 
@@ -64,11 +68,15 @@ Unified startup system with enterprise GPU orchestration
 
 1. **Push to repository:**
 
-```bash git push origin release/0.8.0 git push origin v0.8.0 ```
+```
+bash git push origin release/0.8.0 git push origin v0.8.0
+```
 
 1. **Merge to main:**
 
-```bash git checkout main git merge release/0.8.0 git push origin main ```
+```
+bash git checkout main git merge release/0.8.0 git push origin main
+```
 
 ### Post-Release
 

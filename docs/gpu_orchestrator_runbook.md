@@ -96,7 +96,9 @@ redis-cli XPENDING stream:orchestrator:inference_jobs cg:inference
 
 1. If lock stuck, manually release:
 
-```sql SELECT RELEASE_LOCK('gpu_orchestrator_leader'); ```
+```
+sql SELECT RELEASE_LOCK('gpu_orchestrator_leader');
+```
 
 **Symptoms of dead leader:**
 

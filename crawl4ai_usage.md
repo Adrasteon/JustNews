@@ -92,7 +92,9 @@
 
 - Inspect available CLI defaults quickly:
 
-```bash crwl config list | head ```
+```
+bash crwl config list | head
+```
 
 - Dry-run the Stage B scheduler against the finance cohort while loading explicit profile overrides:
 
@@ -111,7 +113,9 @@ default"} } } }' ```
 
 - Launch the crawler agent with live reloading during local development:
 
-```bash uvicorn agents.crawler.main:app --host 0.0.0.0 --port 8015 --reload ```
+```
+bash uvicorn agents.crawler.main:app --host 0.0.0.0 --port 8015 --reload
+```
 
 ## Output Structures & Metrics
 

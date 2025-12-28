@@ -9,19 +9,19 @@ reference when implementing tests, forwarders, or new integrations.
 
 - Body (JSON):
 
-    - `id`: string (candidate id)
+  - `id`: string (candidate id)
 
-    - `url`: string
+  - `url`: string
 
-    - `site_id`: string
+  - `site_id`: string
 
-    - `title`: string
+  - `title`: string
 
-    - `extracted_text`: string
+  - `extracted_text`: string
 
-    - `extraction_metadata`: object
+  - `extraction_metadata`: object
 
-    - `publish_time`: iso8601 string (optional)
+  - `publish_time`: iso8601 string (optional)
 
 - Response: `{ "candidate_id": "..." }`
 
@@ -37,11 +37,11 @@ reference when implementing tests, forwarders, or new integrations.
 
 - Payload (JSON):
 
-    - `site_id`(str),`url`(str),`title`(str),`cleaned_text` (str),
+  - `site_id`(str),`url`(str),`title`(str),`cleaned_text` (str),
 
-    - `extraction_metadata`(dict),`source_html_path` (str, optional),
+  - `extraction_metadata`(dict),`source_html_path` (str, optional),
 
-    - `ingest_meta`(dict:`run_id`,`source`,`submitted_by`)
+  - `ingest_meta`(dict:`run_id`,`source`,`submitted_by`)
 
 - Return: `{ "article_id": <int|string>, "status": "ok" }`
 

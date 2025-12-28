@@ -683,7 +683,7 @@ Script for debugging:
 
 - **✅ IMPLEMENTED**: `tests/agents/analyst/test_fact_checker_integration.py`: verify per-article claims are extracted, verified, and produce`source_fact_checks` entries and a cluster summary.
 
-    - **12 comprehensive tests** covering fact-checker integration, status mapping, cluster summary aggregation, error handling, and trace capture (all passing)
+  - **12 comprehensive tests** covering fact-checker integration, status mapping, cluster summary aggregation, error handling, and trace capture (all passing)
 
 - `tests/agents/reasoning/test_reasoning_service.py`: validate reasoning plan generation and that it excludes low-confidence sources and highlights key claims and structure
 
@@ -721,21 +721,21 @@ Script for debugging:
 
 - Traces for model latency (gauge)
 
-    - `analysis_jobs_started` (counter)
+  - `analysis_jobs_started` (counter)
 
-    - `analysis_jobs_failed` (counter)
+  - `analysis_jobs_failed` (counter)
 
-    - `analysis_latency` (gauge)
+  - `analysis_latency` (gauge)
 
-    - `analysis_bias_score_distribution` (histogram)
+  - `analysis_bias_score_distribution` (histogram)
 
-    - `reasoning_jobs_started` (counter)
+  - `reasoning_jobs_started` (counter)
 
-    - `reasoning_jobs_failed` (counter)
+  - `reasoning_jobs_failed` (counter)
 
-    - `reasoning_latency` (gauge)
+  - `reasoning_latency` (gauge)
 
-    - `reasoning_plan_quality` (histogram)
+  - `reasoning_plan_quality` (histogram)
 
 ---
 

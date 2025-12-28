@@ -112,7 +112,7 @@ canonical path / layout in ModelStore.
 
 Steps: 1) Create a canonical ModelStore version for the Mistral base
 
-    - ✅ Completed: published `mistralai/Mistral-7B-Instruct-v0.3`as`base_models/versions/v20251123-mistral-v0.3` using the metadata-aware script. All GPU hosts should replicate this command:
+  - ✅ Completed: published `mistralai/Mistral-7B-Instruct-v0.3`as`base_models/versions/v20251123-mistral-v0.3` using the metadata-aware script. All GPU hosts should replicate this command:
 
 ```bash MODEL_STORE_ROOT=/opt/justnews/model_store HF_TOKEN=$HF_TOKEN \ python
 scripts/publish_hf_to_model_store.py \ --agent base_models \ --model

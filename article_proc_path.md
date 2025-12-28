@@ -64,19 +64,19 @@ Based on the tests and workflow verified on 2025-11-14.
 
 1. **HITL Service** dispatches asynchronously:
 
-    - **Ingest Forward** (if `HITL_FORWARD_AGENT`/`_TOOL` set):
+  - **Ingest Forward** (if `HITL_FORWARD_AGENT`/`_TOOL` set):
 
-      - Calls MCP Bus: `POST /call`→`{agent: "archive", tool: "queue_article", payload: ingest_payload}`
+  - Calls MCP Bus: `POST /call`→`{agent: "archive", tool: "queue_article", payload: ingest_payload}`
 
-      - Retries 3x with exponential backoff on failure
+  - Retries 3x with exponential backoff on failure
 
-      - Updates `ingestion_status`:`pending`→`enqueued`(success) or`error` (failure)
+  - Updates `ingestion_status`:`pending`→`enqueued`(success) or`error` (failure)
 
 - **Training Forward** (if `HITL_TRAINING_FORWARD_AGENT`/`_TOOL` set):
 
-    - Calls MCP Bus → training system
+  - Calls MCP Bus → training system
 
-    - Payload includes label + candidate for model retraining
+  - Payload includes label + candidate for model retraining
 
 - Both forwards happen in parallel via `asyncio.create_task()`
 

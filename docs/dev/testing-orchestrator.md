@@ -38,11 +38,11 @@ tests in the container
 
 1. CI-level fidelity tests
 
-      - The repository CI workflow has been updated to use Miniconda and create a `${CANONICAL_ENV:-justnews-py312}`conda environment in CI, matching local dev setups; CI now runs`pytest` inside that environment.
+  - The repository CI workflow has been updated to use Miniconda and create a `${CANONICAL_ENV:-justnews-py312}`conda environment in CI, matching local dev setups; CI now runs`pytest` inside that environment.
 
 - If you want true end-to-end tests hitting live Redis and MariaDB, prefer a dedicated CI job that runs on self-hosted runners capable of running systemd-nspawn or LXD (not possible on the default hosted runners due to privilege constraints). Adding such a CI job is recommended for deeper validation but needs self-hosted capabilities.
 
-      - Docker-based E2E PoC (test/CI only): We added a lightweight Docker Compose-based PoC which boots a pre-seeded MariaDB and Redis for faster E2E verification without requiring systemd-nspawn privileges. This PoC is intended for testing/CI only — the canonical MariaDB deployment in developer and production workflows runs on the host (outside Docker) or as a managed service. See `scripts/dev/docker-compose.e2e.yml`,`scripts/dev/run_e2e_docker.sh`and`.github/workflows/e2e-docker.yml`.
+  - Docker-based E2E PoC (test/CI only): We added a lightweight Docker Compose-based PoC which boots a pre-seeded MariaDB and Redis for faster E2E verification without requiring systemd-nspawn privileges. This PoC is intended for testing/CI only — the canonical MariaDB deployment in developer and production workflows runs on the host (outside Docker) or as a managed service. See `scripts/dev/docker-compose.e2e.yml`,`scripts/dev/run_e2e_docker.sh`and`.github/workflows/e2e-docker.yml`.
 
 Developer ergonomics & helpers -- `scripts/dev/pytest.sh`— wrapper which runs pytest inside`${CANONICAL_ENV:-justnews-
 py312}`conda env and sets`PYTHONPATH` to the repo root. Use it for consistent local runs.

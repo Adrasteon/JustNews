@@ -127,7 +127,9 @@ the OpenTelemetry collector assets added in `infrastructure/monitoring/otel/`.
 
 1. Install the collector:
 
-```bash sudo scripts/ops/install_otel_node_collector.sh ```
+```
+bash sudo scripts/ops/install_otel_node_collector.sh
+```
 
 1. Override any defaults in `/etc/justnews/monitoring/otel/node.env` (OTLP upstream endpoint, DCGM scrape target, etc.).
 
@@ -144,7 +146,9 @@ we finish reworking the metrics story.
 
 1. Install on the monitoring/observability host:
 
-```bash sudo scripts/ops/install_otel_central_collector.sh ```
+```
+bash sudo scripts/ops/install_otel_central_collector.sh
+```
 
 1. Populate `/etc/justnews/monitoring/otel/central.env` with the Tempo/Loki endpoints for your environment. Prometheus remote_write inputs are currently ignored while metrics are disabled.
 

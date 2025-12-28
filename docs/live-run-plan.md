@@ -148,7 +148,9 @@ tests are now disabled by default locally. The default test harness sets `TEST_G
 
 If you explicitly want to exercise GPU behavior (for real hardware or CI), opt in:
 
-```bash export TEST_GPU_AVAILABLE=true export TEST_GPU_COUNT=1 ```
+```
+bash export TEST_GPU_AVAILABLE=true export TEST_GPU_COUNT=1
+```
 
 When running real GPU tests in CI or a dedicated machine, ensure
 `USE_REAL_ML_LIBS=1` is set if you want the test processes to use the real

@@ -156,7 +156,9 @@ The GPU monitoring is automatically configured when the monitoring stack is inst
 
 1. **GPU Exporter Deployment**
 
-```bash cd /home/adra python3 gpu_metrics_exporter.py & ```
+```
+bash cd /home/adra python3 gpu_metrics_exporter.py &
+```
 
 1. **Prometheus Configuration**
 

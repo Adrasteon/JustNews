@@ -94,7 +94,9 @@ Installation workflow ---------------------
 
 1. Run the installer as root (it drops files owned by `justnews` and installs the unit):
 
-```bash cd /home/adra/JustNews sudo scripts/ops/install_dcgm_exporter.sh ```
+```
+bash cd /home/adra/JustNews sudo scripts/ops/install_dcgm_exporter.sh
+```
 
    - Script flags: set `DCGM_EXPORTER_VERSION` to override the default release, `DCGM_EXPORTER_PORT` if port 9400 cannot be used, and `DCGM_EXPORTER_LISTEN` to bind to a different interface (defaults provided inside the script). Edit `/etc/justnews/monitoring/dcgm/dcgm-exporter.env` after install to make persistent overrides.
 
@@ -132,7 +134,9 @@ justnews-dcgm-exporter.service -n 200
 
 - Query metrics locally (confirms scrape surface works):
 
-```bash curl -sS <http://127.0.0.1:9400/metrics> | head -n 40 ```
+```
+bash curl -sS <http://127.0.0.1:9400/metrics> | head -n 40
+```
 
 - Adjust metrics profile: edit `/etc/justnews/monitoring/dcgm/metrics.csv` and restart the service. The file defaults to the repo copy; keep a copy in Git for future updates.
 

@@ -30,7 +30,7 @@ Follow this exact sequence for a safe, reproducible system startup (preferred op
 
 - [ ] Run: `sudo ./infrastructure/systemd/canonical_system_startup.sh`
 
-    - This performs env checks, optional MariaDB probe (skip with `SKIP_MARIADB_CHECK=true`), installs/refreshes service templates and scripts, runs a reset & fresh start (gpu_orchestrator → mcp_bus → agents), provisions monitoring (if missing), and performs a consolidated health check.
+  - This performs env checks, optional MariaDB probe (skip with `SKIP_MARIADB_CHECK=true`), installs/refreshes service templates and scripts, runs a reset & fresh start (gpu_orchestrator → mcp_bus → agents), provisions monitoring (if missing), and performs a consolidated health check.
 
 1. (Alternative) Manual orchestrator-first flow
 
@@ -110,7 +110,9 @@ sudo ./infrastructure/systemd/setup_mariadb.sh --user justnews_user --password
 
 - [ ] Start ChromaDB:
 
-```bash docker run -d --name chromadb -p 8000:8000 chromadb/chroma:latest ```
+```
+bash docker run -d --name chromadb -p 8000:8000 chromadb/chroma:latest
+```
 
 - [ ] Auto-create articles collection: `python scripts/chroma_diagnose.py --autocreate`
 
@@ -122,7 +124,9 @@ sudo ./infrastructure/systemd/setup_mariadb.sh --user justnews_user --password
 
 - [ ] Initialize schema:
 
-```bash ./scripts/run_with_env.sh python scripts/init_database.py ``` Should
+```
+bash ./scripts/run_with_env.sh python scripts/init_database.py
+``` Should
 print: `✅ Database initialization completed successfully!`
 
 - [ ] Verify tables exist:
@@ -228,7 +232,9 @@ COUNT(*) AS count FROM articles;"
 
 - [ ] Run health check:
 
-```bash ./infrastructure/systemd/scripts/health_check.sh ```
+```
+bash ./infrastructure/systemd/scripts/health_check.sh
+```
 
 - [ ] Test full pipeline (optional training data prep):
 

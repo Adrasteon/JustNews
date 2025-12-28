@@ -124,11 +124,11 @@ Installation quickstart (idempotent):
 
   1. Install Alertmanager and any required dependencies (the repo provides an installer and Makefile helpers):
 
-    - Run `make alertmanager-install` to apt-install (or download a release) and copy example configs.
+  - Run `make alertmanager-install` to apt-install (or download a release) and copy example configs.
 
-    - Use `make alertmanager-install-unit`to install the example systemd unit to`/etc/systemd/system/alertmanager.service` (idempotent copy).
+  - Use `make alertmanager-install-unit`to install the example systemd unit to`/etc/systemd/system/alertmanager.service` (idempotent copy).
 
-    - Or run the idempotent installer script directly: `sudo ./scripts/install_alertmanager_unit.sh --enable` which will back up an existing unit file and enable/start the service.
+  - Or run the idempotent installer script directly: `sudo ./scripts/install_alertmanager_unit.sh --enable` which will back up an existing unit file and enable/start the service.
 
   1. Configure receivers in `/etc/alertmanager/alertmanager.yml`and place templates in`/etc/alertmanager/templates/`(example in`monitoring/alertmanager/alertmanager.example.yml`).
 
@@ -208,7 +208,9 @@ exporter ```
 
 1. Enable and start services:
 
-```bash sudo systemctl enable --now prometheus grafana-server ```
+```
+bash sudo systemctl enable --now prometheus grafana-server
+```
 
 **Benefits**:
 
@@ -228,13 +230,17 @@ exporter ```
 
 1. Install Node Exporter:
 
-```bash sudo apt-get install -y prometheus-node-exporter ```
+```
+bash sudo apt-get install -y prometheus-node-exporter
+```
 
 1. Configure to listen on `127.0.0.1:9100`
 
 1. Enable and start:
 
-```bash sudo systemctl enable --now prometheus-node-exporter ```
+```
+bash sudo systemctl enable --now prometheus-node-exporter
+```
 
 **Benefits**:
 
@@ -336,7 +342,9 @@ Backup files (.bak.* files) - can skip these
 
 1. **Change Grafana admin password** from default `admin:admin`
 
-```bash sudo grafana-cli admin reset-admin-password <new-password> ```
+```
+bash sudo grafana-cli admin reset-admin-password <new-password>
+```
 
 1. **Enable authentication** for Prometheus API (optional but recommended)
 

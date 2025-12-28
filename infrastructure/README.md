@@ -566,7 +566,9 @@ docker stats
 
 1. **Backup current configuration**
 
-```bash ./scripts/backup-config.sh ```
+```
+bash ./scripts/backup-config.sh
+```
 
 1. **Generate Kubernetes manifests (DEPRECATED)**
 
@@ -578,21 +580,29 @@ docker stats
 
 1. **Deploy to Kubernetes**
 
-```bash kubectl apply -k kubernetes/ ```
+```
+bash kubectl apply -k kubernetes/
+```
 
 1. **Verify migration**
 
-```bash ./scripts/health-check.sh --target kubernetes ```
+```
+bash ./scripts/health-check.sh --target kubernetes
+```
 
 1. **Remove systemd services**
 
-```bash sudo systemctl stop justnews-* sudo systemctl disable justnews-* ```
+```
+bash sudo systemctl stop justnews-* sudo systemctl disable justnews-*
+```
 
 ### From Docker Compose to Kubernetes
 
 1. **Export current state**
 
-```bash docker-compose config > current-config.yml ```
+```
+bash docker-compose config > current-config.yml
+```
 
 1. **Generate Kubernetes manifests**
 
@@ -603,11 +613,15 @@ docker stats
 
 1. **Apply Kubernetes manifests**
 
-```bash kubectl apply -f . ```
+```
+bash kubectl apply -f .
+```
 
 1. **Update ingress and services**
 
-```bash kubectl apply -f kubernetes/ingress.yml ```
+```
+bash kubectl apply -f kubernetes/ingress.yml
+```
 
 ## Contributing
 

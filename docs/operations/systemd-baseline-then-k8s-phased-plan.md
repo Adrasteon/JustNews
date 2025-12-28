@@ -113,9 +113,9 @@ A3. Database
 
 - Initialize/migrate schema (pick one, depending on repo conventions):
 
-    - `scripts/setup_mariadb.sh`(recommended) or`scripts/setup_postgres.sh`(deprecated) then`scripts/init_database.py`
+  - `scripts/setup_mariadb.sh`(recommended) or`scripts/setup_postgres.sh`(deprecated) then`scripts/init_database.py`
 
-    - or run migrations in `database/migrations/` via your migration tool.
+  - or run migrations in `database/migrations/` via your migration tool.
 
 - Acceptance checks:
 
@@ -129,15 +129,15 @@ A4. Install systemd artifacts
 
 - From `infrastructure/systemd/scripts/`, ensure these are executable and optionally copied to`/usr/local/bin/`:
 
-    - `reset_and_start.sh`,`enable_all.sh`,`health_check.sh`,`cold_start.sh`,`wait_for_mcp.sh`,`justnews-start-agent.sh`,`justnews-preflight-check.sh`
+  - `reset_and_start.sh`,`enable_all.sh`,`health_check.sh`,`cold_start.sh`,`wait_for_mcp.sh`,`justnews-start-agent.sh`,`justnews-preflight-check.sh`
 
 - Units:
 
 - From `infrastructure/systemd/units/`, copy unit templates to`/etc/systemd/system/`:
 
-    - `justnews@.service` (if provided) and any service-specific units/targets.
+  - `justnews@.service` (if provided) and any service-specific units/targets.
 
-    - Optional timers: `justnews-cold-start.timer`,`justnews-boot-smoke.timer`.
+  - Optional timers: `justnews-cold-start.timer`,`justnews-boot-smoke.timer`.
 
 - Run `sudo systemctl daemon-reload` after copying.
 

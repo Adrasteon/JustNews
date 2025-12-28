@@ -33,7 +33,7 @@ either force startup (risky) or use an alternate set of default dev ports:
 
 - Force the repo dev telemetry stack to start despite conflicts by setting an environment variable in your runtime environment (explicit opt-in):
 
-    - ENABLE_DEV_TELEMETRY_FORCE=1 ENABLE_DEV_TELEMETRY=true /path/to/infrastructure/systemd/scripts/dev-telemetry-manager.sh up
+  - ENABLE_DEV_TELEMETRY_FORCE=1 ENABLE_DEV_TELEMETRY=true /path/to/infrastructure/systemd/scripts/dev-telemetry-manager.sh up
 
 Or to avoid conflict we provide alternate default host ports for the dev stack that don't collide with system
 collectors. The dev compose maps container ports to alternate host ports by default; you can override any host port

@@ -126,25 +126,25 @@ Planned).
 
 1. Crawl & Extraction
 
-    - Scheduler selects profiles (from `config/crawl_profiles/`) and posts jobs to crawler engine.
+  - Scheduler selects profiles (from `config/crawl_profiles/`) and posts jobs to crawler engine.
 
-    - `crawler_engine`chooses strategy:`crawl4ai`(adaptive) preferred,`generic` fallback.
+  - `crawler_engine`chooses strategy:`crawl4ai`(adaptive) preferred,`generic` fallback.
 
-    - Crawl4AI returns pages or adaptive docs; these are converted into article dicts and passed to extraction pipeline.
+  - Crawl4AI returns pages or adaptive docs; these are converted into article dicts and passed to extraction pipeline.
 
 1. HITL & Labeling
 
-    - Shortlisting: articles that meet candidate criteria are packaged and sent to HITL via `_submit_hitl_candidates`.
+  - Shortlisting: articles that meet candidate criteria are packaged and sent to HITL via `_submit_hitl_candidates`.
 
-    - Human/Programmatic Labelling: HITL service stores labels in `hitl_staging.db` and exposes endpoints for review and programmatic forwarding.
+  - Human/Programmatic Labelling: HITL service stores labels in `hitl_staging.db` and exposes endpoints for review and programmatic forwarding.
 
-    - Forwarding: labels are forwarded to downstream ingestion (`memory.ingest_article`) with retry/backoff logic and ingestion-status transitions.
+  - Forwarding: labels are forwarded to downstream ingestion (`memory.ingest_article`) with retry/backoff logic and ingestion-status transitions.
 
 1. Ingestion & Persistence
 
-    - `memory.ingest_article` handles content normalization, stores metadata in MariaDB, persists embeddings (Chroma/other), and signals archive storage.
+  - `memory.ingest_article` handles content normalization, stores metadata in MariaDB, persists embeddings (Chroma/other), and signals archive storage.
 
-    - Audit and raw_html storage allow re-extraction and verification.
+  - Audit and raw_html storage allow re-extraction and verification.
 
 1. Downstream Processing
 
@@ -152,9 +152,9 @@ Planned).
 
 1. Metrics & Observability
 
-    - `crawl4ai_adapter._record_adaptive_metrics`emits adaptive metrics:`adaptive_runs_total`,`adaptive_confidence`,`adaptive_pages_crawled`,`adaptive_articles_emitted`.
+  - `crawl4ai_adapter._record_adaptive_metrics`emits adaptive metrics:`adaptive_runs_total`,`adaptive_confidence`,`adaptive_pages_crawled`,`adaptive_articles_emitted`.
 
-    - Scheduler writes Prometheus textfile metrics; `infrastructure/` contains Prometheus scrape configs and Grafana dashboard templates.
+  - Scheduler writes Prometheus textfile metrics; `infrastructure/` contains Prometheus scrape configs and Grafana dashboard templates.
 
 ## Training patterns
 

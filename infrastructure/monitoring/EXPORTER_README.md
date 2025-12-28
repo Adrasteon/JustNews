@@ -11,7 +11,7 @@ What changed ------------
 
 - Systemd unit: /etc/systemd/system/justnews-db-exporter.service
 
-  - The unit includes an ExecStartPost health probe (waits ~5s for /metrics) and Restart/RestartSec/StartLimit* settings to prevent hot crash loops.
+- The unit includes an ExecStartPost health probe (waits ~5s for /metrics) and Restart/RestartSec/StartLimit* settings to prevent hot crash loops.
 
 Operational notes -----------------
 
@@ -19,7 +19,7 @@ Operational notes -----------------
 sudo -u justnews /opt/justnews/monitoring/exporters/venv/bin/pip install --upgrade prometheus_client requests
 
 - To check metrics locally:
-curl -sS http://127.0.0.1:9127/metrics | head -n 40
+curl -sS <http://127.0.0.1:9127/metrics> | head -n 40
 
 - To inspect systemd unit and recent logs:
 sudo systemctl status justnews-db-exporter.service sudo journalctl -u justnews- db-exporter.service -n 200
@@ -54,7 +54,7 @@ restart the service if it doesn't come up correctly.
 Operational runbook snippet --------------------------
 
 - Check metrics:
-curl -sS http://127.0.0.1:9127/metrics
+curl -sS <http://127.0.0.1:9127/metrics>
 
 - Update deps:
 sudo -u justnews /opt/justnews/monitoring/exporters/venv/bin/pip install --upgrade prometheus_client requests
@@ -63,7 +63,7 @@ sudo -u justnews /opt/justnews/monitoring/exporters/venv/bin/pip install --upgra
 sudo systemctl restart justnews-db-exporter.service
 
 - Check Prometheus target status:
-curl -sS http://127.0.0.1:9090/api/v1/targets | jq '.data.activeTargets[] | select(.labels.job=="justnews-db-exporter")'
+curl -sS <http://127.0.0.1:9090/api/v1/targets> | jq '.data.activeTargets[] | select(.labels.job=="justnews-db-exporter")'
 
 JustNews DCGM exporter ======================
 
@@ -80,13 +80,13 @@ Deployment assets ------------------
 
 - Installed paths (after running the script):
 
-  - Binary: `/opt/justnews/monitoring/dcgm/dcgm-exporter`
+- Binary: `/opt/justnews/monitoring/dcgm/dcgm-exporter`
 
-  - Metrics file: `/etc/justnews/monitoring/dcgm/metrics.csv`
+- Metrics file: `/etc/justnews/monitoring/dcgm/metrics.csv`
 
-  - Env overrides: `/etc/justnews/monitoring/dcgm/dcgm-exporter.env`
+- Env overrides: `/etc/justnews/monitoring/dcgm/dcgm-exporter.env`
 
-  - Systemd unit: `/etc/systemd/system/justnews-dcgm-exporter.service`
+- Systemd unit: `/etc/systemd/system/justnews-dcgm-exporter.service`
 
 Installation workflow ---------------------
 
@@ -130,13 +130,13 @@ justnews-dcgm-exporter.service -n 200 ```
 
 - Query metrics locally (confirms scrape surface works):
 
-```bash curl -sS http://127.0.0.1:9400/metrics | head -n 40 ```
+```bash curl -sS <http://127.0.0.1:9400/metrics> | head -n 40 ```
 
 - Adjust metrics profile: edit `/etc/justnews/monitoring/dcgm/metrics.csv` and restart the service. The file defaults to the repo copy; keep a copy in Git for future updates.
 
 - Verify Prometheus has an active target:
 
-```bash curl -sS http://127.0.0.1:9090/api/v1/targets | jq
+```bash curl -sS <http://127.0.0.1:9090/api/v1/targets> | jq
 '.data.activeTargets[] | select(.labels.job=="justnews-dcgm-exporter")' ```
 
 Why DCGM -------- DCGM surfaces ECC/Xid error counters, clock throttling reasons, and utilization data directly from

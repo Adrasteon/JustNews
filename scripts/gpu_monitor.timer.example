@@ -1,0 +1,12 @@
+# Example systemd timer that runs the GPU monitor as a transient job (if preferred)
+# Copy to ~/.config/systemd/user/gpu-monitor.timer and the corresponding .service and enable it
+
+[Unit]
+Description=Run GPU monitor periodically
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+
+[Install]
+WantedBy=timers.target

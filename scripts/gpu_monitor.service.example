@@ -1,0 +1,14 @@
+# Example systemd user unit file to run the GPU monitor
+# Copy to ~/.config/systemd/user/gpu-monitor.service and run:
+# systemctl --user daemon-reload && systemctl --user start gpu-monitor.service
+
+[Unit]
+Description=JustNews GPU Monitor (user)
+
+[Service]
+Type=simple
+ExecStart=/home/adra/JustNews/scripts/gpu_monitor.sh /tmp/gpu_monitor.log 1
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

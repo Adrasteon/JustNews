@@ -125,4 +125,4 @@ sudo ./infrastructure/systemd/scripts/health_check.sh -v
 
 ---
 
-_Last updated: 2025-12-28_
+Last updated: 2025-12-28

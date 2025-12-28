@@ -16,53 +16,53 @@ Follow this exact sequence for a safe, reproducible system startup (preferred op
 
 1. Preflight / Dry-run checks (non-destructive)
 
-  - [ ] Validate global env and tooling: `sudo ./infrastructure/systemd/canonical_system_startup.sh --dry-run`
+- [ ] Validate global env and tooling: `sudo ./infrastructure/systemd/canonical_system_startup.sh --dry-run`
 
-  - [ ] Optional: run `sudo ./infrastructure/systemd/preflight.sh` to inspect tools, ports and GPU state
+- [ ] Optional: run `sudo ./infrastructure/systemd/preflight.sh` to inspect tools, ports and GPU state
 
 1. Ensure environment files are present
 
-  - [ ] Confirm `/etc/justnews/global.env` exists and contains at least `SERVICE_DIR`, `PYTHON_BIN` (or `CANONICAL_ENV`), `MARIADB_HOST/PORT/USER/PASSWORD`, and `CHROMA_HOST/PORT`.
+- [ ] Confirm `/etc/justnews/global.env` exists and contains at least `SERVICE_DIR`, `PYTHON_BIN` (or `CANONICAL_ENV`), `MARIADB_HOST/PORT/USER/PASSWORD`, and `CHROMA_HOST/PORT`.
 
-  - [ ] If missing, copy examples: `sudo cp infrastructure/systemd/examples/justnews.env.example /etc/justnews/global.env` and edit securely.
+- [ ] If missing, copy examples: `sudo cp infrastructure/systemd/examples/justnews.env.example /etc/justnews/global.env` and edit securely.
 
 1. One-command canonical startup (recommended)
 
-  - [ ] Run: `sudo ./infrastructure/systemd/canonical_system_startup.sh`
+- [ ] Run: `sudo ./infrastructure/systemd/canonical_system_startup.sh`
 
     - This performs env checks, optional MariaDB probe (skip with `SKIP_MARIADB_CHECK=true`), installs/refreshes service templates and scripts, runs a reset & fresh start (gpu_orchestrator → mcp_bus → agents), provisions monitoring (if missing), and performs a consolidated health check.
 
 1. (Alternative) Manual orchestrator-first flow
 
-  - [ ] Start GPU Orchestrator: `sudo systemctl enable --now justnews@gpu_orchestrator`
+- [ ] Start GPU Orchestrator: `sudo systemctl enable --now justnews@gpu_orchestrator`
 
-  - [ ] Wait for READY: `curl -fsS http://127.0.0.1:8014/ready` (wait up to 180s or adjust `GATE_TIMEOUT`)
+- [ ] Wait for READY: `curl -fsS http://127.0.0.1:8014/ready` (wait up to 180s or adjust `GATE_TIMEOUT`)
 
-  - [ ] Start services: `sudo ./infrastructure/systemd/scripts/enable_all.sh start`
+- [ ] Start services: `sudo ./infrastructure/systemd/scripts/enable_all.sh start`
 
-  - [ ] Verify MCP Bus: `curl -fsS http://127.0.0.1:8000/health`
+- [ ] Verify MCP Bus: `curl -fsS http://127.0.0.1:8000/health`
 
 1. Monitoring & Alertmanager
 
-  - [ ] Ensure Prometheus/Grafana running (canonical flow calls the installer). To manually provision: `sudo infrastructure/systemd/scripts/install_monitoring_stack.sh --enable --start`
+- [ ] Ensure Prometheus/Grafana running (canonical flow calls the installer). To manually provision: `sudo infrastructure/systemd/scripts/install_monitoring_stack.sh --enable --start`
 
-  - [ ] Alertmanager: opt-in via `AUTO_INSTALL_ALERTMANAGER=1` in `/etc/justnews/global.env` (disabled by default); the MCP Bus startup will run the idempotent installer when enabled.
+- [ ] Alertmanager: opt-in via `AUTO_INSTALL_ALERTMANAGER=1` in `/etc/justnews/global.env` (disabled by default); the MCP Bus startup will run the idempotent installer when enabled.
 
 1. Final health verification
 
-  - [ ] Run: `sudo ./infrastructure/systemd/scripts/health_check.sh -v` and verify all services report `healthy`.
+- [ ] Run: `sudo ./infrastructure/systemd/scripts/health_check.sh -v` and verify all services report `healthy`.
 
-  - [ ] Check `justnews_agent_health_status` metric in Prometheus / Grafana panels (if monitoring present).
+- [ ] Check `justnews_agent_health_status` metric in Prometheus / Grafana panels (if monitoring present).
 
 1. Troubleshooting quick commands
 
-  - [ ] View orchestrator logs: `sudo journalctl -u justnews@gpu_orchestrator -f`
+- [ ] View orchestrator logs: `sudo journalctl -u justnews@gpu_orchestrator -f`
 
-  - [ ] View agent logs: `sudo journalctl -u justnews@<agent> -f`
+- [ ] View agent logs: `sudo journalctl -u justnews@<agent> -f`
 
-  - [ ] Collect diagnostic bundle: `sudo infrastructure/systemd/collect_startup_diagnostics.sh`
+- [ ] Collect diagnostic bundle: `sudo infrastructure/systemd/collect_startup_diagnostics.sh`
 
-  - [ ] Free occupied ports (if preflight warned): `sudo ./infrastructure/systemd/preflight.sh --stop` or run `sudo ./infrastructure/systemd/reset_and_start.sh` to clean ports and restart services
+- [ ] Free occupied ports (if preflight warned): `sudo ./infrastructure/systemd/preflight.sh --stop` or run `sudo ./infrastructure/systemd/reset_and_start.sh` to clean ports and restart services
 
 Notes:
 
@@ -80,15 +80,15 @@ Notes:
 
 - [ ] Create `/etc/justnews/global.env` or `./global.env` with:
 
-  - `MARIADB_HOST`, `MARIADB_PORT`, `MARIADB_DB`, `MARIADB_USER`, `MARIADB_PASSWORD`
+- `MARIADB_HOST`, `MARIADB_PORT`, `MARIADB_DB`, `MARIADB_USER`, `MARIADB_PASSWORD`
 
-  - `CHROMA_HOST`, `CHROMA_PORT`
+- `CHROMA_HOST`, `CHROMA_PORT`
 
-  - `CANONICAL_ENV=justnews-py312`
+- `CANONICAL_ENV=justnews-py312`
 
-  - `JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python`
+- `JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python`
 
-  - `SERVICE_DIR=/home/adra/JustNews`
+- `SERVICE_DIR=/home/adra/JustNews`
 
 - [ ] Test: `source global.env && echo "✅ $MARIADB_HOST"`
 

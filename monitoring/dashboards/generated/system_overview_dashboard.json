@@ -453,6 +453,88 @@
           ]
         }
       }
+    },
+    {
+      "id": 200,
+      "title": "MCP Bus Overall Health",
+      "type": "stat",
+      "description": "Overall MCP Bus health (0=healthy,1=degraded,2=unhealthy)",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 36
+      },
+      "targets": [
+        {
+          "expr": "max(justnews_agent_health_status{agent=\"mcp_bus\",target=\"overall\"})",
+          "legendFormat": "Overall"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [
+            {"type": "value", "options": {"0": {"text": "Healthy", "color": "green"}, "1": {"text": "Degraded", "color": "orange"}, "2": {"text": "Unhealthy", "color": "red"}, "3": {"text": "Unreachable", "color": "red"}, "4": {"text": "Unknown", "color": "gray"}}}
+          ],
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 201,
+      "title": "MCP Bus Agents Degraded Count",
+      "type": "stat",
+      "description": "Number of registered agents in a degraded/unhealthy state",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 36
+      },
+      "targets": [
+        {
+          "expr": "sum(justnews_agent_health_status{target=\"per_agent\"} > 0)",
+          "legendFormat": "Degraded Agents"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 202,
+      "title": "MCP Bus Agent Status Table",
+      "type": "table",
+      "description": "Per-agent health status (0=healthy,1=degraded,2=unhealthy,3=unreachable,4=unknown)",
+      "gridPos": {
+        "h": 8,
+        "w": 18,
+        "x": 12,
+        "y": 36
+      },
+      "targets": [
+        {
+          "expr": "justnews_agent_health_status{target=\"per_agent\"}",
+          "legendFormat": "{{agent}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "displayMode": "table"
+      }
     }
   ],
   "version": 1,

@@ -118,7 +118,7 @@ monitoring/
 
 - ⚠️ **Metrics & Dashboards**: Design exists, but **Grafana/Prometheus not deployed to systemd yet**
 
-- ⚠️ **Alerting**: Rules exist, but **AlertManager not deployed yet**
+- ⚠️ **Alerting**: Rules exist; **AlertManager** is recommended for routing and notification (see `monitoring/alertmanager/alertmanager.example.yml`). Deploy and configure AlertManager to enable Slack/Email/PagerDuty notifications.
 
 ## Recommendations
 

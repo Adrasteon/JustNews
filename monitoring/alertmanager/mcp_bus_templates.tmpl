@@ -1,0 +1,16 @@
+{{ define "mcpbus.alert" }}
+{{- $labels := .CommonLabels }}
+{{- $starts := .StartsAt }}
+{{- $ends := .EndsAt }}
+{{ range .Alerts }}
+*Alert:* {{ .Annotations.summary }}
+*Service:* {{ .Labels.service }}
+*Severity:* {{ .Labels.severity }}
+*Status:* {{ .Status }}
+*Details:* {{ .Annotations.description }}
+*StartsAt:* {{ $starts }}
+{{ if .EndsAt }}*EndsAt:* {{ $ends }}{{ end }}
+{{ if .GeneratorURL }}*URL:* {{ .GeneratorURL }}{{ end }}
+---
+{{ end }}
+{{ end }}

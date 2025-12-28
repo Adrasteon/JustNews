@@ -1,0 +1,32 @@
+groups:
+  - name: mcp_bus.rules
+    rules:
+      - alert: MCPBusOverallDegraded
+        expr: justnews_agent_health_status{agent="mcp_bus",target="overall"} > 0
+        for: 2m
+        labels:
+          severity: warning
+          service: mcp_bus
+        annotations:
+          summary: "MCP Bus overall health degraded"
+          description: "The MCP Bus overall status is not healthy (value > 0) for more than 2 minutes. Investigate /health output."
+
+      - alert: MCPBusAgentUnreachable
+        expr: justnews_agent_health_status{target="per_agent"} == 3
+        for: 2m
+        labels:
+          severity: critical
+          service: mcp_bus
+        annotations:
+          summary: "MCP Bus agent unreachable"
+          description: "Agent {{ $labels.agent }} reported 'unreachable' status for more than 2 minutes. Check agent service and network connectivity."
+
+      - alert: MCPBusAgentDegraded
+        expr: justnews_agent_health_status{target="per_agent"} == 1
+        for: 5m
+        labels:
+          severity: warning
+          service: mcp_bus
+        annotations:
+          summary: "MCP Bus agent degraded"
+          description: "Agent {{ $labels.agent }} reported 'degraded' status for more than 5 minutes. Check agent health and logs."

@@ -34,13 +34,16 @@ throttles, and ensure work completes without losing state due to crashes or rest
 
 - Persistence: ensure authoritative state (leases, pools, jobs) survives orchestrator crashes and process restarts.
 
-- Monitoring & Observability: real-time telemetry, traces, alerts and dashboards for queue lengths, GPU utilization and worker lifecycle.
+- Monitoring & Observability: real-time telemetry, traces, alerts and dashboards for queue lengths, GPU utilization and
+  worker lifecycle.
 
 - Admission Control & Backpressure: per-agent and global control that can dynamically reduce or increase agent load.
 
-- HA & Recovery: support leader election and reconciliation loops so orchestrator instances can recover state and continue processing.
+- HA & Recovery: support leader election and reconciliation loops so orchestrator instances can recover state and
+  continue processing.
 
-- Safe scaling: expose metrics to autoscalers (KEDA/HPA) and let the system autoscale worker processes based on meaningful signals.
+- Safe scaling: expose metrics to autoscalers (KEDA/HPA) and let the system autoscale worker processes based on
+  meaningful signals.
 
 ---
 
@@ -50,7 +53,8 @@ throttles, and ensure work completes without losing state due to crashes or rest
 
 - Redis Streams — primary job/event bus for durable, reliable messaging with consumer groups and DLQ.
 
-- GPU Orchestrator (agent) — orchestrates leases, worker pools, preloads; leader responsible for reconciliation and admission control.
+- GPU Orchestrator (agent) — orchestrates leases, worker pools, preloads; leader responsible for reconciliation and
+  admission control.
 
 - Workers (pool processes) — stateless consumers that claim jobs from streams and claim leases before GPU-bound work.
 
@@ -145,11 +149,14 @@ Consumer model:
 
 - Producers push into stream with a job payload and a stable job_id.
 
-- A consumer group consumer claims a message via XREADGROUP; on start it marks job status=claimed and records worker+lease (DB update).
+- A consumer group consumer claims a message via XREADGROUP; on start it marks job status=claimed and records
+  worker+lease (DB update).
 
-- On success finalizes job as `done`and ACKs the stream; on failure increments`attempts` and optionally XACK+XADD to DLQ.
+- On success finalizes job as `done`and ACKs the stream; on failure increments`attempts` and optionally XACK+XADD to
+  DLQ.
 
-- If consumer dies with an unacked message, the leader or a reclaimer process will XCLAIM messages where IDLE time > threshold and handle retries.
+- If consumer dies with an unacked message, the leader or a reclaimer process will XCLAIM messages where IDLE time >
+  threshold and handle retries.
 
 Dead-letter & retries:
 
@@ -218,7 +225,8 @@ DB advisory lock and the engine logs leader transitions.
 - Worker implementation completed. `agents/gpu_orchestrator/worker.py` implements a simple worker that claims messages,
   requests leases from the engine, updates orchestrator_jobs status transitions and releases leases.
 
-- Integration tests added: tests/integration/test_worker_flow.py verifies worker end-to-end behavior (claimed -> done, failure handling, lease denial behavior).
+- Integration tests added: tests/integration/test_worker_flow.py verifies worker end-to-end behavior (claimed -> done,
+  failure handling, lease denial behavior).
 
 ### Phase 7 — E2E integration, production hardening & operator runbook
 
@@ -239,9 +247,11 @@ DB advisory lock and the engine logs leader transitions.
   items and playbooks (evict/pause/drain flows, disaster recovery steps, rollback procedures, and a tested checklist for
   safe migrations).
 
-- Monitoring & alerting: more detailed autoscaler rules, alert tuning for reclaimer failures/infinite loops, and SLO-driven dashboards need completion.
+- Monitoring & alerting: more detailed autoscaler rules, alert tuning for reclaimer failures/infinite loops, and SLO-
+  driven dashboards need completion.
 
-- Performance & soak testing: multi-node soak tests (real GPU workloads at production scale) are required to validate the admission controls, backpressure gates, and scaling policies.
+- Performance & soak testing: multi-node soak tests (real GPU workloads at production scale) are required to validate
+  the admission controls, backpressure gates, and scaling policies.
 
 These items are blocking a safe production rollout even though the core system is feature-complete and well-tested.
 
@@ -254,37 +264,47 @@ item includes a short acceptance criteria and suggested verification steps.
 
 1) Production Redis reclaimer hardening
 
-- Acceptance: `xautoclaim`/`xclaim` paths tested and stable on our fleet Redis versions; reclaimer performs safely under high-churn streams without loss or duplicate processing.
+- Acceptance: `xautoclaim`/`xclaim` paths tested and stable on our fleet Redis versions; reclaimer performs safely under
+  high-churn streams without loss or duplicate processing.
 
-- Verify: run high-concurrency stream soak tests (1–24 hours) that simulate lost consumers and measure reclaimer behaviour; add targeted unit tests and e2e scenarios for edge cases.
+- Verify: run high-concurrency stream soak tests (1–24 hours) that simulate lost consumers and measure reclaimer
+  behaviour; add targeted unit tests and e2e scenarios for edge cases.
 
 2) Idempotency and transactional safety for lease+claim
 
-- Acceptance: Acquiring a lease and claiming a job are atomic w.r.t. application-level state; duplicates are detectable and safely ignored/handled.
+- Acceptance: Acquiring a lease and claiming a job are atomic w.r.t. application-level state; duplicates are detectable
+  and safely ignored/handled.
 
-- Verify: add tests for concurrent claims, duplicate job_id submissions, and race conditions; instrument audit logs for forensic checks.
+- Verify: add tests for concurrent claims, duplicate job_id submissions, and race conditions; instrument audit logs for
+  forensic checks.
 
 3) Operator runbook completion & playbooks
 
-- Acceptance: playbooks for drain/evict/recover exist, are documented, and tested in a runbook validation exercise (operator walkthrough/drill).
+- Acceptance: playbooks for drain/evict/recover exist, are documented, and tested in a runbook validation exercise
+  (operator walkthrough/drill).
 
-- Verify: run a tabletop/drill (or staged failover) and sign-off in `docs/gpu_orchestrator_runbook.md` with remediation times and known caveats.
+- Verify: run a tabletop/drill (or staged failover) and sign-off in `docs/gpu_orchestrator_runbook.md` with remediation
+  times and known caveats.
 
 4) Monitoring, alerts & autoscaling rules
 
-- Acceptance: Effective Grafana dashboards and Prometheus alerts for reclaimer failures, job queue depth, lease saturation, and GPU OOM/pressure; autoscaler rules (KEDA/HPA) exercised and safe.
+- Acceptance: Effective Grafana dashboards and Prometheus alerts for reclaimer failures, job queue depth, lease
+  saturation, and GPU OOM/pressure; autoscaler rules (KEDA/HPA) exercised and safe.
 
 - Verify: smoke-test alerts using synthetic conditions and run targeted scale-up tests to confirm autoscaler response.
 
 5) Performance soak & scale tests on GPUs
 
-- Acceptance: Policy enforcer + admission control remain stable under production-like load across multiple GPU nodes. No persistent queue growth or runaway OOMs over a 24–72 hour test.
+- Acceptance: Policy enforcer + admission control remain stable under production-like load across multiple GPU nodes. No
+  persistent queue growth or runaway OOMs over a 24–72 hour test.
 
-- Verify: run `scripts/perf/`workloads and`scripts/ops/adapter_worker_pool.py` at scale; collect metrics and review for anomalies.
+- Verify: run `scripts/perf/`workloads and`scripts/ops/adapter_worker_pool.py` at scale; collect metrics and review for
+  anomalies.
 
 6) Release, artifact and migration plan
 
-- Acceptance: Clear upgrade/migration plan for DB/Redis schema changes and a pinned artifact publication strategy for binary wheels (bitsandbytes) used by agents.
+- Acceptance: Clear upgrade/migration plan for DB/Redis schema changes and a pinned artifact publication strategy for
+  binary wheels (bitsandbytes) used by agents.
 
 - Verify: publish test release artifacts to staging bucket and perform a dry-run upgrade against staging cluster.
 
@@ -292,7 +312,8 @@ item includes a short acceptance criteria and suggested verification steps.
 
 - Add more monitoring & autoscaler rules based on historical metrics.
 
-- Create an operator runbook: how to force-evict pools, drain cluster, recover from dead leader, and emergency steps for OOM.---
+- Create an operator runbook: how to force-evict pools, drain cluster, recover from dead leader, and emergency steps for
+  OOM.---
 
 ## Leader election & reconciliation
 
@@ -374,7 +395,8 @@ is low and utilization is < 10%.
 
 - Use DB transactions when acquiring a lease + claiming a job to avoid races.
 
-- Use heartbeats with TTL: if heartbeat stops beyond threshold, orchestrator marks worker as dead and reclaims jobs and leases.
+- Use heartbeats with TTL: if heartbeat stops beyond threshold, orchestrator marks worker as dead and reclaims jobs and
+  leases.
 
 - Dead letter queue and retry policy with jitter and exponential backoff for transient failures.
 
@@ -396,7 +418,8 @@ We will implement in small, verified steps so the live system remains stable.
 
 - unit tests for DB helpers
 
-- integration-style test where we create lease, kill orchestrator (simulate restart), start new orchestrator, and verify lease still present and TTL enforced
+- integration-style test where we create lease, kill orchestrator (simulate restart), start new orchestrator, and verify
+  lease still present and TTL enforced
 
 Deliverable: leases are persisted, survive restarts, and can be reclaimed.
 
@@ -418,7 +441,8 @@ Deliverable: leases are persisted, survive restarts, and can be reclaimed.
 
 - `POST /jobs/submit` persists job and writes into redis stream.
 
-- Implement a consumer skeleton that claims jobs, persists `claimed` status, requests lease, runs job, finalizes status and ACKs.
+- Implement a consumer skeleton that claims jobs, persists `claimed` status, requests lease, runs job, finalizes status
+  and ACKs.
 
 - Implement DLQ & requeue logic.
 
@@ -452,7 +476,8 @@ Deliverable: leases are persisted, survive restarts, and can be reclaimed.
 
 - Add integrated tests for crash-restart resilience, DLQ, graceful drain, and backpressure behavior.
 
-- Create an operator runbook: how to force-evict pools, drain cluster, recover from dead leader, and emergency steps for OOM.
+- Create an operator runbook: how to force-evict pools, drain cluster, recover from dead leader, and emergency steps for
+  OOM.
 
 ---
 
@@ -476,7 +501,8 @@ Deliverable: leases are persisted, survive restarts, and can be reclaimed.
 
 - Orchestrator persists worker_pools row and writes stream:orchestrator:preloads
 
-- A PoolProvisioner consumer takes the message, provisions pool workers (spawned by orchestrator or external worker supervisor), persists spawned count and heartbeats
+- A PoolProvisioner consumer takes the message, provisions pool workers (spawned by orchestrator or external worker
+  supervisor), persists spawned count and heartbeats
 
 - Pool lasts until hold_seconds expire, or admin drains or pool.status sets to 'draining'
 
@@ -496,7 +522,8 @@ Deliverable: leases are persisted, survive restarts, and can be reclaimed.
 
 - Start with PoC (persistent leases) and add telemetry & tests. Avoid big-bang replacements in production.
 
-- Ensure the DB migration path is tested and the orchestrator can work in hybrid mode (DB-backed leases optional) while rolling out migration.
+- Ensure the DB migration path is tested and the orchestrator can work in hybrid mode (DB-backed leases optional) while
+  rolling out migration.
 
 - Keep short TTLs for locks/heartbeats initially during testing to allow fast failover iterations.
 
@@ -504,19 +531,24 @@ Deliverable: leases are persisted, survive restarts, and can be reclaimed.
 
 ## Remaining Tasks (Phase 7)
 
-- Add more robust claim/XCLAIM/XAUTOCLAIM semantics for production Redis; verify compatibility and performance for Redis versions in the fleet.
+- Add more robust claim/XCLAIM/XAUTOCLAIM semantics for production Redis; verify compatibility and performance for Redis
+  versions in the fleet.
 
-- Improve idempotency guarantees and job execution timeouts; ensure acquiring a lease + job claim is safe under concurrency and retried idempotently.
+- Improve idempotency guarantees and job execution timeouts; ensure acquiring a lease + job claim is safe under
+  concurrency and retried idempotently.
 
-- Finalize the operator runbook with tested evacuation/drain/recovery procedures (playbook + checklists) and ensure runbook is versioned with release artifacts.
+- Finalize the operator runbook with tested evacuation/drain/recovery procedures (playbook + checklists) and ensure
+  runbook is versioned with release artifacts.
 
-- Complete monitoring & autoscaler configuration (KEDA rules or HPA policies) and create dashboards and alerts tuned for production behaviour (backpressure, OOM, reclaimer metrics).
+- Complete monitoring & autoscaler configuration (KEDA rules or HPA policies) and create dashboards and alerts tuned for
+  production behaviour (backpressure, OOM, reclaimer metrics).
 
 - Add large-scale soak/perf tests using real GPU workloads to validate admission control under heavy churn.
 
 - Add more monitoring & autoscaler rules based on historical metrics.
 
-- Create an operator runbook: how to force-evict pools, drain cluster, recover from dead leader, and emergency steps for OOM.
+- Create an operator runbook: how to force-evict pools, drain cluster, recover from dead leader, and emergency steps for
+  OOM.
 
 ---
 

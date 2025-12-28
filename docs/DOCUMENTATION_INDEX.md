@@ -134,7 +134,8 @@ This is a comprehensive index of all JustNews documentation, organized by topic 
 
 - [Environment Configuration](./operations/ENVIRONMENT_CONFIG.md) — How to use environment variables
 
-- [Global.env Reference](./operations/ENVIRONMENT_CONFIG.md#the-etcjustnewsglobalenv-file) — Configuration file structure
+- [Global.env Reference](./operations/ENVIRONMENT_CONFIG.md#the-etcjustnewsglobalenv-file) — Configuration file
+  structure
 
 ## 🔒 For Security / Compliance Teams
 
@@ -208,7 +209,8 @@ This is a comprehensive index of all JustNews documentation, organized by topic 
 
 ### Service Management
 
-- [Setup Guide - Systemd Integration](./operations/SETUP_GUIDE.md#phase-7-systemd-integration-and-startup) — Service setup
+- [Setup Guide - Systemd Integration](./operations/SETUP_GUIDE.md#phase-7-systemd-integration-and-startup) — Service
+  setup
 
 - [Systemd Operations](./infrastructure/systemd/README.md) — Service commands
 

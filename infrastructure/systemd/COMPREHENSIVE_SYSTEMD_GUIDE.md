@@ -12,7 +12,8 @@ drop-ins.
 
 - Units use `ExecStartPre`to run`preflight.sh --gate-only <instance>`.
 
-- In gate-only mode, the script waits for the GPU Orchestrator on `127.0.0.1:8014`and ensures`/models/preload` completes (or is already “all_ready”).
+- In gate-only mode, the script waits for the GPU Orchestrator on `127.0.0.1:8014`and ensures`/models/preload` completes
+  (or is already “all_ready”).
 
 - Therefore, start `justnews@gpu_orchestrator` first; once READY, other services start cleanly.
 
@@ -186,13 +187,16 @@ If many services fail on first boot, verify `justnews@gpu_orchestrator` is READY
 
 - Evidence audit API trail lookup: `curl -fsS "$EVIDENCE_AUDIT_BASE_URL/facts/<id>/trail" | jq`
 
-- Analytics service: `curl -fsS <http://127.0.0.1:8011/health`> should return`{"status":"healthy"}`; the FastAPI wrapper now aliases the underlying engine to keep the status fresh.
+- Analytics service: `curl -fsS <http://127.0.0.1:8011/health`> should return`{"status":"healthy"}`; the FastAPI wrapper now aliases the
+  underlying engine to keep the status fresh.
 
 - Governance dashboard heartbeat: `curl -fsS "$GOVERNANCE_DASHBOARD_URL/api/health"`
 
-- QA sampling reminders: ensure `/etc/justnews/playbooks/extraction-qa.md` exists and is referenced in weekly ops review notes.
+- QA sampling reminders: ensure `/etc/justnews/playbooks/extraction-qa.md` exists and is referenced in weekly ops review
+  notes.
 
-- Verify synthesizer gate: `curl -fsS <http://127.0.0.1:8005/ready`> should report`true`only when`/transparency/status`returns`integrity.status`of`ok`or`degraded`.
+- Verify synthesizer gate: `curl -fsS <http://127.0.0.1:8005/ready`> should report`true`only
+  when`/transparency/status`returns`integrity.status`of`ok`or`degraded`.
 
 If transparency endpoints return non-200 responses, pause automated publishing (`sudo systemctl stop
 justnews@synthesis`) until evidence trails are restored.
@@ -239,7 +243,8 @@ Troubleshooting:
 
 - Free ports and dangling processes: `sudo ./infrastructure/systemd/preflight.sh --stop`.
 
-- After changes, confirm all ports are free with `infrastructure/systemd/scripts/health_check.sh` (it reports port usage).
+- After changes, confirm all ports are free with `infrastructure/systemd/scripts/health_check.sh` (it reports port
+  usage).
 
 ## Status panel (auto-refresh)
 
@@ -312,19 +317,24 @@ sudo ./infrastructure/systemd/scripts/health_check.sh
 
 Notes and tuning:
 
-- `enable_all.sh`now starts`gpu_orchestrator`first and waits on`/ready`(up to 120s), then MCP Bus, then all remaining services. It accepts`fresh`and the alias`--fresh`.
+- `enable_all.sh`now starts`gpu_orchestrator`first and waits on`/ready`(up to 120s), then MCP Bus, then all remaining
+  services. It accepts`fresh`and the alias`--fresh`.
 
-- `preflight.sh --gate-only <instance>`is invoked by unit drop-ins; it will wait up to`GATE_TIMEOUT` seconds (default 180) for orchestrator and model preload.
+- `preflight.sh --gate-only <instance>`is invoked by unit drop-ins; it will wait up to`GATE_TIMEOUT` seconds (default
+  180) for orchestrator and model preload.
 
 - If you must bypass bus wait (e.g., maintenance), set `REQUIRE_BUS=0`in the environment for`wait_for_mcp.sh` (rare).
 
-- Increase timeouts for cold-start scenarios or slow disks/GPUs by setting a drop-in with `Environment=GATE_TIMEOUT=300`.
+- Increase timeouts for cold-start scenarios or slow disks/GPUs by setting a drop-in with
+  `Environment=GATE_TIMEOUT=300`.
 
 Failure handling:
 
-- If the orchestrator `READY`probe doesn’t succeed within the timeout,`enable_all.sh`aborts with a clear message. Check`journalctl -u justnews@gpu_orchestrator -f`.
+- If the orchestrator `READY`probe doesn’t succeed within the timeout,`enable_all.sh`aborts with a clear message.
+  Check`journalctl -u justnews@gpu_orchestrator -f`.
 
-- If MCP Bus health isn’t ready, the script logs a warning and continues; subsequent services will still start due to systemd gating.
+- If MCP Bus health isn’t ready, the script logs a warning and continues; subsequent services will still start due to
+  systemd gating.
 
 - Always run `sudo ./infrastructure/systemd/scripts/health_check.sh -v` after changes to confirm all agents are healthy.
 
@@ -405,7 +415,8 @@ journalctl -u justnews-boot-smoke.service -e -n 200
 
 Tuning (optional):
 
-- `SMOKE_TIMEOUT_SEC`,`SMOKE_RETRIES`,`SMOKE_SLEEP_BETWEEN`can be exported in the environment or set via a systemd drop-in for`justnews-boot-smoke.service`.
+- `SMOKE_TIMEOUT_SEC`,`SMOKE_RETRIES`,`SMOKE_SLEEP_BETWEEN`can be exported in the environment or set via a systemd drop-
+  in for`justnews-boot-smoke.service`.
 
 - To delay further, increase `OnBootSec` in the timer unit.
 
@@ -469,23 +480,30 @@ for operational tasks and Dev for local development aids.
 
 ### A — Startup sequence (use order)
 
-1. `infrastructure/systemd/canonical_system_startup.sh` — Top-level bring-up helper (env checks, reset/start, monitoring provisioning, consolidated health check).
+1. `infrastructure/systemd/canonical_system_startup.sh` — Top-level bring-up helper (env checks, reset/start, monitoring
+   provisioning, consolidated health check).
 
-1. `infrastructure/systemd/scripts/ensure_global_python_bin.sh`— Ensure`PYTHON_BIN`is present in`/etc/justnews/global.env` (idempotent).
+1. `infrastructure/systemd/scripts/ensure_global_python_bin.sh`— Ensure`PYTHON_BIN`is present
+   in`/etc/justnews/global.env` (idempotent).
 
-1. `infrastructure/systemd/preflight.sh` — Node preflight checks (tools, GPU, ports, conda env) — run as a dry-run pre-check.
+1. `infrastructure/systemd/preflight.sh` — Node preflight checks (tools, GPU, ports, conda env) — run as a dry-run pre-
+   check.
 
-1. `infrastructure/systemd/reset_and_start.sh`— Orchestration: stop/disable, free ports, reinstall templates/scripts (optional), daemon-reload, and fresh-start (calls`enable_all.sh fresh`).
+1. `infrastructure/systemd/reset_and_start.sh`— Orchestration: stop/disable, free ports, reinstall templates/scripts
+   (optional), daemon-reload, and fresh-start (calls`enable_all.sh fresh`).
 
-1. `infrastructure/systemd/scripts/enable_all.sh` — Enable/start services in canonical order (GPU Orchestrator → MCP Bus → agents) with readiness gating.
+1. `infrastructure/systemd/scripts/enable_all.sh` — Enable/start services in canonical order (GPU Orchestrator → MCP Bus
+   → agents) with readiness gating.
 
 1. `infrastructure/systemd/scripts/justnews-start-agent.sh`— Agent startup wrapper used by`justnews@.service`.
 
 1. `infrastructure/systemd/scripts/wait_for_mcp.sh`— Wait for MCP Bus`/health` before dependent agents start.
 
-1. `infrastructure/systemd/scripts/install_monitoring_stack.sh` — Provision Prometheus/Grafana/node_exporter (invoked by canonical startup when needed).
+1. `infrastructure/systemd/scripts/install_monitoring_stack.sh` — Provision Prometheus/Grafana/node_exporter (invoked by
+   canonical startup when needed).
 
-1. `infrastructure/systemd/cold_start.sh` — Cold-boot helper for post-reboot flow (installs wrappers/units, starts orchestrator first, then all services, runs health checks).
+1. `infrastructure/systemd/cold_start.sh` — Cold-boot helper for post-reboot flow (installs wrappers/units, starts
+   orchestrator first, then all services, runs health checks).
 
 1. `infrastructure/systemd/scripts/health_check.sh` — Consolidated health validation run after startup.
 
@@ -495,19 +513,25 @@ for operational tasks and Dev for local development aids.
 
 - `infrastructure/systemd/scripts/check_protobuf_version.py` — Verify protobuf runtime compatibility.
 
-- `infrastructure/systemd/scripts/install_monitoring_stack.sh` — Idempotent provisioning of Prometheus/Grafana/node_exporter.
+- `infrastructure/systemd/scripts/install_monitoring_stack.sh` — Idempotent provisioning of
+  Prometheus/Grafana/node_exporter.
 
-- `scripts/install_alertmanager_unit.sh`— Idempotent installer for host-level Alertmanager systemd unit (backups to`/var/backups/justnews/alertmanager/`).
+- `scripts/install_alertmanager_unit.sh`— Idempotent installer for host-level Alertmanager systemd unit (backups
+  to`/var/backups/justnews/alertmanager/`).
 
-- `infrastructure/systemd/scripts/collect_startup_diagnostics.sh`— Gather logs, systemd status, and`nvidia-smi` for debugging startup issues.
+- `infrastructure/systemd/scripts/collect_startup_diagnostics.sh`— Gather logs, systemd status, and`nvidia-smi` for
+  debugging startup issues.
 
-- `infrastructure/systemd/scripts/justnews-preflight-check.sh`— Small preflight helper installed to`/usr/local/bin` for operators.
+- `infrastructure/systemd/scripts/justnews-preflight-check.sh`— Small preflight helper installed to`/usr/local/bin` for
+  operators.
 
-- `infrastructure/systemd/scripts/justnews-boot-smoke.sh`&`infrastructure/systemd/helpers/boot_smoke_test.sh` — Boot-time smoke test helpers (timer-driven).
+- `infrastructure/systemd/scripts/justnews-boot-smoke.sh`&`infrastructure/systemd/helpers/boot_smoke_test.sh` — Boot-
+  time smoke test helpers (timer-driven).
 
 - `infrastructure/systemd/scripts/check_db_services.sh` — Database connectivity helpers used by startup probes.
 
-- `infrastructure/systemd/scripts/migrate_project_root.sh`— Migrate`SERVICE_DIR` and optionally create compatibility symlink when repo path changes.
+- `infrastructure/systemd/scripts/migrate_project_root.sh`— Migrate`SERVICE_DIR` and optionally create compatibility
+  symlink when repo path changes.
 
 - `infrastructure/systemd/scripts/run_and_monitor.sh` — Wrapper to run canonical startup and monitor progress.
 
@@ -519,13 +543,15 @@ for operational tasks and Dev for local development aids.
 
 ### C — Dev-only scripts (local development & test helpers)
 
-- `scripts/dev/run_pytest_conda.sh`,`scripts/dev/run_full_pytest_safe.sh`,`scripts/dev/pytest.sh` — Run tests inside canonical conda env with safe defaults.
+- `scripts/dev/run_pytest_conda.sh`,`scripts/dev/run_full_pytest_safe.sh`,`scripts/dev/pytest.sh` — Run tests inside
+  canonical conda env with safe defaults.
 
 - `scripts/run_tests_with_env.sh` — Convenience wrapper to run test subsets (GPU, Chroma, vLLM, etc.).
 
 - `scripts/launch_vllm_mistral_7b.sh` (and similar) — vLLM local smoke runner for development/testing.
 
-- `infrastructure/monitoring/dev-docker-compose.yaml` — Dev telemetry compose file (opt-in, not for production deployments).
+- `infrastructure/monitoring/dev-docker-compose.yaml` — Dev telemetry compose file (opt-in, not for production
+  deployments).
 
 - Misc `scripts/dev/*` utilities — developer convenience, CI simulation, and local run helpers.
 
@@ -535,7 +561,8 @@ for operational tasks and Dev for local development aids.
 
 - `infrastructure/systemd/complete_postgresql.sh` — Legacy PostgreSQL helper (deprecated).
 
-- Any legacy Kubernetes / Docker Compose deployment assets in `infrastructure/archives/` — archived & deprecated in favor of systemd flows.
+- Any legacy Kubernetes / Docker Compose deployment assets in `infrastructure/archives/` — archived & deprecated in
+  favor of systemd flows.
 
 ---
 

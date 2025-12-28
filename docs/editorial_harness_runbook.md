@@ -7,7 +7,8 @@ This runbook explains how to operate the Stage 4 editorial harness that runs n
 
 - MariaDB + Chroma stack available with the migrated schema.
 
-- `MODEL_STORE_DRY_RUN=1` (or the adapters fully provisioned) so the harness can execute without loading heavy weights in CI.
+- `MODEL_STORE_DRY_RUN=1` (or the adapters fully provisioned) so the harness can execute without loading heavy weights
+  in CI.
 
 - Prometheus scraping the Stage B metrics endpoint so the counters in `common/stage_b_metrics.py` are exported.
 
@@ -40,7 +41,8 @@ The script invokes `AgentChainRunner`, which:
 
 1. Runs `AgentChainHarness` to generate story briefs, fact checks, and drafts.
 
-1. Saves traces (`fact_check_trace`,`synth_trace`,`critic_result`) plus updated`fact_check_status`/`is_synthesized`flags back into the`articles` table.
+1. Saves traces (`fact_check_trace`,`synth_trace`,`critic_result`) plus updated`fact_check_status`/`is_synthesized`flags
+   back into the`articles` table.
 
 1. Records metrics (`justnews_stage_b_editorial_harness_total`,`justnews_stage_b_editorial_acceptance_*`).
 
@@ -94,9 +96,11 @@ access.)
 
 ## Dashboards & alerts
 
-- Follow `docs/grafana/editorial-harness-wiring.md`to expose the Stage 4 metrics, copy the provisioning files, and import`docs/grafana/editorial-harness-dashboard.json`.
+- Follow `docs/grafana/editorial-harness-wiring.md`to expose the Stage 4 metrics, copy the provisioning files, and
+  import`docs/grafana/editorial-harness-dashboard.json`.
 
-- Panels cover accepted vs follow-up vs error rates, rolling acceptance ratio, score distribution, and 24 h harness volume.
+- Panels cover accepted vs follow-up vs error rates, rolling acceptance ratio, score distribution, and 24 h harness
+  volume.
 
 - Add alerts on:
 
@@ -110,4 +114,5 @@ access.)
 
 1. Investigate any `needs_followup`clusters by reviewing the artifact JSON (if enabled) or the`fact_check_trace` column.
 
-1. Before promoting drafts to Stage 5 (publishing), confirm the Grafana dashboard shows green status for the latest window.
+1. Before promoting drafts to Stage 5 (publishing), confirm the Grafana dashboard shows green status for the latest
+   window.

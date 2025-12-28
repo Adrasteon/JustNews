@@ -8,32 +8,41 @@
 
 - `AsyncWebCrawler.arun_many(urls, config=None, dispatcher=None, …) -> list[CrawlResult] | AsyncGenerator`: batch/streaming crawl over multiple URLs. Supports a shared config or per-URL configs and concurrency dispatchers (e.g.,`MemoryAdaptiveDispatcher`).
 
-- `CrawlerRunConfig`: runtime behavior toggle (C4A script, markdown generator, link preview scoring, screenshot capture, cache mode, etc.).
+- `CrawlerRunConfig`: runtime behavior toggle (C4A script, markdown generator, link preview scoring, screenshot capture,
+  cache mode, etc.).
 
-- `BrowserConfig`: Playwright/browser session parameters (headless mode, device profiles, timeouts, download directories) embedded in API/CLI payloads.
+- `BrowserConfig`: Playwright/browser session parameters (headless mode, device profiles, timeouts, download
+  directories) embedded in API/CLI payloads.
 
 - `AdaptiveCrawler`+`AdaptiveConfig`: iterative crawl orchestrator with coverage scoring.`digest(start_url, query,
   …)`follows links while`confidence_threshold`,`max_pages`,`top_k_links`, and`min_gain_threshold` constraints hold.
 
-- `SeedingConfig`: upfront URL discovery (sitemap source, include patterns, BM25 query scoring, score thresholds, limits) for feeding`arun_many`.
+- `SeedingConfig`: upfront URL discovery (sitemap source, include patterns, BM25 query scoring, score thresholds,
+  limits) for feeding`arun_many`.
 
-- `LinkPreviewConfig`: attaches to`CrawlerRunConfig`; scores/filters internal/external links with pattern filters, query, score thresholds, preview metadata.
+- `LinkPreviewConfig`: attaches to`CrawlerRunConfig`; scores/filters internal/external links with pattern filters,
+  query, score thresholds, preview metadata.
 
-- `DefaultMarkdownGenerator`+`LLMContentFilter`: transforms cleaned HTML into markdown; LLM filter (provider string, instruction, token limits) keeps desired sections.
+- `DefaultMarkdownGenerator`+`LLMContentFilter`: transforms cleaned HTML into markdown; LLM filter (provider string,
+  instruction, token limits) keeps desired sections.
 
 - `CrawlResult`helpers: access`links['internal'|'external']`,`media`,`network_requests`,`downloads` for downstream analytics.
 
 ## Extraction Strategies
 
-- `RegexExtractionStrategy`: uses built-ins for emails/URLs, custom regex dicts, or`generate_pattern()` via LLM (cached JSON for reuse).
+- `RegexExtractionStrategy`: uses built-ins for emails/URLs, custom regex dicts, or`generate_pattern()` via LLM (cached
+  JSON for reuse).
 
 - `JsonCssExtractionStrategy`/`JsonXPathExtractionStrategy`: schema-driven selector extraction for structured pages.
 
-- `LLMExtractionStrategy`: schema- or block-based extraction with configurable LLM (`provider`,`api_token`, custom`instruction`, optional Pydantic schema, chunking controls,`base_url`,`extra_args`).
+- `LLMExtractionStrategy`: schema- or block-based extraction with configurable LLM (`provider`,`api_token`,
+  custom`instruction`, optional Pydantic schema, chunking controls,`base_url`,`extra_args`).
 
-- `CosineStrategy`: semantic similarity selector (`semantic_filter`,`word_count_threshold`,`sim_threshold`,`max_dist`) to group relevant sections.
+- `CosineStrategy`: semantic similarity selector (`semantic_filter`,`word_count_threshold`,`sim_threshold`,`max_dist`)
+  to group relevant sections.
 
-- PDF stack: `PDFCrawlerStrategy`+`PDFContentScrapingStrategy(extract_images, save_images_locally, image_save_dir, batch_size)` produce markdown plus media metadata.
+- PDF stack: `PDFCrawlerStrategy`+`PDFContentScrapingStrategy(extract_images, save_images_locally, image_save_dir,
+  batch_size)` produce markdown plus media metadata.
 
 - Chunking utilities:
 
@@ -43,9 +52,11 @@
 
 - `TopicSegmentationChunking` (TextTiling) for topic-aware splits.
 
-- Chunk parameters also live on `LLMExtractionStrategy`(`chunk_token_threshold`,`overlap_rate`,`word_token_rate`,`apply_chunking`).
+- Chunk parameters also live on
+  `LLMExtractionStrategy`(`chunk_token_threshold`,`overlap_rate`,`word_token_rate`,`apply_chunking`).
 
-- LLM schema helpers: define Pydantic models (e.g., `ResearchInsights`) and feed`.model_json_schema()`to`LLMExtractionStrategy`.
+- LLM schema helpers: define Pydantic models (e.g., `ResearchInsights`) and
+  feed`.model_json_schema()`to`LLMExtractionStrategy`.
 
 ## C4A-Script Automation Primitives
 
@@ -79,7 +90,8 @@
 
 - MCP integrations: `/mcp/sse`,`/mcp/ws`,`/mcp/schema` for Model Context Protocol clients.
 
-- Payloads carry serialized `BrowserConfig`/`CrawlerRunConfig`objects (`{"type": "…", "params": {...}}`) and can override providers (`"provider": "groq/mixtral-8x7b"`).
+- Payloads carry serialized `BrowserConfig`/`CrawlerRunConfig`objects (`{"type": "…", "params": {...}}`) and can
+  override providers (`"provider": "groq/mixtral-8x7b"`).
 
 ## CLI & Tooling
 

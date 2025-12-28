@@ -217,7 +217,8 @@ concurrency to 1, max links to 120.
 
 - Environment: ${CANONICAL_ENV:-justnews-py312}, Crawl4AI 0.7.4, Playwright Chromium refreshed 2025-11-01.
 
-- Command: `PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python - <<'PY' ... max_articles=100` after updating concurrency to 1, max links to 120.
+- Command: `PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python - <<'PY' ... max_articles=100` after
+  updating concurrency to 1, max links to 120.
 
 - Metrics: total 100, unique 98, non-news 0, domain split {'www.bbc.co.uk': 75, 'www.bbc.com': 23}.
 

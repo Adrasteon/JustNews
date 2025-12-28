@@ -400,7 +400,8 @@ All documentation has been:
 
 ### For Existing Operators
 
-1. Review [SETUP_GUIDE.md - Phase 7](./operations/SETUP_GUIDE.md#phase-7-systemd-integration-and-startup) for systemd integration
+1. Review [SETUP_GUIDE.md - Phase 7](./operations/SETUP_GUIDE.md#phase-7-systemd-integration-and-startup) for systemd
+   integration
 
 1. Check [VAULT_SETUP.md - Secret Rotation](./operations/VAULT_SETUP.md#secret-rotation) for maintenance procedures
 

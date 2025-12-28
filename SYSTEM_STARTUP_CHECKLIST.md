@@ -22,9 +22,11 @@ Follow this exact sequence for a safe, reproducible system startup (preferred op
 
 1. Ensure environment files are present
 
-- [ ] Confirm `/etc/justnews/global.env`exists and contains at least`SERVICE_DIR`,`PYTHON_BIN`(or`CANONICAL_ENV`),`MARIADB_HOST/PORT/USER/PASSWORD`, and`CHROMA_HOST/PORT`.
+- [ ] Confirm `/etc/justnews/global.env`exists and contains at
+  least`SERVICE_DIR`,`PYTHON_BIN`(or`CANONICAL_ENV`),`MARIADB_HOST/PORT/USER/PASSWORD`, and`CHROMA_HOST/PORT`.
 
-- [ ] If missing, copy examples: `sudo cp infrastructure/systemd/examples/justnews.env.example /etc/justnews/global.env` and edit securely.
+- [ ] If missing, copy examples: `sudo cp infrastructure/systemd/examples/justnews.env.example /etc/justnews/global.env`
+  and edit securely.
 
 1. One-command canonical startup (recommended)
 
@@ -46,9 +48,11 @@ Follow this exact sequence for a safe, reproducible system startup (preferred op
 
 1. Monitoring & Alertmanager
 
-- [ ] Ensure Prometheus/Grafana running (canonical flow calls the installer). To manually provision: `sudo infrastructure/systemd/scripts/install_monitoring_stack.sh --enable --start`
+- [ ] Ensure Prometheus/Grafana running (canonical flow calls the installer). To manually provision: `sudo
+  infrastructure/systemd/scripts/install_monitoring_stack.sh --enable --start`
 
-- [ ] Alertmanager: opt-in via `AUTO_INSTALL_ALERTMANAGER=1`in`/etc/justnews/global.env` (disabled by default); the MCP Bus startup will run the idempotent installer when enabled.
+- [ ] Alertmanager: opt-in via `AUTO_INSTALL_ALERTMANAGER=1`in`/etc/justnews/global.env` (disabled by default); the MCP
+  Bus startup will run the idempotent installer when enabled.
 
 1. Final health verification
 
@@ -64,11 +68,13 @@ Follow this exact sequence for a safe, reproducible system startup (preferred op
 
 - [ ] Collect diagnostic bundle: `sudo infrastructure/systemd/collect_startup_diagnostics.sh`
 
-- [ ] Free occupied ports (if preflight warned): `sudo ./infrastructure/systemd/preflight.sh --stop`or run`sudo ./infrastructure/systemd/reset_and_start.sh` to clean ports and restart services
+- [ ] Free occupied ports (if preflight warned): `sudo ./infrastructure/systemd/preflight.sh --stop`or run`sudo
+  ./infrastructure/systemd/reset_and_start.sh` to clean ports and restart services
 
 Notes:
 
-- Use `SAFE_MODE=true`in`/etc/justnews/global.env` to disable GPU usage and apply conservative settings on developer hosts.
+- Use `SAFE_MODE=true`in`/etc/justnews/global.env` to disable GPU usage and apply conservative settings on developer
+  hosts.
 
 - `AUTO_BOOTSTRAP_CONDA`defaults to`1`(auto-bootstrap canonical env if missing); set to`0` to opt out.
 
@@ -128,7 +134,7 @@ bash docker run -d --name chromadb -p 8000:8000 chromadb/chroma:latest
 
 ```
 bash ./scripts/run_with_env.sh python scripts/init_database.py
-``` Should
+```Should
 print: `✅ Database initialization completed successfully!`
 
 - [ ] Verify tables exist:
@@ -146,11 +152,12 @@ TABLES;" | grep -c articles
 - [ ] Start:
 
 ```bash
-  # Option A: systemd
+# Option A: systemd
 sudo systemctl enable --now justnews@mcp_bus
 
-  # Option B: Direct
-./scripts/run_with_env.sh python -m agents.mcp_bus.main & ```
+# Option B: Direct
+./scripts/run_with_env.sh python -m agents.mcp_bus.main &
+```
 
 - [ ] Verify: `curl -s <http://localhost:8017/health> && echo "✅ MCP Bus"`
 
@@ -203,7 +210,8 @@ sudo ./infrastructure/systemd/scripts/enable_all.sh start
 - [ ] Run small test (3 sites × 5 articles):
 
 ```bash ./scripts/run_with_env.sh python live_crawl_test.py --sites 3 --articles
-5 ``` Should fetch ~15 articles and store them
+5
+``` Should fetch ~15 articles and store them
 
 - [ ] Verify articles in database:
 
@@ -247,11 +255,12 @@ tests/integration/test_persistence_schema.py -v
 - [ ] Monitor logs in real-time:
 
 ```bash
-  # MCP Bus
+# MCP Bus
 journalctl -u justnews@mcp_bus -f
 
-  # Or if running direct Python:
-tail -f /var/log/justnews/*.log 2>/dev/null || echo "No logs yet" ```
+# Or if running direct Python:
+tail -f /var/log/justnews/*.log 2>/dev/null || echo "No logs yet"
+```
 
 ---
 
@@ -284,12 +293,12 @@ tail -f /var/log/justnews/*.log 2>/dev/null || echo "No logs yet" ```
 ## Troubleshooting Quick Fixes
 
 | Symptom | Command to Try | |---------|---| | "MARIADB_HOST: command not found"
-| `source global.env` (if using file) or `export MARIADB_HOST=localhost` | |
+| `source global.env`(if using file) or`export MARIADB_HOST=localhost` | |
 Port 8015 refused | `curl -s <http://localhost:8014/ready`> – GPU Orchestrator
 must be READY first | | ChromaDB not found | `docker ps | grep chromadb` – start
 it: `docker run -d --name chromadb -p 8000:8000 chromadb/chroma:latest` | | No
 articles after crawl | Check MariaDB: `mysql -u $MARIADB_USER ... -e "SHOW
-TABLES;"` – run `init_database.py` if needed | | vLLM 7060 not responding |
+TABLES;"`– run`init_database.py` if needed | | vLLM 7060 not responding |
 `curl -v <http://localhost:7060/health`> – relaunch:
 `./scripts/launch_vllm_mistral_7b.sh` |
 

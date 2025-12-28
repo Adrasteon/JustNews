@@ -40,7 +40,8 @@ sentry_sdk.init(
 
 Notes & operational guidance
 
-- Keep `SENTRY_DSN` secret (store in secure env / secrets manager). In local dev, set it to an empty string to avoid noisy test events.
+- Keep `SENTRY_DSN` secret (store in secure env / secrets manager). In local dev, set it to an empty string to avoid
+  noisy test events.
 
 - Use `traces_sample_rate` for production to avoid high-volume traces; 0.1 or lower is typical for heavy workloads.
 

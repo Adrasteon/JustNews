@@ -6,11 +6,13 @@ on the publisher site.
 
 ## 1. Environment Checklist
 
-- Activate the project environment: `conda run -n ${CANONICAL_ENV:-justnews-py312} ...` or use the preconfigured tasks in the repo.
+- Activate the project environment: `conda run -n ${CANONICAL_ENV:-justnews-py312} ...` or use the preconfigured tasks
+  in the repo.
 
 - Ensure Playwright browsers are installed for the environment (`playwright install chromium`).
 
-- Confirm the target domain has a profile file under `config/crawl_profiles/`and that you understand any custom`extra`flags already applied (e.g.,`skip_seed_articles`).
+- Confirm the target domain has a profile file under `config/crawl_profiles/`and that you understand any
+  custom`extra`flags already applied (e.g.,`skip_seed_articles`).
 
 ## 2. Quick Variant Probe
 

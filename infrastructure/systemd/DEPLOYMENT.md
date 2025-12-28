@@ -71,9 +71,11 @@ as `justnews@crawl4ai`.
 
 Deployment notes:
 
-- The agent is started by the standard flows (`reset_and_start.sh`/`enable_all.sh`) and therefore participates in the canonical ordering and health checks.
+- The agent is started by the standard flows (`reset_and_start.sh`/`enable_all.sh`) and therefore participates in the
+  canonical ordering and health checks.
 
-- Configure runtime variables in `/etc/justnews/global.env`or a per-instance env file`/etc/justnews/crawl4ai.env`. Important variables:
+- Configure runtime variables in `/etc/justnews/global.env`or a per-instance env file`/etc/justnews/crawl4ai.env`.
+  Important variables:
 
 - CRAWL4AI_HOST (default 127.0.0.1)
 
@@ -96,7 +98,8 @@ files and the global environment file may still point to the old path. To avoid 
 
 - Ensure `/etc/justnews/global.env`either sets`SERVICE_DIR` to the new location or is updated during deployment.
 
-- Check systemd unit files (in `/etc/systemd/system`or`/lib/systemd/system`) that they use`$SERVICE_DIR`or`/opt/justnews` rather than hard-coded, outdated paths.
+- Check systemd unit files (in `/etc/systemd/system`or`/lib/systemd/system`) that they
+  use`$SERVICE_DIR`or`/opt/justnews` rather than hard-coded, outdated paths.
 
 - For a one-off compatibility fix, create a symlink from the old path to the new one (e.g., `sudo ln -s
   /home/adra/JustNews /home/adra/JustNewsAgent-Clean`) to allow services to start while you update units.

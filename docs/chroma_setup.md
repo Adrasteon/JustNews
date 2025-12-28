@@ -25,7 +25,8 @@ Set the following variables (recommended in `/etc/justnews/global.env`):
 
 (_Optional_) Strict canonical enforcement:
 
-- `CHROMADB_REQUIRE_CANONICAL`— if`1`, the agent will fail at startup if`CHROMADB_HOST/PORT` does not match canonical values.
+- `CHROMADB_REQUIRE_CANONICAL`— if`1`, the agent will fail at startup if`CHROMADB_HOST/PORT` does not match canonical
+  values.
 
 - `CHROMADB_CANONICAL_HOST`&`CHROMADB_CANONICAL_PORT` — canonical host & port for this deployment. If canonical
   enforcement is enabled and the runtime host/port doesn't match, the service will abort start and provide diagnostic
@@ -54,9 +55,11 @@ PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma
 
 ## Troubleshooting
 
-- If the diagnostic shows the root `MCP Bus Agent` text, double-check your CHROMADB_HOST/PORT environment values and adjust to your actual Chroma server (not the MCP Bus which runs on a hub port).
+- If the diagnostic shows the root `MCP Bus Agent` text, double-check your CHROMADB_HOST/PORT environment values and
+  adjust to your actual Chroma server (not the MCP Bus which runs on a hub port).
 
-- If the bootstrap script fails due to permissions or API version, contact your Chroma host operator to create the tenant/collection.
+- If the bootstrap script fails due to permissions or API version, contact your Chroma host operator to create the
+  tenant/collection.
 
 ## Production Note
 

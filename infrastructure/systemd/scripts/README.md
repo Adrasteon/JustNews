@@ -26,7 +26,8 @@ What it checks --------------
 
 - MariaDB probe using `mysql` client or python+pymysql fallback
 
-- Chroma probe via `curl /api/v2/auth/identity`(preferred) with fallbacks to`/api/v1/health`,`/api/v1/heartbeat`or`/` — or scripts/chroma_diagnose.py fallback
+- Chroma probe via `curl /api/v2/auth/identity`(preferred) with fallbacks to`/api/v1/health`,`/api/v1/heartbeat`or`/` —
+  or scripts/chroma_diagnose.py fallback
 
 Notes -----
 

@@ -93,7 +93,8 @@ Latest rollout updates — Fact Checker & Critic -------------------------------
   `RE_RANKER_TEST_MODE=1`so CI-safe stubs load while the adapter path is validated via`pytest
   tests/agents/test_fact_checker.py`.
 
-- Critic uses the same base snapshot with the `mistral_critic_v1` adapter to score drafts before Chief Editor review. Warm pools can be sanity-checked with:
+- Critic uses the same base snapshot with the `mistral_critic_v1` adapter to score drafts before Chief Editor review.
+  Warm pools can be sanity-checked with:
 
 ```bash
 MODEL_STORE_ROOT=/opt/justnews/model_store RE_RANKER_TEST_MODE=0 \

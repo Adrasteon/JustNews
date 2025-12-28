@@ -40,11 +40,14 @@ Test artifacts stored | Complete | Pytest command executed 2025-10-26; results 8
   postgresql://postgres@localhost/justnews --record`; transcript stored
   under`logs/operations/migrations/migration_003_20251026T185331Z.log`.
 
-- 2025-10-26T19:12:18Z — Scheduler timer run completed; see `journalctl`excerpt and state/success JSON under`logs/analytics/`plus Prometheus textfile`crawl_scheduler.prom`.
+- 2025-10-26T19:12:18Z — Scheduler timer run completed; see `journalctl`excerpt and state/success JSON
+  under`logs/analytics/`plus Prometheus textfile`crawl_scheduler.prom`.
 
-- 2025-10-26T19:21:21Z — Scheduler metrics redirected to node exporter textfile collector (`/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom`).
+- 2025-10-26T19:21:21Z — Scheduler metrics redirected to node exporter textfile collector
+  (`/var/lib/node_exporter/textfile_collector/crawl_scheduler.prom`).
 
-- 2025-10-26T19:25:00Z — QA sampling log initialized in `logs/governance/crawl_terms_audit.md` covering Stage B smoke check.
+- 2025-10-26T19:25:00Z — QA sampling log initialized in `logs/governance/crawl_terms_audit.md` covering Stage B smoke
+  check.
 
 - Dashboard snapshot capture deferred pending Grafana GUI export by ops (metrics validated in Prometheus textfile).
 
@@ -52,7 +55,8 @@ Test artifacts stored | Complete | Pytest command executed 2025-10-26; results 8
   postgresql://postgres@localhost/justnews --record`; transcript stored
   under`logs/operations/migrations/migration_003_20251026T194119Z.log`.
 
-- 2025-10-26T19:43:10Z — Duplicate suppression query executed; results archived under `logs/operations/evidence/dedupe_query_20251026.txt`.
+- 2025-10-26T19:43:10Z — Duplicate suppression query executed; results archived under
+  `logs/operations/evidence/dedupe_query_20251026.txt`.
 
 ## 2025-11-02 — BBC profile verification
 
@@ -78,6 +82,8 @@ Complete | Stage B counters show success-only increments post- run. | `logs/anal
 
 - 2025-11-02T16:18Z — Canonical restart executed to load shared `make_json_safe` logic across crawler and memory agents.
 
-- 2025-11-02T16:31Z — BBC scheduler test run completed (`--testrun`), producing all-new ingestion entries with zero serialization errors.
+- 2025-11-02T16:31Z — BBC scheduler test run completed (`--testrun`), producing all-new ingestion entries with zero
+  serialization errors.
 
-- 2025-11-02T16:34Z — Random sample script recorded titles/text snippets for audit; attached to bring-up ticket and stored under `logs/operations/evidence/sample_bbc_articles_20251102.txt`.
+- 2025-11-02T16:34Z — Random sample script recorded titles/text snippets for audit; attached to bring-up ticket and
+  stored under `logs/operations/evidence/sample_bbc_articles_20251102.txt`.

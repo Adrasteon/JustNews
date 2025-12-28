@@ -15,7 +15,8 @@ Pending Tasks (prioritised): 1) CI + test coverage (High priority)
 
   - Steps:
 
-  - Add a minimal GitHub Actions workflow to run `pytest`on pushes/PRs (use the project's`environment.yml`or`requirements.txt` to install deps).
+  - Add a minimal GitHub Actions workflow to run `pytest`on pushes/PRs (use the
+    project's`environment.yml`or`requirements.txt` to install deps).
 
   - Run the new tests in CI and iterate if environment issues appear.
 
@@ -31,7 +32,8 @@ Pending Tasks (prioritised): 1) CI + test coverage (High priority)
     ICE_ADDRESS`,`HITL_DB_PATH`,`ENABLE_HITL_PIPELINE`,`HITL_STATS_INTERVAL_SECONDS`,`HITL_FAILURE_BACKOFF_SECONDS`,
     forwarding knobs (`HITL_FORWARD_AGENT`,`HITL_FORWARD_TOOL`).
 
-  - Add `agents/hitl_service/README.md` explaining how to override DB path, enable/disable pipeline, and where the UI is served.
+  - Add `agents/hitl_service/README.md` explaining how to override DB path, enable/disable pipeline, and where the UI is
+    served.
 
   - Verification: README present and example env includes knobs.
 
@@ -41,11 +43,13 @@ Pending Tasks (prioritised): 1) CI + test coverage (High priority)
 
   - Steps:
 
-  - Add a pytest that patches `mcp_client.call_tool`and exercises`store_label`/`dispatch_ingest` to ensure the code path constructs the right payload and handles retries/backoff.
+  - Add a pytest that patches `mcp_client.call_tool`and exercises`store_label`/`dispatch_ingest` to ensure the code path
+    constructs the right payload and handles retries/backoff.
 
   - Optionally add a small test that simulates `HITL_FORWARD_ENABLED=true` behavior with a dummy MCP client.
 
-  - Verification: tests assert that `dispatch_ingest`calls`mcp_client.call_tool` and updates DB ingestion_status appropriately.
+  - Verification: tests assert that `dispatch_ingest`calls`mcp_client.call_tool` and updates DB ingestion_status
+    appropriately.
 
 4) Controlled integration run and manual verification (Medium priority)
 
@@ -59,7 +63,8 @@ Pending Tasks (prioritised): 1) CI + test coverage (High priority)
 
   - Check `GET /api/stats`,`GET /api/next`, and`hitl_labels`and`hitl_candidates` DB rows.
 
-  - Verification: `/api/stats`reflects expected pending/in_review counts; labeled rows appear in`hitl_labels` and ingestion forward payloads are created.
+  - Verification: `/api/stats`reflects expected pending/in_review counts; labeled rows appear in`hitl_labels` and
+    ingestion forward payloads are created.
 
 5) Operational guidance and monitoring (Low priority)
 
@@ -85,7 +90,8 @@ Notes/Assumptions:
 
 - This plan assumes local deployment and localhost endpoints by default; change `HITL_SERVICE_ADDRESS` for remote hosts.
 
-- The local staging DB (`agents/hitl_service/hitl_staging.db`) is intentionally ignored from git and should remain local-only.
+- The local staging DB (`agents/hitl_service/hitl_staging.db`) is intentionally ignored from git and should remain
+  local-only.
 
 - The crawler will only POST candidates when `ENABLE_HITL_PIPELINE` is true (default true unless overridden).
 
@@ -93,6 +99,7 @@ Immediate next actions (recommendation):
 
 - Add the GitHub Actions workflow to run `pytest` on pushes/PRs. I can scaffold this now and push it to the branch.
 
-- Prepare `agents/hitl_service/README.md` and update the example env file. If you want, I can produce these files and push them.
+- Prepare `agents/hitl_service/README.md` and update the example env file. If you want, I can produce these files and
+  push them.
 
 If you want me to proceed: tell me which immediate action to take (add CI, add docs, or run a larger integrated crawl).

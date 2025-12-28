@@ -60,11 +60,14 @@ Example:
 
 ## How the probe works (developer notes)
 
-- The MCP Bus engine performs a best-effort HTTP GET to `<agent_address>/health`(1s probe timeout) for each registered agent when`requests` is available.
+- The MCP Bus engine performs a best-effort HTTP GET to `<agent_address>/health`(1s probe timeout) for each registered
+  agent when`requests` is available.
 
-- If `requests`is not importable, agent statuses will be set to`unknown`and the bus-level`overall_status`may be`degraded` if agents are expected.
+- If `requests`is not importable, agent statuses will be set to`unknown`and the bus-level`overall_status`may
+  be`degraded` if agents are expected.
 
-- Any non-2xx response, JSON parse error, or network error will be reported as `unhealthy`/`unreachable`and will mark the bus`overall_status`as`degraded`.
+- Any non-2xx response, JSON parse error, or network error will be reported as `unhealthy`/`unreachable`and will mark
+  the bus`overall_status`as`degraded`.
 
 - Circuit breakers are included in the health report (see `circuit_breaker_active` boolean).
 
@@ -84,11 +87,13 @@ curl -s <http://localhost:8017/ready> && echo "MCP Bus ready"
 
 ```bash
 
-- The repository provides a multi-service health check script used by operators in `infrastructure/systemd/health_check.sh`which already includes`mcp_bus` in the default services list.
+- The repository provides a multi-service health check script used by operators in
+  `infrastructure/systemd/health_check.sh`which already includes`mcp_bus` in the default services list.
 
 ## Monitoring & alerting
 
-- Add an alert on `overall_status != "healthy"`for key services. For example, alert when`mcp_bus`reports`degraded`or when a specific agent is`unreachable` for more than 2 check cycles.
+- Add an alert on `overall_status != "healthy"`for key services. For example, alert when`mcp_bus`reports`degraded`or
+  when a specific agent is`unreachable` for more than 2 check cycles.
 
 - Integrate the endpoint into your Prometheus blackbox exporter or a simple cron job for internal monitoring.
 
@@ -115,7 +120,8 @@ conda run -n justnews-py312 pytest -q tests/agents/mcp_bus/test_health.py
 
 - Integration tests exercise the FastAPI app (TestClient) and live at `tests/agents/mcp_bus/test_health_integration.py`.
 
-- These tests patch `requests.get`to simulate agent responses and monkeypatch`agents.mcp_bus.main.notify_gpu_orchestrator` to prevent external network calls during app startup.
+- These tests patch `requests.get`to simulate agent responses and
+  monkeypatch`agents.mcp_bus.main.notify_gpu_orchestrator` to prevent external network calls during app startup.
 
 Run integration tests:
 
@@ -128,9 +134,11 @@ conda run -n justnews-py312 pytest -q tests/agents/mcp_bus/test_health_integrati
 
 - Prefer `monkeypatch`to patch`agents.mcp_bus.mcp_bus_engine.requests.get` when simulating agent responses.
 
-- For FastAPI endpoint tests use `fastapi.testclient.TestClient(app)`and ensure the engine state is clean before each test by clearing`tools.get_engine().agents`and`circuit_breaker_state`.
+- For FastAPI endpoint tests use `fastapi.testclient.TestClient(app)`and ensure the engine state is clean before each
+  test by clearing`tools.get_engine().agents`and`circuit_breaker_state`.
 
-- Patch `agents.mcp_bus.main.notify_gpu_orchestrator`(returning`True`) in tests that instantiate the`TestClient` to avoid network calls during the app lifespan.
+- Patch `agents.mcp_bus.main.notify_gpu_orchestrator`(returning`True`) in tests that instantiate the`TestClient` to
+  avoid network calls during the app lifespan.
 
 Example test patterns are included in the `tests/agents/mcp_bus` directory.
 
@@ -144,7 +152,8 @@ Example test patterns are included in the `tests/agents/mcp_bus` directory.
 
 - Confirm network/firewall rules allow `MCP Bus` to connect to the agent address.
 
-- If health checks appear slow, check whether `requests` is falling back to slow DNS lookups or whether the probe timeout is too large; the probe timeout defaults to 1.0s per agent.
+- If health checks appear slow, check whether `requests` is falling back to slow DNS lookups or whether the probe
+  timeout is too large; the probe timeout defaults to 1.0s per agent.
 
 ## Files of interest
 

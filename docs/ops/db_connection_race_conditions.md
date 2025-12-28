@@ -4,7 +4,8 @@ Symptoms --------
 
 - Intermittent ingestion responses with "content_save_error": "Unread result found".
 
-- Reproduced when the memory agent or other agents run concurrent DB operations on a single shared mysql connector object.
+- Reproduced when the memory agent or other agents run concurrent DB operations on a single shared mysql connector
+  object.
 
 Root cause ----------
 
@@ -15,12 +16,14 @@ Root cause ----------
 
 Fix applied ----------- Applied changes in this repo:
 
-- Added `MigratedDatabaseService.get_connection()` — a helper to create a fresh MariaDB connection for short-lived / per-request work.
+- Added `MigratedDatabaseService.get_connection()` — a helper to create a fresh MariaDB connection for short-lived /
+  per-request work.
 
 - Updated memory agent save path (agents/memory/tools.py) to use per-request connections when available and to use
   buffered cursors. This reduces contention and prevents unconsumed resultsets from causing the exception.
 
-- Hardened memory engine cursors to use buffered=true in a few places where unbuffered cursors could lead to the same error.
+- Hardened memory engine cursors to use buffered=true in a few places where unbuffered cursors could lead to the same
+  error.
 
 How to verify (local dev) -------------------------
 
@@ -46,9 +49,11 @@ conda run -n justnews-py312 python scripts/ops/diagnose_ingestion_samples.py --s
 
 Next steps (recommended) ------------------------
 
-- Consider switching to a connection pool for high-throughput components (mysql.connector.pooling.MySQLConnectionPool) if the workload is very concurrent.
+- Consider switching to a connection pool for high-throughput components (mysql.connector.pooling.MySQLConnectionPool)
+  if the workload is very concurrent.
 
-- Audit other agents that use `mb_conn`directly and prefer using`get_connection()` or a connection helper/context manager to ensure per-request connections.
+- Audit other agents that use `mb_conn`directly and prefer using`get_connection()` or a connection helper/context
+  manager to ensure per-request connections.
 
 - Add runtime health metrics to detect elevated rates of database errors and retry conditions.
 

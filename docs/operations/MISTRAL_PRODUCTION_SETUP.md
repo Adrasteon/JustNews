@@ -17,11 +17,13 @@ Prerequisites (host)
 
 - Ensure `MODEL_STORE_ROOT`is set in`/etc/justnews/global.env`.
 
-- Run: `make modelstore-fetch-mistral`(this downloads HF snapshot into`MODEL_STORE_ROOT/base_models/models--mistralai--Mistral-7B-Instruct-v0.3/snapshots/<id>`)
+- Run: `make modelstore-fetch-mistral`(this downloads HF snapshot into`MODEL_STORE_ROOT/base_models/models--mistralai--
+  Mistral-7B-Instruct-v0.3/snapshots/<id>`)
 
 2) Install systemd unit and start
 
-- Run: `make vllm-install-and-start`(requires sudo). The unit executes vLLM using`conda run -n justnews-py312` so the canonical env is used.
+- Run: `make vllm-install-and-start`(requires sudo). The unit executes vLLM using`conda run -n justnews-py312` so the
+  canonical env is used.
 
 - The agent startup script attempts to auto-bootstrap the canonical `justnews-py312`conda environment (idempotent) if it
   is not present and`AUTO_BOOTSTRAP_CONDA`is not set to`0`in`/etc/justnews/global.env`. You can run the bootstrap
@@ -49,10 +51,12 @@ Prerequisites (host)
 
 6) Safety & resource tuning
 
-- If you observe frequent OOMs: reduce `config/vllm_mistral_7b.yaml` `runtime.gpu_memory_util`and`model.max_batch_size` and restart the service.
+- If you observe frequent OOMs: reduce `config/vllm_mistral_7b.yaml` `runtime.gpu_memory_util`and`model.max_batch_size`
+  and restart the service.
 
 - Tune `service.memory_max`and`service.cpu_quota` if host contention is observed.
 
 Contact & support
 
-- For driver-level faults (NVRM/Xid), collect `dmesg`,`journalctl -k`,`nvidia-smi -q -a`, and open a hardware support ticket.
+- For driver-level faults (NVRM/Xid), collect `dmesg`,`journalctl -k`,`nvidia-smi -q -a`, and open a hardware support
+  ticket.

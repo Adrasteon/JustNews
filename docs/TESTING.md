@@ -56,9 +56,11 @@ Notes -----
   (the project default found in`global.env`). If you change CHROMADB_PORT in`global.env`, update the compose file
   accordingly.
 
-- If you only want to run a subset, just export the matching flags. For example `export ENABLE_CHROMADB_LIVE_TESTS=1` and run only the chroma integration tests.
+- If you only want to run a subset, just export the matching flags. For example `export ENABLE_CHROMADB_LIVE_TESTS=1`
+  and run only the chroma integration tests.
 
-- CI mirrors this pattern in `.github/workflows/editorial-harness.yml` — review that workflow to reproduce CI environment locally.
+- CI mirrors this pattern in `.github/workflows/editorial-harness.yml` — review that workflow to reproduce CI
+  environment locally.
 
 Troubleshooting ---------------
 
@@ -66,7 +68,8 @@ Troubleshooting ---------------
 
 - Ensure Docker is running, and the images are healthy (use `docker compose ps`and`docker compose logs <service>`).
 
-- For provider tests, ensure you have valid API keys and any required model selection env vars (HF_TEST_MODEL, OPENAI_MODEL).
+- For provider tests, ensure you have valid API keys and any required model selection env vars (HF_TEST_MODEL,
+  OPENAI_MODEL).
 
 If you'd like, I can add a CI job that runs the full gated test matrix nightly so we catch integration regressions early
 — say the word and I'll prepare the workflow change.

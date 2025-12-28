@@ -18,7 +18,8 @@ scheduler deployment, observability roll-out, QA cadences, and the proofs needed
 - Invoke `agents/memory/tools.save_article`via unit tests (`tests/agents/memory/test_save_article.py`) or an ad-hoc
   ingestion to confirm`collection_timestamp`, dedupe hashes, review flags, and embeddings reach the database.
 
-- Inspect a sample row with `SELECT title, normalized_url, url_hash, needs_review, collection_timestamp FROM articles ORDER BY id DESC LIMIT 5;`.
+- Inspect a sample row with `SELECT title, normalized_url, url_hash, needs_review, collection_timestamp FROM articles
+  ORDER BY id DESC LIMIT 5;`.
 
 - Confirm Chroma metadata accepts the payload: run a spot check (for example, `python - <<'PY' ...
   collection.get(ids=['<article_id>']) ... PY`) and verify every metadata field is a scalar or JSON string. Null values
@@ -40,14 +41,17 @@ scheduler deployment, observability roll-out, QA cadences, and the proofs needed
 
 - Deploy the systemd timer:
 
-- Install `infrastructure/systemd/scripts/run_crawl_schedule.sh`and the associated unit/timer under`/etc/systemd/system/`(e.g.,`justnews-crawl-scheduler.service`/`.timer`).
+- Install `infrastructure/systemd/scripts/run_crawl_schedule.sh`and the associated unit/timer
+  under`/etc/systemd/system/`(e.g.,`justnews-crawl-scheduler.service`/`.timer`).
 
-- Set environment values in `/etc/justnews/global.env`:`SERVICE_DIR`,`JUSTNEWS_PYTHON`,`CRAWL_SCHEDULE_PATH` (optional), and overrides for output paths if needed.
+- Set environment values in `/etc/justnews/global.env`:`SERVICE_DIR`,`JUSTNEWS_PYTHON`,`CRAWL_SCHEDULE_PATH` (optional),
+  and overrides for output paths if needed.
 
 - Add `CRAWL_PROFILE_PATH=/etc/justnews/crawl_profiles` (or your custom path) if the default profiles live outside the
   repo checkout. The loader accepts either a directory or a single YAML file for backwards compatibility.
 
-- Ensure the analytics directory exists and is writable by the scheduler user: `sudo mkdir -p "$SERVICE_DIR/logs/analytics" && sudo chown -R <scheduler-user>:<scheduler-group> "$SERVICE_DIR/logs"`.
+- Ensure the analytics directory exists and is writable by the scheduler user: `sudo mkdir -p
+  "$SERVICE_DIR/logs/analytics" && sudo chown -R <scheduler-user>:<scheduler-group> "$SERVICE_DIR/logs"`.
 
 - Run `sudo systemctl daemon-reload && sudo systemctl enable --now justnews-crawl-scheduler.timer`.
 
@@ -58,11 +62,13 @@ scheduler deployment, observability roll-out, QA cadences, and the proofs needed
 
 - Capture live-run evidence:
 
-- Tail the timer journal (`journalctl -u justnews-crawl-scheduler.service -n 200`) and archive the latest`logs/analytics/crawl_scheduler_state.json` snapshot.
+- Tail the timer journal (`journalctl -u justnews-crawl-scheduler.service -n 200`) and archive the
+  latest`logs/analytics/crawl_scheduler_state.json` snapshot.
 
 ## 3. Observability Roll-Out
 
-- Prometheus textfile metrics are written to `logs/analytics/crawl_scheduler.prom`. Register (or symlink) this file with your node exporter textfile collector; on systemd hosts run:
+- Prometheus textfile metrics are written to `logs/analytics/crawl_scheduler.prom`. Register (or symlink) this file with
+  your node exporter textfile collector; on systemd hosts run:
 
 ```bash sudo mkdir -p /var/lib/node_exporter/textfile_collector sudo chown
 adra:adra /var/lib/node_exporter/textfile_collector sudo sed -i 's|^CRAWL_SCHEDU

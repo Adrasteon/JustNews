@@ -33,7 +33,8 @@ Key components
 
 - Crawl runner: calls `crawl4ai_adapter.crawl_site_with_crawl4ai`(async) or`GenericSiteCrawler` (sync).
 
-- Result normaliser: `_build_article_from_result`/`_build_article_from_adaptive_doc` convert C4A outputs into article dicts.
+- Result normaliser: `_build_article_from_result`/`_build_article_from_adaptive_doc` convert C4A outputs into article
+  dicts.
 
 - HITL submitter: `_submit_hitl_candidates` constructs payload and posts to HITL. Implements retries/backoff.
 
@@ -41,7 +42,8 @@ Key components
 
 Configuration and profiles
 
-- Profiles control `browser_config`,`run_config`(cache_mode, wait_for, js_code),`adaptive`block,`link_preview`rules,`start_urls`,`follow_internal_links`, and`max_pages`.
+- Profiles control `browser_config`,`run_config`(cache_mode, wait_for,
+  js_code),`adaptive`block,`link_preview`rules,`start_urls`,`follow_internal_links`, and`max_pages`.
 
 - `config/crawl_profiles/base.yaml` provides defaults; per-site files override fields.
 
@@ -49,7 +51,8 @@ APIs and payload shapes (excerpt)
 
 - HITL candidate payload (keys used):
 
-- `id`(string),`url`,`site_id`(string),`title`,`extracted_text`(truncated),`extraction_metadata`(dict),`publish_time` (iso)
+- `id`(string),`url`,`site_id`(string),`title`,`extracted_text`(truncated),`extraction_metadata`(dict),`publish_time`
+  (iso)
 
 - MCP call `memory.ingest_article` payload (example):
 
@@ -71,10 +74,12 @@ Testing & acceptance
 
 - Smoke tests: import `crawl4ai` and run a short adaptive digest using a benign profile.
 
-- Extraction parity: run `evaluation/run_evaluation.py` on stored samples to validate Trafilatura-first extraction parity.
+- Extraction parity: run `evaluation/run_evaluation.py` on stored samples to validate Trafilatura-first extraction
+  parity.
 
 Extensibility notes
 
-- Script registry: new `js_code`should be referenced by slug; implement`agents/crawler/scripts_registry.py` to resolve script content.
+- Script registry: new `js_code`should be referenced by slug; implement`agents/crawler/scripts_registry.py` to resolve
+  script content.
 
 - Adaptive tuning: expose adaptive thresholds and telemetry tags in profiles to help scoring and profiling.

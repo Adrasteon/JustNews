@@ -11,7 +11,8 @@ What changed ------------
 
 - Systemd unit: /etc/systemd/system/justnews-db-exporter.service
 
-- The unit includes an ExecStartPost health probe (waits ~5s for /metrics) and Restart/RestartSec/StartLimit* settings to prevent hot crash loops.
+- The unit includes an ExecStartPost health probe (waits ~5s for /metrics) and Restart/RestartSec/StartLimit* settings
+  to prevent hot crash loops.
 
 Operational notes -----------------
 
@@ -98,7 +99,7 @@ Installation workflow ---------------------
 bash cd /home/adra/JustNews sudo scripts/ops/install_dcgm_exporter.sh
 ```
 
-   - Script flags: set `DCGM_EXPORTER_VERSION` to override the default release, `DCGM_EXPORTER_PORT` if port 9400 cannot
+   - Script flags: set `DCGM_EXPORTER_VERSION`to override the default release,`DCGM_EXPORTER_PORT` if port 9400 cannot
      be used, and `DCGM_EXPORTER_LISTEN` to bind to a different interface (defaults provided inside the script). Edit
      `/etc/justnews/monitoring/dcgm/dcgm-exporter.env` after install to make persistent overrides.
 

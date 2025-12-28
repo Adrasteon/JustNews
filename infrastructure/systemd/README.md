@@ -66,7 +66,8 @@ Incident reference:
 - `canonical_system_startup.sh`– verifies env + data mount + database, then runs a full reset/start with health summary
   (use`sudo ./infrastructure/systemd/canonical_system_startup.sh stop` for a coordinated shutdown)
 
-- `install_monitoring_stack.sh` – installs Prometheus, Grafana, and node_exporter (plus dashboards) and wires up their systemd units
+- `install_monitoring_stack.sh` – installs Prometheus, Grafana, and node_exporter (plus dashboards) and wires up their
+  systemd units
 
 - `install_alertmanager_unit.sh`– idempotent installer that installs an example Alertmanager systemd unit, backs up
   existing units to`/var/backups/justnews/alertmanager/`, and optionally enables/starts the service (use`--enable`).
@@ -177,14 +178,17 @@ See Quick Reference for the full port map and more examples.
 We now include an integrated monitoring and alerting stack with example configurations and provisioning for Prometheus,
 Grafana, and Alertmanager. Key additions:
 
-- Prometheus alert rules for MCP Bus health: `monitoring/alerts/mcp_bus_alerts.yml` (MCPBusOverallDegraded, MCPBusAgentUnreachable, MCPBusAgentDegraded).
+- Prometheus alert rules for MCP Bus health: `monitoring/alerts/mcp_bus_alerts.yml` (MCPBusOverallDegraded,
+  MCPBusAgentUnreachable, MCPBusAgentDegraded).
 
 - Grafana system overview dashboard includes MCP Bus panels (overall health stat, degraded agent count, agent status
   table) and is provisioned from `monitoring/dashboards/generated/system_overview_dashboard.json`.
 
-- Alertmanager example config and templates: `monitoring/alertmanager/alertmanager.example.yml`and`monitoring/alertmanager/mcp_bus_templates.tmpl`.
+- Alertmanager example config and templates:
+  `monitoring/alertmanager/alertmanager.example.yml`and`monitoring/alertmanager/mcp_bus_templates.tmpl`.
 
-- An idempotent Alertmanager installer script and Makefile helpers are available for operators to provision Alertmanager safely.
+- An idempotent Alertmanager installer script and Makefile helpers are available for operators to provision Alertmanager
+  safely.
 
 The monitoring assets live under `infrastructure/systemd/monitoring`. Install and manage them with:
 
@@ -309,7 +313,8 @@ This section documents the existing helpers and how to perform simple operator c
 
 ### MariaDB/Postgres (Memory DB)
 
-- Helper: `infrastructure/systemd/helpers/db-check.sh`— reads`/etc/justnews/global.env`and tries a minimal`SELECT 1;`using`mysql`or`psql`.
+- Helper: `infrastructure/systemd/helpers/db-check.sh`— reads`/etc/justnews/global.env`and tries a minimal`SELECT
+  1;`using`mysql`or`psql`.
 
 - Example usage: `sudo ./infrastructure/systemd/helpers/db-check.sh`or if installed:`sudo /usr/local/bin/db-check.sh`.
 

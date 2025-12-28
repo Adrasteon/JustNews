@@ -18,9 +18,11 @@ those helpers and exposes `/metrics` will publish the counters when Prometheus s
 
 1. Ensure the agents that participate in Stage 4 expose `/metrics`.
 
-- Every systemd unit started via `infrastructure/systemd/scripts/enable_all.sh` already runs a FastAPI service with Prometheus middleware.
+- Every systemd unit started via `infrastructure/systemd/scripts/enable_all.sh` already runs a FastAPI service with
+  Prometheus middleware.
 
-- The editorial harness job typically runs via cron or CI (`scripts/dev/run_agent_chain_harness.py`). Pair it with a Pushgateway or textfile exporter so counters persist between runs.
+- The editorial harness job typically runs via cron or CI (`scripts/dev/run_agent_chain_harness.py`). Pair it with a
+  Pushgateway or textfile exporter so counters persist between runs.
 
 1. Add (or extend) a Prometheus scrape job that hits those ports. Example for the crawler host:
 

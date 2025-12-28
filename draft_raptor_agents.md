@@ -27,7 +27,8 @@ Notes on methodology:
 
 - Location: `agents/analyst`
 
-- Function: Quantitative news analysis including NER, sentiment/bias detection, statistical insights, and trend analysis.
+- Function: Quantitative news analysis including NER, sentiment/bias detection, statistical insights, and trend
+  analysis.
 
 - Key files: `analyst_engine.py`,`gpu_analyst.py`(GPU helper),`main.py` (FastAPI)
 
@@ -35,7 +36,8 @@ Notes on methodology:
 
 - Stage: Production (Core) — Implements many features, GPU logic, and fallback paths. Ready for integration.
 
-- Notes: Uses `cardiffnlp/twitter-roberta-base` for sentiment; supports GPU orchestrator integration for heavy workloads.
+- Notes: Uses `cardiffnlp/twitter-roberta-base` for sentiment; supports GPU orchestrator integration for heavy
+  workloads.
 
 ### analytics
 
@@ -53,7 +55,8 @@ Notes on methodology:
 
 - Location: `agents/archive`
 
-- Function: Article archiving, retrieval, search and knowledge graph (KG) operations, including `archive_storage` management.
+- Function: Article archiving, retrieval, search and knowledge graph (KG) operations, including `archive_storage`
+  management.
 
 - Key files: `archive_engine.py`,`archive_manager.py`,`main.py`
 
@@ -63,7 +66,8 @@ Notes on methodology:
 
 - Location: `agents/auth`
 
-- Function: Authentication service (JWT, RBAC), session management; used to secure endpoints and provide user access control.
+- Function: Authentication service (JWT, RBAC), session management; used to secure endpoints and provide user access
+  control.
 
 - Key files: `auth_engine.py`,`main.py`
 
@@ -75,7 +79,8 @@ Notes on methodology:
 
 - Location: `agents/c4ai`
 
-- Function: Crawl4AI HTTP bridge for local use; `server.py`provides`/crawl`and`health`endpoints and bridges to`crawl4ai` package.
+- Function: Crawl4AI HTTP bridge for local use; `server.py`provides`/crawl`and`health`endpoints and bridges to`crawl4ai`
+  package.
 
 - Key files: `server.py`,`bridge.py`
 
@@ -95,7 +100,8 @@ Notes on methodology:
 
 - Location: `agents/crawler`
 
-- Function: Main crawling agent providing robust crawling, extraction, job store, robots parsing, and pipeline integration.
+- Function: Main crawling agent providing robust crawling, extraction, job store, robots parsing, and pipeline
+  integration.
 
 - Key files: `main.py`,`crawler_engine.py`,`extraction.py`,`job_store.py`,`crawler_utils.py`
 
@@ -175,13 +181,15 @@ Notes on methodology:
 
 - Key files: `journalist_engine.py`,`main.py`
 
-- Stage: Production (Partial) — Lightweight agent that delegates heavy tasks to the `crawl4ai` service; used in publishing flows.
+- Stage: Production (Partial) — Lightweight agent that delegates heavy tasks to the `crawl4ai` service; used in
+  publishing flows.
 
 ### mcp_bus
 
 - Location: `agents/mcp_bus`
 
-- Function: Inter-agent message bus (Model Context Protocol) and discovery mechanism for agent capabilities; central service.
+- Function: Inter-agent message bus (Model Context Protocol) and discovery mechanism for agent capabilities; central
+  service.
 
 - Key files: `main.py`,`mcp_bus_engine.py`
 
@@ -227,13 +235,15 @@ Notes on methodology:
 
 - Key files: `reasoning_engine.py`,`main.py`
 
-- Stage: Production (Partial) — Provides domain rules & symbolic reasoning; integrates with `nucleoid_repo` for advanced features.
+- Stage: Production (Partial) — Provides domain rules & symbolic reasoning; integrates with `nucleoid_repo` for advanced
+  features.
 
 ### scout
 
 - Location: `agents/scout`
 
-- Function: Content discovery, site crawling and initial classification (BERT/DeBERTa / RoBERTa usage), integrative with Crawl4AI.
+- Function: Content discovery, site crawling and initial classification (BERT/DeBERTa / RoBERTa usage), integrative with
+  Crawl4AI.
 
 - Key files: `scout_engine.py`,`main.py`,`crawl4ai_server_impl.py`
 
@@ -253,7 +263,8 @@ Notes on methodology:
 
 - Location: `agents/synthesizer`
 
-- Function: Synthesis, summarization, neutralization and cluster-based aggregation using BART/FLAN-T5 and embedding models; also BERTopic clustering.
+- Function: Synthesis, summarization, neutralization and cluster-based aggregation using BART/FLAN-T5 and embedding
+  models; also BERTopic clustering.
 
 - Key files: `synthesizer_engine.py`,`main.py`
 
@@ -263,15 +274,18 @@ Notes on methodology:
 
 ## Overall Remarks & Next Actions
 
-- Most major agents (crawler, memory, mcp_bus, gpu_orch, archive, hitl_service, chief_editor, analyzer, synthesizer) are production-ready and show robust implementation and integrations.
+- Most major agents (crawler, memory, mcp_bus, gpu_orch, archive, hitl_service, chief_editor, analyzer, synthesizer) are
+  production-ready and show robust implementation and integrations.
 
 - Heavy LLM-based agents (synthesizer, newsreader, some parts of analyst, critic, chief_editor) rely on GPU
   orchestration and quantization strategies — recommended to add per-model VRAM metadata and to use quantization by
   default when needed.
 
-- `nucleoid_repo`is not a direct Python agent — it’s a referenced external package used by`reasoning` and may be maintained separately.
+- `nucleoid_repo`is not a direct Python agent — it’s a referenced external package used by`reasoning` and may be
+  maintained separately.
 
-- Next: Create an integration matrix documenting dependencies between agents and ensure `model_store`mapping in`AGENT_MODEL_MAP.json`is aligned with recommendations in`AGENT_MODEL_RECOMMENDED.json`.
+- Next: Create an integration matrix documenting dependencies between agents and ensure `model_store`mapping
+  in`AGENT_MODEL_MAP.json`is aligned with recommendations in`AGENT_MODEL_RECOMMENDED.json`.
 
 ---
 

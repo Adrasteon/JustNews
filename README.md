@@ -98,17 +98,20 @@ verification checklist.
 
 - **GPU Acceleration**: TensorRT-optimized models for performance
 
-- **High-Precision Extraction**: Trafilatura-first crawler cascade with readability/jusText fallbacks, structured metadata, raw HTML archival, and quality heuristics
+- **High-Precision Extraction**: Trafilatura-first crawler cascade with readability/jusText fallbacks, structured
+  metadata, raw HTML archival, and quality heuristics
 
 - **Enterprise Security**: JWT authentication, RBAC, GDPR compliance
 
 - **Multi-Platform Deployment**: systemd (Kubernetes and Docker Compose deprecated)
 
-- **Comprehensive Testing**: 41% test coverage with pytest-cov, comprehensive unit tests for utilities, agents, integration, operations, monitoring, and configuration
+- **Comprehensive Testing**: 41% test coverage with pytest-cov, comprehensive unit tests for utilities, agents,
+  integration, operations, monitoring, and configuration
 
 - **Production Monitoring**: Real-time dashboards and alerting
 
-- **Advanced Crawler Resilience**: Modal handling, paywall detection, user-agent rotation, proxy pools, and stealth headers for robust web scraping
+- **Advanced Crawler Resilience**: Modal handling, paywall detection, user-agent rotation, proxy pools, and stealth
+  headers for robust web scraping
 
 ## 🛠️ Development
 

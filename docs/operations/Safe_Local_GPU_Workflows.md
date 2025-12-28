@@ -72,10 +72,12 @@ Add these (commented) defaults to your `/etc/justnews/global.env` so local runs 
 
 ```
 
-Note: editing `/etc/justnews/global.env` affects system services that use it — prefer per-shell usage or developer dotfiles.
+Note: editing `/etc/justnews/global.env` affects system services that use it — prefer per-shell usage or developer
+dotfiles.
 
 ## When to escalate
 
-- If you see repeated driver Xid/NVRM messages in `dmesg`or`journalctl`, collect`nvidia-smi -q -a`,`dmesg -T`, and the monitor logs and file a follow-up for deeper hardware/driver investigation.
+- If you see repeated driver Xid/NVRM messages in `dmesg`or`journalctl`, collect`nvidia-smi -q -a`,`dmesg -T`, and the
+  monitor logs and file a follow-up for deeper hardware/driver investigation.
 
 ---

@@ -5,7 +5,8 @@ is started via the instance systemd template `justnews@.service`as`justnews@craw
 
 Files
 
-- `main.py`– agent entry point invoked by the`justnews-start-agent.sh`helper. It launches the FastAPI bridge (`agents.c4ai.server:app`) using`uvicorn`.
+- `main.py`– agent entry point invoked by the`justnews-start-agent.sh`helper. It launches the FastAPI bridge
+  (`agents.c4ai.server:app`) using`uvicorn`.
 
 - `__init__.py` – package marker.
 

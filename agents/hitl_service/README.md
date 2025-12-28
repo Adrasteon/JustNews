@@ -15,11 +15,7 @@ Run locally
 
 - Run: `uvicorn agents.hitl_service.app:app --reload --host 127.0.0.1 --port 8040`
 
-- The static annotator UI is served at `http://127.0.0.1:8040/`.
-
-Important environment variables
-
-- `HITL_SERVICE_ADDRESS`: URL advertised to other services (default`http://127.0.0.1:8040`).
+- The static annotator UI is served at `http://127.0.0.1:8040/`.Importantenvironmentvariables-`HITL_SERVICE_ADDRESS`:URLadvertisedtootherservices(default`http://127.0.0.1:8040`).
 
 - `HITL_DB_PATH`: Path to the local SQLite staging DB (default`agents/hitl_service/hitl_staging.db`).
 
@@ -86,24 +82,4 @@ Open the annotator UI at <http://localhost:8040/static/index.html>
 
 Notes:
 
-- Set `MCP_BUS_URL`if the bus is not running on`http://localhost:8000`.
-
-- Override `HITL_AGENT_NAME`/`HITL_SERVICE_ADDRESS` when deploying behind non-localhost addresses.
-
-- Use `HITL_FORWARD_AGENT`/`HITL_FORWARD_TOOL`to define the downstream agent+tool that should receive ingest jobs. The
-  target tool must accept a JSON payload shaped like`ingest_payload`from`/api/label`.
-
-- Use `HITL_CANDIDATE_FORWARD_AGENT`/`HITL_CANDIDATE_FORWARD_TOOL` if candidates should also be echoed to another consumer immediately after creation.
-
-- Provide `HITL_PRIORITY_SITES` as a comma-separated list to boost queue priority for high-value sources.
-
-- Set `HITL_DB_PATH`to change the SQLite database location; defaults to`agents/hitl_service/hitl_staging.db`.
-
-- Annotators must supply their ID in the UI; it is cached locally in the browser for convenience.
-
-- QA reviewers can resolve samples via `POST /api/qa/review`with a`pass`/`fail` status to drain the QA queue.
-
-- Enable training-forward dispatch by exporting
-  `HITL_TRAINING_FORWARD_AGENT=training_system`and`HITL_TRAINING_FORWARD_TOOL=receive_hitl_label`;
-  monitor`hitl_training_forward_success_total`together with the training system
-  counter`justnews_training_examples_total{example_type="hitl_label"}` to confirm end-to-end flow.
+- Set `MCP_BUS_URL`if the bus is not running on`http://localhost:8000`.-Override`HITL_AGENT_NAME`/`HITL_SERVICE_ADDRESS`whendeployingbehindnon-localhostaddresses.-Use`HITL_FORWARD_AGENT`/`HITL_FORWARD_TOOL`todefinethedownstreamagent+toolthatshouldreceiveingestjobs.ThetargettoolmustacceptaJSONpayloadshapedlike`ingest_payload`from`/api/label`.-Use`HITL_CANDIDATE_FORWARD_AGENT`/`HITL_CANDIDATE_FORWARD_TOOL`ifcandidatesshouldalsobeechoedtoanotherconsumerimmediatelyaftercreation.-Provide`HITL_PRIORITY_SITES`asacomma-separatedlisttoboostqueuepriorityforhigh-valuesources.-Set`HITL_DB_PATH`tochangetheSQLitedatabaselocation;defaultsto`agents/hitl_service/hitl_staging.db`.-AnnotatorsmustsupplytheirIDintheUI;itiscachedlocallyinthebrowserforconvenience.-QAreviewerscanresolvesamplesvia`POST/api/qa/review`witha`pass`/`fail`statustodraintheQAqueue.-Enabletraining-forwarddispatchbyexporting`HITL_TRAINING_FORWARD_AGENT=training_system`and`HITL_TRAINING_FORWARD_TOOL=receive_hitl_label`;monitor`hitl_training_forward_success_total`togetherwiththetrainingsystemcounter`justnews_training_examples_total{example_type="hitl_label"}`toconfirmend-to-endflow.

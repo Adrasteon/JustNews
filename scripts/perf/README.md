@@ -18,7 +18,8 @@ CSV columns (order)
 
 - fan (GPU fan speed, percent)
 
-- cpu_pkg_w (CPU package power in W, estimated from RAPL energy_uj) — requires read-access to /sys/class/powercap/intel-rapl:0/energy_uj or running the script with sudo
+- cpu_pkg_w (CPU package power in W, estimated from RAPL energy_uj) — requires read-access to /sys/class/powercap/intel-
+  rapl:0/energy_uj or running the script with sudo
 
 - cpu_pkg_temp_c (CPU package temperature, °C)
 
@@ -34,7 +35,8 @@ CSV columns (order)
 
 Notes and permissions
 
-- CPU package power (cpu_pkg_w) uses the Intel RAPL energy_uj interface. On many systems this file is root-only: /sys/class/powercap/intel-rapl:0/energy_uj. To populate cpu_pkg_w you can either:
+- CPU package power (cpu_pkg_w) uses the Intel RAPL energy_uj interface. On many systems this file is root-only:
+  /sys/class/powercap/intel-rapl:0/energy_uj. To populate cpu_pkg_w you can either:
 
 - run the telemetry script using sudo (passwordless sudo recommended for automated runs), or
 
@@ -81,7 +83,8 @@ Limitations
 
 - `sensors` CLI (lm-sensors) is not required — the script reads hwmon/sysfs directly and prefers label matching.
 
-- `system_total_w` is an estimate (GPU + CPU) and does not include PSU inefficiency, disk, network, fans, or other devices.
+- `system_total_w` is an estimate (GPU + CPU) and does not include PSU inefficiency, disk, network, fans, or other
+  devices.
 Automatic telemetry agent ------------------------
 
 To ensure telemetry is captured whenever the GPU is under load we provide a lightweight GPU activity monitor agent

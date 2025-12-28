@@ -39,13 +39,15 @@ principles with JSON request/response formats.
 
 - **API Keys**: Required for external API access in some research or legacy flows
 
-- **JWT Tokens**: Used for authenticated sessions; `agents/common/auth_api`issues tokens. Admin endpoints accept a valid JWT with`role=admin`when`ADMIN_API_KEY` is not configured.
+- **JWT Tokens**: Used for authenticated sessions; `agents/common/auth_api`issues tokens. Admin endpoints accept a valid
+  JWT with`role=admin`when`ADMIN_API_KEY` is not configured.
 
 - **ADMIN API Key (legacy)**: For simple single-host deployments or scripted operations a static `ADMIN_API_KEY`may be
   set; admin endpoints accept it via`Authorization: Bearer <ADMIN_API_KEY>`or`X-Admin-API-Key: <key>`. Use JWTs for
   multi-user production setups.
 
-- **Rate Limiting**: Implemented on public endpoints; production deployments should set `REDIS_URL` to use a Redis-backed limiter across replicas.
+- **Rate Limiting**: Implemented on public endpoints; production deployments should set `REDIS_URL` to use a Redis-
+  backed limiter across replicas.
 
 - **CORS**: Configured for web application access
 

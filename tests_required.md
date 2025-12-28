@@ -3,7 +3,8 @@
 This document summarizes the top source files with little or no test coverage (sorted by uncovered lines). Each entry
 explains why it matters and gives suggested tests / next actions to increase coverage quickly.
 
-> Note: These results were extracted from `coverage.xml` (current line coverage ~42.3%). The list prioritizes absolute uncovered lines and then low coverage rates.
+> Note: These results were extracted from `coverage.xml` (current line coverage ~42.3%). The list prioritizes absolute
+uncovered lines and then low coverage rates.
 
 ---
 
@@ -13,7 +14,8 @@ explains why it matters and gives suggested tests / next actions to increase cov
 
 - Why: Auth API routes & helpers are mostly untested.
 
-- Tests to add: unit tests for request parsing/validation, error paths, and endpoints. Mock external services (token stores, DB).
+- Tests to add: unit tests for request parsing/validation, error paths, and endpoints. Mock external services (token
+  stores, DB).
 
 1. agents/fact_checker/fact_checker_engine.py — 389 total, 345 uncovered, line-rate 0.1131
 
@@ -41,7 +43,8 @@ explains why it matters and gives suggested tests / next actions to increase cov
 
 1. monitoring/core/performance_monitor.py — 305 total, 305 uncovered, line-rate 0.0
 
-- Tests to add: thresholds, trigger behaviors, and scheduled checks. Use small unit tests and a lightweight integration harness.
+- Tests to add: thresholds, trigger behaviors, and scheduled checks. Use small unit tests and a lightweight integration
+  harness.
 
 1. config/legacy/__init__.py — 349 total, 292 uncovered, line-rate 0.1633
 
@@ -107,21 +110,26 @@ explains why it matters and gives suggested tests / next actions to increase cov
 
 1. Fast wins (1–2 days each)
 
-- Add unit tests for `agents/common/auth_api.py` (routes & validation). This yields high coverage delta because file is large and mostly untested.
+- Add unit tests for `agents/common/auth_api.py` (routes & validation). This yields high coverage delta because file is
+  large and mostly untested.
 
 - Add tests for `agents/common/embedding.py` focusing on model loading and error handling.
 
 1. High impact (2–4 days each)
 
-- Add unit+integration tests for `agents/fact_checker/fact_checker_engine.py`and`training_system/core/training_coordinator.py` to cover core logic and DB interaction paths (mock DB).
+- Add unit+integration tests for
+  `agents/fact_checker/fact_checker_engine.py`and`training_system/core/training_coordinator.py` to cover core logic and
+  DB interaction paths (mock DB).
 
 - Add tests for `agents/sites/generic_site_crawler.py` parsing, using small HTML fixtures.
 
 1. Monitoring + security coverage push (longer effort, 1–2 weeks)
 
-- Monitoring files under `monitoring/core/`are mostly untested — create a test harness mocking backends and produce coverage across`metrics_collector`,`log_*`,`trace_*` modules.
+- Monitoring files under `monitoring/core/`are mostly untested — create a test harness mocking backends and produce
+  coverage across`metrics_collector`,`log_*`,`trace_*` modules.
 
-- Security service modules (authentication, encryption, compliance) need unit tests for safe handling of secrets and policy logic; use test-only keys and mocks.
+- Security service modules (authentication, encryption, compliance) need unit tests for safe handling of secrets and
+  policy logic; use test-only keys and mocks.
 
 1. Coverage tooling
 
@@ -133,7 +141,8 @@ explains why it matters and gives suggested tests / next actions to increase cov
 
 ## How I generated this list
 
-- Parsed `coverage.xml` and sorted files by the number of uncovered lines, then used that as the primary priority metric. Secondary priority factor is line-rate (lower -> higher priority).
+- Parsed `coverage.xml` and sorted files by the number of uncovered lines, then used that as the primary priority
+  metric. Secondary priority factor is line-rate (lower -> higher priority).
 
 ---
 

@@ -37,13 +37,16 @@ How it works
 1. The GPU activity agent polls nvidia-smi every second (configurable). When it observes sustained GPU utilization above
    a configured threshold the agent starts the CSV collector and the Prometheus exporter.
 
-1. When GPU utilization drops and remains below a configured threshold for a configurable period, the agent stops both services.
+1. When GPU utilization drops and remains below a configured threshold for a configurable period, the agent stops both
+   services.
 
 Deployment modes
 
-- Separate lightweight agent per host (recommended) — run `gpu_activity_agent.py` as a systemd unit or container on gpu hosts.
+- Separate lightweight agent per host (recommended) — run `gpu_activity_agent.py` as a systemd unit or container on gpu
+  hosts.
 
-- Orchestrator-integrated (advanced) — the `gpu_orchestrator` can call (or listen to) the agent's start/stop events to co-ordinate telemetry capture with job allocation.
+- Orchestrator-integrated (advanced) — the `gpu_orchestrator` can call (or listen to) the agent's start/stop events to
+  co-ordinate telemetry capture with job allocation.
 
 Recommended systemd service (example)
 
@@ -68,11 +71,13 @@ Notes & Security
 
 - RAPL energy files (CPU package power) are often root-readable only. There are two safe options:
 
-- run the telemetry under a service account with appropriate group-read access to `/sys/class/powercap/...` (preferred) or
+- run the telemetry under a service account with appropriate group-read access to `/sys/class/powercap/...` (preferred)
+  or
 
 - run telemetry under sudo (less recommended).
 
-- Telemetry files are written to `/var/log/justnews-perf` by default; ensure retention/rotation is configured by ops (logrotate) if tests are long-running.
+- Telemetry files are written to `/var/log/justnews-perf` by default; ensure retention/rotation is configured by ops
+  (logrotate) if tests are long-running.
 
 Next steps
 
@@ -135,9 +140,11 @@ bash sudo scripts/ops/install_otel_node_collector.sh
 
 1. Override any defaults in `/etc/justnews/monitoring/otel/node.env` (OTLP upstream endpoint, DCGM scrape target, etc.).
 
-1. Validate the config: `sudo /usr/local/bin/otelcol-contrib --config /etc/justnews/monitoring/otel/node-collector-config.yaml --dry-run`.
+1. Validate the config: `sudo /usr/local/bin/otelcol-contrib --config /etc/justnews/monitoring/otel/node-collector-
+   config.yaml --dry-run`.
 
-1. Ensure `justnews-otel-node.service` is active before starting GPU workloads (`systemctl status justnews-otel-node.service`).
+1. Ensure `justnews-otel-node.service`is active before starting GPU workloads (`systemctl status justnews-otel-
+   node.service`).
 
 The node config tails `/var/log/kern.log` plus NVIDIA driver logs, ingests OTLP
 spans/logs from agents, and forwards everything upstream over OTLP. DCGM/node
@@ -152,7 +159,8 @@ we finish reworking the metrics story.
 bash sudo scripts/ops/install_otel_central_collector.sh
 ```
 
-1. Populate `/etc/justnews/monitoring/otel/central.env` with the Tempo/Loki endpoints for your environment. Prometheus remote_write inputs are currently ignored while metrics are disabled.
+1. Populate `/etc/justnews/monitoring/otel/central.env` with the Tempo/Loki endpoints for your environment. Prometheus
+   remote_write inputs are currently ignored while metrics are disabled.
 
 1. Start and enable `justnews-otel-central.service`.
 
@@ -170,9 +178,11 @@ forwarding is temporarily disabled.
 
 ### Prometheus integration
 
-- For now, keep Prometheus scraping exporters directly. The OTEL remote_write fan-out is disabled while we address duplicate-series issues.
+- For now, keep Prometheus scraping exporters directly. The OTEL remote_write fan-out is disabled while we address
+  duplicate-series issues.
 
-- Collector self-metrics remain exposed on `127.0.0.1:8889`/`8890`, but we no longer scrape them by default. Feel free to add ad-hoc scrapes if you need health signals during testing.
+- Collector self-metrics remain exposed on `127.0.0.1:8889`/`8890`, but we no longer scrape them by default. Feel free
+  to add ad-hoc scrapes if you need health signals during testing.
 
 ### Validation checklist
 

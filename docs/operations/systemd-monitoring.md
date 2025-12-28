@@ -47,7 +47,8 @@ This performs the following actions:
 
 1. Enables and starts `justnews-node-exporter`,`justnews-prometheus`, and`justnews-grafana`
 
-> **Note:** If binaries already exist, omit `--install-binaries`. Use`--force` to overwrite config files with timestamped backups.
+> **Note:** If binaries already exist, omit `--install-binaries`. Use`--force` to overwrite config files with
+timestamped backups.
 
 ## Configuration
 
@@ -79,7 +80,8 @@ The monitoring stack includes comprehensive NVIDIA GPU monitoring capabilities.
 
 ### Automatic GPU Metrics Collection
 
-1. **GPU Exporter**: A custom Python-based exporter (`gpu_metrics_exporter.py`) automatically collects GPU metrics using`nvidia-smi`
+1. **GPU Exporter**: A custom Python-based exporter (`gpu_metrics_exporter.py`) automatically collects GPU metrics
+   using`nvidia-smi`
 
 1. **Prometheus Integration**: GPU metrics are automatically scraped every 15 seconds
 

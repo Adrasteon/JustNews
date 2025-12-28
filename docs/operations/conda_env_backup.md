@@ -96,7 +96,8 @@ conda run -n ${CANONICAL_ENV:-justnews-py312}-restored python scripts/check_depr
 
 - The `explicit` spec pins precise builds. It is OS-specific — use on the same platform as the original environment.
 
-- If you are using conda-forge packages (recommended), prefer reinstalling or using conda-lock for cross-platform reproducibility.
+- If you are using conda-forge packages (recommended), prefer reinstalling or using conda-lock for cross-platform
+  reproducibility.
 
 - After restore, re-run `scripts/check_deprecation_warnings.py`. If it detects deprecation warnings (particularly
   from`google._upb`), re-install`protobuf`and recompilation-dependent wheels (either with`pip --no-binary` or via the

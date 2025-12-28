@@ -6,9 +6,11 @@
 
 **Then choose your role**:
 
-- 👨‍💻 **I want to execute commands**: Use [SYSTEM_STARTUP_CHECKLIST.md](./SYSTEM_STARTUP_CHECKLIST.md) ← copy-paste approach
+- 👨‍💻 **I want to execute commands**: Use [SYSTEM_STARTUP_CHECKLIST.md](./SYSTEM_STARTUP_CHECKLIST.md) ← copy-paste
+  approach
 
-- 📖 **I want to understand everything**: Use [ACTION_PLAN_GET_SYSTEM_RUNNING.md](./ACTION_PLAN_GET_SYSTEM_RUNNING.md) ← detailed guide
+- 📖 **I want to understand everything**: Use [ACTION_PLAN_GET_SYSTEM_RUNNING.md](./ACTION_PLAN_GET_SYSTEM_RUNNING.md) ←
+  detailed guide
 
 ---
 

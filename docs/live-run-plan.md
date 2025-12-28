@@ -64,7 +64,8 @@ Stages and success criteria:
 
 - Services: MariaDB, Redis, Chroma (brought up via `scripts/dev/docker-compose.e2e.yml`)
 
-- Systemd-managed agent fleet can be cycled with `infrastructure/systemd/scripts/enable_all.sh`(wrappers install into`/usr/local/bin` for sudo operators)
+- Systemd-managed agent fleet can be cycled with `infrastructure/systemd/scripts/enable_all.sh`(wrappers install
+  into`/usr/local/bin` for sudo operators)
 
 - Tests: unit + smoke tests run locally
 
@@ -78,7 +79,8 @@ Stages and success criteria:
 - Verify fetchers write raw HTML and metadata. Raw HTML references (`raw_html_ref`) are generated, but confirmation that
   `archive_storage/raw_html` holds every payload still depends on the archive agent wiring.
 
-- Metrics: Stage B counters exist (see `common/stage_b_metrics.py`), yet no Grafana panel currently visualizes fetch success/latency.
+- Metrics: Stage B counters exist (see `common/stage_b_metrics.py`), yet no Grafana panel currently visualizes fetch
+  success/latency.
 
 1. Stage 2 — Ingestion & normalization
 
@@ -96,9 +98,11 @@ Stages and success criteria:
   deterministic assertions now live in `tests/parsing/test_canary_articles.py` powered by
   `tests/fixtures/canary_articles/`(promoted from`output/canary_*`).
 
-- Extract title, author, publish_date, body via Stage B pipeline hooks; broaden fixtures to cover author/date edge cases and ensure normalized-feed linkage.
+- Extract title, author, publish_date, body via Stage B pipeline hooks; broaden fixtures to cover author/date edge cases
+  and ensure normalized-feed linkage.
 
-- Tests validating extraction correctness on a canary dataset exist; next step is extending coverage and adding automated refresh jobs for new canaries.
+- Tests validating extraction correctness on a canary dataset exist; next step is extending coverage and adding
+  automated refresh jobs for new canaries.
 
 1. Stage 4 — Reasoning, fact-check and editorial agents
 
@@ -122,7 +126,8 @@ Stages and success criteria:
   with ingestion tooling and sample content allowing local publish/testing. This is a major step towards full e2e
   publishing verification.
 
-- Evidence: `agents/publisher/manage.py`,`agents/publisher/news/views.py`,`agents/publisher/news/sample_articles.json`, initial migrations and tests are present on`dev/live-run-tests`.
+- Evidence: `agents/publisher/manage.py`,`agents/publisher/news/views.py`,`agents/publisher/news/sample_articles.json`,
+  initial migrations and tests are present on`dev/live-run-tests`.
 
 - Gaps: integration with editorial agents, automated e2e tests that exercise the full pipeline (crawl → ingest → parse →
   editorial → publish), production-grade site validation, and CI gates are pending.
@@ -138,7 +143,8 @@ Stages and success criteria:
 
 - Metrics, traces (correlation IDs), dashboards — need wiring to the new Grafana configs and exporter jobs.
 
-- Canary dataset for E2E automation — partially addressed via `scripts/dev/canary_urls.txt`, but no automated crawl→publish harness yet.
+- Canary dataset for E2E automation — partially addressed via `scripts/dev/canary_urls.txt`, but no automated
+  crawl→publish harness yet.
 
 ### Note: GPU tests are disabled by default (safety)
 
@@ -154,7 +160,7 @@ bash export TEST_GPU_AVAILABLE=true export TEST_GPU_COUNT=1
 
 When running real GPU tests in CI or a dedicated machine, ensure
 `USE_REAL_ML_LIBS=1` is set if you want the test processes to use the real
-`torch` / `transformers` libraries; otherwise, the test harness installs
+`torch`/`transformers` libraries; otherwise, the test harness installs
 comprehensive mocks to simulate GPU behavior without requiring real hardware.
 
 1. Rollouts & safety
@@ -162,25 +168,27 @@ comprehensive mocks to simulate GPU behavior without requiring real hardware.
    - **Status:** 🟡 Defined on paper. The adapter rollout guide (`docs/mistral_adapter_rollout.md`) and adapter
      spec/playbook include staging guidance, but there is no enforced gate tied to live-run KPIs.
 
-   - Staging gating, manual approvals, audit logs — need integration with CI plus a checklist referencing success metrics, not just documentation.
+   - Staging gating, manual approvals, audit logs — need integration with CI plus a checklist referencing success
+     metrics, not just documentation.
 
 ## Immediate next steps
 
 1. **Automate parsing validation (initial suite done):** Deterministic fixtures now live under
-   `tests/fixtures/canary_articles/` and are exercised via `tests/parsing/test_canary_articles.py`; extend coverage
+   `tests/fixtures/canary_articles/`and are exercised via`tests/parsing/test_canary_articles.py`; extend coverage
    (authors/publish dates) and wire a nightly refresh job for new canaries.
 
 1. **Operationalize the editorial harness outputs:** With normalized rows flowing through
-   `agents/common/normalized_article_repository.py` and the nightly workflow (`.github/workflows/editorial-harness.yml`)
+   `agents/common/normalized_article_repository.py`and the nightly workflow (`.github/workflows/editorial-harness.yml`)
    exercising the chain end-to-end, focus on plumbing the Stage B acceptance metrics into Grafana
-   (`docs/grafana/editorial-harness-wiring.md` + `docs/grafana/editorial-harness-dashboard.json`), capturing the stored
+   (`docs/grafana/editorial-harness-wiring.md`+`docs/grafana/editorial-harness-dashboard.json`), capturing the stored
    drafts for the publisher checklist (`docs/editorial_harness_runbook.md`), and documenting operational controls
    (`infrastructure/systemd/scripts/enable_all.sh`) so operators can recycle the service fleet safely.
 
-1. **Stand up publishing + observability loops:** The repo now contains a publisher app enabling local publish testing. Implementations completed in this update:
+1. **Stand up publishing + observability loops:** The repo now contains a publisher app enabling local publish testing.
+   Implementations completed in this update:
 
 - The editorial harness can now optionally publish accepted outputs back into the lightweight publisher DB using
-  `--publish-on-accept` in `scripts/dev/run_agent_chain_harness.py` (opt-in to avoid accidental publishing in
+  `--publish-on-accept`in`scripts/dev/run_agent_chain_harness.py` (opt-in to avoid accidental publishing in
   CI/production).
 
 Running the entire test-suite locally (including gated integrations)
@@ -231,20 +239,25 @@ Notes & tips:
 - The docker-compose file maps Chroma to the host port configured in `global.env` (3307 by default). If you need a
   different mapping, adjust `scripts/dev/docker-compose.e2e.yml` or set CHROMADB_PORT in your environment.
 
-- If you want to run only a subset of gated tests, export the relevant flags individually (for example, only `ENABLE_CHROMADB_LIVE_TESTS=1` to run Chroma tests).
+- If you want to run only a subset of gated tests, export the relevant flags individually (for example, only
+  `ENABLE_CHROMADB_LIVE_TESTS=1` to run Chroma tests).
 
-- In CI we bring up the same services (see `.github/workflows/editorial-harness.yml`) — we recommend mirroring the CI environment when troubleshooting integration failures.
+- In CI we bring up the same services (see `.github/workflows/editorial-harness.yml`) — we recommend mirroring the CI
+  environment when troubleshooting integration failures.
 
-- Stage‑B publishing metrics were added to `common/stage_b_metrics.py` (`justnews_stage_b_publishing_total` and
+- Stage‑B publishing metrics were added to `common/stage_b_metrics.py`(`justnews_stage_b_publishing_total` and
   `justnews_stage_b_publishing_latency_seconds`) and are recorded when the harness publishes accepted drafts.
 
-- A helper `agents/common/publisher_integration.py` lets the harness write normalized articles into the publisher DB in a safe manner.
+- A helper `agents/common/publisher_integration.py` lets the harness write normalized articles into the publisher DB in
+  a safe manner.
 
-- A dedicated GitHub Actions workflow `/.github/workflows/e2e-publisher.yml` was added to run the publisher e2e test (`tests/e2e/test_publisher_publish_flow.py`) on branch pushes and manual dispatch.
+- A dedicated GitHub Actions workflow `/.github/workflows/e2e-publisher.yml` was added to run the publisher e2e test
+  (`tests/e2e/test_publisher_publish_flow.py`) on branch pushes and manual dispatch.
 
-- Grafana dashboard fragment `docs/grafana/publisher-dashboard.json` was added to show publish success/failure and latency.
+- Grafana dashboard fragment `docs/grafana/publisher-dashboard.json` was added to show publish success/failure and
+  latency.
 
-1. **Wire Grafana/alerting for Stage 1–2 metrics and publishing:** Expose the new `ingest_*` / `raw_html_*` counters and
+1. **Wire Grafana/alerting for Stage 1–2 metrics and publishing:** Expose the new `ingest_*`/`raw_html_*` counters and
    the `justnews_stage_b_publishing_*` metrics via dashboards + alerts. Add CI gating on canary ingestion/publish
    metrics to prevent regressions.
 
@@ -258,10 +271,11 @@ Recent repo activities performed on branch `dev/live-run-tests`:
 
  - Add `tests/smoke/test_stage0_env.py` — fast smoke tests to validate the dev baseline
 
- - Add lightweight Django publisher app (`agents/publisher/`) with sample articles and manage command for manual ingestion.
+ - Add lightweight Django publisher app (`agents/publisher/`) with sample articles and manage command for manual
+   ingestion.
 
- - Dashboard fixes: `agents/dashboard/dashboard_engine.py` now sources DB-driven `get_active_sources()`;
-   `agents/dashboard/config.json` relaxed `news_sources` filtering (verification toggled off, `max_age_days` extended).
+ - Dashboard fixes: `agents/dashboard/dashboard_engine.py`now sources DB-driven`get_active_sources()`;
+   `agents/dashboard/config.json`relaxed`news_sources`filtering (verification toggled off,`max_age_days` extended).
 
  - Performed restarts for dashboard and crawl4ai to load fixes during live-run troubleshooting.
 
@@ -275,14 +289,18 @@ iterate through stages.
   required; when no token is supplied publishing proceeds (useful for local dev). This resolved a failing unit test and
   clarified the expected behavior for local vs sandbox runs.
 
-- Added tests to cover: publish without token (local/dev), publish with a valid token (CI sandbox), and skipped publishing when the token is invalid.
+- Added tests to cover: publish without token (local/dev), publish with a valid token (CI sandbox), and skipped
+  publishing when the token is invalid.
 
 - Updated Stage 4 and Stage 5 statuses to reflect publishing test coverage and token-gating behavior.
 
-- CI: added `/.github/workflows/e2e-publisher.yml` (e2e publisher test) and `/.github/workflows/editorial-harness-publish-sandbox.yml` (sandboxed harness publish) to exercise publish flows safely.
+- CI: added `/.github/workflows/e2e-publisher.yml`(e2e publisher test) and`/.github/workflows/editorial-harness-
+  publish-sandbox.yml` (sandboxed harness publish) to exercise publish flows safely.
 
-- CI: added `/.github/workflows/e2e-publisher.yml` (e2e publisher test) and `/.github/workflows/editorial-harness-publish-sandbox.yml` (sandboxed harness publish) to exercise publish flows safely.
+- CI: added `/.github/workflows/e2e-publisher.yml`(e2e publisher test) and`/.github/workflows/editorial-harness-
+  publish-sandbox.yml` (sandboxed harness publish) to exercise publish flows safely.
 
 - All targeted unit and e2e tests for the publishing flows pass locally with the current branch.
 
- - The publisher app now exposes a Prometheus-compatible `/metrics` endpoint and a JSON `/api/metrics/` endpoint; the CI sandbox verifies publishes by polling `/api/metrics/` as a KPI check.
+ - The publisher app now exposes a Prometheus-compatible `/metrics`endpoint and a JSON`/api/metrics/` endpoint; the CI
+   sandbox verifies publishes by polling `/api/metrics/` as a KPI check.

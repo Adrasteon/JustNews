@@ -4,7 +4,8 @@
 
 - Current models: `sentence-transformers/all-MiniLM-L6-v2`,`all-mpnet-base-v2`,`paraphrase-multilingual-MiniLM-L12-v2`
 
-- Suitability: Good. Default `all-MiniLM-L6-v2`for embeddings is ideal for resource usage;`mpnet` used as a higher-quality fallback.
+- Suitability: Good. Default `all-MiniLM-L6-v2`for embeddings is ideal for resource usage;`mpnet` used as a higher-
+  quality fallback.
 
 - Recommendation: keep current configuration; prefer MiniLM by default, mpnet as optional high-quality path.
 
@@ -12,9 +13,11 @@
 
 - Current models: `sentence-transformers/all-mpnet-base-v2`,`multi-qa-mpnet-base-dot-v1`,`paraphrase-albert-base-v2`
 
-- Suitability: Good for retrieval and similarity checks. For claim analysis, optionally add a small sequence-model LLM (e.g., `google/flan-t5-small`) and rely on PEFT/LoRA for fine-tuning.
+- Suitability: Good for retrieval and similarity checks. For claim analysis, optionally add a small sequence-model LLM
+  (e.g., `google/flan-t5-small`) and rely on PEFT/LoRA for fine-tuning.
 
-- Recommendation: keep retrieval encoders; add `flan-t5-small` for conditional generation or evidence summarization invoked via GPU Orchestrator.
+- Recommendation: keep retrieval encoders; add `flan-t5-small` for conditional generation or evidence summarization
+  invoked via GPU Orchestrator.
 
 - memory
 
@@ -24,19 +27,23 @@
 
 - synthesizer
 
-- Current: `distilgpt2`,`google/flan-t5-small`— the repo contains`flan-t5-large`variants in`model_store` (used for batch or high-quality synth).
+- Current: `distilgpt2`,`google/flan-t5-small`— the repo contains`flan-t5-large`variants in`model_store` (used for batch
+  or high-quality synth).
 
 - Suitability: `flan-t5-small`is acceptable for shorter neutralization & generation tasks;`flan-t5-base`/`large`produce
   higher-quality content but need careful GPU orchestrator scheduling and quantization (use`bitsandbytes` 8-bit or 4-bit
   and PEFT for training).
 
-- Recommendation: Default to `flan-t5-small`unless high-quality mode is explicitly requested; ensure quantized models exist in`model_store`and choose`device_map='auto'`and`load_in_8bit=True` in prod.
+- Recommendation: Default to `flan-t5-small`unless high-quality mode is explicitly requested; ensure quantized models
+  exist in`model_store`and choose`device_map='auto'`and`load_in_8bit=True` in prod.
 
-- critic, analyst, chief_editor, newsreader  # NOTE: `balancer` removed — responsibilities moved to critic/analytics/gpu_orchestrator
+- critic, analyst, chief_editor, newsreader  # NOTE: `balancer` removed — responsibilities moved to
+  critic/analytics/gpu_orchestrator
 
 - Current: `sentence-transformers/all-distilroberta-v1`,`all-MiniLM-L6-v2` and other small models.
 
-- Suitability: Good. If the `analyst`requires GPU-based roberta models for high throughput, prefer`distilroberta` variants or quantized models to reduce memory.
+- Suitability: Good. If the `analyst`requires GPU-based roberta models for high throughput, prefer`distilroberta`
+  variants or quantized models to reduce memory.
 
 - Recommendation: prefer `distil` variants of sentiment/bias models and ensure GPU orchestrator provides proper shares.
 
@@ -45,11 +52,13 @@
 
 ### Quantization & Fine-tuning (PEFT/LoRA) Guidance
 
-- Use `bitsandbytes`to enable 8-bit inference via`load_in_8bit=True`in`transformers` where necessary. Add tests and CI steps to verify quantized performance and numeric parity.
+- Use `bitsandbytes`to enable 8-bit inference via`load_in_8bit=True`in`transformers` where necessary. Add tests and CI
+  steps to verify quantized performance and numeric parity.
 
 - For training/fine-tuning, prefer PEFT/LoRA and adapters to reduce VRAM and keep models trainable on RTX 3090.
 
-- For large LLMs (T5/BART), prefer `flan-t5-small`/`flan-t5-base`as default; allow`flan-t5-large` only under a GPU lease with quantization and batch scheduling.
+- For large LLMs (T5/BART), prefer `flan-t5-small`/`flan-t5-base`as default; allow`flan-t5-large` only under a GPU lease
+  with quantization and batch scheduling.
 
 - Add `model_store`metadata entries for`quantized_variants`and`peft_support`to`model_store/<agent>/metadata.json`.
 
@@ -57,13 +66,16 @@
 
 - RTX 3090 (24GB VRAM):
 
-- Fine-tune small to medium models such as `flan-t5-small`,`flan-t5-base`(with PEFT) or`distil*` models directly with minimal memory tuning.
+- Fine-tune small to medium models such as `flan-t5-small`,`flan-t5-base`(with PEFT) or`distil*` models directly with
+  minimal memory tuning.
 
-- For `flan-t5-large`or`bart-large`, use gradient checkpointing, activation checkpointing, and offloading (`accelerate` CPU offload) and LoRA/PEFT to keep trainable parameters low.
+- For `flan-t5-large`or`bart-large`, use gradient checkpointing, activation checkpointing, and offloading (`accelerate`
+  CPU offload) and LoRA/PEFT to keep trainable parameters low.
 
 - Encourage LoRA/PEFT on all LLM fine-tuning tasks to keep training affordable and usable on single-GPU.
 
-- When training embedding models (sentence-transformers), use small batch sizes and mixed-precision where possible to fit in VRAM.
+- When training embedding models (sentence-transformers), use small batch sizes and mixed-precision where possible to
+  fit in VRAM.
 
 ### GPU Orchestrator Recommendations for Model VRAM
 
@@ -96,13 +108,17 @@
   & allocation.`mps_allocation_config.json`should contain model-level approximate VRAM requirements and
   a`model_vram`section or a`model_registry` that maps model_id -> {approx_vram_mb, quantized_variants}.
 
-- Add support to orchestrator to read `model_store`metadata for`approx_vram_mb`and`quantized_variants` to calculate safe allocations.
+- Add support to orchestrator to read `model_store`metadata for`approx_vram_mb`and`quantized_variants` to calculate safe
+  allocations.
 
-- Orchestrator: when checking model preload or granting GPU leases, prefer quantized variants if memory is constrained; fallback to CPU-only mode for real-time requests if no GPU support is available.
+- Orchestrator: when checking model preload or granting GPU leases, prefer quantized variants if memory is constrained;
+  fallback to CPU-only mode for real-time requests if no GPU support is available.
 
-- Orchestrator should have a 'quality' vs 'latency' preference: 'real-time' uses `default` smaller or quantized models, while 'batch' or 'high-quality' uses larger models when allowed by policy.
+- Orchestrator should have a 'quality' vs 'latency' preference: 'real-time' uses `default` smaller or quantized models,
+  while 'batch' or 'high-quality' uses larger models when allowed by policy.
 
-- If `STRICT_MODEL_STORE=1`, orchestrator must fail preload if memory can't be met, otherwise fallback to CPU-only mode or smaller quantized models.
+- If `STRICT_MODEL_STORE=1`, orchestrator must fail preload if memory can't be met, otherwise fallback to CPU-only mode
+  or smaller quantized models.
 
 - Provide `allowed_variants`per agent
   in`AGENT_MODEL_MAP.json`(e.g.,`flan-t5-small`default,`flan-t5-base`optional,`flan-t5-large`reserved for batch jobs)
@@ -111,15 +127,18 @@
 - Provide `allowed_variants`per agent (see`AGENT_MODEL_RECOMMENDED.json`) and adjust`mps_allocation_config.json`
   accordingly; orchestrator should be able to choose the quantized or base variant based on policy & runtime load.
 
-- [ ] A6: Add quantized/PEFT-ready model variants to `model_store`(e.g., 8-bit`flan-t5-small`or`base`), update`model_store`metadata with`approx_vram_mb`,`quantized_variants`, and`peft_support` flags.
+- [ ] A6: Add quantized/PEFT-ready model variants to `model_store`(e.g., 8-bit`flan-t5-small`or`base`),
+  update`model_store`metadata with`approx_vram_mb`,`quantized_variants`, and`peft_support` flags.
 
 - [ ] A6: Add quantized/PEFT-ready model variants to `model_store`(e.g., 8-bit`flan-t5-small`or`base`),
   update`model_store`metadata with`approx_vram_mb`,`quantized_variants`, and`peft_support`flags, and publish
   an`AGENT_MODEL_RECOMMENDED.json`.
 
-- [ ] B5: Add GPU orchestrator detection of quantized models and allow dynamic selection based on `policy`and`real-time`vs`batch` mode.
+- [ ] B5: Add GPU orchestrator detection of quantized models and allow dynamic selection based on `policy`and`real-
+  time`vs`batch` mode.
 
-- [ ] C4: Add a `model_health`probe that checks quantized model inference parity for each agent in production and populates`gpu_orchestrator` metrics.
+- [ ] C4: Add a `model_health`probe that checks quantized model inference parity for each agent in production and
+  populates`gpu_orchestrator` metrics.
 
 # Draft Raptor Plan
 
@@ -163,7 +182,8 @@ Goals:
 
 - Each agent loads & owns models (from `model_store`) declared in`AGENT_MODEL_MAP.json`.
 
-- `model_provider`abstraction will be included as`agents/common/model_provider.py` to unify loading, warming, and unloading.
+- `model_provider`abstraction will be included as`agents/common/model_provider.py` to unify loading, warming, and
+  unloading.
 
 - Optional `model_server` is available as an optimization in constrained environments but is not the default.
 
@@ -241,7 +261,8 @@ Goals:
 
 - Clustering component:
 
-- `agents/analysis/clustering.py` will implement cluster routines using Chroma vectors or local scikit-learn/HDBSCAN fallback.
+- `agents/analysis/clustering.py` will implement cluster routines using Chroma vectors or local scikit-learn/HDBSCAN
+  fallback.
 
 - Clusters store `cluster_id`,`cluster_name`,`coherence_score`.
 
@@ -253,13 +274,15 @@ Goals:
 
 - `detect_bias(text, metadata)`: returns a {left, center, right} vector and rationalization fields.
 
-- `persuasion_score(text)`: heuristics or model-based features (counts of emotive words, rhetorical devices, assertive language scores).
+- `persuasion_score(text)`: heuristics or model-based features (counts of emotive words, rhetorical devices, assertive
+  language scores).
 
 ---
 
 ## 9. Testing & CI (No Docker)
 
-- Integration harness (No Docker): In-process agent start via `uvicorn.run` within pytest with SQLite and in-memory Chroma.
+- Integration harness (No Docker): In-process agent start via `uvicorn.run` within pytest with SQLite and in-memory
+  Chroma.
 
 - Tests to add:
 
@@ -321,7 +344,8 @@ Goals:
 
 ## 12. Next Steps (Recommended)
 
-1. Create `agents/analysis`scaffold with endpoints; add unit tests for`compute_sentiment`,`detect_bias`, and`persuasion_score`.
+1. Create `agents/analysis`scaffold with endpoints; add unit tests for`compute_sentiment`,`detect_bias`,
+   and`persuasion_score`.
 
 1. Create `agents/common/model_provider.py`and integrate with`analysis`and`memory` agents.
 
@@ -334,9 +358,11 @@ Goals:
 1. Add `AGENT_MODEL_RECOMMENDED.json` to the repo (covers default & fallback models per-agent) and implement
    orchestrator checks to fall back to quantized variants or CPU-only when GPU resources are insufficient.
 
-1. Implement model metadata additions and a `model_vram`registry in`config/gpu/mps_allocation_config.json` to assist preloading.
+1. Implement model metadata additions and a `model_vram`registry in`config/gpu/mps_allocation_config.json` to assist
+   preloading.
 
-1. Add `model_health`probes and a quantized-parity test in CI that uses`bitsandbytes`and`PEFT` wrappers to confirm inference correctness.
+1. Add `model_health`probes and a quantized-parity test in CI that uses`bitsandbytes`and`PEFT` wrappers to confirm
+   inference correctness.
 
 ---
 

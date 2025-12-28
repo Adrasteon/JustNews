@@ -1,6 +1,7 @@
 # Mistral‑7B vLLM Integration Guide
 
-> **Note:** Qwen2 experiments are retired; this guide now documents using the Mistral‑7B fallback as the default vLLM model. Historical Qwen2 notes are preserved further below for reference.
+> **Note:** Qwen2 experiments are retired; this guide now documents using the Mistral‑7B fallback as the default vLLM
+model. Historical Qwen2 notes are preserved further below for reference.
 
 ## Overview
 
@@ -116,9 +117,11 @@ configuration is `config/vllm_mistral_7b.yaml` which should be used for producti
 
 ### Tests & Validation (developer)
 
-- **Smoke tests**: The vLLM smoke test is `tests/integration/test_vllm_mistral_7b_smoke.py`and validates the`/health`,`/models`, and`/chat/completions` responses for basic functionality.
+- **Smoke tests**: The vLLM smoke test is `tests/integration/test_vllm_mistral_7b_smoke.py`and validates
+  the`/health`,`/models`, and`/chat/completions` responses for basic functionality.
 
-- **Orchestrator tests**: See `tests/agents/gpu_orchestrator/test_model_lifecycle.py`to validate ModelSpec resolution, adapter path extraction from`AGENT_MODEL_MAP.json`, and OOM/restart handling.
+- **Orchestrator tests**: See `tests/agents/gpu_orchestrator/test_model_lifecycle.py`to validate ModelSpec resolution,
+  adapter path extraction from`AGENT_MODEL_MAP.json`, and OOM/restart handling.
 
 - **Run tests locally** (canonical env):
 
@@ -132,7 +135,8 @@ conda run -n justnews-py312 pytest -q tests/agents/gpu_orchestrator/test_model_l
 
 - For integration smoke tests, use `./scripts/wait_for_vllm.sh` to ensure the server is ready before running tests.
 
-- Use `VLLM_SKIP_START=1`and`CUDA_VISIBLE_DEVICES=""` for CI or environments without GPUs to avoid starting a GPU-heavy server.
+- Use `VLLM_SKIP_START=1`and`CUDA_VISIBLE_DEVICES=""` for CI or environments without GPUs to avoid starting a GPU-heavy
+  server.
 
 - Tests that need vLLM running should only be executed on a GPU-capable host (local dev or gated GPU CI).
 
@@ -165,7 +169,8 @@ Notes:
   GPU-enabled runners are provisioned. Instead, use the 'mistral-dryrun' job for adapter dry-run tests; the smoke test
   is intended for local dev or gated GPU CI.
 
-- The smoke test now includes short retry/backoff logic for transient readiness/auth races and validates model responses more robustly.
+- The smoke test now includes short retry/backoff logic for transient readiness/auth races and validates model responses
+  more robustly.
 
 ### Agent Model Mappings
 
@@ -173,7 +178,8 @@ Notes:
 
 - **base_models**: Historical Qwen2 entries have been archived (see `config/legacy/vllm_qwen2_32b.yaml`).
 
-- **vllm_agents**: The project now uses Mistral-7B by default; per-agent adapter mappings use `mistral_<agent>_v1`adapters and`inference_mode: "vllm"` routes to vLLM.
+- **vllm_agents**: The project now uses Mistral-7B by default; per-agent adapter mappings use
+  `mistral_<agent>_v1`adapters and`inference_mode: "vllm"` routes to vLLM.
 
 #### AGENT_MODEL_RECOMMENDED.json
 
@@ -185,7 +191,8 @@ config; fallback to the local vLLM process is supported when systemd is not avai
 
 Key operational steps:
 
-- Place the systemd unit example in `infrastructure/systemd/vllm-mistral-7b.service.example`under`/etc/systemd/system/vllm-mistral-7b.service` and enable it:
+- Place the systemd unit example in `infrastructure/systemd/vllm-
+  mistral-7b.service.example`under`/etc/systemd/system/vllm-mistral-7b.service` and enable it:
 
 ```bash
 
@@ -195,7 +202,8 @@ sudo systemctl enable --now vllm-mistral-7b.service
 
 ```
 
-- The `gpu_orchestrator`will collect adapters listed in`AGENT_MODEL_MAP.json`and expose`adapter_paths`on the`ModelSpec` for downstream adapter mounting (PEFT/LoRA) where supported by the runtime.
+- The `gpu_orchestrator`will collect adapters listed in`AGENT_MODEL_MAP.json`and expose`adapter_paths`on the`ModelSpec`
+  for downstream adapter mounting (PEFT/LoRA) where supported by the runtime.
 
 - Monitoring and safety: the orchestrator will only start the model when sufficient GPU headroom exists and will monitor
   logs for CUDA OOM. It exports metrics `gpu_orchestrator_vllm_restarts_total`,`gpu_orchestrator_vllm_ooms_total`,

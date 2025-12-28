@@ -331,11 +331,14 @@ This repository now includes a richer monitoring and alerting setup for operatio
   Overview dashboard includes new panels for MCP Bus overall health, degraded agent counts and a per-agent status table
   (see`monitoring/dashboards/generated/system_overview_dashboard.json`).
 
-- **Alertmanager**: example config & templates are provided at `monitoring/alertmanager/alertmanager.example.yml`and`monitoring/alertmanager/mcp_bus_templates.tmpl`.
+- **Alertmanager**: example config & templates are provided at
+  `monitoring/alertmanager/alertmanager.example.yml`and`monitoring/alertmanager/mcp_bus_templates.tmpl`.
 
-- Idempotent installer script: `scripts/install_alertmanager_unit.sh`(backs up existing units to`/var/backups/justnews/alertmanager/` and replaces them safely).
+- Idempotent installer script: `scripts/install_alertmanager_unit.sh`(backs up existing units
+  to`/var/backups/justnews/alertmanager/` and replaces them safely).
 
-- Makefile helpers: `make alertmanager-install`,`make alertmanager-install-unit`,`make alertmanager-enable`,`make alertmanager-test`.
+- Makefile helpers: `make alertmanager-install`,`make alertmanager-install-unit`,`make alertmanager-enable`,`make
+  alertmanager-test`.
 
 - **MCP Bus health**: the MCP Bus `/health`endpoint now performs per-agent probes and emits metrics that drive alerts
   and Grafana rendering. See`docs/operations/MCP_BUS_HEALTH.md` for details and testing guidance.
@@ -379,7 +382,8 @@ Operational notes:
 - We intentionally default `AUTO_INSTALL_ALERTMANAGER=0`in`/etc/justnews/global.env`; enable it only on controlled admin
   hosts if you want the MCP Bus startup to ensure Alertmanager systemd unit is installed/started automatically.
 
-- For triage guidance and runbooks, see `docs/operations/MCP_BUS_ALERTS_RUNBOOK.md`and`docs/operations/MCP_BUS_HEALTH.md`.
+- For triage guidance and runbooks, see
+  `docs/operations/MCP_BUS_ALERTS_RUNBOOK.md`and`docs/operations/MCP_BUS_HEALTH.md`.
 
 ## Scaling and Performance
 
@@ -519,11 +523,12 @@ sudo systemctl status mariadb sudo systemctl status justnews-mariadb sudo system
 1. **GPU Resource Conflicts**
 
 ```bash
-   # Check GPU usage
+# Check GPU usage
 nvidia-smi
 
-   # Check GPU orchestrator
-curl <http://localhost:8014/health> ```
+# Check GPU orchestrator
+curl <http://localhost:8014/health>
+```
 
 1. **Network Connectivity**
 
@@ -555,7 +560,8 @@ docker stats
 
 - **Network Security**: Service mesh with mTLS encryption
 
-- **Secret Management**: Systemd environment files, local vault, or external secret manager. Restrict environment files and use a secrets manager in production.
+- **Secret Management**: Systemd environment files, local vault, or external secret manager. Restrict environment files
+  and use a secrets manager in production.
 
 - **Access Control**: RBAC for Kubernetes and service-level auth
 

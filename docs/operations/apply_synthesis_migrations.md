@@ -20,7 +20,8 @@ JUSTNEWS_DB_URL="mysql://user:pass@host:3306/justnews" scripts/ops/apply_synthes
 
 1. Verify `articles`table has new columns (Option A) or`synthesized_articles` table exists (Option B).
 
-1. Run smoke tests: `justnews/tests/integration/test_article_creation_flow.py` (integration test) and check the dashboard health.
+1. Run smoke tests: `justnews/tests/integration/test_article_creation_flow.py` (integration test) and check the
+   dashboard health.
 
 1. Record the migration evidence in `logs/operations/migrations`.
 

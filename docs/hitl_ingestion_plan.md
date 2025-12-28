@@ -11,25 +11,32 @@ decision (Not news / Messy news / Valid news) and the system optimistically inge
 
 - Keep the decision space deliberately small: `not_news`,`messy_news`,`valid_news`.
 
-- Prioritise fast decisions and optimistic ingestion so articles reach the analyst stage quickly (where heavier analysis & cleanup happens).
+- Prioritise fast decisions and optimistic ingestion so articles reach the analyst stage quickly (where heavier analysis
+  & cleanup happens).
 
 - Collect labeled data for training models and improving automation.
 
 ## Current implementation status (Nov 2025)
 
-- FastAPI HITL service is deployed with SQLite persistence, MCP Bus registration, and automated forward-target health checks.
+- FastAPI HITL service is deployed with SQLite persistence, MCP Bus registration, and automated forward-target health
+  checks.
 
-- Candidate labeling UI consumes `GET /api/next`, while annotator submissions flow through`POST /api/label` with retrying ingest dispatch to downstream MCP tools.
+- Candidate labeling UI consumes `GET /api/next`, while annotator submissions flow through`POST /api/label` with
+  retrying ingest dispatch to downstream MCP tools.
 
-- QA operations now include queue health monitoring, Prometheus metrics, reviewer endpoints (`/api/qa/pending`,`/api/qa/history`,`/api/qa/export`), and alert thresholds driven by environment toggles.
+- QA operations now include queue health monitoring, Prometheus metrics, reviewer endpoints
+  (`/api/qa/pending`,`/api/qa/history`,`/api/qa/export`), and alert thresholds driven by environment toggles.
 
-- MCP tool router (`POST /call`) exposes`receive_candidate`,`submit_label`, and`fetch_stats`for direct bus invocations; candidate fan-out is configurable via`HITL_CANDIDATE_FORWARD_*` settings.
+- MCP tool router (`POST /call`) exposes`receive_candidate`,`submit_label`, and`fetch_stats`for direct bus invocations;
+  candidate fan-out is configurable via`HITL_CANDIDATE_FORWARD_*` settings.
 
-- Training forward path streams labels to the training system via the `training_system.receive_hitl_label`MCP tool when`HITL_TRAINING_FORWARD_*` toggles are enabled.
+- Training forward path streams labels to the training system via the `training_system.receive_hitl_label`MCP tool
+  when`HITL_TRAINING_FORWARD_*` toggles are enabled.
 
 ## Contract (inputs, outputs, acceptance)
 
-- Input: CandidateEvent (JSON) from crawler with fields: id, url, site_id, extracted_title, extracted_text, raw_html_ref, features (link_density, word_count, images_count), crawler_ts, crawler_job_id.
+- Input: CandidateEvent (JSON) from crawler with fields: id, url, site_id, extracted_title, extracted_text,
+  raw_html_ref, features (link_density, word_count, images_count), crawler_ts, crawler_job_id.
 
 - Outputs:
 
@@ -64,13 +71,15 @@ decision (Not news / Messy news / Valid news) and the system optimistically inge
 - exposes env knobs (`MCP_BUS_URL`,`HITL_AGENT_NAME`,`HITL_SERVICE_ADDRESS`,`HITL_FORWARD_*`,`HITL_CANDIDATE_FORWARD_*`,
   `HITL_TRAINING_FORWARD_*`) so staging and production endpoints can be configured without code edits.
 
-- surfaces queue depth, QA backlog, and ingest dispatch metrics via Prometheus-compatible gauges and counters wrapped in `JustNewsMetrics`.
+- surfaces queue depth, QA backlog, and ingest dispatch metrics via Prometheus-compatible gauges and counters wrapped in
+  `JustNewsMetrics`.
 
 - continuously samples QA queue health and raises warnings when backlog or failure rates exceed configured thresholds.
 
 - Annotation UI (new): fast, single-key, low-latency web UI for annotators.
 
-- Ingest pipeline: consumes ingest jobs and writes articles to DB; honours `needs_cleanup`flag and`ingestion_priority`; receives payloads via MCP tool calls with retry/backoff.
+- Ingest pipeline: consumes ingest jobs and writes articles to DB; honours `needs_cleanup`flag and`ingestion_priority`;
+  receives payloads via MCP tool calls with retry/backoff.
 
 - Training pipeline: subscribes to `training.labels`, accumulates labels for incremental and full retraining.
 
@@ -212,7 +221,8 @@ QA & safeguards:
 
 - Randomly sample ~5% of human-labeled `valid_news`/`messy_news` for manual QA.
 
-- If sampled failure rate exceeds threshold (e.g., 2%), throttle optimistic `messy_news` ingestion and increase QA sampling.
+- If sampled failure rate exceeds threshold (e.g., 2%), throttle optimistic `messy_news` ingestion and increase QA
+  sampling.
 
 Auto-label fallback (when annotators are unavailable):
 
@@ -254,7 +264,8 @@ Tune thresholds based on observed precision/recall.
 
 - HITL service persists candidate and adds to a prioritized queue.
 
-- Queue prioritisation strategies (tuneable): prefer short articles for throughput; or sample varied lengths for balanced dataset.
+- Queue prioritisation strategies (tuneable): prefer short articles for throughput; or sample varied lengths for
+  balanced dataset.
 
 - If backlog is high, enable more aggressive auto-labeling or increase model prefill confidence thresholds.
 
@@ -268,9 +279,11 @@ Tune thresholds based on observed precision/recall.
 
 - full retrain nightly with validation and versioning
 
-- Online learners (Vowpal Wabbit or partial_fit) can be used for immediate updates but keep periodic full retrain to avoid drift.
+- Online learners (Vowpal Wabbit or partial_fit) can be used for immediate updates but keep periodic full retrain to
+  avoid drift.
 
-- Use model in production to auto-label very high-confidence candidates and prefill suggestions for borderline candidates.
+- Use model in production to auto-label very high-confidence candidates and prefill suggestions for borderline
+  candidates.
 
 ## Monitoring & metrics (throughput-first)
 
@@ -283,7 +296,8 @@ Tune thresholds based on observed precision/recall.
   d_registry_available`,`hitl_forward_agent_available`,`hitl_candidate_forward_agent_available`,`hitl_training_forward_a
   gent_available`).
 
-- Ingest dispatch health: counters for attempts/success/failure (`hitl_ingest_dispatch_*`) and duration timings to profile downstream MCP calls.
+- Ingest dispatch health: counters for attempts/success/failure (`hitl_ingest_dispatch_*`) and duration timings to
+  profile downstream MCP calls.
 
 - QA sampling failure rate and automated triggers (throttle optimistic ingestion when it rises); dedicated gauges
   `hitl_qa_pending_total`,`hitl_qa_failure_rate`, and windowed review counts support alerts.
@@ -293,7 +307,8 @@ Tune thresholds based on observed precision/recall.
 
 ## Edge cases & mitigations
 
-- Multiple articles in one page: allow annotators to select boundaries in the cleaned_text; optionally create multiple candidate records per page.
+- Multiple articles in one page: allow annotators to select boundaries in the cleaned_text; optionally create multiple
+  candidate records per page.
 
 - JS-heavy pages: use headless rendering prior to extraction; store screenshot for annotators if useful.
 
@@ -343,19 +358,24 @@ API endpoints (HITL service):
 
 - `GET /api/stats` — queue depth, recent throughput, QA sampling counts, latency summaries
 
-- `POST /call`— MCP tool router exposing`receive_candidate`,`submit_label`, and`fetch_stats` handlers for bus-triggered workflows
+- `POST /call`— MCP tool router exposing`receive_candidate`,`submit_label`, and`fetch_stats` handlers for bus-triggered
+  workflows
 
 These endpoints enable the crawler, annotator UI and ingest pipeline to integrate with HITL.
 
 Service integration details:
 
-- MCP Bus registration runs automatically; configure `MCP_BUS_URL`,`HITL_AGENT_NAME`, and`HITL_SERVICE_ADDRESS` per environment.
+- MCP Bus registration runs automatically; configure `MCP_BUS_URL`,`HITL_AGENT_NAME`, and`HITL_SERVICE_ADDRESS` per
+  environment.
 
-- Downstream ingest dispatch is controlled via `HITL_FORWARD_AGENT`and`HITL_FORWARD_TOOL` so targets can be changed without redeploying code.
+- Downstream ingest dispatch is controlled via `HITL_FORWARD_AGENT`and`HITL_FORWARD_TOOL` so targets can be changed
+  without redeploying code.
 
-- Optional candidate fan-out is enabled by `HITL_CANDIDATE_FORWARD_AGENT`and`HITL_CANDIDATE_FORWARD_TOOL` for any additional consumers.
+- Optional candidate fan-out is enabled by `HITL_CANDIDATE_FORWARD_AGENT`and`HITL_CANDIDATE_FORWARD_TOOL` for any
+  additional consumers.
 
-- Training-forward plumbing is controlled by `HITL_TRAINING_FORWARD_AGENT`and`HITL_TRAINING_FORWARD_TOOL`; point these at`training_system`/`receive_hitl_label` to stream labels automatically.
+- Training-forward plumbing is controlled by `HITL_TRAINING_FORWARD_AGENT`and`HITL_TRAINING_FORWARD_TOOL`; point these
+  at`training_system`/`receive_hitl_label` to stream labels automatically.
 
 - Use `HITL_DB_PATH`to select the SQLite file path (defaults to`agents/hitl_service/hitl_staging.db`).
 
@@ -371,11 +391,14 @@ Service integration details:
 
 - Default sample rate: 5% of human `valid_news`and`messy_news` labels.
 
-- QA workers evaluate sampled items from `hitl_qa_queue`and record pass/fail decisions via`POST /api/qa/review`; failures increment the QA-failure metric and may trigger throttles.
+- QA workers evaluate sampled items from `hitl_qa_queue`and record pass/fail decisions via`POST /api/qa/review`;
+  failures increment the QA-failure metric and may trigger throttles.
 
-- Reviewers can pull worklists with `GET /api/qa/pending`, audit recent decisions via`GET /api/qa/history`, and generate CSV snapshots with`GET /api/qa/export` for offline analysis.
+- Reviewers can pull worklists with `GET /api/qa/pending`, audit recent decisions via`GET /api/qa/history`, and generate
+  CSV snapshots with`GET /api/qa/export` for offline analysis.
 
-- Monitor `qa_pending`,`qa_sampled_today`, and`hitl_qa_failure_rate`from`/api/stats` and Prometheus to ensure review capacity matches inflow.
+- Monitor `qa_pending`,`qa_sampled_today`, and`hitl_qa_failure_rate`from`/api/stats` and Prometheus to ensure review
+  capacity matches inflow.
 
 ## Rollout plan (short)
 
@@ -383,9 +406,11 @@ Service integration details:
 
 1. Start with `messy_news` -> optimistic ingest policy and QA sampling at 5%.
 
-1. Monitor QA sample failure rate and throughput metrics. If QA failure > threshold (e.g., 2%) reduce optimism for `messy_news`.
+1. Monitor QA sample failure rate and throughput metrics. If QA failure > threshold (e.g., 2%) reduce optimism for
+   `messy_news`.
 
-1. Train model after initial dataset and enable auto-labeling at high confidence. Use prefill suggestions for borderline candidates.
+1. Train model after initial dataset and enable auto-labeling at high confidence. Use prefill suggestions for borderline
+   candidates.
 
 1. Gradually raise auto-labeling coverage while keeping QA sampling until model performance is acceptable.
 
@@ -399,15 +424,19 @@ Service integration details:
 
 - Implement QA sampler (5%) in the HITL service that marks `qa_sampled` and records results.
 
-- Store schema migrations under `agents/hitl_service/migrations/` and apply them when moving beyond the staging SQLite file.
+- Store schema migrations under `agents/hitl_service/migrations/` and apply them when moving beyond the staging SQLite
+  file.
 
 ## Next steps (recommended)
 
-1. Enable `HITL_TRAINING_FORWARD_*`in staging and validate the`receive_hitl_label` pipeline with Prometheus metrics before production rollout.
+1. Enable `HITL_TRAINING_FORWARD_*`in staging and validate the`receive_hitl_label` pipeline with Prometheus metrics
+   before production rollout.
 
-1. Integrate the reviewer dashboard with the new QA listing and export endpoints; add automated coverage to prevent regressions.
+1. Integrate the reviewer dashboard with the new QA listing and export endpoints; add automated coverage to prevent
+   regressions.
 
-1. Expand monitoring dashboards/alerts to include new Prometheus gauges and ingest dispatch counters; validate thresholds in staging before production rollout.
+1. Expand monitoring dashboards/alerts to include new Prometheus gauges and ingest dispatch counters; validate
+   thresholds in staging before production rollout.
 
 1. Continue tuning annotator UI throughput (batch sizing, hotkeys) based on live telemetry and QA outcomes.
 

@@ -69,11 +69,14 @@ Behavioral details:
 
 Where the repo stands now (examples):
 
-- Shared wrapper: `agents/common/mistral_adapter.py` — a high-level adapter wrapper that handles ModelStore dry-run, per-agent delegation and convenience methods.
+- Shared wrapper: `agents/common/mistral_adapter.py` — a high-level adapter wrapper that handles ModelStore dry-run,
+  per-agent delegation and convenience methods.
 
-- Shared base helpers: `agents/common/base_mistral_json_adapter.py` — per-agent helpers build on this for prompt/schema enforcement.
+- Shared base helpers: `agents/common/base_mistral_json_adapter.py` — per-agent helpers build on this for prompt/schema
+  enforcement.
 
-- Per-agent helpers: `agents/<agent>/mistral_adapter.py` — agent-specific prompt & JSON-shape helpers (synthesizer, analyst, fact_checker, critic, journalist, reasoning, chief_editor, re-ranker, etc.)
+- Per-agent helpers: `agents/<agent>/mistral_adapter.py` — agent-specific prompt & JSON-shape helpers (synthesizer,
+  analyst, fact_checker, critic, journalist, reasoning, chief_editor, re-ranker, etc.)
 
 - Recommended files you might add:
 
@@ -111,7 +114,8 @@ Where the repo stands now (examples):
   tests (e.g.`tests/agents/test_*_mistral_engine.py`). These run safely inside the canonical conda env using the project
   wrapper`scripts/dev/run_pytest_conda.sh`.
 
-- CI: a GH Actions workflow was added at `.github/workflows/mistral-dryrun-tests.yml`to run the adapter + engine dry-run tests in`${CANONICAL_ENV:-justnews-py312}` on PRs.
+- CI: a GH Actions workflow was added at `.github/workflows/mistral-dryrun-tests.yml`to run the adapter + engine dry-run
+  tests in`${CANONICAL_ENV:-justnews-py312}` on PRs.
 
 - Additional recommendations: add `tests/adapters/test_mock_adapter.py`and`tests/adapters/test_base.py` for the
   BaseAdapter + MockAdapter once created, and include smoke fixtures that exercise JSON schema stability so prompt-
@@ -213,15 +217,18 @@ Alerting (Prometheus rules)
 
 How to wire into monitoring:
 
-1. Add the `docs/monitoring/adapter-alert-rules.yml` group into your Prometheus configuration (additional rule files) and reload Prometheus or restart the server.
+1. Add the `docs/monitoring/adapter-alert-rules.yml` group into your Prometheus configuration (additional rule files)
+   and reload Prometheus or restart the server.
 
 1. Import `docs/grafana/adapters-dashboard.json` into Grafana (Dashboard -> Import -> Upload JSON, or use provisioning).
 
-1. Tune thresholds as needed for your environment (p95 thresholds are a starting point — heavy models may require higher thresholds). Consider adding per-environment overrides (staging vs production).
+1. Tune thresholds as needed for your environment (p95 thresholds are a starting point — heavy models may require higher
+   thresholds). Consider adding per-environment overrides (staging vs production).
 
 Suggested on-call actions for alerts:
 
-- p95 high: verify adapter worker pool sizing (GPU memory), model variants (int8 vs FP16), and recent deployments/rollouts for regressions.
+- p95 high: verify adapter worker pool sizing (GPU memory), model variants (int8 vs FP16), and recent
+  deployments/rollouts for regressions.
 
 - error rate high: check provider errors (rate limiting), tokenization errors, and adapter logs for exception spikes.
 
@@ -249,14 +256,16 @@ hook). The most valuable next small projects are:
   add`tests/adapters/test_base.py`and`tests/adapters/test_mock_adapter.py`. This will make adapter testing and cross-
   agent unit tests simpler and more consistent. (Recommended / quick win.)
 
-- B — Implement a lightweight OpenAI adapter POC (`agents/common/openai_adapter.py`) and wire a gated test (secrets gated) if you want hosted provider coverage.
+- B — Implement a lightweight OpenAI adapter POC (`agents/common/openai_adapter.py`) and wire a gated test (secrets
+  gated) if you want hosted provider coverage.
 
 - C — Implement a reusable HF-local adapter template `agents/common/hf_adapter.py` capable of loading a small local
   quantized model + minimal runner. This requires GPU planning and will be a bigger task.
 
 Implementation templates added (dec 02 2025)
 
-- `agents/common/openai_adapter.py` — a dry-run friendly OpenAI adapter template (lazy import, respects DRY_RUN and MODEL_STORE_DRY_RUN, expected to be gated for real runs using OPENAI_API_KEY).
+- `agents/common/openai_adapter.py` — a dry-run friendly OpenAI adapter template (lazy import, respects DRY_RUN and
+  MODEL_STORE_DRY_RUN, expected to be gated for real runs using OPENAI_API_KEY).
 
 - `agents/common/hf_adapter.py` — HF adapter template (ModelStore-aware loading, optional int8/int4 quantization via
   bitsandbytes, configurable device map, dry-run support, retries/backoff, and helper defaults for generation kwargs).
@@ -264,13 +273,15 @@ Implementation templates added (dec 02 2025)
 - `agents/common/adapter_base.py`— shared helpers (`AdapterResult`,`AdapterHealth`,`AdapterMetadata`,`AdapterError`) and
   lifecycle utilities (`mark_loaded`,`ensure_loaded`, shared dry-run detection, default`batch_infer`).
 
-- `agents/common/mock_adapter.py` — canonical deterministic mock adapter with configurable responses, forced failures, latency simulation, and health metadata used in CI/unit tests.
+- `agents/common/mock_adapter.py` — canonical deterministic mock adapter with configurable responses, forced failures,
+  latency simulation, and health metadata used in CI/unit tests.
 
 Other nice-to-have follow-ups:
 
 - Expand CI to run `tests/adapters/test_base.py`and`tests/adapters/test_mock_adapter.py` on every PR once A is in place.
 
-- Expand CI to run `tests/adapters/*` (base, mock, mistral, openai, hf, fallbacks) on every PR once you want adapter coverage increased.
+- Expand CI to run `tests/adapters/*` (base, mock, mistral, openai, hf, fallbacks) on every PR once you want adapter
+  coverage increased.
 
 - Document the adapter spec in `docs/adapter_spec.md`and add a quick developer recipe for adding/validating a new per-
   agent adapter (how to stub JSON shapes, how to wire`AGENT_MODEL_MAP.json`, how to test in dry-run + canonical conda

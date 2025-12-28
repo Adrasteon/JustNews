@@ -176,7 +176,8 @@ curl -s <http://localhost:8000/api/v1/heartbeat> | grep -q '{}' && echo "✅ Chr
 
 - Lines 242–300 show creation of auth tables, knowledge graph tables, crawler jobs table, and admin user
 
-- `tests/integration/test_persistence_schema.py` validates that articles, entities, training_examples, model_metrics tables exist
+- `tests/integration/test_persistence_schema.py` validates that articles, entities, training_examples, model_metrics
+  tables exist
 
 **Actions**:
 
@@ -678,7 +679,8 @@ du -sh /var/lib/mysql/justnews || du -sh ~/justnews_data/
 
 ## Notes & Caveats
 
-1. **vLLM**: Already running on port 7060 (Mistral-7B-Instruct-v0.3). No changes needed unless model replacement is required.
+1. **vLLM**: Already running on port 7060 (Mistral-7B-Instruct-v0.3). No changes needed unless model replacement is
+   required.
 
 1. **GPU Power Limit**: 300W cap applied to RTX 3090. Adjust if thermal issues occur.
 

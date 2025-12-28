@@ -76,7 +76,8 @@ conda run -n ${CANONICAL_ENV:-justnews-py312} \
 
 - Version labels default to `vYYYYMMDD-HHMM`unless`--adapter-version` is provided.
 
-- Metadata describing hyperparameters, dataset source, and timestamps is written to `training_summary.json` and embedded in the ModelStore manifest.
+- Metadata describing hyperparameters, dataset source, and timestamps is written to `training_summary.json` and embedded
+  in the ModelStore manifest.
 
 ## Tips
 

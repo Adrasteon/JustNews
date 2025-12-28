@@ -16,7 +16,7 @@ abilities.
 
 <https://arcprize.org>
 
-![ARC Puzzle Example](https://github.com/user- attachments/assets/41701a8e-5639-4f35-96ae-f4815dbd59cc)
+![ARC Puzzle Example](https://github.com/user-attachments/assets/41701a8e-5639-4f35-96ae-f4815dbd59cc)
 
 ## Nucleoid Approach
 
@@ -44,7 +44,7 @@ applied to given test input.
 
 > :zap: All communications with the LLM are made thru `nuc` language instead of prompt engineering
 
-![ARC_Flow](https://github.com/user- attachments/assets/0b5132cb-8269-461d-b27b-2b84ec1dd640)
+![ARC_Flow](https://github.com/user-attachments/assets/0b5132cb-8269-461d-b27b-2b84ec1dd640)
 
 #### Analysis
 
@@ -168,7 +168,7 @@ Finally, all instances can be merged for test result.
 
 ## Benchmark
 
-![Benchmark](https://github.com/user- attachments/assets/e9d30330-6d4f-461b-9b9e-c8d1b9eccaf5)
+![Benchmark](https://github.com/user-attachments/assets/e9d30330-6d4f-461b-9b9e-c8d1b9eccaf5)
 
 This benchmark demonstrates how LLMs respond to different prompting methods for ARC subtasks. Our observations indicate
 that using natural language prompts often yields inconsistent and unpredictable results, particularly in chain-of-
@@ -181,8 +181,8 @@ task prompting in LLMs compared to conventional natural language approaches.
 
 **Nucleoid**
 
-![3aa6fb7a_nuc](https://github.com/user- attachments/assets/98c5147e-d1b9-4a09-8c38-0c803d99ea55)
+![3aa6fb7a_nuc](https://github.com/user-attachments/assets/98c5147e-d1b9-4a09-8c38-0c803d99ea55)
 
 **ChatGPT o-1**
 
-![3aa6fb7a_chatgpt-o1](https://github.com/user- attachments/assets/84febfe8-4c6d-4390-91f0-0bdca35edab0)
+![3aa6fb7a_chatgpt-o1](https://github.com/user-attachments/assets/84febfe8-4c6d-4390-91f0-0bdca35edab0)

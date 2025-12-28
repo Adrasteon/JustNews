@@ -27,17 +27,18 @@ git clone <repository> cd JustNews ./activate_environment.sh
 1. **Configuration**
 
 ```bash
-   # Copy and customize configuration
+# Copy and customize configuration
 cp config/templates/production.json config/production.json
-   # Edit with your settings
+# Edit with your settings
 
 ```bash
 
 1. **Deployment**
 
 ```bash
-   # Start all services
-make deploy-production ```
+# Start all services
+make deploy-production
+```
 
 1. **Verification**
 
@@ -73,13 +74,14 @@ for article in articles: print(f"Sentiment: {article.sentiment.score}")
 1. **Advanced Analytics**
 
 ```python
-   # Vector search for similar content
+# Vector search for similar content
 similar = client.vector_search( query="renewable energy policies",
 similarity_threshold=0.8 )
 
-   # Export data for analysis
+# Export data for analysis
 client.export_articles( query="your research query", format="json",
-filename="research_data.json" ) ```
+filename="research_data.json" )
+```
 
 ### 👨‍💻 **Developer**
 
@@ -108,11 +110,12 @@ mkdir agents/new_agent touch agents/new_agent/main.py touch agents/new_agent/__i
 1. **Testing Your Changes**
 
 ```bash
-   # Run specific tests
+# Run specific tests
 pytest tests/test_new_agent.py -v
 
-   # Run integration tests
-make test-integration ```
+# Run integration tests
+make test-integration
+```
 
 ## System Administration Guide
 

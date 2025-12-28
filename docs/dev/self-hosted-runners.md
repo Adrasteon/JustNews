@@ -10,9 +10,11 @@ Runner requirements
 
 - A Linux host with systemd (Ubuntu or Debian recommended).
 
-- A runner configured in GitHub self-hosted pool with labels: `self-hosted`,`linux`,`systemd` (the workflow uses these labels in runs-on).
+- A runner configured in GitHub self-hosted pool with labels: `self-hosted`,`linux`,`systemd` (the workflow uses these
+  labels in runs-on).
 
-- sudo or root access enabled for the runner so the workflow can run system-level commands (systemd-nspawn, machinectl, debootstrap). The workflow executes sturdy commands with `sudo`.
+- sudo or root access enabled for the runner so the workflow can run system-level commands (systemd-nspawn, machinectl,
+  debootstrap). The workflow executes sturdy commands with `sudo`.
 
 Packages / tooling required on the runner
 
@@ -30,11 +32,13 @@ Runner caching (optional but recommended)
 
 Security & safety notes
 
-- The workflow uses system-level mechanisms and will create containers under /var/lib/machines. Ensure runners are dedicated for CI and isolated from other workloads.
+- The workflow uses system-level mechanisms and will create containers under /var/lib/machines. Ensure runners are
+  dedicated for CI and isolated from other workloads.
 
 - Avoid running this workflow on shared machines with developer data unless you trust the runner environment.
 
-- The workflow uses sudo and will execute scripts as root on the runner; ensure proper runner access control along with GitHub runner-level policies.
+- The workflow uses sudo and will execute scripts as root on the runner; ensure proper runner access control along with
+  GitHub runner-level policies.
 
 Maintenance notes
 

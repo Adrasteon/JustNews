@@ -18,7 +18,8 @@ branch.
 
 - Ensure synthesized drafts undergo mandatory per-article fact-checking and post-synthesis fact-checking before publish.
 
-- Support both persistence strategies (Option A: extend `articles`table, Option B:`synthesized_articles` table) and a database-backed job store.
+- Support both persistence strategies (Option A: extend `articles`table, Option B:`synthesized_articles` table) and a
+  database-backed job store.
 
 - Expose runtime admin controls via the Dashboard for gating feature flags and persistence method.
 
@@ -45,13 +46,15 @@ flight gating and ingestion volumes.
 
 1. `Analyst`runs per-article claim extraction and a per-article`source_fact_check`using`FactCheckerEngine`.
 
-1. `Reasoning`agent receives the`AnalysisReport`and produces a`reasoning_plan` with prioritized sources, outline, and claims.
+1. `Reasoning`agent receives the`AnalysisReport`and produces a`reasoning_plan` with prioritized sources, outline, and
+   claims.
 
 1. `Synthesizer`constructs a draft using the`reasoning_plan`and`Analyst`outputs and returns a`DraftArticle` structure.
 
 1. `Critic` reviews the draft for policy and style; the draft is then sent through a mandatory draft-level fact-check.
 
-1. If the draft passes fact-check and Critic constraints, and publishing gates allow, the article is auto-published or queued for Chief Editor review.
+1. If the draft passes fact-check and Critic constraints, and publishing gates allow, the article is auto-published or
+   queued for Chief Editor review.
 
 1. On publish the system records `is_published`,`published_at`, updates Chroma embeddings, and logs tracing/metrics.
 
@@ -74,15 +77,18 @@ Notes:
   the content is short (below `ARTICLE_MIN_WORDS`) or has a low text-to-HTML ratio (`ARTICLE_MIN_TEXT_HTML_RATIO`).
   Paywall detection and `skip_ingest` are used to avoid ingesting behind-paywall pages unless explicitly permitted.
 
-- `agents/analyst/AnalystEngine`— extracts claims, runs per-article fact checks, and outputs`AnalysisReport`with`source_fact_checks`and`cluster_fact_check_summary`.
+- `agents/analyst/AnalystEngine`— extracts claims, runs per-article fact checks, and
+  outputs`AnalysisReport`with`source_fact_checks`and`cluster_fact_check_summary`.
 
 - `agents/reasoning/Reasoning`— converts`AnalysisReport`into a`reasoning_plan` used to guide synthesis.
 
-- `agents/synthesizer/SynthesizerEngine` — synthesizes the article draft from the plan, records model traces, and creates a DB-backed job when async.
+- `agents/synthesizer/SynthesizerEngine` — synthesizes the article draft from the plan, records model traces, and
+  creates a DB-backed job when async.
 
 - `agents/critic` — policy validation and editorial guideline checks.
 
-- `agents/fact_checker/FactCheckerEngine`— claim verification for both pre-flight (`source_fact_check`) and post-synthesis draft checks.
+- `agents/fact_checker/FactCheckerEngine`— claim verification for both pre-flight (`source_fact_check`) and post-
+  synthesis draft checks.
 
 - `agents/chief_editor` — HITL queue and review/publish APIs.
 
@@ -112,8 +118,10 @@ Endpoints:
 - `POST /admin/set_publishing_config`— sets config via the`ConfigurationManager` and persists when requested.
 
 - Authentication: `GET`and`POST` admin endpoints support two modes and will accept either:
-  1. A legacy static API key via `Authorization: Bearer <ADMIN_API_KEY>`or`X-Admin-API-Key: <key>` (suitable for simple/local deployments), or
-  1. A role-based JWT Bearer token (when `ADMIN_API_KEY`is not set). The token must validate (`verify_token`) and the user must have`role=admin`.
+  1. A legacy static API key via `Authorization: Bearer <ADMIN_API_KEY>`or`X-Admin-API-Key: <key>` (suitable for
+     simple/local deployments), or
+  1. A role-based JWT Bearer token (when `ADMIN_API_KEY`is not set). The token must validate (`verify_token`) and the
+     user must have`role=admin`.
 
 Implementation note: the dashboard uses a runtime import of `agents.common.auth_models` so tests can monkeypatch
 `verify_token`and`get_user_by_id`. A recent fix ensures the`GET /admin/get_publishing_config` codepath properly
@@ -195,11 +203,14 @@ Migration summary:
 
 - Fact-checking is mandatory: both per-source (`source_fact_checks`) and draft-level.
 
-- `SourceFactCheck`verdict mapping:`>= 0.8 => passed`,`0.6-0.79 => needs_review`,`< 0.6 => failed` (default thresholds — configurable).
+- `SourceFactCheck`verdict mapping:`>= 0.8 => passed`,`0.6-0.79 => needs_review`,`< 0.6 => failed` (default thresholds —
+  configurable).
 
-- Draft `fact_check_status`can be`pending`,`passed`,`needs_review`,`failed`. Auto-publish requires`passed` unless the chief editor overrides.
+- Draft `fact_check_status`can be`pending`,`passed`,`needs_review`,`failed`. Auto-publish requires`passed` unless the
+  chief editor overrides.
 
-- Critic policies with severity `block`or`must_edit`will prevent publishing and escalate to HITL. Critic results are stored as`critic_result` JSON with detailed messages.
+- Critic policies with severity `block`or`must_edit`will prevent publishing and escalate to HITL. Critic results are
+  stored as`critic_result` JSON with detailed messages.
 
 - Training-forward & HITL labeling: The HITL staging service (`agents/hitl_service`) collects reviewer decisions and can
   forward labels to the `training_system`when`HITL_TRAINING_FORWARD_AGENT` is configured. The integration test suite
@@ -249,7 +260,8 @@ articles become available for downstream clustering, analysis, fact-check, and u
 
 - `GET /api/v1/articles/synthesize/{job_id}`polls the job state and returns preview +`critic_result`.
 
-- Job store: `agents/synthesizer/job_store.py` supports in-memory or DB persistence. Default for production: DB-based table migration 006.
+- Job store: `agents/synthesizer/job_store.py` supports in-memory or DB persistence. Default for production: DB-based
+  table migration 006.
 
 - Retry & job recovery: DB-backed job store must be used in production to handle restarts, retries and backoffs.
   Integration tests should validate that state persists through agent restarts and that scheduled retries follow retry
@@ -261,11 +273,13 @@ articles become available for downstream clustering, analysis, fact-check, and u
 
 - Unit tests: policy tests of `Analyst`, claim extraction, reasoner, and synthesizer primitives.
 
-- Integration tests (integration marker): Analyst + Fact-Checker + Reasoning + Synthesis + Critic with LLM/Chroma mocked.
+- Integration tests (integration marker): Analyst + Fact-Checker + Reasoning + Synthesis + Critic with LLM/Chroma
+  mocked.
 
 - E2E gating tests: ensure admin toggles block or allow publish appropriately, with simulated `chief_editor` approvals.
 
-- CI: add an `integration` runner that executes integration tests in a separate workflow (optionally on a runner with MariaDB + Chroma).
+- CI: add an `integration` runner that executes integration tests in a separate workflow (optionally on a runner with
+  MariaDB + Chroma).
 
 ---
 
@@ -290,9 +304,11 @@ articles become available for downstream clustering, analysis, fact-check, and u
 
 ## Observability & Metrics
 
-- Log: `synthesis_job_id`,`cluster_id`,`draft_id`,`model_version`,`start`/`end`times,`critic_result`,`fact_check_status`,`published`boolean.
+- Log: `synthesis_job_id`,`cluster_id`,`draft_id`,`model_version`,`start`/`end`times,`critic_result`,`fact_check_status`
+  ,`published`boolean.
 
-- Metrics: `synthesis_jobs_started`,`synthesis_jobs_published`,`analysis_latency`,`reasoning_latency`,`fact_check_pass_rate`.
+- Metrics:
+  `synthesis_jobs_started`,`synthesis_jobs_published`,`analysis_latency`,`reasoning_latency`,`fact_check_pass_rate`.
 
 - Scheduler metrics: `justnews_crawler_scheduler_*`and adaptive metrics (`justnews_crawler_scheduler_adaptive_*`)
   produced by `scripts/ops/run_crawl_schedule.py`and`agents/crawler/adaptive_metrics`.
@@ -309,15 +325,18 @@ articles become available for downstream clustering, analysis, fact-check, and u
 
 ## Deployment, Rollout & Safety
 
-- Disable auto-publish by default for new categories. Clear feature toggles enable limited production rollout with Chief Editor review enforced.
+- Disable auto-publish by default for new categories. Clear feature toggles enable limited production rollout with Chief
+  Editor review enforced.
 
 - Start with an internal-only rollout for a narrow category; after validation, expand to canary and full production.
 
-- Make sure the Evidence Audit service is accessible in production; otherwise, any fact-check downstream errors should default to `needs_review`.
+- Make sure the Evidence Audit service is accessible in production; otherwise, any fact-check downstream errors should
+  default to `needs_review`.
 
 - Retention & Backfill:
 
-- Raw HTML archival in `archive_storage/raw_html/`is the forensic record. Implement retention (cleanup) & backfill scripts in`scripts/ops/` to manage storage and ensure reproducible extraction runs.
+- Raw HTML archival in `archive_storage/raw_html/`is the forensic record. Implement retention (cleanup) & backfill
+  scripts in`scripts/ops/` to manage storage and ensure reproducible extraction runs.
 
 - Deprecated components: ultra-fast per-site crawlers (e.g., `agents/sites/bbc_crawler.py`) are kept as stubs and
   flagged for deprecation. The recommended path is to migrate specialized behaviour into `config/crawl_profiles` and the
@@ -333,7 +352,8 @@ articles become available for downstream clustering, analysis, fact-check, and u
 
 - Admin toggles in Dashboard appear and `GET /admin/get_publishing_config` returns correct values.
 
-- `POST /synthesize_and_publish`uses`min_fact_check_percent_for_synthesis`preflight gating and respects`require_draft_fact_check_pass_for_publish`.
+- `POST /synthesize_and_publish`uses`min_fact_check_percent_for_synthesis`preflight gating and
+  respects`require_draft_fact_check_pass_for_publish`.
 
 - The job store persists job state when DB option is selected and recovers job status after restarts.
 

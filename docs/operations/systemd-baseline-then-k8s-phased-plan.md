@@ -8,7 +8,8 @@ This plan restores the proven systemd deployment first, validates the refactor u
 the ingestion, deduplication, and fact- verification capabilities required for the JustNews workflow. Each stage has
 clear acceptance checks and rollback guidance.
 
-> Repo note: This repo keeps systemd assets under `infrastructure/systemd/`. If documentation elsewhere refers to`deploy/systemd/`, use the`infrastructure/systemd/` path here.
+> Repo note: This repo keeps systemd assets under `infrastructure/systemd/`. If documentation elsewhere refers
+to`deploy/systemd/`, use the`infrastructure/systemd/` path here.
 
 ## Goals and definition of done (DoD)
 
@@ -22,11 +23,13 @@ clear acceptance checks and rollback guidance.
 
 - Smoke tests pass; manual E2E flow succeeds (crawl → analyze → synthesize).
 
-- High-quality ingestion pipeline capable of extracting clean article text, metadata, and embeddings across diverse publishers.
+- High-quality ingestion pipeline capable of extracting clean article text, metadata, and embeddings across diverse
+  publishers.
 
 - Embedding storage for downstream clustering of cross-source coverage, with raw HTML retained for reprocessing.
 
-- Fact extraction, corroboration, and Grounded Truth Value (GTV) scoring services online with APIs to inspect articles and facts.
+- Fact extraction, corroboration, and Grounded Truth Value (GTV) scoring services online with APIs to inspect articles
+  and facts.
 
 - Rollback path at every phase back to stable systemd baseline.
 
@@ -132,7 +135,8 @@ A4. Install systemd artifacts
 
 - From `infrastructure/systemd/scripts/`, ensure these are executable and optionally copied to`/usr/local/bin/`:
 
-  - `reset_and_start.sh`,`enable_all.sh`,`health_check.sh`,`cold_start.sh`,`wait_for_mcp.sh`,`justnews-start-agent.sh`,`justnews-preflight-check.sh`
+  - `reset_and_start.sh`,`enable_all.sh`,`health_check.sh`,`cold_start.sh`,`wait_for_mcp.sh`,`justnews-start-
+    agent.sh`,`justnews-preflight-check.sh`
 
 - Units:
 
@@ -213,7 +217,8 @@ Rollback (for Stage A):
 
 - If services fail to stabilize, inspect logs: `journalctl -u justnews@<name> -e -n 200 -f`.
 
-- Stop everything cleanly; free ports: `justnews-preflight-check.sh --stop`(or`preflight.sh --stop` if named so in your tree).
+- Stop everything cleanly; free ports: `justnews-preflight-check.sh --stop`(or`preflight.sh --stop` if named so in your
+  tree).
 
 ---
 
@@ -225,11 +230,14 @@ B0. Gating
 
 **Current Execution Plan (Nov 2025)**
 
-- Run a controlled, non-test BBC crawl end to end to validate crawler → memory agent → MariaDB ingestion (watch scheduler metrics and raw HTML drops).
+- Run a controlled, non-test BBC crawl end to end to validate crawler → memory agent → MariaDB ingestion (watch
+  scheduler metrics and raw HTML drops).
 
-- Once ingestion is verified, port additional high-priority domains into `config/crawl_profiles/`, validating each with the probe script before enabling them in the schedule.
+- Once ingestion is verified, port additional high-priority domains into `config/crawl_profiles/`, validating each with
+  the probe script before enabling them in the schedule.
 
-- With multiple sources ingesting cleanly, begin exercising the “Top X” workflow (clustering, fact search) using the new BBC-derived articles as seed data.
+- With multiple sources ingesting cleanly, begin exercising the “Top X” workflow (clustering, fact search) using the new
+  BBC-derived articles as seed data.
 
 - 2025-11-02 status: canonical restart applied via `infrastructure/systemd/canonical_system_startup.sh`, BBC profile
   rerun with`scripts/ops/run_crawl_schedule.py --testrun`ingested 60/60 articles, zero ingestion errors, dedupe zero,
@@ -277,13 +285,16 @@ B2. High-precision extraction pipeline
 
 B3. Storage and schema updates
 
-- Extend the articles table to include: `publication_date`,`authors`,`language`,`section`,`collection_timestamp`,`raw_html_ref`,`extraction_confidence`,`url_hash`.
+- Extend the articles table to include: `publication_date`,`authors`,`language`,`section`,`collection_timestamp`,`raw_ht
+  ml_ref`,`extraction_confidence`,`url_hash`.
 
 - Run `bash scripts/ops/apply_stage_b_migration.sh --record` to apply migration 003 and capture evidence in the ops log.
 
-- Normalize URLs before hashing (lowercase host, strip tracking params, honor canonical tags) controlled by `ARTICLE_URL_NORMALIZATION`. Log original vs. normalized URL for audit.
+- Normalize URLs before hashing (lowercase host, strip tracking params, honor canonical tags) controlled by
+  `ARTICLE_URL_NORMALIZATION`. Log original vs. normalized URL for audit.
 
-- Compute per-URL hashes (algorithm configurable via `ARTICLE_URL_HASH_ALGO`) to block re-ingestion of the exact same article from the same source.
+- Compute per-URL hashes (algorithm configurable via `ARTICLE_URL_HASH_ALGO`) to block re-ingestion of the exact same
+  article from the same source.
 
 - Ensure ingestion payloads supply these fields; update the memory agent to upsert sources with enriched metadata.
 
@@ -291,15 +302,19 @@ B3. Storage and schema updates
 
 B4. Embedding generation and clustering preparation
 
-- Package Sentence-BERT (`all-MiniLM-L6-v2`recommended) with a local cache; expose`ARTICLE_EMBEDDING_MODEL` env to switch models.
+- Package Sentence-BERT (`all-MiniLM-L6-v2`recommended) with a local cache; expose`ARTICLE_EMBEDDING_MODEL` env to
+  switch models.
 
 - Compute embeddings during ingestion; store in ChromaDB (or FAISS mirror for offline analysis).
 
-- Defer cross-source clustering until each article completes fact-check scoring; embeddings are tagged with the latest GTV once Stage C runs so cluster creation can weight articles appropriately.
+- Defer cross-source clustering until each article completes fact-check scoring; embeddings are tagged with the latest
+  GTV once Stage C runs so cluster creation can weight articles appropriately.
 
-- Maintain metrics: embeddings generated, cluster candidate count (post Stage C), embedding latency, and model cache hit rate.
+- Maintain metrics: embeddings generated, cluster candidate count (post Stage C), embedding latency, and model cache hit
+  rate.
 
-- **Implemented by** extended `StageBMetrics`counters/histograms consumed in`agents/memory/tools.save_article`; includes cache-label latency tracking and model availability counters.
+- **Implemented by** extended `StageBMetrics`counters/histograms consumed in`agents/memory/tools.save_article`; includes
+  cache-label latency tracking and model availability counters.
 
 B5. Validation and monitoring
 
@@ -308,7 +323,8 @@ B5. Validation and monitoring
 
 - Add integration tests covering scheduler-triggered crawl, ingestion, embedding computation, and duplicate suppression.
 
-- Extend observability (Prometheus/Grafana panels) with extraction success rate, fallback usage, duplicate count, and article throughput trendlines.
+- Extend observability (Prometheus/Grafana panels) with extraction success rate, fallback usage, duplicate count, and
+  article throughput trendlines.
 
 - **Implemented by** `common/stage_b_metrics.StageBMetrics`counters consumed
   in`agents/crawler/extraction.py`and`agents/memory/tools.py`; validated
@@ -317,18 +333,22 @@ B5. Validation and monitoring
 
 - Launch a human-in-the-loop sampling program (by language/region) with QA dashboards to surface extractor drift.
 
-- Publish governance dashboards tracking source coverage, robots compliance, and ingestion error budgets; alert when thresholds (e.g., >20% ingestion failures or QA alerts) are exceeded.
+- Publish governance dashboards tracking source coverage, robots compliance, and ingestion error budgets; alert when
+  thresholds (e.g., >20% ingestion failures or QA alerts) are exceeded.
 
-- Define rollback: disable scheduler timer and revert to manual crawl if errors exceed agreed threshold or governance alerts trigger.
+- Define rollback: disable scheduler timer and revert to manual crawl if errors exceed agreed threshold or governance
+  alerts trigger.
 
 B6. Automated crawl-profile author roadmap
 
 - Goal: deliver a cron-driven service that fingerprints each source in the `sources`table, generates or adjusts
   its`config/crawl_profiles/<slug>.yaml`, validates the change, and promotes the update with evidence.
 
-- Phase 0 (prereqs): catalogue current profiles, codify schema (JSONSchema + lint), stand up isolated test runner plus HTML snapshot store.
+- Phase 0 (prereqs): catalogue current profiles, codify schema (JSONSchema + lint), stand up isolated test runner plus
+  HTML snapshot store.
 
-- Phase 1 (fingerprinting): Playwright-based sampler collects landing pages, link graphs, pagination hints, DOM metrics; artifacts versioned under `logs/operations/profile_author/` for diffing.
+- Phase 1 (fingerprinting): Playwright-based sampler collects landing pages, link graphs, pagination hints, DOM metrics;
+  artifacts versioned under `logs/operations/profile_author/` for diffing.
 
 - Phase 2 (synthesis engine): heuristics convert fingerprints into draft profiles—start URLs, link filters,
   `target_elements`, adaptive knobs—rendered via template + schema validation with provenance metadata.
@@ -352,7 +372,8 @@ Exit criteria for Stage B:
 
 - Extracted articles contain clean body text with metadata populated; quality heuristics show <5% “needs_review”.
 
-- URL-hash dedupe prevents same-source re-ingestion; embeddings stored in pg_vector for clustering with preliminary cluster candidate metrics published.
+- URL-hash dedupe prevents same-source re-ingestion; embeddings stored in pg_vector for clustering with preliminary
+  cluster candidate metrics published.
 
 - Baseline Stage A health remains stable under continuous operation.
 
@@ -362,7 +383,8 @@ Exit criteria for Stage B:
 
 C0. Foundations
 
-- Stage A and Stage B acceptance criteria must hold. Fact intelligence components run as systemd services or background workers with clear restart policies.
+- Stage A and Stage B acceptance criteria must hold. Fact intelligence components run as systemd services or background
+  workers with clear restart policies.
 
 C1. Fact extraction pipeline
 
@@ -374,27 +396,35 @@ C1. Fact extraction pipeline
 
 C2. Evidence graph storage
 
-- Create supporting tables for claims, evidence sources, verification status, and audit metadata (who/what verified, timestamps, confidence scores).
+- Create supporting tables for claims, evidence sources, verification status, and audit metadata (who/what verified,
+  timestamps, confidence scores).
 
-- Index by entities and topics to accelerate downstream queries; store signed digests or checksums for evidence artifacts to ensure tamper-evident histories.
+- Index by entities and topics to accelerate downstream queries; store signed digests or checksums for evidence
+  artifacts to ensure tamper-evident histories.
 
-- Mirror outputs to the transparency archive at `archive_storage/transparency/` (facts, clusters, articles, evidence) with deterministic JSON to keep public audit trails in sync.
+- Mirror outputs to the transparency archive at `archive_storage/transparency/` (facts, clusters, articles, evidence)
+  with deterministic JSON to keep public audit trails in sync.
 
-- Update `archive_storage/transparency/index.json` as part of each ingestion batch for transparency portal freshness reporting.
+- Update `archive_storage/transparency/index.json` as part of each ingestion batch for transparency portal freshness
+  reporting.
 
 C3. Corroboration workflows and clustering
 
-- Implement automated web search agent(s) that craft targeted queries per fact, evaluate snippet authority, and capture confirming vs. contradicting references.
+- Implement automated web search agent(s) that craft targeted queries per fact, evaluate snippet authority, and capture
+  confirming vs. contradicting references.
 
 - After each article receives its Grounded Truth Value, run clustering jobs on embeddings. Persist cluster metadata
   (member URLs, representative embedding, consensus headline) along with aggregated GTV weights for downstream
   synthesis.
 
-- Add media verification pipeline: reverse image search, basic deepfake detection, and transcript validation for audiovisual references.
+- Add media verification pipeline: reverse image search, basic deepfake detection, and transcript validation for
+  audiovisual references.
 
-- Store evidence artifacts (URLs, media hashes, tool outputs) alongside provenance notes. Maintain public-facing audit trails so end users can inspect the chain of evidence per fact or cluster.
+- Store evidence artifacts (URLs, media hashes, tool outputs) alongside provenance notes. Maintain public-facing audit
+  trails so end users can inspect the chain of evidence per fact or cluster.
 
-- Monitor bias metrics (source diversity, geographic representation, ideological balance) per cluster; flag clusters that over-rely on a single perspective.
+- Monitor bias metrics (source diversity, geographic representation, ideological balance) per cluster; flag clusters
+  that over-rely on a single perspective.
 
 C4. Grounded Truth scoring engine
 
@@ -414,15 +444,18 @@ C5. API and review tools
 
 - Search endpoints for entities/topics and their verification status.
 
-- Provide operator dashboards for manual adjudication of low-confidence facts with the ability to override scores while retaining audit trails.
+- Provide operator dashboards for manual adjudication of low-confidence facts with the ability to override scores while
+  retaining audit trails.
 
 C6. Testing, criteria, and rollback
 
-- Unit/integration tests covering claim extraction, search agent interactions (with mocked external APIs), scoring accuracy, and API responses.
+- Unit/integration tests covering claim extraction, search agent interactions (with mocked external APIs), scoring
+  accuracy, and API responses.
 
 - Load-test fact pipelines with a full run’s worth of articles to ensure throughput goals.
 
-- Rollback path: disable fact scheduler and isolate services if verification error rate spikes; ingestion continues unaffected.
+- Rollback path: disable fact scheduler and isolate services if verification error rate spikes; ingestion continues
+  unaffected.
 
 Exit criteria for Stage C:
 
@@ -450,11 +483,14 @@ D1. Weighted synthesis pipeline
 
 - Consume cluster outputs and GTV-weighted facts to draft unbiased articles via synthesis agent or editorial tooling.
 
-- Make weighting logic explicit: record which facts were emphasized, suppressed, or excluded with reasons tied to GTV and bias metrics.
+- Make weighting logic explicit: record which facts were emphasized, suppressed, or excluded with reasons tied to GTV
+  and bias metrics.
 
-- Block synthesis readiness until `/transparency/status`returns`integrity.status`of`ok`or`degraded`; fail start when transparency audits are unavailable.
+- Block synthesis readiness until `/transparency/status`returns`integrity.status`of`ok`or`degraded`; fail start when
+  transparency audits are unavailable.
 
-- Systemd baseline: ensure `EVIDENCE_AUDIT_BASE_URL=http://localhost:8013/transparency` so the synthesizer gate hits the dashboard agent’s evidence API before reporting ready.
+- Systemd baseline: ensure `EVIDENCE_AUDIT_BASE_URL=http://localhost:8013/transparency` so the synthesizer gate hits the dashboard agent’s evidence
+  API before reporting ready.
 
 D2. Editorial review and ethics compliance
 
@@ -466,23 +502,29 @@ D3. Publication workflow
 
 - Automate push to website/CMS with metadata linking back to underlying clusters, evidence, and fact trails.
 
-- Expose an end-user transparency portal where readers can inspect supporting sources, evidence status, and verification chronology.
+- Expose an end-user transparency portal where readers can inspect supporting sources, evidence status, and verification
+  chronology.
 
-- Back the transparency portal via the dashboard agent’s `/transparency`API (see`agents/dashboard/transparency_repository.py`) fed from the archive mirror.
+- Back the transparency portal via the dashboard agent’s `/transparency`API
+  (see`agents/dashboard/transparency_repository.py`) fed from the archive mirror.
 
 D4. Post-publication monitoring
 
-- Track reader feedback, correction requests, and post-publication fact challenges; integrate into governance dashboards.
+- Track reader feedback, correction requests, and post-publication fact challenges; integrate into governance
+  dashboards.
 
 - Monitor synthesized article bias metrics and re-run clustering/verification when new facts emerge.
 
-- Ship Grafana transparency governance dashboard (`monitoring/dashboards/generated/transparency_governance_dashboard.json`) for coverage, evidence completeness, bias, and latency monitoring.
+- Ship Grafana transparency governance dashboard
+  (`monitoring/dashboards/generated/transparency_governance_dashboard.json`) for coverage, evidence completeness, bias,
+  and latency monitoring.
 
 D5. Operational guardrails
 
 - Define error budgets for synthesis latency, evidence retrieval failures, and transparency portal uptime.
 
-- Alert and auto-suspend publication pipeline when transparency requirements (e.g., missing evidence links) fall below thresholds.
+- Alert and auto-suspend publication pipeline when transparency requirements (e.g., missing evidence links) fall below
+  thresholds.
 
 Exit criteria for Stage D:
 
@@ -516,7 +558,8 @@ Exit criteria for Stage D:
 
 - [ ] Trafilatura-first extractor returns clean article bodies; fallbacks logged <5%
 
-- [ ] Metadata fields (publication_date, authors, language, section, url_hash, normalized_url) populated for >90% of articles
+- [ ] Metadata fields (publication_date, authors, language, section, url_hash, normalized_url) populated for >90% of
+  articles
 
 - [ ] URL hash dedupe prevents same-source re-ingestion; embeddings stored with clustering metrics exposed
 
@@ -532,7 +575,8 @@ Exit criteria for Stage D:
 
 - [ ] GTV scores computed and accessible via API/dashboard; evidence audit APIs exposed publicly
 
-- [ ] Bias monitoring dashboards active; monitoring alerts defined for ingestion, clustering, verification, and transparency regressions
+- [ ] Bias monitoring dashboards active; monitoring alerts defined for ingestion, clustering, verification, and
+  transparency regressions
 
 - Publishing & transparency
 

@@ -3,9 +3,11 @@
 This directory ships the reference configuration for deploying OpenTelemetry Collectors alongside the JustNews GPU
 stack. Two roles are supported:
 
-1. **Node collector** – runs on every GPU/agent host, scrapes exporters that run locally (DCGM, node exporter), tails kernel/NVIDIA logs, and forwards data upstream.
+1. **Node collector** – runs on every GPU/agent host, scrapes exporters that run locally (DCGM, node exporter), tails
+   kernel/NVIDIA logs, and forwards data upstream.
 
-1. **Central collector** – runs once per environment (or as an HA pair) and fans the aggregated OTLP stream into Prometheus, Tempo/Jaeger, and Loki/Elastic.
+1. **Central collector** – runs once per environment (or as an HA pair) and fans the aggregated OTLP stream into
+   Prometheus, Tempo/Jaeger, and Loki/Elastic.
 
 The configs rely heavily on environment variables so operators can reuse the same file across staging/prod. Every
 referenced variable has a documented default in the installer scripts.
@@ -55,7 +57,8 @@ The most useful variables include:
 
 - `LOKI_ENDPOINT` – log aggregation endpoint.
 
-> **Note:** Prometheus remote_write knobs remain in the historical env files but are unused until we re-enable the OTEL metrics pipelines.
+> **Note:** Prometheus remote_write knobs remain in the historical env files but are unused until we re-enable the OTEL
+metrics pipelines.
 
 Consult the inline comments inside each config for additional options (scrape intervals, log include paths, etc.).
 

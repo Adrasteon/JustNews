@@ -93,7 +93,8 @@ V12.2.140
 1. **Diagnostics after install**
 
 ```bash conda run -n ${CANONICAL_ENV:-justnews-py312} env BNB_CUDA_VERSION=122
-python -m bitsandbytes ``` Expect the tool to print "SUCCESS!" and explicitly
+python -m bitsandbytes
+``` Expect the tool to print "SUCCESS!" and explicitly
 state that it is loading `libbitsandbytes_cuda122.so`.
 
 1. **Performance smoke test** – run the real-model perf helper:

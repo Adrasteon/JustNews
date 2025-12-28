@@ -26,9 +26,11 @@ Test tiers
 
 1. Systemd-level local tests — optional, opt-in, higher fidelity
 
-- Use the repository-provided systemd-nspawn helper `scripts/dev/run_systemd_nspawn_env.sh`to create an Ubuntu-based systemd container and install`mariadb-server`and`redis-server` inside it.
+- Use the repository-provided systemd-nspawn helper `scripts/dev/run_systemd_nspawn_env.sh`to create an Ubuntu-based
+  systemd container and install`mariadb-server`and`redis-server` inside it.
 
-- This is useful for reproducing systemd/service unit ordering issues, DB startup ordering, or other system-level behavior that in-memory emulators won't show.
+- This is useful for reproducing systemd/service unit ordering issues, DB startup ordering, or other system-level
+  behavior that in-memory emulators won't show.
 
 - Steps (example):
 
@@ -102,9 +104,11 @@ Tips & gotchas
 
 - When debugging a failing integration test, try:
 
-- Enabling more verbose pytest output (-vv or -s) and reviewing debug prints in `agents/gpu_orchestrator/worker.py` and engine logs
+- Enabling more verbose pytest output (-vv or -s) and reviewing debug prints in `agents/gpu_orchestrator/worker.py` and
+  engine logs
 
-- Spawning a systemd-nspawn container and running the engine against a real MariaDB inside the container to identify behaviour differences between sqlite and MariaDB
+- Spawning a systemd-nspawn container and running the engine against a real MariaDB inside the container to identify
+  behaviour differences between sqlite and MariaDB
 
 - Running the Docker-based PoC locally (for testing/CI debugging only):
 1) Start services: `docker-compose -f scripts/dev/docker-compose.e2e.yml up -d --build` 2) Run the smoke tests:

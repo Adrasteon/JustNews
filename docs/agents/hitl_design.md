@@ -2,7 +2,8 @@
 
 Purpose
 
-- The HITL service stages candidate articles for human or programmatic labelling, stores label history, and forwards accepted labels to ingestion.
+- The HITL service stages candidate articles for human or programmatic labelling, stores label history, and forwards
+  accepted labels to ingestion.
 
 Files of interest
 
@@ -40,7 +41,8 @@ API endpoints (examples)
 
 Forwarding workflow
 
-1. On label creation, the service attempts to forward to the configured downstream endpoint (MCP or HTTP RPC) if `forward_on_label` enabled.
+1. On label creation, the service attempts to forward to the configured downstream endpoint (MCP or HTTP RPC) if
+   `forward_on_label` enabled.
 
 1. Forwarding uses staged backoff: immediate attempt, then exponential backoff with jitter, limited retries.
 

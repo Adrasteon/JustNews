@@ -73,9 +73,11 @@ sudo scripts/dev/run_systemd_nspawn_env.sh stop sudo scripts/dev/run_systemd_nsp
   inside the container, or configure`systemd-nspawn`with networking options or use`lxc`/LXD if you prefer bridged
   networking.
 
-- Containers created with systemd-nspawn rely on the host kernel — they are lightweight and fast to start but don't give hypervisor-level isolation.
+- Containers created with systemd-nspawn rely on the host kernel — they are lightweight and fast to start but don't give
+  hypervisor-level isolation.
 
-- This workflow is useful for reproducing systemd-service unit issues, DB service start ordering, or interactions between system units.
+- This workflow is useful for reproducing systemd-service unit issues, DB service start ordering, or interactions
+  between system units.
 If you want me to extend this script to provide automatic port forward rules (e.g., expose 3306 and 6379 on localhost)
 or to include an automated test-runner that executes the test suite inside the container, I can add that next.
 

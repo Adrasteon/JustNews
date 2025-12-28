@@ -18,12 +18,14 @@ When invoking scripts or running code snippets in documentation, prefer either:
 When adding examples or CI configuration, prefer using `${CANONICAL_ENV:-justnews-py312}` by default (unless a different
 environment is explicitly requested). ------------------
 
-- Always consult `/etc/justnews/global.env`(or the configured`SERVICE_DIR`variant) for runtime configuration such as`PYTHON_BIN` before making changes that affect runtime, startup or agent behavior.
+- Always consult `/etc/justnews/global.env`(or the configured`SERVICE_DIR`variant) for runtime configuration such
+  as`PYTHON_BIN` before making changes that affect runtime, startup or agent behavior.
 
 - If documentation or generated startup scripts introduce a new `PYTHON_BIN`path, update`global.env` (and include a
   human-reviewed note in the PR) — do not hardcode environment-dependent interpreter paths in unrelated source files.
 
-- Assistants should prefer to update `global.env`(or`infrastructure/systemd/examples/justnews.env.example`) rather than leaving users with out-of-sync example values.
+- Assistants should prefer to update `global.env`(or`infrastructure/systemd/examples/justnews.env.example`) rather than
+  leaving users with out-of-sync example values.
 
 - Automation exists to help keep `PYTHON_BIN`present:`infrastructure/systemd/scripts/ensure_global_python_bin.sh`(run at
   startup) and a repo validation script`infrastructure/scripts/validate-global-env.sh` (CI-friendly). When proposing
@@ -34,7 +36,8 @@ Core rules (must follow) ------------------------
 
 - Do not create or commit secrets (API keys, credentials, tokens) into the repository.
 
-- Any change that affects authentication, authorization, admin endpoints, data export, or privacy must include an explanation, tests, and an audit plan.
+- Any change that affects authentication, authorization, admin endpoints, data export, or privacy must include an
+  explanation, tests, and an audit plan.
 
 - Provide tests for new functionality or changes to existing behavior where practical.
 
@@ -67,13 +70,16 @@ Security & privacy details -------------------------
 
 - Never output or expand private / system-level files (e.g., `/etc/`, private keys) into tracked files or PRs.
 
-- If a change requires secrets for local testing, document the expected local environment variables and keep them out of tracked files.
+- If a change requires secrets for local testing, document the expected local environment variables and keep them out of
+  tracked files.
 
 Review & escalation -------------------
 
-- For architectural or large refactors, include a short design rationale and request review from the relevant subsystem owners.
+- For architectural or large refactors, include a short design rationale and request review from the relevant subsystem
+  owners.
 
-- When uncertain about safety or side effects (especially in “synthesizer”, “critic”, or anything producing public content), escalate to a human reviewer before merging.
+- When uncertain about safety or side effects (especially in “synthesizer”, “critic”, or anything producing public
+  content), escalate to a human reviewer before merging.
 
 Recommended local file (.copilot-instructions) --------------------------------------------- Keep a short, private
 `.copilot- instructions` file at the repo root (gitignored) for any personal preferences and developer-specific
@@ -91,6 +97,7 @@ Where automation can help ------------------------
 
 Contact & ownership -------------------
 
-- Keep a link to the teams or owners for major modules in the PRs. Codeowners (if present) should be requested to review sensitive or production-impacting changes.
+- Keep a link to the teams or owners for major modules in the PRs. Codeowners (if present) should be requested to review
+  sensitive or production-impacting changes.
 
 Maintainers can update this file to reflect evolving policies.

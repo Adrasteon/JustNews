@@ -18,11 +18,15 @@ All notable changes to this project will be documented in this file.
 
 ### 🏥 **MCP Bus: health probing & tests**
 
-- **✅** Added per-agent /health probing in `MCPBusEngine.get_health_status()`with structured`agent_details`including response times and errors (best-effort when`requests` is available).
+- **✅** Added per-agent /health probing in `MCPBusEngine.get_health_status()`with structured`agent_details`including
+  response times and errors (best-effort when`requests` is available).
 
-- **✅** Added unit and integration tests: `tests/agents/mcp_bus/test_health.py`and`tests/agents/mcp_bus/test_health_integration.py` (covers healthy, degraded and unreachable agents).
+- **✅** Added unit and integration tests:
+  `tests/agents/mcp_bus/test_health.py`and`tests/agents/mcp_bus/test_health_integration.py` (covers healthy, degraded
+  and unreachable agents).
 
-- **✅** Monitoring: Added Prometheus alerts for MCP Bus overall and per-agent degraded/unreachable conditions; added Grafana panels (Overall, Degraded Count, Agent Status table).
+- **✅** Monitoring: Added Prometheus alerts for MCP Bus overall and per-agent degraded/unreachable conditions; added
+  Grafana panels (Overall, Degraded Count, Agent Status table).
 
 - **✅** Alertmanager: added example Alertmanager config, an Alertmanager message template, an idempotent systemd unit
   installer script (`scripts/install_alertmanager_unit.sh`), Makefile helpers to install/enable/test Alertmanager
@@ -34,9 +38,11 @@ Status: **MISTRAL-7B + MCP BUS HEALTH READY**
 
 ### 🕷️ **Advanced Crawler Resilience Features - PRODUCTION READY**
 
-- **✅ Modal Handling**: Automatic detection and removal of consent overlays, cookie banners, and sign-in modals with synthetic cookie injection
+- **✅ Modal Handling**: Automatic detection and removal of consent overlays, cookie banners, and sign-in modals with
+  synthetic cookie injection
 
-- **✅ Paywall Detection**: Heuristic and MCP-based paywall analysis with confidence scoring, metadata annotation, and article skipping
+- **✅ Paywall Detection**: Heuristic and MCP-based paywall analysis with confidence scoring, metadata annotation, and
+  article skipping
 
 - **✅ User Agent Rotation**: Deterministic UA selection with domain-specific pools and configurable rotation strategies
 
@@ -93,19 +99,24 @@ comprehensive configuration and documentation
 
 ### 🧪 **Comprehensive Test Coverage Analysis - 41% Coverage Achieved**
 
-- **✅ Test Coverage Analysis**: Complete coverage analysis with pytest-cov showing 41% overall coverage (15,626/26,520 lines)
+- **✅ Test Coverage Analysis**: Complete coverage analysis with pytest-cov showing 41% overall coverage (15,626/26,520
+  lines)
 
-- **✅ Test Suite Status**: 413 tests passing, comprehensive test framework covering utilities, agents, integration, operations, monitoring, and configuration
+- **✅ Test Suite Status**: 413 tests passing, comprehensive test framework covering utilities, agents, integration,
+  operations, monitoring, and configuration
 
-- **✅ Coverage Breakdown**: High coverage in utilities (100%), agents (29-56%), database (94-99%), with gaps in core engines and monitoring
+- **✅ Coverage Breakdown**: High coverage in utilities (100%), agents (29-56%), database (94-99%), with gaps in core
+  engines and monitoring
 
-- **✅ Test Infrastructure**: Enhanced test utilities with MockFactory, PerformanceTester, and comprehensive mocking framework
+- **✅ Test Infrastructure**: Enhanced test utilities with MockFactory, PerformanceTester, and comprehensive mocking
+  framework
 
 ### 📦 **Package Management Updates - OpenTelemetry Jaeger Support**
 
 - **✅ OpenTelemetry Jaeger Exporter**: Added `opentelemetry-exporter-jaeger==1.38.0` via pip for Jaeger tracing support
 
-- **✅ Test Utilities Enhancement**: Added missing `create_mock_database_service()`and`record_metric()` methods to test framework
+- **✅ Test Utilities Enhancement**: Added missing `create_mock_database_service()`and`record_metric()` methods to test
+  framework
 
 - **✅ Crawler Tools Integration**: Added `extract_article_content` import to crawler tools module
 
@@ -117,7 +128,8 @@ comprehensive configuration and documentation
 
 - **✅ Performance Testing**: Added `record_metric()` method to PerformanceTester for comprehensive performance tracking
 
-- **✅ Integration Test Support**: Improved test utilities for end-to-end integration testing with realistic mock responses
+- **✅ Integration Test Support**: Improved test utilities for end-to-end integration testing with realistic mock
+  responses
 
 - **✅ Test Data Generation**: Enhanced test data generators for articles, MCP payloads, and performance metrics
 
@@ -129,7 +141,8 @@ comprehensive configuration and documentation
 
 - **Low Coverage Areas (<40%)**: Core engines, security modules, training system, advanced monitoring
 
-- **Test Quality**: Comprehensive mocking framework with 61 test failures resolved, focusing on implementation bugs rather than coverage gaps
+- **Test Quality**: Comprehensive mocking framework with 61 test failures resolved, focusing on implementation bugs
+  rather than coverage gaps
 
 ### 🎯 **Production Readiness Status**
 
@@ -148,15 +161,19 @@ required packages added, and test framework fully operational
 
 ### 🧪 **MemoryEngine Test Suite - 54% Coverage Achieved**
 
-- **✅ Comprehensive Test Implementation**: Created `test_memory_engine.py` with 12 comprehensive tests covering all core functionality
+- **✅ Comprehensive Test Implementation**: Created `test_memory_engine.py` with 12 comprehensive tests covering all core
+  functionality
 
-- **✅ Core Operations Testing**: Full coverage of `save_article()`,`get_article()`,`ingest_article()`,`log_training_example()`, and`get_stats()` methods
+- **✅ Core Operations Testing**: Full coverage of
+  `save_article()`,`get_article()`,`ingest_article()`,`log_training_example()`, and`get_stats()` methods
 
-- **✅ Database Integration Testing**: Mocked database service with proper async fixture handling and transaction simulation
+- **✅ Database Integration Testing**: Mocked database service with proper async fixture handling and transaction
+  simulation
 
 - **✅ Embedding Generation Testing**: Mocked embedding models with realistic vector generation and error handling
 
-- **✅ Error Handling Validation**: Comprehensive error scenarios including database failures, embedding errors, and invalid inputs
+- **✅ Error Handling Validation**: Comprehensive error scenarios including database failures, embedding errors, and
+  invalid inputs
 
 - **✅ Async Testing Framework**: Proper pytest-asyncio fixtures with correct async context management
 
@@ -170,13 +187,15 @@ required packages added, and test framework fully operational
 
 - **✅ Attribute Reference Fixes**: Resolved incorrect attribute references in test assertions and mock setup
 
-- **✅ Comprehensive Mocking**: Proper isolation of database operations, embedding generation, and training system integration
+- **✅ Comprehensive Mocking**: Proper isolation of database operations, embedding generation, and training system
+  integration
 
 - **✅ Test Data Generation**: Realistic test data for articles, embeddings, and training examples with proper validation
 
 ### 📊 **Test Coverage Achievements**
 
-- **MemoryEngine Coverage**: 54% coverage with 12 passing tests covering initialization, CRUD operations, embedding generation, and statistics
+- **MemoryEngine Coverage**: 54% coverage with 12 passing tests covering initialization, CRUD operations, embedding
+  generation, and statistics
 
 - **Test Quality**: Comprehensive mocking framework ensuring reliable, isolated unit testing
 
@@ -203,35 +222,48 @@ functionality validated, and robust testing infrastructure established
 
 ### 📰 **Crawler Extraction Cascade**
 
-- **Trafilatura-First Pipeline**: New `agents/crawler/extraction.py` delivers a Trafilatura-first article extractor with readability-lxml, jusText, and plain sanitiser fallbacks.
+- **Trafilatura-First Pipeline**: New `agents/crawler/extraction.py` delivers a Trafilatura-first article extractor with
+  readability-lxml, jusText, and plain sanitiser fallbacks.
 
-- **Quality Heuristics**: Word-count and text-to-HTML ratio thresholds gate automatic review flags, with configurable environment overrides.
+- **Quality Heuristics**: Word-count and text-to-HTML ratio thresholds gate automatic review flags, with configurable
+  environment overrides.
 
-- **Raw HTML Preservation**: Every crawl stores forensic HTML artefacts under `archive_storage/raw_html/`(path override via`JUSTNEWS_RAW_HTML_DIR`).
+- **Raw HTML Preservation**: Every crawl stores forensic HTML artefacts under `archive_storage/raw_html/`(path override
+  via`JUSTNEWS_RAW_HTML_DIR`).
 
 ### 🧭 **Metadata & Governance Enhancements**
 
-- **Structured Metadata Harvesting**: extruct-powered JSON-LD/microdata parsing enriches articles with canonical URLs, publication dates, sections, tags, and author lists.
+- **Structured Metadata Harvesting**: extruct-powered JSON-LD/microdata parsing enriches articles with canonical URLs,
+  publication dates, sections, tags, and author lists.
 
-- **Language Detection**: Automatic language inference (langdetect) backfills missing language hints for ingestion and downstream analytics.
+- **Language Detection**: Automatic language inference (langdetect) backfills missing language hints for ingestion and
+  downstream analytics.
 
-- **Deterministic URL Hashing**: Canonical-aware hashing and provenance details travel with each article for dedupe enforcement and audits.
+- **Deterministic URL Hashing**: Canonical-aware hashing and provenance details travel with each article for dedupe
+  enforcement and audits.
 
 ### 🔧 **Tooling & Environment Integration**
 
-- **Generic Crawler Upgrade**: `GenericSiteCrawler` now consumes the cascade, packages enriched payloads, and surfaces review diagnostics.
+- **Generic Crawler Upgrade**: `GenericSiteCrawler` now consumes the cascade, packages enriched payloads, and surfaces
+  review diagnostics.
 
-- **Ingestion Pipeline Sync**: Crawler engine propagates expanded metadata to the memory agent, ensuring database parity.
+- **Ingestion Pipeline Sync**: Crawler engine propagates expanded metadata to the memory agent, ensuring database
+  parity.
 
-- **Dependency Refresh**: `requirements.txt` updated with Trafilatura stack (trafilatura, readability-lxml, jusText, extruct, w3lib, langdetect, lxml) for conda/mamba installs.
+- **Dependency Refresh**: `requirements.txt` updated with Trafilatura stack (trafilatura, readability-lxml, jusText,
+  extruct, w3lib, langdetect, lxml) for conda/mamba installs.
 
 ### ✅ **Quality Assurance & Documentation**
 
-- **Regression Coverage**: Added `tests/agents/crawler/test_extraction.py`and`tests/agents/crawler/test_generic_site_crawler.py` to verify extraction fidelity and review heuristics.
+- **Regression Coverage**: Added
+  `tests/agents/crawler/test_extraction.py`and`tests/agents/crawler/test_generic_site_crawler.py` to verify extraction
+  fidelity and review heuristics.
 
-- **Operational Playbook Update**: `docs/operations/systemd-baseline.md` documents the Stage B2 systemd-based implementation, raw HTML retention, and thresholds.
+- **Operational Playbook Update**: `docs/operations/systemd-baseline.md` documents the Stage B2 systemd-based
+  implementation, raw HTML retention, and thresholds.
 
-- **README Refresh**: Quick start and feature list now highlight the Stage B2 pipeline and provide crawler test guidance.
+- **README Refresh**: Quick start and feature list now highlight the Stage B2 pipeline and provide crawler test
+  guidance.
 
 **Status**: **STAGE B2 EXTRACTION UPGRADE COMPLETE** – High-precision ingestion active with governance-ready metadata
 and automated regression tests.
@@ -262,15 +294,19 @@ and batched runs for low-confidence domains.
 
 ### 🔨 **Build & CI/CD System - PRODUCTION READY**
 
-- **✅ Unified Build System**: Makefile with 15+ targets for development, testing, building, deployment, and quality assurance
+- **✅ Unified Build System**: Makefile with 15+ targets for development, testing, building, deployment, and quality
+  assurance
 
-- **✅ CI/CD Pipelines**: Multi-stage GitHub Actions workflows with quality gates, security scanning, and automated deployment
+- **✅ CI/CD Pipelines**: Multi-stage GitHub Actions workflows with quality gates, security scanning, and automated
+  deployment
 
-- **✅ Containerization Framework**: systemd packaging and container images for development/production (Docker Compose and Kubernetes deprecated; compose manifests archived)
+- **✅ Containerization Framework**: systemd packaging and container images for development/production (Docker Compose
+  and Kubernetes deprecated; compose manifests archived)
 
 - **✅ Quality Assurance Pipeline**: Automated linting, testing, security scanning, and performance validation
 
-- **✅ Deployment Automation**: Automated deployment validation with canary testing, production validation, and rollback capabilities
+- **✅ Deployment Automation**: Automated deployment validation with canary testing, production validation, and rollback
+  capabilities
 
 - **✅ Artifact Management**: Automated package building, versioning, and distribution
 
@@ -304,9 +340,11 @@ and batched runs for low-confidence domains.
 
 - **✅ Docker Images**: Multi-stage builds with optimized production images and security hardening
 
-- **✅ Docker Compose (DEPRECATED / ARCHIVED)**: Development environment with hot-reload and multi-service orchestration (archival reference only)
+- **✅ Docker Compose (DEPRECATED / ARCHIVED)**: Development environment with hot-reload and multi-service orchestration
+  (archival reference only)
 
-- **Kubernetes Manifests (DEPRECATED / ARCHIVED)**: Production manifests are retained for archival reference only. systemd is the supported runtime for this codebase.
+- **Kubernetes Manifests (DEPRECATED / ARCHIVED)**: Production manifests are retained for archival reference only.
+  systemd is the supported runtime for this codebase.
 
 - **✅ Environment Configuration**: Template-based configuration for different deployment targets
 
@@ -438,15 +476,19 @@ database layer operational
 
 ### 🚀 **Unified Deployment Framework - PRODUCTION READY**
 
-- **✅ Multi-Platform Support**: Complete deployment system supporting systemd orchestration (Kubernetes and Docker Compose deprecated)
+- **✅ Multi-Platform Support**: Complete deployment system supporting systemd orchestration (Kubernetes and Docker
+  Compose deprecated)
 
-- **✅ Infrastructure as Code**: Declarative service definitions with comprehensive validation and automated configuration generation
+- **✅ Infrastructure as Code**: Declarative service definitions with comprehensive validation and automated
+  configuration generation
 
-- **✅ Environment Management**: Hierarchical environment profiles (development, staging, production) with secure secret management
+- **✅ Environment Management**: Hierarchical environment profiles (development, staging, production) with secure secret
+  management
 
 - **✅ Service Orchestration**: Proper dependency management, health checks, and automated rollback capabilities
 
-- **✅ Security Hardening**: Enterprise-grade security with encrypted secrets, proper file permissions, and access controls
+- **✅ Security Hardening**: Enterprise-grade security with encrypted secrets, proper file permissions, and access
+  controls
 
 - **✅ Validation Framework**: Pre-deployment validation, runtime health checks, and comprehensive error reporting
 
@@ -529,7 +571,8 @@ validated, enterprise-grade security and monitoring implemented
 
 ### 🧪 **Complete Monitoring System Fixes - PRODUCTION READY**
 
-- **✅ All 17 Test Failures Resolved**: Comprehensive fixes for Pydantic V2 migration issues, async handling improvements, validation error corrections, and logic error fixes
+- **✅ All 17 Test Failures Resolved**: Comprehensive fixes for Pydantic V2 migration issues, async handling
+  improvements, validation error corrections, and logic error fixes
 
 - **✅ 30/30 Tests Passing**: Complete test suite validation with zero critical failures
 
@@ -541,13 +584,17 @@ validated, enterprise-grade security and monitoring implemented
 
 ### 🔧 **Critical Technical Fixes Applied**
 
-- **✅ AlertRule Validation Fix**: Added missing `threshold`field required by Pydantic V2 model validation in`AlertDashboard`
+- **✅ AlertRule Validation Fix**: Added missing `threshold`field required by Pydantic V2 model validation
+  in`AlertDashboard`
 
-- **✅ Enum Usage Corrections**: Fixed `AlertSeverity.WARNING`→`AlertSeverity.MEDIUM` for proper enum values in test assertions
+- **✅ Enum Usage Corrections**: Fixed `AlertSeverity.WARNING`→`AlertSeverity.MEDIUM` for proper enum values in test
+  assertions
 
-- **✅ Attribute Access Fixes**: Corrected `RealTimeMonitor.running`→`server` attribute checks for accurate status validation
+- **✅ Attribute Access Fixes**: Corrected `RealTimeMonitor.running`→`server` attribute checks for accurate status
+  validation
 
-- **✅ WebSocket API Modernization**: Removed deprecated websockets imports and updated to modern API patterns in `RealTimeMonitor`
+- **✅ WebSocket API Modernization**: Removed deprecated websockets imports and updated to modern API patterns in
+  `RealTimeMonitor`
 
 - **✅ Type Hints Enhancement**: Improved type annotations for better code maintainability and IDE support
 
@@ -691,7 +738,8 @@ and post-reboot recovery deployed successfully
 
 - **✅ Enterprise Architecture**: Professional-grade GPU resource isolation with process-level separation
 
-- **✅ Documentation Complete**: Comprehensive MPS resource allocation guide in `markdown_docs/agent_documentation/MPS_RESOURCE_ALLOCATION.md`
+- **✅ Documentation Complete**: Comprehensive MPS resource allocation guide in
+  `markdown_docs/agent_documentation/MPS_RESOURCE_ALLOCATION.md`
 
 - **Technical**: Fixed missing `/models/status` endpoint in GPU orchestrator, added MPS allocation configuration system
 
@@ -729,7 +777,8 @@ and post-reboot recovery deployed successfully
 
 - 🔐 Safety: Unreachable orchestrator => conservative CPU fallback (assume SAFE_MODE active)
 
-- 📊 Next: Record workload JSON showing analyst orchestrator decision flip (SAFE_MODE=false) and update section to Completed
+- 📊 Next: Record workload JSON showing analyst orchestrator decision flip (SAFE_MODE=false) and update section to
+  Completed
 
 ### �🚀 **GPU Acceleration Fully Restored - PRODUCTION READY**
 
@@ -836,7 +885,8 @@ enterprise-grade reliability
 
 ### 🧹 **Package Management & Environment Optimization - PRODUCTION READY** (continued 1)
 
-- **✅ Core Package Installation**: Successfully installed TensorRT, PyCUDA, BERTopic, and spaCy in production environment
+- **✅ Core Package Installation**: Successfully installed TensorRT, PyCUDA, BERTopic, and spaCy in production
+  environment
 
 - **✅ Strategic Package Strategy**: Conda-first approach with pip fallback for TensorRT (unavailable in conda channels)
 
@@ -898,21 +948,27 @@ enterprise-grade reliability
 
 ### 🎯 **Analytics Dashboard - COMPREHENSIVE FIXES & IMPROVEMENTS**
 
-- **✅ Automatic Data Loading**: Implemented DOMContentLoaded event listener for automatic dashboard initialization on page load
+- **✅ Automatic Data Loading**: Implemented DOMContentLoaded event listener for automatic dashboard initialization on
+  page load
 
-- **✅ JavaScript Error Resolution**: Fixed "Cannot set properties of null (setting 'innerHTML')" errors by adding comprehensive null checks
+- **✅ JavaScript Error Resolution**: Fixed "Cannot set properties of null (setting 'innerHTML')" errors by adding
+  comprehensive null checks
 
-- **✅ Missing Elements Fixed**: Added missing HTML elements (optimizationRecommendations and optimizationInsights) to prevent DOM errors
+- **✅ Missing Elements Fixed**: Added missing HTML elements (optimizationRecommendations and optimizationInsights) to
+  prevent DOM errors
 
-- **✅ Layout Spacing Improvements**: Fixed spacing issues between Agent Profiles and Advanced Optimization panels with proper CSS margins
+- **✅ Layout Spacing Improvements**: Fixed spacing issues between Agent Profiles and Advanced Optimization panels with
+  proper CSS margins
 
-- **✅ Time Range Validation**: Enhanced API response validation with automatic clamping for invalid time ranges (1-24 hours)
+- **✅ Time Range Validation**: Enhanced API response validation with automatic clamping for invalid time ranges (1-24
+  hours)
 
 - **✅ Error Handling Enhancement**: Added comprehensive try/catch blocks and graceful error handling for all API calls
 
 - **✅ DOM Element Validation**: Implemented robust element existence checks before DOM manipulation
 
-- **✅ User Experience Improvements**: Dashboard now loads automatically with data, handles errors gracefully, and maintains proper layout
+- **✅ User Experience Improvements**: Dashboard now loads automatically with data, handles errors gracefully, and
+  maintains proper layout
 
 - **✅ API Response Validation**: Added null/undefined checks for API responses to prevent runtime errors
 
@@ -991,7 +1047,8 @@ implemented, layout issues fixed, and comprehensive error handling added for pro
 
 ### 🧪 **Comprehensive Pytest Fixes - ALL ISSUES RESOLVED**
 
-- **✅ PytestCollectionWarning Fixed**: Renamed `MemoryMonitorThread`in`test_memory_monitor.py` to prevent pytest collection conflicts
+- **✅ PytestCollectionWarning Fixed**: Renamed `MemoryMonitorThread`in`test_memory_monitor.py` to prevent pytest
+  collection conflicts
 
 - **✅ PytestReturnNotNoneWarning Fixed**: Corrected return value issue in `agents/analyst/production_stress_test.py`
 
@@ -1011,7 +1068,8 @@ implemented, layout issues fixed, and comprehensive error handling added for pro
 
 - `test_vector_search`→`run_vector_search_test`
 
-- **✅ Synthesizer Model Corruption Resolved**: Fixed corrupted `distilgpt2`model causing`SafetensorError` by clearing cache and downloading fresh model
+- **✅ Synthesizer Model Corruption Resolved**: Fixed corrupted `distilgpt2`model causing`SafetensorError` by clearing
+  cache and downloading fresh model
 
 - **✅ Test Suite Validation**: Core functionality verified with multiple test modules passing successfully
 
@@ -1078,9 +1136,11 @@ implemented, layout issues fixed, and comprehensive error handling added for pro
 - **✅ Data Minimization System**: Automatic data collection validation and minimization with 6 data purposes (contract
   fulfillment, legitimate interest, consent, marketing, profile analysis, data sharing)
 
-- **✅ Consent Management**: Granular consent tracking with expiration, withdrawal, and audit logging (PostgreSQL + audit trails)
+- **✅ Consent Management**: Granular consent tracking with expiration, withdrawal, and audit logging (PostgreSQL + audit
+  trails)
 
-- **✅ Consent Validation Middleware**: FastAPI middleware for automatic consent validation before data processing (GDPR Article 6 compliance)
+- **✅ Consent Validation Middleware**: FastAPI middleware for automatic consent validation before data processing (GDPR
+  Article 6 compliance)
 
 - **✅ Data Retention Policies**: Automated data cleanup with configurable retention periods and compliance reporting
 
@@ -1183,19 +1243,23 @@ comprehensive GDPR/CCPA compliance, and full production deployment capabilities
 
 - **✅ Secure Database Separation**: Created separate `justnews_auth` PostgreSQL database for complete security isolation
 
-- **✅ JWT-Based Authentication**: Implemented secure token-based authentication with refresh tokens and role-based access control
+- **✅ JWT-Based Authentication**: Implemented secure token-based authentication with refresh tokens and role-based
+  access control
 
 - **✅ Role-Based Access Control**: ADMIN, RESEARCHER, VIEWER roles with proper permissions and hierarchical access
 
-- **✅ Comprehensive API Endpoints**: Registration, login, token refresh, user management, and password reset functionality
+- **✅ Comprehensive API Endpoints**: Registration, login, token refresh, user management, and password reset
+  functionality
 
 - **✅ FastAPI Integration**: Complete authentication router integrated into main archive API (Port 8021)
 
 - **✅ Production Environment**: Switched to correct `justnews-v2-prod` conda environment with all dependencies installed
 
-- **✅ Security Standards**: PBKDF2 password hashing, account lockout after failed attempts, secure token refresh mechanism
+- **✅ Security Standards**: PBKDF2 password hashing, account lockout after failed attempts, secure token refresh
+  mechanism
 
-- **✅ Database Transaction Fix**: Resolved critical transaction commit issue ensuring data persistence in separate database
+- **✅ Database Transaction Fix**: Resolved critical transaction commit issue ensuring data persistence in separate
+  database
 
 - **✅ Complete API Testing**: All authentication endpoints tested and validated with proper error handling
 
@@ -1292,7 +1356,8 @@ comprehensive testing, and full documentation
 
 - `agents/memory/tools.py`: Moved 6 imports (logging, os, datetime, json, requests, database utilities)
 
-- `agents/newsreader/newsreader_v2_true_engine.py`: Moved 9 imports (typing, dataclasses, torch, datetime, PIL, playwright)
+- `agents/newsreader/newsreader_v2_true_engine.py`: Moved 9 imports (typing, dataclasses, torch, datetime, PIL,
+  playwright)
 
 - `agents/analyst/tensorrt_tools.py`: Moved 1 import (atexit)
 
@@ -1404,7 +1469,8 @@ comprehensive testing, and full documentation
 
 - **✅ Server Validation**: Successfully tested uvicorn server startup and API responses
 
-- **Technical**: Enhanced `agents/dashboard/main.py`,`agents/dashboard/storage.py`,`agents/dashboard/templates/dashboard.html`
+- **Technical**: Enhanced
+  `agents/dashboard/main.py`,`agents/dashboard/storage.py`,`agents/dashboard/templates/dashboard.html`
 
 ### 📈 **Advanced Analytics System - COMPREHENSIVE PERFORMANCE MONITORING**
 
@@ -1428,7 +1494,8 @@ comprehensive testing, and full documentation
 
 - **✅ Real-time Metrics Collection**: Live performance data collection from all agents and GPU operations
 
-- **Technical**: Complete implementation in `agents/analytics/` with FastAPI dashboard, advanced analytics engine, and integration layer
+- **Technical**: Complete implementation in `agents/analytics/` with FastAPI dashboard, advanced analytics engine, and
+  integration layer
 
 ### 🔧 **Production Infrastructure Updates**
 
@@ -1446,15 +1513,19 @@ comprehensive testing, and full documentation
 
 - Wire MCP Bus lifespan into the FastAPI app so readiness is reported correctly on startup (`agents/mcp_bus/main.py`).
 
-- Add consistent `/health`and`/ready`endpoints to`dashboard`and`balancer`agents for uniform service probes (`agents/dashboard/main.py`,`agents/balancer/balancer.py`).
+- Add consistent `/health`and`/ready`endpoints to`dashboard`and`balancer`agents for uniform service probes
+  (`agents/dashboard/main.py`,`agents/balancer/balancer.py`).
 
-- Update `start_services_daemon.sh`to start MCP Bus from its new`agents/mcp_bus`location and ensure log paths point at`agents/mcp_bus`.
+- Update `start_services_daemon.sh`to start MCP Bus from its new`agents/mcp_bus`location and ensure log paths point
+  at`agents/mcp_bus`.
 
-- Fix several small import/path issues to make per-agent entrypoints import reliably when started from the repository root (`agents/newsreader/main.py`, others).
+- Fix several small import/path issues to make per-agent entrypoints import reliably when started from the repository
+  root (`agents/newsreader/main.py`, others).
 
 ### 🔎 Verification & Notes
 
-- Confirmed via automated health-sweep that MCP Bus now returns `{"ready": true}`and all agents expose`/health`and`/ready` (ports 8000—8011).
+- Confirmed via automated health-sweep that MCP Bus now returns `{"ready": true}`and all agents
+  expose`/health`and`/ready` (ports 8000—8011).
 
 - Stopped stale processes and restarted agents to ensure updated code was loaded.
 
@@ -1462,7 +1533,8 @@ comprehensive testing, and full documentation
 
 1. Start services: `./start_services_daemon.sh`
 
-1. Run the health-check sweep: `for p in {8000..8011}; do curl -sS <http://127.0.0.1:>$p/health; curl -sS <http://127.0.0.1:>$p/ready; done`
+1. Run the health-check sweep: `for p in {8000..8011}; do curl -sS <http://127.0.0.1:>$p/health; curl -sS <http://127.0.0.1:>$p/ready;
+   done`
 
 ## [V2.19.0] - 2025-08-13 - **🚨 MAJOR BREAKTHROUGH: GPU CRASH ROOT CAUSE RESOLVED**
 
@@ -1512,7 +1584,8 @@ quantization_config = BitsAndBytesConfig(
 
 - **✅ Proper Quantization**: `BitsAndBytesConfig` with conservative 8GB GPU memory limits
 
-- **✅ LLaVA Conversation**: Correct `[{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": "..."}]}]` format
+- **✅ LLaVA Conversation**: Correct `[{"role": "user", "content": [{"type": "image"}, {"type": "text", "text":
+  "..."}]}]` format
 
 - **✅ SystemD Service**: Proper CUDA environment variables and conda environment paths
 
@@ -1528,7 +1601,8 @@ quantization_config = BitsAndBytesConfig(
 
 - **✅ GPU Memory Crashes**: Fixed multiple system crashes during 10-article testing (crashes occurring around article 5)
 
-- **✅ Ultra-Conservative Memory**: Reduced GPU memory usage from 50% to 30% of available memory (8GB max on 24GB RTX 3090)
+- **✅ Ultra-Conservative Memory**: Reduced GPU memory usage from 50% to 30% of available memory (8GB max on 24GB RTX
+  3090)
 
 - **✅ Context Managers**: Added proper `__enter__`/`__exit__` methods for safe resource management
 
@@ -1652,9 +1726,11 @@ quantization_config = BitsAndBytesConfig(
 
 ### 🤖 **Multi-Agent Training Integration**
 
-- **✅ Scout V2 Integration**: 5-model training (news classification, quality assessment, sentiment, bias detection, visual analysis)
+- **✅ Scout V2 Integration**: 5-model training (news classification, quality assessment, sentiment, bias detection,
+  visual analysis)
 
-- **✅ Fact Checker V2 Integration**: 5-model training (fact verification, credibility assessment, contradiction detection, evidence retrieval, claim extraction)
+- **✅ Fact Checker V2 Integration**: 5-model training (fact verification, credibility assessment, contradiction
+  detection, evidence retrieval, claim extraction)
 
 - **✅ Agent-Specific Thresholds**: Customizable update thresholds (Scout: 40 examples, Fact Checker: 30 examples)
 
@@ -1730,9 +1806,11 @@ quantization_config = BitsAndBytesConfig(
 
 - **✅ Quality Assessment**: BERT-based content quality evaluation (low/medium/high) with multi-class classification
 
-- **✅ Sentiment Analysis**: RoBERTa-based sentiment classification (positive/negative/neutral) with intensity levels (weak/mild/moderate/strong)
+- **✅ Sentiment Analysis**: RoBERTa-based sentiment classification (positive/negative/neutral) with intensity levels
+  (weak/mild/moderate/strong)
 
-- **✅ Bias Detection**: Specialized toxicity model for bias and inflammatory content detection with multi-level assessment
+- **✅ Bias Detection**: Specialized toxicity model for bias and inflammatory content detection with multi-level
+  assessment
 
 - **✅ Visual Analysis**: LLaVA multimodal model for image content analysis and news relevance assessment
 
@@ -1756,7 +1834,8 @@ quantization_config = BitsAndBytesConfig(
 
 ### 📊 **Enhanced Scoring & Decision Making**
 
-- **✅ Integrated Scoring Algorithm**: Multi-factor scoring with News (35%) + Quality (25%) + Sentiment (15%) + Bias (20%) + Visual (5%)
+- **✅ Integrated Scoring Algorithm**: Multi-factor scoring with News (35%) + Quality (25%) + Sentiment (15%) + Bias
+  (20%) + Visual (5%)
 
 - **✅ Sentiment Integration**: Neutral sentiment preferred for news, penalties for extreme sentiment
 
@@ -1778,7 +1857,8 @@ quantization_config = BitsAndBytesConfig(
 
 - **✅ Performance Tracking**: Model evaluation metrics and continuous improvement
 
-- **Technical**: Training data structures for news_classification, quality_assessment, sentiment_analysis, bias_detection
+- **Technical**: Training data structures for news_classification, quality_assessment, sentiment_analysis,
+  bias_detection
 
 ### 📚 **Comprehensive Documentation & API**
 
@@ -1970,13 +2050,15 @@ quantization_config = BitsAndBytesConfig(
 
 ### 🧠 Reasoning Agent (Nucleoid) Added
 
-- **Production-Ready Symbolic Reasoning**: Nucleoid-based agent for fact validation, contradiction detection, and explainability
+- **Production-Ready Symbolic Reasoning**: Nucleoid-based agent for fact validation, contradiction detection, and
+  explainability
 
 - **API Endpoints**: `/add_fact`,`/add_facts`,`/add_rule`,`/query`,`/evaluate`,`/health`
 
 - **MCP Bus Integration**: Full registration and tool routing via `/register`and`/call`
 
-- **Native & Docker Support**: Included in `start_services_daemon.sh`,`stop_services.sh`, and legacy`docker-compose.yml` (Docker Compose deprecated)
+- **Native & Docker Support**: Included in `start_services_daemon.sh`,`stop_services.sh`, and legacy`docker-compose.yml`
+  (Docker Compose deprecated)
 
 - **Port 8008**: Reasoning Agent runs on port 8008 by default
 
@@ -1988,7 +2070,8 @@ quantization_config = BitsAndBytesConfig(
 
 - **✅ Enhanced cleaned_html Extraction**: Switched from markdown to cleaned_html with 30.5% efficiency improvement
 
-- **✅ Intelligent Article Filtering**: Custom `extract_article_content()` function removes navigation and promotional content
+- **✅ Intelligent Article Filtering**: Custom `extract_article_content()` function removes navigation and promotional
+  content
 
 - **✅ Real-world Performance**: Successfully extracted 1,591 words from BBC article (9,612 characters)
 
@@ -2074,7 +2157,8 @@ quantization_config = BitsAndBytesConfig(
 
 - **FilterChain Integration**: ContentTypeFilter and DomainFilter for focused, efficient crawling
 
-- **Scout Intelligence Analysis**: Comprehensive content assessment including news classification, bias detection, and quality metrics
+- **Scout Intelligence Analysis**: Comprehensive content assessment including news classification, bias detection, and
+  quality metrics
 
 - **Quality Filtering**: Dynamic threshold-based content selection ensuring high-quality results
 
@@ -2236,7 +2320,8 @@ optimization
 
 - **Pipeline Efficiency**: Scout pre-filtering enables smaller downstream models while maintaining accuracy
 
-- **Fact Checker Optimization**: Reduced from DialoGPT (deprecated)-large (4.0GB) to DialoGPT (deprecated)-medium (2.5GB) due to Scout pre-filtering
+- **Fact Checker Optimization**: Reduced from DialoGPT (deprecated)-large (4.0GB) to DialoGPT (deprecated)-medium
+  (2.5GB) due to Scout pre-filtering
 
 - **Chief Editor Optimization**: Specification alignment to DialoGPT (deprecated)-medium (2.0GB) for orchestration focus
 
@@ -2537,7 +2622,8 @@ System Totals:
 
 ### Improved
 
-- Enhanced Chief Editor Agent: Implemented robust orchestration logic for `request_story_brief`and`publish_story` tools, including workflow stubs and improved logging.
+- Enhanced Chief Editor Agent: Implemented robust orchestration logic for `request_story_brief`and`publish_story` tools,
+  including workflow stubs and improved logging.
 
 ## [0.2.0] - YYYY-MM-DD
 
@@ -2560,11 +2646,13 @@ System Totals:
 
 ### Added (continued 4)
 
-- Refactored Synthesizer agent to use sentence-transformers for clustering, LLM for neutralization/aggregation, and feedback logging for continual learning.
+- Refactored Synthesizer agent to use sentence-transformers for clustering, LLM for neutralization/aggregation, and
+  feedback logging for continual learning.
 
 - Refactored Critic agent to use LLM for critique, feedback logging, and support for continual learning and retraining.
 
-- Refactored Memory agent to implement semantic retrieval with embeddings (sentence-transformers), vector search (pgvector), feedback logging, and retrieval usage tracking for future learning-to-rank.
+- Refactored Memory agent to implement semantic retrieval with embeddings (sentence-transformers), vector search
+  (pgvector), feedback logging, and retrieval usage tracking for future learning-to-rank.
 
 ### Improved (continued 1)
 

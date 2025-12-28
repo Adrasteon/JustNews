@@ -18,7 +18,8 @@
 
 ## Phase 1 – Crawler Core
 
-1. Wrap Crawl4AI `AdaptiveCrawler`with per-site configuration profiles (confidence thresholds,`min_gain_threshold`,`top_k_links`).
+1. Wrap Crawl4AI `AdaptiveCrawler`with per-site configuration profiles (confidence
+   thresholds,`min_gain_threshold`,`top_k_links`).
 
 1. Add content filters (e.g., `BM25ContentFilter`,`CosineStrategy`, table scoring) based on site archetypes.
 
@@ -42,7 +43,8 @@
   (including adaptive summary, derived metrics, and recent history) so the UI can surface confidence trends and stop-
   reason distributions without scraping raw logs.
 
-- Next actions: finalize E2E validation, hook the dashboard UI panels into the new scheduler endpoint, and schedule batched re-runs for domains that previously failed or returned low confidence.
+- Next actions: finalize E2E validation, hook the dashboard UI panels into the new scheduler endpoint, and schedule
+  batched re-runs for domains that previously failed or returned low confidence.
 
 ### Progress update (2025-11-01) — restoration and tests
 
@@ -50,13 +52,16 @@
   at`agents/crawler/adaptive_metrics.py`(moved from`archive/experimental/raw_html_profile_spur/`). This closes the
   runtime gap where scheduler and dashboard call sites expected the module to exist.
 
-- Unit tests added: a focused pytest module was added at `tests/agents/crawler/test_adaptive_metrics.py` covering empty/no-adaptive inputs and a basic aggregation case.
+- Unit tests added: a focused pytest module was added at `tests/agents/crawler/test_adaptive_metrics.py` covering
+  empty/no-adaptive inputs and a basic aggregation case.
 
-- Tests executed: the new test file was executed locally and both tests passed (2 passed, 0 failed). This validates the summariser's basic behaviour and aggregation shapes.
+- Tests executed: the new test file was executed locally and both tests passed (2 passed, 0 failed). This validates the
+  summariser's basic behaviour and aggregation shapes.
 
 Next immediate steps (short):
 
-- Commit & push: commit the restored module and tests to the `feat/k8s` branch and push to the remote (not yet committed in this workspace snapshot).
+- Commit & push: commit the restored module and tests to the `feat/k8s` branch and push to the remote (not yet committed
+  in this workspace snapshot).
 
 - Scheduler dry-run: run a focused scheduler dry-run to confirm `scripts/ops/run_crawl_schedule.py`imports the
   summariser successfully and that Prometheus textfile +`scheduler` JSON include the adaptive summary fields.
@@ -69,7 +74,8 @@ to-end telemetry.
 
 ## Phase 2 – Crawler Control
 
-1. Define a crawl job spec (start URL, query, site profile, priority) and integrate with the existing balancer/orchestrator.
+1. Define a crawl job spec (start URL, query, site profile, priority) and integrate with the existing
+   balancer/orchestrator.
 
 1. Track adaptive metrics (confidence, pages crawled, stop reason) in the metrics store.
 
@@ -87,7 +93,8 @@ to-end telemetry.
 
 1. Build a regression suite comparing legacy outputs to Crawl4AI across representative domains.
 
-1. Add tracing spans/instrumentation around crawl stages and dashboard summaries (throughput, failures, confidence trends).
+1. Add tracing spans/instrumentation around crawl stages and dashboard summaries (throughput, failures, confidence
+   trends).
 
 1. Schedule periodic reviews to tune profiles and validate coverage/quality metrics.
 

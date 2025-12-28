@@ -5,9 +5,11 @@ non-mandatory and opt-in.
 
 Why use them?
 
-- Encourage test consistency by recommending the `scripts/dev/pytest.sh`wrapper that runs tests inside the`${CANONICAL_ENV:-justnews-py312}` conda environment.
+- Encourage test consistency by recommending the `scripts/dev/pytest.sh`wrapper that runs tests inside
+  the`${CANONICAL_ENV:-justnews-py312}` conda environment.
 
-- Optionally run a very quick unit smoke test on `pre-push` to catch obvious breakages before pushing to remote (non-default behavior).
+- Optionally run a very quick unit smoke test on `pre-push` to catch obvious breakages before pushing to remote (non-
+  default behavior).
 
 Installation
 
@@ -27,6 +29,8 @@ Hook behavior
 
 FAQ
 
-- Q: Are hooks enforced in CI? A: No — hooks are local, opt-in developer helpers and not enforced by CI. Server-side or branch protection policies are recommended for enforced checks.
+- Q: Are hooks enforced in CI? A: No — hooks are local, opt-in developer helpers and not enforced by CI. Server-side or
+  branch protection policies are recommended for enforced checks.
 
-- Q: How do I bypass the conda recommendation? A: Set `ALLOW_ANY_PYTEST_ENV=1` to bypass the local conftest check (useful for experimental runs or debugging).
+- Q: How do I bypass the conda recommendation? A: Set `ALLOW_ANY_PYTEST_ENV=1` to bypass the local conftest check
+  (useful for experimental runs or debugging).

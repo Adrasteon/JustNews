@@ -8,7 +8,8 @@ quantization & training compatibility notes, and concrete next steps you can pic
 
 1. Mistral 7B (recommended)
 
-- Pros: Top-tier 7B quality for generation and instruction tasks; strong community/tooling for inference and LoRA/QLoRA fine-tuning.
+- Pros: Top-tier 7B quality for generation and instruction tasks; strong community/tooling for inference and LoRA/QLoRA
+  fine-tuning.
 
 - Training/refinement: Supports adapter-based fine-tuning (LoRA / QLoRA pipelines) and standard fp16 fine-tuning.
 
@@ -16,7 +17,8 @@ quantization & training compatibility notes, and concrete next steps you can pic
 
 1. MPT-7B / MPT-7B-Instruct (very training-friendly)
 
-- Pros: Apache-licensed, designed for training & fine-tuning; great transparency & reproducibility for refinement workflows.
+- Pros: Apache-licensed, designed for training & fine-tuning; great transparency & reproducibility for refinement
+  workflows.
 
 - Training/refinement: Excellent (used widely for fine-tuning and research).
 
@@ -45,13 +47,16 @@ unambiguously permissive; Mistral/Falcon are community-first but check their mod
 
 ## Why these fit your refining & training setup (and the adapter-first approach)
 
-- Support for LoRA / PEFT and QLoRA workflows — lets you refine models without expensive full-weight updates and avoids conflicts when multiple agents need different training.
+- Support for LoRA / PEFT and QLoRA workflows — lets you refine models without expensive full-weight updates and avoids
+  conflicts when multiple agents need different training.
 
-- Use a single canonical base model (Mistral‑7B recommended) and store small per-agent adapters for each task. Adapters are lightweight, independent, versionable, and hot-swappable at runtime.
+- Use a single canonical base model (Mistral‑7B recommended) and store small per-agent adapters for each task. Adapters
+  are lightweight, independent, versionable, and hot-swappable at runtime.
 
 - Good compatibility with bitsandbytes / transformers / accelerate on GPU.
 
-- Well-documented training recipes and community tools (AutoTrain, Hugging Face PEFT, QLoRA implementations) so your existing pipeline can plug in easily.
+- Well-documented training recipes and community tools (AutoTrain, Hugging Face PEFT, QLoRA implementations) so your
+  existing pipeline can plug in easily.
 
 ---
 
@@ -69,13 +74,15 @@ unambiguously permissive; Mistral/Falcon are community-first but check their mod
 
 - RTX 3090 (24GB) can run QLoRA on 7B models for typical adapters and small batch sizes — it’s a common configuration.
 
-- If you prefer to avoid 4-bit during training because of your 3090 concern: run fp16 fine-tuning (full weights) across a small cluster or offload some to CPU, or use LoRA with fp16 weights.
+- If you prefer to avoid 4-bit during training because of your 3090 concern: run fp16 fine-tuning (full weights) across
+  a small cluster or offload some to CPU, or use LoRA with fp16 weights.
 
 ---
 
 ## Practical tooling & commands (what integrates with your repo) — adapter-first
 
-- Required libs: transformers, accelerate, bitsandbytes, peft, evaluate/datasets, (optionally) auto-gptq for GPTQ conversions.
+- Required libs: transformers, accelerate, bitsandbytes, peft, evaluate/datasets, (optionally) auto-gptq for GPTQ
+  conversions.
 
 - Sample inference load (int8 with bitsandbytes):
 

@@ -8,15 +8,18 @@
 
 - Surface kernel/NVIDIA driver logs in a structured form that ties back to spans.
 
-- Maintain existing Prometheus-based alerting while enabling OTLP exports for tracing and logging backends (Tempo/Jaeger/Loki or hosted options).
+- Maintain existing Prometheus-based alerting while enabling OTLP exports for tracing and logging backends
+  (Tempo/Jaeger/Loki or hosted options).
 
 ## Collector Topology
 
 - Deploy a node-level OpenTelemetry Collector (system service) on each workload host.
 
-- Receivers: `prometheus`(scrape DCGM exporter + node exporter),`hostmetrics`,`filelog`(kernel/NVIDIA logs),`otlp` (from instrumented apps running locally).
+- Receivers: `prometheus`(scrape DCGM exporter + node exporter),`hostmetrics`,`filelog`(kernel/NVIDIA logs),`otlp` (from
+  instrumented apps running locally).
 
-- Processors: `resource`(tag host, GPU ID, environment),`attributes`(normalize labels),`batch`, optional`filter`or`memory_limiter`.
+- Processors: `resource`(tag host, GPU ID, environment),`attributes`(normalize labels),`batch`,
+  optional`filter`or`memory_limiter`.
 
 - Exporters: `otlp`→ central collector, optional`prometheus_remote_write` when Prometheus cannot scrape directly.
 
@@ -33,33 +36,44 @@
 1. **Phase 1 – Core services**: enable auto-instrumentation in Python crawlers, agents, and API gateways with W3C
    context propagation. Add custom spans around GPU scheduling, model inference, DB calls.
 
-1. **Phase 2 – Background jobs**: instrument queues, schedulers, and training jobs. Leverage baggage for article IDs / job IDs to unify traces and logs.
+1. **Phase 2 – Background jobs**: instrument queues, schedulers, and training jobs. Leverage baggage for article IDs /
+   job IDs to unify traces and logs.
 
-1. **Phase 3 – Shell / cron tasks**: wrap operational scripts via the OTel logging SDK or exec wrappers so kernel log alerts can be correlated back to the triggering job.
+1. **Phase 3 – Shell / cron tasks**: wrap operational scripts via the OTel logging SDK or exec wrappers so kernel log
+   alerts can be correlated back to the triggering job.
 
 ## Prometheus Strategy
 
-- Short term: keep Prometheus as primary metrics store/alerting. Either continue native scrape of DCGM + node exporters or ingest via collector remote_write.
+- Short term: keep Prometheus as primary metrics store/alerting. Either continue native scrape of DCGM + node exporters
+  or ingest via collector remote_write.
 
 - Update alert rules and Grafana dashboards to use the OTel-normalized metric names while keeping semantics identical.
 
-- Long term: if Prometheus scaling becomes painful, switch collector exporters to an OTLP-native metrics backend without touching instrumentation.
+- Long term: if Prometheus scaling becomes painful, switch collector exporters to an OTLP-native metrics backend without
+  touching instrumentation.
 
 ## Deployment Steps
 
-1. Package collector configs under `infrastructure/monitoring/otel/`, including node template, central collector template, and systemd/Helm snippets.
+1. Package collector configs under `infrastructure/monitoring/otel/`, including node template, central collector
+   template, and systemd/Helm snippets.
 
-1. Roll out node collectors: install binaries, drop config, enable systemd, validate scrapes (`curl 127.0.0.1:9400/metrics`) and OTLP ingestion.
+1. Roll out node collectors: install binaries, drop config, enable systemd, validate scrapes (`curl
+   127.0.0.1:9400/metrics`) and OTLP ingestion.
 
-1. Deploy central collector: configure OTLP receivers, exporters to Prometheus remote_write plus tracing/log stores, add TLS/auth as needed.
+1. Deploy central collector: configure OTLP receivers, exporters to Prometheus remote_write plus tracing/log stores, add
+   TLS/auth as needed.
 
-1. Instrument apps: add `opentelemetry-sdk`and OTLP exporter pointing at`localhost:4317`, verify spans and exemplars appear in the tracing backend and GPU metric panels.
+1. Instrument apps: add `opentelemetry-sdk`and OTLP exporter pointing at`localhost:4317`, verify spans and exemplars
+   appear in the tracing backend and GPU metric panels.
 
-1. Logging integration: configure `filelog`receiver for`/var/log/kern.log`and NVIDIA logs, map severity to`SeverityNumber`, forward to Loki/Elastic.
+1. Logging integration: configure `filelog`receiver for`/var/log/kern.log`and NVIDIA logs, map severity
+   to`SeverityNumber`, forward to Loki/Elastic.
 
-1. Observability UX: update Grafana with Tempo/Loki panels and correlation dashboards (GPU throttling vs crawler latency, etc.).
+1. Observability UX: update Grafana with Tempo/Loki panels and correlation dashboards (GPU throttling vs crawler
+   latency, etc.).
 
-1. Runbooks/tests: document restart commands, sampling knobs, collector dry-run checks (`otelcol --config ... --dry-run`), and add CI validations for OTLP exporter health.
+1. Runbooks/tests: document restart commands, sampling knobs, collector dry-run checks (`otelcol --config ... --dry-
+   run`), and add CI validations for OTLP exporter health.
 
 ## Outcome
 

@@ -1,6 +1,7 @@
 # ARCHIVED: Qwen2.5-32B-Instruct-AWQ FP8 KV Cache Optimization Attempt - Report (historical)
 
-> **Note:** This report documents historical efforts to optimize Qwen2.5 deployment. The project now uses **Mistral‑7B** as the default vLLM model; the notes below are retained for reference.
+> **Note:** This report documents historical efforts to optimize Qwen2.5 deployment. The project now uses **Mistral‑7B**
+as the default vLLM model; the notes below are retained for reference.
 
 **Date**: December 16, 2025 **Objective**: Deploy Qwen2.5-32B-Instruct-AWQ with FP8 KV cache quantization on RTX 3090
 24GB VRAM **Status**: BLOCKED - PyTorch dlpack incompatibility with FP8 tensors **Outcome**: Successful FlashInfer
@@ -121,7 +122,8 @@ binaries for specific CUDA versions; 12.8 not widely available
 
 - Attempted bitsandbytes compilation from source (failed - CMake couldn't find CUDA::cublas target)
 
-- **Final Resolution**: Used official pre-quantized model (`Qwen/Qwen2.5-32B-Instruct-AWQ`) instead, avoiding need for runtime quantization
+- **Final Resolution**: Used official pre-quantized model (`Qwen/Qwen2.5-32B-Instruct-AWQ`) instead, avoiding need for
+  runtime quantization
 
 **Lesson**: Pre-quantized models are more reliable than runtime quantization, especially with bleeding-edge CUDA
 versions.
@@ -155,11 +157,14 @@ or directory`
 
 #### Root Cause Analysis
 
-1. **CUDA Libraries Not in Standard Paths**: Conda installed CUDA libraries in non-standard location (`$CONDA_PREFIX/targets/x86_64-linux/lib/`instead of`/usr/lib64/`)
+1. **CUDA Libraries Not in Standard Paths**: Conda installed CUDA libraries in non-standard location
+   (`$CONDA_PREFIX/targets/x86_64-linux/lib/`instead of`/usr/lib64/`)
 
-1. **LD_LIBRARY_PATH vs LIBRARY_PATH**: Runtime (`LD_LIBRARY_PATH`) and linker (`LIBRARY_PATH`) are separate; linker needs explicit paths
+1. **LD_LIBRARY_PATH vs LIBRARY_PATH**: Runtime (`LD_LIBRARY_PATH`) and linker (`LIBRARY_PATH`) are separate; linker
+   needs explicit paths
 
-1. **GCC Internal Compiler Error**: Conda GCC 11.2.0 crashed with "Segmentation fault" during complex CUDA template compilation at `-O3` optimization level
+1. **GCC Internal Compiler Error**: Conda GCC 11.2.0 crashed with "Segmentation fault" during complex CUDA template
+   compilation at `-O3` optimization level
 
 #### Solutions Implemented (in order)
 
@@ -319,7 +324,8 @@ Qwen2.5-32B-Instruct-AWQ + FP8, linking fails | ❌ | ld: cannot find -lcudart |
 
 ### Configuration Files
 
-- **`scripts/launch_vllm_mistral_7b_optimized.sh`**: Production-ready launch script with all optimizations (renamed to reflect Mistral fallback)
+- **`scripts/launch_vllm_mistral_7b_optimized.sh`**: Production-ready launch script with all optimizations (renamed to
+  reflect Mistral fallback)
 
 - CUDA library path configuration
 
@@ -387,7 +393,8 @@ Qwen2.5-32B-Instruct-AWQ + FP8, linking fails | ❌ | ld: cannot find -lcudart |
 
 1. **Pre-quantized > Runtime Quantization**: Official AWQ models more reliable than BitsAndBytes
 
-1. **Conda CUDA Layout Non-Standard**: Libraries in `targets/x86_64-linux/lib/` not standard paths; requires careful PATH management
+1. **Conda CUDA Layout Non-Standard**: Libraries in `targets/x86_64-linux/lib/` not standard paths; requires careful
+   PATH management
 
 1. **GCC 11.2.0 Fragile with CUDA**: Complex template compilation crashes at -O3; -O1 works
 

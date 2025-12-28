@@ -9,7 +9,8 @@
 I reviewed the codebase systematically to create a **comprehensive, evidence- based action plan** for getting JustNews
 up and running with database ingestion. This wasn't just a summary—I:
 
-1. **Read key initialization scripts**: `scripts/init_database.py`,`scripts/ops/run_crawl_schedule.py`, crawler engine code
+1. **Read key initialization scripts**: `scripts/init_database.py`,`scripts/ops/run_crawl_schedule.py`, crawler engine
+   code
 
 1. **Analyzed configuration files**: `config/system_config.json`,`config/crawl_schedule.yaml`, crawl profiles
 

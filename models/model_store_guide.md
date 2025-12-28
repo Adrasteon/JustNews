@@ -34,13 +34,17 @@ MODEL_STORE_ROOT/
 
 ## Lifecycle
 
-1. **Stage** – Writers obtain a temporary directory via `ModelStore.stage_new(agent, version)`and populate the full model payload inside`<version>.tmp`.
+1. **Stage** – Writers obtain a temporary directory via `ModelStore.stage_new(agent, version)`and populate the full
+   model payload inside`<version>.tmp`.
 
-1. **Validate & Manifest** – `ModelStore.finalize(...)`computes a deterministic SHA-256 checksum, writes`manifest.json`, and renames the directory to`<version>`.
+1. **Validate & Manifest** – `ModelStore.finalize(...)`computes a deterministic SHA-256 checksum, writes`manifest.json`,
+   and renames the directory to`<version>`.
 
-1. **Publish** – Finalize atomically updates the `current`symlink (`os.replace`) so running agents immediately see the new version.
+1. **Publish** – Finalize atomically updates the `current`symlink (`os.replace`) so running agents immediately see the
+   new version.
 
-1. **Read** – Consumers resolve the current version with `ModelStore.get_current(agent)` and load models directly from the returned directory.
+1. **Read** – Consumers resolve the current version with `ModelStore.get_current(agent)` and load models directly from
+   the returned directory.
 
 ### Manifest Structure (`versions/<version>/manifest.json`)
 

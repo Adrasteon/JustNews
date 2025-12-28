@@ -6,13 +6,16 @@ example by copying them into /etc/grafana/provisioning/)
 
 How to use
 
-1. Copy `datasources.yml`to Grafana`/etc/grafana/provisioning/datasources/` and adjust the Prometheus URL or authentication block to match your deployment.
+1. Copy `datasources.yml`to Grafana`/etc/grafana/provisioning/datasources/` and adjust the Prometheus URL or
+   authentication block to match your deployment.
 
-1. Copy `dashboards.yml`to`/etc/grafana/provisioning/dashboards/`and copy the`dashboards/`folder contents (for example,`docs/grafana/editorial-harness-dashboard.json`) to the configured path.
+1. Copy `dashboards.yml`to`/etc/grafana/provisioning/dashboards/`and copy the`dashboards/`folder contents (for
+   example,`docs/grafana/editorial-harness-dashboard.json`) to the configured path.
 
 1. Restart Grafana or reload provisioning to pick up the new dashboards and datasources.
 
-1. For the Stage 4 harness specifically, see `docs/grafana/editorial-harness-wiring.md` for scrape job requirements and alert suggestions.
+1. For the Stage 4 harness specifically, see `docs/grafana/editorial-harness-wiring.md` for scrape job requirements and
+   alert suggestions.
 
 ## JustNews production specifics
 
@@ -22,7 +25,8 @@ How to use
 
 - `monitoring/dashboards/generated/business_metrics_dashboard.json`→ UID`af5zdqbqc8xkwf` (Business Metrics Dashboard)
 
-- `monitoring/dashboards/generated/justnews_operations_dashboard.json`→ UID`ef37elu2756o0e` (JustNews Operations Dashboard)
+- `monitoring/dashboards/generated/justnews_operations_dashboard.json`→ UID`ef37elu2756o0e` (JustNews Operations
+  Dashboard)
 
 - `monitoring/dashboards/generated/system_overview_dashboard.json`→ UID`ef5zdqbvm17uoc` (JustNews System Overview)
 

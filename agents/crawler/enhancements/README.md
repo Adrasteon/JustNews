@@ -51,8 +51,7 @@ Enhancements are configured through the `crawling.enhancements`section of`config
         "nytimes.com": ["Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15"]
       },
       "proxy_pool": [
-        "http://proxy1.example.com:8080",
-        "http://proxy2.example.com:8080"
+        "http://proxy1.example.com:8080","http://proxy2.example.com:8080"
       ],
       "stealth_profiles": [
         {
@@ -132,8 +131,7 @@ from agents.crawler.enhancements import PaywallDetector
 
 detector = PaywallDetector(enable_remote=True, max_remote_chars=5000)
 result = await detector.analyze(
-    url="https://example.com/article",
-    html="<html>...</html>",
+    url="https://example.com/article",html="<html>...</html>",
     text="Article content..."
 )
 
@@ -189,7 +187,7 @@ ua = provider.choose(domain="example.com")
 ```python
 from agents.crawler.enhancements import ProxyManager
 
-manager = ProxyManager(["http://proxy1:8080", "http://proxy2:8080"])
+manager = ProxyManager(["http://proxy1:8080","http://proxy2:8080"])
 proxy = manager.next_proxy()
 
 ## Use with requests

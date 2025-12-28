@@ -81,7 +81,7 @@ health check.
 ```bash
 
 sudo systemctl enable --now justnews@gpu_orchestrator
-curl -fsS http://127.0.0.1:8014/ready
+curl -fsS <http://127.0.0.1:8014/ready>
 
 ```bash
 
@@ -117,9 +117,9 @@ Examples:
 
 ```bash
 
-curl -fsS http://127.0.0.1:8004/health    # analyst
-curl -fsS http://127.0.0.1:8014/ready     # orchestrator ready
-curl -fsS http://127.0.0.1:8014/models/status | jq
+curl -fsS <http://127.0.0.1:8004/health>    # analyst
+curl -fsS <http://127.0.0.1:8014/ready>     # orchestrator ready
+curl -fsS <http://127.0.0.1:8014/models/status> | jq
 
 ```
 
@@ -182,14 +182,14 @@ ls -la /tmp/nvidia-mps/
 
 1. **Environment Configuration**:
 
-  - Set `ENABLE_MPS=true` in `/etc/justnews/global.env`
+- Set `ENABLE_MPS=true` in `/etc/justnews/global.env`
 
-  - Set `ENABLE_MPS=true` and `ENABLE_NVML=true` in `/etc/justnews/gpu_orchestrator.env`
+- Set `ENABLE_MPS=true` and `ENABLE_NVML=true` in `/etc/justnews/gpu_orchestrator.env`
 
 1. **Check MPS Allocation**:
 
 ```bash
-curl -s http://127.0.0.1:8014/mps/allocation | jq '.mps_resource_allocation.system_summary'
+curl -s <http://127.0.0.1:8014/mps/allocation> | jq '.mps_resource_allocation.system_summary'
 
 ```bash
 
@@ -204,8 +204,8 @@ sudo ./infrastructure/systemd/scripts/enable_all.sh restart
 sudo systemctl status justnews-crawl-scheduler.service
 sudo systemctl status justnews@cluster_pipeline
 sudo systemctl status justnews@fact_intel
-curl -fsS http://127.0.0.1:8011/health
-curl -fsS http://127.0.0.1:8013/transparency/status | jq '.integrity.status'
+curl -fsS <http://127.0.0.1:8011/health>
+curl -fsS <http://127.0.0.1:8013/transparency/status> | jq '.integrity.status'
 
 ```
 
@@ -213,7 +213,7 @@ Sequence tip: ensure fact intelligence services complete before starting cluster
 cluster creation.
 
 Transparency tip: keep any transparency portal service (e.g., `justnews@transparency_portal`) and evidence APIs healthy;
-locally confirm with `curl -fsS http://127.0.0.1:8013/transparency/status`. Synthesizer gate: if `/transparency/status`
+locally confirm with `curl -fsS <http://127.0.0.1:8013/transparency/status`.> Synthesizer gate: if `/transparency/status`
 fails, `justnews@synthesizer` readiness will remain false until integrity recovers.
 
 ## Orderly shutdown (all agents)
@@ -302,19 +302,19 @@ Notes:
 
 - Many services “failed/inactive” immediately:
 
-  - Ensure orchestrator is running and READY (see startup order above).
+- Ensure orchestrator is running and READY (see startup order above).
 
 - Preflight shows “run as root” and exit 1 under systemd:
 
-  - Expected for ExecStartPre limited checks; continue with orchestrator-first.
+- Expected for ExecStartPre limited checks; continue with orchestrator-first.
 
 - Ports already in use:
 
-  - `sudo ./infrastructure/systemd/preflight.sh --stop` to free conflicting services.
+- `sudo ./infrastructure/systemd/preflight.sh --stop` to free conflicting services.
 
 - DB connectivity (Memory):
 
-  - Set `JUSTNEWS_DB_URL` in `global.env` and run `helpers/db-check.sh`.
+- Set `JUSTNEWS_DB_URL` in `global.env` and run `helpers/db-check.sh`.
 
 ## Install helpers (optional)
 

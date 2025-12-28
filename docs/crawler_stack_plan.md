@@ -93,45 +93,45 @@ to-end telemetry.
 
 1. **Modal Handling**: Automatic detection and removal of consent overlays, cookie banners, and sign-in modals
 
-  - Synthetic cookie injection for consent management
+- Synthetic cookie injection for consent management
 
-  - Pre-extraction HTML processing to remove modal interference
+- Pre-extraction HTML processing to remove modal interference
 
-  - Configurable consent cookie values and modal detection patterns
+- Configurable consent cookie values and modal detection patterns
 
 1. **Paywall Detection**: Multi-layered paywall analysis and content filtering
 
-  - Heuristic detection based on content patterns and access restrictions
+- Heuristic detection based on content patterns and access restrictions
 
-  - Optional MCP-based remote analysis for complex paywall identification
+- Optional MCP-based remote analysis for complex paywall identification
 
-  - Article metadata annotation with confidence scores and skip decisions
+- Article metadata annotation with confidence scores and skip decisions
 
-  - Configurable detection thresholds and analysis depth
+- Configurable detection thresholds and analysis depth
 
 1. **User Agent Rotation**: Intelligent browser fingerprinting management
 
-  - Domain-specific user agent pools for targeted site compatibility
+- Domain-specific user agent pools for targeted site compatibility
 
-  - Deterministic rotation strategies with configurable pool sizes
+- Deterministic rotation strategies with configurable pool sizes
 
-  - Fallback mechanisms for unsupported or problematic user agents
+- Fallback mechanisms for unsupported or problematic user agents
 
 1. **Proxy Pool Management**: IP diversity and anti-detection through proxy rotation
 
-  - Round-robin proxy selection with configurable pool management
+- Round-robin proxy selection with configurable pool management
 
-  - Proxy health monitoring and automatic failure recovery
+- Proxy health monitoring and automatic failure recovery
 
-  - Support for HTTP/HTTPS proxies with authentication
+- Support for HTTP/HTTPS proxies with authentication
 
 1. **Stealth Headers**: Browser simulation and fingerprinting evasion
 
-  - Configurable header profiles mimicking real browser behavior
+- Configurable header profiles mimicking real browser behavior
 
-  - Accept-Language and Accept-Encoding customization
+- Accept-Language and Accept-Encoding customization
 
-  - Header injection for requests with stealth factory patterns
+- Header injection for requests with stealth factory patterns
 
 ### Implementation Architecture
 

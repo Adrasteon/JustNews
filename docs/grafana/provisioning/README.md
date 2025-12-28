@@ -18,11 +18,11 @@ How to use
 
 - The canonical generated dashboards for production live under `monitoring/dashboards/generated/` (`*_dashboard.json`). Each file already carries the Grafana-ready shape (no `{"dashboard": ...}` wrapper) and includes the UID that exists in the live instance:
 
-  - `monitoring/dashboards/generated/business_metrics_dashboard.json` → UID `af5zdqbqc8xkwf` (Business Metrics Dashboard)
+- `monitoring/dashboards/generated/business_metrics_dashboard.json` → UID `af5zdqbqc8xkwf` (Business Metrics Dashboard)
 
-  - `monitoring/dashboards/generated/justnews_operations_dashboard.json` → UID `ef37elu2756o0e` (JustNews Operations Dashboard)
+- `monitoring/dashboards/generated/justnews_operations_dashboard.json` → UID `ef37elu2756o0e` (JustNews Operations Dashboard)
 
-  - `monitoring/dashboards/generated/system_overview_dashboard.json` → UID `ef5zdqbvm17uoc` (JustNews System Overview)
+- `monitoring/dashboards/generated/system_overview_dashboard.json` → UID `ef5zdqbvm17uoc` (JustNews System Overview)
 
 - To push updates into the systemd-managed Grafana service, copy those three files into `/etc/justnews/monitoring/grafana/dashboards/` and restart `justnews-grafana.service`. Provisioning runs every 30 seconds, but a restart guarantees the reload and surfaces any validation errors in `journalctl -u justnews-grafana`.
 

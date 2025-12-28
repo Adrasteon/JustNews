@@ -22,7 +22,7 @@ Purpose: Provide quick diagnostic commands and remediation steps for on-call ope
 1. Fetch the MCP Bus `/health` payload for details:
 
 ```bash
-curl -s http://localhost:8017/health | jq
+curl -s <http://localhost:8017/health> | jq
 
 ```bash
 
@@ -34,7 +34,7 @@ curl -s http://localhost:8017/health | jq
 
 ## Example for 'synthesizer'
 
-curl -s http://localhost:8005/health | jq
+curl -s <http://localhost:8005/health> | jq
 
 ```
 
@@ -51,7 +51,7 @@ Look for errors such as connection refused, DB errors, or repeated stack traces.
 1. Check circuit breaker state for agents via the MCP Bus API:
 
 ```bash
-curl -s http://localhost:8017/circuit_breaker_status | jq
+curl -s <http://localhost:8017/circuit_breaker_status> | jq
 
 ```
 
@@ -105,9 +105,9 @@ free -h; df -h
 
 ## Useful commands
 
-- `curl -s http://localhost:8017/health | jq`  # MCP Bus composite health
+- `curl -s <http://localhost:8017/health> | jq`  # MCP Bus composite health
 
-- `curl -s http://localhost:8005/health | jq`  # Agent health
+- `curl -s <http://localhost:8005/health> | jq`  # Agent health
 
 - `sudo journalctl -u justnews-mcp-bus -f`  # MCP Bus live logs
 

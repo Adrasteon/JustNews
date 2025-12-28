@@ -67,9 +67,9 @@ Notes & Security
 
 - RAPL energy files (CPU package power) are often root-readable only. There are two safe options:
 
-  - run the telemetry under a service account with appropriate group-read access to `/sys/class/powercap/...` (preferred) or
+- run the telemetry under a service account with appropriate group-read access to `/sys/class/powercap/...` (preferred) or
 
-  - run telemetry under sudo (less recommended).
+- run telemetry under sudo (less recommended).
 
 - Telemetry files are written to `/var/log/justnews-perf` by default; ensure retention/rotation is configured by ops (logrotate) if tests are long-running.
 
@@ -169,7 +169,7 @@ forwarding is temporarily disabled.
 
 - `systemctl status justnews-otel-node.service` shows `active (running)` on every GPU host.
 
-- (Optional) `curl -s http://127.0.0.1:8889/metrics | head` returns collector metrics if you are manually checking collector health.
+- (Optional) `curl -s <http://127.0.0.1:8889/metrics> | head` returns collector metrics if you are manually checking collector health.
 
 - Tempo/Jaeger receives spans with `service.name` equal to your override in `/etc/justnews/monitoring/otel/*.env`.
 

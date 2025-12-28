@@ -34,13 +34,13 @@
 
 - Chunking utilities:
 
-  - `OverlappingWindowChunking(window_size, overlap)` for sliding windows.
+- `OverlappingWindowChunking(window_size, overlap)` for sliding windows.
 
-  - `RegexChunking(patterns)` for regex-based segmentation.
+- `RegexChunking(patterns)` for regex-based segmentation.
 
-  - `TopicSegmentationChunking` (TextTiling) for topic-aware splits.
+- `TopicSegmentationChunking` (TextTiling) for topic-aware splits.
 
-  - Chunk parameters also live on `LLMExtractionStrategy` (`chunk_token_threshold`, `overlap_rate`, `word_token_rate`, `apply_chunking`).
+- Chunk parameters also live on `LLMExtractionStrategy` (`chunk_token_threshold`, `overlap_rate`, `word_token_rate`, `apply_chunking`).
 
 - LLM schema helpers: define Pydantic models (e.g., `ResearchInsights`) and feed `.model_json_schema()` to `LLMExtractionStrategy`.
 
@@ -60,19 +60,19 @@
 
 - Core crawl:
 
-  - `POST /crawl` (sync), `/crawl/stream` (streaming), `/crawl/job` → `/crawl/job/{id}` (async jobs).
+- `POST /crawl` (sync), `/crawl/stream` (streaming), `/crawl/job` → `/crawl/job/{id}` (async jobs).
 
 - Specialized outputs:
 
-  - `/html` (fit HTML), `/md` (markdown with filters), `/screenshot`, `/pdf`, `/execute_js`.
+- `/html` (fit HTML), `/md` (markdown with filters), `/screenshot`, `/pdf`, `/execute_js`.
 
 - LLM & config utilities:
 
-  - `/llm/{url}` (Q&A over page), `/ask` (library context search), `/config/dump` (validate Python config snippets).
+- `/llm/{url}` (Q&A over page), `/ask` (library context search), `/config/dump` (validate Python config snippets).
 
 - Observability & docs:
 
-  - `/health`, `/metrics`, `/schema`, `/playground`.
+- `/health`, `/metrics`, `/schema`, `/playground`.
 
 - MCP integrations: `/mcp/sse`, `/mcp/ws`, `/mcp/schema` for Model Context Protocol clients.
 
@@ -102,7 +102,7 @@ config/crawl_schedule.yaml ```
 
 - Trigger a background crawl job directly against the agent API with a profile override for `markets.example.com`:
 
-```bash curl -X POST http://127.0.0.1:8015/unified_production_crawl \ -H
+```bash curl -X POST <http://127.0.0.1:8015/unified_production_crawl> \ -H
 'Content-Type: application/json' \ -d '{ "args": [["markets.example.com"]],
 "kwargs": { "max_articles_per_site": 8, "concurrent_sites": 1,
 "profile_overrides": { "markets.example.com": {"profile_slug": "finance-

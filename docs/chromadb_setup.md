@@ -33,7 +33,7 @@ the wrong host or port configured — update `CHROMADB_HOST` or `CHROMADB_PORT` 
 
 4) Logs and diagnostics -----------------------
 
-- To see the server type root info: use `curl -s http://CHROMADB_HOST:CHROMADB_PORT/` which should show a JSON with a server name/version.
+- To see the server type root info: use `curl -s <http://CHROMADB_HOST:CHROMADB_PORT/`> which should show a JSON with a server name/version.
 
 - To list collections via Python client:
 import chromadb client = chromadb.HttpClient(host='CHROMADB_HOST', port=CHROMADB_PORT, tenant='default_tenant')

@@ -129,11 +129,11 @@ conda run -n justnews-py312 pytest -q tests/agents/gpu_orchestrator/test_model_l
 
 - **Test best practices**:
 
-  - For integration smoke tests, use `./scripts/wait_for_vllm.sh` to ensure the server is ready before running tests.
+- For integration smoke tests, use `./scripts/wait_for_vllm.sh` to ensure the server is ready before running tests.
 
-  - Use `VLLM_SKIP_START=1` and `CUDA_VISIBLE_DEVICES=""` for CI or environments without GPUs to avoid starting a GPU-heavy server.
+- Use `VLLM_SKIP_START=1` and `CUDA_VISIBLE_DEVICES=""` for CI or environments without GPUs to avoid starting a GPU-heavy server.
 
-  - Tests that need vLLM running should only be executed on a GPU-capable host (local dev or gated GPU CI).
+- Tests that need vLLM running should only be executed on a GPU-capable host (local dev or gated GPU CI).
 
 ## Ensure VLLM_BASE_URL is set in your env or /etc/justnews/global.env
 
@@ -149,7 +149,7 @@ VLLM_QUANTIZATION= VLLM_GPU_MEMORY_UTIL=0.6 ./scripts/launch_vllm_mistral_7b.sh 
 
 ## wait for the server to be healthy (includes models endpoint check; accepts optional API key)
 
-./scripts/wait_for_vllm.sh --base-url http://127.0.0.1:7060 --api-key "$VLLM_API_KEY" --timeout 30
+./scripts/wait_for_vllm.sh --base-url <http://127.0.0.1:7060> --api-key "$VLLM_API_KEY" --timeout 30
 
 ## Run smoke tests (ensure VLLM_API_KEY is exported in the same shell)
 
@@ -198,9 +198,9 @@ sudo systemctl enable --now vllm-mistral-7b.service
 
 - Each agent now has:
 
-  - `default`: mistralai/Mistral-7B-Instruct-v0.3 (fallback)
+- `default`: mistralai/Mistral-7B-Instruct-v0.3 (fallback)
 
-  - `vllm_default`: mistralai/Mistral-7B-Instruct-v0.3 (when `VLLM_ENABLED=true`)
+- `vllm_default`: mistralai/Mistral-7B-Instruct-v0.3 (when `VLLM_ENABLED=true`)
 
 - Comment at top documents the toggle and notes that legacy Qwen2 adapters are archived.
 

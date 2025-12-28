@@ -409,35 +409,35 @@ print(f"Total rows: {stats['total_rows']}")
 
 1. **Connection Pool Exhaustion**
 
-  - Increase `max_connections` limit
+- Increase `max_connections` limit
 
-  - Check for connection leaks in application code
+- Check for connection leaks in application code
 
-  - Monitor connection pool metrics
+- Monitor connection pool metrics
 
 1. **Migration Failures**
 
-  - Verify migration SQL syntax
+- Verify migration SQL syntax
 
-  - Check database permissions
+- Check database permissions
 
-  - Test migrations on development environment first
+- Test migrations on development environment first
 
 1. **Slow Queries**
 
-  - Analyze query execution plans
+- Analyze query execution plans
 
-  - Check for missing indexes
+- Check for missing indexes
 
-  - Consider query optimization or caching
+- Consider query optimization or caching
 
 1. **Backup Failures**
 
-  - Verify storage backend credentials
+- Verify storage backend credentials
 
-  - Check available disk space
+- Check available disk space
 
-  - Test backup file integrity
+- Test backup file integrity
 
 ### Health Checks
 

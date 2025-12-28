@@ -28,9 +28,9 @@ conda run -n ${CANONICAL_ENV:-justnews-py312} pip install -r training_system/req
 
 - JSON/JSONL rows should include:
 
-  - `text`: full prompt+response string **or**
+- `text`: full prompt+response string **or**
 
-  - `prompt` and `response` fields that the script will combine via `--prompt-template`
+- `prompt` and `response` fields that the script will combine via `--prompt-template`
 
 - Use `--max-train-samples` for smoke tests before longer runs.
 

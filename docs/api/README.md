@@ -87,13 +87,13 @@ Central communication hub for inter-agent messaging.
 
 ## Register an agent
 
-curl -X POST http://localhost:8000/register \
+curl -X POST <http://localhost:8000/register> \
   -H "Content-Type: application/json" \
   -d '{"agent": "scout", "endpoint": "http://localhost:8002"}'
 
 ## Call an agent
 
-curl -X POST http://localhost:8000/call \
+curl -X POST <http://localhost:8000/call> \
   -H "Content-Type: application/json" \
   -d '{"agent": "memory", "tool": "save_article", "args": ["article_data"]}'
 
@@ -123,7 +123,7 @@ Data persistence and retrieval with vector search capabilities.
 
 ## Save an article
 
-curl -X POST http://localhost:8007/save_article \
+curl -X POST <http://localhost:8007/save_article> \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Breaking News",
@@ -134,7 +134,7 @@ curl -X POST http://localhost:8007/save_article \
 
 ## Vector search
 
-curl -X POST http://localhost:8007/vector_search_articles \
+curl -X POST <http://localhost:8007/vector_search_articles> \
   -H "Content-Type: application/json" \
   -d '{"query": "climate change", "limit": 10}'
 
@@ -160,7 +160,7 @@ External API for accessing processed news data.
 
 ```bash
 curl -H "Authorization: Bearer YOUR_API_KEY" \
-  http://localhost:8014/articles?limit=10
+  <http://localhost:8014/articles?limit=10>
 
 ```
 

@@ -41,17 +41,17 @@ Prometheus server configuration with:
 
 - Targets configured for:
 
-  - **Prometheus itself** (9090)
+- **Prometheus itself** (9090)
 
-  - **MCP Bus** (8000)
+- **MCP Bus** (8000)
 
-  - **Crawler** (8015, 10s scrape)
+- **Crawler** (8015, 10s scrape)
 
-  - **Dashboard** (8013)
+- **Dashboard** (8013)
 
-  - **Agents** (8001-8008, 8012) — 9 agent ports
+- **Agents** (8001-8008, 8012) — 9 agent ports
 
-  - **Node Exporter** (9100) — System metrics
+- **Node Exporter** (9100) — System metrics
 
 #### 3. **Grafana Dashboards** (5 total, 1,312 lines JSON)
 
@@ -140,9 +140,9 @@ Installation quickstart (idempotent):
 
 Notes:
 
-  - The installer script is idempotent and will back up existing unit files into `/var/backups/justnews/alertmanager/` before replacing.
+- The installer script is idempotent and will back up existing unit files into `/var/backups/justnews/alertmanager/` before replacing.
 
-  - Update the example config with your Slack/webhook/email credentials before enabling in production.
+- Update the example config with your Slack/webhook/email credentials before enabling in production.
 
 AUTO_INSTALL_ALERTMANAGER environment toggle -------------------------------------------
 
@@ -409,13 +409,13 @@ sudo systemctl daemon-reload sudo systemctl enable --now prometheus grafana-serv
 
 ## 5. Access dashboards
 
-## Open browser to: http://localhost:3000/
+## Open browser to: <http://localhost:3000/>
 
 ## Default credentials: admin / admin (CHANGE IMMEDIATELY)
 
 ## 6. Verify Prometheus targets
 
-## Open browser to: http://localhost:9090/targets
+## Open browser to: <http://localhost:9090/targets>
 
 ```
 

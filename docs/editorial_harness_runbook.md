@@ -96,13 +96,13 @@ access.)
 
 - Follow `docs/grafana/editorial-harness-wiring.md` to expose the Stage 4 metrics, copy the provisioning files, and import `docs/grafana/editorial-harness-dashboard.json`.
 
-  - Panels cover accepted vs follow-up vs error rates, rolling acceptance ratio, score distribution, and 24 h harness volume.
+- Panels cover accepted vs follow-up vs error rates, rolling acceptance ratio, score distribution, and 24 h harness volume.
 
 - Add alerts on:
 
-  - `justnews_stage_b_editorial_harness_total{result="error"}` > 0 for 3 consecutive runs.
+- `justnews_stage_b_editorial_harness_total{result="error"}` > 0 for 3 consecutive runs.
 
-  - Acceptance ratio < 0.6 for 15 m.
+- Acceptance ratio < 0.6 for 15 m.
 
 ## Operational checklist
 

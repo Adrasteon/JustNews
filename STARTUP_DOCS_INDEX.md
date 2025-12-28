@@ -111,27 +111,27 @@ Not initialized | Tables not created yet | | Data | ❌ Empty | No articles inge
 
 1. **GPU Orchestrator must reach `/ready` before crawlers start**
 
-  - Crawlers check this and fail silently if not ready
+- Crawlers check this and fail silently if not ready
 
-  - The plan explicitly waits for this in Phase 3.2
+- The plan explicitly waits for this in Phase 3.2
 
 1. **Database schema must exist before crawlers can insert articles**
 
-  - Run `init_database.py` in Phase 2
+- Run `init_database.py` in Phase 2
 
-  - This is checked by crawler at runtime
+- This is checked by crawler at runtime
 
 1. **ChromaDB collection must exist or embeddings fail silently**
 
-  - Run `chroma_diagnose.py --autocreate` in Phase 1.3
+- Run `chroma_diagnose.py --autocreate` in Phase 1.3
 
-  - Crawler won't retry if this fails
+- Crawler won't retry if this fails
 
 1. **All env vars in `global.env` are read at service startup**
 
-  - Changes require service restart
+- Changes require service restart
 
-  - Good to validate early (Phase 1.1)
+- Good to validate early (Phase 1.1)
 
 ---
 
@@ -175,7 +175,7 @@ mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -h $MARIADB_HOST -e "SELECT COUNT(*) 
 
 ## Check ChromaDB
 
-curl -s http://localhost:8000/api/v1/heartbeat
+curl -s <http://localhost:8000/api/v1/heartbeat>
 
 ## Restart a specific service
 
@@ -260,7 +260,7 @@ Only want to test crawling without full orchestration?
 
 1. python -m agents.crawler.main (direct, no MCP)
 
-1. POST http://localhost:8015/start_crawl with manual payload
+1. POST <http://localhost:8015/start_crawl> with manual payload
 
 ```
 

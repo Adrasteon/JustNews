@@ -2,41 +2,41 @@
 
 - scout
 
-  - Current models: `sentence-transformers/all-MiniLM-L6-v2`, `all-mpnet-base-v2`, `paraphrase-multilingual-MiniLM-L12-v2`
+- Current models: `sentence-transformers/all-MiniLM-L6-v2`, `all-mpnet-base-v2`, `paraphrase-multilingual-MiniLM-L12-v2`
 
-  - Suitability: Good. Default `all-MiniLM-L6-v2` for embeddings is ideal for resource usage; `mpnet` used as a higher-quality fallback.
+- Suitability: Good. Default `all-MiniLM-L6-v2` for embeddings is ideal for resource usage; `mpnet` used as a higher-quality fallback.
 
-  - Recommendation: keep current configuration; prefer MiniLM by default, mpnet as optional high-quality path.
+- Recommendation: keep current configuration; prefer MiniLM by default, mpnet as optional high-quality path.
 
 - fact_checker
 
-  - Current models: `sentence-transformers/all-mpnet-base-v2`, `multi-qa-mpnet-base-dot-v1`, `paraphrase-albert-base-v2`
+- Current models: `sentence-transformers/all-mpnet-base-v2`, `multi-qa-mpnet-base-dot-v1`, `paraphrase-albert-base-v2`
 
-  - Suitability: Good for retrieval and similarity checks. For claim analysis, optionally add a small sequence-model LLM (e.g., `google/flan-t5-small`) and rely on PEFT/LoRA for fine-tuning.
+- Suitability: Good for retrieval and similarity checks. For claim analysis, optionally add a small sequence-model LLM (e.g., `google/flan-t5-small`) and rely on PEFT/LoRA for fine-tuning.
 
-  - Recommendation: keep retrieval encoders; add `flan-t5-small` for conditional generation or evidence summarization invoked via GPU Orchestrator.
+- Recommendation: keep retrieval encoders; add `flan-t5-small` for conditional generation or evidence summarization invoked via GPU Orchestrator.
 
 - memory
 
-  - Current models: `sentence-transformers/all-MiniLM-L6-v2` — ideal for embeddings and small footprint.
+- Current models: `sentence-transformers/all-MiniLM-L6-v2` — ideal for embeddings and small footprint.
 
-  - Recommendation: keep and document quantized in-memory embeddings if necessary.
+- Recommendation: keep and document quantized in-memory embeddings if necessary.
 
 - synthesizer
 
-  - Current: `distilgpt2`, `google/flan-t5-small` — the repo contains `flan-t5-large` variants in `model_store` (used for batch or high-quality synth).
+- Current: `distilgpt2`, `google/flan-t5-small` — the repo contains `flan-t5-large` variants in `model_store` (used for batch or high-quality synth).
 
-  - Suitability: `flan-t5-small` is acceptable for shorter neutralization & generation tasks; `flan-t5-base`/`large` produce higher-quality content but need careful GPU orchestrator scheduling and quantization (use `bitsandbytes` 8-bit or 4-bit and PEFT for training).
+- Suitability: `flan-t5-small` is acceptable for shorter neutralization & generation tasks; `flan-t5-base`/`large` produce higher-quality content but need careful GPU orchestrator scheduling and quantization (use `bitsandbytes` 8-bit or 4-bit and PEFT for training).
 
-  - Recommendation: Default to `flan-t5-small` unless high-quality mode is explicitly requested; ensure quantized models exist in `model_store` and choose `device_map='auto'` and `load_in_8bit=True` in prod.
+- Recommendation: Default to `flan-t5-small` unless high-quality mode is explicitly requested; ensure quantized models exist in `model_store` and choose `device_map='auto'` and `load_in_8bit=True` in prod.
 
 - critic, analyst, chief_editor, newsreader  # NOTE: `balancer` removed — responsibilities moved to critic/analytics/gpu_orchestrator
 
-  - Current: `sentence-transformers/all-distilroberta-v1`, `all-MiniLM-L6-v2` and other small models.
+- Current: `sentence-transformers/all-distilroberta-v1`, `all-MiniLM-L6-v2` and other small models.
 
-  - Suitability: Good. If the `analyst` requires GPU-based roberta models for high throughput, prefer `distilroberta` variants or quantized models to reduce memory.
+- Suitability: Good. If the `analyst` requires GPU-based roberta models for high throughput, prefer `distilroberta` variants or quantized models to reduce memory.
 
-  - Recommendation: prefer `distil` variants of sentiment/bias models and ensure GPU orchestrator provides proper shares.
+- Recommendation: prefer `distil` variants of sentiment/bias models and ensure GPU orchestrator provides proper shares.
 
 - Overall: avoid widespread `flan-t5-large` or `bart-large` defaults unless the orchestrator supports on-demand lease scheduling, and the model is quantized (bitsandbytes) and fine-tunable using PEFT/LoRA.
 
@@ -54,33 +54,33 @@
 
 - RTX 3090 (24GB VRAM):
 
-  - Fine-tune small to medium models such as `flan-t5-small`, `flan-t5-base` (with PEFT) or `distil*` models directly with minimal memory tuning.
+- Fine-tune small to medium models such as `flan-t5-small`, `flan-t5-base` (with PEFT) or `distil*` models directly with minimal memory tuning.
 
-  - For `flan-t5-large` or `bart-large`, use gradient checkpointing, activation checkpointing, and offloading (`accelerate` CPU offload) and LoRA/PEFT to keep trainable parameters low.
+- For `flan-t5-large` or `bart-large`, use gradient checkpointing, activation checkpointing, and offloading (`accelerate` CPU offload) and LoRA/PEFT to keep trainable parameters low.
 
-  - Encourage LoRA/PEFT on all LLM fine-tuning tasks to keep training affordable and usable on single-GPU.
+- Encourage LoRA/PEFT on all LLM fine-tuning tasks to keep training affordable and usable on single-GPU.
 
-  - When training embedding models (sentence-transformers), use small batch sizes and mixed-precision where possible to fit in VRAM.
+- When training embedding models (sentence-transformers), use small batch sizes and mixed-precision where possible to fit in VRAM.
 
 ### GPU Orchestrator Recommendations for Model VRAM
 
 - Add per-model approximate VRAM values to `mps_allocation_config.json` for accurate scheduling. For example:
 
-  - `sentence-transformers/all-MiniLM-L6-v2`: 0.5GB
+- `sentence-transformers/all-MiniLM-L6-v2`: 0.5GB
 
-  - `sentence-transformers/all-mpnet-base-v2`: 1.2GB
+- `sentence-transformers/all-mpnet-base-v2`: 1.2GB
 
-  - `cardiffnlp/twitter-roberta-base-sentiment-latest`: 1.5GB
+- `cardiffnlp/twitter-roberta-base-sentiment-latest`: 1.5GB
 
-  - `unitary/toxic-bert` (or RoBERTa toxicity): 1.5GB
+- `unitary/toxic-bert` (or RoBERTa toxicity): 1.5GB
 
-  - `google/flan-t5-small`: 1.8GB (quantized 8-bit: 1.2GB)
+- `google/flan-t5-small`: 1.8GB (quantized 8-bit: 1.2GB)
 
-  - `google/flan-t5-base`: 4.0GB (quantized 8-bit: 2.5GB)
+- `google/flan-t5-base`: 4.0GB (quantized 8-bit: 2.5GB)
 
-  - `google/flan-t5-large`: 11+GB (quantized 8-bit may reduce to 6-8GB; still heavy)
+- `google/flan-t5-large`: 11+GB (quantized 8-bit may reduce to 6-8GB; still heavy)
 
-  - `facebook/bart-large-cnn`: 3.0GB (quantized 8-bit: ~2.2GB)
+- `facebook/bart-large-cnn`: 3.0GB (quantized 8-bit: ~2.2GB)
 
 - These are approximate values; `gpu_orchestrator` should collect telemetry and refine them.
 
@@ -162,15 +162,15 @@ Goals:
 
 - `analysis` agent (`agents/analysis/analysis_engine.py`): centralizes sentiment, bias, persuasion, and clustering.
 
-  - Endpoints: `/analyze` (single article), `/analyze/batch` (batch), `/clusters`.
+- Endpoints: `/analyze` (single article), `/analyze/batch` (batch), `/clusters`.
 
-  - Output: `analysis_metadata` fields (sentiment, bias_vector, persuasion_score).
+- Output: `analysis_metadata` fields (sentiment, bias_vector, persuasion_score).
 
-  - Clustering: incremental or batch clustering (HDBSCAN recommended).
+- Clustering: incremental or batch clustering (HDBSCAN recommended).
 
 - `memory` agent: limited to ingest & vector store responsibilities: compute embeddings and persist metadata.
 
-  - Persists `analysis_metadata`, `cluster_id`, `ingest_job_id`, `crawler_job_id`.
+- Persists `analysis_metadata`, `cluster_id`, `ingest_job_id`, `crawler_job_id`.
 
 - `HITL` agent: already exists; ensure `ingest_job_id` flows forwards when forking ingestion.
 
@@ -184,11 +184,11 @@ Goals:
 
 - `Model Provider` will handle:
 
-  - Load and warm models based on config; optional device selection (CPU/GPU).
+- Load and warm models based on config; optional device selection (CPU/GPU).
 
-  - Hot-swap endpoint for model updates, with safe warm-up sequence.
+- Hot-swap endpoint for model updates, with safe warm-up sequence.
 
-  - Logging `model_version` at inference.
+- Logging `model_version` at inference.
 
 ---
 
@@ -198,7 +198,7 @@ Goals:
 
 - `job_traces` table schema (MariaDB):
 
-  - id (pk), trace_id, job_id, agent, event_type, event_details (JSON), ts
+- id (pk), trace_id, job_id, agent, event_type, event_details (JSON), ts
 
 - Logs include `agent`, `model_version`, `trace_id`, `job_id`.
 
@@ -230,19 +230,19 @@ Goals:
 
 - Clustering component:
 
-  - `agents/analysis/clustering.py` will implement cluster routines using Chroma vectors or local scikit-learn/HDBSCAN fallback.
+- `agents/analysis/clustering.py` will implement cluster routines using Chroma vectors or local scikit-learn/HDBSCAN fallback.
 
-  - Clusters store `cluster_id`, `cluster_name`, `coherence_score`.
+- Clusters store `cluster_id`, `cluster_name`, `coherence_score`.
 
-  - Optionally provide cluster-level topic labels (auto-summarized) via LLM summarizer.
+- Optionally provide cluster-level topic labels (auto-summarized) via LLM summarizer.
 
 - Analysis component:
 
-  - `compute_sentiment(text)`: returns numeric score & label (neg/neutral/pos).
+- `compute_sentiment(text)`: returns numeric score & label (neg/neutral/pos).
 
-  - `detect_bias(text, metadata)`: returns a {left, center, right} vector and rationalization fields.
+- `detect_bias(text, metadata)`: returns a {left, center, right} vector and rationalization fields.
 
-  - `persuasion_score(text)`: heuristics or model-based features (counts of emotive words, rhetorical devices, assertive language scores).
+- `persuasion_score(text)`: heuristics or model-based features (counts of emotive words, rhetorical devices, assertive language scores).
 
 ---
 
@@ -252,11 +252,11 @@ Goals:
 
 - Tests to add:
 
-  - Unit tests for sentiment, bias, persuasion, clustering.
+- Unit tests for sentiment, bias, persuasion, clustering.
 
-  - Integration test for end-to-end `crawl -> memory -> analyze -> cluster -> persist` using local test models.
+- Integration test for end-to-end `crawl -> memory -> analyze -> cluster -> persist` using local test models.
 
-  - CI job `integration-no-docker` to execute integration harness with in-memory stores.
+- CI job `integration-no-docker` to execute integration harness with in-memory stores.
 
 ---
 

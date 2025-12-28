@@ -25,7 +25,7 @@ JustNews uses **Vault OSS** (open-source, self-hosted) for storing and rotating 
 │  Vault Server (systemd service)     │
 │  - Address: 127.0.0.1:8200          │
 │  - Storage: Raft (local disk)       │
-│  - UI: Enabled at http://localhost  │
+│  - UI: Enabled at <http://localhost>  │
 └──────────┬──────────────────────────┘
            │
     ┌──────┴──────────┐
@@ -71,8 +71,8 @@ which curl || sudo apt install -y curl
 
 ## Add HashiCorp repository
 
-curl https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
+curl <https://apt.releases.hashicorp.com/gpg> | sudo apt-key add -
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] <https://apt.releases.hashicorp.com> $(lsb_release -cs) main" \
   | sudo tee /etc/apt/sources.list.d/hashicorp.list > /dev/null
 
 ## Install

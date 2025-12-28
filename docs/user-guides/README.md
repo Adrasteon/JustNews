@@ -42,7 +42,7 @@ make deploy-production ```
 
 ```bash
    # Check system health
-curl http://localhost:8000/health curl http://localhost:8013/dashboard ```
+curl <http://localhost:8000/health> curl <http://localhost:8013/dashboard> ```
 
 ### 👩‍🔬 **Data Scientist/Researcher**
 
@@ -123,7 +123,7 @@ make health-check
 
 ## View dashboard
 
-open http://localhost:8013
+open <http://localhost:8013>
 
 ## Check logs
 

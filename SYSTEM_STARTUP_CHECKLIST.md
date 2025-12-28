@@ -2,7 +2,7 @@
 
 ## Pre-Flight (5 min)
 
-- [ ] Mistral-7B vLLM running on 7060: `curl -s http://localhost:7060/health`
+- [ ] Mistral-7B vLLM running on 7060: `curl -s <http://localhost:7060/health`>
 
 - [ ] Conda environment activated: `echo $CONDA_PREFIX | grep ${CANONICAL_ENV:-justnews-py312}`
 
@@ -36,11 +36,11 @@ Follow this exact sequence for a safe, reproducible system startup (preferred op
 
 - [ ] Start GPU Orchestrator: `sudo systemctl enable --now justnews@gpu_orchestrator`
 
-- [ ] Wait for READY: `curl -fsS http://127.0.0.1:8014/ready` (wait up to 180s or adjust `GATE_TIMEOUT`)
+- [ ] Wait for READY: `curl -fsS <http://127.0.0.1:8014/ready`> (wait up to 180s or adjust `GATE_TIMEOUT`)
 
 - [ ] Start services: `sudo ./infrastructure/systemd/scripts/enable_all.sh start`
 
-- [ ] Verify MCP Bus: `curl -fsS http://127.0.0.1:8000/health`
+- [ ] Verify MCP Bus: `curl -fsS <http://127.0.0.1:8000/health`>
 
 1. Monitoring & Alertmanager
 
@@ -114,7 +114,7 @@ sudo ./infrastructure/systemd/setup_mariadb.sh --user justnews_user --password
 
 - [ ] Auto-create articles collection: `python scripts/chroma_diagnose.py --autocreate`
 
-- [ ] Verify: `curl -s http://localhost:8000/api/v1/heartbeat | grep -q '{}' && echo "✅"`
+- [ ] Verify: `curl -s <http://localhost:8000/api/v1/heartbeat> | grep -q '{}' && echo "✅"`
 
 ---
 
@@ -145,7 +145,7 @@ sudo systemctl enable --now justnews@mcp_bus
   # Option B: Direct
 ./scripts/run_with_env.sh python -m agents.mcp_bus.main & ```
 
-- [ ] Verify: `curl -s http://localhost:8017/health && echo "✅ MCP Bus"`
+- [ ] Verify: `curl -s <http://localhost:8017/health> && echo "✅ MCP Bus"`
 
 ### 3.2 GPU Orchestrator
 
@@ -158,7 +158,7 @@ sudo systemctl enable --now justnews@gpu_orchestrator
   # Option B: Direct
 ./scripts/run_with_env.sh python -m agents.gpu_orchestrator.main & ```
 
-- [ ] Wait for READY status: `curl -fsS http://127.0.0.1:8014/ready && echo "✅ GPU Orchestrator READY"`
+- [ ] Wait for READY status: `curl -fsS <http://127.0.0.1:8014/ready> && echo "✅ GPU Orchestrator READY"`
 
 ### 3.3 Crawler & Crawler Control
 
@@ -177,7 +177,7 @@ sudo ./infrastructure/systemd/scripts/enable_all.sh start
 - [ ] Verify health (should all return 200):
 
 ```bash for port in 8015 8016 8004 8007; do echo -n "Port $port: " curl -s
-http://localhost:$port/health | jq -r '.status' done ```
+<http://localhost:$port/health> | jq -r '.status' done ```
 
 ---
 
@@ -203,7 +203,7 @@ COUNT(*) AS count FROM articles;" ```
 
 - [ ] Verify ChromaDB embeddings:
 
-```bash curl -s -X POST http://localhost:8000/api/v1/collections/articles/count
+```bash curl -s -X POST <http://localhost:8000/api/v1/collections/articles/count>
 \ -H "Content-Type: application/json" -d '{}' | jq '.count' ```
 
 ### 4.3 Schedule Hourly Crawls (Optional)
@@ -245,11 +245,11 @@ tail -f /var/log/justnews/*.log 2>/dev/null || echo "No logs yet" ```
 
 ✅ **System Ready When All True**:
 
-1. `curl -s http://localhost:8014/ready` returns HTTP 200
+1. `curl -s <http://localhost:8014/ready`> returns HTTP 200
 
-1. `curl -s http://localhost:8015/health` returns 200 (crawler)
+1. `curl -s <http://localhost:8015/health`> returns 200 (crawler)
 
-1. `curl -s http://localhost:8016/health` returns 200 (crawler control)
+1. `curl -s <http://localhost:8016/health`> returns 200 (crawler control)
 
 1. Database articles count > 0
 
@@ -271,12 +271,12 @@ tail -f /var/log/justnews/*.log 2>/dev/null || echo "No logs yet" ```
 
 | Symptom | Command to Try | |---------|---| | "MARIADB_HOST: command not found"
 | `source global.env` (if using file) or `export MARIADB_HOST=localhost` | |
-Port 8015 refused | `curl -s http://localhost:8014/ready` – GPU Orchestrator
+Port 8015 refused | `curl -s <http://localhost:8014/ready`> – GPU Orchestrator
 must be READY first | | ChromaDB not found | `docker ps | grep chromadb` – start
 it: `docker run -d --name chromadb -p 8000:8000 chromadb/chroma:latest` | | No
 articles after crawl | Check MariaDB: `mysql -u $MARIADB_USER ... -e "SHOW
 TABLES;"` – run `init_database.py` if needed | | vLLM 7060 not responding |
-`curl -v http://localhost:7060/health` – relaunch:
+`curl -v <http://localhost:7060/health`> – relaunch:
 `./scripts/launch_vllm_mistral_7b.sh` |
 
 ---

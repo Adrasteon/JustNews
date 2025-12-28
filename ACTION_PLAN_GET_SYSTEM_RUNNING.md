@@ -160,7 +160,7 @@ cd /home/adra/JustNews && python scripts/chroma_diagnose.py --autocreate
 **Verification**:
 
 ```bash
-curl -s http://localhost:8000/api/v1/heartbeat | grep -q '{}' && echo "✅ ChromaDB responding"
+curl -s <http://localhost:8000/api/v1/heartbeat> | grep -q '{}' && echo "✅ ChromaDB responding"
 
 ```
 
@@ -204,7 +204,7 @@ Next steps:
 
 1. Test authentication: POST /auth/login with admin credentials
 
-1. Access API docs: http://localhost:8021/docs
+1. Access API docs: <http://localhost:8021/docs>
 
 ```bash
 
@@ -264,7 +264,7 @@ cd /home/adra/JustNews && ./scripts/run_with_env.sh python -m agents.mcp_bus.mai
 **Verification**:
 
 ```bash
-curl -s http://localhost:8017/health && echo "✅ MCP Bus responding"
+curl -s <http://localhost:8017/health> && echo "✅ MCP Bus responding"
 
 ```bash
 
@@ -289,7 +289,7 @@ included) **Evidence**:
 
 sudo systemctl enable --now justnews@gpu_orchestrator
 sleep 10
-curl -fsS http://127.0.0.1:8014/ready
+curl -fsS <http://127.0.0.1:8014/ready>
 
 ## Option B: Direct Python
 
@@ -300,8 +300,8 @@ cd /home/adra/JustNews && ./scripts/run_with_env.sh python -m agents.gpu_orchest
 **Verification**:
 
 ```bash
-curl -s http://localhost:8014/health | jq '.status' && echo "✅ GPU Orchestrator ready"
-curl -s http://localhost:8014/models/status | jq '.models' | grep -i mistral
+curl -s <http://localhost:8014/health> | jq '.status' && echo "✅ GPU Orchestrator ready"
+curl -s <http://localhost:8014/models/status> | jq '.models' | grep -i mistral
 
 ```bash
 
@@ -357,7 +357,7 @@ cd /home/adra/JustNews
 ## Or manual:
 
 for port in 8015 8016 8004 8007; do
-  curl -s http://localhost:$port/health && echo "✅ Port $port OK"
+  curl -s <http://localhost:$port/health> && echo "✅ Port $port OK"
 done
 
 ```bash
@@ -438,7 +438,7 @@ mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -D $MARIADB_DB \
 
 ## Query ChromaDB collection
 
-curl -s -X POST http://localhost:8000/api/v1/collections/articles/count \
+curl -s -X POST <http://localhost:8000/api/v1/collections/articles/count> \
   -H "Content-Type: application/json" \
   -d '{}' | jq '.count'
 
@@ -609,19 +609,19 @@ global.env (1.1)
 
 1. `/health` endpoints return 200 OK for:
 
-  - MCP Bus (8017)
+- MCP Bus (8017)
 
-  - GPU Orchestrator (8014, plus /ready → 200)
+- GPU Orchestrator (8014, plus /ready → 200)
 
-  - Crawler (8015)
+- Crawler (8015)
 
-  - Crawler Control (8016)
+- Crawler Control (8016)
 
 1. `articles` table has >100 rows
 
 1. ChromaDB `articles` collection has embeddings for all stored articles
 
-1. `curl http://localhost:7060/health` → HTTP 200 (vLLM still running)
+1. `curl <http://localhost:7060/health`> → HTTP 200 (vLLM still running)
 
 ✅ **Data Ingestion Working When**:
 
@@ -638,10 +638,10 @@ global.env (1.1)
 ## Troubleshooting Quick Reference
 
 | Issue | Check | Fix | |-------|-------|-----| | `MARIADB_HOST` not found | `echo $MARIADB_HOST` | Source global.env
-first | | Port 8015 (crawler) not responding | `curl http://localhost:8015/health` | Ensure GPU Orchestrator is READY
-first | | ChromaDB collection missing | `curl http://localhost:8000/api/v1/collections` | Run `chroma_diagnose.py
+first | | Port 8015 (crawler) not responding | `curl <http://localhost:8015/health`> | Ensure GPU Orchestrator is READY
+first | | ChromaDB collection missing | `curl <http://localhost:8000/api/v1/collections`> | Run `chroma_diagnose.py
 --autocreate` | | Articles not stored | Check MariaDB connection + schema | Run `init_database.py` again | | vLLM on
-7060 crashed | `curl http://localhost:7060/health` | Relaunch: `./scripts/launch_vllm_mistral_7b.sh` | | No embeddings
+7060 crashed | `curl <http://localhost:7060/health`> | Relaunch: `./scripts/launch_vllm_mistral_7b.sh` | | No embeddings
 generated | Check ChromaDB health + article count | Ensure embeddings table exists |
 
 ---

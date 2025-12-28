@@ -29,7 +29,7 @@ either force startup (risky) or use an alternate set of default dev ports:
 
 - Temporarily stop the conflicting host process (recommended)
 
-  - Example: stop a local OTLP collector systemd unit before starting the dev stack.
+- Example: stop a local OTLP collector systemd unit before starting the dev stack.
 
 - Force the repo dev telemetry stack to start despite conflicts by setting an environment variable in your runtime environment (explicit opt-in):
 
@@ -107,7 +107,7 @@ docker ps --filter "name=justnews-" --format "{{.Names}}: {{.Status}}"
 - Check the demo emitter probe which the compose demo service exposes on port 8080:
 
 ```bash
-curl -sSf http://localhost:8080/
+curl -sSf <http://localhost:8080/>
 
 ## expected: HTTP 200 with body 'OK'
 
@@ -116,7 +116,7 @@ curl -sSf http://localhost:8080/
 - Check collector health endpoints (if available):
 
 ```bash
-curl -sSf http://localhost:8889/metrics | head -n 5
+curl -sSf <http://localhost:8889/metrics> | head -n 5
 
 ```
 

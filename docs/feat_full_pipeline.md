@@ -262,7 +262,7 @@ articles become available for downstream clustering, analysis, fact-check, and u
 
 - Retention & Backfill:
 
-  - Raw HTML archival in `archive_storage/raw_html/` is the forensic record. Implement retention (cleanup) & backfill scripts in `scripts/ops/` to manage storage and ensure reproducible extraction runs.
+- Raw HTML archival in `archive_storage/raw_html/` is the forensic record. Implement retention (cleanup) & backfill scripts in `scripts/ops/` to manage storage and ensure reproducible extraction runs.
 
 - Deprecated components: ultra-fast per-site crawlers (e.g., `agents/sites/bbc_crawler.py`) are kept as stubs and flagged for deprecation. The recommended path is to migrate specialized behaviour into `config/crawl_profiles` and the `crawl4ai_adapter` so adaptive Crawl4AI is the canonical strategy.
 

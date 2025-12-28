@@ -40,13 +40,13 @@ conda run -n justnews-py312 pytest -q tests/agents/gpu_orchestrator/test_model_l
 
 - Tips for writing tests:
 
-  - Use `tmp_path` to create temporary log files and directories for model logs.
+- Use `tmp_path` to create temporary log files and directories for model logs.
 
-  - Patch GPU checks (`_free_gpu_memory_mb`) to simulate headroom vs low memory cases.
+- Patch GPU checks (`_free_gpu_memory_mb`) to simulate headroom vs low memory cases.
 
-  - Mock systemd interactions or use the `service_unit` test double to avoid requiring sudo/systemd on CI.
+- Mock systemd interactions or use the `service_unit` test double to avoid requiring sudo/systemd on CI.
 
-  - Validate that `VLLM_ADAPTER_PATHS` is set correctly when adapter mappings exist in `AGENT_MODEL_MAP.json`.
+- Validate that `VLLM_ADAPTER_PATHS` is set correctly when adapter mappings exist in `AGENT_MODEL_MAP.json`.
 
 Rollout:
 

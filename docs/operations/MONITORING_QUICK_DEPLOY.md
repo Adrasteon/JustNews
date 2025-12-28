@@ -36,7 +36,7 @@ stack from your USB drive. It handles:
 
 - **USB drive mounted**: At `/media/adra/37f1914d-e5fd-48ca-8c24-22d5f4e2e9dd`
 
-  - Contains monitoring configs at `etc/justnews/monitoring/`
+- Contains monitoring configs at `etc/justnews/monitoring/`
 
 - **Internet connection**: To download and install packages
 
@@ -46,7 +46,7 @@ stack from your USB drive. It handles:
 
 - **GRAFANA_PASSWORD environment variable**: Set a strong password before running
 
-  - If not set, a random password will be generated
+- If not set, a random password will be generated
 
 ## Quick Start (One Command)
 
@@ -369,7 +369,7 @@ This is normal! Dashboards may take 1-2 minutes to show data as Prometheus:
 
 To speed this up:
 
-1. Access Prometheus targets page: http://localhost:9090/targets
+1. Access Prometheus targets page: <http://localhost:9090/targets>
 
 1. Verify all targets show green (up)
 
@@ -418,7 +418,7 @@ sudo systemctl stop <service-name>
 
 - ⚠️ Grafana listens on all interfaces (0.0.0.0:3000)
 
-  - Restrict with firewall if needed:
+- Restrict with firewall if needed:
 
 ```bash sudo ufw allow from <your-ip> to any port 3000 sudo ufw deny from any to
 any port 3000 ```
@@ -467,7 +467,7 @@ service └── prometheus-node-exporter.service  # Node Exporter service
 
 ### Verify Deployment
 
-1. Open Grafana: http://localhost:3000
+1. Open Grafana: <http://localhost:3000>
 
 1. Login with admin / (generated password)
 

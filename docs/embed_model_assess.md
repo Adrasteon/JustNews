@@ -8,35 +8,35 @@ quantization & training compatibility notes, and concrete next steps you can pic
 
 1. Mistral 7B (recommended)
 
-  - Pros: Top-tier 7B quality for generation and instruction tasks; strong community/tooling for inference and LoRA/QLoRA fine-tuning.
+- Pros: Top-tier 7B quality for generation and instruction tasks; strong community/tooling for inference and LoRA/QLoRA fine-tuning.
 
-  - Training/refinement: Supports adapter-based fine-tuning (LoRA / QLoRA pipelines) and standard fp16 fine-tuning.
+- Training/refinement: Supports adapter-based fine-tuning (LoRA / QLoRA pipelines) and standard fp16 fine-tuning.
 
-  - Quantization: Works well with bitsandbytes (int8) for inference; performs robustly after quantization.
+- Quantization: Works well with bitsandbytes (int8) for inference; performs robustly after quantization.
 
 1. MPT-7B / MPT-7B-Instruct (very training-friendly)
 
-  - Pros: Apache-licensed, designed for training & fine-tuning; great transparency & reproducibility for refinement workflows.
+- Pros: Apache-licensed, designed for training & fine-tuning; great transparency & reproducibility for refinement workflows.
 
-  - Training/refinement: Excellent (used widely for fine-tuning and research).
+- Training/refinement: Excellent (used widely for fine-tuning and research).
 
-  - Quantization: Works for int8 inference; training/QLoRA pipelines supported.
+- Quantization: Works for int8 inference; training/QLoRA pipelines supported.
 
 1. Pythia-7B (research-first, fully OSS)
 
-  - Pros: Full open research lineage, easy to retrain or refine; great for reproducible fine-tuning/evaluation.
+- Pros: Full open research lineage, easy to retrain or refine; great for reproducible fine-tuning/evaluation.
 
-  - Training/refinement: Very well supported for training/refinement workflows.
+- Training/refinement: Very well supported for training/refinement workflows.
 
-  - Quantization: Quantizable with GPTQ/bitsandbytes; good baseline for experiments.
+- Quantization: Quantizable with GPTQ/bitsandbytes; good baseline for experiments.
 
 1. Falcon-7B-Instruct (solid, widely used)
 
-  - Pros: Great inference quality and mature GPTQ / bitsandbytes support.
+- Pros: Great inference quality and mature GPTQ / bitsandbytes support.
 
-  - Training/refinement: Many community guides and recipes for LoRA/QLoRA; good practical option.
+- Training/refinement: Many community guides and recipes for LoRA/QLoRA; good practical option.
 
-  - License: Check the specific checkpoint’s license to ensure “fully OSS” for your use.
+- License: Check the specific checkpoint’s license to ensure “fully OSS” for your use.
 
 Notes about “fully OSS”: confirm the exact checkpoint / tag (HF model card) for licensing — MPT / Pythia are
 unambiguously permissive; Mistral/Falcon are community-first but check their model cards for usage restrictions.
@@ -59,17 +59,17 @@ unambiguously permissive; Mistral/Falcon are community-first but check their mod
 
 - Inference (int8 via bitsandbytes):
 
-  - 7B int8 typically uses ~6–9 GB VRAM for model weights; fits easily on 24GB plus room for activations.
+- 7B int8 typically uses ~6–9 GB VRAM for model weights; fits easily on 24GB plus room for activations.
 
-  - Use load_in_8bit + device_map="auto" + bnb 8bit double quant for best tradeoffs.
+- Use load_in_8bit + device_map="auto" + bnb 8bit double quant for best tradeoffs.
 
 - Fine‑tuning / refinement:
 
-  - QLoRA (4-bit weights + LoRA adapters) is the most memory-efficient approach for adapter-style training.
+- QLoRA (4-bit weights + LoRA adapters) is the most memory-efficient approach for adapter-style training.
 
-  - RTX 3090 (24GB) can run QLoRA on 7B models for typical adapters and small batch sizes — it’s a common configuration.
+- RTX 3090 (24GB) can run QLoRA on 7B models for typical adapters and small batch sizes — it’s a common configuration.
 
-  - If you prefer to avoid 4-bit during training because of your 3090 concern: run fp16 fine-tuning (full weights) across a small cluster or offload some to CPU, or use LoRA with fp16 weights.
+- If you prefer to avoid 4-bit during training because of your 3090 concern: run fp16 fine-tuning (full weights) across a small cluster or offload some to CPU, or use LoRA with fp16 weights.
 
 ---
 

@@ -32,17 +32,17 @@ FastAPI endpoints (developer view)
 
 - See `agents/gpu_orchestrator/main.py` for the exposed endpoints and request/response shapes. Typical endpoints include:
 
-  - POST /leases — request a lease
+- POST /leases — request a lease
 
-  - POST /leases/{token}/heartbeat — heartbeat a lease
+- POST /leases/{token}/heartbeat — heartbeat a lease
 
-  - POST /leases/{token}/release — release a lease
+- POST /leases/{token}/release — release a lease
 
-  - POST /jobs/submit — persist and submit a job to the stream
+- POST /jobs/submit — persist and submit a job to the stream
 
-  - GET /jobs/{job_id} — get job status
+- GET /jobs/{job_id} — get job status
 
-  - POST /control/reclaim — invoke reclaimer pass (admin)
+- POST /control/reclaim — invoke reclaimer pass (admin)
 
 Testing harnesses & notes
 

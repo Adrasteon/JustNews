@@ -19,13 +19,13 @@ learning, and comprehensive monitoring.
 
 - **Responsibilities**:
 
-  - Agent registration and discovery
+- Agent registration and discovery
 
-  - Inter-agent communication routing
+- Inter-agent communication routing
 
-  - Health monitoring and load balancing
+- Health monitoring and load balancing
 
-  - Message queuing and reliability
+- Message queuing and reliability
 
 #### Specialized Agents
 

@@ -212,35 +212,35 @@ justnews-node-exporter   | 9100  | 15s      | System metrics (CPU, mem, disk)
 
 1. **Change Grafana admin password**
 
-  - Default: `admin:admin` ❌
+- Default: `admin:admin` ❌
 
-  - Required: Strong password (16+ chars)
+- Required: Strong password (16+ chars)
 
-  - Consider: Store in Vault
+- Consider: Store in Vault
 
 1. **Configure network security**
 
-  - Prometheus: Listen on `127.0.0.1:9090` (localhost only)
+- Prometheus: Listen on `127.0.0.1:9090` (localhost only)
 
-  - Grafana: Use reverse proxy (nginx) with authentication
+- Grafana: Use reverse proxy (nginx) with authentication
 
-  - Restrict dashboard access to authorized users
+- Restrict dashboard access to authorized users
 
 1. **Enable Grafana authentication**
 
-  - Disable anonymous access (already done in config)
+- Disable anonymous access (already done in config)
 
-  - Use LDAP/SAML if available
+- Use LDAP/SAML if available
 
-  - Or OAuth with trusted provider
+- Or OAuth with trusted provider
 
 1. **Secure secrets**
 
-  - Store Grafana admin password in Vault
+- Store Grafana admin password in Vault
 
-  - Rotate credentials regularly
+- Rotate credentials regularly
 
-  - Use AppRole for Grafana → Prometheus auth (optional)
+- Use AppRole for Grafana → Prometheus auth (optional)
 
 ## Documentation Created
 
@@ -248,27 +248,27 @@ justnews-node-exporter   | 9100  | 15s      | System metrics (CPU, mem, disk)
 
 1. **docs/operations/MONITORING_INFRASTRUCTURE.md** (Comprehensive guide)
 
-  - What's on the USB drive
+- What's on the USB drive
 
-  - How to integrate with systemd
+- How to integrate with systemd
 
-  - Security considerations
+- Security considerations
 
-  - Deployment checklist
+- Deployment checklist
 
-  - Quick start commands
+- Quick start commands
 
 1. **Updated docs/DOCUMENTATION_INDEX.md**
 
-  - Added monitoring to quick links
+- Added monitoring to quick links
 
-  - Added monitoring to topic-based index
+- Added monitoring to topic-based index
 
-  - Added FAQ for monitoring questions
+- Added FAQ for monitoring questions
 
 1. **Updated README.md**
 
-  - Added link to Monitoring Infrastructure guide
+- Added link to Monitoring Infrastructure guide
 
 ### Documentation to Create (Later)
 
@@ -306,9 +306,9 @@ sudo systemctl enable --now prometheus grafana-server prometheus-node-exporter
 
 ## Access dashboards
 
-## http://localhost:3000 (Grafana)
+## <http://localhost:3000> (Grafana)
 
-## http://localhost:9090 (Prometheus)
+## <http://localhost:9090> (Prometheus)
 
 ## Change Grafana admin password
 

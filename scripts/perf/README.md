@@ -36,9 +36,9 @@ Notes and permissions
 
 - CPU package power (cpu_pkg_w) uses the Intel RAPL energy_uj interface. On many systems this file is root-only: /sys/class/powercap/intel-rapl:0/energy_uj. To populate cpu_pkg_w you can either:
 
-  - run the telemetry script using sudo (passwordless sudo recommended for automated runs), or
+- run the telemetry script using sudo (passwordless sudo recommended for automated runs), or
 
-  - give read permission to the energy_uj file for the telemetry user (admin/security tradeoff).
+- give read permission to the energy_uj file for the telemetry user (admin/security tradeoff).
 
 Example runs
 

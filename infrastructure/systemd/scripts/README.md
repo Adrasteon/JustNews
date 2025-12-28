@@ -35,8 +35,8 @@ production or dev hosts.
 
 - If you see failures, common fixes include:
 
-  - enable/start services: `sudo systemctl enable --now mariadb` and `sudo systemctl enable --now chromadb`
+- enable/start services: `sudo systemctl enable --now mariadb` and `sudo systemctl enable --now chromadb`
 
-  - re-run the setup helper `infrastructure/systemd/complete_mariadb.sh` to ensure DB users and schema are created
+- re-run the setup helper `infrastructure/systemd/complete_mariadb.sh` to ensure DB users and schema are created
 
-  - double-check `/etc/justnews/global.env` for correct host/port/user/password
+- double-check `/etc/justnews/global.env` for correct host/port/user/password

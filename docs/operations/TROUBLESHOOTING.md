@@ -177,7 +177,7 @@ sudo chmod 755 /var/run/mysqld
 
 ## Test HTTP endpoint
 
-curl -v http://localhost:3307/api/v2/heartbeat
+curl -v <http://localhost:3307/api/v2/heartbeat>
 
 ## If timeout, check if process running
 
@@ -293,11 +293,11 @@ vault status
 
 echo $VAULT_ADDR
 
-## Should output: http://127.0.0.1:8200
+## Should output: <http://127.0.0.1:8200>
 
 ## Test raw connection
 
-curl -v http://127.0.0.1:8200/v1/sys/health
+curl -v <http://127.0.0.1:8200/v1/sys/health>
 
 ## If timeouts, check firewall
 
@@ -356,7 +356,7 @@ ROLE_ID=$(sudo cat /etc/justnews/approle_role_id)
 SECRET_ID=$(sudo cat /etc/justnews/approle_secret_id)
 curl -X POST \
   -d "{\"role_id\":\"$ROLE_ID\",\"secret_id\":\"$SECRET_ID\"}" \
-  http://127.0.0.1:8200/v1/auth/approle/login
+  <http://127.0.0.1:8200/v1/auth/approle/login>
 
 ## If fails, check AppRole policy exists
 
@@ -456,7 +456,7 @@ du -sh /var/lib/mysql/justnews
 
 ## Test HTTP endpoint
 
-curl -v http://localhost:3307/api/v2/heartbeat
+curl -v <http://localhost:3307/api/v2/heartbeat>
 
 ## If timeout, check if service is running
 
@@ -859,10 +859,10 @@ mysql -u root < /tmp/backup.sql
 
 1. **Consult Docs**:
 
-  - Vault: `docs/operations/VAULT_SETUP.md`
+- Vault: `docs/operations/VAULT_SETUP.md`
 
-  - Setup: `docs/operations/SETUP_GUIDE.md`
+- Setup: `docs/operations/SETUP_GUIDE.md`
 
-  - Environment: `docs/operations/ENVIRONMENT_CONFIG.md`
+- Environment: `docs/operations/ENVIRONMENT_CONFIG.md`
 
 1. **Enable Debug**: Set `set -x` in shell scripts or `--verbose` in commands

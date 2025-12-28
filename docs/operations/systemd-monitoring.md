@@ -113,8 +113,8 @@ python3 gpu_metrics_exporter.py &
 
 ## The exporter runs on port 9400 by default
 
-curl http://localhost:9400/health
-curl http://localhost:9400/metrics
+curl <http://localhost:9400/health>
+curl <http://localhost:9400/metrics>
 
 ```
 
@@ -125,13 +125,13 @@ The generated bundle currently includes:
 
 - **JustNews Operations Dashboard** – Comprehensive monitoring with 19 panels covering:
 
-  - **Content Processing**: Domains crawled, articles accepted, adaptive articles, scheduler lag
+- **Content Processing**: Domains crawled, articles accepted, adaptive articles, scheduler lag
 
-  - **Application Health**: Active connections, total errors, request duration, crawler requests (time series)
+- **Application Health**: Active connections, total errors, request duration, crawler requests (time series)
 
-  - **System Resources**: CPU usage, memory usage, disk usage, network I/O
+- **System Resources**: CPU usage, memory usage, disk usage, network I/O
 
-  - **GPU Monitoring**: GPU utilization, memory usage, temperature, power draw, memory details, utilization trends
+- **GPU Monitoring**: GPU utilization, memory usage, temperature, power draw, memory details, utilization trends
 
 To add custom dashboards, drop JSON exports into the same directory and restart Grafana.
 
@@ -195,7 +195,7 @@ is running: `ps aux \| grep gpu_metrics_exporter`. Restart with `cd /home/adra
 | Some GPU models don't report temperature via nvidia-smi. Check with `nvidia-
 smi --query-gpu=temperature.gpu --format=csv` | | Dashboard shows "No data" for
 GPU panels    | Verify Prometheus can reach GPU exporter: `curl
-http://localhost:9400/metrics` |
+<http://localhost:9400/metrics`> |
 
 For full context, see `infrastructure/systemd/README.md` and
 `infrastructure/systemd/QUICK_REFERENCE.md`.

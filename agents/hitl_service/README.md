@@ -11,9 +11,9 @@ Run locally
 
 - Start the service (development):
 
-  - Ensure dependencies are installed (see project `requirements.txt`).
+- Ensure dependencies are installed (see project `requirements.txt`).
 
-  - Run: `uvicorn agents.hitl_service.app:app --reload --host 127.0.0.1 --port 8040`
+- Run: `uvicorn agents.hitl_service.app:app --reload --host 127.0.0.1 --port 8040`
 
 - The static annotator UI is served at `http://127.0.0.1:8040/`.
 
@@ -31,7 +31,7 @@ Important environment variables
 
 - Forwarding knobs:
 
-  - `HITL_FORWARD_AGENT` / `HITL_FORWARD_TOOL` — configure to enable automatic
+- `HITL_FORWARD_AGENT` / `HITL_FORWARD_TOOL` — configure to enable automatic
 ingest-forwarding of labeled items via the MCP Bus.
 
 DB notes
@@ -82,7 +82,7 @@ uvicorn agents.hitl_service.app:app --reload --port 8040
 
 ```
 
-Open the annotator UI at http://localhost:8040/static/index.html
+Open the annotator UI at <http://localhost:8040/static/index.html>
 
 Notes:
 

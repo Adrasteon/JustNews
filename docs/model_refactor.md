@@ -28,25 +28,25 @@ Scope & affected systems (inventory) ------------------------------------- Files
 
 - Agents that use or can benefit from 7B causal models (generation/reasoning):
 
-  - `agents/synthesizer/` — text generation, summarisation.
+- `agents/synthesizer/` — text generation, summarisation.
 
-  - `agents/journalist/` — article assembly (generation derivative flows).
+- `agents/journalist/` — article assembly (generation derivative flows).
 
-  - `agents/chief_editor/` — editorial rewrite/judgement.
+- `agents/chief_editor/` — editorial rewrite/judgement.
 
-  - `agents/reasoning/`, `agents/critic/`, `agents/hitl_service/` — reasoning & HITL interactions; Critic now ships with the `mistral_critic_v1` adapter for higher-accuracy editorial gating while retaining lightweight fallback tools for outage scenarios.
+- `agents/reasoning/`, `agents/critic/`, `agents/hitl_service/` — reasoning & HITL interactions; Critic now ships with the `mistral_critic_v1` adapter for higher-accuracy editorial gating while retaining lightweight fallback tools for outage scenarios.
 
-  - `agents/fact_checker/` — accuracy-critical claim verification now uses the shared Mistral base via the `mistral_fact_checker_v1` adapter for long-form evidence synthesis; retrieval/semantic search continues to rely on mpnet-sized encoders.
+- `agents/fact_checker/` — accuracy-critical claim verification now uses the shared Mistral base via the `mistral_fact_checker_v1` adapter for long-form evidence synthesis; retrieval/semantic search continues to rely on mpnet-sized encoders.
 
-  - `agents/analyst/` — bias/sentiment/persuasion scoring now prioritizes accuracy over latency, so add a Mistral adapter-powered tool alongside existing RoBERTa fallbacks.
+- `agents/analyst/` — bias/sentiment/persuasion scoring now prioritizes accuracy over latency, so add a Mistral adapter-powered tool alongside existing RoBERTa fallbacks.
 
-  - Re-ranker tooling: `agents/tools/7b_re_ranker.py`, `scripts/perf/simulate_concurrent_inference.py`.
+- Re-ranker tooling: `agents/tools/7b_re_ranker.py`, `scripts/perf/simulate_concurrent_inference.py`.
 
 - Agents primarily using embeddings or multi-modal models (these keep specialized models):
 
-  - `agents/scout/`, `agents/memory/` — embeddings (sentence‑transformers) — do not replace with Mistral.
+- `agents/scout/`, `agents/memory/` — embeddings (sentence‑transformers) — do not replace with Mistral.
 
-  - `agents/newsreader/` — multimodal LLaVA — keep LLaVA for vision tasks.
+- `agents/newsreader/` — multimodal LLaVA — keep LLaVA for vision tasks.
 
 - Orchestrator & infra: `agents/gpu_orchestrator/gpu_orchestrator_engine.py`, `main.py`, systemd/service templates and startup scripts (these will be updated to: read model metadata, configure preload policy, and support Mistral workflows).
 
@@ -74,38 +74,38 @@ Detailed step-by-step plan ---------------------------
 
 Overview of Phases
 
-  - Phase 0: Preparation & safety checks
+- Phase 0: Preparation & safety checks
 
-  - Phase 1: ModelStore + artifact publishing
+- Phase 1: ModelStore + artifact publishing
 
-  - Phase 2: Adapter training & storage pipeline
+- Phase 2: Adapter training & storage pipeline
 
-  - Phase 3: Orchestrator + agent integration
+- Phase 3: Orchestrator + agent integration
 
-  - Phase 4: Testing, perf tuning & rollout
+- Phase 4: Testing, perf tuning & rollout
 
-  - Phase 5: CI, monitoring & maintenance
+- Phase 5: CI, monitoring & maintenance
 
 Phase 0 — Preparation & safety checks ------------------------------------- 1) Licensing & checkpoint selection
 (priority)
 
-  - Confirm the exact Mistral checkpoint (HF model card) and license (ensure it is acceptable for production training & distribution).
+- Confirm the exact Mistral checkpoint (HF model card) and license (ensure it is acceptable for production training & distribution).
 
-  - Canonical checkpoint + license are now pinned to `mistralai/Mistral-7B-Instruct-v0.3` (Apache-2.0). Reference metadata lives in `models/metadata/mistral-7b-instruct-v0.3.json` for downstream tooling.
+- Canonical checkpoint + license are now pinned to `mistralai/Mistral-7B-Instruct-v0.3` (Apache-2.0). Reference metadata lives in `models/metadata/mistral-7b-instruct-v0.3.json` for downstream tooling.
 
 2) Host readiness checklist
 
-  - Confirm that GPU nodes have required CUDA + drivers and that bitsandbytes native binaries are built against target CUDA (documented in repo). Add an automated verification script for `bitsandbytes` compatibility in `infrastructure/systemd/preflight.sh` or a new preflight utility.
+- Confirm that GPU nodes have required CUDA + drivers and that bitsandbytes native binaries are built against target CUDA (documented in repo). Add an automated verification script for `bitsandbytes` compatibility in `infrastructure/systemd/preflight.sh` or a new preflight utility.
 
-  - Export `BNB_CUDA_VERSION=122` (now tracked in `global.env`) on all hosts so the runtime loads the custom CUDA 12.2 bitsandbytes wheel until upstream publishes CUDA 12.4 builds; document overrides for environments that later upgrade toolkits. See `docs/bitsandbytes_cuda122_wheel.md` for the full build + troubleshooting guide.
+- Export `BNB_CUDA_VERSION=122` (now tracked in `global.env`) on all hosts so the runtime loads the custom CUDA 12.2 bitsandbytes wheel until upstream publishes CUDA 12.4 builds; document overrides for environments that later upgrade toolkits. See `docs/bitsandbytes_cuda122_wheel.md` for the full build + troubleshooting guide.
 
-  - Confirm `MODEL_STORE_ROOT` is available and writable on target nodes; ensure backup & snapshot cadence is documented.
+- Confirm `MODEL_STORE_ROOT` is available and writable on target nodes; ensure backup & snapshot cadence is documented.
 
 3) Repo & QA housekeeping
 
-  - `AGENT_MODEL_MAP.json` now exists and seeds entries for `synthesizer` + `re_ranker` agents pointing at the canonical base and placeholder adapter slots. Continue extending it for journalist, chief_editor, reasoning, **and analyst** so all critical decision-makers pull from the shared base.
+- `AGENT_MODEL_MAP.json` now exists and seeds entries for `synthesizer` + `re_ranker` agents pointing at the canonical base and placeholder adapter slots. Continue extending it for journalist, chief_editor, reasoning, **and analyst** so all critical decision-makers pull from the shared base.
 
-  - Add a `docs/mistral_adapter_rollout.md` -> already present; augment with an entry describing canonical base + adapter naming conventions.
+- Add a `docs/mistral_adapter_rollout.md` -> already present; augment with an entry describing canonical base + adapter naming conventions.
 
 Phase 1 — ModelStore publishing -------------------------------- Goal: publish canonical Mistral base weights and a
 canonical path / layout in ModelStore.
@@ -164,36 +164,36 @@ output/adapters/mistral_synth_v1 \ --epochs 3 \ --train-batch-size 1 \ --gradien
 
 3) QA & validation
 
-  - Add unit tests that load adapter via `PeftModel.from_pretrained()` against the base model using `RE_RANKER_TEST_MODE` toggles for CI.
+- Add unit tests that load adapter via `PeftModel.from_pretrained()` against the base model using `RE_RANKER_TEST_MODE` toggles for CI.
 
-  - Add a sample inference script to smoke‑test that base + adapter load and produce plausible outputs.
+- Add a sample inference script to smoke‑test that base + adapter load and produce plausible outputs.
 
 Phase 3 — Orchestrator + agent integration ------------------------------------------- Goal: make the orchestrator,
 agents, and ModelLoader handle Mistral + adapters cleanly and enable warm pools.
 
 Steps: 1) ModelStore metadata support in orchestrator
 
-  - ✅ `agents/gpu_orchestrator/gpu_orchestrator_engine.py` now parses `AGENT_MODEL_MAP.json`, resolves each entry's manifest via `agents/common/model_loader.get_agent_model_metadata`, and tracks the metadata (approx_vram_mb, quantized_variants) when kicking off preload jobs. This ensures the orchestration layer knows exactly which base snapshot + adapter paths exist before provisioning pools.
+- ✅ `agents/gpu_orchestrator/gpu_orchestrator_engine.py` now parses `AGENT_MODEL_MAP.json`, resolves each entry's manifest via `agents/common/model_loader.get_agent_model_metadata`, and tracks the metadata (approx_vram_mb, quantized_variants) when kicking off preload jobs. This ensures the orchestration layer knows exactly which base snapshot + adapter paths exist before provisioning pools.
 
-  - ✅ Captured metadata now flows into pool sizing logic: worker provisioning prefers `bnb-int8` variants whenever a policy or caller marks `allow_quantized=true`, and falls back to fp16 if quantized entries are missing. The orchestrator also exposes `start_agent_worker_pool()` so call sites can request the correct variant explicitly.
+- ✅ Captured metadata now flows into pool sizing logic: worker provisioning prefers `bnb-int8` variants whenever a policy or caller marks `allow_quantized=true`, and falls back to fp16 if quantized entries are missing. The orchestrator also exposes `start_agent_worker_pool()` so call sites can request the correct variant explicitly.
 
 2) AGENT_MODEL_MAP.json & AGENT_MODEL_RECOMMENDED.json
 
-  - ✅ `AGENT_MODEL_MAP.json` now drives both loader and orchestrator. `agents/common/model_loader.py` resolves base + adapter locations (including ModelStore versions) and exposes `load_transformers_with_adapter()` plus a metadata helper for consumers. The orchestrator consumes the same map when preloading entries, ensuring one source of truth for base/adapters.
+- ✅ `AGENT_MODEL_MAP.json` now drives both loader and orchestrator. `agents/common/model_loader.py` resolves base + adapter locations (including ModelStore versions) and exposes `load_transformers_with_adapter()` plus a metadata helper for consumers. The orchestrator consumes the same map when preloading entries, ensuring one source of truth for base/adapters.
 
-  - ✅ Journalist, chief_editor, reasoning, synthesizer, critic, and fact_checker entries now capture `variant_preference` hints so policy selection understands whether to go straight to int8 or reserve fp16 capacity. `AGENT_MODEL_RECOMMENDED.json` is down-scoped to fallback references only.
+- ✅ Journalist, chief_editor, reasoning, synthesizer, critic, and fact_checker entries now capture `variant_preference` hints so policy selection understands whether to go straight to int8 or reserve fp16 capacity. `AGENT_MODEL_RECOMMENDED.json` is down-scoped to fallback references only.
 
-  - Continue extending the map for remaining adapter targets (analyst, re_ranker) as those adapters move out of staging. Keep recommended entries in sync only for legacy fallbacks.
+- Continue extending the map for remaining adapter targets (analyst, re_ranker) as those adapters move out of staging. Keep recommended entries in sync only for legacy fallbacks.
 
 3) Agent code changes
 
-  - ✅ Shared adapter plumbing now lives in `agents/common/base_mistral_json_adapter.py`, reused by per-agent helpers (`agents/journalist/mistral_adapter.py`, `agents/chief_editor/mistral_adapter.py`, `agents/reasoning/mistral_adapter.py`, `agents/synthesizer/mistral_adapter.py`). These helpers encapsulate prompts + JSON coercion while relying on the loader’s caching logic.
+- ✅ Shared adapter plumbing now lives in `agents/common/base_mistral_json_adapter.py`, reused by per-agent helpers (`agents/journalist/mistral_adapter.py`, `agents/chief_editor/mistral_adapter.py`, `agents/reasoning/mistral_adapter.py`, `agents/synthesizer/mistral_adapter.py`). These helpers encapsulate prompts + JSON coercion while relying on the loader’s caching logic.
 
-  - ✅ `journalist_engine`, `chief_editor_engine`, `reasoning_engine`, and `synthesizer_engine` now call their respective adapters, attach parsed outputs to the agent context, and guard fallbacks when adapters are unavailable.
+- ✅ `journalist_engine`, `chief_editor_engine`, `reasoning_engine`, and `synthesizer_engine` now call their respective adapters, attach parsed outputs to the agent context, and guard fallbacks when adapters are unavailable.
 
       - ✅ Analyst sentiment/bias flows now leverage the shared adapter via `agents/analyst/mistral_adapter.py`, normalizing JSON replies into the existing `AdapterResult` structure while keeping RoBERTa/heuristic paths as fallbacks. The re-ranker tooling (`agents/tools/re_ranker_7b.py`) now prefers the shared adapter before falling back to the older AutoModel heuristic or deterministic stub.
 
-  - Adapter coverage checklist for the newly migrated agents:
+- Adapter coverage checklist for the newly migrated agents:
 
       - Fact Checker smoke tests still cover the adapter load path via `tests/agents/test_fact_checker.py` with `RE_RANKER_TEST_MODE=1`, ensuring prompt formatting and retrieval fallbacks behave in CI.
 
@@ -203,23 +203,23 @@ Steps: 1) ModelStore metadata support in orchestrator
 
 4) Warm pool & adapter hot-swap
 
-  - ✅ `gpu_orchestrator_engine` worker pool loaders now apply both base and adapter loading sequence (AutoModelForCausalLM.from_pretrained + PeftModel.from_pretrained) so warm pools start with adapters already mounted.
+- ✅ `gpu_orchestrator_engine` worker pool loaders now apply both base and adapter loading sequence (AutoModelForCausalLM.from_pretrained + PeftModel.from_pretrained) so warm pools start with adapters already mounted.
 
-  - ✅ `start_agent_worker_pool()` and the existing `/workers/pool/{pool_id}/swap` endpoint were validated against Mistral adapter sizes. Remaining work is exercising hot-swap with multi-adapter agents (synthesizer task router) before GA.
+- ✅ `start_agent_worker_pool()` and the existing `/workers/pool/{pool_id}/swap` endpoint were validated against Mistral adapter sizes. Remaining work is exercising hot-swap with multi-adapter agents (synthesizer task router) before GA.
 
 5) Orchestrator policy updates
 
-  - ✅ `model_vram` and `quantized_variants` values now live in the metadata cache used by policy evaluation, so rules prefer int8 when `allow_quantized=true` and avoid overcommitting GPUs lacking memory headroom.
+- ✅ `model_vram` and `quantized_variants` values now live in the metadata cache used by policy evaluation, so rules prefer int8 when `allow_quantized=true` and avoid overcommitting GPUs lacking memory headroom.
 
-  - Next: layer watchdog metrics (Phase 5) to ensure policy drift is caught automatically.
+- Next: layer watchdog metrics (Phase 5) to ensure policy drift is caught automatically.
 
 Phase 4 — Testing, perf tuning & rollout ---------------------------------------- 1) Perf runs and warm pool sizing
 
-  - Use `scripts/perf/simulate_concurrent_inference.py` and `scripts/ops/adapter_worker_pool.py` to run sweeps on production-like GPU nodes. Save standard CSVs for reproducibility in `scripts/perf/results`.
+- Use `scripts/perf/simulate_concurrent_inference.py` and `scripts/ops/adapter_worker_pool.py` to run sweeps on production-like GPU nodes. Save standard CSVs for reproducibility in `scripts/perf/results`.
 
-  - 2025-11-25 local stub sweep: `scripts/perf/simulate_concurrent_inference.py --requests 180 --sweep --repeat 2` (with `RE_RANKER_TEST_MODE=1`) produced linear scaling from 1→6 workers with p50≈2.06 ms and no GPU usage; raw CSV/JSON artifacts live in `scripts/perf/results/2025-11-25-sim_sweep_stub.{csv,json}` for reproducibility.
+- 2025-11-25 local stub sweep: `scripts/perf/simulate_concurrent_inference.py --requests 180 --sweep --repeat 2` (with `RE_RANKER_TEST_MODE=1`) produced linear scaling from 1→6 workers with p50≈2.06 ms and no GPU usage; raw CSV/JSON artifacts live in `scripts/perf/results/2025-11-25-sim_sweep_stub.{csv,json}` for reproducibility.
 
-  - 2025-11-25 adapter pool stub soak: `scripts/ops/adapter_worker_pool.py --workers 3 --hold 5` validated the worker launcher wiring and staggered spin-up; next run should point at real adapter paths once GPU hardware is available.
+- 2025-11-25 adapter pool stub soak: `scripts/ops/adapter_worker_pool.py --workers 3 --hold 5` validated the worker launcher wiring and staggered spin-up; next run should point at real adapter paths once GPU hardware is available.
 
       - 2025-11-25 RTX3090 fp16 sweep (real model): `scripts/perf/simulate_concurrent_inference.py --requests 120 --sweep --sweep-max 4 --repeat 1 --model mistralai/Mistral-7B-Instruct-v0.3` now runs end-to-end on the local GPU after removing the mismatched `bitsandbytes` package. Results: p50 latencies scale from 31 ms (1 worker) → 101 ms (4 workers) with averages following the same curve; artifacts saved to `scripts/perf/results/2025-11-25-real_fp16.{csv,json}`.
 

@@ -14,19 +14,19 @@
 
 - Deploy a node-level OpenTelemetry Collector (system service) on each workload host.
 
-  - Receivers: `prometheus` (scrape DCGM exporter + node exporter), `hostmetrics`, `filelog` (kernel/NVIDIA logs), `otlp` (from instrumented apps running locally).
+- Receivers: `prometheus` (scrape DCGM exporter + node exporter), `hostmetrics`, `filelog` (kernel/NVIDIA logs), `otlp` (from instrumented apps running locally).
 
-  - Processors: `resource` (tag host, GPU ID, environment), `attributes` (normalize labels), `batch`, optional `filter` or `memory_limiter`.
+- Processors: `resource` (tag host, GPU ID, environment), `attributes` (normalize labels), `batch`, optional `filter` or `memory_limiter`.
 
-  - Exporters: `otlp` → central collector, optional `prometheus_remote_write` when Prometheus cannot scrape directly.
+- Exporters: `otlp` → central collector, optional `prometheus_remote_write` when Prometheus cannot scrape directly.
 
 - Run a central collector (or HA pair) to receive OTLP data from nodes, enforce sampling/metric views, and fan out to:
 
-  - Prometheus (metrics) via native scrape or remote_write.
+- Prometheus (metrics) via native scrape or remote_write.
 
-  - Tempo/Jaeger (traces).
+- Tempo/Jaeger (traces).
 
-  - Loki/Elastic (logs) or another vendor-neutral store.
+- Loki/Elastic (logs) or another vendor-neutral store.
 
 ## Instrumentation Rollout
 

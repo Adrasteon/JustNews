@@ -24,7 +24,7 @@ environment configuration, secrets management (Vault), and database initializati
 
 ## Download and install Miniconda
 
-curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+curl -O <https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh>
 bash Miniconda3-latest-Linux-x86_64.sh -b -p ~/miniconda3
 source ~/miniconda3/bin/activate
 
@@ -117,8 +117,8 @@ echo "Conda env: $CANONICAL_ENV"
 ### 3.1 Install Vault and jq
 
 ```bash
-curl https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
+curl <https://apt.releases.hashicorp.com/gpg> | sudo apt-key add -
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] <https://apt.releases.hashicorp.com> $(lsb_release -cs) main" \
   | sudo tee /etc/apt/sources.list.d/hashicorp.list
 sudo apt update && sudo apt install -y vault jq
 vault version  # Verify installation

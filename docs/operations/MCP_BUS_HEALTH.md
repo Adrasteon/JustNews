@@ -29,15 +29,15 @@ A typical `/health` JSON body includes:
 
 - `agent_details`: list of per-agent objects:
 
-  - `agent`: agent name
+- `agent`: agent name
 
-  - `status`: `healthy` | `degraded` | `unhealthy` | `unreachable` | `unknown`
+- `status`: `healthy` | `degraded` | `unhealthy` | `unreachable` | `unknown`
 
-  - `response_time`: seconds (float, optional)
+- `response_time`: seconds (float, optional)
 
-  - `status_code`: HTTP response code (optional)
+- `status_code`: HTTP response code (optional)
 
-  - `error`: error message on probe failure (optional)
+- `error`: error message on probe failure (optional)
 
 - `issues`: array of strings describing any global issues
 
@@ -73,14 +73,14 @@ Example:
 - Quick health check (local):
 
 ```bash
-curl -s http://localhost:8017/health | jq
+curl -s <http://localhost:8017/health> | jq
 
 ```
 
 - Confirm readiness:
 
 ```bash
-curl -s http://localhost:8017/ready && echo "MCP Bus ready"
+curl -s <http://localhost:8017/ready> && echo "MCP Bus ready"
 
 ```bash
 
@@ -100,9 +100,9 @@ curl -s http://localhost:8017/ready && echo "MCP Bus ready"
 
 - Unit tests for the engine live in `tests/agents/mcp_bus/test_health.py` and cover:
 
-  - Unreachable agents (requests exceptions)
+- Unreachable agents (requests exceptions)
 
-  - Agents reporting `degraded` statuses (non-`healthy` JSON)
+- Agents reporting `degraded` statuses (non-`healthy` JSON)
 
 Run the unit tests in the canonical environment:
 
@@ -138,11 +138,11 @@ Example test patterns are included in the `tests/agents/mcp_bus` directory.
 
 - If `/health` reports `unreachable` for a known agent:
 
-  - Verify the agent is registered (GET `/agents`).
+- Verify the agent is registered (GET `/agents`).
 
-  - Check the agent's own `/health` endpoint directly (curl).
+- Check the agent's own `/health` endpoint directly (curl).
 
-  - Confirm network/firewall rules allow `MCP Bus` to connect to the agent address.
+- Confirm network/firewall rules allow `MCP Bus` to connect to the agent address.
 
 - If health checks appear slow, check whether `requests` is falling back to slow DNS lookups or whether the probe timeout is too large; the probe timeout defaults to 1.0s per agent.
 

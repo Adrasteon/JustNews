@@ -14,13 +14,13 @@ clear acceptance checks and rollback guidance.
 
 - Fully working local/systemd deployment with:
 
-  - All core services healthy and reachable on localhost ports (8000–8014).
+- All core services healthy and reachable on localhost ports (8000–8014).
 
-  - GPU Orchestrator READY with models preloaded; NVIDIA MPS enabled (required) for GPU stability and isolation.
+- GPU Orchestrator READY with models preloaded; NVIDIA MPS enabled (required) for GPU stability and isolation.
 
-  - Database initialized/migrated; health checks green; logs clean.
+- Database initialized/migrated; health checks green; logs clean.
 
-  - Smoke tests pass; manual E2E flow succeeds (crawl → analyze → synthesize).
+- Smoke tests pass; manual E2E flow succeeds (crawl → analyze → synthesize).
 
 - High-quality ingestion pipeline capable of extracting clean article text, metadata, and embeddings across diverse publishers.
 
@@ -57,19 +57,19 @@ A0. Host cleanup (we already ran these during teardown)
 
 - If you previously installed a lightweight Kubernetes (k3s) for legacy testing or POC, remove it to avoid service conflicts with systemd. This step is only necessary if you actually installed k3s; skip if not present:
 
-  - `/usr/local/bin/k3s-uninstall.sh`
+- `/usr/local/bin/k3s-uninstall.sh`
 
-  - Verify: no `k3s.service`, `/run/k3s`, or `/var/lib/rancher/k3s` present.
+- Verify: no `k3s.service`, `/run/k3s`, or `/var/lib/rancher/k3s` present.
 
-  - NOTE: Kubernetes manifests are deprecated and archived under `infrastructure/archives/kubernetes/`.
+- NOTE: Kubernetes manifests are deprecated and archived under `infrastructure/archives/kubernetes/`.
 
 A1. Python environment
 
 - Choose one:
 
-  - Virtualenv: create and activate, then `pip install -r requirements.txt`.
+- Virtualenv: create and activate, then `pip install -r requirements.txt`.
 
-  - Conda: `conda env create -f environment.yml` (if present), then `conda activate <env>`.
+- Conda: `conda env create -f environment.yml` (if present), then `conda activate <env>`.
 
 - Record the interpreter path (for systemd): set `JUSTNEWS_PYTHON` accordingly (e.g., `/home/<you>/.venv/bin/python`).
 
@@ -77,41 +77,41 @@ A2. Secrets and config
 
 - Global environment file for systemd: `/etc/justnews/global.env`:
 
-  - `JUSTNEWS_PYTHON=/abs/path/to/python`
+- `JUSTNEWS_PYTHON=/abs/path/to/python`
 
-  - `SERVICE_DIR=/abs/path/to/repo/root`
+- `SERVICE_DIR=/abs/path/to/repo/root`
 
-  - `JUSTNEWS_DB_URL=mysql://user:pass@localhost:3306/justnews`
+- `JUSTNEWS_DB_URL=mysql://user:pass@localhost:3306/justnews`
 
-  - Optional GPU tuning: `ENABLE_MPS=true`
+- Optional GPU tuning: `ENABLE_MPS=true`
 
 - Content pipeline configuration (same file or service-specific overrides):
 
-  - `UNIFIED_CRAWLER_ENABLE_HTTP_FETCH=true`
+- `UNIFIED_CRAWLER_ENABLE_HTTP_FETCH=true`
 
-  - `ARTICLE_EXTRACTOR_PRIMARY=trafilatura`
+- `ARTICLE_EXTRACTOR_PRIMARY=trafilatura`
 
-  - `ARTICLE_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2`
+- `ARTICLE_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2`
 
-  - `ARTICLE_URL_HASH_ALGO=sha256`
+- `ARTICLE_URL_HASH_ALGO=sha256`
 
-  - `ARTICLE_URL_NORMALIZATION=strict`
+- `ARTICLE_URL_NORMALIZATION=strict`
 
-  - `CLUSTER_SIMILARITY_THRESHOLD=0.85`
+- `CLUSTER_SIMILARITY_THRESHOLD=0.85`
 
 - Per-service overrides (optional), e.g. `/etc/justnews/analyst.env`:
 
-  - `CUDA_VISIBLE_DEVICES=0`
+- `CUDA_VISIBLE_DEVICES=0`
 
-  - Any per-instance tuning or overrides supported by the units/scripts.
+- Any per-instance tuning or overrides supported by the units/scripts.
 
 A3. Database
 
 - Initialize local MariaDB (or point at an external DB):
 
-  - See `infrastructure/systemd/setup_mariadb.sh` for supported flows.
+- See `infrastructure/systemd/setup_mariadb.sh` for supported flows.
 
-  - Initialize/migrate schema (pick one, depending on repo conventions):
+- Initialize/migrate schema (pick one, depending on repo conventions):
 
     - `scripts/setup_mariadb.sh` (recommended) or `scripts/setup_postgres.sh` (deprecated) then `scripts/init_database.py`
 
@@ -119,31 +119,31 @@ A3. Database
 
 - Acceptance checks:
 
-  - DB reachable with `JUSTNEWS_DB_URL`.
+- DB reachable with `JUSTNEWS_DB_URL`.
 
-  - Application can connect (Memory/Archive services healthy once started).
+- Application can connect (Memory/Archive services healthy once started).
 
 A4. Install systemd artifacts
 
 - Scripts (operator helpers):
 
-  - From `infrastructure/systemd/scripts/`, ensure these are executable and optionally copied to `/usr/local/bin/`:
+- From `infrastructure/systemd/scripts/`, ensure these are executable and optionally copied to `/usr/local/bin/`:
 
     - `reset_and_start.sh`, `enable_all.sh`, `health_check.sh`, `cold_start.sh`, `wait_for_mcp.sh`, `justnews-start-agent.sh`, `justnews-preflight-check.sh`
 
 - Units:
 
-  - From `infrastructure/systemd/units/`, copy unit templates to `/etc/systemd/system/`:
+- From `infrastructure/systemd/units/`, copy unit templates to `/etc/systemd/system/`:
 
     - `justnews@.service` (if provided) and any service-specific units/targets.
 
     - Optional timers: `justnews-cold-start.timer`, `justnews-boot-smoke.timer`.
 
-  - Run `sudo systemctl daemon-reload` after copying.
+- Run `sudo systemctl daemon-reload` after copying.
 
 - Optional drop-ins (tuning): `units/drop-ins/` → `/etc/systemd/system/justnews@<name>.service.d/`
 
-  - Examples: `05-gate-timeout.conf` (increase `GATE_TIMEOUT`), restart policies, etc.
+- Examples: `05-gate-timeout.conf` (increase `GATE_TIMEOUT`), restart policies, etc.
 
 A5. NVIDIA MPS (essential / required)
 
@@ -159,23 +159,23 @@ A6. Orchestrator-first startup (gated model preload)
 
 - Preferred: single-command fresh bring-up
 
-  - `sudo infrastructure/systemd/scripts/reset_and_start.sh`
+- `sudo infrastructure/systemd/scripts/reset_and_start.sh`
 
 - Manual sequence:
 
-  - `sudo systemctl enable --now justnews@gpu_orchestrator`
+- `sudo systemctl enable --now justnews@gpu_orchestrator`
 
-  - Wait for `http://127.0.0.1:8014/ready` to succeed
+- Wait for `http://127.0.0.1:8014/ready` to succeed
 
-  - `sudo infrastructure/systemd/scripts/enable_all.sh start`
+- `sudo infrastructure/systemd/scripts/enable_all.sh start`
 
 - Acceptance checks:
 
-  - `infrastructure/systemd/scripts/health_check.sh` shows all green
+- `infrastructure/systemd/scripts/health_check.sh` shows all green
 
-  - Ports 8000–8014 respond (see Quick Reference table)
+- Ports 8000–8014 respond (see Quick Reference table)
 
-  - Orchestrator: `/ready` OK; `/models/status` shows preloaded models
+- Orchestrator: `/ready` OK; `/models/status` shows preloaded models
 
 A7. Baseline validation (refactor sanity)
 
@@ -183,17 +183,17 @@ A7. Baseline validation (refactor sanity)
 
 - Hit health endpoints directly:
 
-  - `curl -fsS http://127.0.0.1:8014/health` (orchestrator)
+- `curl -fsS <http://127.0.0.1:8014/health`> (orchestrator)
 
-  - `curl -fsS http://127.0.0.1:8000/health` (mcp_bus), etc.
+- `curl -fsS <http://127.0.0.1:8000/health`> (mcp_bus), etc.
 
-  - `curl -fsS http://127.0.0.1:8011/health` (analytics — expects `{"status":"healthy"}` after the wrapper alias fix)
+- `curl -fsS <http://127.0.0.1:8011/health`> (analytics — expects `{"status":"healthy"}` after the wrapper alias fix)
 
 - Trigger a small end-to-end flow (minimal crawl → analyze → synthesize) and verify artifacts/logs.
 
 - Capture a baseline diagnostics bundle (for regressions):
 
-  - Use any provided helpers under `infrastructure/systemd/scripts/` (e.g., status panels, `health_check.sh --panel`).
+- Use any provided helpers under `infrastructure/systemd/scripts/` (e.g., status panels, `health_check.sh --panel`).
 
 - Confirm MPS is active: `pgrep -x nvidia-cuda-mps-control` is running; Orchestrator MPS endpoints report enabled.
 
@@ -255,7 +255,7 @@ B3. Storage and schema updates
 
 - Extend the articles table to include: `publication_date`, `authors`, `language`, `section`, `collection_timestamp`, `raw_html_ref`, `extraction_confidence`, `url_hash`.
 
-  - Run `bash scripts/ops/apply_stage_b_migration.sh --record` to apply migration 003 and capture evidence in the ops log.
+- Run `bash scripts/ops/apply_stage_b_migration.sh --record` to apply migration 003 and capture evidence in the ops log.
 
 - Normalize URLs before hashing (lowercase host, strip tracking params, honor canonical tags) controlled by `ARTICLE_URL_NORMALIZATION`. Log original vs. normalized URL for audit.
 
@@ -275,7 +275,7 @@ B4. Embedding generation and clustering preparation
 
 - Maintain metrics: embeddings generated, cluster candidate count (post Stage C), embedding latency, and model cache hit rate.
 
-  - **Implemented by** extended `StageBMetrics` counters/histograms consumed in `agents/memory/tools.save_article`; includes cache-label latency tracking and model availability counters.
+- **Implemented by** extended `StageBMetrics` counters/histograms consumed in `agents/memory/tools.save_article`; includes cache-label latency tracking and model availability counters.
 
 B5. Validation and monitoring
 
@@ -285,7 +285,7 @@ B5. Validation and monitoring
 
 - Extend observability (Prometheus/Grafana panels) with extraction success rate, fallback usage, duplicate count, and article throughput trendlines.
 
-  - **Implemented by** `common/stage_b_metrics.StageBMetrics` counters consumed in `agents/crawler/extraction.py` and `agents/memory/tools.py`; validated via `tests/agents/crawler/test_extraction.py` and `tests/agents/memory/test_save_article.py`. Use the `docs/operations/stage_b_validation.md` playbook to coordinate dashboard updates and collect exit evidence.
+- **Implemented by** `common/stage_b_metrics.StageBMetrics` counters consumed in `agents/crawler/extraction.py` and `agents/memory/tools.py`; validated via `tests/agents/crawler/test_extraction.py` and `tests/agents/memory/test_save_article.py`. Use the `docs/operations/stage_b_validation.md` playbook to coordinate dashboard updates and collect exit evidence.
 
 - Launch a human-in-the-loop sampling program (by language/region) with QA dashboards to surface extractor drift.
 
@@ -371,11 +371,11 @@ C5. API and review tools
 
 - Extend the API layer to serve:
 
-  - Top-X articles for the latest run with quality metadata.
+- Top-X articles for the latest run with quality metadata.
 
-  - Facts for a given article, including GTV and evidence summaries.
+- Facts for a given article, including GTV and evidence summaries.
 
-  - Search endpoints for entities/topics and their verification status.
+- Search endpoints for entities/topics and their verification status.
 
 - Provide operator dashboards for manual adjudication of low-confidence facts with the ability to override scores while retaining audit trails.
 
@@ -463,86 +463,86 @@ Exit criteria for Stage D:
 
 - Systemd baseline
 
-  - [ ] Orchestrator READY; models preloaded
+- [ ] Orchestrator READY; models preloaded
 
-  - [ ] All services healthy on ports 8000–8014
+- [ ] All services healthy on ports 8000–8014
 
-  - [ ] DB connected; basic E2E flow passes
+- [ ] DB connected; basic E2E flow passes
 
-  - [ ] Logs clean; health panel green
+- [ ] Logs clean; health panel green
 
-  - [ ] NVIDIA MPS daemon running and reported enabled by Orchestrator
+- [ ] NVIDIA MPS daemon running and reported enabled by Orchestrator
 
 - Ingestion pipeline
 
-  - [ ] Scheduler delivers hourly top-X crawl with success metrics
+- [ ] Scheduler delivers hourly top-X crawl with success metrics
 
-  - [ ] Trafilatura-first extractor returns clean article bodies; fallbacks logged <5%
+- [ ] Trafilatura-first extractor returns clean article bodies; fallbacks logged <5%
 
-  - [ ] Metadata fields (publication_date, authors, language, section, url_hash, normalized_url) populated for >90% of articles
+- [ ] Metadata fields (publication_date, authors, language, section, url_hash, normalized_url) populated for >90% of articles
 
-  - [ ] URL hash dedupe prevents same-source re-ingestion; embeddings stored with clustering metrics exposed
+- [ ] URL hash dedupe prevents same-source re-ingestion; embeddings stored with clustering metrics exposed
 
-  - [ ] Governance dashboards active; human QA sampling program operational
+- [ ] Governance dashboards active; human QA sampling program operational
 
 - Fact intelligence
 
-  - [ ] facts_to_check table populated with entities/claims per new article
+- [ ] facts_to_check table populated with entities/claims per new article
 
-  - [ ] External corroboration jobs producing evidence records
+- [ ] External corroboration jobs producing evidence records
 
-  - [ ] Cluster records created with representative embeddings and member URLs
+- [ ] Cluster records created with representative embeddings and member URLs
 
-  - [ ] GTV scores computed and accessible via API/dashboard; evidence audit APIs exposed publicly
+- [ ] GTV scores computed and accessible via API/dashboard; evidence audit APIs exposed publicly
 
-  - [ ] Bias monitoring dashboards active; monitoring alerts defined for ingestion, clustering, verification, and transparency regressions
+- [ ] Bias monitoring dashboards active; monitoring alerts defined for ingestion, clustering, verification, and transparency regressions
 
 - Publishing & transparency
 
-  - [ ] Weighted synthesis pipeline operational with editor approval workflow
+- [ ] Weighted synthesis pipeline operational with editor approval workflow
 
-  - [ ] Transparency portal live with per-article evidence and bias disclosures, backed by `archive_storage/transparency`
+- [ ] Transparency portal live with per-article evidence and bias disclosures, backed by `archive_storage/transparency`
 
-  - [ ] Post-publication monitoring/feedback loop feeding governance dashboards
+- [ ] Post-publication monitoring/feedback loop feeding governance dashboards
 
 ## Appendix: Useful paths in this repo
 
 - Systemd docs:
 
-  - `infrastructure/systemd/COMPREHENSIVE_SYSTEMD_GUIDE.md`
+- `infrastructure/systemd/COMPREHENSIVE_SYSTEMD_GUIDE.md`
 
-  - `infrastructure/systemd/DEPLOYMENT.md`
+- `infrastructure/systemd/DEPLOYMENT.md`
 
-  - `infrastructure/systemd/QUICK_REFERENCE.md`
+- `infrastructure/systemd/QUICK_REFERENCE.md`
 
 - Scripts:
 
-  - `infrastructure/systemd/scripts/enable_all.sh`
+- `infrastructure/systemd/scripts/enable_all.sh`
 
-  - `infrastructure/systemd/scripts/reset_and_start.sh`
+- `infrastructure/systemd/scripts/reset_and_start.sh`
 
-  - `infrastructure/systemd/scripts/cold_start.sh`
+- `infrastructure/systemd/scripts/cold_start.sh`
 
-  - `infrastructure/systemd/scripts/health_check.sh`
+- `infrastructure/systemd/scripts/health_check.sh`
 
-  - `infrastructure/systemd/setup_mariadb.sh`
+- `infrastructure/systemd/setup_mariadb.sh`
 
 - Content pipeline assets:
 
-  - `config/` (seed list, crawl schedule, extractor settings)
+- `config/` (seed list, crawl schedule, extractor settings)
 
-  - `agents/sites/` (extractor implementations and fallbacks)
+- `agents/sites/` (extractor implementations and fallbacks)
 
-  - `agents/memory/` (ingestion + embeddings logic)
+- `agents/memory/` (ingestion + embeddings logic)
 
-  - `docs/data-pipeline/` (if present, specifications for facts and GTV)
+- `docs/data-pipeline/` (if present, specifications for facts and GTV)
 
 - Units (examples):
 
-  - `infrastructure/systemd/units/justnews-*.service`
+- `infrastructure/systemd/units/justnews-*.service`
 
-  - `infrastructure/systemd/units/justnews-*.timer`
+- `infrastructure/systemd/units/justnews-*.timer`
 
-  - `infrastructure/systemd/units/justnews-crawlers.target`
+- `infrastructure/systemd/units/justnews-crawlers.target`
 
 ---

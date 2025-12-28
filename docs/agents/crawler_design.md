@@ -49,11 +49,11 @@ APIs and payload shapes (excerpt)
 
 - HITL candidate payload (keys used):
 
-  - `id` (string), `url`, `site_id` (string), `title`, `extracted_text` (truncated), `extraction_metadata` (dict), `publish_time` (iso)
+- `id` (string), `url`, `site_id` (string), `title`, `extracted_text` (truncated), `extraction_metadata` (dict), `publish_time` (iso)
 
 - MCP call `memory.ingest_article` payload (example):
 
-  - `site_id`, `url`, `title`, `cleaned_text`, `extraction_metadata`, `source_html_path`, `ingest_meta`
+- `site_id`, `url`, `title`, `cleaned_text`, `extraction_metadata`, `source_html_path`, `ingest_meta`
 
 Sequence: Crawl → HITL → Ingest (summary)
 

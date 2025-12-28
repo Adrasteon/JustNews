@@ -130,35 +130,35 @@ management
 
 - Added "🔐 Secrets Management with HashiCorp Vault" section
 
-  - Setup overview (4 steps)
+- Setup overview (4 steps)
 
-  - Quick start commands
+- Quick start commands
 
-  - Configuration files listing
+- Configuration files listing
 
-  - Managing secrets examples
+- Managing secrets examples
 
-  - Link to VAULT_SETUP.md
+- Link to VAULT_SETUP.md
 
 - Added "📊 Database Architecture" section
 
-  - MariaDB overview (purpose, version, tables, setup)
+- MariaDB overview (purpose, version, tables, setup)
 
-  - ChromaDB overview (purpose, version, collection, setup)
+- ChromaDB overview (purpose, version, collection, setup)
 
-  - Environment variables reference
+- Environment variables reference
 
-  - Link to SETUP_GUIDE.md
+- Link to SETUP_GUIDE.md
 
 - Updated "📚 Documentation" section with links to:
 
-  - SETUP_GUIDE.md
+- SETUP_GUIDE.md
 
-  - VAULT_SETUP.md
+- VAULT_SETUP.md
 
-  - ENVIRONMENT_CONFIG.md
+- ENVIRONMENT_CONFIG.md
 
-  - TROUBLESHOOTING.md
+- TROUBLESHOOTING.md
 
 **Impact**: Main project README now documents production infrastructure
 
@@ -168,15 +168,15 @@ management
 
 - Added "Quick Links" section with links to:
 
-  - SETUP_GUIDE.md
+- SETUP_GUIDE.md
 
-  - ENVIRONMENT_CONFIG.md
+- ENVIRONMENT_CONFIG.md
 
-  - TROUBLESHOOTING.md
+- TROUBLESHOOTING.md
 
-  - VAULT_SETUP.md
+- VAULT_SETUP.md
 
-  - Systemd operations
+- Systemd operations
 
 **Impact**: Operators now have clear navigation to essential docs
 

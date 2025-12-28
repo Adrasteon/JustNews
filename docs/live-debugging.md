@@ -54,12 +54,12 @@ The repo includes a small compose file to start a local telemetry stack (Loki + 
 
 ## Validate OTEL node collector health
 
-curl -s http://localhost:8889/metrics | head -n 10
+curl -s <http://localhost:8889/metrics> | head -n 10
 
 ```
 
 You can verify the dev stack is functioning with the included demo emitter service which sends a trace and a sample log
-to the collectors and exposes a probe on http://localhost:8080/. A CI workflow `/.github/workflows/telemetry- smoke.yml`
+to the collectors and exposes a probe on <http://localhost:8080/.> A CI workflow `/.github/workflows/telemetry- smoke.yml`
 is included to exercise this stack on demand.
 
 To use the helper script added to `scripts/dev/dev-telemetry-up.sh` make it executable if needed:

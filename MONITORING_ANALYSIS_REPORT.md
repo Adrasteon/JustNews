@@ -95,23 +95,23 @@ Backup configs | 4 | - | ℹ️ Optional | | Grafana dashboards | 5 | 1,312 line
 
 1. **System Overview** (461 lines)
 
-  - Fleet health, GPU usage, network, errors
+- Fleet health, GPU usage, network, errors
 
 1. **JustNews Operations** (489 lines)
 
-  - Service health, crawler, agents, performance
+- Service health, crawler, agents, performance
 
 1. **Business Metrics** (253 lines)
 
-  - Processing rates, crawl quality, ingestion
+- Processing rates, crawl quality, ingestion
 
 1. **Ingest/Archive** (49 lines)
 
-  - Pipeline metrics
+- Pipeline metrics
 
 1. **Parity Analysis** (60 lines)
 
-  - Extraction quality
+- Extraction quality
 
 ### Prometheus Configuration
 
@@ -207,9 +207,9 @@ sudo grafana-cli admin reset-admin-password <new-strong-password>
 
 ### Access dashboards
 
-- Grafana: http://localhost:3000
+- Grafana: <http://localhost:3000>
 
-- Prometheus: http://localhost:9090
+- Prometheus: <http://localhost:9090>
 
 ## Effort Estimate
 

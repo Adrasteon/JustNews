@@ -343,8 +343,8 @@ synthesizer
 
 ## Check all services
 
-curl http://localhost:8000/health
-curl http://localhost:8001/health
+curl <http://localhost:8000/health>
+curl <http://localhost:8001/health>
 
 ## ... check all agent health endpoints
 
@@ -362,12 +362,12 @@ sudo journalctl -u <unit-name> -f
 
 ## Prometheus metrics
 
-curl http://localhost:9090/metrics
+curl <http://localhost:9090/metrics>
 
 ## Custom metrics
 
-curl http://localhost:8000/metrics
-curl http://localhost:8004/metrics  # GPU metrics
+curl <http://localhost:8000/metrics>
+curl <http://localhost:8004/metrics>  # GPU metrics
 
 ```
 
@@ -405,11 +405,11 @@ groups:
 
 ## Grafana dashboard
 
-open http://localhost:3000
+open <http://localhost:3000>
 
 ## Application dashboard
 
-open http://localhost:8013
+open <http://localhost:8013>
 
 ```
 
@@ -566,7 +566,7 @@ nvidia-smi
 
 ## Check service connectivity
 
-curl http://localhost:8000/health
+curl <http://localhost:8000/health>
 
 ## Network policies are not applicable to systemd-managed services
 

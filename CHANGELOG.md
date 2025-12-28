@@ -990,19 +990,19 @@ implemented, layout issues fixed, and comprehensive error handling added for pro
 
 - **✅ Standalone Test Functions Renamed**: Fixed 6 functions that started with `test_` but weren't actual pytest tests:
 
-  - `test_batch_performance` → `run_batch_performance_test`
+- `test_batch_performance` → `run_batch_performance_test`
 
-  - `test_memory_v2_engine` → `run_memory_v2_engine_test`
+- `test_memory_v2_engine` → `run_memory_v2_engine_test`
 
-  - `test_critic_v2_engine` → `run_critic_v2_engine_test`
+- `test_critic_v2_engine` → `run_critic_v2_engine_test`
 
-  - `test_synthesizer_v2_engine` → `run_synthesizer_v2_engine_test`
+- `test_synthesizer_v2_engine` → `run_synthesizer_v2_engine_test`
 
-  - `test_synthesizer_v3_production` → `run_synthesizer_v3_production_test`
+- `test_synthesizer_v3_production` → `run_synthesizer_v3_production_test`
 
-  - `test_chief_editor_v2_engine` → `run_chief_editor_v2_engine_test`
+- `test_chief_editor_v2_engine` → `run_chief_editor_v2_engine_test`
 
-  - `test_vector_search` → `run_vector_search_test`
+- `test_vector_search` → `run_vector_search_test`
 
 - **✅ Synthesizer Model Corruption Resolved**: Fixed corrupted `distilgpt2` model causing `SafetensorError` by clearing cache and downloading fresh model
 
@@ -1278,41 +1278,41 @@ comprehensive testing, and full documentation
 
 - **✅ E402 Import Organization**: Fixed 28 import organization errors across all agent modules
 
-  - `agents/analyst/native_tensorrt_engine.py`: Moved 8 imports (tensorrt, pycuda, transformers, hybrid_tools_v4)
+- `agents/analyst/native_tensorrt_engine.py`: Moved 8 imports (tensorrt, pycuda, transformers, hybrid_tools_v4)
 
-  - `agents/dashboard/main.py`: Moved 5 imports (logging, sys, os, config, storage)
+- `agents/dashboard/main.py`: Moved 5 imports (logging, sys, os, config, storage)
 
-  - `agents/memory/tools.py`: Moved 6 imports (logging, os, datetime, json, requests, database utilities)
+- `agents/memory/tools.py`: Moved 6 imports (logging, os, datetime, json, requests, database utilities)
 
-  - `agents/newsreader/newsreader_v2_true_engine.py`: Moved 9 imports (typing, dataclasses, torch, datetime, PIL, playwright)
+- `agents/newsreader/newsreader_v2_true_engine.py`: Moved 9 imports (typing, dataclasses, torch, datetime, PIL, playwright)
 
-  - `agents/analyst/tensorrt_tools.py`: Moved 1 import (atexit)
+- `agents/analyst/tensorrt_tools.py`: Moved 1 import (atexit)
 
-  - `agents/analyst/tools.py`: Moved 1 import (importlib.util)
+- `agents/analyst/tools.py`: Moved 1 import (importlib.util)
 
 - **✅ F811 Function Redefinition**: Fixed 3 function redefinition issues
 
-  - Removed duplicate `create_analysis_tab` method in `agents/dashboard/gui.py`
+- Removed duplicate `create_analysis_tab` method in `agents/dashboard/gui.py`
 
-  - Removed duplicate `capture_webpage_screenshot` function in `agents/newsreader/main.py`
+- Removed duplicate `capture_webpage_screenshot` function in `agents/newsreader/main.py`
 
-  - Removed duplicate `MCPBusClient` class in `agents/scout/main.py`
+- Removed duplicate `MCPBusClient` class in `agents/scout/main.py`
 
 - **✅ F401 Unused Imports**: Fixed 4 unused import issues
 
-  - Removed unused `os` and `Optional` imports from `agents/analytics/__init__.py`
+- Removed unused `os` and `Optional` imports from `agents/analytics/__init__.py`
 
-  - Removed unused `MultiAgentGPUManager` import from `agents/common/gpu_manager.py`
+- Removed unused `MultiAgentGPUManager` import from `agents/common/gpu_manager.py`
 
-  - Removed unused `Path` import from `agents/newsreader/newsreader_v2_true_engine.py`
+- Removed unused `Path` import from `agents/newsreader/newsreader_v2_true_engine.py`
 
 - **✅ GPU Function Integration**: Added missing GPU functions to synthesizer tools module
 
-  - Added `synthesize_news_articles_gpu` and `get_synthesizer_performance` functions
+- Added `synthesize_news_articles_gpu` and `get_synthesizer_performance` functions
 
-  - Implemented proper fallbacks for CPU-only environments
+- Implemented proper fallbacks for CPU-only environments
 
-  - Functions now available for test imports and compatibility
+- Functions now available for test imports and compatibility
 
 - **✅ Code Standards Compliance**: All files now comply with Python PEP 8 standards
 
@@ -2351,9 +2351,9 @@ System Totals:
 
 - **Individual Engine Performance**:
 
-  - Sentiment: 786.8 articles/sec
+- Sentiment: 786.8 articles/sec
 
-  - Bias: 843.7 articles/sec
+- Bias: 843.7 articles/sec
 
 ### System Architecture Status
 

@@ -33,23 +33,23 @@ decision (Not news / Messy news / Valid news) and the system optimistically inge
 
 - Outputs:
 
-  - Immediate ingestion request for `valid_news`.
+- Immediate ingestion request for `valid_news`.
 
-  - Immediate optimistic ingestion request for `messy_news` with a `needs_cleanup` flag so analysts can prioritise cleanup.
+- Immediate optimistic ingestion request for `messy_news` with a `needs_cleanup` flag so analysts can prioritise cleanup.
 
-  - No ingestion for `not_news` (persist for training/audit).
+- No ingestion for `not_news` (persist for training/audit).
 
-  - Training LabelEvent published for every human label.
+- Training LabelEvent published for every human label.
 
 - Success criteria (throughput-first):
 
-  - Average annotator decision time ≤ 10s.
+- Average annotator decision time ≤ 10s.
 
-  - Label → ingest job enqueue latency ≤ 2s.
+- Label → ingest job enqueue latency ≤ 2s.
 
-  - Sample 5% of human-labeled `valid_news`/`messy_news` for QA; target failure rate < 2%.
+- Sample 5% of human-labeled `valid_news`/`messy_news` for QA; target failure rate < 2%.
 
-  - Training data available to retrain pipeline within ≤ 5 minutes of labeling.
+- Training data available to retrain pipeline within ≤ 5 minutes of labeling.
 
 ## High-level architecture
 
@@ -57,13 +57,13 @@ decision (Not news / Messy news / Valid news) and the system optimistically inge
 
 - HITL Service (new):
 
-  - registers with MCP Bus on startup, validates downstream forward targets, persists candidates, prioritises queue, serves annotator UI via REST/WebSocket, accepts labels, publishes LabelEvents, and enqueues ingest jobs through the bus.
+- registers with MCP Bus on startup, validates downstream forward targets, persists candidates, prioritises queue, serves annotator UI via REST/WebSocket, accepts labels, publishes LabelEvents, and enqueues ingest jobs through the bus.
 
-  - exposes env knobs (`MCP_BUS_URL`, `HITL_AGENT_NAME`, `HITL_SERVICE_ADDRESS`, `HITL_FORWARD_*`, `HITL_CANDIDATE_FORWARD_*`, `HITL_TRAINING_FORWARD_*`) so staging and production endpoints can be configured without code edits.
+- exposes env knobs (`MCP_BUS_URL`, `HITL_AGENT_NAME`, `HITL_SERVICE_ADDRESS`, `HITL_FORWARD_*`, `HITL_CANDIDATE_FORWARD_*`, `HITL_TRAINING_FORWARD_*`) so staging and production endpoints can be configured without code edits.
 
-  - surfaces queue depth, QA backlog, and ingest dispatch metrics via Prometheus-compatible gauges and counters wrapped in `JustNewsMetrics`.
+- surfaces queue depth, QA backlog, and ingest dispatch metrics via Prometheus-compatible gauges and counters wrapped in `JustNewsMetrics`.
 
-  - continuously samples QA queue health and raises warnings when backlog or failure rates exceed configured thresholds.
+- continuously samples QA queue health and raises warnings when backlog or failure rates exceed configured thresholds.
 
 - Annotation UI (new): fast, single-key, low-latency web UI for annotators.
 
@@ -77,75 +77,75 @@ Tables (minimal):
 
 - `hitl_candidates`
 
-  - id: uuid PK
+- id: uuid PK
 
-  - url: text
+- url: text
 
-  - site_id: text
+- site_id: text
 
-  - extracted_title: text
+- extracted_title: text
 
-  - extracted_text: text
+- extracted_text: text
 
-  - raw_html_ref: text
+- raw_html_ref: text
 
-  - features: jsonb
+- features: jsonb
 
-  - candidate_ts: timestamptz
+- candidate_ts: timestamptz
 
-  - crawler_job_id: text
+- crawler_job_id: text
 
-  - status: enum('pending','in_review','labeled','skipped')
+- status: enum('pending','in_review','labeled','skipped')
 
-  - ingestion_priority: integer DEFAULT 0
+- ingestion_priority: integer DEFAULT 0
 
-  - suggested_label: text NULL
+- suggested_label: text NULL
 
-  - suggested_confidence: real NULL
+- suggested_confidence: real NULL
 
 - `hitl_labels`
 
-  - id: uuid PK
+- id: uuid PK
 
-  - candidate_id: uuid FK -> hitl_candidates
+- candidate_id: uuid FK -> hitl_candidates
 
-  - label: text CHECK IN ('not_news','messy_news','valid_news')
+- label: text CHECK IN ('not_news','messy_news','valid_news')
 
-  - cleaned_text: text NULL
+- cleaned_text: text NULL
 
-  - annotator_id: text NULL
+- annotator_id: text NULL
 
-  - created_at: timestamptz
+- created_at: timestamptz
 
-  - source: text (ui/manual, auto/model)
+- source: text (ui/manual, auto/model)
 
-  - treat_as_valid: boolean DEFAULT false
+- treat_as_valid: boolean DEFAULT false
 
-  - needs_cleanup: boolean DEFAULT false
+- needs_cleanup: boolean DEFAULT false
 
-  - qa_sampled: boolean DEFAULT false
+- qa_sampled: boolean DEFAULT false
 
-  - ingest_enqueued_at: timestamptz NULL
+- ingest_enqueued_at: timestamptz NULL
 
-  - ingestion_status: text NULL
+- ingestion_status: text NULL
 
 - `hitl_qa_queue`
 
-  - id: uuid PK
+- id: uuid PK
 
-  - label_id: uuid FK -> hitl_labels
+- label_id: uuid FK -> hitl_labels
 
-  - candidate_id: uuid
+- candidate_id: uuid
 
-  - created_at: timestamptz
+- created_at: timestamptz
 
-  - review_status: enum('pending','pass','fail')
+- review_status: enum('pending','pass','fail')
 
-  - reviewer_id: text NULL
+- reviewer_id: text NULL
 
-  - notes: text NULL
+- notes: text NULL
 
-  - reviewed_at: timestamptz NULL
+- reviewed_at: timestamptz NULL
 
 - `model_versions` / `training_runs` (optional) to track datasets and metrics.
 
@@ -183,27 +183,27 @@ Default policy:
 
 - `valid_news`
 
-  - treat_as_valid = true
+- treat_as_valid = true
 
-  - needs_cleanup = false
+- needs_cleanup = false
 
-  - enqueue ingest job immediately with high priority
+- enqueue ingest job immediately with high priority
 
 - `messy_news` (optimistic path)
 
-  - treat_as_valid = true
+- treat_as_valid = true
 
-  - needs_cleanup = true
+- needs_cleanup = true
 
-  - enqueue ingest job immediately with medium priority; include cleaned_text when provided
+- enqueue ingest job immediately with medium priority; include cleaned_text when provided
 
-  - mark for post-ingest cleanup/analyst prioritisation
+- mark for post-ingest cleanup/analyst prioritisation
 
 - `not_news`
 
-  - treat_as_valid = false
+- treat_as_valid = false
 
-  - do not enqueue ingest; persist for training/audit
+- do not enqueue ingest; persist for training/audit
 
 QA & safeguards:
 
@@ -227,15 +227,15 @@ Tune thresholds based on observed precision/recall.
 
 - Hotkeys:
 
-  - `V` = Valid news (ingest immediately)
+- `V` = Valid news (ingest immediately)
 
-  - `M` = Messy news (optimistic ingest + needs_cleanup)
+- `M` = Messy news (optimistic ingest + needs_cleanup)
 
-  - `N` = Not news (discard / training)
+- `N` = Not news (discard / training)
 
-  - `S` = Submit and next
+- `S` = Submit and next
 
-  - Arrow keys = navigation
+- Arrow keys = navigation
 
 - Prefill model suggestion (label + confidence); one-key accept.
 
@@ -261,9 +261,9 @@ Tune thresholds based on observed precision/recall.
 
 - Retrain cadence:
 
-  - incremental mini-batch retrain every 5–15 minutes (for fast adaptation)
+- incremental mini-batch retrain every 5–15 minutes (for fast adaptation)
 
-  - full retrain nightly with validation and versioning
+- full retrain nightly with validation and versioning
 
 - Online learners (Vowpal Wabbit or partial_fit) can be used for immediate updates but keep periodic full retrain to avoid drift.
 
@@ -299,23 +299,23 @@ Schema changes (minimal, low-risk):
 
 - Add columns to `hitl_candidates`:
 
-  - `ingestion_priority` integer DEFAULT 0
+- `ingestion_priority` integer DEFAULT 0
 
-  - `suggested_label` text NULL
+- `suggested_label` text NULL
 
-  - `suggested_confidence` real NULL
+- `suggested_confidence` real NULL
 
 - Add columns to `hitl_labels`:
 
-  - `treat_as_valid` boolean DEFAULT false
+- `treat_as_valid` boolean DEFAULT false
 
-  - `needs_cleanup` boolean DEFAULT false
+- `needs_cleanup` boolean DEFAULT false
 
-  - `qa_sampled` boolean DEFAULT false
+- `qa_sampled` boolean DEFAULT false
 
-  - `ingest_enqueued_at` timestamptz NULL
+- `ingest_enqueued_at` timestamptz NULL
 
-  - `ingestion_status` text NULL
+- `ingestion_status` text NULL
 
 API endpoints (HITL service):
 

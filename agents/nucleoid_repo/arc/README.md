@@ -14,7 +14,7 @@ toward developing Artificial General Intelligence (AGI), as it requires AI syste
 inductive reasoning, analogy-making, and adaptability, pushing AI research toward more human-like problem-solving
 abilities.
 
-https://arcprize.org
+<https://arcprize.org>
 
 ![ARC Puzzle Example](https://github.com/user- attachments/assets/41701a8e-5639-4f35-96ae-f4815dbd59cc)
 

@@ -18,7 +18,7 @@ Recommended steps to run a small experiment locally (DON'T run on CI without GPU
 ```bash
 conda create -n qlora python=3.11 -y
 conda activate qlora
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+pip install torch torchvision --index-url <https://download.pytorch.org/whl/cu121>
 pip install transformers accelerate bitsandbytes peft datasets
 
 ```

@@ -83,7 +83,7 @@ Model dependent | | **GPU Utilization Over Time** | Utilization trends (time ser
 
 - Verify services: `systemctl status justnews-prometheus justnews-grafana`
 
-- Check GPU exporter: `curl http://localhost:9400/health`
+- Check GPU exporter: `curl <http://localhost:9400/health`>
 
 ### GPU Metrics Missing
 

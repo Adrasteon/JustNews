@@ -321,35 +321,35 @@ Qwen2.5-32B-Instruct-AWQ + FP8, linking fails | ❌ | ld: cannot find -lcudart |
 
 - **`scripts/launch_vllm_mistral_7b_optimized.sh`**: Production-ready launch script with all optimizations (renamed to reflect Mistral fallback)
 
-  - CUDA library path configuration
+- CUDA library path configuration
 
-  - FP8 KV cache enabled
+- FP8 KV cache enabled
 
-  - Chunked prefill tuning (8192 max tokens)
+- Chunked prefill tuning (8192 max tokens)
 
-  - Prefix caching enabled
+- Prefix caching enabled
 
-  - Multi-LoRA ready (commented out)
+- Multi-LoRA ready (commented out)
 
 - **`config/vllm_qwen2_32b.yaml`**: vLLM endpoint configuration
 
-  - Per-agent LoRA adapter mappings
+- Per-agent LoRA adapter mappings
 
-  - QLoRA training settings (NF4, r=16, alpha=32)
+- QLoRA training settings (NF4, r=16, alpha=32)
 
-  - Fallback to Mistral-7B configuration
+- Fallback to Mistral-7B configuration
 
 - **`global.env`**: Environment variable overrides
 
-  - `VLLM_MODEL=Qwen/Qwen2.5-32B-Instruct-AWQ`
+- `VLLM_MODEL=Qwen/Qwen2.5-32B-Instruct-AWQ`
 
-  - `VLLM_ENABLED=false` (default; switch to true to activate)
+- `VLLM_ENABLED=false` (default; switch to true to activate)
 
 - **`AGENT_MODEL_MAP.json`**: Agent-to-model mappings
 
-  - Added qwen2-32b-awq entry with HF model ID
+- Added qwen2-32b-awq entry with HF model ID
 
-  - vLLM endpoint configuration
+- vLLM endpoint configuration
 
 ---
 

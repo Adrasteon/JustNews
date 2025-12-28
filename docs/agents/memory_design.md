@@ -18,11 +18,11 @@ Ingest API (example)
 
 - MCP call `memory.ingest_article` payload fields:
 
-  - `site_id` (str), `url` (str), `title` (str), `cleaned_text` (str),
+- `site_id` (str), `url` (str), `title` (str), `cleaned_text` (str),
 
-  - `extraction_metadata` (dict), `source_html_path` (str, optional),
+- `extraction_metadata` (dict), `source_html_path` (str, optional),
 
-  - `ingest_meta` (dict: source, run_id, provenance)
+- `ingest_meta` (dict: source, run_id, provenance)
 
 Processing steps
 

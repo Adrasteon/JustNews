@@ -106,15 +106,15 @@ ls -la /tmp/nvidia-mps/
 
 1. **Environment Configuration**:
 
-  - Global: `ENABLE_MPS=true` in `/etc/justnews/global.env`
+- Global: `ENABLE_MPS=true` in `/etc/justnews/global.env`
 
-  - GPU Orchestrator: `ENABLE_MPS=true` and `ENABLE_NVML=true` in `/etc/justnews/gpu_orchestrator.env`
+- GPU Orchestrator: `ENABLE_MPS=true` and `ENABLE_NVML=true` in `/etc/justnews/gpu_orchestrator.env`
 
 1. **Validate Configuration**:
 
 ```bash
-curl -s http://127.0.0.1:8014/mps/allocation | jq '.mps_resource_allocation.system_summary'
-curl -s http://127.0.0.1:8014/gpu/info | jq '{mps_enabled, mps}'
+curl -s <http://127.0.0.1:8014/mps/allocation> | jq '.mps_resource_allocation.system_summary'
+curl -s <http://127.0.0.1:8014/gpu/info> | jq '{mps_enabled, mps}'
 
 ```bash
 
@@ -182,17 +182,17 @@ If many services fail on first boot, verify `justnews@gpu_orchestrator` is READY
 
 ## Transparency and governance checks
 
-- Transparency status (served by dashboard agent): `curl -fsS http://127.0.0.1:8013/transparency/status | jq '.integrity.status'`
+- Transparency status (served by dashboard agent): `curl -fsS <http://127.0.0.1:8013/transparency/status> | jq '.integrity.status'`
 
 - Evidence audit API trail lookup: `curl -fsS "$EVIDENCE_AUDIT_BASE_URL/facts/<id>/trail" | jq`
 
-- Analytics service: `curl -fsS http://127.0.0.1:8011/health` should return `{"status":"healthy"}`; the FastAPI wrapper now aliases the underlying engine to keep the status fresh.
+- Analytics service: `curl -fsS <http://127.0.0.1:8011/health`> should return `{"status":"healthy"}`; the FastAPI wrapper now aliases the underlying engine to keep the status fresh.
 
 - Governance dashboard heartbeat: `curl -fsS "$GOVERNANCE_DASHBOARD_URL/api/health"`
 
 - QA sampling reminders: ensure `/etc/justnews/playbooks/extraction-qa.md` exists and is referenced in weekly ops review notes.
 
-- Verify synthesizer gate: `curl -fsS http://127.0.0.1:8005/ready` should report `true` only when `/transparency/status` returns `integrity.status` of `ok` or `degraded`.
+- Verify synthesizer gate: `curl -fsS <http://127.0.0.1:8005/ready`> should report `true` only when `/transparency/status` returns `integrity.status` of `ok` or `degraded`.
 
 If transparency endpoints return non-200 responses, pause automated publishing (`sudo systemctl stop
 justnews@synthesis`) until evidence trails are restored.
@@ -304,7 +304,7 @@ What it does:
 ```bash
 
 sudo systemctl enable --now justnews@gpu_orchestrator
-curl -fsS http://127.0.0.1:8014/ready
+curl -fsS <http://127.0.0.1:8014/ready>
 sudo ./infrastructure/systemd/scripts/enable_all.sh start
 sudo ./infrastructure/systemd/scripts/health_check.sh
 

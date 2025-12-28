@@ -35,8 +35,8 @@ Next steps
 
 - I can:
 
-  - Expand container-level diagrams to cover additional heavy agents (e.g., `synthesizer`, `analyst`, `fact_checker`).
+- Expand container-level diagrams to cover additional heavy agents (e.g., `synthesizer`, `analyst`, `fact_checker`).
 
-  - Add a single “overview” diagram that links the per-scope diagrams as a single flow with minimal connecting edges for context.
+- Add a single “overview” diagram that links the per-scope diagrams as a single flow with minimal connecting edges for context.
 
-  - Add a script to generate fallback PNGs using Mermaid CLI or GitHub Actions.
+- Add a script to generate fallback PNGs using Mermaid CLI or GitHub Actions.

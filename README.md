@@ -570,7 +570,7 @@ sudo systemctl status chromadb
 
 ## Test connectivity
 
-curl http://localhost:3307/api/v2/heartbeat
+curl <http://localhost:3307/api/v2/heartbeat>
 
 ## Check collections
 

@@ -9,15 +9,15 @@ Notes on methodology:
 
 - "Stage" definitions used below:
 
-  - Production (Core): Complete, integrated, robust endpoints and lifecycle, used in production/deployments
+- Production (Core): Complete, integrated, robust endpoints and lifecycle, used in production/deployments
 
-  - Production (Partial): Substantial but some optional dependencies or features require additional setup
+- Production (Partial): Substantial but some optional dependencies or features require additional setup
 
-  - Experimental: Feature-rich implementation but not yet produced with full integration or tests
+- Experimental: Feature-rich implementation but not yet produced with full integration or tests
 
-  - Utility/Library: Helper modules providing shared logic not intended as a standalone agent
+- Utility/Library: Helper modules providing shared logic not intended as a standalone agent
 
-  - Stub/Scaffold: Minimal or stubbed to make the agent work in restricted envs
+- Stub/Scaffold: Minimal or stubbed to make the agent work in restricted envs
 
 ---
 

@@ -77,49 +77,49 @@ Where the repo stands now (examples):
 
 - Recommended files you might add:
 
-  - `agents/common/adapter_base.py` — base classes & exceptions
+- `agents/common/adapter_base.py` — base classes & exceptions
 
-  - `agents/<agent>/adapters/mock_adapter.py` — mock implementation for CI
+- `agents/<agent>/adapters/mock_adapter.py` — mock implementation for CI
 
-  - `agents/<agent>/adapters/openai_adapter.py` — API-backed implementation
+- `agents/<agent>/adapters/openai_adapter.py` — API-backed implementation
 
-  - `agents/<agent>/adapters/hf_adapter.py` — local HF + accelerate/bnb handler
+- `agents/<agent>/adapters/hf_adapter.py` — local HF + accelerate/bnb handler
 
 ## 3) Implementation checklist
 
 1. Design + Spec
 
-  - Add `agents/common/adapter_base.py` and `docs/adapter_spec.md` with the lifecycle and config.
+- Add `agents/common/adapter_base.py` and `docs/adapter_spec.md` with the lifecycle and config.
 
 1. Template & Mock
 
-  - Create `MockAdapter` that returns deterministic outputs and supports simulated latency/failures. The repo already contains dry-run test helpers and per-agent mocks for JSON shapes; make `agents/common/mock_adapter.py` a canonical mock implementation to reuse across agent tests and CI if you pick option A below.
+- Create `MockAdapter` that returns deterministic outputs and supports simulated latency/failures. The repo already contains dry-run test helpers and per-agent mocks for JSON shapes; make `agents/common/mock_adapter.py` a canonical mock implementation to reuse across agent tests and CI if you pick option A below.
 
 1. Implement one real adapter
 
-  - Option A: OpenAI (fastest — needs API key)
+- Option A: OpenAI (fastest — needs API key)
 
-  - Option B: HuggingFace local (bitsandbytes/accelerate) for on-prem inference
+- Option B: HuggingFace local (bitsandbytes/accelerate) for on-prem inference
 
-  - Option C: litellm or other hosted adapters already in the stack
+- Option C: litellm or other hosted adapters already in the stack
 
 1. Testing (what's in place and what to add)
 
-  - Already added: dry-run focused adapter tests in `tests/adapters/test_mistral_adapter.py` and per-agent dry-run engine tests (e.g. `tests/agents/test_*_mistral_engine.py`). These run safely inside the canonical conda env using the project wrapper `scripts/dev/run_pytest_conda.sh`.
+- Already added: dry-run focused adapter tests in `tests/adapters/test_mistral_adapter.py` and per-agent dry-run engine tests (e.g. `tests/agents/test_*_mistral_engine.py`). These run safely inside the canonical conda env using the project wrapper `scripts/dev/run_pytest_conda.sh`.
 
-  - CI: a GH Actions workflow was added at `.github/workflows/mistral-dryrun-tests.yml` to run the adapter + engine dry-run tests in `${CANONICAL_ENV:-justnews-py312}` on PRs.
+- CI: a GH Actions workflow was added at `.github/workflows/mistral-dryrun-tests.yml` to run the adapter + engine dry-run tests in `${CANONICAL_ENV:-justnews-py312}` on PRs.
 
-  - Additional recommendations: add `tests/adapters/test_mock_adapter.py` and `tests/adapters/test_base.py` for the BaseAdapter + MockAdapter once created, and include smoke fixtures that exercise JSON schema stability so prompt-schema drift is caught by CI.
+- Additional recommendations: add `tests/adapters/test_mock_adapter.py` and `tests/adapters/test_base.py` for the BaseAdapter + MockAdapter once created, and include smoke fixtures that exercise JSON schema stability so prompt-schema drift is caught by CI.
 
 1. Integrate with orchestrator
 
-  - Update `AGENT_MODEL_MAP.json` for mapping
+- Update `AGENT_MODEL_MAP.json` for mapping
 
-  - Add orchestrator logic to schedule adapter.load/unload per GPU plan
+- Add orchestrator logic to schedule adapter.load/unload per GPU plan
 
 1. CI & Canary flows
 
-  - Add GH job running adapter unit tests and mock smoke-suite.
+- Add GH job running adapter unit tests and mock smoke-suite.
 
 ## 4) Example adapter sketches
 
@@ -179,11 +179,11 @@ Adapter telemetry — recommendations
 
 - Metrics conventions: adapters should emit the following logical metrics (use the `JustNewsMetrics` helpers):
 
-  - `<adapter>_infer_latency_seconds` (histogram) — per-infer latency distribution
+- `<adapter>_infer_latency_seconds` (histogram) — per-infer latency distribution
 
-  - `<adapter>_infer_success` (counter) — successful inference counts
+- `<adapter>_infer_success` (counter) — successful inference counts
 
-  - `<adapter>_infer_errors` (counter) — inference error counts
+- `<adapter>_infer_errors` (counter) — inference error counts
 
 In this repo we expose these through the existing metrics helper by using `metrics.timing("<name>", value)` and
 `metrics.increment("<name>")`. The metrics helper prefixes them with `justnews_custom_*` in Prometheus.
@@ -194,11 +194,11 @@ Alerting (Prometheus rules)
 
 - Prometheus alert rules for adapters are added at `docs/monitoring/adapter-alert-rules.yml` and include:
 
-  - adapter_infer_p95_seconds[openai|hf] recording rules
+- adapter_infer_p95_seconds[openai|hf] recording rules
 
-  - AdapterOpenAIP95High / AdapterHFP95High when p95 > 2.0s for 5m
+- AdapterOpenAIP95High / AdapterHFP95High when p95 > 2.0s for 5m
 
-  - AdapterErrorRateHigh / AdapterErrorRateHighHF when error rate exceeds 5% for 5m
+- AdapterErrorRateHigh / AdapterErrorRateHighHF when error rate exceeds 5% for 5m
 
 How to wire into monitoring:
 

@@ -24,11 +24,11 @@ monitoring if needed, and performs a consolidated health check.
 
 - Ensure `/etc/justnews/global.env` exists and contains:
 
-  - `SERVICE_DIR`, `PYTHON_BIN` or `CANONICAL_ENV` (default: `justnews-py312`)
+- `SERVICE_DIR`, `PYTHON_BIN` or `CANONICAL_ENV` (default: `justnews-py312`)
 
-  - `MARIADB_HOST/PORT/USER/PASSWORD` (or set `SKIP_MARIADB_CHECK=true`)
+- `MARIADB_HOST/PORT/USER/PASSWORD` (or set `SKIP_MARIADB_CHECK=true`)
 
-  - `CHROMA_HOST/PORT` if using ChromaDB
+- `CHROMA_HOST/PORT` if using ChromaDB
 
 - Tools: `systemctl`, `curl`, `ss`, `python3` (see `preflight.sh` for full checks)
 
@@ -54,7 +54,7 @@ sudo ./infrastructure/systemd/canonical_system_startup.sh
 
 ```bash
 sudo systemctl enable --now justnews@gpu_orchestrator
-curl -fsS http://127.0.0.1:8014/ready
+curl -fsS <http://127.0.0.1:8014/ready>
 sudo ./infrastructure/systemd/scripts/enable_all.sh start
 sudo ./infrastructure/systemd/scripts/health_check.sh -v
 
@@ -73,11 +73,11 @@ sudo ./infrastructure/systemd/scripts/health_check.sh -v
 
 - Confirm key endpoints:
 
-  - GPU Orchestrator READY: `curl -fsS http://127.0.0.1:8014/ready`
+- GPU Orchestrator READY: `curl -fsS <http://127.0.0.1:8014/ready`>
 
-  - MCP Bus health: `curl -fsS http://127.0.0.1:8000/health`
+- MCP Bus health: `curl -fsS <http://127.0.0.1:8000/health`>
 
-  - Agent health endpoints (example): `curl -fsS http://127.0.0.1:8015/health` (crawler)
+- Agent health endpoints (example): `curl -fsS <http://127.0.0.1:8015/health`> (crawler)
 
 - Check Prometheus / Grafana dashboards for `justnews_agent_health_status` (if monitoring provisioned)
 

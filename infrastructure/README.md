@@ -44,7 +44,7 @@ deploy/refactor/
 │   └── timers/               # Timer units
 ├── systemd/                  # Systemd service files (legacy)
 │   ├── services/             # Service unit files
-    curl http://localhost:8000/api/v2/auth/identity
+    curl <http://localhost:8000/api/v2/auth/identity>
 ├── scripts/                  # Deployment automation
 │   ├── deploy.sh             # Unified deployment script
 │   ├── health-check.sh       # Service health validation
@@ -299,8 +299,8 @@ nginx (80/443) ←───┼── all FastAPI services
 
 ## Check specific service
 
-curl http://localhost:8000/health
-curl http://localhost:8002/health
+curl <http://localhost:8000/health>
+curl <http://localhost:8002/health>
 
 ## Health checks (systemd)
 
@@ -320,9 +320,9 @@ This repository now includes a richer monitoring and alerting setup for operatio
 
 - **Alertmanager**: example config & templates are provided at `monitoring/alertmanager/alertmanager.example.yml` and `monitoring/alertmanager/mcp_bus_templates.tmpl`.
 
-  - Idempotent installer script: `scripts/install_alertmanager_unit.sh` (backs up existing units to `/var/backups/justnews/alertmanager/` and replaces them safely).
+- Idempotent installer script: `scripts/install_alertmanager_unit.sh` (backs up existing units to `/var/backups/justnews/alertmanager/` and replaces them safely).
 
-  - Makefile helpers: `make alertmanager-install`, `make alertmanager-install-unit`, `make alertmanager-enable`, `make alertmanager-test`.
+- Makefile helpers: `make alertmanager-install`, `make alertmanager-install-unit`, `make alertmanager-enable`, `make alertmanager-test`.
 
 - **MCP Bus health**: the MCP Bus `/health` endpoint now performs per-agent probes and emits metrics that drive alerts and Grafana rendering. See `docs/operations/MCP_BUS_HEALTH.md` for details and testing guidance.
 
@@ -332,15 +332,15 @@ Quick commands:
 
 ## Access Grafana
 
-open http://localhost:3000
+open <http://localhost:3000>
 
 ## Access Prometheus
 
-open http://localhost:9090
+open <http://localhost:9090>
 
 ## View service metrics
 
-curl http://localhost:8000/metrics
+curl <http://localhost:8000/metrics>
 
 ## Install Alertmanager (apt or release fallback) and copy example configs
 
@@ -495,7 +495,7 @@ sudo journalctl -u justnews-mcp-bus -f
 mysql -h localhost -u justnews -p justnews -e "SELECT 1;"
 
    # Test ChromaDB connection (prefer /api/v2/auth/identity; fall back to /api/v1/health or /)
-curl http://localhost:8000/api/v2/auth/identity
+curl <http://localhost:8000/api/v2/auth/identity>
 
    # Check service status
 sudo systemctl status mariadb sudo systemctl status justnews-mariadb sudo systemctl status justnews-chromadb ```
@@ -507,13 +507,13 @@ sudo systemctl status mariadb sudo systemctl status justnews-mariadb sudo system
 nvidia-smi
 
    # Check GPU orchestrator
-curl http://localhost:8014/health ```
+curl <http://localhost:8014/health> ```
 
 1. **Network Connectivity**
 
 ```bash
    # Test service communication
-curl http://localhost:8000/agents curl http://localhost:8000/health ```
+curl <http://localhost:8000/agents> curl <http://localhost:8000/health> ```
 
 ### Debug Commands
 

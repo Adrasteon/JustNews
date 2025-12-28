@@ -63,29 +63,29 @@ I created **2 detailed execution documents**:
 
 ### 1. **ACTION_PLAN_GET_SYSTEM_RUNNING.md** (~400 lines)
 
-  - **Full phase-by-phase guide** with 5 phases (Environment, Schema, Services, Crawling, Training)
+- **Full phase-by-phase guide** with 5 phases (Environment, Schema, Services, Crawling, Training)
 
-  - **Evidence-based**: Every action cites the actual code file + line numbers where I found it
+- **Evidence-based**: Every action cites the actual code file + line numbers where I found it
 
-  - **15 concrete tasks** with success criteria and verification commands
+- **15 concrete tasks** with success criteria and verification commands
 
-  - **Dependency graph** showing what must run first
+- **Dependency graph** showing what must run first
 
-  - **Troubleshooting reference** table
+- **Troubleshooting reference** table
 
-  - **~90–120 min estimated total time** to full production readiness
+- **~90–120 min estimated total time** to full production readiness
 
 ### 2. **SYSTEM_STARTUP_CHECKLIST.md** (~200 lines)
 
-  - **Quick checkbox format** for operators
+- **Quick checkbox format** for operators
 
-  - **Copy-paste command blocks** (systemd vs direct Python options)
+- **Copy-paste command blocks** (systemd vs direct Python options)
 
-  - **Success indicators** (URLs to curl, database queries to run)
+- **Success indicators** (URLs to curl, database queries to run)
 
-  - **Quick fix table** for common issues
+- **Quick fix table** for common issues
 
-  - **Best for**: Running the system for the first time
+- **Best for**: Running the system for the first time
 
 ---
 

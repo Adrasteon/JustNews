@@ -13,9 +13,9 @@ How it's managed
 
 - Use the canonical flow to start/enable the agent (recommended):
 
-  - `sudo ./infrastructure/systemd/reset_and_start.sh`
+- `sudo ./infrastructure/systemd/reset_and_start.sh`
 
-  - or: `sudo ./infrastructure/systemd/scripts/enable_all.sh fresh`
+- or: `sudo ./infrastructure/systemd/scripts/enable_all.sh fresh`
 
 Configuration
 
@@ -24,7 +24,7 @@ Important variables include `CRAWL4AI_HOST`, `CRAWL4AI_PORT`, `CRAWL4AI_USE_LLM`
 
 Security:
 
-  - `CRAWLER_API_TOKEN`: when set, the `/crawl` endpoint requires this token to be supplied via `Authorization: Bearer <token>` or `X-Api-Token` header. This is optional (if unset, endpoints are open for compatibility).
+- `CRAWLER_API_TOKEN`: when set, the `/crawl` endpoint requires this token to be supplied via `Authorization: Bearer <token>` or `X-Api-Token` header. This is optional (if unset, endpoints are open for compatibility).
 
 Notes
 

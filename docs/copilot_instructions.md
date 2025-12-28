@@ -11,9 +11,9 @@ environment named `${CANONICAL_ENV:-justnews-py312}`.
 
 When invoking scripts or running code snippets in documentation, prefer either:
 
-  - `conda run -n ${CANONICAL_ENV:-justnews-py312} python <script>` or
+- `conda run -n ${CANONICAL_ENV:-justnews-py312} python <script>` or
 
-  - `PYTHON_BIN=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python <script>`
+- `PYTHON_BIN=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python <script>`
 
 When adding examples or CI configuration, prefer using `${CANONICAL_ENV:-justnews-py312}` by default (unless a different
 environment is explicitly requested). ------------------
@@ -24,7 +24,7 @@ environment is explicitly requested). ------------------
 
 - Assistants should prefer to update `global.env` (or `infrastructure/systemd/examples/justnews.env.example`) rather than leaving users with out-of-sync example values.
 
-  - Automation exists to help keep `PYTHON_BIN` present: `infrastructure/systemd/scripts/ensure_global_python_bin.sh` (run at startup) and a repo validation script `infrastructure/scripts/validate-global-env.sh` (CI-friendly). When proposing runtime changes, update both the example and the global env, and ensure a validation step is added or existing validation passes.
+- Automation exists to help keep `PYTHON_BIN` present: `infrastructure/systemd/scripts/ensure_global_python_bin.sh` (run at startup) and a repo validation script `infrastructure/scripts/validate-global-env.sh` (CI-friendly). When proposing runtime changes, update both the example and the global env, and ensure a validation step is added or existing validation passes.
 
 Core rules (must follow) ------------------------
 

@@ -232,39 +232,39 @@ item includes a short acceptance criteria and suggested verification steps.
 
 1) Production Redis reclaimer hardening
 
-  - Acceptance: `xautoclaim` / `xclaim` paths tested and stable on our fleet Redis versions; reclaimer performs safely under high-churn streams without loss or duplicate processing.
+- Acceptance: `xautoclaim` / `xclaim` paths tested and stable on our fleet Redis versions; reclaimer performs safely under high-churn streams without loss or duplicate processing.
 
-  - Verify: run high-concurrency stream soak tests (1–24 hours) that simulate lost consumers and measure reclaimer behaviour; add targeted unit tests and e2e scenarios for edge cases.
+- Verify: run high-concurrency stream soak tests (1–24 hours) that simulate lost consumers and measure reclaimer behaviour; add targeted unit tests and e2e scenarios for edge cases.
 
 2) Idempotency and transactional safety for lease+claim
 
-  - Acceptance: Acquiring a lease and claiming a job are atomic w.r.t. application-level state; duplicates are detectable and safely ignored/handled.
+- Acceptance: Acquiring a lease and claiming a job are atomic w.r.t. application-level state; duplicates are detectable and safely ignored/handled.
 
-  - Verify: add tests for concurrent claims, duplicate job_id submissions, and race conditions; instrument audit logs for forensic checks.
+- Verify: add tests for concurrent claims, duplicate job_id submissions, and race conditions; instrument audit logs for forensic checks.
 
 3) Operator runbook completion & playbooks
 
-  - Acceptance: playbooks for drain/evict/recover exist, are documented, and tested in a runbook validation exercise (operator walkthrough/drill).
+- Acceptance: playbooks for drain/evict/recover exist, are documented, and tested in a runbook validation exercise (operator walkthrough/drill).
 
-  - Verify: run a tabletop/drill (or staged failover) and sign-off in `docs/gpu_orchestrator_runbook.md` with remediation times and known caveats.
+- Verify: run a tabletop/drill (or staged failover) and sign-off in `docs/gpu_orchestrator_runbook.md` with remediation times and known caveats.
 
 4) Monitoring, alerts & autoscaling rules
 
-  - Acceptance: Effective Grafana dashboards and Prometheus alerts for reclaimer failures, job queue depth, lease saturation, and GPU OOM/pressure; autoscaler rules (KEDA/HPA) exercised and safe.
+- Acceptance: Effective Grafana dashboards and Prometheus alerts for reclaimer failures, job queue depth, lease saturation, and GPU OOM/pressure; autoscaler rules (KEDA/HPA) exercised and safe.
 
-  - Verify: smoke-test alerts using synthetic conditions and run targeted scale-up tests to confirm autoscaler response.
+- Verify: smoke-test alerts using synthetic conditions and run targeted scale-up tests to confirm autoscaler response.
 
 5) Performance soak & scale tests on GPUs
 
-  - Acceptance: Policy enforcer + admission control remain stable under production-like load across multiple GPU nodes. No persistent queue growth or runaway OOMs over a 24–72 hour test.
+- Acceptance: Policy enforcer + admission control remain stable under production-like load across multiple GPU nodes. No persistent queue growth or runaway OOMs over a 24–72 hour test.
 
-  - Verify: run `scripts/perf/` workloads and `scripts/ops/adapter_worker_pool.py` at scale; collect metrics and review for anomalies.
+- Verify: run `scripts/perf/` workloads and `scripts/ops/adapter_worker_pool.py` at scale; collect metrics and review for anomalies.
 
 6) Release, artifact and migration plan
 
-  - Acceptance: Clear upgrade/migration plan for DB/Redis schema changes and a pinned artifact publication strategy for binary wheels (bitsandbytes) used by agents.
+- Acceptance: Clear upgrade/migration plan for DB/Redis schema changes and a pinned artifact publication strategy for binary wheels (bitsandbytes) used by agents.
 
-  - Verify: publish test release artifacts to staging bucket and perform a dry-run upgrade against staging cluster.
+- Verify: publish test release artifacts to staging bucket and perform a dry-run upgrade against staging cluster.
 
 ---
 
@@ -301,21 +301,21 @@ Reconciliation loop responsibilities (leader only):
 
 - Global admission gates:
 
-  - If global GPU memory usage > 90% -> stop accepting new GPU inference jobs for X seconds
+- If global GPU memory usage > 90% -> stop accepting new GPU inference jobs for X seconds
 
-  - If queue depth grows above threshold -> trigger scale-up, or reject/route to CPU fallback
+- If queue depth grows above threshold -> trigger scale-up, or reject/route to CPU fallback
 
-  - Configurable per-agent low/high watermarks for memory & tasks
+- Configurable per-agent low/high watermarks for memory & tasks
 
 - Pool draining procedure (safe stop):
 
-  - set pool.status='draining'
+- set pool.status='draining'
 
-  - stop accepting new jobs for that pool
+- stop accepting new jobs for that pool
 
-  - wait for running jobs to complete (with graceful timeout)
+- wait for running jobs to complete (with graceful timeout)
 
-  - release leases and mark pool.status='stopped'
+- release leases and mark pool.status='stopped'
 
 ---
 
@@ -372,9 +372,9 @@ We will implement in small, verified steps so the live system remains stable.
 
 - Tests:
 
-  - unit tests for DB helpers
+- unit tests for DB helpers
 
-  - integration-style test where we create lease, kill orchestrator (simulate restart), start new orchestrator, and verify lease still present and TTL enforced
+- integration-style test where we create lease, kill orchestrator (simulate restart), start new orchestrator, and verify lease still present and TTL enforced
 
 Deliverable: leases are persisted, survive restarts, and can be reclaimed.
 
@@ -438,25 +438,25 @@ Deliverable: leases are persisted, survive restarts, and can be reclaimed.
 
 1) Agent requests GPU work:
 
-  - Agent calls POST /jobs/submit with job_id
+- Agent calls POST /jobs/submit with job_id
 
-  - Orchestrator persists job row, pushes to stream:orchestrator:inference_jobs
+- Orchestrator persists job row, pushes to stream:orchestrator:inference_jobs
 
-  - Consumer picks job, sets status=claimed, requests a lease in transactional manner
+- Consumer picks job, sets status=claimed, requests a lease in transactional manner
 
-  - If lease granted, consumer executes and updates status=running
+- If lease granted, consumer executes and updates status=running
 
-  - On completion, update status=done and ACK stream record
+- On completion, update status=done and ACK stream record
 
 2) Pool creation (mistral warm pool)
 
-  - UI or script calls POST /workers/pool
+- UI or script calls POST /workers/pool
 
-  - Orchestrator persists worker_pools row and writes stream:orchestrator:preloads
+- Orchestrator persists worker_pools row and writes stream:orchestrator:preloads
 
-  - A PoolProvisioner consumer takes the message, provisions pool workers (spawned by orchestrator or external worker supervisor), persists spawned count and heartbeats
+- A PoolProvisioner consumer takes the message, provisions pool workers (spawned by orchestrator or external worker supervisor), persists spawned count and heartbeats
 
-  - Pool lasts until hold_seconds expire, or admin drains or pool.status sets to 'draining'
+- Pool lasts until hold_seconds expire, or admin drains or pool.status sets to 'draining'
 
 ---
 

@@ -75,7 +75,7 @@ coordination beyond the basic flow.
 
 - Add API endpoint wiring and a GUI flag for "Require draft fact-check pass before publish"; ensure chief editor endpoints and frontend components are integrated in a subsequent PR.
 
-  - The Dashboard has been updated to add a new "Publishing Settings" card which allows operators to toggle several flags at runtime and choose the configured persistence strategy for synthesized drafts.
+- The Dashboard has been updated to add a new "Publishing Settings" card which allows operators to toggle several flags at runtime and choose the configured persistence strategy for synthesized drafts.
 
 - Implementation: `POST /synthesize_and_publish` in `agents/synthesizer/main.py` runs the full pipeline (synthesis→critic→draft fact-check) and then either auto-publishes or queues for `Chief Editor` review depending on config flags. The GUI exposes `Require draft fact-check pass before publish` under `Settings -> Publishing` and it defaults to `false`.
 
@@ -85,17 +85,17 @@ The Dashboard provides a small admin UI for runtime control over publishing and 
 
 - UI: `agents/dashboard/public_website.html` contains a new "Publishing Settings" card with switches for:
 
-  - `Require draft fact-check pass for publish` (maps to `agents.publishing.require_draft_fact_check_pass_for_publish`)
+- `Require draft fact-check pass for publish` (maps to `agents.publishing.require_draft_fact_check_pass_for_publish`)
 
-  - `Require chief editor review` (maps to `agents.publishing.chief_editor_review_required`)
+- `Require chief editor review` (maps to `agents.publishing.chief_editor_review_required`)
 
-  - `Synthesized article storage` (maps to `system.persistence.synthesized_article_storage`, choices: `extend` | `new_table`)
+- `Synthesized article storage` (maps to `system.persistence.synthesized_article_storage`, choices: `extend` | `new_table`)
 
 - Endpoints: There are two admin endpoints:
 
-  - `GET /admin/get_publishing_config` — returns the current publishing flags & persistence setting to populate the Dashboard UI.
+- `GET /admin/get_publishing_config` — returns the current publishing flags & persistence setting to populate the Dashboard UI.
 
-  - `POST /admin/set_publishing_config` — already present; accepts the same keys and persists changes via the `config.core.ConfigurationManager` with `persist=True`.
+- `POST /admin/set_publishing_config` — already present; accepts the same keys and persists changes via the `config.core.ConfigurationManager` with `persist=True`.
 
 Example payload for `POST /admin/set_publishing_config`:
 
@@ -301,21 +301,21 @@ Responsibilities:
 
 - Produce per-article and cluster-level analysis including:
 
-  - `language` and `language_confidence`
+- `language` and `language_confidence`
 
-  - `sentiment` (polarity / scores)
+- `sentiment` (polarity / scores)
 
-  - `bias_score` (quantitative de-bias metrics)
+- `bias_score` (quantitative de-bias metrics)
 
-  - `entities` and `entity_types` (extracted named entities with confidence)
+- `entities` and `entity_types` (extracted named entities with confidence)
 
-  - `keywords` / `topics`
+- `keywords` / `topics`
 
-  - `extraction_confidence` and `source_quality` score
+- `extraction_confidence` and `source_quality` score
 
-  - **✅ `claims`**: Heuristic-based claim extraction using spaCy NER and pattern matching
+- **✅ `claims`**: Heuristic-based claim extraction using spaCy NER and pattern matching
 
-  - **✅ `source_fact_check`**: Per-article fact-check integration (MANDATORY)
+- **✅ `source_fact_check`**: Per-article fact-check integration (MANDATORY)
 
 - Return an `AnalysisReport` object with aggregate metrics and per-article details.
 
@@ -325,13 +325,13 @@ Responsibilities:
 
 - `AnalystEngine.generate_analysis_report(texts, article_ids, cluster_id, enable_fact_check)`:
 
-  - Generates comprehensive analysis for article clusters
+- Generates comprehensive analysis for article clusters
 
-  - Calls `comprehensive_fact_check()` for each article (mandatory by default)
+- Calls `comprehensive_fact_check()` for each article (mandatory by default)
 
-  - Aggregates cluster-level fact-check summary
+- Aggregates cluster-level fact-check summary
 
-  - Returns structured `AnalysisReport` with per-article analyses
+- Returns structured `AnalysisReport` with per-article analyses
 
 **Schemas Implemented** (`agents/analyst/schemas.py`):
 
@@ -377,19 +377,19 @@ Testing ✅:
 
 - **✅ 12 integration tests passing** for Analyst + Fact-Checker integration:
 
-  - Fact-checker called for each article
+- Fact-checker called for each article
 
-  - `source_fact_checks` attached to `AnalysisReport`
+- `source_fact_checks` attached to `AnalysisReport`
 
-  - Per-article results include `source_fact_check` field
+- Per-article results include `source_fact_check` field
 
-  - Cluster summary aggregates correctly
+- Cluster summary aggregates correctly
 
-  - Status thresholds (passed/needs_review/failed) work correctly
+- Status thresholds (passed/needs_review/failed) work correctly
 
-  - Graceful handling of fact-checker errors and ImportError
+- Graceful handling of fact-checker errors and ImportError
 
-  - Claim verdicts and fact-check trace captured correctly
+- Claim verdicts and fact-check trace captured correctly
 
 - Integration tests to assert Analyst output shape and that it is used by the SynthesisService in draft generation.
 
@@ -415,15 +415,15 @@ Responsibilities:
 
 - Accept an `AnalysisReport` plus `source_fact_checks` and return a `reasoning_plan` object that includes:
 
-  - Prioritized sources (ordered list of article IDs with reasons and evidence)
+- Prioritized sources (ordered list of article IDs with reasons and evidence)
 
-  - Sections and structure for the synthesized article (outline)
+- Sections and structure for the synthesized article (outline)
 
-  - Key claims to include, with source references and confidence score
+- Key claims to include, with source references and confidence score
 
-  - Items to exclude (and why, e.g., low confidence or contradictory sources)
+- Items to exclude (and why, e.g., low confidence or contradictory sources)
 
-  - Any rebuttal or cross-check tasks requested from the Fact-Checker
+- Any rebuttal or cross-check tasks requested from the Fact-Checker
 
 - Provide a concise `reasoning_score` to indicate confidence in the plan and a `reasoning_version` identifier for traceability.
 
@@ -457,9 +457,9 @@ Acceptance criteria for Reasoning:
 
 - There are two Fact-Check phases:
 
-  - Pre-reasoning: Per-article fact-checks (MANDATORY) — run against each ingested article to produce `source_fact_checks` used by Reasoning.
+- Pre-reasoning: Per-article fact-checks (MANDATORY) — run against each ingested article to produce `source_fact_checks` used by Reasoning.
 
-  - Post-synthesis: Draft-level fact-checks (MANDATORY) — run against the synthesized draft to validate any newly generated or paraphrased claims.
+- Post-synthesis: Draft-level fact-checks (MANDATORY) — run against the synthesized draft to validate any newly generated or paraphrased claims.
 
 - After the draft is generated, call the `Critic` agent: `agent/critic` or module call: `agents/critic/validate()`.
 
@@ -521,9 +521,9 @@ Testing and QA:
 
 - **✅ IMPLEMENTED**: Add integration-level tests that simulate untrusted and trusted evidence sources and confirm correct `fact_check_status` aggregation AND per-article `source_fact_checks` are produced and included in the `AnalysisReport`.
 
-  - **12 integration tests implemented** in `tests/agents/analyst/test_fact_checker_integration.py` (all passing)
+- **12 integration tests implemented** in `tests/agents/analyst/test_fact_checker_integration.py` (all passing)
 
-  - Tests cover: fact-checker calls, status thresholds, cluster summary aggregation, claim verdicts extraction, error handling, and trace capture
+- Tests cover: fact-checker calls, status thresholds, cluster summary aggregation, claim verdicts extraction, error handling, and trace capture
 
 - Add continuous evaluation via a validation harness that tests the system with real-world examples before enabling auto-publish for an article category.
 
@@ -533,23 +533,23 @@ Acceptance criteria for Fact-checker:
 
 - **✅ IMPLEMENTED**: Fact-check `failed` should populate `fact_check_trace` and block publishing automatically.
 
-  - `SourceFactCheck` includes `fact_check_trace` with full verification details, credibility assessment, and contradictions analysis
+- `SourceFactCheck` includes `fact_check_trace` with full verification details, credibility assessment, and contradictions analysis
 
 - **✅ IMPLEMENTED**: All cluster input articles must produce a `source_fact_check` entry. The final draft must include references to the verified source IDs and their fact-check verdicts.
 
-  - `AnalysisReport.source_fact_checks` contains per-article fact-check results
+- `AnalysisReport.source_fact_checks` contains per-article fact-check results
 
-  - `AnalysisReport.cluster_fact_check_summary` aggregates cluster-level metrics
+- `AnalysisReport.cluster_fact_check_summary` aggregates cluster-level metrics
 
 - **✅ IMPLEMENTED**: If a cluster has a high percentage of `source_fact_check` failures above a configured threshold (e.g., 50%), the SynthesisService should automatically abort synthesis and require human intervention.
 
-  - `cluster_fact_check_summary` includes `articles_flagged` list and `percent_verified` metric for threshold enforcement
+- `cluster_fact_check_summary` includes `articles_flagged` list and `percent_verified` metric for threshold enforcement
 
 - **✅ IMPLEMENTED**: Audit logs must be stored with claim-level provenance and source evidence identifiers.
 
-  - Each `SourceFactCheck` includes `claim_verdicts` with evidence and confidence
+- Each `SourceFactCheck` includes `claim_verdicts` with evidence and confidence
 
-  - `fact_check_trace` captures complete verification details for auditability
+- `fact_check_trace` captures complete verification details for auditability
 
 - Baseline accuracy thresholds (to be determined by the project): e.g., >80% precision on verified claims for a given category is a desirable target for MVP; but the initial rollout must use a conservative default.
 
@@ -611,9 +611,9 @@ Script for debugging:
 
 - **✅ IMPLEMENTED**: `scripts/fact_check_cluster.py` exists to exercise fact-checks for each article in a cluster and produce a cluster summary with per-article `source_fact_checks`
 
-  - **Features**: Color-coded output (✅ passed, ❌ failed, ⚠️ needs_review), verbose mode for detailed traces, JSON export, cluster-level summary
+- **Features**: Color-coded output (✅ passed, ❌ failed, ⚠️ needs_review), verbose mode for detailed traces, JSON export, cluster-level summary
 
-  - **Usage**: `python scripts/fact_check_cluster.py --texts "Article 1" "Article 2" --article-ids art1 art2 --verbose`
+- **Usage**: `python scripts/fact_check_cluster.py --texts "Article 1" "Article 2" --article-ids art1 art2 --verbose`
 
 - `scripts/reason_cluster.py` should exist to run the reasoning agent on a cluster and preview the `reasoning_plan` results
 
@@ -623,31 +623,31 @@ Script for debugging:
 
 - Unit Tests:
 
-  - `tests/agents/synthesizer/test_synthesis_service.py`: verify shaping of draft
+- `tests/agents/synthesizer/test_synthesis_service.py`: verify shaping of draft
 
-  - `tests/database/test_synthesized_article_model.py`: model serialization
+- `tests/database/test_synthesized_article_model.py`: model serialization
 
-  - `tests/database/test_chromadb_utils` integration points using mocks
+- `tests/database/test_chromadb_utils` integration points using mocks
 
 - Integration Tests:
 
-  - `tests/integration/test_article_creation_flow.py` marked with `integration` marker: a simulated run from cluster -> draft -> critic -> saved; requires integration fixtures.
+- `tests/integration/test_article_creation_flow.py` marked with `integration` marker: a simulated run from cluster -> draft -> critic -> saved; requires integration fixtures.
 
-  - `tests/agents/analyst/test_analyst_service.py`: verify entity parsing, bias scoring and confidence handling;
+- `tests/agents/analyst/test_analyst_service.py`: verify entity parsing, bias scoring and confidence handling;
 
-  - Add an integration path: `tests/integration/test_analysis_synthesis_flow.py` that demonstrates Analyst + SynthesisService usage with mocked LLM & Chroma.
+- Add an integration path: `tests/integration/test_analysis_synthesis_flow.py` that demonstrates Analyst + SynthesisService usage with mocked LLM & Chroma.
 
-  - **✅ IMPLEMENTED**: `tests/agents/analyst/test_fact_checker_integration.py`: verify per-article claims are extracted, verified, and produce `source_fact_checks` entries and a cluster summary.
+- **✅ IMPLEMENTED**: `tests/agents/analyst/test_fact_checker_integration.py`: verify per-article claims are extracted, verified, and produce `source_fact_checks` entries and a cluster summary.
 
     - **12 comprehensive tests** covering fact-checker integration, status mapping, cluster summary aggregation, error handling, and trace capture (all passing)
 
-  - `tests/agents/reasoning/test_reasoning_service.py`: validate reasoning plan generation and that it excludes low-confidence sources and highlights key claims and structure
+- `tests/agents/reasoning/test_reasoning_service.py`: validate reasoning plan generation and that it excludes low-confidence sources and highlights key claims and structure
 
-  - Add an integration path: `tests/integration/test_analysis_reasoning_synthesis_flow.py` that demonstrates Analyst + FactChecker + Reasoning + SynthesisService usage with mocked LLM & Chroma.
+- Add an integration path: `tests/integration/test_analysis_reasoning_synthesis_flow.py` that demonstrates Analyst + FactChecker + Reasoning + SynthesisService usage with mocked LLM & Chroma.
 
 - Performance Tests (later):
 
-  - `tests/database/test_dual_database_performance.py` style tests for large cluster sizes
+- `tests/database/test_dual_database_performance.py` style tests for large cluster sizes
 
 ---
 
@@ -669,13 +669,13 @@ Script for debugging:
 
 - Metrics:
 
-  - `synthesis_jobs_started` (counter)
+- `synthesis_jobs_started` (counter)
 
-  - `synthesis_jobs_failed` (counter)
+- `synthesis_jobs_failed` (counter)
 
-  - `synthesis_jobs_published` (counter)
+- `synthesis_jobs_published` (counter)
 
-  - Traces for model latency (gauge)
+- Traces for model latency (gauge)
 
     - `analysis_jobs_started` (counter)
 
@@ -709,25 +709,25 @@ Script for debugging:
 
 - Phase 1: Dev/MVP
 
-  - Implement the service and tests, allow manual synthesis via API/UI, run tests & smoke tests
+- Implement the service and tests, allow manual synthesis via API/UI, run tests & smoke tests
 
-  - Acceptance: basic end-to-end flow with mocked LLM, Critic integration, storage of metadata
+- Acceptance: basic end-to-end flow with mocked LLM, Critic integration, storage of metadata
 
 - Phase 2: Staging
 
-  - Enable feature flag for a small percentage of clusters and route to Chief Editor review
+- Enable feature flag for a small percentage of clusters and route to Chief Editor review
 
-  - Acceptance: Chief Editor flows working, logs and metrics present, no production publishes
+- Acceptance: Chief Editor flows working, logs and metrics present, no production publishes
 
 - Phase 3: Production (Canary)
 
-  - Run on low traffic sample with auto-CR and optionally limited publish
+- Run on low traffic sample with auto-CR and optionally limited publish
 
-  - Acceptance: stable metrics and no critical issues
+- Acceptance: stable metrics and no critical issues
 
 - Phase 4: Production full rollout
 
-  - Enable synthesis for more clusters, monitor metrics, and expand checks
+- Enable synthesis for more clusters, monitor metrics, and expand checks
 
 ---
 
@@ -753,37 +753,37 @@ Script for debugging:
 
 - ✅ IMPLEMENTED: `ClusterFetcher` (file: `agents/cluster_fetcher/cluster_fetcher.py`)
 
-  - Provides `ClusterFetcher.fetch_cluster(cluster_id|article_ids)` returning normalized `ArticleRecord` objects
+- Provides `ClusterFetcher.fetch_cluster(cluster_id|article_ids)` returning normalized `ArticleRecord` objects
 
-  - Supports transparent integration with `archive_storage/transparency` clusters and direct article IDs
+- Supports transparent integration with `archive_storage/transparency` clusters and direct article IDs
 
-  - Includes de-duplication by URL
+- Includes de-duplication by URL
 
-  - Unit tests provided in `tests/agents/cluster_fetcher/test_cluster_fetcher.py` (3 passing tests)
+- Unit tests provided in `tests/agents/cluster_fetcher/test_cluster_fetcher.py` (3 passing tests)
 
 - ✅ **COMPLETED**: Implement `Analyst` agent skeleton & unit tests
 
-  - Implemented `AnalystEngine` with claim extraction and analysis report generation
+- Implemented `AnalystEngine` with claim extraction and analysis report generation
 
-  - Created schemas: `Claim`, `PerArticleAnalysis`, `AnalysisReport`
+- Created schemas: `Claim`, `PerArticleAnalysis`, `AnalysisReport`
 
-  - Added 11 passing unit tests for claim extraction and report generation
+- Added 11 passing unit tests for claim extraction and report generation
 
 - ✅ **COMPLETED**: Implement per-article Fact-Checker integration and `scripts/fact_check_cluster.py`
 
-  - Extended schemas with `ClaimVerdict`, `SourceFactCheck` dataclasses
+- Extended schemas with `ClaimVerdict`, `SourceFactCheck` dataclasses
 
-  - Integrated `comprehensive_fact_check()` calls in `generate_analysis_report()`
+- Integrated `comprehensive_fact_check()` calls in `generate_analysis_report()`
 
-  - Implemented per-article fact-checking with status mapping (passed/needs_review/failed)
+- Implemented per-article fact-checking with status mapping (passed/needs_review/failed)
 
-  - Created cluster-level fact-check summary aggregation
+- Created cluster-level fact-check summary aggregation
 
-  - Added `scripts/fact_check_cluster.py` with color-coded output and verbose mode
+- Added `scripts/fact_check_cluster.py` with color-coded output and verbose mode
 
-  - Created 12 comprehensive integration tests (all passing)
+- Created 12 comprehensive integration tests (all passing)
 
-  - Schema fields implemented: `source_fact_check`, `fact_check_status`, `fact_check_trace`, `cluster_fact_check_summary`
+- Schema fields implemented: `source_fact_check`, `fact_check_status`, `fact_check_trace`, `cluster_fact_check_summary`
 
 - Implement `Reasoning` agent skeleton & unit tests
 
@@ -811,15 +811,15 @@ Script for debugging:
 
 - Timeline: break down into 2-week sprints:
 
-  - Sprint 1: Data model + SynthesisService + ClusterFetcher + Unit tests
+- Sprint 1: Data model + SynthesisService + ClusterFetcher + Unit tests
 
-  - Sprint 2: Critic & Fact-check integration + API endpoints + Integration tests
+- Sprint 2: Critic & Fact-check integration + API endpoints + Integration tests
 
-  - Sprint 2.5: Fact-Checker dataset & API expansion (dedicated data & backend sprint)
+- Sprint 2.5: Fact-Checker dataset & API expansion (dedicated data & backend sprint)
 
-  - Sprint 2.75: Reasoning agent integration (algorithm & pilot rollout)
+- Sprint 2.75: Reasoning agent integration (algorithm & pilot rollout)
 
-  - Sprint 3: Chief Editor review flow + UI hooks + Staging rollout
+- Sprint 3: Chief Editor review flow + UI hooks + Staging rollout
 
 ---
 

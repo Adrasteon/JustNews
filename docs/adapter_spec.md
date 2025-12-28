@@ -13,29 +13,29 @@ Minimal contract (BaseAdapter)
 
 - load(self, model_id: str, config: dict | None = None) -> None
 
-  - Prepare the model for inference, load weights/tokenizer or validate model path.
+- Prepare the model for inference, load weights/tokenizer or validate model path.
 
-  - Should be idempotent and quick to return if already loaded.
+- Should be idempotent and quick to return if already loaded.
 
 - infer(self, prompt: str, **kwargs) -> dict
 
-  - Run a single prompt synchronously and return a normalized dict with keys: text (str), raw (provider response), tokens (int), latency (float).
+- Run a single prompt synchronously and return a normalized dict with keys: text (str), raw (provider response), tokens (int), latency (float).
 
 - batch_infer(self, prompts: list[str], **kwargs) -> list[dict]
 
-  - Batch inference, return a list of normalized dicts with the same shape as infer output.
+- Batch inference, return a list of normalized dicts with the same shape as infer output.
 
 - health_check(self) -> dict
 
-  - Return a small readiness dict containing at minimum {'loaded': bool, 'name': str}.
+- Return a small readiness dict containing at minimum {'loaded': bool, 'name': str}.
 
 - unload(self) -> None
 
-  - Free resources loaded by this adapter (GPU memory, file handles, threads).
+- Free resources loaded by this adapter (GPU memory, file handles, threads).
 
 - metadata(self) -> dict
 
-  - Return a small metadata dict: { 'adapter': 'name', 'version': 'v1', 'device': 'cpu/gpu' }
+- Return a small metadata dict: { 'adapter': 'name', 'version': 'v1', 'device': 'cpu/gpu' }
 
 Behavioral constraints & expectations
 
@@ -127,11 +127,11 @@ Repository templates
 
 1. **Write tests** — Add/update files under `tests/adapters/` to cover:
 
-  - Base behavior (`test_adapter_base.py`, `test_mock_adapter.py` already exist).
+- Base behavior (`test_adapter_base.py`, `test_mock_adapter.py` already exist).
 
-  - New adapter dry-run paths, failure modes, JSON schema stability.
+- New adapter dry-run paths, failure modes, JSON schema stability.
 
-  - Provider-specific retry/backoff logic gated behind feature flags or env vars.
+- Provider-specific retry/backoff logic gated behind feature flags or env vars.
 
 1. **Document + register** — Update `docs/model-adapter-playbook.md` (status + next steps) and this spec if the new adapter introduces fresh patterns or requirements.
 

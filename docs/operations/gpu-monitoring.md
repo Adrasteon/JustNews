@@ -15,27 +15,27 @@ issues, and optimization of GPU resource usage.
 
 1. **GPU Metrics Exporter** (`gpu_metrics_exporter.py`)
 
-  - Custom Python-based exporter using NVIDIA Management Library (NVML) via `nvidia-smi`
+- Custom Python-based exporter using NVIDIA Management Library (NVML) via `nvidia-smi`
 
-  - HTTP server exposing Prometheus-formatted metrics on port 9400
+- HTTP server exposing Prometheus-formatted metrics on port 9400
 
-  - Automatic background operation with health checks
+- Automatic background operation with health checks
 
 1. **Prometheus Integration**
 
-  - GPU exporter added to scrape targets
+- GPU exporter added to scrape targets
 
-  - 15-second scrape interval for real-time monitoring
+- 15-second scrape interval for real-time monitoring
 
-  - Metrics stored with full retention policy
+- Metrics stored with full retention policy
 
 1. **Grafana Visualization**
 
-  - 6 dedicated GPU panels in JustNews Operations Dashboard
+- 6 dedicated GPU panels in JustNews Operations Dashboard
 
-  - Real-time gauges, stats, tables, and time series charts
+- Real-time gauges, stats, tables, and time series charts
 
-  - Color-coded thresholds for easy issue identification
+- Color-coded thresholds for easy issue identification
 
 ## GPU Metrics Available
 
@@ -162,7 +162,7 @@ The GPU monitoring is automatically configured when the monitoring stack is inst
 
 ```yaml
 
-  - job_name: nvidia-gpu-exporter
+- job_name: nvidia-gpu-exporter
 static_configs:
 
       - targets: ['127.0.0.1:9400']
@@ -170,9 +170,9 @@ metrics_path: /metrics ```
 
 1. **Grafana Dashboard**
 
-  - Automatically provisioned from `monitoring/dashboards/generated/`
+- Automatically provisioned from `monitoring/dashboards/generated/`
 
-  - 6 GPU panels integrated into JustNews Operations Dashboard
+- 6 GPU panels integrated into JustNews Operations Dashboard
 
 ### Manual Verification
 
@@ -180,19 +180,19 @@ metrics_path: /metrics ```
 
 ## Check GPU exporter health
 
-curl http://localhost:9400/health
+curl <http://localhost:9400/health>
 
 ## View raw GPU metrics
 
-curl http://localhost:9400/metrics | head -20
+curl <http://localhost:9400/metrics> | head -20
 
 ## Verify Prometheus scraping
 
-curl http://localhost:9090/api/v1/query?query=nvidia_gpu_count
+curl <http://localhost:9090/api/v1/query?query=nvidia_gpu_count>
 
 ## Access dashboard
 
-open http://localhost:3000/d/ef37elu2756o0e/justnews-operations-dashboard
+open <http://localhost:3000/d/ef37elu2756o0e/justnews-operations-dashboard>
 
 ```
 
@@ -246,15 +246,15 @@ netstat -tlnp | grep 9400
 
 ## Check exporter health
 
-curl http://localhost:9400/health
+curl <http://localhost:9400/health>
 
 ## Verify metrics endpoint
 
-curl http://localhost:9400/metrics | grep nvidia_gpu
+curl <http://localhost:9400/metrics> | grep nvidia_gpu
 
 ## Check Prometheus targets
 
-curl http://localhost:9090/api/v1/targets | jq '.data.activeTargets[] | select(.labels.job == "nvidia-gpu-exporter")'
+curl <http://localhost:9090/api/v1/targets> | jq '.data.activeTargets[] | select(.labels.job == "nvidia-gpu-exporter")'
 
 ```
 
@@ -357,11 +357,11 @@ The exporter automatically detects and monitors all GPUs:
 
 ## Check number of GPUs
 
-curl http://localhost:9090/api/v1/query?query=nvidia_gpu_count
+curl <http://localhost:9090/api/v1/query?query=nvidia_gpu_count>
 
 ## Query specific GPU (if multiple)
 
-curl http://localhost:9090/api/v1/query?query=nvidia_gpu_utilization_ratio{gpu="1"}
+curl <http://localhost:9090/api/v1/query?query=nvidia_gpu_utilization_ratio{gpu="1"}>
 
 ```
 

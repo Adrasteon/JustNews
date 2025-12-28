@@ -97,7 +97,7 @@ sudo systemctl enable --now justnews@mcp_bus
 
 ## Verify
 
-curl -s http://localhost:8017/health && echo "✅ MCP Bus"
+curl -s <http://localhost:8017/health> && echo "✅ MCP Bus"
 
 ```bash
 
@@ -116,7 +116,7 @@ sudo systemctl enable --now justnews@gpu_orchestrator
 ## WAIT for ready (try every 5 seconds):
 
 for i in {1..30}; do
-  curl -fsS http://127.0.0.1:8014/ready && echo "✅ GPU Orchestrator READY" && break
+  curl -fsS <http://127.0.0.1:8014/ready> && echo "✅ GPU Orchestrator READY" && break
   sleep 5
 done
 
@@ -141,7 +141,7 @@ sudo ./infrastructure/systemd/scripts/enable_all.sh start
 
 for port in 8015 8016 8004 8007; do
   echo -n "Port $port: "
-  curl -s http://localhost:$port/health | jq -r '.status'
+  curl -s <http://localhost:$port/health> | jq -r '.status'
 done
 
 ```bash
@@ -176,7 +176,7 @@ mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -D $MARIADB_DB \
 
 ## Embeddings in ChromaDB
 
-curl -s -X POST http://localhost:8000/api/v1/collections/articles/count \
+curl -s -X POST <http://localhost:8000/api/v1/collections/articles/count> \
   -H "Content-Type: application/json" -d '{}' | jq '.count'
 
 ```
@@ -204,29 +204,29 @@ curl -s -X POST http://localhost:8000/api/v1/collections/articles/count \
 ## Quick health check of all services
 
 echo "MCP Bus:"
-curl -s http://localhost:8017/health | jq '.status'
+curl -s <http://localhost:8017/health> | jq '.status'
 
 echo "GPU Orchestrator:"
-curl -fsS http://127.0.0.1:8014/ready && echo "READY" || echo "NOT READY"
+curl -fsS <http://127.0.0.1:8014/ready> && echo "READY" || echo "NOT READY"
 
 echo "Crawler:"
-curl -s http://localhost:8015/health | jq '.status'
+curl -s <http://localhost:8015/health> | jq '.status'
 
 echo "Crawler Control:"
-curl -s http://localhost:8016/health | jq '.status'
+curl -s <http://localhost:8016/health> | jq '.status'
 
 echo "Analyst:"
-curl -s http://localhost:8004/health | jq '.status'
+curl -s <http://localhost:8004/health> | jq '.status'
 
 echo "Memory:"
-curl -s http://localhost:8007/health | jq '.status'
+curl -s <http://localhost:8007/health> | jq '.status'
 
 echo "MariaDB:"
 mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -h $MARIADB_HOST \
   -e "SELECT COUNT(*) AS articles FROM articles;" 2>/dev/null || echo "NOT CONNECTED"
 
 echo "ChromaDB:"
-curl -s http://localhost:8000/api/v1/heartbeat | grep -q '{}' && echo "OK" || echo "NOT RESPONDING"
+curl -s <http://localhost:8000/api/v1/heartbeat> | grep -q '{}' && echo "OK" || echo "NOT RESPONDING"
 
 ```
 
@@ -236,7 +236,7 @@ curl -s http://localhost:8000/api/v1/heartbeat | grep -q '{}' && echo "OK" || ec
 
 | Symptom | Check | Fix | |---------|-------|-----| | "command not found: source" | Global env | Use
 `./scripts/run_with_env.sh` or run `export MARIADB_HOST=localhost` | | Port 8015 refused | GPU Orchestrator ready? |
-`curl -fsS http://127.0.0.1:8014/ready` – wait until 200 | | No ChromaDB at 8000 | Docker running? | `docker ps | grep
+`curl -fsS <http://127.0.0.1:8014/ready`> – wait until 200 | | No ChromaDB at 8000 | Docker running? | `docker ps | grep
 chromadb` – if missing, run Docker start command | | Articles count = 0 | Database schema? | Run
 `scripts/init_database.py` again | | MariaDB won't connect | Password correct? | Check `MARIADB_PASSWORD` in global.env
 | | vLLM 7060 crashed | Check logs | `tail -50 /home/adra/JustNews/run/vllm_mistral_fp16.log` |
@@ -246,10 +246,10 @@ chromadb` – if missing, run Docker start command | | Articles count = 0 | Data
 ## Port Map
 
 | Service | Port | Health Check | |---------|------|--------------| | MCP Bus | 8017 | `curl
-http://localhost:8017/health` | | GPU Orchestrator | 8014 | `curl http://localhost:8014/ready` | | Crawler | 8015 |
-`curl http://localhost:8015/health` | | Crawler Control | 8016 | `curl http://localhost:8016/health` | | Analyst | 8004
-| `curl http://localhost:8004/health` | | Memory | 8007 | `curl http://localhost:8007/health` | | ChromaDB | 8000 |
-`curl http://localhost:8000/api/v1/heartbeat` | | vLLM Mistral | 7060 | `curl http://localhost:7060/health` |
+<http://localhost:8017/health`> | | GPU Orchestrator | 8014 | `curl <http://localhost:8014/ready`> | | Crawler | 8015 |
+`curl <http://localhost:8015/health`> | | Crawler Control | 8016 | `curl <http://localhost:8016/health`> | | Analyst | 8004
+| `curl <http://localhost:8004/health`> | | Memory | 8007 | `curl <http://localhost:8007/health`> | | ChromaDB | 8000 |
+`curl <http://localhost:8000/api/v1/heartbeat`> | | vLLM Mistral | 7060 | `curl <http://localhost:7060/health`> |
 
 ---
 
@@ -284,7 +284,7 @@ mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -D $MARIADB_DB \
 
 ## ChromaDB collection count
 
-curl -s -X POST http://localhost:8000/api/v1/collections/articles/count \
+curl -s -X POST <http://localhost:8000/api/v1/collections/articles/count> \
   -H "Content-Type: application/json" -d '{}' | jq '.count'
 
 ```

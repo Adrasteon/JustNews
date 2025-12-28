@@ -242,13 +242,13 @@ improve the performance of the system.
 This is the comparation our sample order app in Nucleoid IDE against MySQL and Postgres with using Express.js and
 Sequelize libraries.
 
-https://nucleoid.com/ide/sample
+<https://nucleoid.com/ide/sample>
 
 <img src="https://cdn.nucleoid.com/media/benchmark.png" alt="Benchmark" width="550"/>
 
 > Performance benchmark happened in t2.micro of AWS EC2 instance and both databases had dedicated servers with <u>no indexes and default configurations</u>.
 
-https://github.com/NucleoidAI/benchmark
+<https://github.com/NucleoidAI/benchmark>
 
 This does not necessary mean Nucleoid runtime is faster than MySQL or Postgres, instead databases require constant
 maintenance by DBA teams with indexing, caching, purging etc. however, Nucleoid tries to solve this problem with

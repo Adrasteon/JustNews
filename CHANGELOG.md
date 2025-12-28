@@ -22,6 +22,10 @@ All notable changes to this project will be documented in this file.
 
 - **✅** Added unit and integration tests: `tests/agents/mcp_bus/test_health.py` and `tests/agents/mcp_bus/test_health_integration.py` (covers healthy, degraded and unreachable agents).
 
+- **✅** Monitoring: Added Prometheus alerts for MCP Bus overall and per-agent degraded/unreachable conditions; added Grafana panels (Overall, Degraded Count, Agent Status table).
+
+- **✅** Alertmanager: added example Alertmanager config, an Alertmanager message template, an idempotent systemd unit installer script (`scripts/install_alertmanager_unit.sh`), and Makefile helpers to install/enable/test Alertmanager locally.
+
 Status: **MISTRAL-7B + MCP BUS HEALTH READY**
 
 ## [Unreleased] - 2025-11-06 - **CRAWLER ENHANCEMENTS IMPLEMENTATION COMPLETE**

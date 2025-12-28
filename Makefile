@@ -341,6 +341,13 @@ vllm-install-unit:
 	@sudo systemctl daemon-reload
 	$(call log_success,"vLLM systemd unit installed; run 'sudo systemctl enable --now vllm-mistral-7b' to start")
 
+alertmanager-install-unit:
+	$(call log_info,"Install Alertmanager systemd unit example (idempotent, requires sudo)")
+	@sudo mkdir -p /etc/alertmanager
+	@sudo cp infrastructure/systemd/alertmanager.service.example /etc/systemd/system/alertmanager.service
+	@sudo systemctl daemon-reload
+	$(call log_success,"Alertmanager unit installed; run 'sudo systemctl enable --now alertmanager' or run './scripts/install_alertmanager_unit.sh --enable' to enable/start")
+
 vllm-install-and-start: vllm-install-unit
 	$(call log_info,"Enable and start vLLM systemd unit (requires sudo)")
 	@sudo systemctl enable --now vllm-mistral-7b.service

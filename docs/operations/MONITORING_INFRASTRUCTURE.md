@@ -118,7 +118,28 @@ monitoring/
 
 - ⚠️ **Metrics & Dashboards**: Design exists, but **Grafana/Prometheus not deployed to systemd yet**
 
-- ⚠️ **Alerting**: Rules exist; **AlertManager** is recommended for routing and notification (see `monitoring/alertmanager/alertmanager.example.yml`). Deploy and configure AlertManager to enable Slack/Email/PagerDuty notifications.
+- ⚠️ **Alerting**: Rules exist; **AlertManager** is recommended for routing and notification (see `monitoring/alertmanager/alertmanager.example.yml`).
+
+  Installation quickstart (idempotent):
+
+  1. Install Alertmanager and any required dependencies (the repo provides an installer and Makefile helpers):
+
+     - Run `make alertmanager-install` to apt-install (or download a release) and copy example configs.
+     - Use `make alertmanager-install-unit` to install the example systemd unit to `/etc/systemd/system/alertmanager.service` (idempotent copy).
+     - Or run the idempotent installer script directly: `sudo ./scripts/install_alertmanager_unit.sh --enable` which will back up an existing unit file and enable/start the service.
+
+  2. Configure receivers in `/etc/alertmanager/alertmanager.yml` and place templates in `/etc/alertmanager/templates/` (example in `monitoring/alertmanager/alertmanager.example.yml`).
+
+  3. Reload systemd and start Alertmanager: `sudo systemctl daemon-reload && sudo systemctl enable --now alertmanager.service` (the installer can do this with `--enable`).
+
+  4. Validate: `make alertmanager-status` shows service status and API health.  
+
+  5. Validate alert routing: send a test alert with `make alertmanager-test`.
+
+  Notes:
+  - The installer script is idempotent and will back up existing unit files into `/var/backups/justnews/alertmanager/` before replacing.
+  - Update the example config with your Slack/webhook/email credentials before enabling in production.
+
 
 ## Recommendations
 

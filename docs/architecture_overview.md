@@ -1,10 +1,10 @@
- # JustNews — Project Architecture Overview
+# JustNews — Project Architecture Overview
 
 This document provides a concise architecture overview for the JustNews project: per-agent responsibilities, functional
 intent and completion status, common workflow patterns, and training patterns used by the system. It is intended as a
 developer-facing reference to help plan work, reviews, and operational rollouts.
 
- ## Executive summary
+## Executive summary
 
 JustNews is an agent-driven news ingestion and processing platform built around a few core ideas:
 
@@ -21,7 +21,7 @@ JustNews is an agent-driven news ingestion and processing platform built around 
 Current branch: `dev/crawl_scrape` contains the recent Crawl4AI enforcement docs, evaluation harness, and HITL service
 improvements.
 
- ## System map (high level)
+## System map (high level)
 
 - Scheduler / Orchestrator
 
@@ -31,11 +31,11 @@ improvements.
 
 - `agents/crawler/crawler_engine.py` — unified engine. Chooses strategy, submits HITL candidates, ingests articles.
 
-- `agents/crawler/crawl4ai_adapter.py` — translates site profiles to `crawl4ai` objects and runs AdaptiveCrawler or AsyncWebCrawler.
+- `agents/crawler/crawl4ai_adapter.py`— translates site profiles to`crawl4ai` objects and runs AdaptiveCrawler or AsyncWebCrawler.
 
 - `agents/sites/generic_site_crawler.py` — fallback requests-based crawler.
 
-- `agents/sites/*_crawler.py` — per-site (e.g., `bbc_crawler.py`) specialized crawlers (some stubs).
+- `agents/sites/*_crawler.py`— per-site (e.g.,`bbc_crawler.py`) specialized crawlers (some stubs).
 
 - Extraction
 
@@ -47,23 +47,23 @@ improvements.
 
 - Agents Bus & Ingestion
 
-- MCP Bus (`agents/mcp_bus`) — RPC-style bus for agent-to-agent calls (e.g., `memory.ingest_article`, `archive.queue_article`).
+- MCP Bus (`agents/mcp_bus`) — RPC-style bus for agent-to-agent calls (e.g.,`memory.ingest_article`,`archive.queue_article`).
 
 - Memory & Archive
 
-- `agents/memory/` — ingestion APIs, embedding store integration. Uses dual-db strategies in `database/`.
+- `agents/memory/`— ingestion APIs, embedding store integration. Uses dual-db strategies in`database/`.
 
-- `archive/` and `archive_storage/raw_html/` — raw HTML and archival storage.
+- `archive/`and`archive_storage/raw_html/` — raw HTML and archival storage.
 
 - Downstream agents
 
-- `agents/fact_checker`, `agents/chief_editor`, `agents/synthesizer`, `agents/journalist` — higher-level processing, QA, and editorial workflows.
+- `agents/fact_checker`,`agents/chief_editor`,`agents/synthesizer`,`agents/journalist` — higher-level processing, QA, and editorial workflows.
 
 - Infrastructure & Observability
 
 - `infrastructure/` contains Prometheus/Grafana templates, systemd scripts, and deployment helpers.
 
- ## Per-agent functional responsibilities and completion status
+## Per-agent functional responsibilities and completion status
 
 The table below lists agents, their functional intent, and current level of implementation (Done / Partial / Stub /
 Planned).
@@ -76,7 +76,7 @@ Planned).
 
 - Crawl4AI Adapter — `agents/crawler/crawl4ai_adapter.py` — Done
 
-- Intent: translate YAML profiles into `BrowserConfig` and `CrawlerRunConfig`, handle adaptive crawls, build article dicts.
+- Intent: translate YAML profiles into `BrowserConfig`and`CrawlerRunConfig`, handle adaptive crawls, build article dicts.
 
 - Status: Implemented; guarded around optional `crawl4ai` dependency. Emits adaptive metrics.
 
@@ -110,25 +110,25 @@ Planned).
 
 - Status: Core ingestion exists; embedding store wiring and operational tuning may be partial depending on environment.
 
-- Archive Agent — `agents/archive/` and `archive_storage/raw_html/` — Partial
+- Archive Agent — `agents/archive/`and`archive_storage/raw_html/` — Partial
 
 - Intent: store raw HTML/artefacts and provide retrieval for auditing and reprocessing.
 
-- Status: MCP tool `queue_article` now normalizes HITL ingest payloads, snapshots raw HTML via `raw_html_*` helpers, and writes to Stage B storage (MariaDB + Chroma); Grafana wiring + long-term backfill tooling remain.
+- Status: MCP tool `queue_article`now normalizes HITL ingest payloads, snapshots raw HTML via`raw_html_*` helpers, and writes to Stage B storage (MariaDB + Chroma); Grafana wiring + long-term backfill tooling remain.
 
-- Fact Checker, Synthesizer, Chief Editor, Journalist Agents — `agents/fact_checker/`, `agents/synthesizer/`, `agents/chief_editor/`, `agents/journalist/` — Partial
+- Fact Checker, Synthesizer, Chief Editor, Journalist Agents — `agents/fact_checker/`,`agents/synthesizer/`,`agents/chief_editor/`,`agents/journalist/` — Partial
 
 - Intent: downstream processing — fact validation, summarization/synthesis, editorial suggestion, article drafting.
 
 - Status: Several agents implemented; many functions have tests and tools but full integration and operational tuning remain ongoing. Fact Checker (and the adjacent Critic workflows) now share the Mistral-7B base via adapters so accuracy-critical reviews stay aligned with the broader rollout.
 
- ## Functional workflow patterns
+## Functional workflow patterns
 
 1. Crawl & Extraction
 
     - Scheduler selects profiles (from `config/crawl_profiles/`) and posts jobs to crawler engine.
 
-    - `crawler_engine` chooses strategy: `crawl4ai` (adaptive) preferred, `generic` fallback.
+    - `crawler_engine`chooses strategy:`crawl4ai`(adaptive) preferred,`generic` fallback.
 
     - Crawl4AI returns pages or adaptive docs; these are converted into article dicts and passed to extraction pipeline.
 
@@ -148,19 +148,19 @@ Planned).
 
 1. Downstream Processing
 
-- Agents like `fact_checker`, `synthesizer` and `chief_editor` run asynchronously on ingested articles, producing derived artifacts (checks, summaries, editor suggestions). Fact Checker and Critic now lean on the shared Mistral adapter stack for long-form reasoning while retaining lightweight retrieval models for evidence gathering.
+- Agents like `fact_checker`,`synthesizer`and`chief_editor` run asynchronously on ingested articles, producing derived artifacts (checks, summaries, editor suggestions). Fact Checker and Critic now lean on the shared Mistral adapter stack for long-form reasoning while retaining lightweight retrieval models for evidence gathering.
 
 1. Metrics & Observability
 
-    - `crawl4ai_adapter._record_adaptive_metrics` emits adaptive metrics: `adaptive_runs_total`, `adaptive_confidence`, `adaptive_pages_crawled`, `adaptive_articles_emitted`.
+    - `crawl4ai_adapter._record_adaptive_metrics`emits adaptive metrics:`adaptive_runs_total`,`adaptive_confidence`,`adaptive_pages_crawled`,`adaptive_articles_emitted`.
 
     - Scheduler writes Prometheus textfile metrics; `infrastructure/` contains Prometheus scrape configs and Grafana dashboard templates.
 
- ## Training patterns
+## Training patterns
 
 - Offline supervised training
 
-- Use stored labeled examples (HITL outputs) and archived HTML to construct datasets for model training. `training_system/` and `training_system/tests` provide utilities and integration points.
+- Use stored labeled examples (HITL outputs) and archived HTML to construct datasets for model training. `training_system/`and`training_system/tests` provide utilities and integration points.
 
 - Online / continual training
 
@@ -174,19 +174,19 @@ Planned).
 
 - Use `evaluation/` harness (added) to run extraction-parity checks (BLEU/ROUGE/F1/Levenshtein) against ground truth samples as acceptance criteria before rolling changes.
 
- ## Levels of completion — actionable summary
+## Levels of completion — actionable summary
 
-- High confidence / Done: `crawler_engine` core logic, `crawl4ai_adapter`, `extraction.py`, HITL API endpoints and migrations, scheduler dry-run. Tests exist for many core flows.
+- High confidence / Done: `crawler_engine`core logic,`crawl4ai_adapter`,`extraction.py`, HITL API endpoints and migrations, scheduler dry-run. Tests exist for many core flows.
 
 - Partial / Needs work: memory embedding pipeline, archive retention scripts, comprehensive site profile coverage, CI enforcement of `crawl4ai` availability, Grafana dashboards provisioning.
 
 - Stub / Deprioritised: ultra-fast per-site crawlers (e.g., `bbc_crawler.py`) — recommended to deprecate and migrate to Crawl4AI profiles.
 
- ## Recommended next priorities (short term)
+## Recommended next priorities (short term)
 
 1. Enforce Crawl4AI availability in CI and runtime, add smoke tests (import + small adaptive run) — reduces drift between code and design.
 
-1. Implement script registry for `js_code` reuse (`config/crawl_scripts/` + `agents/crawler/scripts_registry.py`).
+1. Implement script registry for `js_code`reuse (`config/crawl_scripts/`+`agents/crawler/scripts_registry.py`).
 
 1. Expand profile coverage: migrate remaining sites to per-site YAML in `config/crawl_profiles/`.
 
@@ -194,7 +194,7 @@ Planned).
 
 1. Provision dashboards and Prometheus job for adaptive metrics in `infrastructure/` and add parity evaluation CI job against stored fixtures.
 
- ## References and useful files
+## References and useful files
 
 - Scheduler: `scripts/ops/run_crawl_schedule.py`
 
@@ -208,9 +208,9 @@ Planned).
 
 - HITL: `agents/hitl_service/` (FastAPI app, migrations)
 
-- Evaluation harness: `evaluation/run_evaluation.py`, `evaluation/metrics.py`, `evaluation/datasets/`
+- Evaluation harness: `evaluation/run_evaluation.py`,`evaluation/metrics.py`,`evaluation/datasets/`
 
-- CI: `.github/workflows/pytest.yml` (CI uses `environment.yml` via micromamba in workflows)
+- CI: `.github/workflows/pytest.yml`(CI uses`environment.yml` via micromamba in workflows)
 
 --- This document is intended to evolve. To update it, edit `docs/architecture_overview.md` on your working branch and
 submit a PR with context and test/CI changes as appropriate.

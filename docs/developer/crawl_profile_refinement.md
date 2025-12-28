@@ -10,7 +10,7 @@ on the publisher site.
 
 - Ensure Playwright browsers are installed for the environment (`playwright install chromium`).
 
-- Confirm the target domain has a profile file under `config/crawl_profiles/` and that you understand any custom `extra` flags already applied (e.g., `skip_seed_articles`).
+- Confirm the target domain has a profile file under `config/crawl_profiles/`and that you understand any custom`extra`flags already applied (e.g.,`skip_seed_articles`).
 
 ## 2. Quick Variant Probe
 
@@ -66,7 +66,8 @@ articles 30 ```
 
 ```bash set -a && source global.env && set +a conda run -n
 ${CANONICAL_ENV:-justnews-py312} python scripts/ops/run_crawl_schedule.py \ --schedule /tmp/crawl_schedule_bbc.yaml \
---testrun --no-wait --timeout 2400 ```
+--testrun --no-wait --timeout 2400
+```
 
 - Review logs for section coverage, dedupe behaviour, and extractor output quality.
 
@@ -86,7 +87,7 @@ ${CANONICAL_ENV:-justnews-py312} python scripts/ops/run_crawl_schedule.py \ --sc
 
 ## 9. Validation Snapshots
 
-- **2025-11-01**: `link_preview_only` probe with `max_articles=100` harvested 100 unique URLs (98 article details, 2 seed landings). Domain split favoured `www.bbc.co.uk` (76) over `www.bbc.com` (24). Run log and full URL list live in `docs/developer/crawl_profile_tuning_log.md`.
+- **2025-11-01**: `link_preview_only`probe with`max_articles=100`harvested 100 unique URLs (98 article details, 2 seed landings). Domain split favoured`www.bbc.co.uk`(76) over`www.bbc.com`(24). Run log and full URL list live in`docs/developer/crawl_profile_tuning_log.md`.
 
 - **2025-11-01**: Follow-up probe after enabling `strict_skip_seed_articles`, reducing link-preview concurrency to 1 (max links 120), and adding per-request crawler retries. Harvested 98 unique article URLs with zero seed leakage; Playwright remained stable after the change.
 

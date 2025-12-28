@@ -61,7 +61,7 @@ Testing guidance
 
 - Unit tests: test the BaseAdapter contract (raising NotImplementedError by default), and create a MockAdapter that implements the contract deterministically.
 
-- Integration / dry-run tests: ensure adapters behave safely in dry-run mode and produce consistent, schema-compatible outputs. Use the `PYTHONPATH=. scripts/dev/run_pytest_conda.sh <tests>` helper to run tests inside the canonical conda environment (`${CANONICAL_ENV:-justnews-py312}`) so CI/local runs are identical.
+- Integration / dry-run tests: ensure adapters behave safely in dry-run mode and produce consistent, schema-compatible outputs. Use the `PYTHONPATH=. scripts/dev/run_pytest_conda.sh <tests>`helper to run tests inside the canonical conda environment (`${CANONICAL_ENV:-justnews-py312}`) so CI/local runs are identical.
 
 - CI: include adapter unit tests and dry-run adapter smoke tests in PR jobs. For real-provider tests (OpenAI/HF), gate them behind environment variables/secrets and run them in a separate gated CI job.
 
@@ -99,7 +99,7 @@ CI checklist for adapter PRs
 
 Where to start
 
-- Quick win (recommended): create/update `agents/common/adapter_base.py`, `agents/common/mock_adapter.py` and add tests `tests/adapters/test_base.py`, `tests/adapters/test_mock_adapter.py` (already present in this repo). Continue by adding `docs/adapter_spec.md` and include this file in PRs when adding new adapters.
+- Quick win (recommended): create/update `agents/common/adapter_base.py`,`agents/common/mock_adapter.py`and add tests`tests/adapters/test_base.py`,`tests/adapters/test_mock_adapter.py`(already present in this repo). Continue by adding`docs/adapter_spec.md` and include this file in PRs when adding new adapters.
 
 Repository templates
 
@@ -107,7 +107,7 @@ Repository templates
 
 - `agents/common/hf_adapter.py` — HF adapter template (ModelStore-aware loading, optional int8/int4 quantization via bitsandbytes, device-map selection, retry/backoff, dry-run short-circuiting, and configurable generation defaults).
 
-- `agents/common/adapter_base.py` — provides `AdapterResult`, `AdapterMetadata`, `AdapterHealth`, `AdapterError`, dry-run detection helpers, `mark_loaded/mark_unloaded`, `ensure_loaded`, and a default `batch_infer` implementation so adapters can focus on provider logic.
+- `agents/common/adapter_base.py`— provides`AdapterResult`,`AdapterMetadata`,`AdapterHealth`,`AdapterError`, dry-run detection helpers,`mark_loaded/mark_unloaded`,`ensure_loaded`, and a default`batch_infer` implementation so adapters can focus on provider logic.
 
 - `agents/common/mock_adapter.py` — canonical deterministic mock adapter with configurable responses, forced-failure hooks, latency injection, and health metadata for CI tests.
 
@@ -115,9 +115,9 @@ Repository templates
 
 ## Developer recipe: adding a new adapter
 
-1. **Copy the base template** — Start from `agents/common/openai_adapter.py` (hosted provider) or `agents/common/hf_adapter.py` (local/HF). Keep imports lazy and respect `BaseAdapter.dry_run`.
+1. **Copy the base template** — Start from `agents/common/openai_adapter.py`(hosted provider) or`agents/common/hf_adapter.py`(local/HF). Keep imports lazy and respect`BaseAdapter.dry_run`.
 
-1. **Implement the contract** — Provide `load`, `infer`, and (optionally) override `batch_infer` if batching needs optimized paths. Use `mark_loaded`, `ensure_loaded`, and `build_result` helpers.
+1. **Implement the contract** — Provide `load`,`infer`, and (optionally) override`batch_infer`if batching needs optimized paths. Use`mark_loaded`,`ensure_loaded`, and`build_result` helpers.
 
 1. **Handle dry-run + ModelStore** — Short-circuit or return deterministic placeholders when `self.dry_run` is true or when handles from ModelStore are dicts.
 
@@ -127,7 +127,7 @@ Repository templates
 
 1. **Write tests** — Add/update files under `tests/adapters/` to cover:
 
-- Base behavior (`test_adapter_base.py`, `test_mock_adapter.py` already exist).
+- Base behavior (`test_adapter_base.py`,`test_mock_adapter.py` already exist).
 
 - New adapter dry-run paths, failure modes, JSON schema stability.
 
@@ -135,7 +135,7 @@ Repository templates
 
 1. **Document + register** — Update `docs/model-adapter-playbook.md` (status + next steps) and this spec if the new adapter introduces fresh patterns or requirements.
 
-1. **Run canonical tests** — Use `./scripts/dev/run_pytest_conda.sh tests/adapters/*` so the canonical `${CANONICAL_ENV:-justnews-py312}` env validates your changes before opening a PR.
+1. **Run canonical tests** — Use `./scripts/dev/run_pytest_conda.sh tests/adapters/*`so the canonical`${CANONICAL_ENV:-justnews-py312}` env validates your changes before opening a PR.
 
 Following this recipe keeps adapters testable, dry-run friendly, and aligned with the shared BaseAdapter utilities.
 

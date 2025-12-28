@@ -58,7 +58,7 @@ Prometheus server configuration with:
 | Dashboard | Purpose | Lines | |-----------|---------|-------| | `system_overview_dashboard.json` | Infrastructure
 health (CPU, memory, network, GPU) | 461 | | `justnews_operations_dashboard.json` | Service health and operational
 metrics | 489 | | `business_metrics_dashboard.json` | Content processing, crawl rates, ingestion | 253 | |
-`ingest_archive_dashboard.json` | Article ingestion pipeline | 49 | | `parity_dashboard.json` | Extraction parity and
+`ingest_archive_dashboard.json`| Article ingestion pipeline | 49 | |`parity_dashboard.json` | Extraction parity and
 quality metrics | 60 |
 
 **System Overview Dashboard includes**:
@@ -126,13 +126,13 @@ Installation quickstart (idempotent):
 
     - Run `make alertmanager-install` to apt-install (or download a release) and copy example configs.
 
-    - Use `make alertmanager-install-unit` to install the example systemd unit to `/etc/systemd/system/alertmanager.service` (idempotent copy).
+    - Use `make alertmanager-install-unit`to install the example systemd unit to`/etc/systemd/system/alertmanager.service` (idempotent copy).
 
     - Or run the idempotent installer script directly: `sudo ./scripts/install_alertmanager_unit.sh --enable` which will back up an existing unit file and enable/start the service.
 
-  1. Configure receivers in `/etc/alertmanager/alertmanager.yml` and place templates in `/etc/alertmanager/templates/` (example in `monitoring/alertmanager/alertmanager.example.yml`).
+  1. Configure receivers in `/etc/alertmanager/alertmanager.yml`and place templates in`/etc/alertmanager/templates/`(example in`monitoring/alertmanager/alertmanager.example.yml`).
 
-  1. Reload systemd and start Alertmanager: `sudo systemctl daemon-reload && sudo systemctl enable --now alertmanager.service` (the installer can do this with `--enable`).
+  1. Reload systemd and start Alertmanager: `sudo systemctl daemon-reload && sudo systemctl enable --now alertmanager.service`(the installer can do this with`--enable`).
 
   1. Validate: `make alertmanager-status` shows service status and API health.
 
@@ -146,9 +146,9 @@ Notes:
 
 AUTO_INSTALL_ALERTMANAGER environment toggle -------------------------------------------
 
-- You can opt-in to the Alertmanager systemd unit installation as part of the standard agent startup by setting the environment variable `AUTO_INSTALL_ALERTMANAGER=1` in `/etc/justnews/global.env`.
+- You can opt-in to the Alertmanager systemd unit installation as part of the standard agent startup by setting the environment variable `AUTO_INSTALL_ALERTMANAGER=1`in`/etc/justnews/global.env`.
 
-- This runs only when the `mcp_bus` agent starts (to avoid multiple hosts attempting to manage a single host-level unit) and executes the idempotent `scripts/install_alertmanager_unit.sh --enable` script.
+- This runs only when the `mcp_bus`agent starts (to avoid multiple hosts attempting to manage a single host-level unit) and executes the idempotent`scripts/install_alertmanager_unit.sh --enable` script.
 
 - Default behavior is disabled (`AUTO_INSTALL_ALERTMANAGER=0`). Use in controlled admin environments only.
 
@@ -166,7 +166,8 @@ AUTO_INSTALL_ALERTMANAGER environment toggle -----------------------------------
 1. Create systemd units for Prometheus and Grafana:
 
 ```bash sudo systemctl enable --now prometheus sudo systemctl enable --now
-grafana-server ```
+grafana-server
+```
 
 1. Update password security in `/etc/justnews/monitoring/grafana.ini`:
 
@@ -249,7 +250,7 @@ exporter ```
 
 **What to do**:
 
-1. Uncomment `prometheus-client>=0.19.0` in `requirements.txt`
+1. Uncomment `prometheus-client>=0.19.0`in`requirements.txt`
 
 1. Implement metrics collection in agents using `common/metrics.py`
 

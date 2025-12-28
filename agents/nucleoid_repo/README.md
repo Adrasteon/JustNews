@@ -207,7 +207,7 @@ human1.mortal;
 
 Learn more at [nucleoid.com/docs/get-started](https://nucleoid.com/docs/get- started)
 
-> :bulb: Nucleoid runtime can also run on local machine with `npx @nucleoidai/ide start` and `npx @nucleoidai/expert start` including [Nucleoid Chat](https://nucleoid.com/ide/chat). These commands enable IDE and expert system components needed for Neuro-Symbolic AI.
+> :bulb: Nucleoid runtime can also run on local machine with `npx @nucleoidai/ide start`and`npx @nucleoidai/expert start` including [Nucleoid Chat](https://nucleoid.com/ide/chat). These commands enable IDE and expert system components needed for Neuro-Symbolic AI.
 
 ---
 

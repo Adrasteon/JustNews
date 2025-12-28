@@ -14,9 +14,9 @@ The following table lists the configurable parameters of the JustNews chart and 
 ### Global JustNews Parameters
 
 | Parameter | Description | Default | |-----------|-------------|---------| | `justnews.image.registry` | Global Docker
-image registry | `localhost:5000` | | `justnews.image.tag` | Global Docker image tag | `latest` | | `justnews.logLevel`
-| Logging level | `INFO` | | `justnews.environment` | Environment name | `production` | | `justnews.debug` | Enable
-debug mode | `false` | | `justnews.gpu.enabled` | Enable GPU support | `true` | | `justnews.gpu.memoryFraction` | GPU
+image registry | `localhost:5000`| |`justnews.image.tag`| Global Docker image tag |`latest`| |`justnews.logLevel`
+| Logging level | `INFO`| |`justnews.environment`| Environment name |`production`| |`justnews.debug` | Enable
+debug mode | `false`| |`justnews.gpu.enabled`| Enable GPU support |`true`| |`justnews.gpu.memoryFraction` | GPU
 memory fraction | `0.8` |
 
 ### Agent Configuration
@@ -39,20 +39,20 @@ The full chart content has been archived at: `infrastructure/archives/helm/justn
 If you need to work with the original chart for historical reasons, consult the archive, or git history for a full copy.
 
 | Parameter | Description | Default | |-----------|-------------|---------| | `mariadb.database` | MariaDB database name
-| `justnews` | | `mariadb.auth.username` | MariaDB username | `justnews` | | `mariadb.auth.password` | MariaDB password
-| Random | | `chromadb.persistence.enabled` | Enable ChromaDB persistence | `true` | | `redis.auth.password` | Redis
+| `justnews`| |`mariadb.auth.username`| MariaDB username |`justnews`| |`mariadb.auth.password` | MariaDB password
+| Random | | `chromadb.persistence.enabled`| Enable ChromaDB persistence |`true`| |`redis.auth.password` | Redis
 password | Random |
 
 ### Monitoring Configuration
 
 | Parameter | Description | Default | |-----------|-------------|---------| | `prometheus.replicas` | Prometheus
-replicas | `1` | | `grafana.adminUser` | Grafana admin username | `admin` | | `grafana.adminPassword` | Grafana admin
+replicas | `1`| |`grafana.adminUser`| Grafana admin username |`admin`| |`grafana.adminPassword` | Grafana admin
 password | Random |
 
 ### Ingress Configuration
 
 | Parameter | Description | Default | |-----------|-------------|---------| | `ingress.enabled` | Enable ingress |
-`false` | | `ingress.className` | Ingress class name | `nginx` | | `ingress.hosts[0].host` | Ingress host |
+`false`| |`ingress.className`| Ingress class name |`nginx`| |`ingress.hosts[0].host` | Ingress host |
 `justnews.local` |
 
 ## Example Configuration

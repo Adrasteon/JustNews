@@ -115,9 +115,9 @@ All Python scripts support these standard options:
 
 Scripts use these common environment variables:
 
-- `MYSQL_HOST`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD` - MariaDB configuration
+- `MYSQL_HOST`,`MYSQL_DATABASE`,`MYSQL_USER`,`MYSQL_PASSWORD` - MariaDB configuration
 
-- `CHROMA_HOST`, `CHROMA_PORT` - ChromaDB configuration
+- `CHROMA_HOST`,`CHROMA_PORT` - ChromaDB configuration
 
 - `MODEL_STORE_ROOT` - Model storage directory
 
@@ -143,7 +143,7 @@ When adding new scripts:
 
 1. **Categorize properly** - Place scripts in the appropriate category directory
 
-1. **Use the framework** - Python scripts should use `ScriptFramework` from `common/script_framework.py`
+1. **Use the framework** - Python scripts should use `ScriptFramework`from`common/script_framework.py`
 
 1. **Document thoroughly** - Include docstrings and usage examples
 

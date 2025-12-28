@@ -10,7 +10,7 @@ Runner requirements
 
 - A Linux host with systemd (Ubuntu or Debian recommended).
 
-- A runner configured in GitHub self-hosted pool with labels: `self-hosted`, `linux`, `systemd` (the workflow uses these labels in runs-on).
+- A runner configured in GitHub self-hosted pool with labels: `self-hosted`,`linux`,`systemd` (the workflow uses these labels in runs-on).
 
 - sudo or root access enabled for the runner so the workflow can run system-level commands (systemd-nspawn, machinectl, debootstrap). The workflow executes sturdy commands with `sudo`.
 
@@ -24,7 +24,7 @@ Packages / tooling required on the runner
 
 Runner caching (optional but recommended)
 
-- For faster CI runs, the workflow uses a prebuilt container cache at `/var/lib/ci_cache/justnews_test_base.tar.gz` on the runner. The repository ships `scripts/dev/setup_selfhosted_runner.sh` which can install required tooling and build a cache tarball. The workflow will reuse this cached container when present to avoid re-running debootstrap each job.
+- For faster CI runs, the workflow uses a prebuilt container cache at `/var/lib/ci_cache/justnews_test_base.tar.gz`on the runner. The repository ships`scripts/dev/setup_selfhosted_runner.sh` which can install required tooling and build a cache tarball. The workflow will reuse this cached container when present to avoid re-running debootstrap each job.
 
 Security & safety notes
 

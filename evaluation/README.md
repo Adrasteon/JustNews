@@ -19,7 +19,7 @@ Goals
 
 Usage
 
-1. Install the project environment (use `environment.yml` or `requirements.txt`).
+1. Install the project environment (use `environment.yml`or`requirements.txt`).
 
 1. Run a parity evaluation:
 
@@ -28,4 +28,4 @@ JUSTNEWS_PYTHON evaluation/run_evaluation.py --mode extraction_parity --dataset 
 
 ```
 
-The runner will look for paired files in the dataset directory with `.html` and `.txt` (ground truth) suffixes.
+The runner will look for paired files in the dataset directory with `.html`and`.txt` (ground truth) suffixes.

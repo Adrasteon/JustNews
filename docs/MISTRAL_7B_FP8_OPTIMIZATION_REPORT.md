@@ -155,7 +155,7 @@ or directory`
 
 #### Root Cause Analysis
 
-1. **CUDA Libraries Not in Standard Paths**: Conda installed CUDA libraries in non-standard location (`$CONDA_PREFIX/targets/x86_64-linux/lib/` instead of `/usr/lib64/`)
+1. **CUDA Libraries Not in Standard Paths**: Conda installed CUDA libraries in non-standard location (`$CONDA_PREFIX/targets/x86_64-linux/lib/`instead of`/usr/lib64/`)
 
 1. **LD_LIBRARY_PATH vs LIBRARY_PATH**: Runtime (`LD_LIBRARY_PATH`) and linker (`LIBRARY_PATH`) are separate; linker needs explicit paths
 

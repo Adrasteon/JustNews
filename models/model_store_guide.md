@@ -28,15 +28,15 @@ MODEL_STORE_ROOT/
 
 - All operations must occur on the same filesystem to preserve atomic rename and symlink semantics.
 
-- In legacy environments you may still encounter alias symlinks such as `news-cleaner-agent -> synthesizer`. Keep the canonical `<agent>/…` layout authoritative; if those aliases exist, treat them as read-only compatibility shims rather than the source of truth.
+- In legacy environments you may still encounter alias symlinks such as `news-cleaner-agent -> synthesizer`. Keep the canonical`<agent>/…` layout authoritative; if those aliases exist, treat them as read-only compatibility shims rather than the source of truth.
 
 ## Lifecycle
 
-1. **Stage** – Writers obtain a temporary directory via `ModelStore.stage_new(agent, version)` and populate the full model payload inside `<version>.tmp`.
+1. **Stage** – Writers obtain a temporary directory via `ModelStore.stage_new(agent, version)`and populate the full model payload inside`<version>.tmp`.
 
-1. **Validate & Manifest** – `ModelStore.finalize(...)` computes a deterministic SHA-256 checksum, writes `manifest.json`, and renames the directory to `<version>`.
+1. **Validate & Manifest** – `ModelStore.finalize(...)`computes a deterministic SHA-256 checksum, writes`manifest.json`, and renames the directory to`<version>`.
 
-1. **Publish** – Finalize atomically updates the `current` symlink (`os.replace`) so running agents immediately see the new version.
+1. **Publish** – Finalize atomically updates the `current`symlink (`os.replace`) so running agents immediately see the new version.
 
 1. **Read** – Consumers resolve the current version with `ModelStore.get_current(agent)` and load models directly from the returned directory.
 
@@ -126,7 +126,7 @@ Additional integration points worth reviewing (not copied here):
 from pathlib import Path from models.model_store import ModelStore
 
 store = ModelStore(Path('/opt/justnews/models')) with store.stage_new('scout', 'v2025-10-28') as tmp:
-    # TODO: write weights/tokenizer files into tmp
+# TODO: write weights/tokenizer files into tmp
 store.finalize('scout', 'v2025-10-28')
 
 ```

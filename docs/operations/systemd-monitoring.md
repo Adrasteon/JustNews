@@ -21,7 +21,7 @@ installation.
 
 - Internet access to download official release archives
 
-- `curl` and `tar` installed on the host
+- `curl`and`tar` installed on the host
 
 ## First-time installation
 
@@ -45,9 +45,9 @@ This performs the following actions:
 
 1. Installs systemd units under `/etc/systemd/system/`
 
-1. Enables and starts `justnews-node-exporter`, `justnews-prometheus`, and `justnews-grafana`
+1. Enables and starts `justnews-node-exporter`,`justnews-prometheus`, and`justnews-grafana`
 
-> **Note:** If binaries already exist, omit `--install-binaries`. Use `--force` to overwrite config files with timestamped backups.
+> **Note:** If binaries already exist, omit `--install-binaries`. Use`--force` to overwrite config files with timestamped backups.
 
 ## Configuration
 
@@ -79,7 +79,7 @@ The monitoring stack includes comprehensive NVIDIA GPU monitoring capabilities.
 
 ### Automatic GPU Metrics Collection
 
-1. **GPU Exporter**: A custom Python-based exporter (`gpu_metrics_exporter.py`) automatically collects GPU metrics using `nvidia-smi`
+1. **GPU Exporter**: A custom Python-based exporter (`gpu_metrics_exporter.py`) automatically collects GPU metrics using`nvidia-smi`
 
 1. **Prometheus Integration**: GPU metrics are automatically scraped every 15 seconds
 
@@ -90,11 +90,11 @@ The monitoring stack includes comprehensive NVIDIA GPU monitoring capabilities.
 The system monitors 10 comprehensive GPU metrics:
 
 | Metric | Description | |--------|-------------| | `nvidia_gpu_count` | Number of GPUs detected | |
-`nvidia_gpu_utilization_ratio` | GPU utilization (0-1 ratio) | | `nvidia_gpu_memory_utilization_ratio` | Memory
+`nvidia_gpu_utilization_ratio`| GPU utilization (0-1 ratio) | |`nvidia_gpu_memory_utilization_ratio` | Memory
 utilization (0-1 ratio) | | `nvidia_gpu_temperature_celsius` | GPU temperature in Celsius | |
-`nvidia_gpu_power_draw_watts` | Current power consumption | | `nvidia_gpu_power_limit_watts` | Power limit setting | |
-`nvidia_gpu_fan_speed_ratio` | Fan speed (0-1 ratio) | | `nvidia_gpu_memory_total_bytes` | Total GPU memory | |
-`nvidia_gpu_memory_used_bytes` | Used GPU memory | | `nvidia_gpu_memory_free_bytes` | Free GPU memory |
+`nvidia_gpu_power_draw_watts`| Current power consumption | |`nvidia_gpu_power_limit_watts` | Power limit setting | |
+`nvidia_gpu_fan_speed_ratio`| Fan speed (0-1 ratio) | |`nvidia_gpu_memory_total_bytes` | Total GPU memory | |
+`nvidia_gpu_memory_used_bytes`| Used GPU memory | |`nvidia_gpu_memory_free_bytes` | Free GPU memory |
 
 ### GPU Exporter Management
 

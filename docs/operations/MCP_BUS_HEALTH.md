@@ -1,6 +1,6 @@
 # MCP Bus Health and Diagnostics
 
-This document explains the MCP Bus `/health` and `/ready` endpoints, how health is reported, how to interpret results,
+This document explains the MCP Bus `/health`and`/ready` endpoints, how health is reported, how to interpret results,
 and developer guidance for adding tests covering health behaviour.
 
 ## Overview
@@ -11,7 +11,7 @@ state, and operational issues.
 
 - Endpoint: `GET http://<mcp_host>:<mcp_port>/health`
 
-- Readiness endpoint: `GET /ready` returns `{"ready": true|false}` (service ready flag).
+- Readiness endpoint: `GET /ready`returns`{"ready": true|false}` (service ready flag).
 
 The endpoint is intended for operational checks, health monitoring, and load balancers.
 
@@ -21,7 +21,7 @@ A typical `/health` JSON body includes:
 
 - `timestamp`: Unix timestamp
 
-- `overall_status`: `healthy` | `degraded` | `unhealthy`
+- `overall_status`:`healthy`|`degraded`|`unhealthy`
 
 - `registered_agents`: number of agents known to the bus
 
@@ -31,7 +31,7 @@ A typical `/health` JSON body includes:
 
 - `agent`: agent name
 
-- `status`: `healthy` | `degraded` | `unhealthy` | `unreachable` | `unknown`
+- `status`:`healthy`|`degraded`|`unhealthy`|`unreachable`|`unknown`
 
 - `response_time`: seconds (float, optional)
 
@@ -60,11 +60,11 @@ Example:
 
 ## How the probe works (developer notes)
 
-- The MCP Bus engine performs a best-effort HTTP GET to `<agent_address>/health` (1s probe timeout) for each registered agent when `requests` is available.
+- The MCP Bus engine performs a best-effort HTTP GET to `<agent_address>/health`(1s probe timeout) for each registered agent when`requests` is available.
 
-- If `requests` is not importable, agent statuses will be set to `unknown` and the bus-level `overall_status` may be `degraded` if agents are expected.
+- If `requests`is not importable, agent statuses will be set to`unknown`and the bus-level`overall_status`may be`degraded` if agents are expected.
 
-- Any non-2xx response, JSON parse error, or network error will be reported as `unhealthy`/`unreachable` and will mark the bus `overall_status` as `degraded`.
+- Any non-2xx response, JSON parse error, or network error will be reported as `unhealthy`/`unreachable`and will mark the bus`overall_status`as`degraded`.
 
 - Circuit breakers are included in the health report (see `circuit_breaker_active` boolean).
 
@@ -84,11 +84,11 @@ curl -s <http://localhost:8017/ready> && echo "MCP Bus ready"
 
 ```bash
 
-- The repository provides a multi-service health check script used by operators in `infrastructure/systemd/health_check.sh` which already includes `mcp_bus` in the default services list.
+- The repository provides a multi-service health check script used by operators in `infrastructure/systemd/health_check.sh`which already includes`mcp_bus` in the default services list.
 
 ## Monitoring & alerting
 
-- Add an alert on `overall_status != "healthy"` for key services. For example, alert when `mcp_bus` reports `degraded` or when a specific agent is `unreachable` for more than 2 check cycles.
+- Add an alert on `overall_status != "healthy"`for key services. For example, alert when`mcp_bus`reports`degraded`or when a specific agent is`unreachable` for more than 2 check cycles.
 
 - Integrate the endpoint into your Prometheus blackbox exporter or a simple cron job for internal monitoring.
 
@@ -102,7 +102,7 @@ curl -s <http://localhost:8017/ready> && echo "MCP Bus ready"
 
 - Unreachable agents (requests exceptions)
 
-- Agents reporting `degraded` statuses (non-`healthy` JSON)
+- Agents reporting `degraded`statuses (non-`healthy` JSON)
 
 Run the unit tests in the canonical environment:
 
@@ -115,7 +115,7 @@ conda run -n justnews-py312 pytest -q tests/agents/mcp_bus/test_health.py
 
 - Integration tests exercise the FastAPI app (TestClient) and live at `tests/agents/mcp_bus/test_health_integration.py`.
 
-- These tests patch `requests.get` to simulate agent responses and monkeypatch `agents.mcp_bus.main.notify_gpu_orchestrator` to prevent external network calls during app startup.
+- These tests patch `requests.get`to simulate agent responses and monkeypatch`agents.mcp_bus.main.notify_gpu_orchestrator` to prevent external network calls during app startup.
 
 Run integration tests:
 
@@ -126,17 +126,17 @@ conda run -n justnews-py312 pytest -q tests/agents/mcp_bus/test_health_integrati
 
 ### Writing tests
 
-- Prefer `monkeypatch` to patch `agents.mcp_bus.mcp_bus_engine.requests.get` when simulating agent responses.
+- Prefer `monkeypatch`to patch`agents.mcp_bus.mcp_bus_engine.requests.get` when simulating agent responses.
 
-- For FastAPI endpoint tests use `fastapi.testclient.TestClient(app)` and ensure the engine state is clean before each test by clearing `tools.get_engine().agents` and `circuit_breaker_state`.
+- For FastAPI endpoint tests use `fastapi.testclient.TestClient(app)`and ensure the engine state is clean before each test by clearing`tools.get_engine().agents`and`circuit_breaker_state`.
 
-- Patch `agents.mcp_bus.main.notify_gpu_orchestrator` (returning `True`) in tests that instantiate the `TestClient` to avoid network calls during the app lifespan.
+- Patch `agents.mcp_bus.main.notify_gpu_orchestrator`(returning`True`) in tests that instantiate the`TestClient` to avoid network calls during the app lifespan.
 
 Example test patterns are included in the `tests/agents/mcp_bus` directory.
 
 ## Troubleshooting
 
-- If `/health` reports `unreachable` for a known agent:
+- If `/health`reports`unreachable` for a known agent:
 
 - Verify the agent is registered (GET `/agents`).
 
@@ -150,7 +150,7 @@ Example test patterns are included in the `tests/agents/mcp_bus` directory.
 
 - `agents/mcp_bus/main.py` — FastAPI endpoints
 
-- `agents/mcp_bus/tools.py` — tool wrappers and `health_check()` helper
+- `agents/mcp_bus/tools.py`— tool wrappers and`health_check()` helper
 
 - `agents/mcp_bus/mcp_bus_engine.py` — engine implementation and probe logic
 

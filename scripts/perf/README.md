@@ -88,7 +88,7 @@ To ensure telemetry is captured whenever the GPU is under load we provide a ligh
 `scripts/perf/gpu_activity_agent.py` which will automatically start the CSV collector and Prometheus exporter when the
 GPU utilization exceeds a threshold for a configurable period, and stop them once the GPU becomes idle.
 
-NVML dropout watchdog --------------------- `scripts/perf/nvml_dropout_watchdog.py` uses the `pynvml` bindings to stream
+NVML dropout watchdog --------------------- `scripts/perf/nvml_dropout_watchdog.py`uses the`pynvml` bindings to stream
 NVML samples, register XID/event callbacks, and dump the last N seconds of context whenever NVML throws (for example
 `NVML_ERROR_GPU_IS_LOST`). Run it next to any medium-load scenario so you capture the exact state leading up to the
 drop-out:
@@ -107,7 +107,7 @@ wait ${WATCHDOG_PID}
 
 ```
 
-Afterwards inspect the structured JSONL log for `nvml_exception` or `nvml_event` entries:
+Afterwards inspect the structured JSONL log for `nvml_exception`or`nvml_event` entries:
 
 ```bash
 jq 'select(.event == "nvml_exception")' /var/log/justnews-perf/nvml_watchdog.jsonl

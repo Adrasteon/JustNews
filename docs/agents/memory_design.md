@@ -18,9 +18,9 @@ Ingest API (example)
 
 - MCP call `memory.ingest_article` payload fields:
 
-- `site_id` (str), `url` (str), `title` (str), `cleaned_text` (str),
+- `site_id`(str),`url`(str),`title`(str),`cleaned_text` (str),
 
-- `extraction_metadata` (dict), `source_html_path` (str, optional),
+- `extraction_metadata`(dict),`source_html_path` (str, optional),
 
 - `ingest_meta` (dict: source, run_id, provenance)
 
@@ -40,7 +40,7 @@ Idempotency
 
 Observability
 
-- Emit `ingest_total`, `ingest_errors`, `ingest_latency` metrics.
+- Emit `ingest_total`,`ingest_errors`,`ingest_latency` metrics.
 
 Testing
 

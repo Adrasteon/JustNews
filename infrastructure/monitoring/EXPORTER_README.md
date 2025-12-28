@@ -34,17 +34,17 @@ infrastructure/monitoring/alerts/justnews_db_alerts.yml
 
 Rules included (high level):
 
-- `ChromaDBDown`: fires when `justnews_chromadb_up == 0` for 1 minute (severity: critical)
+- `ChromaDBDown`: fires when`justnews_chromadb_up == 0` for 1 minute (severity: critical)
 
-- `MariaDBDown`: fires when `justnews_mariadb_up == 0` for 1 minute (severity: critical)
+- `MariaDBDown`: fires when`justnews_mariadb_up == 0` for 1 minute (severity: critical)
 
 To enable these rules in the deployed Prometheus server, add the file (or a symlink) under
-`/etc/justnews/monitoring/rules/` and include it in Prometheus' `rule_files` or add the directory to the Prometheus
+`/etc/justnews/monitoring/rules/`and include it in Prometheus'`rule_files` or add the directory to the Prometheus
 configuration, then reload Prometheus:
 
 sudo mkdir -p /etc/justnews/monitoring/rules sudo cp infrastructure/monitoring/alerts/justnews_db_alerts.yml
 /etc/justnews/monitoring/rules/
-  # then either reload or restart Prometheus
+# then either reload or restart Prometheus
 sudo systemctl reload justnews-prometheus.service || sudo systemctl restart justnews-prometheus.service
 
 Why this approach ----------------- Using a venv under `/opt` avoids running the exporter under a human user's home
@@ -101,11 +101,12 @@ Installation workflow ---------------------
 1. Reload systemd and start the exporter (installer already runs these, but for manual tweaks):
 
 ```bash sudo systemctl daemon-reload sudo systemctl enable --now justnews-dcgm-
-exporter.service ```
+exporter.service
+```
 
 Prometheus integration ----------------------
 
-- Scrape config snippet (append under `scrape_configs` in `prometheus.yml` and reload the service):
+- Scrape config snippet (append under `scrape_configs`in`prometheus.yml` and reload the service):
 
 ```yaml
 
@@ -126,7 +127,8 @@ Operational notes -----------------
 - Check exporter logs/status:
 
 ```bash sudo systemctl status justnews-dcgm-exporter.service sudo journalctl -u
-justnews-dcgm-exporter.service -n 200 ```
+justnews-dcgm-exporter.service -n 200
+```
 
 - Query metrics locally (confirms scrape surface works):
 
@@ -137,7 +139,8 @@ justnews-dcgm-exporter.service -n 200 ```
 - Verify Prometheus has an active target:
 
 ```bash curl -sS <http://127.0.0.1:9090/api/v1/targets> | jq
-'.data.activeTargets[] | select(.labels.job=="justnews-dcgm-exporter")' ```
+'.data.activeTargets[] | select(.labels.job=="justnews-dcgm-exporter")'
+```
 
 Why DCGM -------- DCGM surfaces ECC/Xid error counters, clock throttling reasons, and utilization data directly from
 NVIDIA drivers. Capturing these metrics continuously gives us pre-crash evidence when GPUs wedge or thermal- limit.

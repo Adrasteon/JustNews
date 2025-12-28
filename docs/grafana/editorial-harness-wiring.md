@@ -7,8 +7,8 @@ rates, follow-up volume, and failure spikes. It assumes Prometheus and Grafana a
 ## Metric overview
 
 | Metric | Type | Labels | Description | | --- | --- | --- | --- | | `justnews_stage_b_editorial_harness_total` |
-Counter | `result` (`accepted`, `needs_followup`, `error`) | Incremented every time the harness finishes an article. | |
-`justnews_stage_b_editorial_acceptance_bucket` / `sum` / `count` | Histogram | `le` | Acceptance score distribution
+Counter | `result`(`accepted`,`needs_followup`,`error`) | Incremented every time the harness finishes an article. | |
+`justnews_stage_b_editorial_acceptance_bucket`/`sum`/`count`| Histogram |`le` | Acceptance score distribution
 emitted for each harness run. |
 
 All Stage B counters live in the default Prometheus registry from `common.stage_b_metrics`. Any process that imports
@@ -71,9 +71,10 @@ registry=registry) PY ```
 docs/grafana/provisioning/datasources.yml /etc/grafana/provisioning/datasources/ sudo cp
 docs/grafana/provisioning/dashboards.yml /etc/grafana/provisioning/dashboards/ sudo mkdir -p
 /var/lib/grafana/dashboards/justnews sudo cp docs/grafana/editorial-harness- dashboard.json
-/var/lib/grafana/dashboards/justnews/ ```
+/var/lib/grafana/dashboards/justnews/
+```
 
-1. Restart Grafana (`sudo systemctl restart grafana-server`) or manually import `docs/grafana/editorial-harness-dashboard.json` via **Dashboards → Import**. The JSON expects a data source named `Prometheus`; rename yours or edit the dashboard if needed.
+1. Restart Grafana (`sudo systemctl restart grafana-server`) or manually import`docs/grafana/editorial-harness-dashboard.json`via **Dashboards → Import**. The JSON expects a data source named`Prometheus`; rename yours or edit the dashboard if needed.
 
 ## Step 3: validate the dashboard
 
@@ -85,7 +86,7 @@ docs/grafana/provisioning/dashboards.yml /etc/grafana/provisioning/dashboards/ s
 
 - Acceptance ratio (5m rolling) must remain within 0–1 (alert if < 0.6).
 
-- Acceptance distribution visualizes histogram buckets (`<= 0.2`, `<= 0.4`, etc.).
+- Acceptance distribution visualizes histogram buckets (`<= 0.2`,`<= 0.4`, etc.).
 
 - Harness runs (24h) reflects the cumulative executions for the window.
 
@@ -103,7 +104,7 @@ Recommended alert rules (Grafana or Prometheus):
 
 ## Troubleshooting
 
-- **No samples**: confirm the Prometheus scrape job exists and that `curl <http://host:port/metrics`> outputs `justnews_stage_b_editorial_*` counters.
+- **No samples**: confirm the Prometheus scrape job exists and that `curl <http://host:port/metrics`> outputs`justnews_stage_b_editorial_*` counters.
 
 - **Counters reset each run**: store results in Pushgateway or a textfile collector so Prometheus retains the latest snapshot.
 

@@ -60,8 +60,8 @@ sudo journalctl -u justnews-grafana.service -f
 
 ```bash
 
-Configuration lives in `/etc/justnews/monitoring.env` and `/etc/justnews/monitoring/`. Grafana is available at
-`http://localhost:3000/` (default credentials: `admin / change_me`).
+Configuration lives in `/etc/justnews/monitoring.env`and`/etc/justnews/monitoring/`. Grafana is available at
+`http://localhost:3000/`(default credentials:`admin / change_me`).
 
 ## One-command fresh restart (recommended)
 
@@ -101,7 +101,7 @@ sudo ./infrastructure/systemd/scripts/health_check.sh
 
 ```yaml
 
-Tip: `enable_all.sh` defaults to `status` with no args. Use `start`, `stop`, `restart`, or `fresh` (also accepts
+Tip: `enable_all.sh`defaults to`status`with no args. Use`start`,`stop`,`restart`, or`fresh` (also accepts
 `--fresh`).
 
 ## Ports and health endpoints
@@ -182,9 +182,9 @@ ls -la /tmp/nvidia-mps/
 
 1. **Environment Configuration**:
 
-- Set `ENABLE_MPS=true` in `/etc/justnews/global.env`
+- Set `ENABLE_MPS=true`in`/etc/justnews/global.env`
 
-- Set `ENABLE_MPS=true` and `ENABLE_NVML=true` in `/etc/justnews/gpu_orchestrator.env`
+- Set `ENABLE_MPS=true`and`ENABLE_NVML=true`in`/etc/justnews/gpu_orchestrator.env`
 
 1. **Check MPS Allocation**:
 
@@ -213,7 +213,7 @@ Sequence tip: ensure fact intelligence services complete before starting cluster
 cluster creation.
 
 Transparency tip: keep any transparency portal service (e.g., `justnews@transparency_portal`) and evidence APIs healthy;
-locally confirm with `curl -fsS <http://127.0.0.1:8013/transparency/status`.> Synthesizer gate: if `/transparency/status`
+locally confirm with `curl -fsS <http://127.0.0.1:8013/transparency/status`.> Synthesizer gate: if`/transparency/status`
 fails, `justnews@synthesizer` readiness will remain false until integrity recovers.
 
 ## Orderly shutdown (all agents)
@@ -270,7 +270,7 @@ sudo health_check.sh
 
 ```
 
-These wrappers resolve `JUSTNEWS_ROOT` or `SERVICE_DIR` from `/etc/justnews/global.env` automatically.
+These wrappers resolve `JUSTNEWS_ROOT`or`SERVICE_DIR`from`/etc/justnews/global.env` automatically.
 
 ## Status panel (auto-refresh health)
 
@@ -286,7 +286,7 @@ Options:
 
 - `--refresh SEC` to change interval (default: 2)
 
-- `--host HOST` and `-t/--timeout SEC` respected
+- `--host HOST`and`-t/--timeout SEC` respected
 
 - Limit to specific services, e.g.: `sudo health_check.sh --panel mcp_bus analyst`
 
@@ -314,7 +314,7 @@ Notes:
 
 - DB connectivity (Memory):
 
-- Set `JUSTNEWS_DB_URL` in `global.env` and run `helpers/db-check.sh`.
+- Set `JUSTNEWS_DB_URL`in`global.env`and run`helpers/db-check.sh`.
 
 ## Install helpers (optional)
 

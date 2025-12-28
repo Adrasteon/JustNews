@@ -188,7 +188,7 @@ justnews-node-exporter   | 9100  | 15s      | System metrics (CPU, mem, disk)
 
 - [ ] Install Node Exporter: `sudo apt-get install prometheus-node-exporter`
 
-- [ ] Uncomment `prometheus-client` in `requirements.txt`
+- [ ] Uncomment `prometheus-client`in`requirements.txt`
 
 - [ ] Update agent code to emit metrics
 

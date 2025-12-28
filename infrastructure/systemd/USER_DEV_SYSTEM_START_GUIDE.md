@@ -2,7 +2,7 @@
 
 A concise, one-page checklist to start and verify a JustNews system on a host (developer or operator).
 
-> Quick reference: For full troubleshooting and detailed context see `infrastructure/systemd/COMPREHENSIVE_SYSTEMD_GUIDE.md` and `SYSTEM_STARTUP_CHECKLIST.md`.
+> Quick reference: For full troubleshooting and detailed context see `infrastructure/systemd/COMPREHENSIVE_SYSTEMD_GUIDE.md`and`SYSTEM_STARTUP_CHECKLIST.md`.
 
 ---
 
@@ -24,13 +24,13 @@ monitoring if needed, and performs a consolidated health check.
 
 - Ensure `/etc/justnews/global.env` exists and contains:
 
-- `SERVICE_DIR`, `PYTHON_BIN` or `CANONICAL_ENV` (default: `justnews-py312`)
+- `SERVICE_DIR`,`PYTHON_BIN`or`CANONICAL_ENV`(default:`justnews-py312`)
 
-- `MARIADB_HOST/PORT/USER/PASSWORD` (or set `SKIP_MARIADB_CHECK=true`)
+- `MARIADB_HOST/PORT/USER/PASSWORD`(or set`SKIP_MARIADB_CHECK=true`)
 
 - `CHROMA_HOST/PORT` if using ChromaDB
 
-- Tools: `systemctl`, `curl`, `ss`, `python3` (see `preflight.sh` for full checks)
+- Tools: `systemctl`,`curl`,`ss`,`python3`(see`preflight.sh` for full checks)
 
 ---
 
@@ -87,13 +87,13 @@ sudo ./infrastructure/systemd/scripts/health_check.sh -v
 
 - Monitoring installer is invoked automatically during canonical startup when needed.
 
-- Alertmanager installation is opt-in: set `AUTO_INSTALL_ALERTMANAGER=1` in `/etc/justnews/global.env` ONLY on admin hosts.
+- Alertmanager installation is opt-in: set `AUTO_INSTALL_ALERTMANAGER=1`in`/etc/justnews/global.env` ONLY on admin hosts.
 
 ---
 
 ## Troubleshooting quick actions
 
-- If ports are occupied: `sudo ./infrastructure/systemd/preflight.sh --stop` or `sudo ./infrastructure/systemd/reset_and_start.sh` (it kills known ports).
+- If ports are occupied: `sudo ./infrastructure/systemd/preflight.sh --stop`or`sudo ./infrastructure/systemd/reset_and_start.sh` (it kills known ports).
 
 - View service logs: `sudo journalctl -u justnews@<agent> -f`
 
@@ -101,15 +101,15 @@ sudo ./infrastructure/systemd/scripts/health_check.sh -v
 
 - Collect diagnostics bundle: `sudo infrastructure/systemd/collect_startup_diagnostics.sh`
 
-- If many services failed on first boot, ensure `gpu_orchestrator` reported `/ready` then re-run: `sudo ./infrastructure/systemd/reset_and_start.sh`
+- If many services failed on first boot, ensure `gpu_orchestrator`reported`/ready`then re-run:`sudo ./infrastructure/systemd/reset_and_start.sh`
 
 ---
 
 ## Safety notes
 
-- To avoid GPU-driven OOMs on developer hosts, set `SAFE_MODE=true` in `/etc/justnews/global.env` (disables CUDA and applies conservative settings).
+- To avoid GPU-driven OOMs on developer hosts, set `SAFE_MODE=true`in`/etc/justnews/global.env` (disables CUDA and applies conservative settings).
 
-- `AUTO_BOOTSTRAP_CONDA=1` by default will attempt to bootstrap the canonical conda env if missing — set to `0` to opt out.
+- `AUTO_BOOTSTRAP_CONDA=1`by default will attempt to bootstrap the canonical conda env if missing — set to`0` to opt out.
 
 - Use `MARIADB_CHECK_REQUIRED=true` in production to enforce DB connectivity on startup.
 

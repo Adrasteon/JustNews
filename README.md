@@ -189,7 +189,7 @@ scripts/run_tests_with_env.sh all -- -q
 
 ```
 
-If you prefer to flip env vars manually, see the `# --- Tests & toggles ---` section in `/etc/justnews/global.env` for
+If you prefer to flip env vars manually, see the `# --- Tests & toggles ---`section in`/etc/justnews/global.env` for
 the available toggles.
 
 ### Available Commands
@@ -313,7 +313,7 @@ ENABLE_CHROMADB_LIVE_TESTS=1 scripts/run_with_env.sh \
 
 ```
 
-The wrapper loads `/etc/justnews/global.env` (or the repo copy) so `MODEL_STORE_ROOT`, `CHROMADB_*`, and database
+The wrapper loads `/etc/justnews/global.env`(or the repo copy) so`MODEL_STORE_ROOT`,`CHROMADB_*`, and database
 credentials mirror the production startup sequence.
 
 ### Project Structure

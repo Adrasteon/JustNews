@@ -12,7 +12,7 @@ provide a matching Python wheel.
 
 How to use (locally)
 
-1. Ensure `conda-build` or `mamba` (and `conda-build`) are installed in your
+1. Ensure `conda-build`or`mamba`(and`conda-build`) are installed in your
 base environment.
 
 1. From this repo root run:

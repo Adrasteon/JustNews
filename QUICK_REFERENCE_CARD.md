@@ -235,10 +235,10 @@ curl -s <http://localhost:8000/api/v1/heartbeat> | grep -q '{}' && echo "OK" || 
 ## Troubleshooting
 
 | Symptom | Check | Fix | |---------|-------|-----| | "command not found: source" | Global env | Use
-`./scripts/run_with_env.sh` or run `export MARIADB_HOST=localhost` | | Port 8015 refused | GPU Orchestrator ready? |
-`curl -fsS <http://127.0.0.1:8014/ready`> – wait until 200 | | No ChromaDB at 8000 | Docker running? | `docker ps | grep
+`./scripts/run_with_env.sh`or run`export MARIADB_HOST=localhost` | | Port 8015 refused | GPU Orchestrator ready? |
+`curl -fsS <http://127.0.0.1:8014/ready`> – wait until 200 | | No ChromaDB at 8000 | Docker running? |`docker ps | grep
 chromadb` – if missing, run Docker start command | | Articles count = 0 | Database schema? | Run
-`scripts/init_database.py` again | | MariaDB won't connect | Password correct? | Check `MARIADB_PASSWORD` in global.env
+`scripts/init_database.py`again | | MariaDB won't connect | Password correct? | Check`MARIADB_PASSWORD` in global.env
 | | vLLM 7060 crashed | Check logs | `tail -50 /home/adra/JustNews/run/vllm_mistral_fp16.log` |
 
 ---
@@ -246,10 +246,10 @@ chromadb` – if missing, run Docker start command | | Articles count = 0 | Data
 ## Port Map
 
 | Service | Port | Health Check | |---------|------|--------------| | MCP Bus | 8017 | `curl
-<http://localhost:8017/health`> | | GPU Orchestrator | 8014 | `curl <http://localhost:8014/ready`> | | Crawler | 8015 |
-`curl <http://localhost:8015/health`> | | Crawler Control | 8016 | `curl <http://localhost:8016/health`> | | Analyst | 8004
-| `curl <http://localhost:8004/health`> | | Memory | 8007 | `curl <http://localhost:8007/health`> | | ChromaDB | 8000 |
-`curl <http://localhost:8000/api/v1/heartbeat`> | | vLLM Mistral | 7060 | `curl <http://localhost:7060/health`> |
+<http://localhost:8017/health`> | | GPU Orchestrator | 8014 |`curl <http://localhost:8014/ready`> | | Crawler | 8015 |
+`curl <http://localhost:8015/health`> | | Crawler Control | 8016 |`curl <http://localhost:8016/health`> | | Analyst | 8004
+| `curl <http://localhost:8004/health`> | | Memory | 8007 |`curl <http://localhost:8007/health`> | | ChromaDB | 8000 |
+`curl <http://localhost:8000/api/v1/heartbeat`> | | vLLM Mistral | 7060 |`curl <http://localhost:7060/health`> |
 
 ---
 

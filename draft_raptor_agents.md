@@ -5,7 +5,7 @@ current stage of development based on code inspection.
 
 Notes on methodology:
 
-- I inspected `main.py`, `*_engine.py`, `README.md` and other files to determine functionality and maturity.
+- I inspected `main.py`,`*_engine.py`,`README.md` and other files to determine functionality and maturity.
 
 - "Stage" definitions used below:
 
@@ -29,7 +29,7 @@ Notes on methodology:
 
 - Function: Quantitative news analysis including NER, sentiment/bias detection, statistical insights, and trend analysis.
 
-- Key files: `analyst_engine.py`, `gpu_analyst.py` (GPU helper), `main.py` (FastAPI)
+- Key files: `analyst_engine.py`,`gpu_analyst.py`(GPU helper),`main.py` (FastAPI)
 
 - Dependencies: spaCy, transformers, torch
 
@@ -43,11 +43,11 @@ Notes on methodology:
 
 - Function: System-wide analytics, advanced performance monitoring, health metrics, and dashboard integration.
 
-- Key files: `analytics_engine.py`, `main.py`, `tools.py`
+- Key files: `analytics_engine.py`,`main.py`,`tools.py`
 
 - Stage: Production (Core) — Wraps centralized analytics engine with background processing and health checks.
 
-- Notes: Integrates with a central `AdvancedAnalyticsEngine` in `agents.common`.
+- Notes: Integrates with a central `AdvancedAnalyticsEngine`in`agents.common`.
 
 ### archive
 
@@ -55,7 +55,7 @@ Notes on methodology:
 
 - Function: Article archiving, retrieval, search and knowledge graph (KG) operations, including `archive_storage` management.
 
-- Key files: `archive_engine.py`, `archive_manager.py`, `main.py`
+- Key files: `archive_engine.py`,`archive_manager.py`,`main.py`
 
 - Stage: Production (Core) — Feature-rich with KG integration, search and retrieval endpoints.
 
@@ -65,7 +65,7 @@ Notes on methodology:
 
 - Function: Authentication service (JWT, RBAC), session management; used to secure endpoints and provide user access control.
 
-- Key files: `auth_engine.py`, `main.py`
+- Key files: `auth_engine.py`,`main.py`
 
 - Stage: Production (Core)
 
@@ -75,9 +75,9 @@ Notes on methodology:
 
 - Location: `agents/c4ai`
 
-- Function: Crawl4AI HTTP bridge for local use; `server.py` provides `/crawl` and `health` endpoints and bridges to `crawl4ai` package.
+- Function: Crawl4AI HTTP bridge for local use; `server.py`provides`/crawl`and`health`endpoints and bridges to`crawl4ai` package.
 
-- Key files: `server.py`, `bridge.py`
+- Key files: `server.py`,`bridge.py`
 
 - Stage: Production (Partial) — Works as a bridge but depends on `crawl4ai` external package.
 
@@ -87,7 +87,7 @@ Notes on methodology:
 
 - Function: Helper for starting the Crawl4AI bridge as a `systemd` managed service. Contains README and startup helper.
 
-- Key files: `main.py`, `README.md`
+- Key files: `main.py`,`README.md`
 
 - Stage: Utility/Scaffold — Not a heavy agent, acts as deployment wrapper for `agents/c4ai`.
 
@@ -97,11 +97,11 @@ Notes on methodology:
 
 - Function: Main crawling agent providing robust crawling, extraction, job store, robots parsing, and pipeline integration.
 
-- Key files: `main.py`, `crawler_engine.py`, `extraction.py`, `job_store.py`, `crawler_utils.py`
+- Key files: `main.py`,`crawler_engine.py`,`extraction.py`,`job_store.py`,`crawler_utils.py`
 
 - Stage: Production (Core) — Implements job persistence, auth, job recovery, robots enforcement, Playwright integration.
 
-- Notes: Includes `crawler_control` and job recovery; integrates with `mcp_bus` and `hitl_service`.
+- Notes: Includes `crawler_control`and job recovery; integrates with`mcp_bus`and`hitl_service`.
 
 ### crawler_control
 
@@ -109,7 +109,7 @@ Notes on methodology:
 
 - Function: Dashboard and control for running, scheduling and monitoring crawls; manages crawl job lifecycle.
 
-- Key files: `main.py`, `crawler_control_engine.py`.
+- Key files: `main.py`,`crawler_control_engine.py`.
 
 - Stage: Production (Core)
 
@@ -121,7 +121,7 @@ Notes on methodology:
 
 - Function: Multi-model editorial critique and content assessment; quality, bias, readability, plagiarism checks.
 
-- Key files: `critic_engine.py`, `main.py`
+- Key files: `critic_engine.py`,`main.py`
 
 - Stage: Production (Core) — Implements a multi-model workflow; uses GPU / torch.
 
@@ -131,7 +131,7 @@ Notes on methodology:
 
 - Function: Web dashboard, transparency, and monitoring UI; agent management and GPU monitoring.
 
-- Key files: `dashboard_engine.py`, `main.py`, `search_api.py`, `transparency_router.py`
+- Key files: `dashboard_engine.py`,`main.py`,`search_api.py`,`transparency_router.py`
 
 - Stage: Production (Core) — Serves the dashboard and public API.
 
@@ -141,7 +141,7 @@ Notes on methodology:
 
 - Function: Fact checking and source credibility analysis, LLM-based verification tools.
 
-- Key files: `main.py`, `tools.py`
+- Key files: `main.py`,`tools.py`
 
 - Stage: Production (Core) — Implements extensive fact-check tools and endpoints.
 
@@ -151,7 +151,7 @@ Notes on methodology:
 
 - Function: Centralized GPU orchestration, leases, model preloading, MPS management and metrics.
 
-- Key files: `gpu_orchestrator_engine.py`, `main.py`
+- Key files: `gpu_orchestrator_engine.py`,`main.py`
 
 - Stage: Production (Core) — Robust orchestrator capable of preloading models and managing leases.
 
@@ -163,7 +163,7 @@ Notes on methodology:
 
 - Function: Human-in-the-loop labeling funnel for candidates, QA, and forwarding ingestion actions.
 
-- Key files: `app.py`, `migrations/001_initial.sql`
+- Key files: `app.py`,`migrations/001_initial.sql`
 
 - Stage: Production (Core) — Implements candidate queue and forwarding mechanisms, with SQLite for QA staging.
 
@@ -173,7 +173,7 @@ Notes on methodology:
 
 - Function: Crawl4AI-backed discovery and article analysis — wrapper for Crawl4AI for publishing & reading.
 
-- Key files: `journalist_engine.py`, `main.py`
+- Key files: `journalist_engine.py`,`main.py`
 
 - Stage: Production (Partial) — Lightweight agent that delegates heavy tasks to the `crawl4ai` service; used in publishing flows.
 
@@ -183,7 +183,7 @@ Notes on methodology:
 
 - Function: Inter-agent message bus (Model Context Protocol) and discovery mechanism for agent capabilities; central service.
 
-- Key files: `main.py`, `mcp_bus_engine.py`
+- Key files: `main.py`,`mcp_bus_engine.py`
 
 - Stage: Production (Core) — Critical for agent discovery and tool invocation.
 
@@ -193,7 +193,7 @@ Notes on methodology:
 
 - Function: Article ingestion, embedding generation, vector store, and structured persistence.
 
-- Key files: `main.py`, `memory_engine.py`, `vector_engine.py`, `tools.py`
+- Key files: `main.py`,`memory_engine.py`,`vector_engine.py`,`tools.py`
 
 - Stage: Production (Core) — Ingests to MariaDB and Chroma; robust ingestion pipeline.
 
@@ -205,7 +205,7 @@ Notes on methodology:
 
 - Function: Vision-Language (LLaVA) - screenshot-based webpage processing; multimodal extraction.
 
-- Key files: `newsreader_engine.py`, `main.py`
+- Key files: `newsreader_engine.py`,`main.py`
 
 - Stage: Production (Partial) — Heavy LLM model usage (LLaVA); MPS/Orchestrator integration required.
 
@@ -225,7 +225,7 @@ Notes on methodology:
 
 - Function: Symbolic reasoning with Nucleoid; rule-based & symbolic reasoning for contradictions & explainability.
 
-- Key files: `reasoning_engine.py`, `main.py`
+- Key files: `reasoning_engine.py`,`main.py`
 
 - Stage: Production (Partial) — Provides domain rules & symbolic reasoning; integrates with `nucleoid_repo` for advanced features.
 
@@ -235,7 +235,7 @@ Notes on methodology:
 
 - Function: Content discovery, site crawling and initial classification (BERT/DeBERTa / RoBERTa usage), integrative with Crawl4AI.
 
-- Key files: `scout_engine.py`, `main.py`, `crawl4ai_server_impl.py`
+- Key files: `scout_engine.py`,`main.py`,`crawl4ai_server_impl.py`
 
 - Stage: Production (Core) — Solid implementation for discovery; uses GPU optional logic and pipelines.
 
@@ -243,9 +243,9 @@ Notes on methodology:
 
 - Location: `agents/sites`
 
-- Function: Site-specific crawling logic and helpers (e.g., `bbc_crawler.py`, `generic_site_crawler.py`).
+- Function: Site-specific crawling logic and helpers (e.g., `bbc_crawler.py`,`generic_site_crawler.py`).
 
-- Key files: `generic_site_crawler.py`, `bbc_crawler.py`
+- Key files: `generic_site_crawler.py`,`bbc_crawler.py`
 
 - Stage: Production (Partial) — Specific site implementations and stubs for fetchers.
 
@@ -255,7 +255,7 @@ Notes on methodology:
 
 - Function: Synthesis, summarization, neutralization and cluster-based aggregation using BART/FLAN-T5 and embedding models; also BERTopic clustering.
 
-- Key files: `synthesizer_engine.py`, `main.py`
+- Key files: `synthesizer_engine.py`,`main.py`
 
 - Stage: Production (Core) — Implements clustering, generation, and neutralization pipelines; GPU-aware.
 
@@ -267,9 +267,9 @@ Notes on methodology:
 
 - Heavy LLM-based agents (synthesizer, newsreader, some parts of analyst, critic, chief_editor) rely on GPU orchestration and quantization strategies — recommended to add per-model VRAM metadata and to use quantization by default when needed.
 
-- `nucleoid_repo` is not a direct Python agent — it’s a referenced external package used by `reasoning` and may be maintained separately.
+- `nucleoid_repo`is not a direct Python agent — it’s a referenced external package used by`reasoning` and may be maintained separately.
 
-- Next: Create an integration matrix documenting dependencies between agents and ensure `model_store` mapping in `AGENT_MODEL_MAP.json` is aligned with recommendations in `AGENT_MODEL_RECOMMENDED.json`.
+- Next: Create an integration matrix documenting dependencies between agents and ensure `model_store`mapping in`AGENT_MODEL_MAP.json`is aligned with recommendations in`AGENT_MODEL_RECOMMENDED.json`.
 
 ---
 
@@ -279,6 +279,6 @@ If you want, I can:
 
 - Propose a CI plan to run in-process integration tests for each agent combination.
 
-- Start a PR to add `AGENT_MODEL_RECOMMENDED.json` into `AGENT_MODEL_MAP.json` as a validated default set.
+- Start a PR to add `AGENT_MODEL_RECOMMENDED.json`into`AGENT_MODEL_MAP.json` as a validated default set.
 
 Which would you like me to do next?

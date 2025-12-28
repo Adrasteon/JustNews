@@ -102,29 +102,29 @@ issues
 ### Core Agents (8/8) ✅ Complete
 
 | Agent | Status | Files | Last Modified | Notes | |-------|--------|-------|---------------|-------| | **analyst** | ✅
-Complete | `main.py`, `analyst_engine.py`, `tools.py` | Oct 21, 2025 | GPU-accelerated analysis | | **chief_editor** | ✅
-Complete | `main.py`, `chief_editor_engine.py`, `tools.py` | Oct 21, 2025 | Workflow orchestration | | **critic** | ✅
-Complete | `main.py`, `critic_engine.py`, `tools.py` | Oct 21, 2025 | Quality assessment | | **fact_checker** | ✅
-Complete | `main.py`, `fact_checker_engine.py`, `tools.py` | Oct 21, 2025 | Multi-model verification | | **memory** | ✅
-Complete | `main.py`, `memory_engine.py`, `tools.py` | Oct 21, 2025 | Vector storage | | **reasoning** | ✅ Complete |
-`main.py`, `reasoning_engine.py`, `tools.py` | Oct 21, 2025 | Symbolic logic | | **scout** | ✅ Complete | `main.py`,
-`scout_engine.py`, `tools.py` | Oct 21, 2025 | Content discovery | | **synthesizer** | ✅ Complete | `main.py`,
-`synthesizer_engine.py`, `tools.py` | Oct 21, 2025 | Multi-model synthesis |
+Complete | `main.py`,`analyst_engine.py`,`tools.py` | Oct 21, 2025 | GPU-accelerated analysis | | **chief_editor** | ✅
+Complete | `main.py`,`chief_editor_engine.py`,`tools.py` | Oct 21, 2025 | Workflow orchestration | | **critic** | ✅
+Complete | `main.py`,`critic_engine.py`,`tools.py` | Oct 21, 2025 | Quality assessment | | **fact_checker** | ✅
+Complete | `main.py`,`fact_checker_engine.py`,`tools.py` | Oct 21, 2025 | Multi-model verification | | **memory** | ✅
+Complete | `main.py`,`memory_engine.py`,`tools.py` | Oct 21, 2025 | Vector storage | | **reasoning** | ✅ Complete |
+`main.py`,`reasoning_engine.py`,`tools.py`| Oct 21, 2025 | Symbolic logic | | **scout** | ✅ Complete |`main.py`,
+`scout_engine.py`,`tools.py`| Oct 21, 2025 | Content discovery | | **synthesizer** | ✅ Complete |`main.py`,
+`synthesizer_engine.py`,`tools.py` | Oct 21, 2025 | Multi-model synthesis |
 
 ### Infrastructure Agents (9/10) ✅ Complete
 
 | Agent | Status | Files | Last Modified | Notes | |-------|--------|-------|---------------|-------| | **balancer** | ✅
-Complete | `main.py`, `balancer_engine.py`, `tools.py` | Oct 21, 2025 | Load distribution (DEPRECATED — removed;
+Complete | `main.py`,`balancer_engine.py`,`tools.py` | Oct 21, 2025 | Load distribution (DEPRECATED — removed;
 responsibilities moved to critic/analytics/gpu_orchestrator) | | **crawler** | ✅ Complete | `main.py`,
-`crawler_engine.py`, `tools.py` | Oct 21, 2025 | Content extraction | | **crawler_control** | ✅ Complete | `main.py`,
-`crawler_control_engine.py`, `tools.py` | Oct 21, 2025 | Crawl management | | **dashboard** | ✅ Complete | `main.py`,
-`dashboard_engine.py`, `tools.py` | Oct 21, 2025 | Web interface | | **gpu_orchestrator** | ✅ Complete | `main.py`,
-`gpu_orchestrator_engine.py`, `tools.py` | Oct 21, 2025 | GPU management | | **mcp_bus** | ✅ Complete | `main.py`,
-`mcp_bus_engine.py`, `tools.py` | Oct 22, 2025 | Communication hub | | **newsreader** | ✅ Complete | `main.py`,
-`newsreader_engine.py`, `tools.py` | Oct 21, 2025 | Article processing | | **auth** | ✅ Complete | `main.py`,
-`auth_engine.py`, `tools.py` | Oct 22, 2025 | Authentication | | **analytics** | ✅ Complete | `main.py`,
-`analytics_engine.py`, `tools.py`, `dashboard.py` | Oct 22, 2025 | Performance monitoring* | | **archive** | ✅ Complete
-| `main.py`, `archive_engine.py`, `tools.py` | Oct 22, 2025 | Document storage |
+`crawler_engine.py`,`tools.py`| Oct 21, 2025 | Content extraction | | **crawler_control** | ✅ Complete |`main.py`,
+`crawler_control_engine.py`,`tools.py`| Oct 21, 2025 | Crawl management | | **dashboard** | ✅ Complete |`main.py`,
+`dashboard_engine.py`,`tools.py`| Oct 21, 2025 | Web interface | | **gpu_orchestrator** | ✅ Complete |`main.py`,
+`gpu_orchestrator_engine.py`,`tools.py`| Oct 21, 2025 | GPU management | | **mcp_bus** | ✅ Complete |`main.py`,
+`mcp_bus_engine.py`,`tools.py`| Oct 22, 2025 | Communication hub | | **newsreader** | ✅ Complete |`main.py`,
+`newsreader_engine.py`,`tools.py`| Oct 21, 2025 | Article processing | | **auth** | ✅ Complete |`main.py`,
+`auth_engine.py`,`tools.py`| Oct 22, 2025 | Authentication | | **analytics** | ✅ Complete |`main.py`,
+`analytics_engine.py`,`tools.py`,`dashboard.py` | Oct 22, 2025 | Performance monitoring* | | **archive** | ✅ Complete
+| `main.py`,`archive_engine.py`,`tools.py` | Oct 22, 2025 | Document storage |
 
 *Analytics agent includes additional dashboard component for web interface
 

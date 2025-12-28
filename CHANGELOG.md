@@ -11,16 +11,16 @@ All notable changes to this project will be documented in this file.
 
 - **✅** Archived and removed legacy Qwen2 artifacts; added archive patterns to `.gitignore`.
 
-- **✅** Updated `environment.yml` pins: `torch==2.9.0+cu128`, `numpy==2.2.4`,
-`numba==0.61.2`. `bitsandbytes==0.47.0` should be built from source for CUDA compatibility.
+- **✅** Updated `environment.yml`pins:`torch==2.9.0+cu128`,`numpy==2.2.4`,
+`numba==0.61.2`.`bitsandbytes==0.47.0` should be built from source for CUDA compatibility.
 
 - **✅** vLLM (0.12.0) server starts correctly under `${CANONICAL_ENV:-justnews-py312}`; smoke tests pass.
 
 ### 🏥 **MCP Bus: health probing & tests**
 
-- **✅** Added per-agent /health probing in `MCPBusEngine.get_health_status()` with structured `agent_details` including response times and errors (best-effort when `requests` is available).
+- **✅** Added per-agent /health probing in `MCPBusEngine.get_health_status()`with structured`agent_details`including response times and errors (best-effort when`requests` is available).
 
-- **✅** Added unit and integration tests: `tests/agents/mcp_bus/test_health.py` and `tests/agents/mcp_bus/test_health_integration.py` (covers healthy, degraded and unreachable agents).
+- **✅** Added unit and integration tests: `tests/agents/mcp_bus/test_health.py`and`tests/agents/mcp_bus/test_health_integration.py` (covers healthy, degraded and unreachable agents).
 
 - **✅** Monitoring: Added Prometheus alerts for MCP Bus overall and per-agent degraded/unreachable conditions; added Grafana panels (Overall, Degraded Count, Agent Status table).
 
@@ -103,7 +103,7 @@ comprehensive configuration and documentation
 
 - **✅ OpenTelemetry Jaeger Exporter**: Added `opentelemetry-exporter-jaeger==1.38.0` via pip for Jaeger tracing support
 
-- **✅ Test Utilities Enhancement**: Added missing `create_mock_database_service()` and `record_metric()` methods to test framework
+- **✅ Test Utilities Enhancement**: Added missing `create_mock_database_service()`and`record_metric()` methods to test framework
 
 - **✅ Crawler Tools Integration**: Added `extract_article_content` import to crawler tools module
 
@@ -148,7 +148,7 @@ required packages added, and test framework fully operational
 
 - **✅ Comprehensive Test Implementation**: Created `test_memory_engine.py` with 12 comprehensive tests covering all core functionality
 
-- **✅ Core Operations Testing**: Full coverage of `save_article()`, `get_article()`, `ingest_article()`, `log_training_example()`, and `get_stats()` methods
+- **✅ Core Operations Testing**: Full coverage of `save_article()`,`get_article()`,`ingest_article()`,`log_training_example()`, and`get_stats()` methods
 
 - **✅ Database Integration Testing**: Mocked database service with proper async fixture handling and transaction simulation
 
@@ -205,7 +205,7 @@ functionality validated, and robust testing infrastructure established
 
 - **Quality Heuristics**: Word-count and text-to-HTML ratio thresholds gate automatic review flags, with configurable environment overrides.
 
-- **Raw HTML Preservation**: Every crawl stores forensic HTML artefacts under `archive_storage/raw_html/` (path override via `JUSTNEWS_RAW_HTML_DIR`).
+- **Raw HTML Preservation**: Every crawl stores forensic HTML artefacts under `archive_storage/raw_html/`(path override via`JUSTNEWS_RAW_HTML_DIR`).
 
 ### 🧭 **Metadata & Governance Enhancements**
 
@@ -225,7 +225,7 @@ functionality validated, and robust testing infrastructure established
 
 ### ✅ **Quality Assurance & Documentation**
 
-- **Regression Coverage**: Added `tests/agents/crawler/test_extraction.py` and `tests/agents/crawler/test_generic_site_crawler.py` to verify extraction fidelity and review heuristics.
+- **Regression Coverage**: Added `tests/agents/crawler/test_extraction.py`and`tests/agents/crawler/test_generic_site_crawler.py` to verify extraction fidelity and review heuristics.
 
 - **Operational Playbook Update**: `docs/operations/systemd-baseline.md` documents the Stage B2 systemd-based implementation, raw HTML retention, and thresholds.
 
@@ -238,15 +238,15 @@ and automated regression tests.
 
 ### 🤖 Adaptive crawling
 
-- The Crawl4AI adapter (`agents/crawler/crawl4ai_adapter.py`) now supports `AdaptiveCrawler` when profiles contain `adaptive` blocks and an `extra.query` hint. Adaptive runs produce knowledge-base slices that are converted into articles and annotated with adaptive metadata (`extraction_metadata.crawl4ai.adaptive_run`).
+- The Crawl4AI adapter (`agents/crawler/crawl4ai_adapter.py`) now supports`AdaptiveCrawler`when profiles contain`adaptive`blocks and an`extra.query`hint. Adaptive runs produce knowledge-base slices that are converted into articles and annotated with adaptive metadata (`extraction_metadata.crawl4ai.adaptive_run`).
 
 ### 📊 Metrics & observability
 
-- Adaptive telemetry is emitted to Stage B metrics with conservative names (`adaptive_runs_total`, `adaptive_articles_emitted`, `adaptive_confidence`, `adaptive_pages_crawled`, `adaptive_coverage_<metric>`). The metrics module is defensive and operates without optional GPU helper packages.
+- Adaptive telemetry is emitted to Stage B metrics with conservative names (`adaptive_runs_total`,`adaptive_articles_emitted`,`adaptive_confidence`,`adaptive_pages_crawled`,`adaptive_coverage_<metric>`). The metrics module is defensive and operates without optional GPU helper packages.
 
 ### ✅ Tests & compatibility
 
-- Unit tests for the adapter were added (`tests/agents/crawler/test_crawl4ai_adapter.py`). The metrics helpers expose compatibility methods (`increment`, `gauge`, `timing`) so legacy test harnesses and stubs function correctly in CI.
+- Unit tests for the adapter were added (`tests/agents/crawler/test_crawl4ai_adapter.py`). The metrics helpers expose compatibility methods (`increment`,`gauge`,`timing`) so legacy test harnesses and stubs function correctly in CI.
 
 **Status**: Adaptive integration implemented; follow-up: full E2E validation, scheduler/dashboard wiring for metrics,
 and batched runs for low-confidence domains.
@@ -364,7 +364,7 @@ containerization, and deployment validation fully operational
 
 - **✅ Pydantic V2 Migration Complete**: All deprecated V1 APIs successfully migrated to V2
 
-- **✅ BaseModel Modernization**: Updated to use `model_config`, `model_dump()`, and `field_serializer`
+- **✅ BaseModel Modernization**: Updated to use `model_config`,`model_dump()`, and`field_serializer`
 
 - **✅ Type Safety Enhancement**: Full Pydantic V2 validation with IDE support and runtime checking
 
@@ -376,17 +376,17 @@ containerization, and deployment validation fully operational
 
 ### 🔧 **Pydantic V2 Migration Implementation**
 
-- **✅ Config Class Replacement**: `class Config:` → `model_config = ConfigDict()`
+- **✅ Config Class Replacement**: `class Config:`→`model_config = ConfigDict()`
 
-- **✅ Serialization Modernization**: `self.dict()` → `self.model_dump()` across all methods
+- **✅ Serialization Modernization**: `self.dict()`→`self.model_dump()` across all methods
 
 - **✅ Field Serializer Addition**: Custom `field_serializer` for datetime ISO format handling
 
 - **✅ Primary Key Detection**: Updated `_get_primary_key_field()` method for V2 field info API
 
-- **✅ Test Field Updates**: Replaced deprecated `extra` arguments with `json_schema_extra`
+- **✅ Test Field Updates**: Replaced deprecated `extra`arguments with`json_schema_extra`
 
-- **✅ Import Optimization**: Added `ConfigDict` and `field_serializer` imports
+- **✅ Import Optimization**: Added `ConfigDict`and`field_serializer` imports
 
 ### 📊 **Quality Assurance Achievements**
 
@@ -534,11 +534,11 @@ validated, enterprise-grade security and monitoring implemented
 
 ### 🔧 **Critical Technical Fixes Applied**
 
-- **✅ AlertRule Validation Fix**: Added missing `threshold` field required by Pydantic V2 model validation in `AlertDashboard`
+- **✅ AlertRule Validation Fix**: Added missing `threshold`field required by Pydantic V2 model validation in`AlertDashboard`
 
-- **✅ Enum Usage Corrections**: Fixed `AlertSeverity.WARNING` → `AlertSeverity.MEDIUM` for proper enum values in test assertions
+- **✅ Enum Usage Corrections**: Fixed `AlertSeverity.WARNING`→`AlertSeverity.MEDIUM` for proper enum values in test assertions
 
-- **✅ Attribute Access Fixes**: Corrected `RealTimeMonitor.running` → `server` attribute checks for accurate status validation
+- **✅ Attribute Access Fixes**: Corrected `RealTimeMonitor.running`→`server` attribute checks for accurate status validation
 
 - **✅ WebSocket API Modernization**: Removed deprecated websockets imports and updated to modern API patterns in `RealTimeMonitor`
 
@@ -690,7 +690,7 @@ and post-reboot recovery deployed successfully
 
 ### � GPU Orchestrator Integration (In Progress)
 
-- ✅ Central GPU Orchestrator service (port 8014) with `/health`, `/policy`, `/gpu/info`, `/allocations`
+- ✅ Central GPU Orchestrator service (port 8014) with `/health`,`/policy`,`/gpu/info`,`/allocations`
 
 - ✅ Systemd onboarding (enable_all + health_check scripts updated)
 
@@ -700,9 +700,9 @@ and post-reboot recovery deployed successfully
 
 - ✅ Legacy enhanced GPU monitor auto-start suppression (avoids duplicate telemetry polling)
 
-- ✅ Dashboard unified view & proxy endpoints (`/orchestrator/gpu/info`, `/orchestrator/gpu/policy`)
+- ✅ Dashboard unified view & proxy endpoints (`/orchestrator/gpu/info`,`/orchestrator/gpu/policy`)
 
-- ✅ E2E scripts: `orchestrator_analyst_smoke_test.py`, `e2e_orchestrator_analyst_run.py`
+- ✅ E2E scripts: `orchestrator_analyst_smoke_test.py`,`e2e_orchestrator_analyst_run.py`
 
 - ✅ SAFE_MODE toggle demonstration run (`run_safe_mode_demo.py`) with subprocess isolation (lease denial vs granted)
 
@@ -714,7 +714,7 @@ and post-reboot recovery deployed successfully
 
 - ✅ NVML enrichment scaffold (ENABLE_NVML=true + SAFE_MODE gating) adds optional per-GPU util & memory metrics
 
-- ✅ Lease TTL (env `GPU_ORCHESTRATOR_LEASE_TTL`) with opportunistic purge + `lease_expired_total` metric
+- ✅ Lease TTL (env `GPU_ORCHESTRATOR_LEASE_TTL`) with opportunistic purge +`lease_expired_total` metric
 
 - ✅ Analyst decision flip harness (`scripts/mini_orchestrator_analyst_flip.py`) & NVML / TTL tests
 
@@ -754,7 +754,7 @@ and post-reboot recovery deployed successfully
 
 - **✅ Production Monitoring**: Real-time system health monitoring with automated alerts
 
-- **Technical**: Enhanced `agents/newsreader/main.py`, `agents/mcp_bus/main.py`, and service management scripts
+- **Technical**: Enhanced `agents/newsreader/main.py`,`agents/mcp_bus/main.py`, and service management scripts
 
 ### 📊 **Performance & Monitoring Dashboard - ADVANCED VISUALIZATION**
 
@@ -770,7 +770,7 @@ and post-reboot recovery deployed successfully
 
 - **✅ RESTful API Endpoints**: External monitoring, configuration, and performance data access
 
-- **Technical**: Enhanced `agents/dashboard/main.py` and `agents/dashboard/config.py`
+- **Technical**: Enhanced `agents/dashboard/main.py`and`agents/dashboard/config.py`
 
 ### 🔧 **Agent Architecture Improvements - ENHANCED RELIABILITY**
 
@@ -806,7 +806,7 @@ and post-reboot recovery deployed successfully
 
 - **✅ Quality Assurance**: Automated testing framework with comprehensive validation
 
-- **Technical**: New `deploy/monitoring/`, `docs/`, and enhanced service management scripts
+- **Technical**: New `deploy/monitoring/`,`docs/`, and enhanced service management scripts
 
 ### 🎯 **Production Impact & Validation** (continued 3)
 
@@ -984,27 +984,27 @@ implemented, layout issues fixed, and comprehensive error handling added for pro
 
 ### 🧪 **Comprehensive Pytest Fixes - ALL ISSUES RESOLVED**
 
-- **✅ PytestCollectionWarning Fixed**: Renamed `MemoryMonitorThread` in `test_memory_monitor.py` to prevent pytest collection conflicts
+- **✅ PytestCollectionWarning Fixed**: Renamed `MemoryMonitorThread`in`test_memory_monitor.py` to prevent pytest collection conflicts
 
 - **✅ PytestReturnNotNoneWarning Fixed**: Corrected return value issue in `agents/analyst/production_stress_test.py`
 
 - **✅ Standalone Test Functions Renamed**: Fixed 6 functions that started with `test_` but weren't actual pytest tests:
 
-- `test_batch_performance` → `run_batch_performance_test`
+- `test_batch_performance`→`run_batch_performance_test`
 
-- `test_memory_v2_engine` → `run_memory_v2_engine_test`
+- `test_memory_v2_engine`→`run_memory_v2_engine_test`
 
-- `test_critic_v2_engine` → `run_critic_v2_engine_test`
+- `test_critic_v2_engine`→`run_critic_v2_engine_test`
 
-- `test_synthesizer_v2_engine` → `run_synthesizer_v2_engine_test`
+- `test_synthesizer_v2_engine`→`run_synthesizer_v2_engine_test`
 
-- `test_synthesizer_v3_production` → `run_synthesizer_v3_production_test`
+- `test_synthesizer_v3_production`→`run_synthesizer_v3_production_test`
 
-- `test_chief_editor_v2_engine` → `run_chief_editor_v2_engine_test`
+- `test_chief_editor_v2_engine`→`run_chief_editor_v2_engine_test`
 
-- `test_vector_search` → `run_vector_search_test`
+- `test_vector_search`→`run_vector_search_test`
 
-- **✅ Synthesizer Model Corruption Resolved**: Fixed corrupted `distilgpt2` model causing `SafetensorError` by clearing cache and downloading fresh model
+- **✅ Synthesizer Model Corruption Resolved**: Fixed corrupted `distilgpt2`model causing`SafetensorError` by clearing cache and downloading fresh model
 
 - **✅ Test Suite Validation**: Core functionality verified with multiple test modules passing successfully
 
@@ -1292,23 +1292,23 @@ comprehensive testing, and full documentation
 
 - **✅ F811 Function Redefinition**: Fixed 3 function redefinition issues
 
-- Removed duplicate `create_analysis_tab` method in `agents/dashboard/gui.py`
+- Removed duplicate `create_analysis_tab`method in`agents/dashboard/gui.py`
 
-- Removed duplicate `capture_webpage_screenshot` function in `agents/newsreader/main.py`
+- Removed duplicate `capture_webpage_screenshot`function in`agents/newsreader/main.py`
 
-- Removed duplicate `MCPBusClient` class in `agents/scout/main.py`
+- Removed duplicate `MCPBusClient`class in`agents/scout/main.py`
 
 - **✅ F401 Unused Imports**: Fixed 4 unused import issues
 
-- Removed unused `os` and `Optional` imports from `agents/analytics/__init__.py`
+- Removed unused `os`and`Optional`imports from`agents/analytics/__init__.py`
 
-- Removed unused `MultiAgentGPUManager` import from `agents/common/gpu_manager.py`
+- Removed unused `MultiAgentGPUManager`import from`agents/common/gpu_manager.py`
 
-- Removed unused `Path` import from `agents/newsreader/newsreader_v2_true_engine.py`
+- Removed unused `Path`import from`agents/newsreader/newsreader_v2_true_engine.py`
 
 - **✅ GPU Function Integration**: Added missing GPU functions to synthesizer tools module
 
-- Added `synthesize_news_articles_gpu` and `get_synthesizer_performance` functions
+- Added `synthesize_news_articles_gpu`and`get_synthesizer_performance` functions
 
 - Implemented proper fallbacks for CPU-only environments
 
@@ -1396,7 +1396,7 @@ comprehensive testing, and full documentation
 
 - **✅ Server Validation**: Successfully tested uvicorn server startup and API responses
 
-- **Technical**: Enhanced `agents/dashboard/main.py`, `agents/dashboard/storage.py`, `agents/dashboard/templates/dashboard.html`
+- **Technical**: Enhanced `agents/dashboard/main.py`,`agents/dashboard/storage.py`,`agents/dashboard/templates/dashboard.html`
 
 ### 📈 **Advanced Analytics System - COMPREHENSIVE PERFORMANCE MONITORING**
 
@@ -1438,15 +1438,15 @@ comprehensive testing, and full documentation
 
 - Wire MCP Bus lifespan into the FastAPI app so readiness is reported correctly on startup (`agents/mcp_bus/main.py`).
 
-- Add consistent `/health` and `/ready` endpoints to `dashboard` and `balancer` agents for uniform service probes (`agents/dashboard/main.py`, `agents/balancer/balancer.py`).
+- Add consistent `/health`and`/ready`endpoints to`dashboard`and`balancer`agents for uniform service probes (`agents/dashboard/main.py`,`agents/balancer/balancer.py`).
 
-- Update `start_services_daemon.sh` to start MCP Bus from its new `agents/mcp_bus` location and ensure log paths point at `agents/mcp_bus`.
+- Update `start_services_daemon.sh`to start MCP Bus from its new`agents/mcp_bus`location and ensure log paths point at`agents/mcp_bus`.
 
 - Fix several small import/path issues to make per-agent entrypoints import reliably when started from the repository root (`agents/newsreader/main.py`, others).
 
 ### 🔎 Verification & Notes
 
-- Confirmed via automated health-sweep that MCP Bus now returns `{"ready": true}` and all agents expose `/health` and `/ready` (ports 8000—8011).
+- Confirmed via automated health-sweep that MCP Bus now returns `{"ready": true}`and all agents expose`/health`and`/ready` (ports 8000—8011).
 
 - Stopped stale processes and restarted agents to ensure updated code was loaded.
 
@@ -1462,7 +1462,7 @@ comprehensive testing, and full documentation
 
 - **✅ Root Cause Identified**: PC crashes were **NOT GPU memory exhaustion** but incorrect model configuration
 
-- **✅ Quantization Fix**: Replaced `torch_dtype=torch.int8` with proper `BitsAndBytesConfig` quantization
+- **✅ Quantization Fix**: Replaced `torch_dtype=torch.int8`with proper`BitsAndBytesConfig` quantization
 
 - **✅ LLaVA Format Fix**: Corrected conversation format from simple strings to proper image/text structure
 
@@ -1530,7 +1530,7 @@ quantization_config = BitsAndBytesConfig(
 
 ### 🔧 **Model & Environment Changes**
 
-- **✅ LLaVA Model Switch**: Changed from `llava-v1.6-mistral-7b-hf` to `llava-1.5-7b-hf` for improved stability
+- **✅ LLaVA Model Switch**: Changed from `llava-v1.6-mistral-7b-hf`to`llava-1.5-7b-hf` for improved stability
 
 - **✅ Fresh Environment**: New conda environment `justnews-v2-prod` with PyTorch 2.5.1+cu121, Transformers 4.55.0
 
@@ -1574,7 +1574,7 @@ quantization_config = BitsAndBytesConfig(
 
 - **✅ 4-Model Production Stack**: BERTopic, BART, FLAN-T5, SentenceTransformers with GPU acceleration
 
-- **✅ Complete Tools Integration**: `synthesize_content_v3()`, `cluster_and_synthesize_v3()` integrated into `tools.py`
+- **✅ Complete Tools Integration**: `synthesize_content_v3()`,`cluster_and_synthesize_v3()`integrated into`tools.py`
 
 - **✅ Training System Connectivity**: Full EWC-based continuous learning with proper feedback parameters
 
@@ -1894,9 +1894,9 @@ quantization_config = BitsAndBytesConfig(
 
 - **Repository Source**: <https://github.com/nucleoidai/nucleoid> (Python implementation)
 
-- **Architecture**: `Nucleoid`, `NucleoidState`, `NucleoidGraph`, `ExpressionHandler`, `AssignmentHandler`
+- **Architecture**: `Nucleoid`,`NucleoidState`,`NucleoidGraph`,`ExpressionHandler`,`AssignmentHandler`
 
-- **Features**: Variable assignments (`x = 5`), expressions (`y = x + 10`), queries (`y` → `15`)
+- **Features**: Variable assignments (`x = 5`), expressions (`y = x + 10`), queries (`y`→`15`)
 
 - **Dependencies**: NetworkX for graph operations, AST for Python parsing
 
@@ -1918,17 +1918,17 @@ quantization_config = BitsAndBytesConfig(
 
 - **✅ Concurrent Processing**: Multi-browser parallel processing with batching
 
-- **Technical**: `production_bbc_crawler.py` and `ultra_fast_bbc_crawler.py` operational
+- **Technical**: `production_bbc_crawler.py`and`ultra_fast_bbc_crawler.py` operational
 
 ### 🔧 **Model Loading Issues - COMPLETELY RESOLVED**
 
-- **✅ LLaVA Warnings Fixed**: Corrected `LlavaNextProcessor` → `LlavaProcessor` mismatch
+- **✅ LLaVA Warnings Fixed**: Corrected `LlavaNextProcessor`→`LlavaProcessor` mismatch
 
 - **✅ Fast Processing**: Added `use_fast=True` for improved performance
 
 - **✅ Clean Initialization**: No model type conflicts or uninitialized weights warnings
 
-- **✅ BLIP-2 Support**: Added `Blip2Processor` and `Blip2ForConditionalGeneration` alternatives
+- **✅ BLIP-2 Support**: Added `Blip2Processor`and`Blip2ForConditionalGeneration` alternatives
 
 - **Technical**: Fixed `practical_newsreader_solution.py` with proper model/processor combinations
 
@@ -1964,11 +1964,11 @@ quantization_config = BitsAndBytesConfig(
 
 - **Production-Ready Symbolic Reasoning**: Nucleoid-based agent for fact validation, contradiction detection, and explainability
 
-- **API Endpoints**: `/add_fact`, `/add_facts`, `/add_rule`, `/query`, `/evaluate`, `/health`
+- **API Endpoints**: `/add_fact`,`/add_facts`,`/add_rule`,`/query`,`/evaluate`,`/health`
 
-- **MCP Bus Integration**: Full registration and tool routing via `/register` and `/call`
+- **MCP Bus Integration**: Full registration and tool routing via `/register`and`/call`
 
-- **Native & Docker Support**: Included in `start_services_daemon.sh`, `stop_services.sh`, and legacy `docker-compose.yml` (Docker Compose deprecated)
+- **Native & Docker Support**: Included in `start_services_daemon.sh`,`stop_services.sh`, and legacy`docker-compose.yml` (Docker Compose deprecated)
 
 - **Port 8008**: Reasoning Agent runs on port 8008 by default
 
@@ -2016,7 +2016,7 @@ quantization_config = BitsAndBytesConfig(
 
 - **✅ Background Daemon Architecture**: Complete migration from Docker to native Ubuntu services
 
-- **✅ Automated Startup/Shutdown**: `start_services_daemon.sh` and `stop_services.sh` with proper cleanup
+- **✅ Automated Startup/Shutdown**: `start_services_daemon.sh`and`stop_services.sh` with proper cleanup
 
 - **✅ Process Health Monitoring**: PID tracking, timeout mechanisms, port conflict resolution
 
@@ -2208,7 +2208,7 @@ optimization
 
 - **Risk Assessment**: Low (conservative optimizations maintaining functionality)
 
-- **Deployment Tools**: `validate_phase1_optimizations.py` and `deploy_phase1_optimizations.py`
+- **Deployment Tools**: `validate_phase1_optimizations.py`and`deploy_phase1_optimizations.py`
 
 ### 🎯 Strategic Architecture Benefits
 
@@ -2383,7 +2383,7 @@ System Totals:
 
 ### Critical CUDA Fixes Applied
 
-- **Device Context Management**: Added `torch.cuda.set_device(0)` and `with torch.cuda.device(0):`
+- **Device Context Management**: Added `torch.cuda.set_device(0)`and`with torch.cuda.device(0):`
 
 - **Memory Cleanup**: Automatic `torch.cuda.empty_cache()` on errors prevents memory leaks
 
@@ -2523,13 +2523,13 @@ System Totals:
 
 ### Added (continued 1)
 
-- Database migrations for `training_examples` and `article_vectors` tables in Memory Agent.
+- Database migrations for `training_examples`and`article_vectors` tables in Memory Agent.
 
 - Expanded README with service, database, and migration instructions.
 
 ### Improved
 
-- Enhanced Chief Editor Agent: Implemented robust orchestration logic for `request_story_brief` and `publish_story` tools, including workflow stubs and improved logging.
+- Enhanced Chief Editor Agent: Implemented robust orchestration logic for `request_story_brief`and`publish_story` tools, including workflow stubs and improved logging.
 
 ## [0.2.0] - YYYY-MM-DD
 
@@ -2545,9 +2545,9 @@ System Totals:
 
 - Initial project scaffolding for all agents as per JustNews_Plan_V3.
 
-- Creation of `JustNews_Proposal_V3.md` and `JustNews_Plan_V3.md`.
+- Creation of `JustNews_Proposal_V3.md`and`JustNews_Plan_V3.md`.
 
-- Basic `README.md` and `CHANGELOG.md`.
+- Basic `README.md`and`CHANGELOG.md`.
 ## [0.3.0] - 2025-07-20
 
 ### Added (continued 4)

@@ -45,7 +45,7 @@ Next steps (recommended) ------------------------
 
 - Consider switching to a connection pool for high-throughput components (mysql.connector.pooling.MySQLConnectionPool) if the workload is very concurrent.
 
-- Audit other agents that use `mb_conn` directly and prefer using `get_connection()` or a connection helper/context manager to ensure per-request connections.
+- Audit other agents that use `mb_conn`directly and prefer using`get_connection()` or a connection helper/context manager to ensure per-request connections.
 
 - Add runtime health metrics to detect elevated rates of database errors and retry conditions.
 

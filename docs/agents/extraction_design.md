@@ -22,7 +22,7 @@ Outputs
 
 - `cleaned_text` (string) — main article body used for indexing and ingestion.
 
-- `extraction_metadata` (dict) — includes extractor used, confidence, word_count, coverage stats, and `crawl4ai` provenance if available.
+- `extraction_metadata`(dict) — includes extractor used, confidence, word_count, coverage stats, and`crawl4ai` provenance if available.
 
 Quality gates
 

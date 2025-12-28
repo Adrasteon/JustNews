@@ -7,7 +7,7 @@ Key points
 
 - The script includes `--dry-run` which validates available tooling without running expensive model downloads or training loops.
 
-- For real runs you will want the following packages installed: `transformers`, `accelerate`, `bitsandbytes`, `peft`, `datasets`.
+- For real runs you will want the following packages installed: `transformers`,`accelerate`,`bitsandbytes`,`peft`,`datasets`.
 
 - For 7B training on RTX 3090 prefer QLoRA (4-bit quantization + LoRA adapters) to fit memory.
 
@@ -30,7 +30,7 @@ pip install transformers accelerate bitsandbytes peft datasets
 
 ```
 
-1. To run a very small local test on a tiny dataset, set `--dataset` to a small HF dataset and run with `--epochs 1` and `--train_batch_size 1`.
+1. To run a very small local test on a tiny dataset, set `--dataset`to a small HF dataset and run with`--epochs 1`and`--train_batch_size 1`.
 
 Notes on training
 

@@ -5,7 +5,7 @@ release-level error tracking.
 
 Requirements
 
-- `sentry-sdk` is available in the runtime (see `security/requirements.txt` in the repo which already lists `sentry-sdk`).
+- `sentry-sdk`is available in the runtime (see`security/requirements.txt`in the repo which already lists`sentry-sdk`).
 
 Example usage (Python application)
 
@@ -52,5 +52,5 @@ We provide an optional GitHub Actions workflow (`.github/workflows/sentry- sandb
 event to a Sentry project when you manually dispatch it and the `SENTRY_DSN` secret is configured. This is useful for
 validating integration with a sandbox project without enabling Sentry globally in CI.
 
-Ensure `SENTRY_DSN` is not set by default in `/etc/justnews/global.env` and only add it to your CI secrets for sandbox
+Ensure `SENTRY_DSN`is not set by default in`/etc/justnews/global.env` and only add it to your CI secrets for sandbox
 validation.

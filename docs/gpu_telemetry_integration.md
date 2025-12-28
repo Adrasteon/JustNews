@@ -155,9 +155,9 @@ forwarding is temporarily disabled.
 
 ### Application instrumentation
 
-- Services can opt-in to automatic tracing + OTLP export by calling `common.observability.bootstrap_observability("service-name")` during startup. The helper wires local logging and OpenTelemetry exporters (respecting the `OTEL_EXPORTER_*` env vars documented above).
+- Services can opt-in to automatic tracing + OTLP export by calling `common.observability.bootstrap_observability("service-name")`during startup. The helper wires local logging and OpenTelemetry exporters (respecting the`OTEL_EXPORTER_*` env vars documented above).
 
-- Our Python tracing helpers (`agents/common/tracing.py`) now forward spans to OpenTelemetry whenever the SDK is installed and initialized, so existing `@traced` decorators produce both legacy in-process summaries and OTLP spans.
+- Our Python tracing helpers (`agents/common/tracing.py`) now forward spans to OpenTelemetry whenever the SDK is installed and initialized, so existing`@traced` decorators produce both legacy in-process summaries and OTLP spans.
 
 ### Prometheus integration
 
@@ -167,10 +167,10 @@ forwarding is temporarily disabled.
 
 ### Validation checklist
 
-- `systemctl status justnews-otel-node.service` shows `active (running)` on every GPU host.
+- `systemctl status justnews-otel-node.service`shows`active (running)` on every GPU host.
 
 - (Optional) `curl -s <http://127.0.0.1:8889/metrics> | head` returns collector metrics if you are manually checking collector health.
 
-- Tempo/Jaeger receives spans with `service.name` equal to your override in `/etc/justnews/monitoring/otel/*.env`.
+- Tempo/Jaeger receives spans with `service.name`equal to your override in`/etc/justnews/monitoring/otel/*.env`.
 
 - Loki/Elastic contains kernel/Xid lines with `justnews.gpu.host_role=node` labels.

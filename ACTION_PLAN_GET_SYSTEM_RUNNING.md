@@ -10,7 +10,7 @@ data
 Based on codebase analysis, JustNews has **6 critical dependencies** that must be provisioned in order before crawling
 can begin:
 
-1. **Environment Configuration** (`/etc/justnews/global.env` or repo `global.env`)
+1. **Environment Configuration** (`/etc/justnews/global.env`or repo`global.env`)
 
 1. **MariaDB Database** (core persistence + orchestration state)
 
@@ -46,7 +46,7 @@ can begin:
 
 - `infrastructure/systemd/QUICK_REFERENCE.md` lines 95–110 show minimal required env vars
 
-- `scripts/init_database.py` line 211 checks for `MARIADB_*` env vars
+- `scripts/init_database.py`line 211 checks for`MARIADB_*` env vars
 
 - `config/system_config.json` contains defaults but needs runtime override
 
@@ -89,7 +89,7 @@ source global.env && echo "✅ Environment loaded: MARIADB_HOST=$MARIADB_HOST"
 
 - `infrastructure/systemd/setup_mariadb.sh` automates MariaDB install on systemd
 
-- `scripts/init_database.py` expects MariaDB connection via `MARIADB_*` vars
+- `scripts/init_database.py`expects MariaDB connection via`MARIADB_*` vars
 
 - `database/utils/database_utils.py:get_db_config()` reads these env vars
 
@@ -637,11 +637,11 @@ global.env (1.1)
 
 ## Troubleshooting Quick Reference
 
-| Issue | Check | Fix | |-------|-------|-----| | `MARIADB_HOST` not found | `echo $MARIADB_HOST` | Source global.env
+| Issue | Check | Fix | |-------|-------|-----| | `MARIADB_HOST`not found |`echo $MARIADB_HOST` | Source global.env
 first | | Port 8015 (crawler) not responding | `curl <http://localhost:8015/health`> | Ensure GPU Orchestrator is READY
-first | | ChromaDB collection missing | `curl <http://localhost:8000/api/v1/collections`> | Run `chroma_diagnose.py
---autocreate` | | Articles not stored | Check MariaDB connection + schema | Run `init_database.py` again | | vLLM on
-7060 crashed | `curl <http://localhost:7060/health`> | Relaunch: `./scripts/launch_vllm_mistral_7b.sh` | | No embeddings
+first | | ChromaDB collection missing | `curl <http://localhost:8000/api/v1/collections`> | Run`chroma_diagnose.py
+--autocreate`| | Articles not stored | Check MariaDB connection + schema | Run`init_database.py` again | | vLLM on
+7060 crashed | `curl <http://localhost:7060/health`> | Relaunch:`./scripts/launch_vllm_mistral_7b.sh` | | No embeddings
 generated | Check ChromaDB health + article count | Ensure embeddings table exists |
 
 ---
@@ -682,7 +682,7 @@ du -sh /var/lib/mysql/justnews || du -sh ~/justnews_data/
 
 1. **GPU Power Limit**: 300W cap applied to RTX 3090. Adjust if thermal issues occur.
 
-1. **Conda Environment**: All scripts expect `justnews-py312`. Set `CANONICAL_ENV` if using different environment.
+1. **Conda Environment**: All scripts expect `justnews-py312`. Set`CANONICAL_ENV` if using different environment.
 
 1. **Database Credentials**: Use strong passwords in production. Update `global.env` accordingly.
 

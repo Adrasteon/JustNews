@@ -10,7 +10,7 @@ distributed tracing, and real-time monitoring dashboards.
 
 ### Existing Capabilities
 
-- **Basic Prometheus/Grafana Stack**: Systemd-based deployment patterns for Prometheus, AlertManager, Grafana, Node Exporter, DCGM Exporter. Kubernetes manifests and Docker Compose assets are deprecated and archived under `infrastructure/archives/`; use systemd artifacts under `infrastructure/systemd/` for active deployments.
+- **Basic Prometheus/Grafana Stack**: Systemd-based deployment patterns for Prometheus, AlertManager, Grafana, Node Exporter, DCGM Exporter. Kubernetes manifests and Docker Compose assets are deprecated and archived under `infrastructure/archives/`; use systemd artifacts under`infrastructure/systemd/` for active deployments.
 
 - **Metrics Collection**: Basic Prometheus client integration in `common/metrics.py` with HTTP request metrics, system resources, and GPU monitoring
 

@@ -12,7 +12,7 @@ Test tiers
 
 1. Fast unit & integration tests (local dev) — use in-memory sqlite + in-memory Redis emulator
 
-- Location: `tests/unit/` and `tests/integration/`
+- Location: `tests/unit/`and`tests/integration/`
 
 - Fast, deterministic, no external infra required
 
@@ -20,11 +20,11 @@ Test tiers
 
 ./scripts/dev/pytest.sh [pytest args]
 
-- The tests include helpers that map MySQL `%s` placeholders to sqlite `?` for compatibility in CI and developer runs.
+- The tests include helpers that map MySQL `%s`placeholders to sqlite`?` for compatibility in CI and developer runs.
 
 1. Systemd-level local tests — optional, opt-in, higher fidelity
 
-- Use the repository-provided systemd-nspawn helper `scripts/dev/run_systemd_nspawn_env.sh` to create an Ubuntu-based systemd container and install `mariadb-server` and `redis-server` inside it.
+- Use the repository-provided systemd-nspawn helper `scripts/dev/run_systemd_nspawn_env.sh`to create an Ubuntu-based systemd container and install`mariadb-server`and`redis-server` inside it.
 
 - This is useful for reproducing systemd/service unit ordering issues, DB startup ordering, or other system-level behavior that in-memory emulators won't show.
 
@@ -38,18 +38,18 @@ tests in the container
 
 1. CI-level fidelity tests
 
-      - The repository CI workflow has been updated to use Miniconda and create a `${CANONICAL_ENV:-justnews-py312}` conda environment in CI, matching local dev setups; CI now runs `pytest` inside that environment.
+      - The repository CI workflow has been updated to use Miniconda and create a `${CANONICAL_ENV:-justnews-py312}`conda environment in CI, matching local dev setups; CI now runs`pytest` inside that environment.
 
 - If you want true end-to-end tests hitting live Redis and MariaDB, prefer a dedicated CI job that runs on self-hosted runners capable of running systemd-nspawn or LXD (not possible on the default hosted runners due to privilege constraints). Adding such a CI job is recommended for deeper validation but needs self-hosted capabilities.
 
-      - Docker-based E2E PoC (test/CI only): We added a lightweight Docker Compose-based PoC which boots a pre-seeded MariaDB and Redis for faster E2E verification without requiring systemd-nspawn privileges. This PoC is intended for testing/CI only — the canonical MariaDB deployment in developer and production workflows runs on the host (outside Docker) or as a managed service. See `scripts/dev/docker-compose.e2e.yml`, `scripts/dev/run_e2e_docker.sh` and `.github/workflows/e2e-docker.yml`.
+      - Docker-based E2E PoC (test/CI only): We added a lightweight Docker Compose-based PoC which boots a pre-seeded MariaDB and Redis for faster E2E verification without requiring systemd-nspawn privileges. This PoC is intended for testing/CI only — the canonical MariaDB deployment in developer and production workflows runs on the host (outside Docker) or as a managed service. See `scripts/dev/docker-compose.e2e.yml`,`scripts/dev/run_e2e_docker.sh`and`.github/workflows/e2e-docker.yml`.
 
-Developer ergonomics & helpers -- `scripts/dev/pytest.sh` — wrapper which runs pytest inside `${CANONICAL_ENV:-justnews-
-py312}` conda env and sets `PYTHONPATH` to the repo root. Use it for consistent local runs.
+Developer ergonomics & helpers -- `scripts/dev/pytest.sh`— wrapper which runs pytest inside`${CANONICAL_ENV:-justnews-
+py312}`conda env and sets`PYTHONPATH` to the repo root. Use it for consistent local runs.
 
-- `scripts/dev/install_hooks.sh` — installs local git hooks (from `scripts/dev/git-hooks/`) into `.git/hooks` (opt-in). The `pre-push` hook prints guidance and can optionally run a quick smoke test when `GIT_STRICT_TEST_HOOK=1`.
+- `scripts/dev/install_hooks.sh`— installs local git hooks (from`scripts/dev/git-hooks/`) into`.git/hooks`(opt-in). The`pre-push`hook prints guidance and can optionally run a quick smoke test when`GIT_STRICT_TEST_HOOK=1`.
 
-- `tests/conftest.py` includes a safety check that enforces that local pytest runs are in `${CANONICAL_ENV:-justnews-py312}` by default. CI bypasses this check; developers can bypass locally by setting `ALLOW_ANY_PYTEST_ENV=1`.
+- `tests/conftest.py`includes a safety check that enforces that local pytest runs are in`${CANONICAL_ENV:-justnews-py312}`by default. CI bypasses this check; developers can bypass locally by setting`ALLOW_ANY_PYTEST_ENV=1`.
 
 Practical commands
 
@@ -95,9 +95,9 @@ Tips & gotchas
 
 - Running the Docker-based PoC locally (for testing/CI debugging only):
 1) Start services: `docker-compose -f scripts/dev/docker-compose.e2e.yml up -d --build` 2) Run the smoke tests:
-`scripts/dev/e2e_smoke.sh` 3) Run full E2E: set the env vars described in `scripts/dev/run_e2e_docker.sh` and run
+`scripts/dev/e2e_smoke.sh`3) Run full E2E: set the env vars described in`scripts/dev/run_e2e_docker.sh` and run
 `pytest -q tests/e2e -q -s`
 
 Where to add tests
 
-- Add new unit tests in `tests/unit/` for engine methods (lease persistence, leader election mocks, reclaimer), and integration tests in `tests/integration/` for end-to-end flows (submit->claim->done, DLQ handling, reclaimer pass). Follow patterns seen in the repository for sqlite/redis emulators to remain CI-friendly.
+- Add new unit tests in `tests/unit/`for engine methods (lease persistence, leader election mocks, reclaimer), and integration tests in`tests/integration/` for end-to-end flows (submit->claim->done, DLQ handling, reclaimer pass). Follow patterns seen in the repository for sqlite/redis emulators to remain CI-friendly.

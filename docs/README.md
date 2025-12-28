@@ -613,9 +613,9 @@ python docs/catalogue_maintenance.py --optimize-index
 ### **Error Messages & Solutions**
 
 | Error Message | Cause | Solution | |---------------|-------|----------| | `Path not found` | Document moved/renamed |
-Run `--fix-paths` | | `Invalid JSON` | Catalogue corruption | Run `--validate` and rebuild | | `Search index empty` |
-Index corruption | Run `--rebuild-index` | | `Memory limit exceeded` | Large catalogue | Run `--optimize-index` | |
-`Cross-reference broken` | Document deleted | Run `--health-check` |
+Run `--fix-paths`| |`Invalid JSON`| Catalogue corruption | Run`--validate`and rebuild | |`Search index empty` |
+Index corruption | Run `--rebuild-index`| |`Memory limit exceeded`| Large catalogue | Run`--optimize-index` | |
+`Cross-reference broken`| Document deleted | Run`--health-check` |
 
 ### **Debug Mode**
 

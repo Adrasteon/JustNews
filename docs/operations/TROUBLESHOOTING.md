@@ -865,4 +865,4 @@ mysql -u root < /tmp/backup.sql
 
 - Environment: `docs/operations/ENVIRONMENT_CONFIG.md`
 
-1. **Enable Debug**: Set `set -x` in shell scripts or `--verbose` in commands
+1. **Enable Debug**: Set `set -x`in shell scripts or`--verbose` in commands

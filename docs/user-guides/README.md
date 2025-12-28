@@ -20,8 +20,9 @@ python --version  # Should be 3.11+ nvidia-smi        # GPU verification docker
 1. **Environment Setup**
 
 ```bash
-   # Clone and setup
-git clone <repository> cd JustNews ./activate_environment.sh ```
+# Clone and setup
+git clone <repository> cd JustNews ./activate_environment.sh
+```
 
 1. **Configuration**
 
@@ -41,8 +42,9 @@ make deploy-production ```
 1. **Verification**
 
 ```bash
-   # Check system health
-curl <http://localhost:8000/health> curl <http://localhost:8013/dashboard> ```
+# Check system health
+curl <http://localhost:8000/health> curl <http://localhost:8013/dashboard>
+```
 
 ### 👩‍🔬 **Data Scientist/Researcher**
 
@@ -61,11 +63,12 @@ JustNewsClient(api_key="your_research_key") ```
 1. **Basic Queries**
 
 ```python
-   # Search for articles
+# Search for articles
 articles = client.search_articles( query="climate change", date_from="2025-01-01", limit=100 )
 
-   # Get sentiment analysis
-for article in articles: print(f"Sentiment: {article.sentiment.score}") ```
+# Get sentiment analysis
+for article in articles: print(f"Sentiment: {article.sentiment.score}")
+```
 
 1. **Advanced Analytics**
 
@@ -85,8 +88,9 @@ If you're developing or extending JustNews:
 1. **Development Environment**
 
 ```bash
-   # Setup development environment
-make setup-dev make test  # Run test suite ```
+# Setup development environment
+make setup-dev make test  # Run test suite
+```
 
 1. **Code Structure**
 
@@ -97,8 +101,9 @@ docs/            # Documentation tests/           # Test suites ```
 1. **Adding a New Agent**
 
 ```python
-   # Create agent structure
-mkdir agents/new_agent touch agents/new_agent/main.py touch agents/new_agent/__init__.py ```
+# Create agent structure
+mkdir agents/new_agent touch agents/new_agent/main.py touch agents/new_agent/__init__.py
+```
 
 1. **Testing Your Changes**
 
@@ -383,13 +388,13 @@ result = mcp_client.call_agent( agent="memory", tool="save_article", article_dat
 import pytest from agents.my_agent.main import my_tool_function
 
 def test_my_tool():
-    # Arrange
+# Arrange
 input_data = "test input"
 
-    # Act
+# Act
 result = my_tool_function(input_data)
 
-    # Assert
+# Assert
 assert result is not None assert isinstance(result, dict)
 
 ```bash
@@ -398,7 +403,7 @@ assert result is not None assert isinstance(result, dict)
 
 ```python
 def test_agent_integration(mcp_server):
-    # Test with MCP bus
+# Test with MCP bus
 response = requests.post( f"{mcp_server.url}/call", json={ "agent": "my_agent", "tool": "my_tool", "args": ["test"] } )
 assert response.status_code == 200
 

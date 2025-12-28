@@ -557,7 +557,7 @@ Once setup is complete:
 
 1. **Start agents**: `sudo systemctl enable --now justnews@scout`
 
-1. **Monitor**: Check `/var/log/justnews/` and dashboard at `http://localhost:8000`
+1. **Monitor**: Check `/var/log/justnews/`and dashboard at`http://localhost:8000`
 
 1. **Ingest articles**: Run crawler to populate databases
 

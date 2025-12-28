@@ -23,6 +23,6 @@ sudo ./infrastructure/systemd/helpers/db-check.sh
 
 ```
 
-If `mysql` is available, the script runs `SELECT 1`. Otherwise, it checks the Memory service health endpoint as a proxy.
+If `mysql`is available, the script runs`SELECT 1`. Otherwise, it checks the Memory service health endpoint as a proxy.
 
 See also: `infrastructure/systemd/QUICK_REFERENCE.md` for the minimal env examples.

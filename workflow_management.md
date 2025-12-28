@@ -13,11 +13,11 @@ throttles, and ensure work completes without losing state due to crashes or rest
 
 - **Core implementation**: Phases 1–6 are implemented and covered by unit, integration and e2e tests. The orchestrator now supports persistent leases, worker pool persistence, a job store (MariaDB), a reclaimer loop that handles stale Redis stream entries, and a policy enforcer for worker pools.
 
-- **Instrumentation & testing**: There are comprehensive unit tests and integration/e2e tests such as `tests/integration/test_worker_flow.py`, `tests/integration/test_orchestrator_e2e.py` and `tests/e2e/test_orchestrator_real_e2e.py` that exercise DB-backed job lifecycle, reclaimer behavior and worker flows. A Docker-based E2E PoC with `scripts/dev/docker-compose.e2e.yml` is present and used for manual and CI-driven checks.
+- **Instrumentation & testing**: There are comprehensive unit tests and integration/e2e tests such as `tests/integration/test_worker_flow.py`,`tests/integration/test_orchestrator_e2e.py`and`tests/e2e/test_orchestrator_real_e2e.py`that exercise DB-backed job lifecycle, reclaimer behavior and worker flows. A Docker-based E2E PoC with`scripts/dev/docker-compose.e2e.yml` is present and used for manual and CI-driven checks.
 
 - **Production-readiness gap**: Phase 7 (operations runbook, hardened claim semantics, production-grade Redis XAUTOCLAIM/XCLAIM handling, idempotency hardening and autoscaler policies) is partially complete: many runtime components exist and are tested, but production hardening and operational runbooks need consolidation and final verification on production-like infra.
 
-- **Where code exists**: Key implementation lives under `agents/gpu_orchestrator` (`gpu_orchestrator_engine.py`, `worker.py`, `main.py`, `job_consumer.py`), DB initialization is available in `scripts/deploy/init_database.py` and `scripts/dev/db-seed/justnews_init.sql`, and runbooks/tests are under `docs/gpu_orchestrator_runbook.md` and `tests/`.
+- **Where code exists**: Key implementation lives under `agents/gpu_orchestrator`(`gpu_orchestrator_engine.py`,`worker.py`,`main.py`,`job_consumer.py`), DB initialization is available in`scripts/deploy/init_database.py`and`scripts/dev/db-seed/justnews_init.sql`, and runbooks/tests are under`docs/gpu_orchestrator_runbook.md`and`tests/`.
 
 ---
 
@@ -136,7 +136,7 @@ Consumer model:
 
 - A consumer group consumer claims a message via XREADGROUP; on start it marks job status=claimed and records worker+lease (DB update).
 
-- On success finalizes job as `done` and ACKs the stream; on failure increments `attempts` and optionally XACK+XADD to DLQ.
+- On success finalizes job as `done`and ACKs the stream; on failure increments`attempts` and optionally XACK+XADD to DLQ.
 
 - If consumer dies with an unacked message, the leader or a reclaimer process will XCLAIM messages where IDLE time > threshold and handle retries.
 
@@ -180,7 +180,7 @@ implementation. Important implementation notes:
 
 - The Worker (agents/gpu_orchestrator/worker.py) uses a best-effort fallback (xrange) where xreadgroup is not present, decodes fields, normalizes job ids and payloads, updates orchestrator_jobs status transitions (claimed -> done/failed), and ACKs messages.
 
-- The engine's `_reclaimer_pass` examines pending entries older than ORCH_CLAIM_IDLE_MS, increments attempts, requeues or moves messages to DLQ, and updates `orchestrator_jobs` accordingly. Unit tests cover both requeue and DLQ behavior.
+- The engine's `_reclaimer_pass`examines pending entries older than ORCH_CLAIM_IDLE_MS, increments attempts, requeues or moves messages to DLQ, and updates`orchestrator_jobs` accordingly. Unit tests cover both requeue and DLQ behavior.
 
 4) Health & leader
 
@@ -199,7 +199,7 @@ for the FastAPI routes and how the engine integrates with the web layer.
 This is implemented using MariaDB GET_LOCK-based leader election and a background reconciliation/reclaimer loop in the
 engine. Only the leader performs lifecycle enforcement and reclaimer passes. Leader takeover is guarded by acquiring the
 DB advisory lock and the engine logs leader transitions.
- ### Phase 6 — Worker + lease usage and job lifecycle (IMPLEMENTED)
+### Phase 6 — Worker + lease usage and job lifecycle (IMPLEMENTED)
 
 - Worker implementation completed. `agents/gpu_orchestrator/worker.py` implements a simple worker that claims messages, requests leases from the engine, updates orchestrator_jobs status transitions and releases leases.
 
@@ -232,7 +232,7 @@ item includes a short acceptance criteria and suggested verification steps.
 
 1) Production Redis reclaimer hardening
 
-- Acceptance: `xautoclaim` / `xclaim` paths tested and stable on our fleet Redis versions; reclaimer performs safely under high-churn streams without loss or duplicate processing.
+- Acceptance: `xautoclaim`/`xclaim` paths tested and stable on our fleet Redis versions; reclaimer performs safely under high-churn streams without loss or duplicate processing.
 
 - Verify: run high-concurrency stream soak tests (1–24 hours) that simulate lost consumers and measure reclaimer behaviour; add targeted unit tests and e2e scenarios for edge cases.
 
@@ -258,7 +258,7 @@ item includes a short acceptance criteria and suggested verification steps.
 
 - Acceptance: Policy enforcer + admission control remain stable under production-like load across multiple GPU nodes. No persistent queue growth or runaway OOMs over a 24–72 hour test.
 
-- Verify: run `scripts/perf/` workloads and `scripts/ops/adapter_worker_pool.py` at scale; collect metrics and review for anomalies.
+- Verify: run `scripts/perf/`workloads and`scripts/ops/adapter_worker_pool.py` at scale; collect metrics and review for anomalies.
 
 6) Release, artifact and migration plan
 
@@ -392,7 +392,7 @@ Deliverable: leases are persisted, survive restarts, and can be reclaimed.
 
 ### Phase 3 — Job queue (Redis Streams)
 
-- Add `orchestrator_jobs` table and `stream:orchestrator:inference_jobs`, `stream:orchestrator:preloads`.
+- Add `orchestrator_jobs`table and`stream:orchestrator:inference_jobs`,`stream:orchestrator:preloads`.
 
 - `POST /jobs/submit` persists job and writes into redis stream.
 

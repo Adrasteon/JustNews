@@ -31,24 +31,26 @@ conda install -n bnb122lab -c conda-forge -y gcc_linux-64=12.3.0 gxx_linux-64=12
 
 ```
 
-Key binaries live under `/home/adra/miniconda3/envs/bnb122lab/bin/` and we refer to this path as `CUDA_HOME` in the
+Key binaries live under `/home/adra/miniconda3/envs/bnb122lab/bin/`and we refer to this path as`CUDA_HOME` in the
 commands below.
 
 ## Build steps
 
 1. **Clean the source tree** (we build from the vendored bitsandbytes sources
-at `.build/bitsandbytes/`). ```bash cd /home/adra/JustNews/.build/bitsandbytes rm -rf _skbuild build dist
-bitsandbytes.egg-info manual_build ```
+at `.build/bitsandbytes/`).```bash cd /home/adra/JustNews/.build/bitsandbytes rm -rf _skbuild build dist
+bitsandbytes.egg-info manual_build
+```
 
-1. **Invoke `python -m build --wheel`** via `conda run` while forcing CMake to use
-the CUDA 12.2 toolchain and the GCC 12.3 host compiler shipped inside the `bnb122lab` environment: ```bash conda run -n
+1. **Invoke `python -m build --wheel`** via`conda run` while forcing CMake to use
+the CUDA 12.2 toolchain and the GCC 12.3 host compiler shipped inside the `bnb122lab`environment:```bash conda run -n
 bnb122lab \ env \ CUDA_HOME=/home/adra/miniconda3/envs/bnb122lab \ CUDA_VERSION=12.2 \
 CUDACXX=/home/adra/miniconda3/envs/bnb122lab/bin/nvcc \ CC=/home/adra/miniconda3/envs/bnb122lab/bin/x86_64-conda-linux-
 gnu-gcc \ CXX=/home/adra/miniconda3/envs/bnb122lab/bin/x86_64-conda-linux-gnu-g++ \
 CUDAHOSTCXX=/home/adra/miniconda3/envs/bnb122lab/bin/x86_64-conda-linux-gnu-g++ \ FORCE_CMAKE=1 \
 CMAKE_ARGS="-DCOMPUTE_BACKEND=cuda -DCUDA_VERSION=122 -DCOMPUTE_CAPABILITY=86
 -DCMAKE_CUDA_HOST_COMPILER=/home/adra/miniconda3/envs/bn b122lab/bin/x86_64-conda-linux-gnu-g++" \ python -m build
---wheel ``` The build drops the wheel into `dist/` and also produces the shared library
+--wheel
+```The build drops the wheel into`dist/` and also produces the shared library
 `bitsandbytes/libbitsandbytes_cuda122.so` we ship inside the package.
 
 1. **Install into the runtime env** (after copying the wheel to the repo root):
@@ -85,7 +87,8 @@ with a matching CUDA toolkit (12.2) and point bitsandbytes to it via
 1. **NVCC sanity check**
 
 ```bash conda run -n bnb122lab nvcc --version  # should print release 12.2,
-V12.2.140 ```
+V12.2.140
+```
 
 1. **Diagnostics after install**
 
@@ -98,14 +101,15 @@ state that it is loading `libbitsandbytes_cuda122.so`.
 ```bash RE_RANKER_TEST_MODE=0 RE_RANKER_MODEL=mistralai/Mistral-7B-Instruct-v0.3
 \ BNB_CUDA_VERSION=122 \ conda run -n ${CANONICAL_ENV:-justnews-py312} python
 scripts/perf/simulate_concurrent_inference.py \ --requests 20 --sweep --sweep- max 2 --model
-mistralai/Mistral-7B-Instruct-v0.3 ```
+mistralai/Mistral-7B-Instruct-v0.3
+```
 
 ## Operational tips
 
 - Keep `BNB_CUDA_VERSION=122` in every service environment until we either upgrade
 the system CUDA stack or rebuild the wheel for a new toolkit.
 
-- Use `BNB_DISABLE=1` (supported by `scripts/perf/simulate_concurrent_inference.py`
+- Use `BNB_DISABLE=1`(supported by`scripts/perf/simulate_concurrent_inference.py`
 and our agent loaders) to force a float16 path when you need a quick comparison or when bitsandbytes is temporarily
 unavailable.
 
@@ -130,7 +134,7 @@ produced wheel as an artifact so the team can cache or pin it for reproducible i
 
 ## How CI & other workflows will pick up the wheel
 
-Our CI workflows (including `orchestrator-only-tests.yml` and the full `pytest.yml`) now attempt to install a prebuilt
+Our CI workflows (including `orchestrator-only-tests.yml`and the full`pytest.yml`) now attempt to install a prebuilt
 bnb wheel automatically before falling back to pip installs.
 
 - CI finds the latest `bitsandbytes-wheel-<short-cuda>` artifact produced by

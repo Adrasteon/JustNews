@@ -9,9 +9,9 @@
 I reviewed the codebase systematically to create a **comprehensive, evidence- based action plan** for getting JustNews
 up and running with database ingestion. This wasn't just a summary—I:
 
-1. **Read key initialization scripts**: `scripts/init_database.py`, `scripts/ops/run_crawl_schedule.py`, crawler engine code
+1. **Read key initialization scripts**: `scripts/init_database.py`,`scripts/ops/run_crawl_schedule.py`, crawler engine code
 
-1. **Analyzed configuration files**: `config/system_config.json`, `config/crawl_schedule.yaml`, crawl profiles
+1. **Analyzed configuration files**: `config/system_config.json`,`config/crawl_schedule.yaml`, crawl profiles
 
 1. **Examined infrastructure code**: systemd scripts, database setup, docker-compose configurations
 
@@ -225,11 +225,11 @@ The system has a **hard ordering requirement** that wasn't obvious from high- le
 
 This is enforced via:
 
-- `agents/gpu_orchestrator/main.py` – serves `/ready` endpoint
+- `agents/gpu_orchestrator/main.py`– serves`/ready` endpoint
 
 - `agents/crawler/main.py` – checks GPU Orchestrator readiness before accepting jobs
 
-- `infrastructure/systemd/units/` – ExecStartPre gates on `/ready`
+- `infrastructure/systemd/units/`– ExecStartPre gates on`/ready`
 
 **Missing this** = crawlers start but can't load models = silent failures. **The plan accounts for this** = explicit
 wait-for-ready checks in Phase 3.2

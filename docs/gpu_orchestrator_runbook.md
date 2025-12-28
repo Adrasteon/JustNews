@@ -119,8 +119,9 @@ redis-cli XPENDING stream:orchestrator:inference_jobs cg:inference
 1. **Stop largest pools first:**
 
 ```bash
-   # Find pools by memory usage (requires custom metric)
-curl <http://localhost:8008/metrics> | grep worker_pool ```
+# Find pools by memory usage (requires custom metric)
+curl <http://localhost:8008/metrics> | grep worker_pool
+```
 
 1. **Force evict high-memory pools:**
 
@@ -333,6 +334,6 @@ Use this checklist to validate runbook readiness with an operator drill.
 
 ### Soak / performance tests
 
-We use `scripts/perf/orchestrator_soak.sh` and the CI workflow `.github/workflows/perf-orchestrator-soak.yml` to run
+We use `scripts/perf/orchestrator_soak.sh`and the CI workflow`.github/workflows/perf-orchestrator-soak.yml` to run
 manual soak tests on self- hosted GPU runners. These runs should be executed in staging before any large production
 changes — collect artifacts and review CSV results for latency, retry rates, and DLQ behaviour.

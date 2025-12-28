@@ -30,7 +30,7 @@ Useful flags:
 
 - `--article-id 123 --article-id 456` — limit the run to specific rows.
 
-- `--no-artifacts` — skip writing `output/agent_chain_runs/<id>.json` (useful in CI).
+- `--no-artifacts`— skip writing`output/agent_chain_runs/<id>.json` (useful in CI).
 
 - `--artifact-dir /tmp/harness` — override the artifact root.
 
@@ -40,9 +40,9 @@ The script invokes `AgentChainRunner`, which:
 
 1. Runs `AgentChainHarness` to generate story briefs, fact checks, and drafts.
 
-1. Saves traces (`fact_check_trace`, `synth_trace`, `critic_result`) plus updated `fact_check_status`/`is_synthesized` flags back into the `articles` table.
+1. Saves traces (`fact_check_trace`,`synth_trace`,`critic_result`) plus updated`fact_check_status`/`is_synthesized`flags back into the`articles` table.
 
-1. Records metrics (`justnews_stage_b_editorial_harness_total`, `justnews_stage_b_editorial_acceptance_*`).
+1. Records metrics (`justnews_stage_b_editorial_harness_total`,`justnews_stage_b_editorial_acceptance_*`).
 
 ## Scheduling options
 
@@ -94,7 +94,7 @@ access.)
 
 ## Dashboards & alerts
 
-- Follow `docs/grafana/editorial-harness-wiring.md` to expose the Stage 4 metrics, copy the provisioning files, and import `docs/grafana/editorial-harness-dashboard.json`.
+- Follow `docs/grafana/editorial-harness-wiring.md`to expose the Stage 4 metrics, copy the provisioning files, and import`docs/grafana/editorial-harness-dashboard.json`.
 
 - Panels cover accepted vs follow-up vs error rates, rolling acceptance ratio, score distribution, and 24 h harness volume.
 
@@ -108,6 +108,6 @@ access.)
 
 1. Ensure the cron or workflow output is posted to #live-run with the JSON summary from the script.
 
-1. Investigate any `needs_followup` clusters by reviewing the artifact JSON (if enabled) or the `fact_check_trace` column.
+1. Investigate any `needs_followup`clusters by reviewing the artifact JSON (if enabled) or the`fact_check_trace` column.
 
 1. Before promoting drafts to Stage 5 (publishing), confirm the Grafana dashboard shows green status for the latest window.

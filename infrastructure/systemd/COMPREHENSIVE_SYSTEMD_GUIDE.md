@@ -10,9 +10,9 @@ drop-ins.
 
 ## Gating model preload (why orchestrator-first)
 
-- Units use `ExecStartPre` to run `preflight.sh --gate-only <instance>`.
+- Units use `ExecStartPre`to run`preflight.sh --gate-only <instance>`.
 
-- In gate-only mode, the script waits for the GPU Orchestrator on `127.0.0.1:8014` and ensures `/models/preload` completes (or is already “all_ready”).
+- In gate-only mode, the script waits for the GPU Orchestrator on `127.0.0.1:8014`and ensures`/models/preload` completes (or is already “all_ready”).
 
 - Therefore, start `justnews@gpu_orchestrator` first; once READY, other services start cleanly.
 
@@ -20,7 +20,7 @@ Relevant env/tuning:
 
 - `GATE_TIMEOUT` (seconds): how long to wait for orchestrator and preload.
 
-- `REQUIRE_BUS=0` to bypass bus wait in `wait_for_mcp.sh` (rarely needed).
+- `REQUIRE_BUS=0`to bypass bus wait in`wait_for_mcp.sh` (rarely needed).
 
 ## Environment files
 
@@ -106,9 +106,9 @@ ls -la /tmp/nvidia-mps/
 
 1. **Environment Configuration**:
 
-- Global: `ENABLE_MPS=true` in `/etc/justnews/global.env`
+- Global: `ENABLE_MPS=true`in`/etc/justnews/global.env`
 
-- GPU Orchestrator: `ENABLE_MPS=true` and `ENABLE_NVML=true` in `/etc/justnews/gpu_orchestrator.env`
+- GPU Orchestrator: `ENABLE_MPS=true`and`ENABLE_NVML=true`in`/etc/justnews/gpu_orchestrator.env`
 
 1. **Validate Configuration**:
 
@@ -134,11 +134,11 @@ Place per-instance overrides in `/etc/systemd/system/justnews@<name>.service.d/`
 
 Templates provided under `units/drop-ins/`:
 
-- `05-gate-timeout.conf` – adjust `Environment=GATE_TIMEOUT=180`
+- `05-gate-timeout.conf`– adjust`Environment=GATE_TIMEOUT=180`
 
 - `10-preflight-gating.conf` – enforce gate-only ExecStartPre
 
-- `20-restart-policy.conf` – tune `Restart=` and `RestartSec=`
+- `20-restart-policy.conf`– tune`Restart=`and`RestartSec=`
 
 After changes: `sudo systemctl daemon-reload`.
 
@@ -156,13 +156,13 @@ Install examples are in the Quick Reference.
 
 Helpers (optional):
 
-- `helpers/orchestrator-ready.sh` – poll 8014 `/ready` with backoff.
+- `helpers/orchestrator-ready.sh`– poll 8014`/ready` with backoff.
 
 - `helpers/tail-logs.sh` – multi-service log follow with labels.
 
-- `helpers/diag-dump.sh` – capture status/logs/ports and optional `nvidia-smi`.
+- `helpers/diag-dump.sh`– capture status/logs/ports and optional`nvidia-smi`.
 
-- `helpers/db-check.sh` – assert DB connectivity based on `JUSTNEWS_DB_URL`.
+- `helpers/db-check.sh`– assert DB connectivity based on`JUSTNEWS_DB_URL`.
 
 ## Logs and troubleshooting
 
@@ -186,13 +186,13 @@ If many services fail on first boot, verify `justnews@gpu_orchestrator` is READY
 
 - Evidence audit API trail lookup: `curl -fsS "$EVIDENCE_AUDIT_BASE_URL/facts/<id>/trail" | jq`
 
-- Analytics service: `curl -fsS <http://127.0.0.1:8011/health`> should return `{"status":"healthy"}`; the FastAPI wrapper now aliases the underlying engine to keep the status fresh.
+- Analytics service: `curl -fsS <http://127.0.0.1:8011/health`> should return`{"status":"healthy"}`; the FastAPI wrapper now aliases the underlying engine to keep the status fresh.
 
 - Governance dashboard heartbeat: `curl -fsS "$GOVERNANCE_DASHBOARD_URL/api/health"`
 
 - QA sampling reminders: ensure `/etc/justnews/playbooks/extraction-qa.md` exists and is referenced in weekly ops review notes.
 
-- Verify synthesizer gate: `curl -fsS <http://127.0.0.1:8005/ready`> should report `true` only when `/transparency/status` returns `integrity.status` of `ok` or `degraded`.
+- Verify synthesizer gate: `curl -fsS <http://127.0.0.1:8005/ready`> should report`true`only when`/transparency/status`returns`integrity.status`of`ok`or`degraded`.
 
 If transparency endpoints return non-200 responses, pause automated publishing (`sudo systemctl stop
 justnews@synthesis`) until evidence trails are restored.
@@ -257,7 +257,7 @@ Behavior:
 
 - Refresh interval is configurable with `--refresh SEC` (default 2).
 
-- Honors `--host`, `-t/--timeout`, and optional service filters.
+- Honors `--host`,`-t/--timeout`, and optional service filters.
 
 Examples:
 
@@ -293,7 +293,7 @@ What it does:
 
 - Optionally reinstalls unit template and helper scripts (see flags in the script)
 
-- Ensures `justnews@gpu_orchestrator` is started and `/ready` reports ready
+- Ensures `justnews@gpu_orchestrator`is started and`/ready` reports ready
 
 - Starts MCP Bus, then the rest of the agents in dependency order
 
@@ -312,17 +312,17 @@ sudo ./infrastructure/systemd/scripts/health_check.sh
 
 Notes and tuning:
 
-- `enable_all.sh` now starts `gpu_orchestrator` first and waits on `/ready` (up to 120s), then MCP Bus, then all remaining services. It accepts `fresh` and the alias `--fresh`.
+- `enable_all.sh`now starts`gpu_orchestrator`first and waits on`/ready`(up to 120s), then MCP Bus, then all remaining services. It accepts`fresh`and the alias`--fresh`.
 
-- `preflight.sh --gate-only <instance>` is invoked by unit drop-ins; it will wait up to `GATE_TIMEOUT` seconds (default 180) for orchestrator and model preload.
+- `preflight.sh --gate-only <instance>`is invoked by unit drop-ins; it will wait up to`GATE_TIMEOUT` seconds (default 180) for orchestrator and model preload.
 
-- If you must bypass bus wait (e.g., maintenance), set `REQUIRE_BUS=0` in the environment for `wait_for_mcp.sh` (rare).
+- If you must bypass bus wait (e.g., maintenance), set `REQUIRE_BUS=0`in the environment for`wait_for_mcp.sh` (rare).
 
 - Increase timeouts for cold-start scenarios or slow disks/GPUs by setting a drop-in with `Environment=GATE_TIMEOUT=300`.
 
 Failure handling:
 
-- If the orchestrator `READY` probe doesn’t succeed within the timeout, `enable_all.sh` aborts with a clear message. Check `journalctl -u justnews@gpu_orchestrator -f`.
+- If the orchestrator `READY`probe doesn’t succeed within the timeout,`enable_all.sh`aborts with a clear message. Check`journalctl -u justnews@gpu_orchestrator -f`.
 
 - If MCP Bus health isn’t ready, the script logs a warning and continues; subsequent services will still start due to systemd gating.
 
@@ -405,7 +405,7 @@ journalctl -u justnews-boot-smoke.service -e -n 200
 
 Tuning (optional):
 
-- `SMOKE_TIMEOUT_SEC`, `SMOKE_RETRIES`, `SMOKE_SLEEP_BETWEEN` can be exported in the environment or set via a systemd drop-in for `justnews-boot-smoke.service`.
+- `SMOKE_TIMEOUT_SEC`,`SMOKE_RETRIES`,`SMOKE_SLEEP_BETWEEN`can be exported in the environment or set via a systemd drop-in for`justnews-boot-smoke.service`.
 
 - To delay further, increase `OnBootSec` in the timer unit.
 
@@ -471,17 +471,17 @@ for operational tasks and Dev for local development aids.
 
 1. `infrastructure/systemd/canonical_system_startup.sh` — Top-level bring-up helper (env checks, reset/start, monitoring provisioning, consolidated health check).
 
-1. `infrastructure/systemd/scripts/ensure_global_python_bin.sh` — Ensure `PYTHON_BIN` is present in `/etc/justnews/global.env` (idempotent).
+1. `infrastructure/systemd/scripts/ensure_global_python_bin.sh`— Ensure`PYTHON_BIN`is present in`/etc/justnews/global.env` (idempotent).
 
 1. `infrastructure/systemd/preflight.sh` — Node preflight checks (tools, GPU, ports, conda env) — run as a dry-run pre-check.
 
-1. `infrastructure/systemd/reset_and_start.sh` — Orchestration: stop/disable, free ports, reinstall templates/scripts (optional), daemon-reload, and fresh-start (calls `enable_all.sh fresh`).
+1. `infrastructure/systemd/reset_and_start.sh`— Orchestration: stop/disable, free ports, reinstall templates/scripts (optional), daemon-reload, and fresh-start (calls`enable_all.sh fresh`).
 
 1. `infrastructure/systemd/scripts/enable_all.sh` — Enable/start services in canonical order (GPU Orchestrator → MCP Bus → agents) with readiness gating.
 
-1. `infrastructure/systemd/scripts/justnews-start-agent.sh` — Agent startup wrapper used by `justnews@.service`.
+1. `infrastructure/systemd/scripts/justnews-start-agent.sh`— Agent startup wrapper used by`justnews@.service`.
 
-1. `infrastructure/systemd/scripts/wait_for_mcp.sh` — Wait for MCP Bus `/health` before dependent agents start.
+1. `infrastructure/systemd/scripts/wait_for_mcp.sh`— Wait for MCP Bus`/health` before dependent agents start.
 
 1. `infrastructure/systemd/scripts/install_monitoring_stack.sh` — Provision Prometheus/Grafana/node_exporter (invoked by canonical startup when needed).
 
@@ -491,23 +491,23 @@ for operational tasks and Dev for local development aids.
 
 ### B — Utility scripts (one-line descriptions)
 
-- `infrastructure/systemd/scripts/ensure_global_python_bin.sh` — Ensure `PYTHON_BIN` exists in `/etc/justnews/global.env`.
+- `infrastructure/systemd/scripts/ensure_global_python_bin.sh`— Ensure`PYTHON_BIN`exists in`/etc/justnews/global.env`.
 
 - `infrastructure/systemd/scripts/check_protobuf_version.py` — Verify protobuf runtime compatibility.
 
 - `infrastructure/systemd/scripts/install_monitoring_stack.sh` — Idempotent provisioning of Prometheus/Grafana/node_exporter.
 
-- `scripts/install_alertmanager_unit.sh` — Idempotent installer for host-level Alertmanager systemd unit (backups to `/var/backups/justnews/alertmanager/`).
+- `scripts/install_alertmanager_unit.sh`— Idempotent installer for host-level Alertmanager systemd unit (backups to`/var/backups/justnews/alertmanager/`).
 
-- `infrastructure/systemd/scripts/collect_startup_diagnostics.sh` — Gather logs, systemd status, and `nvidia-smi` for debugging startup issues.
+- `infrastructure/systemd/scripts/collect_startup_diagnostics.sh`— Gather logs, systemd status, and`nvidia-smi` for debugging startup issues.
 
-- `infrastructure/systemd/scripts/justnews-preflight-check.sh` — Small preflight helper installed to `/usr/local/bin` for operators.
+- `infrastructure/systemd/scripts/justnews-preflight-check.sh`— Small preflight helper installed to`/usr/local/bin` for operators.
 
-- `infrastructure/systemd/scripts/justnews-boot-smoke.sh` & `infrastructure/systemd/helpers/boot_smoke_test.sh` — Boot-time smoke test helpers (timer-driven).
+- `infrastructure/systemd/scripts/justnews-boot-smoke.sh`&`infrastructure/systemd/helpers/boot_smoke_test.sh` — Boot-time smoke test helpers (timer-driven).
 
 - `infrastructure/systemd/scripts/check_db_services.sh` — Database connectivity helpers used by startup probes.
 
-- `infrastructure/systemd/scripts/migrate_project_root.sh` — Migrate `SERVICE_DIR` and optionally create compatibility symlink when repo path changes.
+- `infrastructure/systemd/scripts/migrate_project_root.sh`— Migrate`SERVICE_DIR` and optionally create compatibility symlink when repo path changes.
 
 - `infrastructure/systemd/scripts/run_and_monitor.sh` — Wrapper to run canonical startup and monitor progress.
 
@@ -515,11 +515,11 @@ for operational tasks and Dev for local development aids.
 
 - `scripts/run_with_env.sh` — Export project env and run commands with consistent vars for startup & tests.
 
-- `scripts/bootstrap_conda_env.sh` — Idempotent bootstrap of canonical conda env (used when `AUTO_BOOTSTRAP_CONDA=1`).
+- `scripts/bootstrap_conda_env.sh`— Idempotent bootstrap of canonical conda env (used when`AUTO_BOOTSTRAP_CONDA=1`).
 
 ### C — Dev-only scripts (local development & test helpers)
 
-- `scripts/dev/run_pytest_conda.sh`, `scripts/dev/run_full_pytest_safe.sh`, `scripts/dev/pytest.sh` — Run tests inside canonical conda env with safe defaults.
+- `scripts/dev/run_pytest_conda.sh`,`scripts/dev/run_full_pytest_safe.sh`,`scripts/dev/pytest.sh` — Run tests inside canonical conda env with safe defaults.
 
 - `scripts/run_tests_with_env.sh` — Convenience wrapper to run test subsets (GPU, Chroma, vLLM, etc.).
 

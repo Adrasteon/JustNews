@@ -18,9 +18,9 @@
 
 ## Phase 1 – Crawler Core
 
-1. Wrap Crawl4AI `AdaptiveCrawler` with per-site configuration profiles (confidence thresholds, `min_gain_threshold`, `top_k_links`).
+1. Wrap Crawl4AI `AdaptiveCrawler`with per-site configuration profiles (confidence thresholds,`min_gain_threshold`,`top_k_links`).
 
-1. Add content filters (e.g., `BM25ContentFilter`, `CosineStrategy`, table scoring) based on site archetypes.
+1. Add content filters (e.g., `BM25ContentFilter`,`CosineStrategy`, table scoring) based on site archetypes.
 
 1. Enforce HTML length/size limits before extraction and define retry/fallback policy for fetch failures.
 
@@ -28,9 +28,9 @@
 
 ### Progress update (2025-11-01)
 
-- AdaptiveCrawler integration: The Crawl4AI adapter now wires `AdaptiveCrawler` runs into the ingestion path when profiles include `adaptive` blocks and a `query` hint. Adaptive outputs are transformed back into our article format and annotated with `extraction_metadata.crawl4ai.adaptive_run` containing confidence, coverage, pages crawled, stop_reason, and source score.
+- AdaptiveCrawler integration: The Crawl4AI adapter now wires `AdaptiveCrawler`runs into the ingestion path when profiles include`adaptive`blocks and a`query`hint. Adaptive outputs are transformed back into our article format and annotated with`extraction_metadata.crawl4ai.adaptive_run` containing confidence, coverage, pages crawled, stop_reason, and source score.
 
-- Metrics: adaptive telemetry (counters/gauges) was added to the Stage B metrics API so operators can monitor adaptive run frequency and quality (names: `adaptive_runs_total`, `adaptive_articles_emitted`, `adaptive_confidence`, `adaptive_pages_crawled`, and `adaptive_coverage_<metric>`).
+- Metrics: adaptive telemetry (counters/gauges) was added to the Stage B metrics API so operators can monitor adaptive run frequency and quality (names: `adaptive_runs_total`,`adaptive_articles_emitted`,`adaptive_confidence`,`adaptive_pages_crawled`, and`adaptive_coverage_<metric>`).
 
 - Dashboard telemetry: the dashboard agent now exposes `/api/crawl/scheduler`, returning the latest scheduler snapshot (including adaptive summary, derived metrics, and recent history) so the UI can surface confidence trends and stop-reason distributions without scraping raw logs.
 
@@ -38,7 +38,7 @@
 
 ### Progress update (2025-11-01) — restoration and tests
 
-- Restored summariser: the adaptive summariser `summarise_adaptive_articles` has been restored to the active code path at `agents/crawler/adaptive_metrics.py` (moved from `archive/experimental/raw_html_profile_spur/`). This closes the runtime gap where scheduler and dashboard call sites expected the module to exist.
+- Restored summariser: the adaptive summariser `summarise_adaptive_articles`has been restored to the active code path at`agents/crawler/adaptive_metrics.py`(moved from`archive/experimental/raw_html_profile_spur/`). This closes the runtime gap where scheduler and dashboard call sites expected the module to exist.
 
 - Unit tests added: a focused pytest module was added at `tests/agents/crawler/test_adaptive_metrics.py` covering empty/no-adaptive inputs and a basic aggregation case.
 
@@ -48,7 +48,7 @@ Next immediate steps (short):
 
 - Commit & push: commit the restored module and tests to the `feat/k8s` branch and push to the remote (not yet committed in this workspace snapshot).
 
-- Scheduler dry-run: run a focused scheduler dry-run to confirm `scripts/ops/run_crawl_schedule.py` imports the summariser successfully and that Prometheus textfile + `scheduler` JSON include the adaptive summary fields.
+- Scheduler dry-run: run a focused scheduler dry-run to confirm `scripts/ops/run_crawl_schedule.py`imports the summariser successfully and that Prometheus textfile +`scheduler` JSON include the adaptive summary fields.
 
 - Dashboard verification: once the scheduler emits the expected state JSON/metrics, validate the dashboard agent `/api/crawl/scheduler` responses and ensure the Grafana panels surface the new fields as intended.
 
@@ -141,7 +141,7 @@ to-end telemetry.
 
 - **Optional Features**: All enhancements default to disabled for backward compatibility
 
-- **Engine Integration**: Seamless integration into `CrawlerEngine` and `GenericSiteCrawler`
+- **Engine Integration**: Seamless integration into `CrawlerEngine`and`GenericSiteCrawler`
 
 - **Error Resilience**: Comprehensive exception handling with graceful degradation
 

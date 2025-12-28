@@ -10,7 +10,7 @@ secrets management.
 
 JustNews uses a **layered configuration approach**:
 
-1. **Global Defaults** (`/etc/justnews/global.env` or `./global.env`)
+1. **Global Defaults** (`/etc/justnews/global.env`or`./global.env`)
 
 1. **Secrets** (`/run/justnews/secrets.env`, sourced from Vault)
 
@@ -304,10 +304,10 @@ sudo systemctl cat justnews@scout | grep Environment
 ## Common Environment Variables
 
 | Variable | Purpose | Example | |----------|---------|---------| | `CANONICAL_ENV` | Conda environment name |
-`justnews-py312` | | `PYTHON_BIN` | Path to Python interpreter | `/home/adra/miniconda3/envs/justnews- py312/bin/python`
-| | `PYTHONPATH` | Python import path | `/home/adra/JustNews` | | `MARIADB_HOST` | Database host | `127.0.0.1` | |
-`MARIADB_PORT` | Database port | `3306` | | `CHROMADB_HOST` | Vector DB host | `localhost` | | `CHROMADB_PORT` | Vector
-DB port | `3307` | | `MODEL_STORE_ROOT` | LLM storage path | `/home/adra/JustNews/model_store` | | `DATA_MOUNT` | Data
+`justnews-py312`| |`PYTHON_BIN`| Path to Python interpreter |`/home/adra/miniconda3/envs/justnews- py312/bin/python`
+| | `PYTHONPATH`| Python import path |`/home/adra/JustNews`| |`MARIADB_HOST`| Database host |`127.0.0.1` | |
+`MARIADB_PORT`| Database port |`3306`| |`CHROMADB_HOST`| Vector DB host |`localhost`| |`CHROMADB_PORT` | Vector
+DB port | `3307`| |`MODEL_STORE_ROOT`| LLM storage path |`/home/adra/JustNews/model_store`| |`DATA_MOUNT` | Data
 directory | `/media/adra/Data` |
 
 ## Troubleshooting

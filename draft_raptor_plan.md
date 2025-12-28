@@ -2,15 +2,15 @@
 
 - scout
 
-- Current models: `sentence-transformers/all-MiniLM-L6-v2`, `all-mpnet-base-v2`, `paraphrase-multilingual-MiniLM-L12-v2`
+- Current models: `sentence-transformers/all-MiniLM-L6-v2`,`all-mpnet-base-v2`,`paraphrase-multilingual-MiniLM-L12-v2`
 
-- Suitability: Good. Default `all-MiniLM-L6-v2` for embeddings is ideal for resource usage; `mpnet` used as a higher-quality fallback.
+- Suitability: Good. Default `all-MiniLM-L6-v2`for embeddings is ideal for resource usage;`mpnet` used as a higher-quality fallback.
 
 - Recommendation: keep current configuration; prefer MiniLM by default, mpnet as optional high-quality path.
 
 - fact_checker
 
-- Current models: `sentence-transformers/all-mpnet-base-v2`, `multi-qa-mpnet-base-dot-v1`, `paraphrase-albert-base-v2`
+- Current models: `sentence-transformers/all-mpnet-base-v2`,`multi-qa-mpnet-base-dot-v1`,`paraphrase-albert-base-v2`
 
 - Suitability: Good for retrieval and similarity checks. For claim analysis, optionally add a small sequence-model LLM (e.g., `google/flan-t5-small`) and rely on PEFT/LoRA for fine-tuning.
 
@@ -24,39 +24,39 @@
 
 - synthesizer
 
-- Current: `distilgpt2`, `google/flan-t5-small` — the repo contains `flan-t5-large` variants in `model_store` (used for batch or high-quality synth).
+- Current: `distilgpt2`,`google/flan-t5-small`— the repo contains`flan-t5-large`variants in`model_store` (used for batch or high-quality synth).
 
-- Suitability: `flan-t5-small` is acceptable for shorter neutralization & generation tasks; `flan-t5-base`/`large` produce higher-quality content but need careful GPU orchestrator scheduling and quantization (use `bitsandbytes` 8-bit or 4-bit and PEFT for training).
+- Suitability: `flan-t5-small`is acceptable for shorter neutralization & generation tasks;`flan-t5-base`/`large`produce higher-quality content but need careful GPU orchestrator scheduling and quantization (use`bitsandbytes` 8-bit or 4-bit and PEFT for training).
 
-- Recommendation: Default to `flan-t5-small` unless high-quality mode is explicitly requested; ensure quantized models exist in `model_store` and choose `device_map='auto'` and `load_in_8bit=True` in prod.
+- Recommendation: Default to `flan-t5-small`unless high-quality mode is explicitly requested; ensure quantized models exist in`model_store`and choose`device_map='auto'`and`load_in_8bit=True` in prod.
 
 - critic, analyst, chief_editor, newsreader  # NOTE: `balancer` removed — responsibilities moved to critic/analytics/gpu_orchestrator
 
-- Current: `sentence-transformers/all-distilroberta-v1`, `all-MiniLM-L6-v2` and other small models.
+- Current: `sentence-transformers/all-distilroberta-v1`,`all-MiniLM-L6-v2` and other small models.
 
-- Suitability: Good. If the `analyst` requires GPU-based roberta models for high throughput, prefer `distilroberta` variants or quantized models to reduce memory.
+- Suitability: Good. If the `analyst`requires GPU-based roberta models for high throughput, prefer`distilroberta` variants or quantized models to reduce memory.
 
 - Recommendation: prefer `distil` variants of sentiment/bias models and ensure GPU orchestrator provides proper shares.
 
-- Overall: avoid widespread `flan-t5-large` or `bart-large` defaults unless the orchestrator supports on-demand lease scheduling, and the model is quantized (bitsandbytes) and fine-tunable using PEFT/LoRA.
+- Overall: avoid widespread `flan-t5-large`or`bart-large` defaults unless the orchestrator supports on-demand lease scheduling, and the model is quantized (bitsandbytes) and fine-tunable using PEFT/LoRA.
 
 ### Quantization & Fine-tuning (PEFT/LoRA) Guidance
 
-- Use `bitsandbytes` to enable 8-bit inference via `load_in_8bit=True` in `transformers` where necessary. Add tests and CI steps to verify quantized performance and numeric parity.
+- Use `bitsandbytes`to enable 8-bit inference via`load_in_8bit=True`in`transformers` where necessary. Add tests and CI steps to verify quantized performance and numeric parity.
 
 - For training/fine-tuning, prefer PEFT/LoRA and adapters to reduce VRAM and keep models trainable on RTX 3090.
 
-- For large LLMs (T5/BART), prefer `flan-t5-small` / `flan-t5-base` as default; allow `flan-t5-large` only under a GPU lease with quantization and batch scheduling.
+- For large LLMs (T5/BART), prefer `flan-t5-small`/`flan-t5-base`as default; allow`flan-t5-large` only under a GPU lease with quantization and batch scheduling.
 
-- Add `model_store` metadata entries for `quantized_variants` and `peft_support` to `model_store/<agent>/metadata.json`.
+- Add `model_store`metadata entries for`quantized_variants`and`peft_support`to`model_store/<agent>/metadata.json`.
 
 ### Training Guidance on RTX 3090
 
 - RTX 3090 (24GB VRAM):
 
-- Fine-tune small to medium models such as `flan-t5-small`, `flan-t5-base` (with PEFT) or `distil*` models directly with minimal memory tuning.
+- Fine-tune small to medium models such as `flan-t5-small`,`flan-t5-base`(with PEFT) or`distil*` models directly with minimal memory tuning.
 
-- For `flan-t5-large` or `bart-large`, use gradient checkpointing, activation checkpointing, and offloading (`accelerate` CPU offload) and LoRA/PEFT to keep trainable parameters low.
+- For `flan-t5-large`or`bart-large`, use gradient checkpointing, activation checkpointing, and offloading (`accelerate` CPU offload) and LoRA/PEFT to keep trainable parameters low.
 
 - Encourage LoRA/PEFT on all LLM fine-tuning tasks to keep training affordable and usable on single-GPU.
 
@@ -86,11 +86,11 @@
 
 ## 6.1 GPU Orchestrator & Model Preload Policy Recommendation
 
-- Orchestrator `policy` should include model memory estimates for each model in `AGENT_MODEL_MAP.json` for accurate preload & allocation. `mps_allocation_config.json` should contain model-level approximate VRAM requirements.
+- Orchestrator `policy`should include model memory estimates for each model in`AGENT_MODEL_MAP.json`for accurate preload & allocation.`mps_allocation_config.json` should contain model-level approximate VRAM requirements.
 
-- Orchestrator `policy` should include model memory estimates for each model in `AGENT_MODEL_MAP.json` for accurate preload & allocation. `mps_allocation_config.json` should contain model-level approximate VRAM requirements and a `model_vram` section or a `model_registry` that maps model_id -> {approx_vram_mb, quantized_variants}.
+- Orchestrator `policy`should include model memory estimates for each model in`AGENT_MODEL_MAP.json`for accurate preload & allocation.`mps_allocation_config.json`should contain model-level approximate VRAM requirements and a`model_vram`section or a`model_registry` that maps model_id -> {approx_vram_mb, quantized_variants}.
 
-- Add support to orchestrator to read `model_store` metadata for `approx_vram_mb` and `quantized_variants` to calculate safe allocations.
+- Add support to orchestrator to read `model_store`metadata for`approx_vram_mb`and`quantized_variants` to calculate safe allocations.
 
 - Orchestrator: when checking model preload or granting GPU leases, prefer quantized variants if memory is constrained; fallback to CPU-only mode for real-time requests if no GPU support is available.
 
@@ -98,17 +98,17 @@
 
 - If `STRICT_MODEL_STORE=1`, orchestrator must fail preload if memory can't be met, otherwise fallback to CPU-only mode or smaller quantized models.
 
-- Provide `allowed_variants` per agent in `AGENT_MODEL_MAP.json` (e.g., `flan-t5-small` default, `flan-t5-base` optional, `flan-t5-large` reserved for batch jobs) and adjust `mps_allocation_config.json` accordingly.
+- Provide `allowed_variants`per agent in`AGENT_MODEL_MAP.json`(e.g.,`flan-t5-small`default,`flan-t5-base`optional,`flan-t5-large`reserved for batch jobs) and adjust`mps_allocation_config.json` accordingly.
 
-- Provide `allowed_variants` per agent (see `AGENT_MODEL_RECOMMENDED.json`) and adjust `mps_allocation_config.json` accordingly; orchestrator should be able to choose the quantized or base variant based on policy & runtime load.
+- Provide `allowed_variants`per agent (see`AGENT_MODEL_RECOMMENDED.json`) and adjust`mps_allocation_config.json` accordingly; orchestrator should be able to choose the quantized or base variant based on policy & runtime load.
 
-- [ ] A6: Add quantized/PEFT-ready model variants to `model_store` (e.g., 8-bit `flan-t5-small` or `base`), update `model_store` metadata with `approx_vram_mb`, `quantized_variants`, and `peft_support` flags.
+- [ ] A6: Add quantized/PEFT-ready model variants to `model_store`(e.g., 8-bit`flan-t5-small`or`base`), update`model_store`metadata with`approx_vram_mb`,`quantized_variants`, and`peft_support` flags.
 
-- [ ] A6: Add quantized/PEFT-ready model variants to `model_store` (e.g., 8-bit `flan-t5-small` or `base`), update `model_store` metadata with `approx_vram_mb`, `quantized_variants`, and `peft_support` flags, and publish an `AGENT_MODEL_RECOMMENDED.json`.
+- [ ] A6: Add quantized/PEFT-ready model variants to `model_store`(e.g., 8-bit`flan-t5-small`or`base`), update`model_store`metadata with`approx_vram_mb`,`quantized_variants`, and`peft_support`flags, and publish an`AGENT_MODEL_RECOMMENDED.json`.
 
-- [ ] B5: Add GPU orchestrator detection of quantized models and allow dynamic selection based on `policy` and `real-time` vs `batch` mode.
+- [ ] B5: Add GPU orchestrator detection of quantized models and allow dynamic selection based on `policy`and`real-time`vs`batch` mode.
 
-- [ ] C4: Add a `model_health` probe that checks quantized model inference parity for each agent in production and populates `gpu_orchestrator` metrics.
+- [ ] C4: Add a `model_health`probe that checks quantized model inference parity for each agent in production and populates`gpu_orchestrator` metrics.
 
 # Draft Raptor Plan
 
@@ -136,13 +136,13 @@ Goals:
 
 1. Memory ingest: store article in MariaDB and compute embeddings; return `ingest_job_id`.
 
-1. Analysis: compute `sentiment`, `bias_vector`, `persuasion_score`.
+1. Analysis: compute `sentiment`,`bias_vector`,`persuasion_score`.
 
 1. Clustering: compute `cluster_id` and store it with article metadata.
 
 1. HITL flow: label, QA, optional re-ingest forward.
 
-1. Publish/Archive: `journalist` / `archive_agent` publishes and stores archives.
+1. Publish/Archive: `journalist`/`archive_agent` publishes and stores archives.
 
 ---
 
@@ -150,9 +150,9 @@ Goals:
 
 - Agents are self-contained FastAPI services run as `systemd` services.
 
-- Each agent loads & owns models (from `model_store`) declared in `AGENT_MODEL_MAP.json`.
+- Each agent loads & owns models (from `model_store`) declared in`AGENT_MODEL_MAP.json`.
 
-- `model_provider` abstraction will be included as `agents/common/model_provider.py` to unify loading, warming, and unloading.
+- `model_provider`abstraction will be included as`agents/common/model_provider.py` to unify loading, warming, and unloading.
 
 - Optional `model_server` is available as an optimization in constrained environments but is not the default.
 
@@ -160,9 +160,9 @@ Goals:
 
 ## 3. New/Enhanced Agents & Responsibilities
 
-- `analysis` agent (`agents/analysis/analysis_engine.py`): centralizes sentiment, bias, persuasion, and clustering.
+- `analysis`agent (`agents/analysis/analysis_engine.py`): centralizes sentiment, bias, persuasion, and clustering.
 
-- Endpoints: `/analyze` (single article), `/analyze/batch` (batch), `/clusters`.
+- Endpoints: `/analyze`(single article),`/analyze/batch`(batch),`/clusters`.
 
 - Output: `analysis_metadata` fields (sentiment, bias_vector, persuasion_score).
 
@@ -170,9 +170,9 @@ Goals:
 
 - `memory` agent: limited to ingest & vector store responsibilities: compute embeddings and persist metadata.
 
-- Persists `analysis_metadata`, `cluster_id`, `ingest_job_id`, `crawler_job_id`.
+- Persists `analysis_metadata`,`cluster_id`,`ingest_job_id`,`crawler_job_id`.
 
-- `HITL` agent: already exists; ensure `ingest_job_id` flows forwards when forking ingestion.
+- `HITL`agent: already exists; ensure`ingest_job_id` flows forwards when forking ingestion.
 
 ---
 
@@ -194,13 +194,13 @@ Goals:
 
 ## 5. Observability & Traceability
 
-- Trace IDs: `trace_id` or `job_trace` to be propagated across agents via `X-Trace-Id` or `request_id` metadata.
+- Trace IDs: `trace_id`or`job_trace`to be propagated across agents via`X-Trace-Id`or`request_id` metadata.
 
 - `job_traces` table schema (MariaDB):
 
 - id (pk), trace_id, job_id, agent, event_type, event_details (JSON), ts
 
-- Logs include `agent`, `model_version`, `trace_id`, `job_id`.
+- Logs include `agent`,`model_version`,`trace_id`,`job_id`.
 
 - Metrics added for analysis (sentiment, bias, persuasion), clustering, job fallback & failures.
 
@@ -208,7 +208,7 @@ Goals:
 
 ## 6. Security
 
-- Each public endpoint requiring token: `CRAWLER_API_TOKEN`, `HITL_TOKEN`, `ANALYSIS_TOKEN`.
+- Each public endpoint requiring token: `CRAWLER_API_TOKEN`,`HITL_TOKEN`,`ANALYSIS_TOKEN`.
 
 - Tokens rotate via `secret_manager` or a local rotation process.
 
@@ -218,11 +218,11 @@ Goals:
 
 ## 7. Persistence: DB Migrations & Schema Changes
 
-- Add `job_traces` migration SQL in `database/migrations`.
+- Add `job_traces`migration SQL in`database/migrations`.
 
-- Add `analysis_metadata` fields and `cluster_id` to `articles.metadata` (json) and to `memory` persistence flows.
+- Add `analysis_metadata`fields and`cluster_id`to`articles.metadata`(json) and to`memory` persistence flows.
 
-- Update `scripts/init_database.py` to include `job_traces` and schema changes for `articles` metadata.
+- Update `scripts/init_database.py`to include`job_traces`and schema changes for`articles` metadata.
 
 ---
 
@@ -232,7 +232,7 @@ Goals:
 
 - `agents/analysis/clustering.py` will implement cluster routines using Chroma vectors or local scikit-learn/HDBSCAN fallback.
 
-- Clusters store `cluster_id`, `cluster_name`, `coherence_score`.
+- Clusters store `cluster_id`,`cluster_name`,`coherence_score`.
 
 - Optionally provide cluster-level topic labels (auto-summarized) via LLM summarizer.
 
@@ -264,15 +264,15 @@ Goals:
 
 ### Priority (High)
 
-- [ ] A1: Add `analysis` agent (files: `agents/analysis/analysis_engine.py`, `agents/analysis/clustering.py`).
+- [ ] A1: Add `analysis`agent (files:`agents/analysis/analysis_engine.py`,`agents/analysis/clustering.py`).
 
-- [ ] A2: Implement `Model Provider` (`agents/common/model_provider.py`).
+- [ ] A2: Implement `Model Provider`(`agents/common/model_provider.py`).
 
-- [ ] A3: Persist analysis metadata & `cluster_id` in `memory` (`agents/memory/memory_engine.py`, `agents/memory/tools.py`).
+- [ ] A3: Persist analysis metadata & `cluster_id`in`memory`(`agents/memory/memory_engine.py`,`agents/memory/tools.py`).
 
-- [ ] A4: Add DB migration for `job_traces` and update `scripts/init_database.py`.
+- [ ] A4: Add DB migration for `job_traces`and update`scripts/init_database.py`.
 
-- [ ] A5: Propagate `ingest_job_id` and `crawler_job_id` across the pipeline (`hitl_service`, `crawler`, `memory`).
+- [ ] A5: Propagate `ingest_job_id`and`crawler_job_id`across the pipeline (`hitl_service`,`crawler`,`memory`).
 
 ### Priority (Medium)
 
@@ -296,9 +296,9 @@ Goals:
 
 ## 11. Acceptance Criteria
 
-- The `analysis` agent processes `analyze` requests and returns `analysis_metadata`.
+- The `analysis`agent processes`analyze`requests and returns`analysis_metadata`.
 
-- `articles` metadata contains `analysis_metadata` and `cluster_id` post-ingest.
+- `articles`metadata contains`analysis_metadata`and`cluster_id` post-ingest.
 
 - Trace and job lifecycle are visible: `job_traces` show a start → running → completed sequence.
 
@@ -310,11 +310,11 @@ Goals:
 
 ## 12. Next Steps (Recommended)
 
-1. Create `agents/analysis` scaffold with endpoints; add unit tests for `compute_sentiment`, `detect_bias`, and `persuasion_score`.
+1. Create `agents/analysis`scaffold with endpoints; add unit tests for`compute_sentiment`,`detect_bias`, and`persuasion_score`.
 
-1. Create `agents/common/model_provider.py` and integrate with `analysis` and `memory` agents.
+1. Create `agents/common/model_provider.py`and integrate with`analysis`and`memory` agents.
 
-1. Add DB migration `XXX_job_traces.sql` and update `scripts/init_database.py`.
+1. Add DB migration `XXX_job_traces.sql`and update`scripts/init_database.py`.
 
 1. Add unit tests for cluster and integration test that runs the pipeline in-process.
 
@@ -322,9 +322,9 @@ Goals:
 
 1. Add `AGENT_MODEL_RECOMMENDED.json` to the repo (covers default & fallback models per-agent) and implement orchestrator checks to fall back to quantized variants or CPU-only when GPU resources are insufficient.
 
-1. Implement model metadata additions and a `model_vram` registry in `config/gpu/mps_allocation_config.json` to assist preloading.
+1. Implement model metadata additions and a `model_vram`registry in`config/gpu/mps_allocation_config.json` to assist preloading.
 
-1. Add `model_health` probes and a quantized-parity test in CI that uses `bitsandbytes` and `PEFT` wrappers to confirm inference correctness.
+1. Add `model_health`probes and a quantized-parity test in CI that uses`bitsandbytes`and`PEFT` wrappers to confirm inference correctness.
 
 ---
 

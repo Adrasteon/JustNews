@@ -71,14 +71,14 @@ chmod +x scripts/dev/dev-telemetry-up.sh
 ```bash
 
 If you want the telemetry stack to be started automatically by the canonical system startup tools, set
-`ENABLE_DEV_TELEMETRY=true` in `/etc/justnews/global.env`. This will cause
+`ENABLE_DEV_TELEMETRY=true`in`/etc/justnews/global.env`. This will cause
 `infrastructure/systemd/canonical_system_startup.sh` to bring up the local telemetry docker-compose during the normal
 start flow and tear it down when `canonical_system_startup.sh stop` is invoked. This is strictly opt-in and safe for
 operator-managed hosts.
 
 Optional: Sentry (error reporting) ---------------------------------
 
-For low-friction error reporting you can opt-in Sentry by setting `SENTRY_DSN` in `/etc/justnews/global.env` or as a
+For low-friction error reporting you can opt-in Sentry by setting `SENTRY_DSN`in`/etc/justnews/global.env` or as a
 per-service environment variable. The repo includes `monitoring/ops/sentry_example.md` with minimal integration patterns
 and a manual CI workflow (`.github/workflows/sentry-sandbox.yml`) to validate a sandbox DSN.
 
@@ -101,13 +101,13 @@ Then attach the VS Code 'Python: Attach to GPU Orchestrator' configuration and s
 
 4) Inspecting logs and traces
 
-- Use the node collector UI and Loki (or `docker logs` / `journalctl -u justnews@<service>`) to tail logs for real-time errors.
+- Use the node collector UI and Loki (or `docker logs`/`journalctl -u justnews@<service>`) to tail logs for real-time errors.
 
 - Use Grafana or Tempo UI to view traces and correlate span IDs with logs.
 
 Backups & troubleshooting
 
-- If the collector fails to start, run the `--dry-run` check using the installed `otelcol-contrib` binary and watch `journalctl -u justnews-otel-*.service`.
+- If the collector fails to start, run the `--dry-run`check using the installed`otelcol-contrib`binary and watch`journalctl -u justnews-otel-*.service`.
 
 - If you encounter desktop instability when running heavy workloads, confirm GPU isolation (`nvidia-smi`) and consider limiting GPU access to a dedicated host.
 

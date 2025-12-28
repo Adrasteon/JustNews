@@ -31,17 +31,17 @@ Key components
 
 - Strategy selector (`_determine_optimal_strategy`): heuristic + profile flags.
 
-- Crawl runner: calls `crawl4ai_adapter.crawl_site_with_crawl4ai` (async) or `GenericSiteCrawler` (sync).
+- Crawl runner: calls `crawl4ai_adapter.crawl_site_with_crawl4ai`(async) or`GenericSiteCrawler` (sync).
 
-- Result normaliser: `_build_article_from_result` / `_build_article_from_adaptive_doc` convert C4A outputs into article dicts.
+- Result normaliser: `_build_article_from_result`/`_build_article_from_adaptive_doc` convert C4A outputs into article dicts.
 
 - HITL submitter: `_submit_hitl_candidates` constructs payload and posts to HITL. Implements retries/backoff.
 
-- Ingest caller: `_ingest_articles` calls MCP Bus `memory.ingest_article` with final payload.
+- Ingest caller: `_ingest_articles`calls MCP Bus`memory.ingest_article` with final payload.
 
 Configuration and profiles
 
-- Profiles control `browser_config`, `run_config` (cache_mode, wait_for, js_code), `adaptive` block, `link_preview` rules, `start_urls`, `follow_internal_links`, and `max_pages`.
+- Profiles control `browser_config`,`run_config`(cache_mode, wait_for, js_code),`adaptive`block,`link_preview`rules,`start_urls`,`follow_internal_links`, and`max_pages`.
 
 - `config/crawl_profiles/base.yaml` provides defaults; per-site files override fields.
 
@@ -49,11 +49,11 @@ APIs and payload shapes (excerpt)
 
 - HITL candidate payload (keys used):
 
-- `id` (string), `url`, `site_id` (string), `title`, `extracted_text` (truncated), `extraction_metadata` (dict), `publish_time` (iso)
+- `id`(string),`url`,`site_id`(string),`title`,`extracted_text`(truncated),`extraction_metadata`(dict),`publish_time` (iso)
 
 - MCP call `memory.ingest_article` payload (example):
 
-- `site_id`, `url`, `title`, `cleaned_text`, `extraction_metadata`, `source_html_path`, `ingest_meta`
+- `site_id`,`url`,`title`,`cleaned_text`,`extraction_metadata`,`source_html_path`,`ingest_meta`
 
 Sequence: Crawl → HITL → Ingest (summary)
 
@@ -75,6 +75,6 @@ Testing & acceptance
 
 Extensibility notes
 
-- Script registry: new `js_code` should be referenced by slug; implement `agents/crawler/scripts_registry.py` to resolve script content.
+- Script registry: new `js_code`should be referenced by slug; implement`agents/crawler/scripts_registry.py` to resolve script content.
 
 - Adaptive tuning: expose adaptive thresholds and telemetry tags in profiles to help scoring and profiling.

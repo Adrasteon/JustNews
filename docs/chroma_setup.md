@@ -17,17 +17,17 @@ and how to bootstrap a collection and tenant for the `JustNews` system.
 
 Set the following variables (recommended in `/etc/justnews/global.env`):
 
-- `CHROMADB_HOST` — runtime Chroma host your agents will use (e.g., `localhost`)
+- `CHROMADB_HOST`— runtime Chroma host your agents will use (e.g.,`localhost`)
 
-- `CHROMADB_PORT` — runtime Chroma port your agents will use (e.g., `3307`)
+- `CHROMADB_PORT`— runtime Chroma port your agents will use (e.g.,`3307`)
 
-- `CHROMADB_COLLECTION` — collection name to use (e.g., `articles`)
+- `CHROMADB_COLLECTION`— collection name to use (e.g.,`articles`)
 
 (_Optional_) Strict canonical enforcement:
 
-- `CHROMADB_REQUIRE_CANONICAL` — if `1`, the agent will fail at startup if `CHROMADB_HOST/PORT` does not match canonical values.
+- `CHROMADB_REQUIRE_CANONICAL`— if`1`, the agent will fail at startup if`CHROMADB_HOST/PORT` does not match canonical values.
 
-- `CHROMADB_CANONICAL_HOST` & `CHROMADB_CANONICAL_PORT` — canonical host & port for this deployment. If canonical enforcement is enabled and the runtime host/port doesn't match, the service will abort start and provide diagnostic error messages.
+- `CHROMADB_CANONICAL_HOST`&`CHROMADB_CANONICAL_PORT` — canonical host & port for this deployment. If canonical enforcement is enabled and the runtime host/port doesn't match, the service will abort start and provide diagnostic error messages.
 
 ## Operator Commands
 
@@ -58,6 +58,6 @@ PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma
 
 ## Production Note
 
-For production, set `CHROMADB_REQUIRE_CANONICAL=1` and configure `CHROMADB_CANONICAL_HOST` and `CHROMADB_CANONICAL_PORT`
+For production, set `CHROMADB_REQUIRE_CANONICAL=1`and configure`CHROMADB_CANONICAL_HOST`and`CHROMADB_CANONICAL_PORT`
 in `/etc/justnews/global.env`. System startup scripts and agents will validate these settings and will abort with
 actionable logs if something is misconfigured.

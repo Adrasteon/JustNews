@@ -5,17 +5,17 @@ intentionally scoped to reduce cross-edge clutter and make relationships easier 
 
 Files
 
-- `justnews_core_infra.mmd` — Core infrastructure: `mcp_bus`, `auth`, `balancer`, `gpu_orch`.
+- `justnews_core_infra.mmd`— Core infrastructure:`mcp_bus`,`auth`,`balancer`,`gpu_orch`.
 
-- `justnews_ingestion_pipeline.mmd` — Ingestion stage: `scout`, `c4ai`, `crawler`, `journalist`, `memory`.
+- `justnews_ingestion_pipeline.mmd`— Ingestion stage:`scout`,`c4ai`,`crawler`,`journalist`,`memory`.
 
-- `justnews_analysis_hitl.mmd` — Analysis & HITL chain: `synthesizer`, `fact_checker`, `analyst`, `critic`, `hitl`, `chief_editor`.
+- `justnews_analysis_hitl.mmd`— Analysis & HITL chain:`synthesizer`,`fact_checker`,`analyst`,`critic`,`hitl`,`chief_editor`.
 
-- `justnews_storage_dashboard.mmd` — Storage & access: `memory`, `archive`, `dashboard`, `analytics`.
+- `justnews_storage_dashboard.mmd`— Storage & access:`memory`,`archive`,`dashboard`,`analytics`.
 
-- `containers/crawler_container.mmd` — Container-level view for `crawler` showing internal subsystems.
+- `containers/crawler_container.mmd`— Container-level view for`crawler` showing internal subsystems.
 
-- `containers/memory_container.mmd` — Container-level view for `memory` showing internal components: MariaDB, Chroma, embedding cache, vector engine.
+- `containers/memory_container.mmd`— Container-level view for`memory` showing internal components: MariaDB, Chroma, embedding cache, vector engine.
 
 Why split into multiple diagrams
 
@@ -35,7 +35,7 @@ Next steps
 
 - I can:
 
-- Expand container-level diagrams to cover additional heavy agents (e.g., `synthesizer`, `analyst`, `fact_checker`).
+- Expand container-level diagrams to cover additional heavy agents (e.g., `synthesizer`,`analyst`,`fact_checker`).
 
 - Add a single “overview” diagram that links the per-scope diagrams as a single flow with minimal connecting edges for context.
 

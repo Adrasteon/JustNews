@@ -36,7 +36,7 @@ scripts/dev/run_systemd_nspawn_env.sh
 
 - Linux host with systemd
 
-- `systemd-nspawn` / `machinectl` available (provides systemd-nspawn on most systemd-enabled systems)
+- `systemd-nspawn`/`machinectl` available (provides systemd-nspawn on most systemd-enabled systems)
 
 - `debootstrap` (used to bootstrap the container filesystem). Install on Debian/Ubuntu hosts with:
 
@@ -69,7 +69,7 @@ sudo scripts/dev/run_systemd_nspawn_env.sh stop sudo scripts/dev/run_systemd_nsp
 
 ## Notes & tips
 
-- Exposing ports to host: the helper does not automatically forward ports. Use `machinectl shell <container>` to work inside the container, or configure `systemd-nspawn` with networking options or use `lxc`/LXD if you prefer bridged networking.
+- Exposing ports to host: the helper does not automatically forward ports. Use `machinectl shell <container>`to work inside the container, or configure`systemd-nspawn`with networking options or use`lxc`/LXD if you prefer bridged networking.
 
 - Containers created with systemd-nspawn rely on the host kernel — they are lightweight and fast to start but don't give hypervisor-level isolation.
 
@@ -79,5 +79,5 @@ or to include an automated test-runner that executes the test suite inside the c
 
 Note: because the systemd-nspawn flow is disabled for now, a Docker-based proof- of-concept is provided to run a
 lightweight E2E suite using Docker Compose for testing and CI only. See `scripts/dev/docker-compose.e2e.yml`,
-`scripts/dev/run_e2e_docker.sh` and `.github/workflows/e2e-docker.yml` for details; for normal local development and
+`scripts/dev/run_e2e_docker.sh`and`.github/workflows/e2e-docker.yml` for details; for normal local development and
 production the project expects the canonical MariaDB to run on the host or as a managed service.

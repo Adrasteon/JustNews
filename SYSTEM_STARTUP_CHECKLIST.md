@@ -22,7 +22,7 @@ Follow this exact sequence for a safe, reproducible system startup (preferred op
 
 1. Ensure environment files are present
 
-- [ ] Confirm `/etc/justnews/global.env` exists and contains at least `SERVICE_DIR`, `PYTHON_BIN` (or `CANONICAL_ENV`), `MARIADB_HOST/PORT/USER/PASSWORD`, and `CHROMA_HOST/PORT`.
+- [ ] Confirm `/etc/justnews/global.env`exists and contains at least`SERVICE_DIR`,`PYTHON_BIN`(or`CANONICAL_ENV`),`MARIADB_HOST/PORT/USER/PASSWORD`, and`CHROMA_HOST/PORT`.
 
 - [ ] If missing, copy examples: `sudo cp infrastructure/systemd/examples/justnews.env.example /etc/justnews/global.env` and edit securely.
 
@@ -36,7 +36,7 @@ Follow this exact sequence for a safe, reproducible system startup (preferred op
 
 - [ ] Start GPU Orchestrator: `sudo systemctl enable --now justnews@gpu_orchestrator`
 
-- [ ] Wait for READY: `curl -fsS <http://127.0.0.1:8014/ready`> (wait up to 180s or adjust `GATE_TIMEOUT`)
+- [ ] Wait for READY: `curl -fsS <http://127.0.0.1:8014/ready`> (wait up to 180s or adjust`GATE_TIMEOUT`)
 
 - [ ] Start services: `sudo ./infrastructure/systemd/scripts/enable_all.sh start`
 
@@ -46,11 +46,11 @@ Follow this exact sequence for a safe, reproducible system startup (preferred op
 
 - [ ] Ensure Prometheus/Grafana running (canonical flow calls the installer). To manually provision: `sudo infrastructure/systemd/scripts/install_monitoring_stack.sh --enable --start`
 
-- [ ] Alertmanager: opt-in via `AUTO_INSTALL_ALERTMANAGER=1` in `/etc/justnews/global.env` (disabled by default); the MCP Bus startup will run the idempotent installer when enabled.
+- [ ] Alertmanager: opt-in via `AUTO_INSTALL_ALERTMANAGER=1`in`/etc/justnews/global.env` (disabled by default); the MCP Bus startup will run the idempotent installer when enabled.
 
 1. Final health verification
 
-- [ ] Run: `sudo ./infrastructure/systemd/scripts/health_check.sh -v` and verify all services report `healthy`.
+- [ ] Run: `sudo ./infrastructure/systemd/scripts/health_check.sh -v`and verify all services report`healthy`.
 
 - [ ] Check `justnews_agent_health_status` metric in Prometheus / Grafana panels (if monitoring present).
 
@@ -62,13 +62,13 @@ Follow this exact sequence for a safe, reproducible system startup (preferred op
 
 - [ ] Collect diagnostic bundle: `sudo infrastructure/systemd/collect_startup_diagnostics.sh`
 
-- [ ] Free occupied ports (if preflight warned): `sudo ./infrastructure/systemd/preflight.sh --stop` or run `sudo ./infrastructure/systemd/reset_and_start.sh` to clean ports and restart services
+- [ ] Free occupied ports (if preflight warned): `sudo ./infrastructure/systemd/preflight.sh --stop`or run`sudo ./infrastructure/systemd/reset_and_start.sh` to clean ports and restart services
 
 Notes:
 
-- Use `SAFE_MODE=true` in `/etc/justnews/global.env` to disable GPU usage and apply conservative settings on developer hosts.
+- Use `SAFE_MODE=true`in`/etc/justnews/global.env` to disable GPU usage and apply conservative settings on developer hosts.
 
-- `AUTO_BOOTSTRAP_CONDA` defaults to `1` (auto-bootstrap canonical env if missing); set to `0` to opt out.
+- `AUTO_BOOTSTRAP_CONDA`defaults to`1`(auto-bootstrap canonical env if missing); set to`0` to opt out.
 
 - `MARIADB_CHECK_REQUIRED=true` enforces DB connectivity on startup (recommended for production).
 
@@ -78,11 +78,11 @@ Notes:
 
 ### 1.1 Global Environment
 
-- [ ] Create `/etc/justnews/global.env` or `./global.env` with:
+- [ ] Create `/etc/justnews/global.env`or`./global.env` with:
 
-- `MARIADB_HOST`, `MARIADB_PORT`, `MARIADB_DB`, `MARIADB_USER`, `MARIADB_PASSWORD`
+- `MARIADB_HOST`,`MARIADB_PORT`,`MARIADB_DB`,`MARIADB_USER`,`MARIADB_PASSWORD`
 
-- `CHROMA_HOST`, `CHROMA_PORT`
+- `CHROMA_HOST`,`CHROMA_PORT`
 
 - `CANONICAL_ENV=justnews-py312`
 
@@ -128,7 +128,8 @@ print: `✅ Database initialization completed successfully!`
 - [ ] Verify tables exist:
 
 ```bash mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -D $MARIADB_DB \ -e "SHOW
-TABLES;" | grep -c articles ``` Should print: `1` (or higher if tables exist)
+TABLES;" | grep -c articles
+```Should print:`1` (or higher if tables exist)
 
 ---
 
@@ -152,11 +153,12 @@ sudo systemctl enable --now justnews@mcp_bus
 - [ ] Start:
 
 ```bash
-  # Option A: systemd
+# Option A: systemd
 sudo systemctl enable --now justnews@gpu_orchestrator
 
-  # Option B: Direct
-./scripts/run_with_env.sh python -m agents.gpu_orchestrator.main & ```
+# Option B: Direct
+./scripts/run_with_env.sh python -m agents.gpu_orchestrator.main &
+```
 
 - [ ] Wait for READY status: `curl -fsS <http://127.0.0.1:8014/ready> && echo "✅ GPU Orchestrator READY"`
 
@@ -177,7 +179,8 @@ sudo ./infrastructure/systemd/scripts/enable_all.sh start
 - [ ] Verify health (should all return 200):
 
 ```bash for port in 8015 8016 8004 8007; do echo -n "Port $port: " curl -s
-<http://localhost:$port/health> | jq -r '.status' done ```
+<http://localhost:$port/health> | jq -r '.status' done
+```
 
 ---
 
@@ -199,7 +202,8 @@ sudo ./infrastructure/systemd/scripts/enable_all.sh start
 - [ ] Verify articles in database:
 
 ```bash mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -D $MARIADB_DB \ -e "SELECT
-COUNT(*) AS count FROM articles;" ```
+COUNT(*) AS count FROM articles;"
+```
 
 - [ ] Verify ChromaDB embeddings:
 
@@ -215,7 +219,8 @@ COUNT(*) AS count FROM articles;" ```
 - [ ] Setup systemd timer (production):
 
 ```bash sudo cp infrastructure/systemd/units/justnews-crawl-scheduler.*
-/etc/systemd/system/ sudo systemctl daemon-reload sudo systemctl enable --now justnews-crawl-scheduler.timer ```
+/etc/systemd/system/ sudo systemctl daemon-reload sudo systemctl enable --now justnews-crawl-scheduler.timer
+```
 
 ---
 
@@ -228,7 +233,8 @@ COUNT(*) AS count FROM articles;" ```
 - [ ] Test full pipeline (optional training data prep):
 
 ```bash ./scripts/run_with_env.sh pytest
-tests/integration/test_persistence_schema.py -v ```
+tests/integration/test_persistence_schema.py -v
+```
 
 - [ ] Monitor logs in real-time:
 

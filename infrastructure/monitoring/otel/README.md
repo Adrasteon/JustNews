@@ -33,7 +33,7 @@ sudo scripts/ops/install_otel_central_collector.sh
 
 ```
 
-Both scripts download the requested `otelcol-contrib` release, install it under `/usr/local/bin`, copy the configs +
+Both scripts download the requested `otelcol-contrib`release, install it under`/usr/local/bin`, copy the configs +
 systemd units, and create override env files under `/etc/justnews/monitoring/otel/`. Rerun the script after updating
 this directory to redeploy changes.
 
@@ -49,9 +49,9 @@ The most useful variables include:
 
 - `OTEL_SERVICE_NAME` – logical name that ends up on every span/log.
 
-- `OTEL_UPSTREAM_ENDPOINT` – where node collectors forward OTLP data (defaults to `127.0.0.1:4317`).
+- `OTEL_UPSTREAM_ENDPOINT`– where node collectors forward OTLP data (defaults to`127.0.0.1:4317`).
 
-- `TEMPO_ENDPOINT` / `JAEGER_ENDPOINT` – optional OTLP HTTP endpoints for traces.
+- `TEMPO_ENDPOINT`/`JAEGER_ENDPOINT` – optional OTLP HTTP endpoints for traces.
 
 - `LOKI_ENDPOINT` – log aggregation endpoint.
 
@@ -70,5 +70,5 @@ sudo /usr/local/bin/otelcol-contrib \
 
 ```bash
 
-The same flag works for the central collector. The systemd units also expose `systemctl status` and `journalctl -u
+The same flag works for the central collector. The systemd units also expose `systemctl status`and`journalctl -u
 justnews-otel-*.service` logs if anything fails during startup.

@@ -10,7 +10,7 @@
 
 - [Troubleshooting](./TROUBLESHOOTING.md) — Diagnostics and recovery procedures
 
-- [MCP Bus Health & Diagnostics](./MCP_BUS_HEALTH.md) — Details on `/health` and `/ready`, testing, and developer guidance
+- [MCP Bus Health & Diagnostics](./MCP_BUS_HEALTH.md) — Details on `/health`and`/ready`, testing, and developer guidance
 
 **Infrastructure**:
 
@@ -30,7 +30,7 @@ This guide covers production deployment, scaling, and operational procedures for
 
 - Attach artifacts to the running ticket and log summaries in `docs/operations/stage_b_validation_evidence_log.md`.
 
-- Use `bash scripts/ops/apply_stage_b_migration.sh` to run migration 003 and optionally append a timestamped entry to the evidence log; the script drops raw output in `logs/operations/migrations/` for archival.
+- Use `bash scripts/ops/apply_stage_b_migration.sh`to run migration 003 and optionally append a timestamped entry to the evidence log; the script drops raw output in`logs/operations/migrations/` for archival.
 
 ## Environment Overview
 
@@ -123,7 +123,7 @@ This guide covers production deployment, scaling, and operational procedures for
 
 - Operational requirement: set BNB_CUDA_VERSION=122 in your service environment (for example `/etc/justnews/*.env` or systemd unit Environment entries) to force loading the in-repo CUDA‑12.2 bitsandbytes library. If this is not set, bitsandbytes may attempt to load a native library matching the running CUDA runtime and fail if a matching binary is not available.
 
-- Artifacts & guidance: see the prebuilt wheel and notes under `.build/bitsandbytes/dist/` and `docs/bitsandbytes_cuda122_wheel.md`. When you upgrade the system/CUDA/PyTorch stacks, either rebuild a matching wheel or install a bitsandbytes package built for the new CUDA target.
+- Artifacts & guidance: see the prebuilt wheel and notes under `.build/bitsandbytes/dist/`and`docs/bitsandbytes_cuda122_wheel.md`. When you upgrade the system/CUDA/PyTorch stacks, either rebuild a matching wheel or install a bitsandbytes package built for the new CUDA target.
 
 ## Deployment Methods
 

@@ -18,13 +18,13 @@ When invoking scripts or running code snippets in documentation, prefer either:
 When adding examples or CI configuration, prefer using `${CANONICAL_ENV:-justnews-py312}` by default (unless a different
 environment is explicitly requested). ------------------
 
-- Always consult `/etc/justnews/global.env` (or the configured `SERVICE_DIR` variant) for runtime configuration such as `PYTHON_BIN` before making changes that affect runtime, startup or agent behavior.
+- Always consult `/etc/justnews/global.env`(or the configured`SERVICE_DIR`variant) for runtime configuration such as`PYTHON_BIN` before making changes that affect runtime, startup or agent behavior.
 
-- If documentation or generated startup scripts introduce a new `PYTHON_BIN` path, update `global.env` (and include a human-reviewed note in the PR) — do not hardcode environment-dependent interpreter paths in unrelated source files.
+- If documentation or generated startup scripts introduce a new `PYTHON_BIN`path, update`global.env` (and include a human-reviewed note in the PR) — do not hardcode environment-dependent interpreter paths in unrelated source files.
 
-- Assistants should prefer to update `global.env` (or `infrastructure/systemd/examples/justnews.env.example`) rather than leaving users with out-of-sync example values.
+- Assistants should prefer to update `global.env`(or`infrastructure/systemd/examples/justnews.env.example`) rather than leaving users with out-of-sync example values.
 
-- Automation exists to help keep `PYTHON_BIN` present: `infrastructure/systemd/scripts/ensure_global_python_bin.sh` (run at startup) and a repo validation script `infrastructure/scripts/validate-global-env.sh` (CI-friendly). When proposing runtime changes, update both the example and the global env, and ensure a validation step is added or existing validation passes.
+- Automation exists to help keep `PYTHON_BIN`present:`infrastructure/systemd/scripts/ensure_global_python_bin.sh`(run at startup) and a repo validation script`infrastructure/scripts/validate-global-env.sh` (CI-friendly). When proposing runtime changes, update both the example and the global env, and ensure a validation step is added or existing validation passes.
 
 Core rules (must follow) ------------------------
 
@@ -44,11 +44,11 @@ Behavioral guidelines for assistants -----------------------------------
 
 Package installation policy ---------------------------
 
-- When performing package installs for this project, prefer `conda install` or `mamba install` targeting the canonical conda environment (`${CANONICAL_ENV:-justnews-py312}`) and `conda-forge`/official channels.
+- When performing package installs for this project, prefer `conda install`or`mamba install`targeting the canonical conda environment (`${CANONICAL_ENV:-justnews-py312}`) and`conda-forge`/official channels.
 
-- Only use `pip` as a last resort when a required package or specific wheel is not available via conda; if `pip` is used, document the reason and pin the exact version/wheel in the PR and add an update to `environment.yml` where appropriate.
+- Only use `pip`as a last resort when a required package or specific wheel is not available via conda; if`pip`is used, document the reason and pin the exact version/wheel in the PR and add an update to`environment.yml` where appropriate.
 
-- Avoid modifying the runtime environment using `pip` in CI or system-wide installation steps; prefer conda operations so environments remain reproducible. If `pip` must be used in CI, ensure a clear justification is recorded in the change and validations are added.
+- Avoid modifying the runtime environment using `pip`in CI or system-wide installation steps; prefer conda operations so environments remain reproducible. If`pip` must be used in CI, ensure a clear justification is recorded in the change and validations are added.
 
 Testing & CI -----------
 
@@ -68,7 +68,7 @@ Review & escalation -------------------
 
 Recommended local file (.copilot-instructions) --------------------------------------------- Keep a short, private
 `.copilot- instructions` file at the repo root (gitignored) for any personal preferences and developer-specific
-guardrails. See `.gitignore` which already includes `.copilot-instructions`.
+guardrails. See `.gitignore`which already includes`.copilot-instructions`.
 
 Examples --------
 

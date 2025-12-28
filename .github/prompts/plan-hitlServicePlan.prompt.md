@@ -5,7 +5,7 @@ Summary:
 - Goal: Ensure the Human-in-the-Loop (HITL) annotator UI is available, seeded with
 candidates from the crawler, monitored, and safe to roll out into staging/production.
 
-- Current state: HITL API serves the static UI at `/` and `/static/*`. The crawler builds candidate payloads and posts them to `/api/candidates`. Recent changes applied: `CandidateEvent.id` now defaults to `None` (prevents 422), crawler payload builder implemented, and automated tests added and passing.
+- Current state: HITL API serves the static UI at `/`and`/static/*`. The crawler builds candidate payloads and posts them to`/api/candidates`. Recent changes applied:`CandidateEvent.id`now defaults to`None` (prevents 422), crawler payload builder implemented, and automated tests added and passing.
 
 Pending Tasks (prioritised): 1) CI + test coverage (High priority)
 
@@ -13,7 +13,7 @@ Pending Tasks (prioritised): 1) CI + test coverage (High priority)
 
   - Steps:
 
-    - Add a minimal GitHub Actions workflow to run `pytest` on pushes/PRs (use the project's `environment.yml` or `requirements.txt` to install deps).
+    - Add a minimal GitHub Actions workflow to run `pytest`on pushes/PRs (use the project's`environment.yml`or`requirements.txt` to install deps).
 
     - Run the new tests in CI and iterate if environment issues appear.
 
@@ -25,7 +25,7 @@ Pending Tasks (prioritised): 1) CI + test coverage (High priority)
 
   - Steps:
 
-    - Update `infrastructure/systemd/examples/hitl_service.env.example` with the key envs and brief descriptions: `HITL_SERVICE_ADDRESS`, `HITL_DB_PATH`, `ENABLE_HITL_PIPELINE`, `HITL_STATS_INTERVAL_SECONDS`, `HITL_FAILURE_BACKOFF_SECONDS`, forwarding knobs (`HITL_FORWARD_AGENT`, `HITL_FORWARD_TOOL`).
+    - Update `infrastructure/systemd/examples/hitl_service.env.example`with the key envs and brief descriptions:`HITL_SERVICE_ADDRESS`,`HITL_DB_PATH`,`ENABLE_HITL_PIPELINE`,`HITL_STATS_INTERVAL_SECONDS`,`HITL_FAILURE_BACKOFF_SECONDS`, forwarding knobs (`HITL_FORWARD_AGENT`,`HITL_FORWARD_TOOL`).
 
     - Add `agents/hitl_service/README.md` explaining how to override DB path, enable/disable pipeline, and where the UI is served.
 
@@ -37,11 +37,11 @@ Pending Tasks (prioritised): 1) CI + test coverage (High priority)
 
   - Steps:
 
-    - Add a pytest that patches `mcp_client.call_tool` and exercises `store_label` / `dispatch_ingest` to ensure the code path constructs the right payload and handles retries/backoff.
+    - Add a pytest that patches `mcp_client.call_tool`and exercises`store_label`/`dispatch_ingest` to ensure the code path constructs the right payload and handles retries/backoff.
 
     - Optionally add a small test that simulates `HITL_FORWARD_ENABLED=true` behavior with a dummy MCP client.
 
-  - Verification: tests assert that `dispatch_ingest` calls `mcp_client.call_tool` and updates DB ingestion_status appropriately.
+  - Verification: tests assert that `dispatch_ingest`calls`mcp_client.call_tool` and updates DB ingestion_status appropriately.
 
 4) Controlled integration run and manual verification (Medium priority)
 
@@ -53,9 +53,9 @@ Pending Tasks (prioritised): 1) CI + test coverage (High priority)
 
     - Label a few items via the UI or programmatically (we have test coverage for programmatic labeling).
 
-    - Check `GET /api/stats`, `GET /api/next`, and `hitl_labels` and `hitl_candidates` DB rows.
+    - Check `GET /api/stats`,`GET /api/next`, and`hitl_labels`and`hitl_candidates` DB rows.
 
-  - Verification: `/api/stats` reflects expected pending/in_review counts; labeled rows appear in `hitl_labels` and ingestion forward payloads are created.
+  - Verification: `/api/stats`reflects expected pending/in_review counts; labeled rows appear in`hitl_labels` and ingestion forward payloads are created.
 
 5) Operational guidance and monitoring (Low priority)
 
@@ -63,7 +63,7 @@ Pending Tasks (prioritised): 1) CI + test coverage (High priority)
 
   - Steps:
 
-    - Document health endpoints: `GET /health`, `GET /ready`, and `GET /api/stats`.
+    - Document health endpoints: `GET /health`,`GET /ready`, and`GET /api/stats`.
 
     - Add a note to `infrastructure/systemd/scripts/enable_all.sh` docs to keep installed copies in sync.
 

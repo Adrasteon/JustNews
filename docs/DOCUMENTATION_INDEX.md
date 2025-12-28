@@ -317,9 +317,9 @@ infrastructure/
 
 - [Troubleshooting Guide](./operations/TROUBLESHOOTING.md) — Common issues
 
-- [FAQ](#) — Frequently asked questions
+- FAQ — Frequently asked questions
 
-- [Glossary](#) — Key terms
+- Glossary — Key terms
 
 1. **Review relevant documentation**:
 
@@ -343,11 +343,12 @@ tail -f logs/*.log ```
 1. **Run diagnostics**:
 
 ```bash
-   # Full health check
+# Full health check
 bash scripts/run_with_env.sh python check_databases.py
 
-   # Service status
-sudo systemctl status vault mariadb chromadb ```
+# Service status
+sudo systemctl status vault mariadb chromadb
+```
 
 ## 📝 Documentation Standards
 

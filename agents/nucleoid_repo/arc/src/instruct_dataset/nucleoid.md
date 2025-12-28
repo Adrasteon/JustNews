@@ -197,7 +197,7 @@ return Vt.find(v => v.rc === 'Iz').rc;
 
 ### Reserved names
 
-- `value` is reserved name that `value` should not be used, otherwise it will throw an TypeError
+- `value`is reserved name that`value` should not be used, otherwise it will throw an TypeError
 
 ```nuc
 vt.value = 'Av'

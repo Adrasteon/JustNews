@@ -32,7 +32,7 @@ pip install vllm
 
 ```text
 
-The script reads `global.env` for `HF_TOKEN` and launches vLLM with:
+The script reads `global.env`for`HF_TOKEN` and launches vLLM with:
 
 - Model: `mistralai/Mistral-7B-Instruct-v0.3`
 
@@ -68,7 +68,7 @@ Testing chat completion: <http://127.0.0.1:7060/v1/chat/completions>
 
 ### 4. Enable vLLM for Agents
 
-Set `VLLM_ENABLED=true` in `global.env`:
+Set `VLLM_ENABLED=true`in`global.env`:
 
 ```bash
 
@@ -115,9 +115,9 @@ configuration is `config/vllm_mistral_7b.yaml` which should be used for producti
 
 ### Tests & Validation (developer)
 
-- **Smoke tests**: The vLLM smoke test is `tests/integration/test_vllm_mistral_7b_smoke.py` and validates the `/health`, `/models`, and `/chat/completions` responses for basic functionality.
+- **Smoke tests**: The vLLM smoke test is `tests/integration/test_vllm_mistral_7b_smoke.py`and validates the`/health`,`/models`, and`/chat/completions` responses for basic functionality.
 
-- **Orchestrator tests**: See `tests/agents/gpu_orchestrator/test_model_lifecycle.py` to validate ModelSpec resolution, adapter path extraction from `AGENT_MODEL_MAP.json`, and OOM/restart handling.
+- **Orchestrator tests**: See `tests/agents/gpu_orchestrator/test_model_lifecycle.py`to validate ModelSpec resolution, adapter path extraction from`AGENT_MODEL_MAP.json`, and OOM/restart handling.
 
 - **Run tests locally** (canonical env):
 
@@ -131,7 +131,7 @@ conda run -n justnews-py312 pytest -q tests/agents/gpu_orchestrator/test_model_l
 
 - For integration smoke tests, use `./scripts/wait_for_vllm.sh` to ensure the server is ready before running tests.
 
-- Use `VLLM_SKIP_START=1` and `CUDA_VISIBLE_DEVICES=""` for CI or environments without GPUs to avoid starting a GPU-heavy server.
+- Use `VLLM_SKIP_START=1`and`CUDA_VISIBLE_DEVICES=""` for CI or environments without GPUs to avoid starting a GPU-heavy server.
 
 - Tests that need vLLM running should only be executed on a GPU-capable host (local dev or gated GPU CI).
 
@@ -170,19 +170,19 @@ Notes:
 
 - **base_models**: Historical Qwen2 entries have been archived (see `config/legacy/vllm_qwen2_32b.yaml`).
 
-- **vllm_agents**: The project now uses Mistral-7B by default; per-agent adapter mappings use `mistral_<agent>_v1` adapters and `inference_mode: "vllm"` routes to vLLM.
+- **vllm_agents**: The project now uses Mistral-7B by default; per-agent adapter mappings use `mistral_<agent>_v1`adapters and`inference_mode: "vllm"` routes to vLLM.
 
 #### AGENT_MODEL_RECOMMENDED.json
 
 Orchestrator-managed model deployments --------------------------------------
 
 We recommend deploying the canonical Mistral-7B model under control of the `gpu_orchestrator` agent. The orchestrator
-will read `config/vllm_mistral_7b.yaml` and attempt to start the model using the `service.systemd_unit` listed in the
+will read `config/vllm_mistral_7b.yaml`and attempt to start the model using the`service.systemd_unit` listed in the
 config; fallback to the local vLLM process is supported when systemd is not available.
 
 Key operational steps:
 
-- Place the systemd unit example in `infrastructure/systemd/vllm-mistral-7b.service.example` under `/etc/systemd/system/vllm-mistral-7b.service` and enable it:
+- Place the systemd unit example in `infrastructure/systemd/vllm-mistral-7b.service.example`under`/etc/systemd/system/vllm-mistral-7b.service` and enable it:
 
 ```bash
 
@@ -192,15 +192,15 @@ sudo systemctl enable --now vllm-mistral-7b.service
 
 ```
 
-- The `gpu_orchestrator` will collect adapters listed in `AGENT_MODEL_MAP.json` and expose `adapter_paths` on the `ModelSpec` for downstream adapter mounting (PEFT/LoRA) where supported by the runtime.
+- The `gpu_orchestrator`will collect adapters listed in`AGENT_MODEL_MAP.json`and expose`adapter_paths`on the`ModelSpec` for downstream adapter mounting (PEFT/LoRA) where supported by the runtime.
 
-- Monitoring and safety: the orchestrator will only start the model when sufficient GPU headroom exists and will monitor logs for CUDA OOM. It exports metrics `gpu_orchestrator_vllm_restarts_total`, `gpu_orchestrator_vllm_ooms_total`, and `gpu_orchestrator_vllm_status`.
+- Monitoring and safety: the orchestrator will only start the model when sufficient GPU headroom exists and will monitor logs for CUDA OOM. It exports metrics `gpu_orchestrator_vllm_restarts_total`,`gpu_orchestrator_vllm_ooms_total`, and`gpu_orchestrator_vllm_status`.
 
 - Each agent now has:
 
 - `default`: mistralai/Mistral-7B-Instruct-v0.3 (fallback)
 
-- `vllm_default`: mistralai/Mistral-7B-Instruct-v0.3 (when `VLLM_ENABLED=true`)
+- `vllm_default`: mistralai/Mistral-7B-Instruct-v0.3 (when`VLLM_ENABLED=true`)
 
 - Comment at top documents the toggle and notes that legacy Qwen2 adapters are archived.
 
@@ -250,7 +250,7 @@ Key parameters (optimized for 24GB):
 
 ### Publish to ModelStore
 
-Add `--publish` flag to copy trained adapter to `model_store/adapters/<agent>/<adapter_name>/`.
+Add `--publish`flag to copy trained adapter to`model_store/adapters/<agent>/<adapter_name>/`.
 
 ### Repeat for All Agents
 
@@ -278,7 +278,7 @@ vLLM supports LoRA hot-swapping. To enable:
 
 1. Set `VLLM_ENABLE_LORA=true` in launch script env.
 
-1. Pass `VLLM_LORA_MODULES` as comma-separated `name=path` pairs:
+1. Pass `VLLM_LORA_MODULES`as comma-separated`name=path` pairs:
 
 ```bash VLLM_LORA_MODULES="synthesizer=/home/adra/JustNews/model_store/adapters/
 synthesizer/mistral_synth_v1,critic=/home/adra/JustNews/model_store/adapters/cri

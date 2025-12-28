@@ -31,7 +31,7 @@ All enhancements are designed to be:
 
 ## Configuration
 
-Enhancements are configured through the `crawling.enhancements` section of `config/system_config.json`:
+Enhancements are configured through the `crawling.enhancements`section of`config/system_config.json`:
 
 ```json
 {
@@ -235,7 +235,7 @@ headers["User-Agent"] = profile.user_agent
 
 ## Integration
 
-Enhancements are automatically integrated into the `CrawlerEngine` and `GenericSiteCrawler` when enabled in
+Enhancements are automatically integrated into the `CrawlerEngine`and`GenericSiteCrawler` when enabled in
 configuration. The crawler engine instantiates helpers based on config and passes them to crawlers.
 
 ### Manual Integration

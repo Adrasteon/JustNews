@@ -98,12 +98,12 @@ conda run -n ${CANONICAL_ENV:-justnews-py312}-restored python scripts/check_depr
 
 - If you are using conda-forge packages (recommended), prefer reinstalling or using conda-lock for cross-platform reproducibility.
 
-- After restore, re-run `scripts/check_deprecation_warnings.py`. If it detects deprecation warnings (particularly from `google._upb`), re-install `protobuf` and recompilation-dependent wheels (either with `pip --no-binary` or via the conda package).
+- After restore, re-run `scripts/check_deprecation_warnings.py`. If it detects deprecation warnings (particularly from`google._upb`), re-install`protobuf`and recompilation-dependent wheels (either with`pip --no-binary` or via the conda package).
 
-- When migrating from the legacy `justnews-py312` environment, export `CANONICAL_ENV=justnews-py312` temporarily so automation keeps working until you finish creating the new `${CANONICAL_ENV:-justnews-py312}` environment.
+- When migrating from the legacy `justnews-py312`environment, export`CANONICAL_ENV=justnews-py312`temporarily so automation keeps working until you finish creating the new`${CANONICAL_ENV:-justnews-py312}` environment.
 
 ## Troubleshooting
 
 - Deprecation warnings caused by compiled extensions imply a mismatch between the runtime’s `upb` and compiled wheels; best approach is to reinstall compatible wheels rather than attempting to mask the warning.
 
-- For CI reproducibility: prefer building or pinning environment from `explicit` specs or `conda-lock` artifacts.
+- For CI reproducibility: prefer building or pinning environment from `explicit`specs or`conda-lock` artifacts.

@@ -44,9 +44,9 @@ issues, and optimization of GPU resource usage.
 | Metric Name | Type | Description | Units | |-------------|------|-------------|-------| | `nvidia_gpu_count` | Gauge |
 Number of GPUs detected in the system | count | | `nvidia_gpu_utilization_ratio` | Gauge | GPU utilization as a ratio |
 0-1 | | `nvidia_gpu_memory_utilization_ratio` | Gauge | GPU memory utilization as a ratio | 0-1 | |
-`nvidia_gpu_temperature_celsius` | Gauge | GPU temperature | Celsius | | `nvidia_gpu_power_draw_watts` | Gauge | Current
+`nvidia_gpu_temperature_celsius`| Gauge | GPU temperature | Celsius | |`nvidia_gpu_power_draw_watts` | Gauge | Current
 power consumption | Watts | | `nvidia_gpu_power_limit_watts` | Gauge | Configured power limit | Watts | |
-`nvidia_gpu_fan_speed_ratio` | Gauge | Fan speed as a ratio | 0-1 | | `nvidia_gpu_memory_total_bytes` | Gauge | Total
+`nvidia_gpu_fan_speed_ratio`| Gauge | Fan speed as a ratio | 0-1 | |`nvidia_gpu_memory_total_bytes` | Gauge | Total
 GPU memory | Bytes | | `nvidia_gpu_memory_used_bytes` | Gauge | Used GPU memory | Bytes | |
 `nvidia_gpu_memory_free_bytes` | Gauge | Free GPU memory | Bytes |
 
@@ -146,7 +146,7 @@ The JustNews Operations Dashboard includes 6 GPU monitoring panels:
 
 - `nvidia-smi` command available
 
-- Python 3.6+ with `subprocess` and `http.server` modules
+- Python 3.6+ with `subprocess`and`http.server` modules
 
 - Network access for Prometheus scraping
 
@@ -166,7 +166,8 @@ The GPU monitoring is automatically configured when the monitoring stack is inst
 static_configs:
 
       - targets: ['127.0.0.1:9400']
-metrics_path: /metrics ```
+metrics_path: /metrics
+```
 
 1. **Grafana Dashboard**
 

@@ -37,17 +37,17 @@ reference when implementing tests, forwarders, or new integrations.
 
 - Payload (JSON):
 
-    - `site_id` (str), `url` (str), `title` (str), `cleaned_text` (str),
+    - `site_id`(str),`url`(str),`title`(str),`cleaned_text` (str),
 
-    - `extraction_metadata` (dict), `source_html_path` (str, optional),
+    - `extraction_metadata`(dict),`source_html_path` (str, optional),
 
-    - `ingest_meta` (dict: `run_id`, `source`, `submitted_by`)
+    - `ingest_meta`(dict:`run_id`,`source`,`submitted_by`)
 
 - Return: `{ "article_id": <int|string>, "status": "ok" }`
 
 - `archive.queue_article`
 
-- Payload (JSON): `ingest_payload` produced by HITL service (`candidate`, `cleaned_text`, `label_*` fields)
+- Payload (JSON): `ingest_payload`produced by HITL service (`candidate`,`cleaned_text`,`label_*` fields)
 
 - Normalizes URLs, hashes, authors, tags, and forwards to Stage B storage
 
@@ -55,9 +55,9 @@ reference when implementing tests, forwarders, or new integrations.
 
 3) Crawl4AI adapter expectations
 
-- `crawl_site_with_crawl4ai(site_config, profile, max_articles)` returns `list[dict]` where each dict contains:
+- `crawl_site_with_crawl4ai(site_config, profile, max_articles)`returns`list[dict]` where each dict contains:
 
-- `url`, `cleaned_html` / `markdown` or `html`, `metadata`, `links` (internal/external), `score`
+- `url`,`cleaned_html`/`markdown`or`html`,`metadata`,`links`(internal/external),`score`
 
 4) Archive / Storage agent
 

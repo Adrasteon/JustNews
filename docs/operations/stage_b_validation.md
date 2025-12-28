@@ -8,15 +8,15 @@ scheduler deployment, observability roll-out, QA cadences, and the proofs needed
 
 ## 1. Database and Ingestion Plumbing
 
-- Apply migration `database/migrations/003_stage_b_ingestion.sql` to your Stage B database. Confirm `collection_timestamp`, `normalized_url`, `url_hash`, metadata JSON columns, and the `embedding` vector field exist. Use `bash scripts/ops/apply_stage_b_migration.sh [DB_URL] --record` to apply and log the operation; command output is preserved under `logs/operations/migrations/` for audit.
+- Apply migration `database/migrations/003_stage_b_ingestion.sql`to your Stage B database. Confirm`collection_timestamp`,`normalized_url`,`url_hash`, metadata JSON columns, and the`embedding`vector field exist. Use`bash scripts/ops/apply_stage_b_migration.sh [DB_URL] --record`to apply and log the operation; command output is preserved under`logs/operations/migrations/` for audit.
 
 - Verify the ingestion agent populates new fields:
 
-- Invoke `agents/memory/tools.save_article` via unit tests (`tests/agents/memory/test_save_article.py`) or an ad-hoc ingestion to confirm `collection_timestamp`, dedupe hashes, review flags, and embeddings reach the database.
+- Invoke `agents/memory/tools.save_article`via unit tests (`tests/agents/memory/test_save_article.py`) or an ad-hoc ingestion to confirm`collection_timestamp`, dedupe hashes, review flags, and embeddings reach the database.
 
 - Inspect a sample row with `SELECT title, normalized_url, url_hash, needs_review, collection_timestamp FROM articles ORDER BY id DESC LIMIT 5;`.
 
-- Confirm Chroma metadata accepts the payload: run a spot check (for example, `python - <<'PY' ... collection.get(ids=['<article_id>']) ... PY`) and verify every metadata field is a scalar or JSON string. Null values or nested dicts must be stripped/serialized before ingestion; otherwise Chroma rejects the write with `metadatas[0].<field>: data did not match any variant of untagged enum MetadataValue`.
+- Confirm Chroma metadata accepts the payload: run a spot check (for example, `python - <<'PY' ... collection.get(ids=['<article_id>']) ... PY`) and verify every metadata field is a scalar or JSON string. Null values or nested dicts must be stripped/serialized before ingestion; otherwise Chroma rejects the write with`metadatas[0].<field>: data did not match any variant of untagged enum MetadataValue`.
 
 - When adding new metadata fields, update the sanitization helpers in `agents/memory/tools._make_chroma_metadata_safe` (and keep optional fields nullable in MariaDB) so embeddings continue to store cleanly.
 
@@ -30,9 +30,9 @@ scheduler deployment, observability roll-out, QA cadences, and the proofs needed
 
 - Deploy the systemd timer:
 
-- Install `infrastructure/systemd/scripts/run_crawl_schedule.sh` and the associated unit/timer under `/etc/systemd/system/` (e.g., `justnews-crawl-scheduler.service` / `.timer`).
+- Install `infrastructure/systemd/scripts/run_crawl_schedule.sh`and the associated unit/timer under`/etc/systemd/system/`(e.g.,`justnews-crawl-scheduler.service`/`.timer`).
 
-- Set environment values in `/etc/justnews/global.env`: `SERVICE_DIR`, `JUSTNEWS_PYTHON`, `CRAWL_SCHEDULE_PATH` (optional), and overrides for output paths if needed.
+- Set environment values in `/etc/justnews/global.env`:`SERVICE_DIR`,`JUSTNEWS_PYTHON`,`CRAWL_SCHEDULE_PATH` (optional), and overrides for output paths if needed.
 
 - Add `CRAWL_PROFILE_PATH=/etc/justnews/crawl_profiles` (or your custom path) if the default profiles live outside the repo checkout. The loader accepts either a directory or a single YAML file for backwards compatibility.
 
@@ -46,7 +46,7 @@ scheduler deployment, observability roll-out, QA cadences, and the proofs needed
 
 - Capture live-run evidence:
 
-- Tail the timer journal (`journalctl -u justnews-crawl-scheduler.service -n 200`) and archive the latest `logs/analytics/crawl_scheduler_state.json` snapshot.
+- Tail the timer journal (`journalctl -u justnews-crawl-scheduler.service -n 200`) and archive the latest`logs/analytics/crawl_scheduler_state.json` snapshot.
 
 ## 3. Observability Roll-Out
 

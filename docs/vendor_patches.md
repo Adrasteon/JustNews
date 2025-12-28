@@ -2,17 +2,17 @@
 
 ## Google RPC Namespace Patch
 
-Purpose: Remove the deprecated `pkg_resources.declare_namespace` call from the `google.rpc` package that ships with
+Purpose: Remove the deprecated `pkg_resources.declare_namespace`call from the`google.rpc` package that ships with
 `googleapis-common-protos`. The upstream module still relies on Setuptools' legacy namespace helper, which emits a
 runtime deprecation warning on Python 3.12 and later.
 
 ### What we changed
 
 - The installed module `google/rpc/__init__.py` is rewritten to use the
-standard-library `pkgutil.extend_path` helper. This avoids importing `pkg_resources` entirely and eliminates the warning
+standard-library `pkgutil.extend_path`helper. This avoids importing`pkg_resources` entirely and eliminates the warning
 during startup.
 
-- `googleapis-common-protos>=1.59.1` is pinned in `requirements.txt` and
+- `googleapis-common-protos>=1.59.1`is pinned in`requirements.txt` and
 `environment.yml` to keep the dependency explicit.
 
 - A helper script `scripts/vendor_patches/apply_google_rpc_namespace_patch.py`
@@ -40,5 +40,5 @@ Remove this vendor patch once the upstream module adopts implicit namespace pack
 
 If your CI / platform requires a python `protobuf` wheel compatible with Python 3.12, consider providing a conda recipe
 so conda-forge can build and distribute a matching package. This repository includes an example recipe at
-`conda/recipes/protobuf` which is intended as a starting point for a `conda- forge/staged-recipes` PR. See
+`conda/recipes/protobuf`which is intended as a starting point for a`conda- forge/staged-recipes` PR. See
 `conda/README.md` for usage and local build instructions.

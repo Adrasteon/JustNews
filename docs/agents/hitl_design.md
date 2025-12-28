@@ -20,7 +20,7 @@ Core responsibilities
 
 - Expose QA and training endpoints for human operators (review queues, label submission, comment metadata).
 
-- Implement forwarding logic: retries, backoff, and deterministic ingestion-status transitions (`pending` → `forwarding` → `forwarded` | `error`).
+- Implement forwarding logic: retries, backoff, and deterministic ingestion-status transitions (`pending`→`forwarding`→`forwarded`|`error`).
 
 Database schema (high level)
 
@@ -44,7 +44,7 @@ Forwarding workflow
 
 1. Forwarding uses staged backoff: immediate attempt, then exponential backoff with jitter, limited retries.
 
-1. On success, `ingestion_status` is set to `forwarded`. On repeated failure, set to `error` and surface to QA.
+1. On success, `ingestion_status`is set to`forwarded`. On repeated failure, set to`error` and surface to QA.
 
 Operational notes
 
@@ -58,4 +58,4 @@ Tests
 
 - Unit tests: payload validation, DB writes, label lifecycle transitions.
 
-- Integration: end-to-end candidate → label → forward using mocked `memory` or `archive` services.
+- Integration: end-to-end candidate → label → forward using mocked `memory`or`archive` services.

@@ -113,13 +113,13 @@ explains why it matters and gives suggested tests / next actions to increase cov
 
 1. High impact (2–4 days each)
 
-- Add unit+integration tests for `agents/fact_checker/fact_checker_engine.py` and `training_system/core/training_coordinator.py` to cover core logic and DB interaction paths (mock DB).
+- Add unit+integration tests for `agents/fact_checker/fact_checker_engine.py`and`training_system/core/training_coordinator.py` to cover core logic and DB interaction paths (mock DB).
 
 - Add tests for `agents/sites/generic_site_crawler.py` parsing, using small HTML fixtures.
 
 1. Monitoring + security coverage push (longer effort, 1–2 weeks)
 
-- Monitoring files under `monitoring/core/` are mostly untested — create a test harness mocking backends and produce coverage across `metrics_collector`, `log_*`, `trace_*` modules.
+- Monitoring files under `monitoring/core/`are mostly untested — create a test harness mocking backends and produce coverage across`metrics_collector`,`log_*`,`trace_*` modules.
 
 - Security service modules (authentication, encryption, compliance) need unit tests for safe handling of secrets and policy logic; use test-only keys and mocks.
 

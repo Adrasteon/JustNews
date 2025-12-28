@@ -53,7 +53,7 @@ processing time | < 2 seconds |
 | Panel | Metric | Description | Normal Range | |-------|--------|-------------|--------------| | **GPU Utilization** |
 `nvidia_gpu_utilization_ratio * 100` | GPU processing utilization | 0-100% | | **GPU Memory Usage** |
 `nvidia_gpu_memory_utilization_ratio * 100` | GPU memory utilization | 0-100% | | **GPU Temperature** |
-`nvidia_gpu_temperature_celsius` | GPU temperature | 30-80°C | | **GPU Power Draw** | `nvidia_gpu_power_draw_watts` |
+`nvidia_gpu_temperature_celsius`| GPU temperature | 30-80°C | | **GPU Power Draw** |`nvidia_gpu_power_draw_watts` |
 Current power consumption | 50-350W | | **GPU Memory Details** | Memory totals in GB (table) | Total/Used/Free memory |
 Model dependent | | **GPU Utilization Over Time** | Utilization trends (time series) | Historical GPU usage | Variable |
 

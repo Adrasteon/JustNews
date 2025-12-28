@@ -21,15 +21,15 @@ all server versions):
 PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_diagnose.py --autocreate
 
 If the script reports that the root endpoint appears to be another service (for example `MCP Bus Agent`) you likely have
-the wrong host or port configured — update `CHROMADB_HOST` or `CHROMADB_PORT` accordingly.
+the wrong host or port configured — update `CHROMADB_HOST`or`CHROMADB_PORT` accordingly.
 
 3) Common issues ----------------
 
-- Wrong port: If `CHROMADB_PORT` points to `8000` or another agent such as the MCP Bus, Chroma clients may fail to connect or list collections; your logs may show root endpoints or versions for a different service.
+- Wrong port: If `CHROMADB_PORT`points to`8000` or another agent such as the MCP Bus, Chroma clients may fail to connect or list collections; your logs may show root endpoints or versions for a different service.
 
-- Tenant missing: If a server requires a tenant but it doesn't exist, some Chroma endpoints may return an error like `Could not connect to tenant default_tenant`. Use the script `--autocreate` attempt to create the default tenant (if your server supports tenant creation via HTTP).
+- Tenant missing: If a server requires a tenant but it doesn't exist, some Chroma endpoints may return an error like `Could not connect to tenant default_tenant`. Use the script`--autocreate` attempt to create the default tenant (if your server supports tenant creation via HTTP).
 
-- API versions: Different Chroma server versions use different API versions; the client attempts `heartbeat()`, and if that fails, `list_collections()` as an alternate connectivity probe.
+- API versions: Different Chroma server versions use different API versions; the client attempts `heartbeat()`, and if that fails,`list_collections()` as an alternate connectivity probe.
 
 4) Logs and diagnostics -----------------------
 
@@ -41,9 +41,9 @@ print([c.name for c in client.list_collections()])
 
 5) Notes --------
 
-- Our code now respects `CHROMADB_TENANT` and will optionally try to auto-create a default tenant and `articles` collection if `CHROMADB_AUTO_CREATE_TENANT` is set to 1.
+- Our code now respects `CHROMADB_TENANT`and will optionally try to auto-create a default tenant and`articles`collection if`CHROMADB_AUTO_CREATE_TENANT` is set to 1.
 
-- If you use `system_config.json` and want to override, set environment variables: `CHROMADB_HOST` and `CHROMADB_PORT`. Environment variables will take precedence over `system_config.json` values.
+- If you use `system_config.json`and want to override, set environment variables:`CHROMADB_HOST`and`CHROMADB_PORT`. Environment variables will take precedence over`system_config.json` values.
 
 If you still face issues after following these steps, share the outputs of `python scripts/chroma_diagnose.py
 --autocreate` and the memory agent logs for further debugging.

@@ -8,7 +8,7 @@ This plan restores the proven systemd deployment first, validates the refactor u
 the ingestion, deduplication, and fact- verification capabilities required for the JustNews workflow. Each stage has
 clear acceptance checks and rollback guidance.
 
-> Repo note: This repo keeps systemd assets under `infrastructure/systemd/`. If documentation elsewhere refers to `deploy/systemd/`, use the `infrastructure/systemd/` path here.
+> Repo note: This repo keeps systemd assets under `infrastructure/systemd/`. If documentation elsewhere refers to`deploy/systemd/`, use the`infrastructure/systemd/` path here.
 
 ## Goals and definition of done (DoD)
 
@@ -38,15 +38,15 @@ clear acceptance checks and rollback guidance.
 
 - GPU: NVIDIA drivers installed and healthy (`nvidia-smi` OK).
 
-- Python: 3.11.x is the canonical target (3.12 remains experimental; see `requirements.txt` / `environment.yml`).
+- Python: 3.11.x is the canonical target (3.12 remains experimental; see `requirements.txt`/`environment.yml`).
 
 - Conda environment available: ${CANONICAL_ENV:-justnews-py312}.
 
 - MariaDB: local or external (version per `infrastructure/systemd/setup_mariadb.sh`).
 
-- Tooling: `git`, `curl`, `jq`, `psql`, `python`, `pip` (or conda), `virtualenv`.
+- Tooling: `git`,`curl`,`jq`,`psql`,`python`,`pip`(or conda),`virtualenv`.
 
-- Content tooling: ensure packages for extraction and embeddings are available (`trafilatura`, `readability-lxml`, `jusText`, `extruct`, `langdetect`, `sentence-transformers`, `chromadb`). Pin versions in `requirements.txt` before deployment.
+- Content tooling: ensure packages for extraction and embeddings are available (`trafilatura`,`readability-lxml`,`jusText`,`extruct`,`langdetect`,`sentence-transformers`,`chromadb`). Pin versions in`requirements.txt` before deployment.
 
 Required: NVIDIA MPS. MPS is an essential part of the design to protect GPU stability under concurrent workloads, reduce
 memory fragmentation, and mitigate hard GPU crashes from OOM conditions and memory leaks.
@@ -59,7 +59,7 @@ A0. Host cleanup (we already ran these during teardown)
 
 - `/usr/local/bin/k3s-uninstall.sh`
 
-- Verify: no `k3s.service`, `/run/k3s`, or `/var/lib/rancher/k3s` present.
+- Verify: no `k3s.service`,`/run/k3s`, or`/var/lib/rancher/k3s` present.
 
 - NOTE: Kubernetes manifests are deprecated and archived under `infrastructure/archives/kubernetes/`.
 
@@ -69,9 +69,9 @@ A1. Python environment
 
 - Virtualenv: create and activate, then `pip install -r requirements.txt`.
 
-- Conda: `conda env create -f environment.yml` (if present), then `conda activate <env>`.
+- Conda: `conda env create -f environment.yml`(if present), then`conda activate <env>`.
 
-- Record the interpreter path (for systemd): set `JUSTNEWS_PYTHON` accordingly (e.g., `/home/<you>/.venv/bin/python`).
+- Record the interpreter path (for systemd): set `JUSTNEWS_PYTHON`accordingly (e.g.,`/home/<you>/.venv/bin/python`).
 
 A2. Secrets and config
 
@@ -113,7 +113,7 @@ A3. Database
 
 - Initialize/migrate schema (pick one, depending on repo conventions):
 
-    - `scripts/setup_mariadb.sh` (recommended) or `scripts/setup_postgres.sh` (deprecated) then `scripts/init_database.py`
+    - `scripts/setup_mariadb.sh`(recommended) or`scripts/setup_postgres.sh`(deprecated) then`scripts/init_database.py`
 
     - or run migrations in `database/migrations/` via your migration tool.
 
@@ -127,23 +127,23 @@ A4. Install systemd artifacts
 
 - Scripts (operator helpers):
 
-- From `infrastructure/systemd/scripts/`, ensure these are executable and optionally copied to `/usr/local/bin/`:
+- From `infrastructure/systemd/scripts/`, ensure these are executable and optionally copied to`/usr/local/bin/`:
 
-    - `reset_and_start.sh`, `enable_all.sh`, `health_check.sh`, `cold_start.sh`, `wait_for_mcp.sh`, `justnews-start-agent.sh`, `justnews-preflight-check.sh`
+    - `reset_and_start.sh`,`enable_all.sh`,`health_check.sh`,`cold_start.sh`,`wait_for_mcp.sh`,`justnews-start-agent.sh`,`justnews-preflight-check.sh`
 
 - Units:
 
-- From `infrastructure/systemd/units/`, copy unit templates to `/etc/systemd/system/`:
+- From `infrastructure/systemd/units/`, copy unit templates to`/etc/systemd/system/`:
 
     - `justnews@.service` (if provided) and any service-specific units/targets.
 
-    - Optional timers: `justnews-cold-start.timer`, `justnews-boot-smoke.timer`.
+    - Optional timers: `justnews-cold-start.timer`,`justnews-boot-smoke.timer`.
 
 - Run `sudo systemctl daemon-reload` after copying.
 
-- Optional drop-ins (tuning): `units/drop-ins/` → `/etc/systemd/system/justnews@<name>.service.d/`
+- Optional drop-ins (tuning): `units/drop-ins/`→`/etc/systemd/system/justnews@<name>.service.d/`
 
-- Examples: `05-gate-timeout.conf` (increase `GATE_TIMEOUT`), restart policies, etc.
+- Examples: `05-gate-timeout.conf`(increase`GATE_TIMEOUT`), restart policies, etc.
 
 A5. NVIDIA MPS (essential / required)
 
@@ -151,7 +151,7 @@ A5. NVIDIA MPS (essential / required)
 
 - Start once per boot: `sudo nvidia-cuda-mps-control -d`.
 
-- Set `ENABLE_MPS=true` globally; consider `ENABLE_NVML=true` for GPU Orchestrator env.
+- Set `ENABLE_MPS=true`globally; consider`ENABLE_NVML=true` for GPU Orchestrator env.
 
 - Verify via Orchestrator endpoints after startup (below).
 
@@ -175,7 +175,7 @@ A6. Orchestrator-first startup (gated model preload)
 
 - Ports 8000–8014 respond (see Quick Reference table)
 
-- Orchestrator: `/ready` OK; `/models/status` shows preloaded models
+- Orchestrator: `/ready`OK;`/models/status` shows preloaded models
 
 A7. Baseline validation (refactor sanity)
 
@@ -187,13 +187,13 @@ A7. Baseline validation (refactor sanity)
 
 - `curl -fsS <http://127.0.0.1:8000/health`> (mcp_bus), etc.
 
-- `curl -fsS <http://127.0.0.1:8011/health`> (analytics — expects `{"status":"healthy"}` after the wrapper alias fix)
+- `curl -fsS <http://127.0.0.1:8011/health`> (analytics — expects`{"status":"healthy"}` after the wrapper alias fix)
 
 - Trigger a small end-to-end flow (minimal crawl → analyze → synthesize) and verify artifacts/logs.
 
 - Capture a baseline diagnostics bundle (for regressions):
 
-- Use any provided helpers under `infrastructure/systemd/scripts/` (e.g., status panels, `health_check.sh --panel`).
+- Use any provided helpers under `infrastructure/systemd/scripts/`(e.g., status panels,`health_check.sh --panel`).
 
 - Confirm MPS is active: `pgrep -x nvidia-cuda-mps-control` is running; Orchestrator MPS endpoints report enabled.
 
@@ -209,7 +209,7 @@ Rollback (for Stage A):
 
 - If services fail to stabilize, inspect logs: `journalctl -u justnews@<name> -e -n 200 -f`.
 
-- Stop everything cleanly; free ports: `justnews-preflight-check.sh --stop` (or `preflight.sh --stop` if named so in your tree).
+- Stop everything cleanly; free ports: `justnews-preflight-check.sh --stop`(or`preflight.sh --stop` if named so in your tree).
 
 ---
 
@@ -227,33 +227,33 @@ B0. Gating
 
 - With multiple sources ingesting cleanly, begin exercising the “Top X” workflow (clustering, fact search) using the new BBC-derived articles as seed data.
 
-- 2025-11-02 status: canonical restart applied via `infrastructure/systemd/canonical_system_startup.sh`, BBC profile rerun with `scripts/ops/run_crawl_schedule.py --testrun` ingested 60/60 articles, zero ingestion errors, dedupe zero, Stage B metrics clean; evidence captured in `logs/analytics/crawl_scheduler_state.json` and sampler snippets stored in the bring-up ticket.
+- 2025-11-02 status: canonical restart applied via `infrastructure/systemd/canonical_system_startup.sh`, BBC profile rerun with`scripts/ops/run_crawl_schedule.py --testrun`ingested 60/60 articles, zero ingestion errors, dedupe zero, Stage B metrics clean; evidence captured in`logs/analytics/crawl_scheduler_state.json` and sampler snippets stored in the bring-up ticket.
 
 B1. Curated seed list and run scheduling
 
-- Build `config/crawl_schedule.yaml` (or similar) enumerating priority sources, sections, update cadence, and per-run article caps. **Implementation note:** The repository now ships `config/crawl_schedule.yaml` with governance metadata for the primary cohorts.
+- Build `config/crawl_schedule.yaml`(or similar) enumerating priority sources, sections, update cadence, and per-run article caps. **Implementation note:** The repository now ships`config/crawl_schedule.yaml` with governance metadata for the primary cohorts.
 
-- Define per-domain Crawl4AI profiles under `config/crawl_profiles/` (one YAML per domain) so operators can control depth, link filters, and JS automation without code changes. Align schedule cohorts with the matching profile slugs (e.g., `standard_crawl4ai`, `deep_financial_sections`, `legacy_generic`).
+- Define per-domain Crawl4AI profiles under `config/crawl_profiles/`(one YAML per domain) so operators can control depth, link filters, and JS automation without code changes. Align schedule cohorts with the matching profile slugs (e.g.,`standard_crawl4ai`,`deep_financial_sections`,`legacy_generic`).
 
-- Implement an hourly scheduler (systemd timer or cron) that invokes the crawler agent with batched domain lists, respecting the global target of top **X** stories (default 500). **Implementation note:** Use `scripts/ops/run_crawl_schedule.py` + `infrastructure/systemd/scripts/run_crawl_schedule.sh`, driven by the `justnews-crawl-scheduler.timer` unit.
+- Implement an hourly scheduler (systemd timer or cron) that invokes the crawler agent with batched domain lists, respecting the global target of top **X** stories (default 500). **Implementation note:** Use `scripts/ops/run_crawl_schedule.py`+`infrastructure/systemd/scripts/run_crawl_schedule.sh`, driven by the`justnews-crawl-scheduler.timer` unit.
 
-- Add health metrics: last successful run timestamp, domains crawled, articles accepted, scheduler lag. **Implemented via** Prometheus textfile output at `logs/analytics/crawl_scheduler.prom` (overridable) with gauges `justnews_crawler_scheduler_*`.
+- Add health metrics: last successful run timestamp, domains crawled, articles accepted, scheduler lag. **Implemented via** Prometheus textfile output at `logs/analytics/crawl_scheduler.prom`(overridable) with gauges`justnews_crawler_scheduler_*`.
 
 - Establish governance cadence: document source terms-of-use, rate limits, and review schedule (e.g., weekly curation audit). Track violations and remediation steps in an ops log (see `logs/governance/crawl_terms_audit.md`).
 
 B2. High-precision extraction pipeline
 
-- Integrate Trafilatura as the primary extractor inside the crawler agent; configure fallbacks (readability-lxml, jusText) invoked automatically when confidence is low. **Implemented via** `agents/crawler/extraction.py`, consumed by `GenericSiteCrawler`.
+- Integrate Trafilatura as the primary extractor inside the crawler agent; configure fallbacks (readability-lxml, jusText) invoked automatically when confidence is low. **Implemented via** `agents/crawler/extraction.py`, consumed by`GenericSiteCrawler`.
 
-- Parse structured metadata using `extruct` (JSON-LD, microdata) and enrich results with publication date, authors, canonical URL, section tags, and language detection (`langdetect` or fastText). **Output propagated** through the crawler article payload and passed to ingestion.
+- Parse structured metadata using `extruct`(JSON-LD, microdata) and enrich results with publication date, authors, canonical URL, section tags, and language detection (`langdetect` or fastText). **Output propagated** through the crawler article payload and passed to ingestion.
 
-- Persist raw HTML in blob storage or a dedicated column for forensic reprocessing and extractor improvements. **Raw artefacts now written** under `archive_storage/raw_html/` (override with `JUSTNEWS_RAW_HTML_DIR`).
+- Persist raw HTML in blob storage or a dedicated column for forensic reprocessing and extractor improvements. **Raw artefacts now written** under `archive_storage/raw_html/`(override with`JUSTNEWS_RAW_HTML_DIR`).
 
-- Add quality heuristics (minimum word count, boilerplate ratio, HTML sanity) and emit a “needs_review” flag when thresholds fail. **Heuristics configurable** via `ARTICLE_MIN_WORDS`/`ARTICLE_MIN_TEXT_HTML_RATIO`; failures bubble to `extraction_metadata.review_reasons`.
+- Add quality heuristics (minimum word count, boilerplate ratio, HTML sanity) and emit a “needs_review” flag when thresholds fail. **Heuristics configurable** via `ARTICLE_MIN_WORDS`/`ARTICLE_MIN_TEXT_HTML_RATIO`; failures bubble to`extraction_metadata.review_reasons`.
 
 B3. Storage and schema updates
 
-- Extend the articles table to include: `publication_date`, `authors`, `language`, `section`, `collection_timestamp`, `raw_html_ref`, `extraction_confidence`, `url_hash`.
+- Extend the articles table to include: `publication_date`,`authors`,`language`,`section`,`collection_timestamp`,`raw_html_ref`,`extraction_confidence`,`url_hash`.
 
 - Run `bash scripts/ops/apply_stage_b_migration.sh --record` to apply migration 003 and capture evidence in the ops log.
 
@@ -267,7 +267,7 @@ B3. Storage and schema updates
 
 B4. Embedding generation and clustering preparation
 
-- Package Sentence-BERT (`all-MiniLM-L6-v2` recommended) with a local cache; expose `ARTICLE_EMBEDDING_MODEL` env to switch models.
+- Package Sentence-BERT (`all-MiniLM-L6-v2`recommended) with a local cache; expose`ARTICLE_EMBEDDING_MODEL` env to switch models.
 
 - Compute embeddings during ingestion; store in ChromaDB (or FAISS mirror for offline analysis).
 
@@ -275,17 +275,17 @@ B4. Embedding generation and clustering preparation
 
 - Maintain metrics: embeddings generated, cluster candidate count (post Stage C), embedding latency, and model cache hit rate.
 
-- **Implemented by** extended `StageBMetrics` counters/histograms consumed in `agents/memory/tools.save_article`; includes cache-label latency tracking and model availability counters.
+- **Implemented by** extended `StageBMetrics`counters/histograms consumed in`agents/memory/tools.save_article`; includes cache-label latency tracking and model availability counters.
 
 B5. Validation and monitoring
 
-- Regression tests: add fixtures with varied HTML to ensure extractor cascade behaves and metadata is captured. **Covered by** `tests/agents/crawler/test_extraction.py` and `tests/agents/crawler/test_generic_site_crawler.py`.
+- Regression tests: add fixtures with varied HTML to ensure extractor cascade behaves and metadata is captured. **Covered by** `tests/agents/crawler/test_extraction.py`and`tests/agents/crawler/test_generic_site_crawler.py`.
 
 - Add integration tests covering scheduler-triggered crawl, ingestion, embedding computation, and duplicate suppression.
 
 - Extend observability (Prometheus/Grafana panels) with extraction success rate, fallback usage, duplicate count, and article throughput trendlines.
 
-- **Implemented by** `common/stage_b_metrics.StageBMetrics` counters consumed in `agents/crawler/extraction.py` and `agents/memory/tools.py`; validated via `tests/agents/crawler/test_extraction.py` and `tests/agents/memory/test_save_article.py`. Use the `docs/operations/stage_b_validation.md` playbook to coordinate dashboard updates and collect exit evidence.
+- **Implemented by** `common/stage_b_metrics.StageBMetrics`counters consumed in`agents/crawler/extraction.py`and`agents/memory/tools.py`; validated via`tests/agents/crawler/test_extraction.py`and`tests/agents/memory/test_save_article.py`. Use the`docs/operations/stage_b_validation.md` playbook to coordinate dashboard updates and collect exit evidence.
 
 - Launch a human-in-the-loop sampling program (by language/region) with QA dashboards to surface extractor drift.
 
@@ -295,7 +295,7 @@ B5. Validation and monitoring
 
 B6. Automated crawl-profile author roadmap
 
-- Goal: deliver a cron-driven service that fingerprints each source in the `sources` table, generates or adjusts its `config/crawl_profiles/<slug>.yaml`, validates the change, and promotes the update with evidence.
+- Goal: deliver a cron-driven service that fingerprints each source in the `sources`table, generates or adjusts its`config/crawl_profiles/<slug>.yaml`, validates the change, and promotes the update with evidence.
 
 - Phase 0 (prereqs): catalogue current profiles, codify schema (JSONSchema + lint), stand up isolated test runner plus HTML snapshot store.
 
@@ -335,7 +335,7 @@ C1. Fact extraction pipeline
 
 - Produce structured claims with entity spans, relation types, temporal context, and extractor confidence.
 
-- Persist outputs in a new `facts_to_check` table linked to `articles` via foreign key.
+- Persist outputs in a new `facts_to_check`table linked to`articles` via foreign key.
 
 C2. Evidence graph storage
 
@@ -415,7 +415,7 @@ D1. Weighted synthesis pipeline
 
 - Make weighting logic explicit: record which facts were emphasized, suppressed, or excluded with reasons tied to GTV and bias metrics.
 
-- Block synthesis readiness until `/transparency/status` returns `integrity.status` of `ok` or `degraded`; fail start when transparency audits are unavailable.
+- Block synthesis readiness until `/transparency/status`returns`integrity.status`of`ok`or`degraded`; fail start when transparency audits are unavailable.
 
 - Systemd baseline: ensure `EVIDENCE_AUDIT_BASE_URL=http://localhost:8013/transparency` so the synthesizer gate hits the dashboard agent’s evidence API before reporting ready.
 
@@ -431,7 +431,7 @@ D3. Publication workflow
 
 - Expose an end-user transparency portal where readers can inspect supporting sources, evidence status, and verification chronology.
 
-- Back the transparency portal via the dashboard agent’s `/transparency` API (see `agents/dashboard/transparency_repository.py`) fed from the archive mirror.
+- Back the transparency portal via the dashboard agent’s `/transparency`API (see`agents/dashboard/transparency_repository.py`) fed from the archive mirror.
 
 D4. Post-publication monitoring
 

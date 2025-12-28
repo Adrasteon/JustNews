@@ -5,7 +5,7 @@ non-mandatory and opt-in.
 
 Why use them?
 
-- Encourage test consistency by recommending the `scripts/dev/pytest.sh` wrapper that runs tests inside the `${CANONICAL_ENV:-justnews-py312}` conda environment.
+- Encourage test consistency by recommending the `scripts/dev/pytest.sh`wrapper that runs tests inside the`${CANONICAL_ENV:-justnews-py312}` conda environment.
 
 - Optionally run a very quick unit smoke test on `pre-push` to catch obvious breakages before pushing to remote (non-default behavior).
 
@@ -18,11 +18,11 @@ From the repository root run:
 
 ```
 
-The installer copies scripts from `scripts/dev/git-hooks/` into `.git/hooks` and marks them executable.
+The installer copies scripts from `scripts/dev/git-hooks/`into`.git/hooks` and marks them executable.
 
 Hook behavior
 
-- `pre-push`: prints a recommendation to use the pytest wrapper. If you set `GIT_STRICT_TEST_HOOK=1` in your shell, the hook will also run a quick unit smoke test (`pytest -k "not integration" --maxfail=1`) and abort the push on failure.
+- `pre-push`: prints a recommendation to use the pytest wrapper. If you set`GIT_STRICT_TEST_HOOK=1`in your shell, the hook will also run a quick unit smoke test (`pytest -k "not integration" --maxfail=1`) and abort the push on failure.
 
 FAQ
 

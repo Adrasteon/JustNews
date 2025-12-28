@@ -3,7 +3,7 @@
 This document demonstrates a legacy Kubernetes single-node setup for JustNews. Kubernetes has been retired in this
 workspace. Use systemd for local and production deployments.
 
-Please refer to `deploy/refactor/systemd/` and `infrastructure/systemd/` for systemd-based deployment instructions.
+Please refer to `deploy/refactor/systemd/`and`infrastructure/systemd/` for systemd-based deployment instructions.
 
 ## System Requirements Met ✅
 

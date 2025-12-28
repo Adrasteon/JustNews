@@ -1,0 +1,23 @@
+# ModelSpec & GPU Orchestrator Integration
+
+This document describes how models (canonical base models and per-agent adapters) are represented and managed by the `gpu_orchestrator` agent.
+
+Key points:
+- Canonical model manifests live in `config/vllm_mistral_7b.yaml` and the `AGENT_MODEL_MAP.json` maps adapters and agent-specific variants.
+- The orchestrator manages a `ModelSpec` which includes: `id`, `dtype`, `gpu_memory_util`, `service_unit` (systemd), `memory_max`, `cpu_quota`, and `adapter_paths`.
+- The orchestrator will attempt to resolve the model in the ModelStore via `models.model_loader._resolve_model_store_path`. If present, adapter paths are collected from `AGENT_MODEL_MAP.json` and written into the `ModelSpec`.
+
+Operational behavior:
+- `gpu_orchestrator` will check free GPU memory and only start a model when safe headroom exists.
+- Models are started via systemd user units if available, falling back to starting vLLM in-process if systemd is not available.
+- The orchestrator monitors model logs for OOM and will attempt a bounded number of restarts with exponential backoff; after repeated failures the model is marked as degraded.
+
+Telemetry & alerts:
+- Metrics exported: `gpu_orchestrator_vllm_restarts_total`, `gpu_orchestrator_vllm_ooms_total`, `gpu_orchestrator_vllm_status`.
+- GPU monitor will alert when free GPU memory is consistently low and can be used to trigger orchestration decisions.
+
+Rollout:
+- Use `make monitor-install && make monitor-enable` to enable the GPU monitor.
+- Install the example `vllm-mistral-7b.service` with `cp infrastructure/systemd/vllm-mistral-7b.service.example /etc/systemd/system/vllm-mistral-7b.service` and `systemctl enable --now vllm-mistral-7b` (run on host where vLLM is installed).
+
+See also `docs/operations/VLLM_MISTRAL_7B_SETUP.md` for vLLM-specific guidelines.

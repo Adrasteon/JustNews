@@ -1,0 +1,162 @@
+{
+  "base_models": {
+    "mistral-7b-v0.3": {
+      "hf_id": "mistralai/Mistral-7B-Instruct-v0.3",
+      "model_store_agent": "base_models",
+      "model_store_version": "v20251123-mistral-v0.3",
+      "variant_preference": "bnb-int8",
+      "quantized_variants": ["bnb-int8", "fp16"],
+      "approx_vram_mb": 23540,
+      "peft_support": true
+    },
+    "qwen2-14b-awq": {
+      "hf_id": "Qwen/Qwen2.5-14B-Instruct-AWQ",
+      "model_store_agent": "base_models",
+      "model_store_version": "v20251216-qwen2.5-14b",
+      "variant_preference": "awq",
+      "quantized_variants": ["awq", "fp16"],
+      "inference_mode": "vllm",
+      "vllm_endpoint": "http://127.0.0.1:8010/v1"
+    }
+  },
+  "agents": {
+    "synthesizer": [
+      {
+        "base_ref": "mistral-7b-v0.3",
+        "adapter_name": "mistral_synth_v1",
+        "adapter_model_store_path": "synthesizer/adapters/mistral_synth_v1",
+        "variant_preference": "bnb-int8"
+      }
+    ],
+    "re_ranker": [
+      {
+        "base_ref": "mistral-7b-v0.3",
+        "adapter_name": "mistral_re_ranker_v1",
+        "adapter_model_store_path": "re_ranker/adapters/mistral_re_ranker_v1",
+        "variant_preference": "bnb-int8"
+      }
+    ],
+    "fact_checker": [
+      {
+        "base_ref": "mistral-7b-v0.3",
+        "adapter_name": "mistral_fact_checker_v1",
+        "adapter_model_store_path": "fact_checker/adapters/mistral_fact_checker_v1",
+        "variant_preference": "bnb-int8"
+      }
+    ],
+    "critic": [
+      {
+        "base_ref": "mistral-7b-v0.3",
+        "adapter_name": "mistral_critic_v1",
+        "adapter_model_store_path": "critic/adapters/mistral_critic_v1",
+        "variant_preference": "bnb-int8"
+      }
+    ],
+    "journalist": [
+      {
+        "base_ref": "mistral-7b-v0.3",
+        "adapter_name": "mistral_journalist_v1",
+        "adapter_model_store_path": "journalist/adapters/mistral_journalist_v1",
+        "variant_preference": "bnb-int8"
+      }
+    ],
+    "chief_editor": [
+      {
+        "base_ref": "mistral-7b-v0.3",
+        "adapter_name": "mistral_chief_editor_v1",
+        "adapter_model_store_path": "chief_editor/adapters/mistral_chief_editor_v1",
+        "variant_preference": "bnb-int8"
+      }
+    ],
+    "reasoning": [
+      {
+        "base_ref": "mistral-7b-v0.3",
+        "adapter_name": "mistral_reasoning_v1",
+        "adapter_model_store_path": "reasoning/adapters/mistral_reasoning_v1",
+        "variant_preference": "bnb-int8"
+      }
+    ],
+    "analyst": [
+      {
+        "base_ref": "mistral-7b-v0.3",
+        "adapter_name": "mistral_analyst_v1",
+        "adapter_model_store_path": "analyst/adapters/mistral_analyst_v1",
+        "variant_preference": "bnb-int8"
+      }
+    ]
+  },
+  "vllm_agents": {
+    "synthesizer": [
+      {
+        "base_ref": "qwen2-32b-awq",
+        "adapter_name": "qwen2_synth_v1",
+        "adapter_model_store_path": "synthesizer/adapters/qwen2_synth_v1",
+        "variant_preference": "awq",
+        "inference_mode": "vllm"
+      }
+    ],
+    "re_ranker": [
+      {
+        "base_ref": "qwen2-32b-awq",
+        "adapter_name": "qwen2_re_ranker_v1",
+        "adapter_model_store_path": "re_ranker/adapters/qwen2_re_ranker_v1",
+        "variant_preference": "awq",
+        "inference_mode": "vllm"
+      }
+    ],
+    "fact_checker": [
+      {
+        "base_ref": "qwen2-32b-awq",
+        "adapter_name": "qwen2_fact_checker_v1",
+        "adapter_model_store_path": "fact_checker/adapters/qwen2_fact_checker_v1",
+        "variant_preference": "awq",
+        "inference_mode": "vllm"
+      }
+    ],
+    "critic": [
+      {
+        "base_ref": "qwen2-32b-awq",
+        "adapter_name": "qwen2_critic_v1",
+        "adapter_model_store_path": "critic/adapters/qwen2_critic_v1",
+        "variant_preference": "awq",
+        "inference_mode": "vllm"
+      }
+    ],
+    "journalist": [
+      {
+        "base_ref": "qwen2-32b-awq",
+        "adapter_name": "qwen2_journalist_v1",
+        "adapter_model_store_path": "journalist/adapters/qwen2_journalist_v1",
+        "variant_preference": "awq",
+        "inference_mode": "vllm"
+      }
+    ],
+    "chief_editor": [
+      {
+        "base_ref": "qwen2-32b-awq",
+        "adapter_name": "qwen2_chief_editor_v1",
+        "adapter_model_store_path": "chief_editor/adapters/qwen2_chief_editor_v1",
+        "variant_preference": "awq",
+        "inference_mode": "vllm"
+      }
+    ],
+    "reasoning": [
+      {
+        "base_ref": "qwen2-32b-awq",
+        "adapter_name": "qwen2_reasoning_v1",
+        "adapter_model_store_path": "reasoning/adapters/qwen2_reasoning_v1",
+        "variant_preference": "awq",
+        "inference_mode": "vllm"
+      }
+    ],
+    "analyst": [
+      {
+        "base_ref": "qwen2-32b-awq",
+        "adapter_name": "qwen2_analyst_v1",
+        "adapter_model_store_path": "analyst/adapters/qwen2_analyst_v1",
+        "variant_preference": "awq",
+        "inference_mode": "vllm"
+      }
+    ]
+  }
+}

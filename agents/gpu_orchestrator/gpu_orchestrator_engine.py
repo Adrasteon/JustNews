@@ -179,9 +179,61 @@ class GPUOrchestratorEngine:
         # VLLM server management
         self._vllm_process = None
         self._vllm_enabled = os.environ.get("VLLM_ENABLED", "false").lower() == "true"
+        # Model management: default spec (can be overridden from config)
+        self._model_spec = None
+        # Metrics for managed model
+        self.vllm_restart_counter = Counter(
+            "gpu_orchestrator_vllm_restarts_total",
+            "Total number of vLLM managed restarts",
+            registry=self.metrics.registry,
+        )
+        self.vllm_oom_counter = Counter(
+            "gpu_orchestrator_vllm_ooms_total",
+            "Total number of vLLM OOM events observed",
+            registry=self.metrics.registry,
+        )
+        self.vllm_status_gauge = Gauge(
+            "gpu_orchestrator_vllm_status",
+            "Current vLLM status: 0=stopped,1=starting,2=running,3=degraded",
+            registry=self.metrics.registry,
+        )
+
         if self._vllm_enabled and not SAFE_MODE:
+            # If a canonical spec exists in config, prefer orchestrator-managed start
             try:
-                self._start_vllm_server()
+                cfg_file = Path(__file__).resolve().parents[2] / "config" / "vllm_mistral_7b.yaml"
+                if cfg_file.exists():
+                    try:
+                        import yaml
+
+                        cfg = yaml.safe_load(cfg_file.read_text())
+                        model_cfg = cfg.get("model", {})
+                        runtime = cfg.get("runtime", {})
+                        service = cfg.get("service", {})
+                        spec = self.ModelSpec(
+                            id=model_cfg.get("id"),
+                            dtype=model_cfg.get("dtype", "bf16"),
+                            max_length=model_cfg.get("max_length", 4096),
+                            max_batch_size=model_cfg.get("max_batch_size", 4),
+                            max_tokens_per_request=model_cfg.get("max_tokens_per_request", 1024),
+                            num_workers=model_cfg.get("num_workers", 1),
+                            gpu_memory_util=runtime.get("gpu_memory_util", 0.75),
+                            py_torch_alloc_conf=runtime.get("py_torch_alloc_conf", "expandable_segments:True"),
+                            service_unit=service.get("systemd_unit"),
+                            memory_max=service.get("memory_max"),
+                            cpu_quota=service.get("cpu_quota"),
+                        )
+                        self.logger.info("Loaded canonical model spec from config/vllm_mistral_7b.yaml")
+                        self.ensure_model_installed(spec)
+                        # Only start if it is safe to do so
+                        if self.can_start_model(spec):
+                            self.start_model(spec)
+                        else:
+                            self.logger.warning("Insufficient GPU headroom to start the canonical model; not starting automatically")
+                    except Exception as e:
+                        self.logger.warning(f"Failed to load canonical vllm spec: {e}")
+                else:
+                    self._start_vllm_server()
             except Exception as e:
                 self.logger.error(f"Failed to start VLLM server: {e}")
 
@@ -360,6 +412,177 @@ class GPUOrchestratorEngine:
     def get_nvml_handle(self, index: int) -> Any | None:
         """Get NVML handle for a GPU index."""
         return _NVML_HANDLE_CACHE.get(index)
+
+    # -------------------------------
+    # Model Specification & Management
+    # -------------------------------
+    
+    from dataclasses import dataclass, field
+    from typing import Optional
+
+    @dataclass
+    class ModelSpec:
+        id: str
+        dtype: str = "bf16"
+        max_length: int = 4096
+        max_batch_size: int = 4
+        max_tokens_per_request: int = 1024
+        num_workers: int = 1
+        gpu_memory_util: float = 0.75
+        py_torch_alloc_conf: str = "expandable_segments:True"
+        service_unit: Optional[str] = None
+        memory_max: Optional[str] = None
+        cpu_quota: Optional[str] = None
+        adapter_paths: list[str] = field(default_factory=list)
+
+    def ensure_model_installed(self, spec: "GPUOrchestratorEngine.ModelSpec") -> Optional[Path]:
+        """Check ModelStore or HF availability for the given spec. Returns a Path if a local path is resolved."""
+        try:
+            from models import model_loader
+
+            path = model_loader._resolve_model_store_path(agent=None, model_id=spec.id)
+            if path and path.exists():
+                self.logger.info(f"Model {spec.id} resolved in ModelStore at {path}")
+                # Collect adapters from AGENT_MODEL_MAP.json if present
+                try:
+                    import json
+                    am = Path(__file__).resolve().parents[2] / "AGENT_MODEL_MAP.json"
+                    if am.exists():
+                        j = json.loads(am.read_text())
+                        adapters = []
+                        for agent, arr in j.get("agents", {}).items():
+                            for item in arr:
+                                if item.get("base_ref") and item.get("base_ref").startswith("mistral-7b"):
+                                    adapters.append(item.get("adapter_model_store_path"))
+                        spec.adapter_paths = adapters
+                except Exception:
+                    self.logger.debug("Failed to collect adapters from AGENT_MODEL_MAP.json")
+                return path
+            self.logger.info(f"Model {spec.id} not found in ModelStore; will rely on HF id or repo path")
+        except Exception:
+            self.logger.debug("ModelStore integration not available or failed to resolve model")
+        return None
+
+    def _free_gpu_memory_mb(self, index: int = 0) -> int:
+        """Return free GPU memory in MB using NVML if enabled, otherwise via nvidia-smi parsing."""
+        try:
+            if _NVML_SUPPORTED and index in _NVML_HANDLE_CACHE:
+                handle = _NVML_HANDLE_CACHE[index]
+                mem = pynvml.nvmlDeviceGetMemoryInfo(handle)
+                return int(mem.free / 1024**2)
+        except Exception:
+            pass
+        # Fallback: use nvidia-smi query
+        try:
+            r = subprocess.run(["nvidia-smi", "--query-gpu=memory.free", "--format=csv,noheader,nounits"], capture_output=True, text=True, check=True)
+            lines = r.stdout.strip().splitlines()
+            if lines:
+                val = int(lines[index].strip())
+                return val
+        except Exception:
+            pass
+        return 0
+
+    def can_start_model(self, spec: "GPUOrchestratorEngine.ModelSpec", index: int = 0) -> bool:
+        """Decide whether there is enough free GPU + host memory to start the model."""
+        free_mb = self._free_gpu_memory_mb(index)
+        # conservative threshold: require at least 10% of total or a fixed minimum
+        required_mb = int((spec.gpu_memory_util * free_mb) if free_mb else 0)
+        # also enforce an absolute minimum headroom (200MB)
+        headroom_mb = 200
+        ok = free_mb - required_mb >= headroom_mb
+        self.logger.debug(f"can_start_model: free_mb={free_mb} required_mb={required_mb} ok={ok}")
+        return ok
+
+    def start_model(self, spec: "GPUOrchestratorEngine.ModelSpec") -> bool:
+        """Start a managed model either via systemd unit or falling back to local vLLM process."""
+        self._model_spec = spec
+        # Prefer systemd unit if specified
+        if spec.service_unit:
+            try:
+                subprocess.run(["systemctl", "--user", "start", spec.service_unit], check=True)
+                self.vllm_status_gauge.set(2)
+                self.logger.info(f"Started model service {spec.service_unit}")
+                # Start monitor thread
+                t = threading.Thread(target=self.monitor_model, args=(spec,), daemon=True)
+                t.start()
+                return True
+            except Exception as e:
+                self.logger.warning(f"Failed to start systemd unit {spec.service_unit}: {e}")
+        # Fallback: start vllm server via existing helper
+        try:
+            # set env for the subprocess
+            os.environ["VLLM_MODEL"] = spec.id
+            os.environ["PYTORCH_CUDA_ALLOC_CONF"] = spec.py_torch_alloc_conf
+            os.environ["VLLM_GPU_MEMORY_UTIL"] = str(spec.gpu_memory_util)
+            self._start_vllm_server()
+            self.vllm_status_gauge.set(2)
+            t = threading.Thread(target=self.monitor_model, args=(spec,), daemon=True)
+            t.start()
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to start vLLM fallback process: {e}")
+            self.vllm_status_gauge.set(0)
+            return False
+
+    def stop_model(self, spec: "GPUOrchestratorEngine.ModelSpec") -> bool:
+        """Stop the managed model gracefully; prefer systemd stop if available."""
+        if spec.service_unit:
+            try:
+                subprocess.run(["systemctl", "--user", "stop", spec.service_unit], check=True)
+                self.vllm_status_gauge.set(0)
+                return True
+            except Exception as e:
+                self.logger.warning(f"Failed to stop systemd unit {spec.service_unit}: {e}")
+        # Fallback: terminate process if we started it
+        try:
+            if self._vllm_process:
+                self._vllm_process.terminate()
+                self._vllm_process.wait(timeout=10)
+                self._vllm_process = None
+            self.vllm_status_gauge.set(0)
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to stop vLLM process: {e}")
+            return False
+
+    def _detect_oom_in_log(self, log_path: Path) -> bool:
+        """Scan log for known CUDA OOM signatures. Returns True if detected."""
+        try:
+            text = log_path.read_text()
+            if "CUDA out of memory" in text or "Tried to allocate" in text or "CUDA error: out of memory" in text:
+                return True
+        except Exception:
+            pass
+        return False
+
+    def monitor_model(self, spec: "GPUOrchestratorEngine.ModelSpec") -> None:
+        """Monitor model logs and process state; implement OOM detection and restart/backoff."""
+        restart_count = 0
+        backoff_s = 1
+        max_restarts = 5
+        log_path = Path("/home/adra/JustNews/run/vllm_mistral.log")
+        self.logger.info("Starting model monitor thread")
+        while True:
+            try:
+                if self._detect_oom_in_log(log_path):
+                    self.vllm_oom_counter.inc()
+                    restart_count += 1
+                    self.logger.warning(f"OOM detected for model {spec.id}; restart_count={restart_count}")
+                    if restart_count > max_restarts:
+                        self.logger.error("Exceeded max restart attempts; marking model as degraded")
+                        self.vllm_status_gauge.set(3)
+                        return
+                    # stop, sleep backoff, and start again
+                    self.stop_model(spec)
+                    time.sleep(backoff_s)
+                    backoff_s = min(backoff_s * 2, 300)
+                    self.vllm_restart_counter.inc()
+                    self.start_model(spec)
+                time.sleep(5)
+            except Exception as e:
+                self.logger.error(f"Error in model monitor loop: {e}")
+                time.sleep(5)
 
     def _start_vllm_server(self) -> None:
         """Start VLLM inference server for Mistral-7B with LoRA adapter support."""

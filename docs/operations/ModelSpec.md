@@ -6,6 +6,7 @@ Key points:
 - Canonical model manifests live in `config/vllm_mistral_7b.yaml` and the `AGENT_MODEL_MAP.json` maps adapters and agent-specific variants.
 - The orchestrator manages a `ModelSpec` which includes: `id`, `dtype`, `gpu_memory_util`, `service_unit` (systemd), `memory_max`, `cpu_quota`, and `adapter_paths`.
 - The orchestrator will attempt to resolve the model in the ModelStore via `models.model_loader._resolve_model_store_path`. If present, adapter paths are collected from `AGENT_MODEL_MAP.json` and written into the `ModelSpec`.
+- When adapter paths are present, the orchestrator sets `VLLM_ADAPTER_PATHS` as a colon-delimited env var before starting the model process. The vLLM runtime must be configured to load PEFT/LoRA adapters from these paths when available.
 
 Operational behavior:
 - `gpu_orchestrator` will check free GPU memory and only start a model when safe headroom exists.

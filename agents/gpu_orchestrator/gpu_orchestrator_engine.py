@@ -515,6 +515,9 @@ class GPUOrchestratorEngine:
             os.environ["VLLM_MODEL"] = spec.id
             os.environ["PYTORCH_CUDA_ALLOC_CONF"] = spec.py_torch_alloc_conf
             os.environ["VLLM_GPU_MEMORY_UTIL"] = str(spec.gpu_memory_util)
+            # If adapters were resolved via ModelStore, set VLLM_ADAPTER_PATHS
+            if getattr(spec, 'adapter_paths', None):
+                os.environ["VLLM_ADAPTER_PATHS"] = ":".join(spec.adapter_paths)
             self._start_vllm_server()
             self.vllm_status_gauge.set(2)
             t = threading.Thread(target=self.monitor_model, args=(spec,), daemon=True)

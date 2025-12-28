@@ -10,6 +10,49 @@
 
 ---
 
+## Canonical Startup Checklist (Recommended)
+
+Follow this exact sequence for a safe, reproducible system startup (preferred operator flow):
+
+1. Preflight / Dry-run checks (non-destructive)
+   - [ ] Validate global env and tooling: `sudo ./infrastructure/systemd/canonical_system_startup.sh --dry-run`
+   - [ ] Optional: run `sudo ./infrastructure/systemd/preflight.sh` to inspect tools, ports and GPU state
+
+2. Ensure environment files are present
+   - [ ] Confirm `/etc/justnews/global.env` exists and contains at least `SERVICE_DIR`, `PYTHON_BIN` (or `CANONICAL_ENV`), `MARIADB_HOST/PORT/USER/PASSWORD`, and `CHROMA_HOST/PORT`.
+   - [ ] If missing, copy examples: `sudo cp infrastructure/systemd/examples/justnews.env.example /etc/justnews/global.env` and edit securely.
+
+3. One-command canonical startup (recommended)
+   - [ ] Run: `sudo ./infrastructure/systemd/canonical_system_startup.sh`
+     - This performs env checks, optional MariaDB probe (skip with `SKIP_MARIADB_CHECK=true`), installs/refreshes service templates and scripts, runs a reset & fresh start (gpu_orchestrator → mcp_bus → agents), provisions monitoring (if missing), and performs a consolidated health check.
+
+4. (Alternative) Manual orchestrator-first flow
+   - [ ] Start GPU Orchestrator: `sudo systemctl enable --now justnews@gpu_orchestrator`
+   - [ ] Wait for READY: `curl -fsS http://127.0.0.1:8014/ready` (wait up to 180s or adjust `GATE_TIMEOUT`)
+   - [ ] Start services: `sudo ./infrastructure/systemd/scripts/enable_all.sh start`
+   - [ ] Verify MCP Bus: `curl -fsS http://127.0.0.1:8000/health`
+
+5. Monitoring & Alertmanager
+   - [ ] Ensure Prometheus/Grafana running (canonical flow calls the installer). To manually provision: `sudo infrastructure/systemd/scripts/install_monitoring_stack.sh --enable --start`
+   - [ ] Alertmanager: opt-in via `AUTO_INSTALL_ALERTMANAGER=1` in `/etc/justnews/global.env` (disabled by default); the MCP Bus startup will run the idempotent installer when enabled.
+
+6. Final health verification
+   - [ ] Run: `sudo ./infrastructure/systemd/scripts/health_check.sh -v` and verify all services report `healthy`.
+   - [ ] Check `justnews_agent_health_status` metric in Prometheus / Grafana panels (if monitoring present).
+
+7. Troubleshooting quick commands
+   - [ ] View orchestrator logs: `sudo journalctl -u justnews@gpu_orchestrator -f`
+   - [ ] View agent logs: `sudo journalctl -u justnews@<agent> -f`
+   - [ ] Collect diagnostic bundle: `sudo infrastructure/systemd/collect_startup_diagnostics.sh`
+   - [ ] Free occupied ports (if preflight warned): `sudo ./infrastructure/systemd/preflight.sh --stop` or run `sudo ./infrastructure/systemd/reset_and_start.sh` to clean ports and restart services
+
+Notes:
+- Use `SAFE_MODE=true` in `/etc/justnews/global.env` to disable GPU usage and apply conservative settings on developer hosts.
+- `AUTO_BOOTSTRAP_CONDA` defaults to `1` (auto-bootstrap canonical env if missing); set to `0` to opt out.
+- `MARIADB_CHECK_REQUIRED=true` enforces DB connectivity on startup (recommended for production).
+
+---
+
 ## Phase 1: Environment Setup (5–30 min)
 
 ### 1.1 Global Environment

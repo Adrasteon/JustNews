@@ -198,6 +198,27 @@ setup_environment() {
         fi
     fi
 
+    # Auto-bootstrap canonical conda environment if desired and available.
+    # This is idempotent and controlled by AUTO_BOOTSTRAP_CONDA (default: 1).
+    if [[ "${AUTO_BOOTSTRAP_CONDA:-1}" == "1" ]]; then
+        if command -v conda >/dev/null 2>&1; then
+            local target_env="${CONDA_ENV:-${CANONICAL_ENV:-justnews-py312}}"
+            if ! conda env list 2>/dev/null | awk '{print $1}' | grep -xq "$target_env"; then
+                log_info "Conda env '$target_env' not found; running bootstrap (AUTO_BOOTSTRAP_CONDA=1)"
+                # Run the idempotent bootstrap script; do not fail the agent startup if bootstrap fails
+                if [[ -x "${PROJECT_ROOT}/scripts/bootstrap_conda_env.sh" ]]; then
+                    "${PROJECT_ROOT}/scripts/bootstrap_conda_env.sh" --install-vllm-only || log_warning "Bootstrap script failed or was interrupted"
+                else
+                    log_warning "Bootstrap script not found at ${PROJECT_ROOT}/scripts/bootstrap_conda_env.sh"
+                fi
+            else
+                log_info "Conda env '$target_env' already present; skipping bootstrap"
+            fi
+        else
+            log_info "conda not available; skipping auto bootstrap"
+        fi
+    fi
+
     log_success "Environment setup complete"
 }
 

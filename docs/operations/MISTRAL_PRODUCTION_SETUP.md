@@ -16,6 +16,8 @@ Prerequisites (host)
 2) Install systemd unit and start
 
 - Run: `make vllm-install-and-start` (requires sudo). The unit executes vLLM using `conda run -n justnews-py312` so the canonical env is used.
+
+- The agent startup script attempts to auto-bootstrap the canonical `justnews-py312` conda environment (idempotent) if it is not present and `AUTO_BOOTSTRAP_CONDA` is not set to `0` in `/etc/justnews/global.env`. You can run the bootstrap manually with `make env-bootstrap`.
 - Verify with `make monitor-status` and `systemctl --user status vllm-mistral-7b.service`.
 
 3) Run a smoke test

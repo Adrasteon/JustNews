@@ -114,6 +114,26 @@ configuration is `config/vllm_mistral_7b.yaml` which should be used for producti
 
 ### Local dev: starting vLLM and running smoke tests
 
+### Tests & Validation (developer)
+
+- **Smoke tests**: The vLLM smoke test is `tests/integration/test_vllm_mistral_7b_smoke.py` and validates the `/health`, `/models`, and `/chat/completions` responses for basic functionality.
+
+- **Orchestrator tests**: See `tests/agents/gpu_orchestrator/test_model_lifecycle.py` to validate ModelSpec resolution, adapter path extraction from `AGENT_MODEL_MAP.json`, and OOM/restart handling.
+
+- **Run tests locally** (canonical env):
+
+```bash
+conda run -n justnews-py312 pytest -q tests/integration/test_vllm_mistral_7b_smoke.py -q
+conda run -n justnews-py312 pytest -q tests/agents/gpu_orchestrator/test_model_lifecycle.py -q
+```
+
+- **Test best practices**:
+  - For integration smoke tests, use `./scripts/wait_for_vllm.sh` to ensure the server is ready before running tests.
+  - Use `VLLM_SKIP_START=1` and `CUDA_VISIBLE_DEVICES=""` for CI or environments without GPUs to avoid starting a GPU-heavy server.
+  - Tests that need vLLM running should only be executed on a GPU-capable host (local dev or gated GPU CI).
+
+## Ensure VLLM_BASE_URL is set in your env or /etc/justnews/global.env
+
 For local development, start the vLLM server and wait for it to be ready before running the smoke tests.
 
 Examples:

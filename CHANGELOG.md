@@ -16,7 +16,13 @@ All notable changes to this project will be documented in this file.
 
 - **✅** vLLM (0.12.0) server starts correctly under `${CANONICAL_ENV:-justnews-py312}`; smoke tests pass.
 
-Status: **MIGRATION COMPLETE — Mistral-7B is canonical default**
+### 🏥 **MCP Bus: health probing & tests**
+
+- **✅** Added per-agent /health probing in `MCPBusEngine.get_health_status()` with structured `agent_details` including response times and errors (best-effort when `requests` is available).
+
+- **✅** Added unit and integration tests: `tests/agents/mcp_bus/test_health.py` and `tests/agents/mcp_bus/test_health_integration.py` (covers healthy, degraded and unreachable agents).
+
+Status: **MISTRAL-7B + MCP BUS HEALTH READY**
 
 ## [Unreleased] - 2025-11-06 - **CRAWLER ENHANCEMENTS IMPLEMENTATION COMPLETE**
 

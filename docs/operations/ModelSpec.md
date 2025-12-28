@@ -17,6 +17,22 @@ Telemetry & alerts:
 - Metrics exported: `gpu_orchestrator_vllm_restarts_total`, `gpu_orchestrator_vllm_ooms_total`, `gpu_orchestrator_vllm_status`.
 - GPU monitor will alert when free GPU memory is consistently low and can be used to trigger orchestration decisions.
 
+Testing & developer notes:
+
+- Unit tests for the `gpu_orchestrator` ModelSpec lifecycle live at `tests/agents/gpu_orchestrator/test_model_lifecycle.py` and cover adapter resolution, `can_start_model` checks, `start_model`/`stop_model` behaviour, OOM detection, and bounded restart logic.
+
+- To run the orchestrator unit tests locally:
+
+```bash
+conda run -n justnews-py312 pytest -q tests/agents/gpu_orchestrator/test_model_lifecycle.py
+```
+
+- Tips for writing tests:
+  - Use `tmp_path` to create temporary log files and directories for model logs.
+  - Patch GPU checks (`_free_gpu_memory_mb`) to simulate headroom vs low memory cases.
+  - Mock systemd interactions or use the `service_unit` test double to avoid requiring sudo/systemd on CI.
+  - Validate that `VLLM_ADAPTER_PATHS` is set correctly when adapter mappings exist in `AGENT_MODEL_MAP.json`.
+
 Rollout:
 - Use `make monitor-install && make monitor-enable` to enable the GPU monitor.
 - Install the example `vllm-mistral-7b.service` with `cp infrastructure/systemd/vllm-mistral-7b.service.example /etc/systemd/system/vllm-mistral-7b.service` and `systemctl enable --now vllm-mistral-7b` (run on host where vLLM is installed).

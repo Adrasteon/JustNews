@@ -14,14 +14,20 @@ instanced units.
 
   - Wait for READY: `curl -fsS http://127.0.0.1:8014/ready` → HTTP 200
 
-2) Start the rest in order:
+2) Start the MCP Bus next (this will gate other agents and—if enabled via `AUTO_INSTALL_ALERTMANAGER=1` in `/etc/justnews/global.env`—attempt to install and enable the host-level Alertmanager systemd unit idempotently):
+
+  - `sudo systemctl enable --now justnews@mcp_bus`
+
+3) Start the rest in order:
 
   - `sudo ./infrastructure/systemd/scripts/enable_all.sh start`
 
-3) Check health:
+4) Check health:
 
   - `sudo ./infrastructure/systemd/scripts/health_check.sh`
 
+
+Note: The Alertmanager installer invoked by the startup flow is idempotent and will back up existing unit files to `/var/backups/justnews/alertmanager/` before replacing them; enable the opt-in behaviour only on controlled admin hosts.
 Troubleshooting? See the Quick Reference and Comprehensive guide below.
 
 If the synthesizer service remains degraded, confirm the dashboard-hosted transparency endpoint is reachable: `curl -fsS
@@ -59,6 +65,8 @@ Incident reference:
 - `canonical_system_startup.sh` – verifies env + data mount + database, then runs a full reset/start with health summary (use `sudo ./infrastructure/systemd/canonical_system_startup.sh stop` for a coordinated shutdown)
 
 - `install_monitoring_stack.sh` – installs Prometheus, Grafana, and node_exporter (plus dashboards) and wires up their systemd units
+
+- `install_alertmanager_unit.sh` – idempotent installer that installs an example Alertmanager systemd unit, backs up existing units to `/var/backups/justnews/alertmanager/`, and optionally enables/starts the service (use `--enable`). This is used by the MCP Bus startup sequence when `AUTO_INSTALL_ALERTMANAGER=1`.
 
 - `wait_for_mcp.sh` – helper used by unit template to gate on the MCP bus
 
@@ -160,7 +168,14 @@ CUDA_VISIBLE_DEVICES=0
 
 See Quick Reference for the full port map and more examples.
 
-## Monitoring stack (Prometheus + Grafana + node_exporter)
+## Monitoring stack (Prometheus + Grafana + node_exporter + Alertmanager)
+
+We now include an integrated monitoring and alerting stack with example configurations and provisioning for Prometheus, Grafana, and Alertmanager. Key additions:
+
+- Prometheus alert rules for MCP Bus health: `monitoring/alerts/mcp_bus_alerts.yml` (MCPBusOverallDegraded, MCPBusAgentUnreachable, MCPBusAgentDegraded).
+- Grafana system overview dashboard includes MCP Bus panels (overall health stat, degraded agent count, agent status table) and is provisioned from `monitoring/dashboards/generated/system_overview_dashboard.json`.
+- Alertmanager example config and templates: `monitoring/alertmanager/alertmanager.example.yml` and `monitoring/alertmanager/mcp_bus_templates.tmpl`.
+- An idempotent Alertmanager installer script and Makefile helpers are available for operators to provision Alertmanager safely.
 
 The monitoring assets live under `infrastructure/systemd/monitoring`. Install and manage them with:
 

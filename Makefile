@@ -20,6 +20,11 @@ help:
 	@echo "  docs        Generate and validate documentation"
 	@echo "  ci-check    Run CI validation checks"
 	@echo "  release     Create and publish release"
+	@echo "  monitor-install    Install GPU monitor user unit (local dev)"
+	@echo "  monitor-enable     Enable & start GPU monitor service (user)"
+	@echo "  monitor-status     Show GPU monitor status"
+	@echo "  monitor-tail       Tail GPU monitor log"
+	@echo "  monitor-install-rotate   Install logrotate policy (requires sudo)"
 	@echo ""
 	@echo "Environment variables:"
 	@echo "  ENV         Target environment (development/staging/production)"
@@ -296,6 +301,39 @@ dev-update:
 	$(PIP) install --upgrade -r requirements.txt
 	pre-commit autoupdate
 	$(call log_success,"Dependencies updated")
+
+# GPU Monitor management
+.PHONY: monitor-install monitor-enable monitor-disable monitor-install-rotate monitor-status monitor-tail
+
+monitor-install:
+	$(call log_info,"Installing GPU monitor user systemd unit (copies example to ~/.config/systemd/user)")
+	@mkdir -p ~/.config/systemd/user
+	@cp scripts/gpu_monitor.service.example ~/.config/systemd/user/gpu-monitor.service
+	@systemctl --user daemon-reload
+	$(call log_success,"GPU monitor unit installed (run 'make monitor-enable' to start)")
+
+monitor-enable:
+	$(call log_info,"Enabling and starting GPU monitor service (user)")
+	@systemctl --user enable --now gpu-monitor.service
+	$(call log_success,"GPU monitor enabled and running")
+
+monitor-disable:
+	$(call log_info,"Stopping and disabling GPU monitor service (user)")
+	@systemctl --user disable --now gpu-monitor.service || true
+	$(call log_success,"GPU monitor disabled")
+
+monitor-install-rotate:
+	$(call log_info,"Installing logrotate policy for GPU monitor (requires sudo)")
+	@sudo ./scripts/install_logrotate.sh
+	$(call log_success,"Logrotate policy installed")
+
+monitor-status:
+	$(call log_info,"GPU monitor service status")
+	@systemctl --user status gpu-monitor.service --no-pager --lines=5 || true
+
+monitor-tail:
+	$(call log_info,"Tailing GPU monitor log")
+	@tail -n 200 run/gpu_monitor.log || true
 
 # Information targets
 info:

@@ -33,7 +33,7 @@ sudo ./infrastructure/systemd/scripts/install_monitoring_stack.sh \
   --enable \
   --start
 
-```
+```bash
 
 This performs the following actions:
 
@@ -71,7 +71,7 @@ sudo systemctl restart justnews-node-exporter.service
 sudo systemctl restart justnews-prometheus.service
 sudo systemctl restart justnews-grafana.service
 
-```
+```bash
 
 ## GPU Monitoring Setup
 

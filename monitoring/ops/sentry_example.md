@@ -14,7 +14,7 @@ Example usage (Python application)
 ```bash
 pip install sentry-sdk
 
-```
+```bash
 
 1. Initialize in your service startup (safe minimal example):
 

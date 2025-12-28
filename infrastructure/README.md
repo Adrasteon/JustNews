@@ -36,7 +36,7 @@ We recently added several operational improvements to make local and production 
 
 ## Architecture
 
-```
+```bash
 
 deploy/refactor/
 ├── systemd/                  # Systemd service files (production)
@@ -68,7 +68,7 @@ deploy/refactor/
 export DEPLOY_TARGET=systemd
 export DEPLOY_ENV=production
 
-```
+```bash
 
 ### 2. Configure Environment
 
@@ -115,7 +115,7 @@ nano config/environments/production.env
 
 ./scripts/rollback.sh --target $DEPLOY_TARGET
 
-```
+```bash
 
 ## Service Architecture
 
@@ -182,7 +182,7 @@ sudo systemctl start justnews-*
 
 sudo systemctl status justnews-mcp-bus
 
-```
+```bash
 
 ## Configuration Management
 
@@ -242,7 +242,7 @@ LOG_FORMAT=json
 
 chmod 600 deploy/refactor/config/environments/production.env
 
-```
+```bash
 
 ### Configuration Examples
 
@@ -308,7 +308,7 @@ sudo systemctl status justnews-mcp-bus
 sudo systemctl status justnews-scout
 sudo journalctl -u justnews-mcp-bus -f
 
-```
+```bash
 
 ### Monitoring Integration
 
@@ -380,7 +380,7 @@ Use templated systemd units or multiple service instances for horizontal scaling
 
 sudo systemctl enable --now justnews-scout@2.service
 
-```
+```bash
 
 ## Docker Compose scaling
 
@@ -415,7 +415,7 @@ spec:
             memory: 4Gi
             cpu: 1000m
 
-```
+```bash
 
 ### GPU Management
 
@@ -457,7 +457,7 @@ cp -r /chroma/chroma /backup/chroma_$(date +%Y%m%d_%H%M%S)
 
 redis-cli save
 
-```
+```bash
 
 ### Deployment Rollback
 
@@ -532,7 +532,7 @@ curl http://localhost:8000/agents curl http://localhost:8000/health ```
 top -b -n 1 | head -n 20
 docker stats
 
-```
+```bash
 
 ## Security Considerations
 

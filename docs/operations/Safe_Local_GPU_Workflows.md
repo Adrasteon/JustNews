@@ -44,7 +44,7 @@ This uses `systemd-run --scope -p MemoryMax=...` to ensure the job's memory is c
 
 Start the monitor in background to capture GPU and host memory usage:
 
-```
+```bash
 
 nohup ./scripts/gpu_monitor.sh /tmp/gpu_monitor.log 1 &
 
@@ -60,7 +60,7 @@ The log includes `nvidia-smi` compute app listings, memory/temperature summaries
 
 Add these (commented) defaults to your `/etc/justnews/global.env` so local runs and tests can pick them up if desired:
 
-```
+```bash
 
 ## Safe local GPU defaults (uncomment to apply globally):
 

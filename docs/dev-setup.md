@@ -24,7 +24,7 @@ conda activate ${CANONICAL_ENV:-justnews-py312}
 
 pip install -r requirements.txt || true
 
-```
+```bash
 
 Build local MariaDB image (used for tests / local dev)
 
@@ -38,7 +38,7 @@ Start a minimal local stack (db + redis) for smoke/e2e tests
 ```bash
 docker-compose -f scripts/dev/docker-compose.e2e.yml up -d db redis
 
-```
+```bash
 
 Verify local services
 

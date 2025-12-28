@@ -9,7 +9,7 @@ Quick usage ----------- From the repository root:
 ```bash
 sudo infrastructure/systemd/scripts/check_db_services.sh
 
-```
+```bash
 
 Or point to a different environment file:
 

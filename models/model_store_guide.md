@@ -13,7 +13,7 @@ for designing, operating, and extending the shared model store that backs JustNe
 
 ## Canonical Layout
 
-```
+```bash
 
 MODEL_STORE_ROOT/
   <agent>/
@@ -49,7 +49,7 @@ MODEL_STORE_ROOT/
   "metadata": { "commit": "<git sha>", "author": "<name>" }
 }
 
-```
+```bash
 
 Populate `metadata` with any training context that auditors might require.
 
@@ -137,7 +137,7 @@ from models.model_loader import load_sentence_transformer
 model = load_sentence_transformer( 'sentence-transformers/all-MiniLM-L6-v2', agent='memory',
 cache_folder='/var/lib/justnews/cache' )
 
-```
+```bash
 
 ```bash
 

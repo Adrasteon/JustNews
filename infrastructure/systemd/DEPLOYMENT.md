@@ -9,7 +9,7 @@ systemd ---
 
 sudo ./infrastructure/systemd/reset_and_start.sh
 
-```
+```bash
 
 What it does:
 

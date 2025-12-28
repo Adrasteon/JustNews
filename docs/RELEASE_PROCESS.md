@@ -40,7 +40,7 @@ current last_updated: 2025-10-18 ---
    # Edit CHANGELOG.md
    # Edit README.md
 
-```
+```bash
 
 1. **Commit changes:**
 

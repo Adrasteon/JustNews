@@ -368,7 +368,7 @@ Publish base:
 MODEL_STORE_ROOT=/opt/justnews/model_store HF_TOKEN=$HF_TOKEN python scripts/publish_hf_to_model_store.py --agent
 base_models --model mistralai/Mistral-7B-v0.3 --version v20251123
 
-```
+```bash
 
 Train adapter (example):
 
@@ -385,7 +385,7 @@ Publish adapter:
 python scripts/publish_hf_to_model_store.py --agent synthesizer --model mistralai/Mistral-7B-v0.3 --version
 v20251123-mistral-synth-v1 --model output/adapters/mistral_synth_v1
 
-```
+```bash
 
 Warm pool test:
 

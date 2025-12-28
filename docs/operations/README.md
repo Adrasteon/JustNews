@@ -96,7 +96,7 @@ This guide covers production deployment, scaling, and operational procedures for
 
 ## NOTE: Kubernetes and Docker are deprecated and archived; see `infrastructure/archives/` for historical artifacts.
 
-```
+```yaml
 
 ### Network Configuration
 
@@ -137,7 +137,7 @@ This guide covers production deployment, scaling, and operational procedures for
 
 ## Ensure systemd and MariaDB are available on the host.
 
-```
+```bash
 
 #### Deploy Infrastructure
 
@@ -217,7 +217,7 @@ cd JustNews
 
 ## (DEPRECATED) docker-compose logs -f
 
-```
+```bash
 
 #### Production-Ready Compose
 
@@ -261,7 +261,7 @@ sudo systemctl list-units > systemd_backup.txt
 
 sudo systemctl enable justnews-*
 
-```
+```bash
 
 ## Scaling Procedures
 
@@ -279,7 +279,7 @@ Example: Run multiple instances of `justnews-scout@` template (if available) or 
 
 sudo systemctl enable --now justnews-scout@2.service
 
-```
+```yaml
 
   metrics:
 
@@ -300,7 +300,7 @@ sudo systemctl enable --now justnews-scout@2.service
 
 sudo systemctl enable --now justnews-scout@2.service
 
-```
+```bash
 
 ### Vertical Scaling
 
@@ -354,7 +354,7 @@ sudo systemctl status justnews-mcp-bus
 sudo systemctl status justnews-scout
 sudo journalctl -u <unit-name> -f
 
-```
+```bash
 
 #### Application Metrics
 
@@ -397,7 +397,7 @@ groups:
     annotations:
       summary: "GPU memory critically high"
 
-```
+```bash
 
 #### Dashboard Access
 
@@ -431,7 +431,7 @@ cp -r /chroma/chroma /backup/chroma_$(date +%Y%m%d)
 
 ./scripts/backup_database.sh
 
-```
+```bash
 
 ### Configuration Backup
 
@@ -540,7 +540,7 @@ sudo journalctl -u justnews-mcp-bus --since "1 hour ago"
 
 sudo systemctl status <unit-name>
 
-```
+```bash
 
 #### Performance Issues
 

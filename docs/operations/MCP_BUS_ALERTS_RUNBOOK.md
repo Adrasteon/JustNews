@@ -24,7 +24,7 @@ Purpose: Provide quick diagnostic commands and remediation steps for on-call ope
 ```bash
 curl -s http://localhost:8017/health | jq
 
-```
+```bash
 
 1. Inspect the `agent_details` list and `issues` field to see which agents are affected and whether the circuit breaker is involved.
 
@@ -44,7 +44,7 @@ curl -s http://localhost:8005/health | jq
 sudo journalctl -u justnews-mcp-bus -n 200 --no-pager
 sudo journalctl -u justnews@<agent_name> -n 200 --no-pager
 
-```
+```bash
 
 Look for errors such as connection refused, DB errors, or repeated stack traces.
 

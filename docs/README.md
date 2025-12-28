@@ -81,7 +81,7 @@ referencing, and maintenance tools for all 140+ markdown documents across the co
 cd /home/adra/JustNews
 python docs/catalogue_maintenance.py --health-check
 
-```
+```bash
 
 ### 2. Search Documentation
 
@@ -106,7 +106,7 @@ python docs/catalogue_maintenance.py --search "production" --tags "deployment" "
 ```bash
 python docs/docs_navigator.py
 
-```
+```bash
 
 ### 4. Performance Analysis
 
@@ -120,7 +120,7 @@ python docs/catalogue_maintenance.py --performance-report
 ```bash
 python docs/catalogue_maintenance.py --cross-references
 
-```
+```bash
 
 ---
 
@@ -178,7 +178,7 @@ python docs/docs_navigator.py search rapids
 
 python docs/docs_navigator.py search docker
 
-```
+```bash
 
 ### **Search by Status**
 
@@ -286,7 +286,7 @@ for category in navigator.catalogue['categories']:
 metadata = navigator.catalogue['catalogue_metadata']
 print(f"Last updated: {metadata['last_updated']}")
 
-```
+```bash
 
 ### **Integration with CI/CD**
 
@@ -322,7 +322,7 @@ python docs/docs_navigator.py search "maintainer:gpu"
 
 python docs/docs_navigator.py search "updated:2025-09"
 
-```
+```bash
 
 ---
 
@@ -354,7 +354,7 @@ python docs/catalogue_expansion.py --validate
 
 python docs/catalogue_maintenance.py --health-check
 
-```
+```bash
 
 ### Updates
 
@@ -380,7 +380,7 @@ python docs/doc_management_tools/doc_linter.py --report --fix
 
 python docs/doc_management_tools/generate_docs_index.py --write
 
-```
+```bash
 
 ---
 
@@ -476,7 +476,7 @@ Related: [GPU Setup](docs/gpu_runner_README.md)
 
 ### **Core Catalogue Files**
 
-```
+```bash
 
 docs/
 ├── docs_catalogue_v2.json          # Machine-readable catalogue (140 documents)
@@ -520,7 +520,7 @@ docs/
   }
 }
 
-```
+```bash
 
 ### **Integration Points**
 
@@ -572,7 +572,7 @@ python docs/catalogue_maintenance.py --rebuild-index
 
 python docs/docs_navigator.py search "test query"
 
-```
+```bash
 
 #### **Missing Documents**
 
@@ -608,7 +608,7 @@ python docs/catalogue_maintenance.py --memory-usage
 
 python docs/catalogue_maintenance.py --optimize-index
 
-```
+```bash
 
 ### **Error Messages & Solutions**
 

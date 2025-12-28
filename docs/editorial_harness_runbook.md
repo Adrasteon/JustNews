@@ -18,7 +18,7 @@ Initialize a fresh MariaDB schema (when using docker-compose or CI):
 ```bash
 python scripts/dev/bootstrap_editorial_harness_db.py
 
-```
+```bash
 
 ```bash
 MODEL_STORE_DRY_RUN=1 FACT_CHECKER_DISABLE_MISTRAL=0 \

@@ -91,7 +91,7 @@ ingress:
         name: justnews-grafana
         port: 3000
 
-```
+```bash
 
 ## GPU Support
 
@@ -167,7 +167,7 @@ To upgrade the chart:
 ```bash
 helm upgrade justnews ./infrastructure/helm/justnews
 
-```
+```yaml
 
 This chart file remains in the repository for historical and archival purposes only. It must not be used for any active
 deployment.

@@ -13,7 +13,7 @@ A concise, one-page checklist to start and verify a JustNews system on a host (d
 ```bash
 sudo ./infrastructure/systemd/canonical_system_startup.sh
 
-```
+```bash
 
 This runs environment checks, optional DB probes, a reset+fresh start (GPU orchestrator → MCP Bus → agents), provisions
 monitoring if needed, and performs a consolidated health check.
@@ -48,7 +48,7 @@ sudo ./infrastructure/systemd/canonical_system_startup.sh --dry-run
 ```bash
 sudo ./infrastructure/systemd/canonical_system_startup.sh
 
-```
+```bash
 
 1. Optional manual orchestrator-first flow (when you need fine-grained control):
 

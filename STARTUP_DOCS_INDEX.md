@@ -44,7 +44,7 @@ evidence + troubleshooting | 15 min to read |
 
 ## System Architecture
 
-```
+```bash
 
 ┌─────────────────────────────────────────────────────────┐
 │                     JustNews System                      │
@@ -230,7 +230,7 @@ Just want to see if system works?
 
 1. Run live_crawl_test.py with --sites 1 --articles 3
 
-```
+```yaml
 
 Result: 10-15 articles in database, proof of concept
 
@@ -242,7 +242,7 @@ Setting up for real data ingestion?
 
 Follow ACTION_PLAN.md phases 1–5 sequentially
 
-```
+```yaml
 
 Result: 500+ articles/hour via scheduler, full pipeline
 

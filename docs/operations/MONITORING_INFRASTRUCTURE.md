@@ -172,7 +172,7 @@ grafana-server ```
 
 ```ini [security] admin_user = admin admin_password = <strong-random-password>
 
-```
+```bash
 
 1. Update Prometheus to point to actual service ports (verify ports match your deployment)
 
@@ -293,7 +293,7 @@ exporter ```
 
 Backup files (.bak.* files) - can skip these
 
-```
+```bash
 
 ## Integration Path Forward
 

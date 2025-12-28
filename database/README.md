@@ -111,7 +111,7 @@ schema_manager = SchemaManager(pool)
 
 migration_engine = MigrationEngine(pool)
 
-```
+```bash
 
 ### 2. Run Migrations
 
@@ -162,7 +162,7 @@ article = Article.create(
 
 articles = Article.filter(author="Journalist")
 
-```
+```bash
 
 ### 4. Query Optimization
 
@@ -244,7 +244,7 @@ database/refactor/
 │   └── database_utils.py    # Helper functions
 └── migrations/              # Migration files
 
-```
+```bash
 
 ## Configuration
 
@@ -336,7 +336,7 @@ metrics = pool.get_metrics()
 print(f"Active connections: {metrics['used_connections']}")
 print(f"Cache hit rate: {metrics['cache_hit_rate']}%")
 
-```
+```bash
 
 ### Query Performance
 
@@ -361,7 +361,7 @@ stats = get_database_stats(pool)
 print(f"Database size: {stats['total_size']}")
 print(f"Total rows: {stats['total_rows']}")
 
-```
+```bash
 
 ## Best Practices
 
@@ -482,7 +482,7 @@ The database layer integrates seamlessly with the JustNews system:
 cd database/refactor/tests
 python -m pytest
 
-```
+```bash
 
 ### Adding New Models
 

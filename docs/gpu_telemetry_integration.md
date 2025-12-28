@@ -2,7 +2,7 @@ Orchestrator integration ------------------------ The `gpu_orchestrator`/GPU man
 telemetry automatically when an allocation is created and stop it when allocations are released. Enable this behavior on
 orchestrator hosts with the environment variable:
 
-```
+```bash
 
 export GPU_TELEMETRY_AUTOSTART=true
 
@@ -46,7 +46,7 @@ Deployment modes
 
 Recommended systemd service (example)
 
-```
+```json
 
 [Unit]
 Description=JustNews GPU activity monitor
@@ -91,7 +91,7 @@ sudo scripts/perf/install_all.sh
 sudo scripts/perf/install_logrotate.sh
 sudo scripts/perf/install_service.sh
 
-```
+```bash
 
 The installer writes a runtime configuration file at `/etc/default/justnews-gpu- telemetry` with values the service
 reads at startup. Edit this file to change the service user, working directory, log directory, exporter port, and the
@@ -111,7 +111,7 @@ JN_START_SECONDS=5
 JN_STOP_UTIL=10
 JN_STOP_SECONDS=15
 
-```
+```bash
 
 After editing `/etc/default/justnews-gpu-telemetry` restart the service to apply changes:
 

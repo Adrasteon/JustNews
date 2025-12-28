@@ -234,7 +234,7 @@ This is a comprehensive index of all JustNews documentation, organized by topic 
 
 ## 📁 Documentation File Locations
 
-```
+```bash
 
 docs/
 ├── api/                           # REST API reference

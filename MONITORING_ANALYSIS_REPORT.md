@@ -180,7 +180,7 @@ Backup configs | 4 | - | ℹ️ Optional | | Grafana dashboards | 5 | 1,312 line
 ```bash
 sudo apt-get install -y prometheus grafana-server prometheus-node-exporter
 
-```
+```bash
 
 ### Copy configuration
 
@@ -196,7 +196,7 @@ sudo cp -r /media/adra/37f1914d-e5fd-48ca-8c24-22d5f4e2e9dd/etc/justnews/monitor
 ```bash
 sudo systemctl enable --now prometheus grafana-server prometheus-node-exporter
 
-```
+```bash
 
 ### Secure Grafana
 

@@ -72,7 +72,7 @@ ARTICLE_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 CLUSTER_SIMILARITY_THRESHOLD=0.85
 CANONICAL_ENV=justnews-py312
 
-```
+```bash
 
 **Verification**:
 
@@ -114,7 +114,7 @@ sudo ./infrastructure/systemd/setup_mariadb.sh \
 mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -h $MARIADB_HOST -e "SELECT 1;" \
   && echo "✅ MariaDB connection OK"
 
-```
+```bash
 
 **Verification**:
 
@@ -155,7 +155,7 @@ docker run -d \
 
 cd /home/adra/JustNews && python scripts/chroma_diagnose.py --autocreate
 
-```
+```bash
 
 **Verification**:
 
@@ -206,7 +206,7 @@ Next steps:
 
 1. Access API docs: http://localhost:8021/docs
 
-```
+```bash
 
 **Verification**:
 
@@ -231,7 +231,7 @@ mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -D $MARIADB_DB \
 ```bash
 ./scripts/run_with_env.sh python backup_article_data.py
 
-```
+```bash
 
 ---
 
@@ -266,7 +266,7 @@ cd /home/adra/JustNews && ./scripts/run_with_env.sh python -m agents.mcp_bus.mai
 ```bash
 curl -s http://localhost:8017/health && echo "✅ MCP Bus responding"
 
-```
+```bash
 
 ---
 
@@ -303,7 +303,7 @@ cd /home/adra/JustNews && ./scripts/run_with_env.sh python -m agents.gpu_orchest
 curl -s http://localhost:8014/health | jq '.status' && echo "✅ GPU Orchestrator ready"
 curl -s http://localhost:8014/models/status | jq '.models' | grep -i mistral
 
-```
+```bash
 
 ---
 
@@ -360,7 +360,7 @@ for port in 8015 8016 8004 8007; do
   curl -s http://localhost:$port/health && echo "✅ Port $port OK"
 done
 
-```
+```bash
 
 ---
 
@@ -425,7 +425,7 @@ cd /home/adra/JustNews
 
 ./scripts/run_with_env.sh python live_crawl_test.py --sites 20 --articles 40
 
-```
+```bash
 
 **Verification**:
 
@@ -479,7 +479,7 @@ sudo cp infrastructure/systemd/units/justnews-crawl-scheduler.service /etc/syste
 sudo systemctl daemon-reload
 sudo systemctl enable --now justnews-crawl-scheduler.timer
 
-```
+```bash
 
 **Verification**:
 
@@ -555,7 +555,7 @@ mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -D $MARIADB_DB \
 
 ### **Quick Start (30–45 minutes for core functionality)**
 
-```
+```bash
 
 1. Task 1.1: Create global.env                          (5 min)
 
@@ -584,7 +584,7 @@ All tasks above +
 
 ## Dependency Graph
 
-```
+```bash
 
 global.env (1.1)
 ├── MariaDB setup (1.2)

@@ -72,7 +72,7 @@ standards and exceeds industry benchmarks. Our target is **>90% quality score** 
 
 ### Required Directory Structure
 
-```
+```bash
 
 JustNews/
 ├── docs/
@@ -136,7 +136,7 @@ JustNews/
 
 **Example:**
 
-```
+```bash
 
 ❌ Poor: "Installation guide"
 ✅ Excellent: "Complete installation guide for JustNews V4 with RTX3090 GPU support, including dependency management, environment setup, and troubleshooting common issues."
@@ -210,7 +210,7 @@ Every document entry must include:
   "word_count": 1500
 }
 
-```
+```bash
 
 ### File Standards
 
@@ -336,7 +336,7 @@ python docs/version_control.py report --days 7
 
 python docs/version_control.py history --document "doc_id"
 
-```
+```bash
 
 ### Automated Scripts
 

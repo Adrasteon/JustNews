@@ -32,7 +32,7 @@ kill -TERM <pool_worker_pid>  # Graceful shutdown
 
 kill -KILL <pool_worker_pid>
 
-```
+```bash
 
 ### Drain Cluster
 
@@ -92,7 +92,7 @@ redis-cli XPENDING stream:orchestrator:inference_jobs cg:inference
 
 ```sql SELECT * FROM mysql.locks WHERE lock_name = 'gpu_orchestrator_leader';
 
-```
+```bash
 
 1. If lock stuck, manually release:
 

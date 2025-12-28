@@ -81,7 +81,7 @@ python scripts/refactor/category/script.py --verbose --log-level DEBUG
 
 python scripts/refactor/category/script.py --dry-run
 
-```
+```bash
 
 ### Shell Scripts
 

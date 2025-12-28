@@ -25,7 +25,7 @@ docker compose -f scripts/dev/docker-compose.e2e.yml up -d
 
 docker compose -f scripts/dev/docker-compose.e2e.yml ps
 
-```
+```yaml
 
 Enable gated tests ------------------ Set the gates for the classes of tests you want to run. Example — run *all* gated
 tests:

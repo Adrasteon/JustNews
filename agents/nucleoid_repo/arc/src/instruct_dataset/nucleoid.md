@@ -185,7 +185,7 @@ vt.rc;
   return vt.rc;
 }
 
-```
+```bash
 
 - `return` cannot be used in root level
 

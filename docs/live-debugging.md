@@ -42,7 +42,7 @@ sudo systemctl start justnews@*
 
 docker compose -f scripts/dev/docker-compose.e2e.yml up -d
 
-```
+```bash
 
 2) Run local telemetry (dev) to capture logs/traces
 
@@ -68,7 +68,7 @@ To use the helper script added to `scripts/dev/dev-telemetry-up.sh` make it exec
 chmod +x scripts/dev/dev-telemetry-up.sh
 ./scripts/dev/dev-telemetry-up.sh
 
-```
+```bash
 
 If you want the telemetry stack to be started automatically by the canonical system startup tools, set
 `ENABLE_DEV_TELEMETRY=true` in `/etc/justnews/global.env`. This will cause

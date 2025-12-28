@@ -99,7 +99,7 @@ db_pool_min_connections=2
 db_pool_max_connections=10
 MARIADB_CHARSET=utf8mb4
 
-```
+```bash
 
 #### Vector Database (ChromaDB)
 
@@ -224,7 +224,7 @@ bash scripts/run_with_env.sh python check_databases.py
 
 bash scripts/run_with_env.sh env | grep "MARIADB_PASSWORD"
 
-```
+```bash
 
 ## Configuration Loading in Code
 
@@ -254,7 +254,7 @@ db_password = os.environ.get('MARIADB_PASSWORD')
 
 ## Directory Structure
 
-```
+```bash
 
 /etc/justnews/              (system config, requires sudo)
 ├── global.env              (non-secret defaults)
@@ -285,7 +285,7 @@ EnvironmentFile=/etc/justnews/global.env
 ExecStartPre=/bin/bash -c 'bash scripts/fetch_secrets_to_env.sh'
 ExecStart=/bin/bash scripts/run_with_env.sh /path/to/app
 
-```
+```bash
 
 ### Agent Startup
 
@@ -328,7 +328,7 @@ ls -lh /etc/justnews/global.env ./global.env
 
 bash -x scripts/run_with_env.sh echo "test"
 
-```
+```bash
 
 ### Secrets Not Available
 

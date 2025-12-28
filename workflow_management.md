@@ -103,7 +103,7 @@ CREATE TABLE orchestrator_audit (
   details JSON
 );
 
-```
+```yaml
 
 Guideline: always persist a `job_id` (client-supplied or generated) so handlers are idempotent.
 

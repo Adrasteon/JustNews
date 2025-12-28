@@ -28,7 +28,7 @@ curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 bash Miniconda3-latest-Linux-x86_64.sh -b -p ~/miniconda3
 source ~/miniconda3/bin/activate
 
-```
+```bash
 
 ### 1.2 Create Conda Environment
 
@@ -45,7 +45,7 @@ conda activate justnews-py312
 which python
 python --version  # Should be 3.12.x
 
-```
+```bash
 
 ## Phase 2: Environment Configuration
 
@@ -101,7 +101,7 @@ CHROMADB_REQUIRE_CANONICAL=1
 CHROMADB_CANONICAL_HOST=localhost
 CHROMADB_CANONICAL_PORT=3307
 
-```
+```bash
 
 ### 2.3 Verify Environment Loading
 
@@ -123,7 +123,7 @@ echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://
 sudo apt update && sudo apt install -y vault jq
 vault version  # Verify installation
 
-```
+```bash
 
 ### 3.2 Create Vault Configuration
 
@@ -165,7 +165,7 @@ sudo systemctl status vault
 
 export VAULT_ADDR="http://127.0.0.1:8200"
 
-```
+```bash
 
 ### 3.4 Initialize and Unseal Vault
 
@@ -278,7 +278,7 @@ bash scripts/fetch_secrets_to_env.sh
 
 sudo cat /run/justnews/secrets.env
 
-```
+```bash
 
 ## Phase 4: MariaDB Setup
 
@@ -304,7 +304,7 @@ GRANT ALL PRIVILEGES ON justnews_analytics.* TO 'justnews'@'localhost';
 FLUSH PRIVILEGES;
 EOF
 
-```
+```bash
 
 ### 4.3 Initialize Schema
 
@@ -333,7 +333,7 @@ for migration in database/migrations/{001,002,003,004,005,006,007,008}*.sql; do
   fi
 done
 
-```
+```bash
 
 ## Phase 5: ChromaDB Setup
 
@@ -379,7 +379,7 @@ sudo systemctl enable chromadb
 sudo systemctl start chromadb
 sudo systemctl status chromadb
 
-```
+```bash
 
 ### 5.3 Create Default Collection
 
@@ -408,7 +408,7 @@ PYTHON
 
 bash scripts/run_with_env.sh env | grep -E "MARIADB_|CHROMADB_|ADMIN_API_KEY"
 
-```
+```bash
 
 ### 6.2 Test Database Connectivity
 
@@ -436,7 +436,7 @@ Expected output:
 ```bash
 bash scripts/run_with_env.sh python scripts/print_db_config.py | jq .
 
-```
+```bash
 
 ## Phase 7: System Startup Integration (Optional)
 
@@ -461,7 +461,7 @@ Add to service `ExecStartPre`:
 ```ini
 ExecStartPre=/bin/bash -c 'bash /path/to/JustNews/scripts/fetch_secrets_to_env.sh'
 
-```
+```bash
 
 ## Maintenance
 
@@ -487,7 +487,7 @@ sudo cp -r /tmp/chroma backup-chroma/
 
 vault write -f auth/approle/role/justnews/secret-id
 
-```
+```bash
 
 ### Update Vault Secrets
 
@@ -518,7 +518,7 @@ sudo vault config validate -config=/etc/vault.d/vault.hcl
 
 sudo journalctl -u vault -n 50 --no-pager
 
-```
+```bash
 
 ### MariaDB Connection Issues
 

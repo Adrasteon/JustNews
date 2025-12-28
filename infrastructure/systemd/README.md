@@ -152,7 +152,7 @@ SERVICE_DIR=/home/adra/JustNews
 
 JUSTNEWS_DB_URL=mysql://user:pass@localhost:3306/justnews
 
-```
+```yaml
 
 Per-instance: `/etc/justnews/analyst.env`
 
@@ -164,7 +164,7 @@ CUDA_VISIBLE_DEVICES=0
 
 ## EXEC_START="$JUSTNEWS_PYTHON -m agents.analyst.main"
 
-```
+```bash
 
 See Quick Reference for the full port map and more examples.
 
@@ -214,7 +214,7 @@ sudo systemctl status justnews-node-exporter.service
 sudo systemctl restart justnews-prometheus.service justnews-grafana.service
 sudo journalctl -u justnews-grafana.service -e -n 200
 
-```
+```bash
 
 Dev telemetry (optional) -------------------------
 
@@ -226,7 +226,7 @@ flow by setting this in `/etc/justnews/global.env`:
 
 ENABLE_DEV_TELEMETRY=true
 
-```
+```bash
 
 When enabled, `canonical_system_startup.sh` will launch the repository dev telemetry docker-compose when starting the
 system and will tear it down during the coordinated shutdown path (`canonical_system_startup.sh stop`). This is strictly
@@ -273,7 +273,7 @@ individual host ports by exporting the appropriate environment variable when sta
 LOKI_PORT=3100 OTEL_GRPC_PORT=4317 ENABLE_DEV_TELEMETRY=true \
   /path/to/infrastructure/systemd/scripts/dev-telemetry-manager.sh up
 
-```
+```bash
 
 To avoid surprises canonical_system_startup.sh will still detect port conflicts on the configured host ports and will
 skip starting the stack unless you set `ENABLE_DEV_TELEMETRY_FORCE=1`.
@@ -369,7 +369,7 @@ sudo ./infrastructure/systemd/canonical_system_startup.sh
 2) Automated option (recommended for production): Add `ExecStartPre` entries to the drop-in files. For example, add to
 `/etc/systemd/system/justnews@<instance>.service.d/10-preflight-gating.conf`:
 
-```
+```json
 
 [Service]
 ExecStartPre=/usr/local/bin/db-check.sh

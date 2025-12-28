@@ -35,7 +35,7 @@ EnvironmentFile=-/etc/justnews/%i.env
 
 Minimum keys (examples):
 
-```
+```bash
 
 JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python
 SERVICE_DIR=/home/adra/JustNews
@@ -73,7 +73,7 @@ audit API for local systemd deployments.
 
 Per-instance overrides (e.g., `/etc/justnews/analyst.env`):
 
-```
+```bash
 
 CUDA_VISIBLE_DEVICES=0
 
@@ -94,7 +94,7 @@ Enable NVIDIA Multi-Process Service for GPU resource isolation across agents:
 ```bash
 sudo nvidia-cuda-mps-control -d
 
-```
+```bash
 
 1. **Verify MPS Operation**:
 
@@ -116,7 +116,7 @@ ls -la /tmp/nvidia-mps/
 curl -s http://127.0.0.1:8014/mps/allocation | jq '.mps_resource_allocation.system_summary'
 curl -s http://127.0.0.1:8014/gpu/info | jq '{mps_enabled, mps}'
 
-```
+```bash
 
 ### MPS Troubleshooting
 
@@ -150,7 +150,7 @@ PATH wrappers (optional): small shims installed to `/usr/local/bin` so operators
 
 enable_all.sh, health_check.sh, reset_and_start.sh, cold_start.sh
 
-```
+```bash
 
 Install examples are in the Quick Reference.
 
@@ -206,7 +206,7 @@ dependency issues:
 
 sudo ./infrastructure/systemd/scripts/enable_all.sh stop
 
-```
+```yaml
 
 Behavior:
 
@@ -231,7 +231,7 @@ Also stop the GPU orchestrator if desired:
 
 sudo systemctl stop justnews@gpu_orchestrator
 
-```
+```yaml
 
 Troubleshooting:
 
@@ -266,7 +266,7 @@ Examples:
 sudo health_check.sh --panel --refresh 3
 sudo health_check.sh --panel mcp_bus analyst
 
-```
+```yaml
 
 Requirements:
 
@@ -308,7 +308,7 @@ curl -fsS http://127.0.0.1:8014/ready
 sudo ./infrastructure/systemd/scripts/enable_all.sh start
 sudo ./infrastructure/systemd/scripts/health_check.sh
 
-```
+```bash
 
 Notes and tuning:
 
@@ -373,7 +373,7 @@ sudo cp infrastructure/systemd/units/justnews-cold-start.timer /etc/systemd/syst
 sudo systemctl daemon-reload
 sudo systemctl enable --now justnews-cold-start.timer
 
-```
+```bash
 
 This schedules a one-shot cold start ~45s after boot, after `network- online.target`.
 
@@ -401,7 +401,7 @@ View results:
 systemctl list-timers | grep boot-smoke
 journalctl -u justnews-boot-smoke.service -e -n 200
 
-```
+```bash
 
 Tuning (optional):
 
@@ -446,7 +446,7 @@ sudo systemctl status justnews-crawl-scheduler.timer
 sudo systemctl status justnews-crawl-scheduler.service
 journalctl -u justnews-crawl-scheduler.service -e -n 200 -f
 
-```
+```bash
 
 Outputs land in the paths above; Prometheus gauges (`justnews_crawler_scheduler_*`) are emitted via the textfile target.
 For a dry run without touching the crawler agent:

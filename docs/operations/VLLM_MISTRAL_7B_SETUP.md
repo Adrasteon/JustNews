@@ -125,7 +125,7 @@ configuration is `config/vllm_mistral_7b.yaml` which should be used for producti
 conda run -n justnews-py312 pytest -q tests/integration/test_vllm_mistral_7b_smoke.py -q
 conda run -n justnews-py312 pytest -q tests/agents/gpu_orchestrator/test_model_lifecycle.py -q
 
-```
+```bash
 
 - **Test best practices**:
 

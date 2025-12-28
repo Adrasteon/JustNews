@@ -16,7 +16,7 @@ Quick smoke tests (developer machine or GPU node)
 ```bash
 RE_RANKER_TEST_MODE=1 python scripts/perf/simulate_concurrent_inference.py --workers 4 --requests 400
 
-```
+```bash
 
 2) Spawn a warm pool using the stub (good to estimate concurrency patterns):
 
@@ -41,7 +41,7 @@ python scripts/perf/simulate_concurrent_inference.py --workers 3 --requests 30 -
 
 python scripts/ops/adapter_worker_pool.py --workers 2 --model $RE_RANKER_MODEL --adapter modelstore/agents/synthesizer/adapters/mistral_synth_v1 --hold 600
 
-```
+```bash
 
 4) Orchestrator-managed warm pool (recommended on shared nodes). Delegate pool lifecycle to the GPU orchestrator so the
 same policy/monitoring applies as in production:

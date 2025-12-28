@@ -60,7 +60,7 @@ sudo bash scripts/deploy_monitoring.sh
 
 GRAFANA_PASSWORD="your-strong-password" sudo bash scripts/deploy_monitoring.sh
 
-```
+```bash
 
 **That's it!** The script will complete deployment in 5-10 minutes.
 
@@ -124,7 +124,7 @@ All services configured to auto-start on boot:
   • systemctl enable grafana-server
   • systemctl enable prometheus-node-exporter
 
-```
+```bash
 
 ### Step 6: Services Started
 
@@ -135,7 +135,7 @@ Starting:
   • Grafana (http, :3000)
   • Node Exporter (internal, :9100)
 
-```
+```bash
 
 ### Step 7-10: Verification
 
@@ -147,7 +147,7 @@ Verifying:
   • Prometheus targets are being scraped
   • Grafana password configured
 
-```
+```bash
 
 ## Advanced Options
 
@@ -167,7 +167,7 @@ To install but not start services (for manual testing first):
 ```bash
 sudo bash scripts/deploy_monitoring.sh --skip-start
 
-```
+```bash
 
 ### Combine Options
 
@@ -181,7 +181,7 @@ GRAFANA_PASSWORD="strong-password" sudo bash scripts/deploy_monitoring.sh --skip
 ```bash
 bash scripts/deploy_monitoring.sh --help
 
-```
+```bash
 
 ## Environment Variables
 
@@ -205,7 +205,7 @@ If USB is mounted at different location:
 export USB_PATH="/mnt/my-usb"
 sudo -E bash scripts/deploy_monitoring.sh
 
-```
+```yaml
 
 Default: `/media/adra/37f1914d-e5fd-48ca-8c24-22d5f4e2e9dd`
 
@@ -256,7 +256,7 @@ sudo journalctl -u grafana-server -f
 
 sudo journalctl -u prometheus-node-exporter -f
 
-```
+```bash
 
 ### Check Service Status
 
@@ -284,7 +284,7 @@ sudo systemctl restart prometheus grafana-server prometheus-node-exporter
 
 sudo systemctl restart prometheus
 
-```
+```bash
 
 ## Troubleshooting
 
@@ -318,7 +318,7 @@ sudo mount /dev/sdX1 /media/adra/37f1914d-e5fd-48ca-8c24-22d5f4e2e9dd
 
 USB_PATH="/your/usb/path" sudo bash scripts/deploy_monitoring.sh
 
-```
+```bash
 
 ### Prometheus Won't Start
 
@@ -355,7 +355,7 @@ sudo ss -tlnp | grep 3000
 ls -la /var/lib/justnews/grafana
 ls -la /var/log/justnews/grafana
 
-```
+```bash
 
 ### Dashboards Not Loading Data
 
@@ -507,7 +507,7 @@ sudo cp -r /var/lib/prometheus /backup/prometheus.backup
 
 sudo cp -r /var/lib/justnews/grafana /backup/grafana.backup
 
-```
+```bash
 
 ## Support and Documentation
 

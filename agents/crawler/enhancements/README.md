@@ -77,7 +77,7 @@ Enhancements are configured through the `crawling.enhancements` section of `conf
   }
 }
 
-```
+```bash
 
 ## Components
 
@@ -140,7 +140,7 @@ result = await detector.analyze(
 if result.should_skip:
     print(f"Skipping paywalled article: {result.reasons}")
 
-```
+```bash
 
 ### User Agent Rotation
 
@@ -196,7 +196,7 @@ proxy = manager.next_proxy()
 
 response = requests.get(url, proxies={"http": proxy.url, "https": proxy.url})
 
-```
+```bash
 
 ### Stealth Browser
 
@@ -271,7 +271,7 @@ if 'modal_handler' in helpers:
     result = helpers['modal_handler'].process(html)
     html = result.cleaned_html
 
-```
+```bash
 
 ## Error Handling
 

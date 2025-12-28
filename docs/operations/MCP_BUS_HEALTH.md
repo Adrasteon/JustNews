@@ -56,7 +56,7 @@ Example:
   "issues": ["One or more registered agents reported unhealthy or unreachable"]
 }
 
-```
+```bash
 
 ## How the probe works (developer notes)
 
@@ -82,7 +82,7 @@ curl -s http://localhost:8017/health | jq
 ```bash
 curl -s http://localhost:8017/ready && echo "MCP Bus ready"
 
-```
+```bash
 
 - The repository provides a multi-service health check script used by operators in `infrastructure/systemd/health_check.sh` which already includes `mcp_bus` in the default services list.
 

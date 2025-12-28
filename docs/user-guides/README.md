@@ -30,7 +30,7 @@ git clone <repository> cd JustNews ./activate_environment.sh ```
 cp config/templates/production.json config/production.json
    # Edit with your settings
 
-```
+```bash
 
 1. **Deployment**
 
@@ -185,7 +185,7 @@ make validate-models
 
 make rollback-models
 
-```
+```bash
 
 ### Troubleshooting
 
@@ -225,7 +225,7 @@ make gpu-reset
 
 make mps-status
 
-```
+```bash
 
 **Database Connection Issues**
 
@@ -259,7 +259,7 @@ headers = { 'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/j
 
 response = requests.get('http://localhost:8014/articles', headers=headers)
 
-```
+```bash
 
 ### Basic Operations
 
@@ -290,7 +290,7 @@ article = client.get_article("article_id_123")
 
 article = client.get_article( "article_id_123", include_sentiment=True, include_entities=True, include_topics=True )
 
-```
+```bash
 
 #### Batch Operations
 
@@ -321,7 +321,7 @@ results = client.vector_search( query="climate change impact on economy", limit=
 results = client.vector_search( query="renewable energy", sources=["bbc", "reuters"], date_range=["2025-01-01",
 "2025-12-31"], limit=10 )
 
-```
+```bash
 
 #### Real-time Monitoring
 
@@ -354,7 +354,7 @@ class ToolCall(BaseModel): args: list kwargs: dict
 my_tool_function(*call.args, **call.kwargs) return {"status": "success", "data": result} except Exception as e:
 logger.error(f"Tool failed: {e}") return {"status": "error", "message": str(e)}
 
-```
+```bash
 
 #### MCP Bus Integration
 
@@ -392,7 +392,7 @@ result = my_tool_function(input_data)
     # Assert
 assert result is not None assert isinstance(result, dict)
 
-```
+```bash
 
 #### Integration Tests
 
@@ -418,7 +418,7 @@ python -m agents.my_agent.main
 
 uvicorn agents.my_agent.main:app --reload --port 8009
 
-```
+```bash
 
 #### Production Deployment
 

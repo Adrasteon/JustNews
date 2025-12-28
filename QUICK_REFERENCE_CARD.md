@@ -27,7 +27,7 @@ CANONICAL_ENV=justnews-py312
 
 source global.env && echo "✅ $MARIADB_HOST"
 
-```
+```bash
 
 ### 1.2 Start MariaDB
 
@@ -55,7 +55,7 @@ docker run -d --name chromadb -p 8000:8000 chromadb/chroma:latest
 
 python scripts/chroma_diagnose.py --autocreate
 
-```
+```bash
 
 ---
 
@@ -99,7 +99,7 @@ sudo systemctl enable --now justnews@mcp_bus
 
 curl -s http://localhost:8017/health && echo "✅ MCP Bus"
 
-```
+```bash
 
 ### 3.2 GPU Orchestrator (WAIT for READY)
 
@@ -144,7 +144,7 @@ for port in 8015 8016 8004 8007; do
   curl -s http://localhost:$port/health | jq -r '.status'
 done
 
-```
+```bash
 
 ---
 
@@ -163,7 +163,7 @@ ls -la config/crawl_profiles/
 ```bash
 ./scripts/run_with_env.sh python live_crawl_test.py --sites 3 --articles 5
 
-```
+```bash
 
 ### 4.3 Check Results
 
@@ -193,7 +193,7 @@ curl -s -X POST http://localhost:8000/api/v1/collections/articles/count \
 
 ./scripts/run_with_env.sh python scripts/ops/run_crawl_schedule.py
 
-```
+```bash
 
 ---
 

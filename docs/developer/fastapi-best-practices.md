@@ -40,7 +40,7 @@ app.add_middleware(
     allowed_hosts=["*"]  # Configure for production
 )
 
-```
+```bash
 
 ### Path Operations
 
@@ -91,7 +91,7 @@ async def create_item(item: ItemCreate):
     # Process item creation
     return item
 
-```
+```yaml
 
 #### PUT/PATCH Endpoints
 
@@ -143,7 +143,7 @@ class Article(BaseModel):
     tags: List[str] = []
     published: bool = False
 
-```
+```yaml
 
 ### Nested Models
 
@@ -179,7 +179,7 @@ async def read_items(db = Depends(get_db)):
     """Retrieve items with database dependency"""
     return db.query(Item).all()
 
-```
+```bash
 
 ### Security Dependencies
 
@@ -250,7 +250,7 @@ async def read_item(item_id: int):
         raise CustomException("Item not found", status_code=404)
     return item
 
-```
+```bash
 
 ### Validation Error Handling
 
@@ -302,7 +302,7 @@ async def read_items(skip: int = 0, limit: int = 100):
         "limit": limit
     }
 
-```
+```bash
 
 ### Different Response Models
 
@@ -360,7 +360,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(LoggingMiddleware)
 
-```
+```bash
 
 ### Rate Limiting Middleware
 
@@ -433,7 +433,7 @@ async def create_item(
 
     return new_item
 
-```
+```bash
 
 ### Task Management
 
@@ -498,7 +498,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
-```
+```bash
 
 ## Testing
 
@@ -546,7 +546,7 @@ async def test_async_endpoint():
         response = await client.get("/async-endpoint")
         assert response.status_code == 200
 
-```
+```bash
 
 ## Performance Optimization
 
@@ -592,7 +592,7 @@ async def get_articles_with_authors(db = Depends(get_db)):
     articles = result.scalars().all()
     return articles
 
-```
+```bash
 
 ## Security Best Practices
 
@@ -645,7 +645,7 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
-```
+```bash
 
 ## Deployment
 

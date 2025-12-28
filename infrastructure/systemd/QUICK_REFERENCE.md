@@ -11,7 +11,7 @@ tags: ["enables", "ensures", "health"] ---
 
 sudo ./infrastructure/systemd/cold_start.sh
 
-```
+```yaml
 
 This enables units (if needed), ensures GPU orchestrator is READY, starts all services in order, and verifies health.
 
@@ -40,7 +40,7 @@ sudo cp infrastructure/systemd/units/justnews-boot-smoke.timer /etc/systemd/syst
 sudo systemctl daemon-reload
 sudo systemctl enable --now justnews-boot-smoke.timer
 
-```
+```bash
 
 ## Monitoring stack (Prometheus, Grafana, node_exporter)
 
@@ -58,7 +58,7 @@ sudo systemctl status justnews-node-exporter.service
 sudo systemctl restart justnews-prometheus.service justnews-grafana.service
 sudo journalctl -u justnews-grafana.service -f
 
-```
+```bash
 
 Configuration lives in `/etc/justnews/monitoring.env` and `/etc/justnews/monitoring/`. Grafana is available at
 `http://localhost:3000/` (default credentials: `admin / change_me`).
@@ -83,7 +83,7 @@ health check.
 sudo systemctl enable --now justnews@gpu_orchestrator
 curl -fsS http://127.0.0.1:8014/ready
 
-```
+```bash
 
 2) Start all services in order:
 
@@ -99,7 +99,7 @@ sudo ./infrastructure/systemd/scripts/enable_all.sh start
 
 sudo ./infrastructure/systemd/scripts/health_check.sh
 
-```
+```yaml
 
 Tip: `enable_all.sh` defaults to `status` with no args. Use `start`, `stop`, `restart`, or `fresh` (also accepts
 `--fresh`).
@@ -127,7 +127,7 @@ curl -fsS http://127.0.0.1:8014/models/status | jq
 
 Global (`/etc/justnews/global.env`):
 
-```
+```bash
 
 JUSTNEWS_PYTHON=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python
 SERVICE_DIR=/home/adra/JustNews
@@ -170,7 +170,7 @@ Enable NVIDIA Multi-Process Service for GPU resource isolation:
 ```bash
 sudo nvidia-cuda-mps-control -d
 
-```
+```bash
 
 1. **Verify MPS Status**:
 
@@ -191,7 +191,7 @@ ls -la /tmp/nvidia-mps/
 ```bash
 curl -s http://127.0.0.1:8014/mps/allocation | jq '.mps_resource_allocation.system_summary'
 
-```
+```bash
 
 ## Common operations
 
@@ -222,7 +222,7 @@ fails, `justnews@synthesizer` readiness will remain false until integrity recove
 
 sudo ./infrastructure/systemd/scripts/enable_all.sh stop
 
-```
+```yaml
 
 Notes:
 
@@ -257,7 +257,7 @@ sudo cp infrastructure/systemd/scripts/cold_start.sh /usr/local/bin/
 sudo chmod +x /usr/local/bin/enable_all.sh /usr/local/bin/health_check.sh \
   /usr/local/bin/reset_and_start.sh /usr/local/bin/cold_start.sh
 
-```
+```bash
 
 Then you can run:
 
@@ -280,7 +280,7 @@ Open a live, auto-refreshing system health panel:
 
 sudo health_check.sh --panel
 
-```
+```yaml
 
 Options:
 
@@ -344,7 +344,7 @@ sudo cp infrastructure/systemd/scripts/run_crawl_schedule.sh /usr/local/bin/ sud
 
 sudo cp infrastructure/systemd/units/justnews-crawl-scheduler.* /etc/systemd/system/ sudo systemctl daemon-reload
 
-```
+```bash
 
 1. Provide optional overrides in `/etc/justnews/crawl_scheduler.env` (paths, crawler URL, Prometheus textfile location). Include `CRAWL_PROFILE_PATH` if the crawl profile directory lives outside the repo checkout. The loader accepts a directory path or a single YAML file.
 
@@ -363,7 +363,7 @@ Status commands:
 sudo systemctl status justnews-crawl-scheduler.timer sudo systemctl status justnews-crawl-scheduler.service journalctl
 -u justnews-crawl-scheduler.service -e -n 200 -f
 
-```
+```yaml
 
 Outputs:
 

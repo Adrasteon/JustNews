@@ -25,7 +25,7 @@ compliance monitoring, and security event tracking.
 cd security/refactor
 pip install -r requirements.txt
 
-```
+```bash
 
 ### Basic Usage
 
@@ -158,7 +158,7 @@ config = SecurityConfig(
     enable_mfa=True
 )
 
-```
+```bash
 
 ## API Reference
 
@@ -208,7 +208,7 @@ await authz_service.create_role(Role(
     permissions=["articles:write", "comments:moderate"]
 ))
 
-```
+```bash
 
 ### Encryption
 
@@ -262,7 +262,7 @@ await compliance_service.delete_user_data(user_id)
 
 report = await compliance_service.get_compliance_report("gdpr")
 
-```
+```bash
 
 ### Monitoring
 
@@ -353,7 +353,7 @@ async def create_article(
 
     return await create_article_logic(article, current_user)
 
-```
+```bash
 
 ### Database Integration
 
@@ -385,7 +385,7 @@ Run the integration tests:
 ```bash
 pytest security/refactor/tests_integration.py -v
 
-```
+```bash
 
 Run the demo:
 
@@ -450,7 +450,7 @@ await monitor.add_monitoring_rule(MonitoringRule(
     severity=AlertSeverity.HIGH
 ))
 
-```
+```bash
 
 ## Performance Considerations
 

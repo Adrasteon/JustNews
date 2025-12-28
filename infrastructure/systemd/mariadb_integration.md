@@ -7,7 +7,7 @@ tags: ["adjust", "credentials", "database"] ---
 
 Set the database URL in `/etc/justnews/global.env` (adjust credentials/host):
 
-```
+```bash
 
 JUSTNEWS_DB_URL=mysql://user:pass@localhost:3306/justnews
 

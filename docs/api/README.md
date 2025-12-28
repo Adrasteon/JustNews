@@ -59,7 +59,7 @@ All APIs return JSON responses with consistent error handling:
   "timestamp": "ISO 8601 timestamp"
 }
 
-```
+```bash
 
 ## Core APIs
 
@@ -138,7 +138,7 @@ curl -X POST http://localhost:8007/vector_search_articles \
   -H "Content-Type: application/json" \
   -d '{"query": "climate change", "limit": 10}'
 
-```
+```bash
 
 ### Public API (Port 8014)
 
@@ -283,7 +283,7 @@ Content synthesis and summarization.
 
 ### Headers
 
-```
+```yaml
 
 X-RateLimit-Limit: 1000
 X-RateLimit-Remaining: 999

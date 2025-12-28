@@ -54,7 +54,7 @@ coordinator = initialize_online_training(update_threshold=50)
 
 manager = get_system_training_manager()
 
-```
+```bash
 
 #### 2. Collect Training Data (Automatic)
 
@@ -90,7 +90,7 @@ result = submit_correction(
     explanation="Scientific consensus disagrees"
 )
 
-```
+```bash
 
 #### 4. Monitor Training Status
 
@@ -236,7 +236,7 @@ TRAINING_CONFIG = {
     "update_batch_size": 200,      # Examples per training batch
 }
 
-```
+```bash
 
 ### 🧪 Testing
 
@@ -250,7 +250,7 @@ python validate_system.py
 
 #### Expected Output
 
-```
+```bash
 
 🎓 === ONLINE TRAINING SYSTEM VALIDATION ===
 
@@ -317,7 +317,7 @@ def my_agent_prediction(input_text):
 
     return result
 
-```
+```bash
 
 #### User Correction Functions
 

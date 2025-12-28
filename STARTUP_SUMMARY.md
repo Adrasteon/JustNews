@@ -103,7 +103,7 @@ I created **2 detailed execution documents**:
 
 ## Total: ~30 min
 
-```
+```bash
 
 ### Database Initialization (Phase 2)
 
@@ -133,7 +133,7 @@ I created **2 detailed execution documents**:
 
 ## Total: ~30 min
 
-```
+```bash
 
 ### Data Ingestion (Phase 4)
 
@@ -163,7 +163,7 @@ python scripts/ops/run_crawl_schedule.py  # ~500 articles/hour
 
 ## Validate data quality with tests
 
-```
+```bash
 
 ---
 

@@ -238,7 +238,7 @@ python3 --version
 
 netstat -tlnp | grep 9400
 
-```
+```bash
 
 #### Metrics Showing "No Data"
 
@@ -272,7 +272,7 @@ nvidia-smi --query-gpu=temperature.gpu --format=csv
 
 pip install nvidia-ml-py
 
-```
+```bash
 
 #### High Memory Usage
 
@@ -303,7 +303,7 @@ python3 gpu_metrics_exporter.py
 dmesg | grep -i nvidia
 journalctl -u nvidia-persistenced
 
-```
+```bash
 
 ## Advanced Configuration
 
@@ -347,7 +347,7 @@ groups:
           summary: "GPU temperature is critical"
           description: "GPU temperature is {{ $value }}°C"
 
-```
+```bash
 
 ### Multi-GPU Support
 

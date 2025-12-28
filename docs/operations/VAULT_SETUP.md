@@ -63,7 +63,7 @@ which jq || sudo apt install -y jq
 
 which curl || sudo apt install -y curl
 
-```
+```bash
 
 ### Step 1: Install Vault
 
@@ -114,7 +114,7 @@ EOF
 
 sudo chmod 644 /etc/vault.d/vault.hcl
 
-```
+```bash
 
 ### Step 3: Create Systemd Service
 
@@ -237,7 +237,7 @@ vault write auth/approle/role/justnews \
 
 vault read auth/approle/role/justnews
 
-```
+```bash
 
 ### Step 4: Generate and Store AppRole Credentials
 
@@ -288,7 +288,7 @@ vault kv put secret/justnews \
 
 vault kv get secret/justnews
 
-```
+```bash
 
 ## Testing AppRole Access
 
@@ -325,7 +325,7 @@ sudo cat /run/justnews/secrets.env
 
 sudo ls -lh /run/justnews/secrets.env  # Should be mode 0640
 
-```
+```bash
 
 ### How It Works
 
@@ -418,7 +418,7 @@ sudo chmod 640 /etc/justnews/approle_secret_id
 
 bash scripts/fetch_secrets_to_env.sh
 
-```
+```bash
 
 ### Rekeying Vault (Advanced)
 
@@ -463,7 +463,7 @@ sudo journalctl -u vault -n 50 --no-pager
 
 ## - Wrong permissions on /var/lib/vault → Permission denied
 
-```
+```bash
 
 ### AppRole Login Fails
 
@@ -542,7 +542,7 @@ sudo chmod 640 /etc/justnews/approle_*
 
 sudo chmod 600 /etc/justnews/vault-init.json
 
-```
+```bash
 
 ## Backup and Recovery
 
@@ -582,7 +582,7 @@ sudo systemctl start vault
 
 vault operator unseal $(jq -r '.unseal_keys_hex[0]' /etc/justnews/vault-init.json)
 
-```
+```bash
 
 ## Security Considerations
 

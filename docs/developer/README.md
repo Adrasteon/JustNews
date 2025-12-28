@@ -134,7 +134,7 @@ Each agent is a microservice with specific responsibilities:
 
 All agents follow a consistent structure:
 
-```
+```bash
 
 agents/{agent_name}/
 ├── __init__.py
@@ -267,7 +267,7 @@ if __name__ == "__main__":
         reload=config.debug
     )
 
-```
+```bash
 
 ### MCP Bus Integration
 

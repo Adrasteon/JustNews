@@ -73,7 +73,7 @@ chmod 440 /sys/class/powercap/intel-rapl:0/energy_uj
 
 usermod -aG system_power $USER
 
-```
+```bash
 
 Limitations
 
@@ -112,7 +112,7 @@ Afterwards inspect the structured JSONL log for `nvml_exception` or `nvml_event`
 ```bash
 jq 'select(.event == "nvml_exception")' /var/log/justnews-perf/nvml_watchdog.jsonl
 
-```
+```bash
 
 Each exception entry includes the rolling telemetry context (utilisation, memory, clocks, temps, running compute
 processes) captured right before NVML failed plus an optional `dmesg` tail, making it easier to pinpoint the trigger.

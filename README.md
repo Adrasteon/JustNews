@@ -39,7 +39,7 @@ conda env create -f environment.yml
 
 conda activate ${CANONICAL_ENV:-justnews-py312}
 
-```
+```bash
 
 1. Install dependencies (prefer conda-forge for the crawler extraction stack):
 
@@ -64,7 +64,7 @@ conda activate ${CANONICAL_ENV:-justnews-py312}
 
 ./scripts/run_with_env.sh python scripts/init_database.py
 
-```
+```bash
 
 1. Start the system:
 
@@ -119,7 +119,7 @@ Before running any development commands, always activate the conda environment:
 ```bash
 conda activate ${CANONICAL_ENV:-justnews-py312}
 
-```
+```bash
 
 #### Environment wrapper for ad-hoc commands
 
@@ -180,7 +180,7 @@ scripts/run_tests_with_env.sh vllm -- -q tests/integration/test_vllm_mistral_7b_
 
 scripts/run_tests_with_env.sh redis -- -q tests/e2e/test_docker_poc_representative.py -k redis
 
-```
+```bash
 
 - Run all optional tests (GPU, Chroma, Playwright, strict deprecation checks):
 
@@ -211,7 +211,7 @@ Environment variables:
   VERSION     Release version (for release target)
   # DOCKER_TAG is deprecated and ignored. Use systemd package versioning instead.
 
-```
+```bash
 
 **Monitoring checks:** run `make monitoring-check` to execute the automated checks validating Prometheus rules and
 Grafana dashboard JSON (requires Python test dependencies and `pytest`).
@@ -255,7 +255,7 @@ conda list
 
 conda env export > environment_backup.yml
 
-```
+```bash
 
 ### Crawler Extraction Regression Tests
 
@@ -297,7 +297,7 @@ Self-hosted E2E tests: The repo now includes a self-hosted workflow (systemd-nsp
 
 PYTHONPATH=$(pwd) PYTHON_BIN=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python pytest tests/agents/crawler -q
 
-```
+```bash
 
 This suite covers the Stage B2 extraction pipeline, including the Trafilatura/readability/jusText cascade, raw HTML
 persistence, and ingestion metadata enrichment.
@@ -318,7 +318,7 @@ credentials mirror the production startup sequence.
 
 ### Project Structure
 
-```
+```bash
 
 JustNews/
 ├── agents/           # 18 specialized AI agents
@@ -416,7 +416,7 @@ PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma
 --autocreate PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_bootstrap.py --host <host>
 --port <port> --tenant default_tenant --collection articles
 
-```
+```bash
 
 See `docs/chroma_setup.md` for advanced guidance and troubleshooting.
 
@@ -492,7 +492,7 @@ vault kv patch secret/justnews NEW_SECRET="new_value"
 
 bash scripts/fetch_secrets_to_env.sh
 
-```
+```bash
 
 See `docs/operations/VAULT_SETUP.md` for detailed Vault administration and troubleshooting.
 

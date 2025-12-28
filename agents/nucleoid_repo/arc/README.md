@@ -52,7 +52,7 @@ applied to given test input.
 
 The LLM finds pattern for given training input and output data and creates declarations in `nuc` lang.
 
-```
+```json
 
 {
   "declarations": [
@@ -72,7 +72,7 @@ Nucleoid session is initialized with the declarations in order to use for identi
 
 Based on declarations in `nuc` lang, the LLM extracts instances.
 
-```
+```json
 
 {
   "instances": [
@@ -105,7 +105,7 @@ Based on declarations in `nuc` lang, the LLM extracts instances.
 The LLM also represents identified instances in `nuc` lang. This step is crucial because this completes **knowledge
 packet**, which contains visual as well as logical representation of the instances.
 
-```
+```json
 
 {
   "instances": [

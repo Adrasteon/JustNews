@@ -72,7 +72,7 @@ Step 1 — Quick, manual enable (single host)
 ```ini
 ENABLE_DEV_TELEMETRY=true
 
-```
+```bash
 
 1. Option A: Use canonical startup script
 
@@ -111,7 +111,7 @@ curl -sSf http://localhost:8080/
 
 ## expected: HTTP 200 with body 'OK'
 
-```
+```bash
 
 - Check collector health endpoints (if available):
 
@@ -129,7 +129,7 @@ Option A — canonical shutdown path (recommended):
 ```bash
 sudo ./infrastructure/systemd/canonical_system_startup.sh stop
 
-```
+```bash
 
 Option B — systemd unit stop:
 

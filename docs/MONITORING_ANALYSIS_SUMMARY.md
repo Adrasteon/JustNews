@@ -150,7 +150,7 @@ monitoring/
 
 ## Prometheus Targets Configured
 
-```
+```bash
 
 Target                    | Port  | Interval | Purpose
 --------------------------|-------|----------|----------------------------------
@@ -314,7 +314,7 @@ sudo systemctl enable --now prometheus grafana-server prometheus-node-exporter
 
 sudo grafana-cli admin reset-admin-password <new-strong-password>
 
-```
+```bash
 
 ## Decision Matrix
 

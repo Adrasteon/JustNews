@@ -30,7 +30,7 @@ How to verify (local dev) -------------------------
 
 sudo systemctl restart justnews-memory-agent || ./scripts/start-memory-agent.sh
 
-```
+```bash
 
 1. Re-run the ingestion diagnostic (200 samples):
 

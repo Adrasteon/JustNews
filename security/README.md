@@ -92,7 +92,7 @@ await security.initialize()
 user = await security.authenticate_user(username, password)
 authorized = await security.check_permission(user, "read_articles")
 
-```
+```bash
 
 ### Authentication Usage
 
@@ -134,7 +134,7 @@ roles = await authz_service.get_user_roles(user_id)
 
 await authz_service.assign_role(user_id, "moderator")
 
-```
+```bash
 
 ### Encryption Usage
 
@@ -176,7 +176,7 @@ await compliance_service.delete_user_data(user_id)
 
 await compliance_service.record_consent(user_id, purpose="marketing")
 
-```
+```bash
 
 ## Security Monitoring
 
@@ -250,7 +250,7 @@ alerts = await monitor.get_active_alerts()
   }
 }
 
-```
+```bash
 
 ## Best Practices
 

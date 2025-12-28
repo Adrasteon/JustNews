@@ -151,7 +151,7 @@ class Human {
   }
 }
 
-```
+```yaml
 
 ```typescript
 User:
@@ -185,7 +185,7 @@ var human1 = new Human('Socrates');
 
 // Result: {"id":"human1","name":"Socrates","mortal":true}
 
-```
+```yaml
 
 ```typescript
 User:

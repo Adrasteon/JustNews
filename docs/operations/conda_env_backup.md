@@ -57,7 +57,7 @@ project.
 
 DRY_RUN=1 ./scripts/backup_conda_env.sh ${CANONICAL_ENV:-justnews-py312} artifacts 20251123
 
-```
+```bash
 
 - To restore from YAML:
 
@@ -73,7 +73,7 @@ conda env create -f artifacts/${CANONICAL_ENV:-justnews-py312}.yml -n ${CANONICA
 ```bash
 conda create --name ${CANONICAL_ENV:-justnews-py312}-restored --file artifacts/${CANONICAL_ENV:-justnews-py312}.explicit.txt
 
-```
+```bash
 
 - To unpack the condapack tarball:
 

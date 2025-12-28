@@ -26,7 +26,7 @@ bash scripts/run_with_env.sh env | grep "MARIADB\|CHROMADB"
 
 bash scripts/fetch_secrets_to_env.sh && echo "Vault connection successful"
 
-```
+```bash
 
 ## Systemd Service Issues
 
@@ -88,7 +88,7 @@ sudo useradd -r -s /bin/false mysql
 
 df -h /var/lib/mysql
 
-```
+```bash
 
 #### ChromaDB won't start
 
@@ -146,7 +146,7 @@ grep -A 5 "listener \"tcp\"" /etc/vault.d/vault.hcl
 
 sudo systemctl restart vault && sleep 2 && vault status
 
-```
+```bash
 
 #### MariaDB not accepting connections
 
@@ -196,7 +196,7 @@ sudo journalctl -u chromadb -n 20
 sudo systemctl stop chromadb
 bash scripts/run_with_env.sh chroma run --host 0.0.0.0 --port 3307 --verbose
 
-```
+```bash
 
 ## Environment and Configuration Issues
 
@@ -247,7 +247,7 @@ grep "PYTHON_BIN\|CANONICAL_ENV" /etc/justnews/global.env
 
 /home/adra/miniconda3/envs/justnews-py312/bin/python -c "import sys; print(sys.prefix)"
 
-```
+```bash
 
 ### Conda Environment Not Activated
 
@@ -304,7 +304,7 @@ curl -v http://127.0.0.1:8200/v1/sys/health
 sudo firewall-cmd --list-ports
 sudo ufw status
 
-```
+```bash
 
 ### Unseal Key Lost
 
@@ -362,7 +362,7 @@ curl -X POST \
 
 vault policy read approle-policy
 
-```
+```bash
 
 ### Secrets Not Available at Runtime
 
@@ -418,7 +418,7 @@ mysql -u root -e "CREATE USER 'justnews'@'127.0.0.1' IDENTIFIED BY 'password';"
 mysql -u root -e "GRANT ALL PRIVILEGES ON justnews.* TO 'justnews'@'127.0.0.1';"
 mysql -u root -e "FLUSH PRIVILEGES;"
 
-```
+```bash
 
 ### MariaDB Service Running but Slow
 
@@ -487,7 +487,7 @@ except Exception as e:
 conda activate justnews-py312
 python -c "import chromadb; print(chromadb.__version__)"
 
-```
+```bash
 
 ### ChromaDB Collection Missing
 
@@ -547,7 +547,7 @@ sudo systemctl edit chromadb
 
 sudo systemctl restart chromadb
 
-```
+```bash
 
 ## Application Runtime Issues
 
@@ -665,7 +665,7 @@ mysql -u justnews -p -D justnews -e "OPTIMIZE TABLE articles;"
 
 df -h /var/lib/mysql
 
-```
+```bash
 
 ### ChromaDB Storage Growing Too Large
 
@@ -717,7 +717,7 @@ sudo systemctl list-dependencies vault
 sudo systemctl list-dependencies mariadb
 sudo systemctl list-dependencies chromadb
 
-```
+```bash
 
 ### Monitor Resource Usage
 
@@ -765,7 +765,7 @@ sudo journalctl -u vault -p err
 
 sudo journalctl -u vault -u mariadb -u chromadb -n 200
 
-```
+```bash
 
 ## Emergency Recovery
 

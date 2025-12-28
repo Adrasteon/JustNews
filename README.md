@@ -292,13 +292,19 @@ export GIT_STRICT_TEST_HOOK=1
 
 ```bash
 
-CI note: GitHub Actions workflows were updated to create and use the `${CANONICAL_ENV:-justnews-py312}` conda environment during CI test runs (uses Miniconda). This keeps CI consistent with local dev.
+CI note: GitHub Actions workflows were updated to create and use the `${CANONICAL_ENV:-justnews-py312}` conda environment during CI test runs (uses Miniconda).
+This keeps CI consistent with local development environments and reduces "works on my machine" discrepancies.
 
-Self-hosted E2E tests: The repo now includes a self-hosted workflow (systemd-nspawn) for high-fidelity E2E tests that run MariaDB + Redis inside a systemd-nspawn container. See `.github/workflows/e2e-systemd-nspawn.yml` and `docs/dev/self-hosted-runners.md` for required runner configuration and security notes.
+Self-hosted E2E tests: The repo now includes a self-hosted workflow (systemd-nspawn) for high-fidelity E2E tests that run MariaDB and Redis inside a systemd-nspawn container.
+See `.github/workflows/e2e-systemd-nspawn.yml` and `docs/dev/self-hosted-runners.md` for the required runner configuration and security notes.
 
 ## Or set the `PYTHON_BIN` environment variable to the conda python executable:
 
-PYTHONPATH=$(pwd) PYTHON_BIN=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python pytest tests/agents/crawler -q
+```bash
+# set PYTHON_BIN to the conda python executable and run the crawler tests
+export PYTHON_BIN=/home/adra/miniconda3/envs/${CANONICAL_ENV:-justnews-py312}/bin/python
+PYTHONPATH=$(pwd) $PYTHON_BIN -m pytest tests/agents/crawler -q
+```
 
 ```bash
 
@@ -366,7 +372,8 @@ conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/your_script.py
 
 See [CONTRIBUTING.md](./docs/CONTRIBUTING.md) for development guidelines.
 
-Repository assistant guidance: See the canonical policy for automated helpers at `docs/copilot_instructions.md`. Developers may keep a local untracked file `.copilot-instructions` (listed in `.gitignore`) for personal overrides or machine-specific rules.
+Repository assistant guidance: See the canonical policy for automated helpers at `docs/copilot_instructions.md`.
+Developers may keep a local untracked file `.copilot-instructions` (listed in `.gitignore`) for personal overrides or machine-specific rules.
 
 ## 📄 License
 
@@ -402,30 +409,40 @@ See [LICENCE](./LICENCE) for licensing information.
 
 ## ChromaDB Canonical Configuration (Operators)
 
-This repository relies on a single canonical ChromaDB instance for vector storage and semantic operations. The system will validate that configured runtime Chroma host/port matches canonical settings when `CHROMADB_REQUIRE_CANONICAL=1` is set.
+This repository relies on a single canonical ChromaDB instance for vector storage and semantic operations.
+When `CHROMADB_REQUIRE_CANONICAL=1` is set, the system will validate that the configured runtime Chroma host and port match the canonical settings.
 
 Set the required environment variables in `/etc/justnews/global.env` or your deployment environment. For example:
 
 ```dotenv
-CHROMADB_HOST=localhost CHROMADB_PORT=3307 CHROMADB_COLLECTION=articles CHROMADB_REQUIRE_CANONICAL=1
-CHROMADB_CANONICAL_HOST=localhost CHROMADB_CANONICAL_PORT=3307
-
+CHROMADB_HOST=localhost
+CHROMADB_PORT=3307
+CHROMADB_COLLECTION=articles
+CHROMADB_REQUIRE_CANONICAL=1
+CHROMADB_CANONICAL_HOST=localhost
+CHROMADB_CANONICAL_PORT=3307
 ```
 
 Operational commands to inspect and bootstrap Chroma: run the diagnostic and bootstrap helpers.
 
 ```bash
-PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_diagnose.py --host <host> --port <port>
---autocreate PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_bootstrap.py --host <host>
---port <port> --tenant default_tenant --collection articles
+# Diagnose (autocreate if needed)
+PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_diagnose.py \
+  --host <host> --port <port> --autocreate
+```
 
 ```bash
+# Bootstrap
+PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_bootstrap.py \
+  --host <host> --port <port> --tenant default_tenant --collection articles
+```
 
 See `docs/chroma_setup.md` for advanced guidance and troubleshooting.
 
 ## MariaDB startup probe (operators)
 
-The repository's `infrastructure/systemd/canonical_system_startup.sh` includes an optional startup probe that checks host MariaDB connectivity. This is intended for operator-managed hosts (the repository's Docker E2E is test-only) and can be controlled from `/etc/justnews/global.env`:
+The repository's `infrastructure/systemd/canonical_system_startup.sh` includes an optional startup probe that checks host MariaDB connectivity.
+This probe is intended for operator-managed hosts (the repository's Docker E2E is test-only) and can be controlled from `/etc/justnews/global.env`:
 
 - `MARIADB_HOST` / `MARIADB_PORT` / `MARIADB_USER` / `MARIADB_PASSWORD` / `MARIADB_DB` — used by the probe if present
 
@@ -433,7 +450,8 @@ The repository's `infrastructure/systemd/canonical_system_startup.sh` includes a
 
 - `MARIADB_CHECK_REQUIRED=true` — if set, startup will abort when the probe fails (recommended for production)
 
-The check prefers the `mysql` client and falls back to a small `PYTHON_BIN` + `pymysql` probe. Operators should ensure `mysql-client` or `pymysql` is available to get deterministic preflight checks.
+The check prefers the `mysql` client as a lightweight runtime check. If `mysql` is not available, it will fall back to a small `PYTHON_BIN` + `pymysql` probe.
+Operators should ensure `mysql-client` or `pymysql` is available to get deterministic preflight checks.
 
 ## 🔐 Secrets Management with HashiCorp Vault
 

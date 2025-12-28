@@ -1,10 +1,13 @@
-<h1 align="center">Nucleoid</h1> <p align="center"> Neuro-Symbolic AI with Knowledge Graph <br/> Reasoning Engine </p>
+<h1 align="center">Nucleoid</h1>
+<p align="center"> Neuro-Symbolic AI with Knowledge Graph <br/> Reasoning Engine </p>
 
-<p align="center"> <a href="https://www.apache.org/licenses/LICENSE-2.0"><img
-src="https://img.shields.io/badge/Apache-2.0-yellow?style=for-the- badge&logo=apache" alt="License" /></a> <a
-href="https://www.npmjs.com/package/nucleoidai"><img src="https://img.shields.io/badge/NPM-red?style=for-the-
-badge&logo=npm" alt="NPM" /></a> <a href="https://discord.gg/wN49SNssUw"><img src="https://img.shields.io/badge/Discord-
-lightgrey?style=for-the- badge&logo=discord" alt="Discord" /></a> </p>
+<p align="center">
+<a href="https://www.apache.org/licenses/LICENSE-2.0"><img
+src="https://img.shields.io/badge/Apache-2.0-yellow?style=for-the-badge&logo=apache"alt="License"/></a>
+<a
+href="https://www.npmjs.com/package/nucleoidai"><img src="https://img.shields.io/badge/NPM-red?style=for-the-badge&logo=npm"alt="NPM"/></a>
+<a href="https://discord.gg/wN49SNssUw"><img src="https://img.shields.io/badge/Discord-lightgrey?style=for-the-badge&logo=discord"alt="Discord"/></a>
+</p>
 
 ![Banner](.github/media/banner.gif)
 
@@ -17,47 +20,83 @@ in [IPL- inspired](https://en.wikipedia.org/wiki/Information_Processing_Language
 creates relationships between both logic and data statements in the knowledge graph to used in decision-making and
 problem- solving process.
 
-- **Adaptive Reasoning:** Combines symbolic logic with contextual information to analyze relationships, draw conclusions and incorporating new information and adjusting its conclusions accordingly.
+- **Adaptive Reasoning:** Combines symbolic logic with contextual information to analyze relationships, draw conclusions
+  and incorporating new information and adjusting its conclusions accordingly.
 
 - **Logic Graph:** Specialized knowledge graph that captures relationships between both logic and data statements based
   on formal logic, facilitating complex deductions and adapting to new information.
 
-- **Explainability:** The Logic Graph provides a transparent representation of the reasoning process, making it easier to understand how decisions are reached and potential biases are identified.
+- **Explainability:** The Logic Graph provides a transparent representation of the reasoning process, making it easier
+  to understand how decisions are reached and potential biases are identified.
 
 Echoing to the idea of ["thinking, fast and slow"](https://kahneman.scholar.princeton.edu/publications), AI system
 should provide fast, “intuitive” ideas, and the other, more deliberate, rational decision-making. D(L)RE enables both
 intuitive decisions based on contextual information and deliberate, well-reasoned decisions based on logical deductions.
 
-[Nucleoid Chat Video](https://github.com/NucleoidAI/Nucleoid/assets/54210920/813 c14fe-43f3-445e-91d8-907433d513de)
+[Nucleoid Chat Video](https://github.com/NucleoidAI/Nucleoid/assets/54210920/813c14fe-43f3-445e-91d8-907433d513de)
 
-<p align="center"> Chat for Logical Context <br/> <a href="https://nucleoid.ai/chat">https://nucleoid.ai/chat</a> </p>
+<p align="center"> Chat for Logical Context <br/>
+<a href="https://nucleoid.ai/chat">https://nucleoid.ai/chat</a>
+</p>
 
 In Nucleoid's paradigm, there is no segregation between logic and data; instead, the paradigm approaches how both logic
 and data statements are related to each other. As the runtime receives new statements, it updates the knowledge graph
 and reevaluates both logic and data statements to reflect the new information. This adaptive process enables the system
 to respond to new situations and make deterministic selections as a result of plasticity.
 
-<div align="center"> <table> <tr> <th colspan="3"> Multi-Lang Support </th> </tr> <tr> <td> <p align="center"> <img
-src="https://github.com/user- attachments/assets/947ecf1d-b174-4c65-85ca-d2fafac6da80" alt="Node.js" width="80" /> <br/>
-Node.js </p> </td> <td> <p align="center"> <img src="https://github.com/user-
-attachments/assets/838c6f9e-8102-43db-b272-7a02c4d6c5e6" alt="Python" width="75" /> <br/> TypeScript (Beta) </p> </td>
-<td> <p align="center"> <img src="https://github.com/user- attachments/assets/899dc0d0-8dc3-4f2f-a993-2bd409ff7045"
-alt="Python" width="75" /> <br/> Python (WiP) </p> </td> </tr> <tr> <td colspan="3" width="500"> The declarative
-structure in the runtime makes it possible to provide multiple language support through JIT compiler. </td> </tr>
-</table> </div>
+<div align="center">
+<table>
+<tr>
+<th colspan="3"> Multi-Lang Support </th>
+</tr>
+<tr>
+<td>
+<p align="center">
+<img
+src="https://github.com/user-attachments/assets/947ecf1d-b174-4c65-85ca-d2fafac6da80"alt="Node.js"width="80"/>
+<br/>
+Node.js </p>
+</td>
+<td>
+<p align="center">
+<img src="https://github.com/user-attachments/assets/838c6f9e-8102-43db-b272-7a02c4d6c5e6"alt="Python"width="75"/>
+<br/> TypeScript (Beta) </p>
+</td>
+<td>
+<p align="center">
+<img src="https://github.com/user-attachments/assets/899dc0d0-8dc3-4f2f-a993-2bd409ff7045"alt="Python"width="75"/>
+<br/> Python (WiP) </p>
+</td>
+</tr>
+<tr>
+<td colspan="3" width="500"> The declarative
+structure in the runtime makes it possible to provide multiple language support through JIT compiler. </td>
+</tr>
+</table>
+</div>
 
 ---
 
-<table> <tr> <td> Welcome! I’ve been expecting you—"Skynet was gone. And now one road has become many." 🌐 <br/> <br/>
+<table>
+<tr>
+<td> Welcome! I’ve been expecting you—"Skynet was gone. And now one road has become many." 🌐 <br/>
+<br/>
 The future is building up! Neuro-Symbolic AI is now an emerging field within AI communities and marks a crucial
 milestone on the journey to AGI. Unfortunately, existing symbolic AI and knowledge graphs lack advancement in today's AI
 landscape. Nucleoid is revolutionizing knowledge graphs with declarative, logic-based, contextual runtime, which can be
-integrated with ANNs to lay a robust foundation for the next leap forward! <br/> <br/> <p align="right"> Can
-Mingir&nbsp; <br/> <a href="https://github.com/canmingir">@canmingir</a> </p> </td> </tr> </table>
+integrated with ANNs to lay a robust foundation for the next leap forward! <br/>
+<br/>
+<p align="right"> Can
+Mingir&nbsp; <br/>
+<a href="https://github.com/canmingir">@canmingir</a>
+</p>
+</td>
+</tr>
+</table>
 
 ## What is Neuro-Symbolic AI?
 
-![AI Architecture](https://github.com/user- attachments/assets/fbda5532-d2ce-4f67-a121-b79d46fe049e)
+![AI Architecture](https://github.com/user-attachments/assets/fbda5532-d2ce-4f67-a121-b79d46fe049e)
 
 Neuro-Symbolic AI is an approach that integrates the strengths of both neural networks and symbolic AI to create systems
 that can learn from data and also reason logically. By combining these two components, Neuro-Symbolic AI aims to
@@ -82,7 +121,9 @@ of explaining its decisions and reasoning processes in a way that humans can und
 
 <br/>
 
-<p align="center"> <img src=".github/media/neuro-symbolic.png" width="225" alt="Neuro-Symbolic Diagram"/> </p>
+<p align="center">
+<img src=".github/media/neuro-symbolic.png" width="225" alt="Neuro-Symbolic Diagram"/>
+</p>
 
 ### Declarative Language
 
@@ -113,7 +154,9 @@ declarative logic and rules defined in Nucleoid provide clear explanations for t
 users to understand and trust the system's outputs. Furthermore, the explicit reasoning capabilities help ensure that
 decisions are made based on logical principles, adding a layer of reliability and consistency to the AI's behavior.
 
-<p align="center"> <img src=".github/media/graph.gif" width="450" alt="Graph Animation"/> </p>
+<p align="center">
+<img src=".github/media/graph.gif" width="450" alt="Graph Animation"/>
+</p>
 
 ### Plasticity in Neuro-Symbolic AI
 
@@ -136,7 +179,7 @@ The idea of plasticity in AI, especially in logic-based systems like those in Ne
 of machines to not only perform tasks based on fixed rules but also to evolve those rules and adapt their reasoning over
 time, much like the cognitive flexibility of living things.
 
-## Hello World :zap:
+## Hello World ⚡️
 
 ```typescript
 User:
@@ -211,9 +254,11 @@ human1.mortal;
 
 ```
 
-Learn more at [nucleoid.com/docs/get-started](https://nucleoid.com/docs/get- started)
+Learn more at [nucleoid.com/docs/get-started](https://nucleoid.com/docs/get-started)
 
-> :bulb: Nucleoid runtime can also run on local machine with `npx @nucleoidai/ide start`and`npx @nucleoidai/expert start` including [Nucleoid Chat](https://nucleoid.com/ide/chat). These commands enable IDE and expert system components needed for Neuro-Symbolic AI.
+> :bulb: Nucleoid runtime can also run on local machine with `npx @nucleoidai/ide start`and`npx @nucleoidai/expert
+start` including [Nucleoid Chat](https://nucleoid.com/ide/chat). These commands enable IDE and expert system components needed for Neuro-
+Symbolic AI.
 
 ---
 
@@ -223,8 +268,9 @@ Nucleoid is an implementation of symbolic AI for declarative (logic) programming
 declarative runtime environment manages object state and stores each transaction in the built-in data store by
 declaratively rerendering TypeScript statements and building the knowledge graph (base) as well as an execution plan.
 
-<p align="center"> <img src="https://github.com/user- attachments/assets/4b199f99-336b-4da5-8358-2bbf7ac41c87"
-width="600" alt="Nucleoid's Taxonomy"/> </p>
+<p align="center">
+<img src="https://github.com/user-attachments/assets/4b199f99-336b-4da5-8358-2bbf7ac41c87"width="600"alt="Nucleoid'sTaxonomy"/>
+</p>
 
 The declarative runtime isolates a behavior definition of a program from its technical instructions and executes
 declarative statements, which represent logical intention without carrying any technical detail. In this paradigm, there
@@ -233,9 +279,18 @@ others so that any type of data including business rules can be added without re
 compiling, configuring, restarting as a result of plasticity. This approach also opens possibilities of storing data in
 the same box with the programming runtime.
 
-<div align="center"> <table> <tr> <th> <img src="https://cdn.nucleoid.com/media/diagram1.png" width="225" alt="Logical
-Diagram 1"/> </th> <th> <img src="https://cdn.nucleoid.com/media/diagram2.png" width="275" alt="Logical Diagram 2"/>
-</th> </tr> </table> </div>
+<div align="center">
+<table>
+<tr>
+<th>
+<img src="https://cdn.nucleoid.com/media/diagram1.png"width="225"alt="LogicalDiagram1"/>
+</th>
+<th>
+<img src="https://cdn.nucleoid.com/media/diagram2.png"width="275"alt="LogicalDiagram2"/>
+</th>
+</tr>
+</table>
+</div>
 
 In short, the main objective of the project is to manage both of data and logic under the same runtime. The declarative
 programming paradigm used by Nucleoid allows developers to focus on the business logic of the application, while the
@@ -248,13 +303,14 @@ improve the performance of the system.
 This is the comparation our sample order app in Nucleoid IDE against MySQL and Postgres with using Express.js and
 Sequelize libraries.
 
-<https://nucleoid.com/ide/sample>
+[Nucleoid IDE sample](https://nucleoid.com/ide/sample)
 
-<img src="https://cdn.nucleoid.com/media/benchmark.png" alt="Benchmark" width="550"/>
+![Benchmark](https://cdn.nucleoid.com/media/benchmark.png)
 
-> Performance benchmark happened in t2.micro of AWS EC2 instance and both databases had dedicated servers with <u>no indexes and default configurations</u>.
+> Performance benchmark happened in t2.micro of AWS EC2 instance and both databases had dedicated servers with <u>no
+indexes and default configurations</u>.
 
-<https://github.com/NucleoidAI/benchmark>
+[Benchmark repo](https://github.com/NucleoidAI/benchmark)
 
 This does not necessary mean Nucleoid runtime is faster than MySQL or Postgres, instead databases require constant
 maintenance by DBA teams with indexing, caching, purging etc. however, Nucleoid tries to solve this problem with
@@ -264,7 +320,7 @@ process.
 
 <br/>
 
-## Project Status :avocado:
+## Project Status 🥑
 
 Track at [Trello](https://trello.com/b/TZ73H1Fk/nucleoid)
 
@@ -291,12 +347,16 @@ Learn more at [nucleoid.com](https://nucleoid.ai)
 
 ---
 
-<p align="center"> <b>⭐️ Star us on GitHub for the support</b> </p>
+<p align="center">
+<b>⭐️ Star us on GitHub for the support</b>
+</p>
 
 Neuro-Symbolic AI is an emerging field and thanks to declarative logic programming, we have a brand-new approach to
 Neuro-Symbolic AI. Join us in shaping the future of AI!
 
-<p align="center"> <img src="https://cdn.nucleoid.com/media/nobel.png" alt="Nobel" /> </p>
+<p align="center">
+<img src="https://cdn.nucleoid.com/media/nobel.png"alt="Nobel"/>
+</p>
 
 ---
 
@@ -304,31 +364,107 @@ Neuro-Symbolic AI. Join us in shaping the future of AI!
 
 <!-- NucBot -->
 
-<table><tr><td align="center"><a href="https://github.com/NucBot"><img
-src="https://avatars.githubusercontent.com/u/110643717?v=4&s=100" width="100px;" alt="User
-NucBot"/><br/><sub>NucBot</sub></a></td><td align="center"><a href="https://github.com/canmingir"><img
-src="https://avatars.githubusercontent.com/u/54210920?v=4&s=100" width="100px;" alt="User
-canmingir"/><br/><sub>canmingir</sub></a></td><td align="center"><a href="https://github.com/322332"><img
-src="https://avatars.githubusercontent.com/u/16444899?v=4&s=100" width="100px;" alt="User
-322332"/><br/><sub>322332</sub></a></td><td align="center"><a href="https://github.com/dependabot[bot]"><img
-src="https://avatars.githubusercontent.com/u/49699333?v=4&s=100" width="100px;" alt="User
-dependabot[bot]"/><br/><sub>dependabot[bot]</sub></a></td><td align="center"><a href="https://github.com/francisco-
-giancarelli-crombie"><img src="https://avatars.githubusercontent.com/u/104434958?v=4&s=100" width="100px;" alt="User
-francisco-giancarelli-crombie"/><br/><sub>francisco-giancarelli- crombie</sub></a></td><td align="center"><a
-href="https://github.com/Gulshanaggarwal"><img src="https://avatars.githubusercontent.com/u/58553401?v=4&s=100"
-width="100px;" alt="User Gulshanaggarwal"/><br/><sub>Gulshanaggarwal</sub></a></td><td align="center"><a
-href="https://github.com/CanPacis"><img src="https://avatars.githubusercontent.com/u/37307107?v=4&s=100" width="100px;"
-alt="User CanPacis"/><br/><sub>CanPacis</sub></a></td></tr><tr><td align="center"><a
-href="https://github.com/durulkoca"><img src="https://avatars.githubusercontent.com/u/134300732?v=4&s=100"
-width="100px;" alt="User durulkoca"/><br/><sub>durulkoca</sub></a></td><td align="center"><a
-href="https://github.com/halilcengel"><img src="https://avatars.githubusercontent.com/u/49736917?v=4&s=100"
-width="100px;" alt="User halilcengel"/><br/><sub>halilcengel</sub></a></td><td align="center"><a
-href="https://github.com/EnesKeremAYDIN"><img src="https://avatars.githubusercontent.com/u/46195766?v=4&s=100"
-width="100px;" alt="User EnesKeremAYDIN"/><br/><sub>EnesKeremAYDIN</sub></a></td><td align="center"><a
-href="https://github.com/russle-smith"><img src="https://avatars.githubusercontent.com/u/109499168?v=4&s=100"
-width="100px;" alt="User russle-smith"/><br/><sub>russle-smith</sub></a></td><td align="center"><a
-href="https://github.com/russellgray"><img src="https://avatars.githubusercontent.com/u/143818261?v=4&s=100"
-width="100px;" alt="User russellgray"/><br/><sub>russellgray</sub></a></td></tr></table>
+<table>
+<tr>
+<td align="center">
+<a href="https://github.com/NucBot">
+<img
+src="https://avatars.githubusercontent.com/u/110643717?v=4&s=100"width="100px;"alt="UserNucBot"/>
+<br/>
+<sub>NucBot</sub>
+</a>
+</td>
+<td align="center">
+<a href="https://github.com/canmingir">
+<img
+src="https://avatars.githubusercontent.com/u/54210920?v=4&s=100"width="100px;"alt="Usercanmingir"/>
+<br/>
+<sub>canmingir</sub>
+</a>
+</td>
+<td align="center">
+<a href="https://github.com/322332">
+<img
+src="https://avatars.githubusercontent.com/u/16444899?v=4&s=100"width="100px;"alt="User322332"/>
+<br/>
+<sub>322332</sub>
+</a>
+</td>
+<td align="center">
+<a href="https://github.com/dependabot[bot]">
+<img
+src="https://avatars.githubusercontent.com/u/49699333?v=4&s=100"width="100px;"alt="Userdependabot[bot]"/>
+<br/>
+<sub>dependabot[bot]</sub>
+</a>
+</td>
+<td align="center">
+<a href="https://github.com/francisco-giancarelli-crombie">
+<img src="https://avatars.githubusercontent.com/u/104434958?v=4&s=100"width="100px;"alt="Userfrancisco-giancarelli-crombie"/>
+<br/>
+<sub>francisco-giancarelli- crombie</sub>
+</a>
+</td>
+<td align="center">
+<a
+href="https://github.com/Gulshanaggarwal">
+<img src="https://avatars.githubusercontent.com/u/58553401?v=4&s=100"width="100px;"alt="UserGulshanaggarwal"/>
+<br/>
+<sub>Gulshanaggarwal</sub>
+</a>
+</td>
+<td align="center">
+<a
+href="https://github.com/CanPacis">
+<img src="https://avatars.githubusercontent.com/u/37307107?v=4&s=100"width="100px;"alt="UserCanPacis"/>
+<br/>
+<sub>CanPacis</sub>
+</a>
+</td>
+</tr>
+<tr>
+<td align="center">
+<a
+href="https://github.com/durulkoca">
+<img src="https://avatars.githubusercontent.com/u/134300732?v=4&s=100"width="100px;"alt="Userdurulkoca"/>
+<br/>
+<sub>durulkoca</sub>
+</a>
+</td>
+<td align="center">
+<a
+href="https://github.com/halilcengel">
+<img src="https://avatars.githubusercontent.com/u/49736917?v=4&s=100"width="100px;"alt="Userhalilcengel"/>
+<br/>
+<sub>halilcengel</sub>
+</a>
+</td>
+<td align="center">
+<a
+href="https://github.com/EnesKeremAYDIN">
+<img src="https://avatars.githubusercontent.com/u/46195766?v=4&s=100"width="100px;"alt="UserEnesKeremAYDIN"/>
+<br/>
+<sub>EnesKeremAYDIN</sub>
+</a>
+</td>
+<td align="center">
+<a
+href="https://github.com/russle-smith">
+<img src="https://avatars.githubusercontent.com/u/109499168?v=4&s=100"width="100px;"alt="Userrussle-smith"/>
+<br/>
+<sub>russle-smith</sub>
+</a>
+</td>
+<td align="center">
+<a
+href="https://github.com/russellgray">
+<img src="https://avatars.githubusercontent.com/u/143818261?v=4&s=100"width="100px;"alt="Userrussellgray"/>
+<br/>
+<sub>russellgray</sub>
+</a>
+</td>
+</tr>
+</table>
 
 <br/>
 

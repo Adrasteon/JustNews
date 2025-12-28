@@ -10,6 +10,7 @@ import sys
 import requests
 import yaml
 import pytest
+import time
 
 
 def load_vllm_config(config_path: str = "config/vllm_mistral_7b.yaml") -> dict:
@@ -75,7 +76,7 @@ def test_models():
     base_url = cfg["base_url"]
     api_key = cfg.get("api_key", "dummy")
     print(f"Testing models endpoint: {base_url}/v1/models")
-    headers = {"Authorization": f"Bearer {api_key}"}
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     try:
         resp = requests.get(f"{base_url}/v1/models", timeout=5, headers=headers)
     except requests.exceptions.ConnectionError:
@@ -83,16 +84,45 @@ def test_models():
     resp.raise_for_status()
     models = resp.json()
     print(f"✅ Models: {[m['id'] for m in models.get('data', [])]}")
-    return models
+    # Validate shape instead of returning (avoid pytest ReturnNotNoneWarning)
+    assert isinstance(models, dict)
+    assert isinstance(models.get('data'), list)
+
+
+def ensure_vllm_ready(base_url: str, api_key: str | None = None, timeout: float = 15.0) -> None:
+    """Wait for vLLM to be healthy and respond to a simple models request.
+
+    Raises RuntimeError if service does not become ready within timeout."""
+    end = time.time() + timeout
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    while time.time() < end:
+        try:
+            h = requests.get(f"{base_url}/health", timeout=2)
+            if h.status_code == 200:
+                # Also check models (auth may be required)
+                m = requests.get(f"{base_url}/v1/models", timeout=3, headers=headers)
+                if m.status_code in (200, 401):
+                    return
+        except Exception:
+            pass
+        time.sleep(0.5)
+    raise RuntimeError("vLLM service did not become ready in time")
 
 
 def test_chat_completion():
-    """Test /v1/chat/completions."""
+    """Test /v1/chat/completions with retries/backoff for transient failures."""
     cfg = load_vllm_config()
     base_url = cfg["base_url"]
-    api_key = cfg.get("api_key", "dummy")
+    api_key = cfg.get("api_key", "")
     print(f"Testing chat completion: {base_url}/v1/chat/completions")
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    # Wait for service readiness (helps with race conditions at startup)
+    ensure_vllm_ready(base_url, api_key or None, timeout=15.0)
+
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
     payload = {
         "model": "mistralai/Mistral-7B-Instruct-v0.3",
         "messages": [
@@ -102,12 +132,26 @@ def test_chat_completion():
         "max_tokens": 10,
         "temperature": 0.0,
     }
-    try:
-        resp = requests.post(
-            f"{base_url}/v1/chat/completions", json=payload, headers=headers, timeout=30
-        )
-    except requests.exceptions.ConnectionError:
-        pytest.skip("vLLM server not running; set VLLM_BASE_URL or start server to run smoke tests")
+
+    resp = None
+    for attempt in range(3):
+        try:
+            resp = requests.post(
+                f"{base_url}/v1/chat/completions", json=payload, headers=headers, timeout=30
+            )
+        except requests.exceptions.ConnectionError:
+            if attempt < 2:
+                time.sleep(0.5 * (2 ** attempt))
+                continue
+            pytest.skip("vLLM server not running; set VLLM_BASE_URL or start server to run smoke tests")
+        # Treat transient 401/404 as retryable (server readiness/auth race)
+        if resp is not None and resp.status_code in (401, 404):
+            if attempt < 2:
+                time.sleep(0.5 * (2 ** attempt))
+                continue
+        break
+
+    assert resp is not None, "No response from vLLM"
     resp.raise_for_status()
     result = resp.json()
     answer = result["choices"][0]["message"]["content"].strip()

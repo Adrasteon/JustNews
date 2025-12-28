@@ -111,6 +111,31 @@ configuration is `config/vllm_mistral_7b.yaml` which should be used for producti
 
 - Fallback config (Mistral-7B + adapters) - use `config/vllm_mistral_7b.yaml` for runtime fallbacks
 
+
+### Local dev: starting vLLM and running smoke tests
+
+For local development, start the vLLM server and wait for it to be ready before running the smoke tests.
+
+Examples:
+
+```bash
+# start vLLM (from repo root) - conservative GPU usage
+VLLM_QUANTIZATION= VLLM_GPU_MEMORY_UTIL=0.6 ./scripts/launch_vllm_mistral_7b.sh > run/vllm_mistral_fp16.log 2>&1 &
+
+# wait for the server to be healthy (includes models endpoint check; accepts optional API key)
+./scripts/wait_for_vllm.sh --base-url http://127.0.0.1:7060 --api-key "$VLLM_API_KEY" --timeout 30
+
+# Run smoke tests (ensure VLLM_API_KEY is exported in the same shell)
+export VLLM_API_KEY=REPLACE_WITH_YOUR_VLLM_API_KEY
+./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV:-justnews-py312} pytest -q tests/integration/test_vllm_mistral_7b_smoke.py -k chat_completion
+```
+
+Notes:
+
+- CI runners typically do not have GPUs available; running the full vLLM server in CI is not recommended unless special GPU-enabled runners are provisioned. Instead, use the 'mistral-dryrun' job for adapter dry-run tests; the smoke test is intended for local dev or gated GPU CI.
+- The smoke test now includes short retry/backoff logic for transient readiness/auth races and validates model responses more robustly.
+
+
 ### Agent Model Mappings
 
 #### AGENT_MODEL_MAP.json

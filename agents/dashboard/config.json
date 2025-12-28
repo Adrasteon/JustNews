@@ -20,7 +20,7 @@
     "port": 3306,
     "database": "justnews",
     "user": "justnews",
-    "password": "justnews_password_2024",
+    "password": "REPLACE_WITH_YOUR_DB_PASSWORD",
     "connection_pool": {
       "min_connections": 2,
       "max_connections": 10,

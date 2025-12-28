@@ -5,7 +5,9 @@ Summary:
 - Goal: Ensure the Human-in-the-Loop (HITL) annotator UI is available, seeded with
 candidates from the crawler, monitored, and safe to roll out into staging/production.
 
-- Current state: HITL API serves the static UI at `/`and`/static/*`. The crawler builds candidate payloads and posts them to`/api/candidates`. Recent changes applied:`CandidateEvent.id`now defaults to`None` (prevents 422), crawler payload builder implemented, and automated tests added and passing.
+- Current state: HITL API serves the static UI at `/`and`/static/*`. The crawler builds candidate payloads and posts
+  them to`/api/candidates`. Recent changes applied:`CandidateEvent.id`now defaults to`None` (prevents 422), crawler
+  payload builder implemented, and automated tests added and passing.
 
 Pending Tasks (prioritised): 1) CI + test coverage (High priority)
 
@@ -25,7 +27,9 @@ Pending Tasks (prioritised): 1) CI + test coverage (High priority)
 
   - Steps:
 
-  - Update `infrastructure/systemd/examples/hitl_service.env.example`with the key envs and brief descriptions:`HITL_SERVICE_ADDRESS`,`HITL_DB_PATH`,`ENABLE_HITL_PIPELINE`,`HITL_STATS_INTERVAL_SECONDS`,`HITL_FAILURE_BACKOFF_SECONDS`, forwarding knobs (`HITL_FORWARD_AGENT`,`HITL_FORWARD_TOOL`).
+  - Update `infrastructure/systemd/examples/hitl_service.env.example`with the key envs and brief descriptions:`HITL_SERV
+    ICE_ADDRESS`,`HITL_DB_PATH`,`ENABLE_HITL_PIPELINE`,`HITL_STATS_INTERVAL_SECONDS`,`HITL_FAILURE_BACKOFF_SECONDS`,
+    forwarding knobs (`HITL_FORWARD_AGENT`,`HITL_FORWARD_TOOL`).
 
   - Add `agents/hitl_service/README.md` explaining how to override DB path, enable/disable pipeline, and where the UI is served.
 

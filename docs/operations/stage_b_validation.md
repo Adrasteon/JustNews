@@ -8,17 +8,25 @@ scheduler deployment, observability roll-out, QA cadences, and the proofs needed
 
 ## 1. Database and Ingestion Plumbing
 
-- Apply migration `database/migrations/003_stage_b_ingestion.sql`to your Stage B database. Confirm`collection_timestamp`,`normalized_url`,`url_hash`, metadata JSON columns, and the`embedding`vector field exist. Use`bash scripts/ops/apply_stage_b_migration.sh [DB_URL] --record`to apply and log the operation; command output is preserved under`logs/operations/migrations/` for audit.
+- Apply migration `database/migrations/003_stage_b_ingestion.sql`to your Stage B database.
+  Confirm`collection_timestamp`,`normalized_url`,`url_hash`, metadata JSON columns, and the`embedding`vector field
+  exist. Use`bash scripts/ops/apply_stage_b_migration.sh [DB_URL] --record`to apply and log the operation; command
+  output is preserved under`logs/operations/migrations/` for audit.
 
 - Verify the ingestion agent populates new fields:
 
-- Invoke `agents/memory/tools.save_article`via unit tests (`tests/agents/memory/test_save_article.py`) or an ad-hoc ingestion to confirm`collection_timestamp`, dedupe hashes, review flags, and embeddings reach the database.
+- Invoke `agents/memory/tools.save_article`via unit tests (`tests/agents/memory/test_save_article.py`) or an ad-hoc
+  ingestion to confirm`collection_timestamp`, dedupe hashes, review flags, and embeddings reach the database.
 
 - Inspect a sample row with `SELECT title, normalized_url, url_hash, needs_review, collection_timestamp FROM articles ORDER BY id DESC LIMIT 5;`.
 
-- Confirm Chroma metadata accepts the payload: run a spot check (for example, `python - <<'PY' ... collection.get(ids=['<article_id>']) ... PY`) and verify every metadata field is a scalar or JSON string. Null values or nested dicts must be stripped/serialized before ingestion; otherwise Chroma rejects the write with`metadatas[0].<field>: data did not match any variant of untagged enum MetadataValue`.
+- Confirm Chroma metadata accepts the payload: run a spot check (for example, `python - <<'PY' ...
+  collection.get(ids=['<article_id>']) ... PY`) and verify every metadata field is a scalar or JSON string. Null values
+  or nested dicts must be stripped/serialized before ingestion; otherwise Chroma rejects the write
+  with`metadatas[0].<field>: data did not match any variant of untagged enum MetadataValue`.
 
-- When adding new metadata fields, update the sanitization helpers in `agents/memory/tools._make_chroma_metadata_safe` (and keep optional fields nullable in MariaDB) so embeddings continue to store cleanly.
+- When adding new metadata fields, update the sanitization helpers in `agents/memory/tools._make_chroma_metadata_safe`
+  (and keep optional fields nullable in MariaDB) so embeddings continue to store cleanly.
 
 - Document the migration execution (timestamp, operator, target database) in your ops log or ticket system.
 
@@ -26,7 +34,9 @@ scheduler deployment, observability roll-out, QA cadences, and the proofs needed
 
 - Ensure `config/crawl_schedule.yaml` matches the target source cohorts and governance metadata.
 
-- Review the files under `config/crawl_profiles/` for the profile slugs each domain should receive (defaults, deep section overrides, explicit generic fallbacks). Keep this directory under version control; runtime changes do not require Python edits.
+- Review the files under `config/crawl_profiles/` for the profile slugs each domain should receive (defaults, deep
+  section overrides, explicit generic fallbacks). Keep this directory under version control; runtime changes do not
+  require Python edits.
 
 - Deploy the systemd timer:
 
@@ -34,7 +44,8 @@ scheduler deployment, observability roll-out, QA cadences, and the proofs needed
 
 - Set environment values in `/etc/justnews/global.env`:`SERVICE_DIR`,`JUSTNEWS_PYTHON`,`CRAWL_SCHEDULE_PATH` (optional), and overrides for output paths if needed.
 
-- Add `CRAWL_PROFILE_PATH=/etc/justnews/crawl_profiles` (or your custom path) if the default profiles live outside the repo checkout. The loader accepts either a directory or a single YAML file for backwards compatibility.
+- Add `CRAWL_PROFILE_PATH=/etc/justnews/crawl_profiles` (or your custom path) if the default profiles live outside the
+  repo checkout. The loader accepts either a directory or a single YAML file for backwards compatibility.
 
 - Ensure the analytics directory exists and is writable by the scheduler user: `sudo mkdir -p "$SERVICE_DIR/logs/analytics" && sudo chown -R <scheduler-user>:<scheduler-group> "$SERVICE_DIR/logs"`.
 
@@ -42,7 +53,8 @@ scheduler deployment, observability roll-out, QA cadences, and the proofs needed
 
 - Capture dry-run evidence:
 
-- Execute `JUSTNEWS_PYTHON scripts/ops/run_crawl_schedule.py --dry-run --max-target 100 --profiles config/crawl_profiles` to show planned batches (and expanded profile payloads) without invoking the crawler.
+- Execute `JUSTNEWS_PYTHON scripts/ops/run_crawl_schedule.py --dry-run --max-target 100 --profiles
+  config/crawl_profiles` to show planned batches (and expanded profile payloads) without invoking the crawler.
 
 - Capture live-run evidence:
 

@@ -221,7 +221,9 @@ concurrency to 1, max links to 120.
 
 - Metrics: total 100, unique 98, non-news 0, domain split {'www.bbc.co.uk': 75, 'www.bbc.com': 23}.
 
-- Notes: enabled `extra.strict_skip_seed_articles`, introduced per-request AsyncWebCrawler reinitialisation to absorb Playwright`Connection closed`errors, and set`timeout: 15` on link previews. Resulting harvest maintained article-only output with slight shortfall (2 duplicates filtered). Console run log retained in tuning session notes.
+- Notes: enabled `extra.strict_skip_seed_articles`, introduced per-request AsyncWebCrawler reinitialisation to absorb
+  Playwright`Connection closed`errors, and set`timeout: 15` on link previews. Resulting harvest maintained article-only
+  output with slight shortfall (2 duplicates filtered). Console run log retained in tuning session notes.
 
 ### Sample URLs
 

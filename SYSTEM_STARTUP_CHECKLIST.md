@@ -30,7 +30,9 @@ Follow this exact sequence for a safe, reproducible system startup (preferred op
 
 - [ ] Run: `sudo ./infrastructure/systemd/canonical_system_startup.sh`
 
-  - This performs env checks, optional MariaDB probe (skip with `SKIP_MARIADB_CHECK=true`), installs/refreshes service templates and scripts, runs a reset & fresh start (gpu_orchestrator → mcp_bus → agents), provisions monitoring (if missing), and performs a consolidated health check.
+  - This performs env checks, optional MariaDB probe (skip with `SKIP_MARIADB_CHECK=true`), installs/refreshes service
+    templates and scripts, runs a reset & fresh start (gpu_orchestrator → mcp_bus → agents), provisions monitoring (if
+    missing), and performs a consolidated health check.
 
 1. (Alternative) Manual orchestrator-first flow
 

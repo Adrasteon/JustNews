@@ -19,7 +19,8 @@ problem- solving process.
 
 - **Adaptive Reasoning:** Combines symbolic logic with contextual information to analyze relationships, draw conclusions and incorporating new information and adjusting its conclusions accordingly.
 
-- **Logic Graph:** Specialized knowledge graph that captures relationships between both logic and data statements based on formal logic, facilitating complex deductions and adapting to new information.
+- **Logic Graph:** Specialized knowledge graph that captures relationships between both logic and data statements based
+  on formal logic, facilitating complex deductions and adapting to new information.
 
 - **Explainability:** The Logic Graph provides a transparent representation of the reasoning process, making it easier to understand how decisions are reached and potential biases are identified.
 
@@ -120,11 +121,16 @@ In the realm of Neuro-Symbolic AI, *Plasticity* is an important element for the 
 its connections in response to new information. This concept is inspired by neuroplasticity in biological brains, where
 neurons can strengthen or weaken their connections based on activity, enabling learning and memory.
 
-1. **Dynamic Knowledge Base**: Neuro-Symbolic AI systems dynamically update their knowledge base as they encounter new scenarios or corrections to their previous knowledge. This continuous updating process allows the systems to remain relevant and accurate over time.
+1. **Dynamic Knowledge Base**: Neuro-Symbolic AI systems dynamically update their knowledge base as they encounter new
+   scenarios or corrections to their previous knowledge. This continuous updating process allows the systems to remain
+   relevant and accurate over time.
 
-1. **Adaptive Logic and Reasoning**: The AI system can modify its symbolic rules and reasoning strategies to better match observed data or outcomes, enhancing its decision-making and problem-solving abilities.
+1. **Adaptive Logic and Reasoning**: The AI system can modify its symbolic rules and reasoning strategies to better
+   match observed data or outcomes, enhancing its decision-making and problem-solving abilities.
 
-1. **Generalization and Specialization**: Through plasticity, the system can generalize from learned experiences to new, unseen scenarios or specialize in certain domains by fine-tuning its parameters or rules based on specific data inputs.
+1. **Generalization and Specialization**: Through plasticity, the system can generalize from learned experiences to new,
+   unseen scenarios or specialize in certain domains by fine-tuning its parameters or rules based on specific data
+   inputs.
 
 The idea of plasticity in AI, especially in logic-based systems like those in Neuro-Symbolic AI, enhances the capability
 of machines to not only perform tasks based on fixed rules but also to evolve those rules and adapt their reasoning over

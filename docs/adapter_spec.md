@@ -47,13 +47,17 @@ Behavioral constraints & expectations
 
 Dry-run / ModelStore compatibility
 
-- The repo supports a dry-run mode controlled by environment flags: MODEL_STORE_DRY_RUN=1 or DRY_RUN=1. In this mode loaders return lightweight dict placeholders instead of real model/tokenizer handles.
+- The repo supports a dry-run mode controlled by environment flags: MODEL_STORE_DRY_RUN=1 or DRY_RUN=1. In this mode
+  loaders return lightweight dict placeholders instead of real model/tokenizer handles.
 
-- Because dry-run handles are dictionaries, adapters MUST NOT assume tokenizers or model handles are callables in dry-run mode. Either short-circuit (preferred) or detect the handle types before calling.
+- Because dry-run handles are dictionaries, adapters MUST NOT assume tokenizers or model handles are callables in dry-
+  run mode. Either short-circuit (preferred) or detect the handle types before calling.
 
 Per-agent adapter patterns
 
-- The canonical Mistral wrapper lives at `agents/common/mistral_adapter.py` and provides convenience helpers (classify, summarize_cluster, review, generate_story_brief, evaluate_claim, analyze, review_content). Those helpers are optional for new adapters but recommended for JSON-centric agents.
+- The canonical Mistral wrapper lives at `agents/common/mistral_adapter.py` and provides convenience helpers (classify,
+  summarize_cluster, review, generate_story_brief, evaluate_claim, analyze, review_content). Those helpers are optional
+  for new adapters but recommended for JSON-centric agents.
 
 - Per-agent wrappers live at `agents/<agent>/mistral_adapter.py` and should only contain prompts and normalization code — avoid running file downloads or heavy tensor ops at import-time.
 
@@ -61,9 +65,12 @@ Testing guidance
 
 - Unit tests: test the BaseAdapter contract (raising NotImplementedError by default), and create a MockAdapter that implements the contract deterministically.
 
-- Integration / dry-run tests: ensure adapters behave safely in dry-run mode and produce consistent, schema-compatible outputs. Use the `PYTHONPATH=. scripts/dev/run_pytest_conda.sh <tests>`helper to run tests inside the canonical conda environment (`${CANONICAL_ENV:-justnews-py312}`) so CI/local runs are identical.
+- Integration / dry-run tests: ensure adapters behave safely in dry-run mode and produce consistent, schema-compatible
+  outputs. Use the `PYTHONPATH=. scripts/dev/run_pytest_conda.sh <tests>`helper to run tests inside the canonical conda
+  environment (`${CANONICAL_ENV:-justnews-py312}`) so CI/local runs are identical.
 
-- CI: include adapter unit tests and dry-run adapter smoke tests in PR jobs. For real-provider tests (OpenAI/HF), gate them behind environment variables/secrets and run them in a separate gated CI job.
+- CI: include adapter unit tests and dry-run adapter smoke tests in PR jobs. For real-provider tests (OpenAI/HF), gate
+  them behind environment variables/secrets and run them in a separate gated CI job.
 
 Example minimal mock adapter (pseudocode)
 
@@ -99,15 +106,20 @@ CI checklist for adapter PRs
 
 Where to start
 
-- Quick win (recommended): create/update `agents/common/adapter_base.py`,`agents/common/mock_adapter.py`and add tests`tests/adapters/test_base.py`,`tests/adapters/test_mock_adapter.py`(already present in this repo). Continue by adding`docs/adapter_spec.md` and include this file in PRs when adding new adapters.
+- Quick win (recommended): create/update `agents/common/adapter_base.py`,`agents/common/mock_adapter.py`and add
+  tests`tests/adapters/test_base.py`,`tests/adapters/test_mock_adapter.py`(already present in this repo). Continue by
+  adding`docs/adapter_spec.md` and include this file in PRs when adding new adapters.
 
 Repository templates
 
 - `agents/common/openai_adapter.py` — OpenAI adapter template (dry-run short-circuiting, configurable system prompt/temperature/max tokens, retry/backoff, metrics hooks, optional custom headers).
 
-- `agents/common/hf_adapter.py` — HF adapter template (ModelStore-aware loading, optional int8/int4 quantization via bitsandbytes, device-map selection, retry/backoff, dry-run short-circuiting, and configurable generation defaults).
+- `agents/common/hf_adapter.py` — HF adapter template (ModelStore-aware loading, optional int8/int4 quantization via
+  bitsandbytes, device-map selection, retry/backoff, dry-run short-circuiting, and configurable generation defaults).
 
-- `agents/common/adapter_base.py`— provides`AdapterResult`,`AdapterMetadata`,`AdapterHealth`,`AdapterError`, dry-run detection helpers,`mark_loaded/mark_unloaded`,`ensure_loaded`, and a default`batch_infer` implementation so adapters can focus on provider logic.
+- `agents/common/adapter_base.py`— provides`AdapterResult`,`AdapterMetadata`,`AdapterHealth`,`AdapterError`, dry-run
+  detection helpers,`mark_loaded/mark_unloaded`,`ensure_loaded`, and a default`batch_infer` implementation so adapters
+  can focus on provider logic.
 
 - `agents/common/mock_adapter.py` — canonical deterministic mock adapter with configurable responses, forced-failure hooks, latency injection, and health metadata for CI tests.
 

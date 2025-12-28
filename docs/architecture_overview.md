@@ -114,13 +114,16 @@ Planned).
 
 - Intent: store raw HTML/artefacts and provide retrieval for auditing and reprocessing.
 
-- Status: MCP tool `queue_article`now normalizes HITL ingest payloads, snapshots raw HTML via`raw_html_*` helpers, and writes to Stage B storage (MariaDB + Chroma); Grafana wiring + long-term backfill tooling remain.
+- Status: MCP tool `queue_article`now normalizes HITL ingest payloads, snapshots raw HTML via`raw_html_*` helpers, and
+  writes to Stage B storage (MariaDB + Chroma); Grafana wiring + long-term backfill tooling remain.
 
 - Fact Checker, Synthesizer, Chief Editor, Journalist Agents — `agents/fact_checker/`,`agents/synthesizer/`,`agents/chief_editor/`,`agents/journalist/` — Partial
 
 - Intent: downstream processing — fact validation, summarization/synthesis, editorial suggestion, article drafting.
 
-- Status: Several agents implemented; many functions have tests and tools but full integration and operational tuning remain ongoing. Fact Checker (and the adjacent Critic workflows) now share the Mistral-7B base via adapters so accuracy-critical reviews stay aligned with the broader rollout.
+- Status: Several agents implemented; many functions have tests and tools but full integration and operational tuning
+  remain ongoing. Fact Checker (and the adjacent Critic workflows) now share the Mistral-7B base via adapters so
+  accuracy-critical reviews stay aligned with the broader rollout.
 
 ## Functional workflow patterns
 
@@ -148,7 +151,9 @@ Planned).
 
 1. Downstream Processing
 
-- Agents like `fact_checker`,`synthesizer`and`chief_editor` run asynchronously on ingested articles, producing derived artifacts (checks, summaries, editor suggestions). Fact Checker and Critic now lean on the shared Mistral adapter stack for long-form reasoning while retaining lightweight retrieval models for evidence gathering.
+- Agents like `fact_checker`,`synthesizer`and`chief_editor` run asynchronously on ingested articles, producing derived
+  artifacts (checks, summaries, editor suggestions). Fact Checker and Critic now lean on the shared Mistral adapter
+  stack for long-form reasoning while retaining lightweight retrieval models for evidence gathering.
 
 1. Metrics & Observability
 

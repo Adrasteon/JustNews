@@ -30,7 +30,8 @@
 
 ## Instrumentation Rollout
 
-1. **Phase 1 – Core services**: enable auto-instrumentation in Python crawlers, agents, and API gateways with W3C context propagation. Add custom spans around GPU scheduling, model inference, DB calls.
+1. **Phase 1 – Core services**: enable auto-instrumentation in Python crawlers, agents, and API gateways with W3C
+   context propagation. Add custom spans around GPU scheduling, model inference, DB calls.
 
 1. **Phase 2 – Background jobs**: instrument queues, schedulers, and training jobs. Leverage baggage for article IDs / job IDs to unify traces and logs.
 

@@ -4,7 +4,8 @@
 
 ## Overview
 
-> Note: The launcher now points to the stable fallback **Mistral-7B-Instruct-v0.3** on port **7060**. Qwen2-32B attempts are paused after hardware resets. This doc is retained for context but uses the new launcher name.
+> Note: The launcher now points to the stable fallback **Mistral-7B-Instruct-v0.3** on port **7060**. Qwen2-32B attempts
+are paused after hardware resets. This doc is retained for context but uses the new launcher name.
 
 This guide covers the integration of a vLLM-served model on a 24GB RTX 3090. The current setup uses:
 
@@ -160,7 +161,9 @@ export VLLM_API_KEY=REPLACE_WITH_YOUR_VLLM_API_KEY
 
 Notes:
 
-- CI runners typically do not have GPUs available; running the full vLLM server in CI is not recommended unless special GPU-enabled runners are provisioned. Instead, use the 'mistral-dryrun' job for adapter dry-run tests; the smoke test is intended for local dev or gated GPU CI.
+- CI runners typically do not have GPUs available; running the full vLLM server in CI is not recommended unless special
+  GPU-enabled runners are provisioned. Instead, use the 'mistral-dryrun' job for adapter dry-run tests; the smoke test
+  is intended for local dev or gated GPU CI.
 
 - The smoke test now includes short retry/backoff logic for transient readiness/auth races and validates model responses more robustly.
 
@@ -194,7 +197,9 @@ sudo systemctl enable --now vllm-mistral-7b.service
 
 - The `gpu_orchestrator`will collect adapters listed in`AGENT_MODEL_MAP.json`and expose`adapter_paths`on the`ModelSpec` for downstream adapter mounting (PEFT/LoRA) where supported by the runtime.
 
-- Monitoring and safety: the orchestrator will only start the model when sufficient GPU headroom exists and will monitor logs for CUDA OOM. It exports metrics `gpu_orchestrator_vllm_restarts_total`,`gpu_orchestrator_vllm_ooms_total`, and`gpu_orchestrator_vllm_status`.
+- Monitoring and safety: the orchestrator will only start the model when sufficient GPU headroom exists and will monitor
+  logs for CUDA OOM. It exports metrics `gpu_orchestrator_vllm_restarts_total`,`gpu_orchestrator_vllm_ooms_total`,
+  and`gpu_orchestrator_vllm_status`.
 
 - Each agent now has:
 

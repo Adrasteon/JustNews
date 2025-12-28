@@ -159,19 +159,29 @@ comprehensive mocks to simulate GPU behavior without requiring real hardware.
 
 1. Rollouts & safety
 
-   - **Status:** 🟡 Defined on paper. The adapter rollout guide (`docs/mistral_adapter_rollout.md`) and adapter spec/playbook include staging guidance, but there is no enforced gate tied to live-run KPIs.
+   - **Status:** 🟡 Defined on paper. The adapter rollout guide (`docs/mistral_adapter_rollout.md`) and adapter
+     spec/playbook include staging guidance, but there is no enforced gate tied to live-run KPIs.
 
    - Staging gating, manual approvals, audit logs — need integration with CI plus a checklist referencing success metrics, not just documentation.
 
 ## Immediate next steps
 
-1. **Automate parsing validation (initial suite done):** Deterministic fixtures now live under `tests/fixtures/canary_articles/` and are exercised via `tests/parsing/test_canary_articles.py`; extend coverage (authors/publish dates) and wire a nightly refresh job for new canaries.
+1. **Automate parsing validation (initial suite done):** Deterministic fixtures now live under
+   `tests/fixtures/canary_articles/` and are exercised via `tests/parsing/test_canary_articles.py`; extend coverage
+   (authors/publish dates) and wire a nightly refresh job for new canaries.
 
-1. **Operationalize the editorial harness outputs:** With normalized rows flowing through `agents/common/normalized_article_repository.py` and the nightly workflow (`.github/workflows/editorial-harness.yml`) exercising the chain end-to-end, focus on plumbing the Stage B acceptance metrics into Grafana (`docs/grafana/editorial-harness-wiring.md` + `docs/grafana/editorial-harness-dashboard.json`), capturing the stored drafts for the publisher checklist (`docs/editorial_harness_runbook.md`), and documenting operational controls (`infrastructure/systemd/scripts/enable_all.sh`) so operators can recycle the service fleet safely.
+1. **Operationalize the editorial harness outputs:** With normalized rows flowing through
+   `agents/common/normalized_article_repository.py` and the nightly workflow (`.github/workflows/editorial-harness.yml`)
+   exercising the chain end-to-end, focus on plumbing the Stage B acceptance metrics into Grafana
+   (`docs/grafana/editorial-harness-wiring.md` + `docs/grafana/editorial-harness-dashboard.json`), capturing the stored
+   drafts for the publisher checklist (`docs/editorial_harness_runbook.md`), and documenting operational controls
+   (`infrastructure/systemd/scripts/enable_all.sh`) so operators can recycle the service fleet safely.
 
 1. **Stand up publishing + observability loops:** The repo now contains a publisher app enabling local publish testing. Implementations completed in this update:
 
-- The editorial harness can now optionally publish accepted outputs back into the lightweight publisher DB using `--publish-on-accept` in `scripts/dev/run_agent_chain_harness.py` (opt-in to avoid accidental publishing in CI/production).
+- The editorial harness can now optionally publish accepted outputs back into the lightweight publisher DB using
+  `--publish-on-accept` in `scripts/dev/run_agent_chain_harness.py` (opt-in to avoid accidental publishing in
+  CI/production).
 
 Running the entire test-suite locally (including gated integrations)
 ---------------------------------------------------------------
@@ -218,13 +228,15 @@ export OPENAI_API_KEY="<your-openai-key>"
 
 Notes & tips:
 
-- The docker-compose file maps Chroma to the host port configured in `global.env` (3307 by default). If you need a different mapping, adjust `scripts/dev/docker-compose.e2e.yml` or set CHROMADB_PORT in your environment.
+- The docker-compose file maps Chroma to the host port configured in `global.env` (3307 by default). If you need a
+  different mapping, adjust `scripts/dev/docker-compose.e2e.yml` or set CHROMADB_PORT in your environment.
 
 - If you want to run only a subset of gated tests, export the relevant flags individually (for example, only `ENABLE_CHROMADB_LIVE_TESTS=1` to run Chroma tests).
 
 - In CI we bring up the same services (see `.github/workflows/editorial-harness.yml`) — we recommend mirroring the CI environment when troubleshooting integration failures.
 
-- Stage‑B publishing metrics were added to `common/stage_b_metrics.py` (`justnews_stage_b_publishing_total` and `justnews_stage_b_publishing_latency_seconds`) and are recorded when the harness publishes accepted drafts.
+- Stage‑B publishing metrics were added to `common/stage_b_metrics.py` (`justnews_stage_b_publishing_total` and
+  `justnews_stage_b_publishing_latency_seconds`) and are recorded when the harness publishes accepted drafts.
 
 - A helper `agents/common/publisher_integration.py` lets the harness write normalized articles into the publisher DB in a safe manner.
 
@@ -232,7 +244,9 @@ Notes & tips:
 
 - Grafana dashboard fragment `docs/grafana/publisher-dashboard.json` was added to show publish success/failure and latency.
 
-1. **Wire Grafana/alerting for Stage 1–2 metrics and publishing:** Expose the new `ingest_*` / `raw_html_*` counters and the `justnews_stage_b_publishing_*` metrics via dashboards + alerts. Add CI gating on canary ingestion/publish metrics to prevent regressions.
+1. **Wire Grafana/alerting for Stage 1–2 metrics and publishing:** Expose the new `ingest_*` / `raw_html_*` counters and
+   the `justnews_stage_b_publishing_*` metrics via dashboards + alerts. Add CI gating on canary ingestion/publish
+   metrics to prevent regressions.
 
 Recent repo activities performed on branch `dev/live-run-tests`:
 
@@ -246,7 +260,8 @@ Recent repo activities performed on branch `dev/live-run-tests`:
 
  - Add lightweight Django publisher app (`agents/publisher/`) with sample articles and manage command for manual ingestion.
 
- - Dashboard fixes: `agents/dashboard/dashboard_engine.py` now sources DB-driven `get_active_sources()`; `agents/dashboard/config.json` relaxed `news_sources` filtering (verification toggled off, `max_age_days` extended).
+ - Dashboard fixes: `agents/dashboard/dashboard_engine.py` now sources DB-driven `get_active_sources()`;
+   `agents/dashboard/config.json` relaxed `news_sources` filtering (verification toggled off, `max_age_days` extended).
 
  - Performed restarts for dashboard and crawl4ai to load fixes during live-run troubleshooting.
 
@@ -256,7 +271,9 @@ iterate through stages.
 ---
 ### ✅ Recent updates (as of 4 Dec 2025)
 
-- Fixed publish gating behavior in the editorial harness so that: when a `publish_token` is provided, verification is required; when no token is supplied publishing proceeds (useful for local dev). This resolved a failing unit test and clarified the expected behavior for local vs sandbox runs.
+- Fixed publish gating behavior in the editorial harness so that: when a `publish_token` is provided, verification is
+  required; when no token is supplied publishing proceeds (useful for local dev). This resolved a failing unit test and
+  clarified the expected behavior for local vs sandbox runs.
 
 - Added tests to cover: publish without token (local/dev), publish with a valid token (CI sandbox), and skipped publishing when the token is invalid.
 

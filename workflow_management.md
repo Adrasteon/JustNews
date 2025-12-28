@@ -11,13 +11,24 @@ throttles, and ensure work completes without losing state due to crashes or rest
 
 ## Current Status (updated 2025-12-01)
 
-- **Core implementation**: Phases 1–6 are implemented and covered by unit, integration and e2e tests. The orchestrator now supports persistent leases, worker pool persistence, a job store (MariaDB), a reclaimer loop that handles stale Redis stream entries, and a policy enforcer for worker pools.
+- **Core implementation**: Phases 1–6 are implemented and covered by unit, integration and e2e tests. The orchestrator
+  now supports persistent leases, worker pool persistence, a job store (MariaDB), a reclaimer loop that handles stale
+  Redis stream entries, and a policy enforcer for worker pools.
 
-- **Instrumentation & testing**: There are comprehensive unit tests and integration/e2e tests such as `tests/integration/test_worker_flow.py`,`tests/integration/test_orchestrator_e2e.py`and`tests/e2e/test_orchestrator_real_e2e.py`that exercise DB-backed job lifecycle, reclaimer behavior and worker flows. A Docker-based E2E PoC with`scripts/dev/docker-compose.e2e.yml` is present and used for manual and CI-driven checks.
+- **Instrumentation & testing**: There are comprehensive unit tests and integration/e2e tests such as `tests/integration
+  /test_worker_flow.py`,`tests/integration/test_orchestrator_e2e.py`and`tests/e2e/test_orchestrator_real_e2e.py`that
+  exercise DB-backed job lifecycle, reclaimer behavior and worker flows. A Docker-based E2E PoC with`scripts/dev/docker-
+  compose.e2e.yml` is present and used for manual and CI-driven checks.
 
-- **Production-readiness gap**: Phase 7 (operations runbook, hardened claim semantics, production-grade Redis XAUTOCLAIM/XCLAIM handling, idempotency hardening and autoscaler policies) is partially complete: many runtime components exist and are tested, but production hardening and operational runbooks need consolidation and final verification on production-like infra.
+- **Production-readiness gap**: Phase 7 (operations runbook, hardened claim semantics, production-grade Redis
+  XAUTOCLAIM/XCLAIM handling, idempotency hardening and autoscaler policies) is partially complete: many runtime
+  components exist and are tested, but production hardening and operational runbooks need consolidation and final
+  verification on production-like infra.
 
-- **Where code exists**: Key implementation lives under `agents/gpu_orchestrator`(`gpu_orchestrator_engine.py`,`worker.py`,`main.py`,`job_consumer.py`), DB initialization is available in`scripts/deploy/init_database.py`and`scripts/dev/db-seed/justnews_init.sql`, and runbooks/tests are under`docs/gpu_orchestrator_runbook.md`and`tests/`.
+- **Where code exists**: Key implementation lives under
+  `agents/gpu_orchestrator`(`gpu_orchestrator_engine.py`,`worker.py`,`main.py`,`job_consumer.py`), DB initialization is
+  available in`scripts/deploy/init_database.py`and`scripts/dev/db-seed/justnews_init.sql`, and runbooks/tests are
+  under`docs/gpu_orchestrator_runbook.md`and`tests/`.
 
 ---
 
@@ -178,9 +189,12 @@ stream for consumers.
 Consumer model (implemented): This behavior has been implemented and tested in the engine's reclaimer and worker
 implementation. Important implementation notes:
 
-- The Worker (agents/gpu_orchestrator/worker.py) uses a best-effort fallback (xrange) where xreadgroup is not present, decodes fields, normalizes job ids and payloads, updates orchestrator_jobs status transitions (claimed -> done/failed), and ACKs messages.
+- The Worker (agents/gpu_orchestrator/worker.py) uses a best-effort fallback (xrange) where xreadgroup is not present,
+  decodes fields, normalizes job ids and payloads, updates orchestrator_jobs status transitions (claimed ->
+  done/failed), and ACKs messages.
 
-- The engine's `_reclaimer_pass`examines pending entries older than ORCH_CLAIM_IDLE_MS, increments attempts, requeues or moves messages to DLQ, and updates`orchestrator_jobs` accordingly. Unit tests cover both requeue and DLQ behavior.
+- The engine's `_reclaimer_pass`examines pending entries older than ORCH_CLAIM_IDLE_MS, increments attempts, requeues or
+  moves messages to DLQ, and updates`orchestrator_jobs` accordingly. Unit tests cover both requeue and DLQ behavior.
 
 4) Health & leader
 
@@ -201,21 +215,29 @@ engine. Only the leader performs lifecycle enforcement and reclaimer passes. Lea
 DB advisory lock and the engine logs leader transitions.
 ### Phase 6 — Worker + lease usage and job lifecycle (IMPLEMENTED)
 
-- Worker implementation completed. `agents/gpu_orchestrator/worker.py` implements a simple worker that claims messages, requests leases from the engine, updates orchestrator_jobs status transitions and releases leases.
+- Worker implementation completed. `agents/gpu_orchestrator/worker.py` implements a simple worker that claims messages,
+  requests leases from the engine, updates orchestrator_jobs status transitions and releases leases.
 
 - Integration tests added: tests/integration/test_worker_flow.py verifies worker end-to-end behavior (claimed -> done, failure handling, lease denial behavior).
 
 ### Phase 7 — E2E integration, production hardening & operator runbook
 
-- **Status**: Core E2E testing is present and exercised via Docker PoC tests (`tests/e2e/...`) and system-level DB initialization scripts. A draft operator runbook (`docs/gpu_orchestrator_runbook.md`) exists. However, production hardening items remain and should be prioritized before full rollout.
+- **Status**: Core E2E testing is present and exercised via Docker PoC tests (`tests/e2e/...`) and system-level DB
+  initialization scripts. A draft operator runbook (`docs/gpu_orchestrator_runbook.md`) exists. However, production
+  hardening items remain and should be prioritized before full rollout.
 
 #### Remaining/partially-implemented areas (high impact)
 
-- Robust production Redis semantics: while `xautoclaim`/`xclaim` and fallback paths are implemented, we must verify Redis version compatibility, strengthen reclaimer edge cases, and confirm performance characteristics under high churn.
+- Robust production Redis semantics: while `xautoclaim`/`xclaim` and fallback paths are implemented, we must verify
+  Redis version compatibility, strengthen reclaimer edge cases, and confirm performance characteristics under high
+  churn.
 
-- Idempotency & timeouts: handlers and consumers must be hardened with explicit idempotency checks (job-level dedup, strict timeouts and cancellable work) and clearer transactional boundaries when acquiring leases + claiming jobs.
+- Idempotency & timeouts: handlers and consumers must be hardened with explicit idempotency checks (job-level dedup,
+  strict timeouts and cancellable work) and clearer transactional boundaries when acquiring leases + claiming jobs.
 
-- Operator runbook finalization: `docs/gpu_orchestrator_runbook.md` contains useful material, but it needs completion items and playbooks (evict/pause/drain flows, disaster recovery steps, rollback procedures, and a tested checklist for safe migrations).
+- Operator runbook finalization: `docs/gpu_orchestrator_runbook.md` contains useful material, but it needs completion
+  items and playbooks (evict/pause/drain flows, disaster recovery steps, rollback procedures, and a tested checklist for
+  safe migrations).
 
 - Monitoring & alerting: more detailed autoscaler rules, alert tuning for reclaimer failures/infinite loops, and SLO-driven dashboards need completion.
 

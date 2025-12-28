@@ -27,7 +27,9 @@ Set the following variables (recommended in `/etc/justnews/global.env`):
 
 - `CHROMADB_REQUIRE_CANONICAL`— if`1`, the agent will fail at startup if`CHROMADB_HOST/PORT` does not match canonical values.
 
-- `CHROMADB_CANONICAL_HOST`&`CHROMADB_CANONICAL_PORT` — canonical host & port for this deployment. If canonical enforcement is enabled and the runtime host/port doesn't match, the service will abort start and provide diagnostic error messages.
+- `CHROMADB_CANONICAL_HOST`&`CHROMADB_CANONICAL_PORT` — canonical host & port for this deployment. If canonical
+  enforcement is enabled and the runtime host/port doesn't match, the service will abort start and provide diagnostic
+  error messages.
 
 ## Operator Commands
 

@@ -22,15 +22,25 @@ supports:
 
 We recently added several operational improvements to make local and production deployments safer and easier to manage:
 
-- **MCP Bus health & metrics**: the MCP Bus `/health`endpoint now performs best-effort per-agent probes and returns structured`agent_details` plus overall status, allowing precise monitoring and alerting.
+- **MCP Bus health & metrics**: the MCP Bus `/health`endpoint now performs best-effort per-agent probes and returns
+  structured`agent_details` plus overall status, allowing precise monitoring and alerting.
 
-- **Prometheus & Grafana**: new Prometheus alert rules for MCP Bus overall and per-agent degraded/unreachable conditions (`monitoring/alerts/mcp_bus_alerts.yml`) and Grafana panels (Overall health stat, Degraded Count, Agent Status table) have been added and provisioned in the system overview dashboard.
+- **Prometheus & Grafana**: new Prometheus alert rules for MCP Bus overall and per-agent degraded/unreachable conditions
+  (`monitoring/alerts/mcp_bus_alerts.yml`) and Grafana panels (Overall health stat, Degraded Count, Agent Status table)
+  have been added and provisioned in the system overview dashboard.
 
-- **Alertmanager support**: an example Alertmanager configuration and templates were added (`monitoring/alertmanager/alertmanager.example.yml`,`monitoring/alertmanager/mcp_bus_templates.tmpl`), together with an idempotent systemd unit installer script`scripts/install_alertmanager_unit.sh`and Makefile helpers (`make alertmanager-install`,`make alertmanager-install-unit`,`make alertmanager-test`).
+- **Alertmanager support**: an example Alertmanager configuration and templates were added
+  (`monitoring/alertmanager/alertmanager.example.yml`,`monitoring/alertmanager/mcp_bus_templates.tmpl`), together with
+  an idempotent systemd unit installer script`scripts/install_alertmanager_unit.sh`and Makefile helpers (`make
+  alertmanager-install`,`make alertmanager-install-unit`,`make alertmanager-test`).
 
-- **Startup integration**: optional opt-in behaviour (`AUTO_INSTALL_ALERTMANAGER`) lets the`mcp_bus`startup sequence run the idempotent Alertmanager installer to provision and enable the host-level unit. This is disabled by default for multi-host safety; set`AUTO_INSTALL_ALERTMANAGER=1`in`/etc/justnews/global.env` only on controlled admin hosts.
+- **Startup integration**: optional opt-in behaviour (`AUTO_INSTALL_ALERTMANAGER`) lets the`mcp_bus`startup sequence run
+  the idempotent Alertmanager installer to provision and enable the host-level unit. This is disabled by default for
+  multi-host safety; set`AUTO_INSTALL_ALERTMANAGER=1`in`/etc/justnews/global.env` only on controlled admin hosts.
 
-- **Model & orchestrator readiness**: Mistral‑7B is the new default vLLM model, with ModelSpec & GPU orchestrator integration, conservative defaults, and monitoring for OOM/restarts. See `docs/operations/VLLM_MISTRAL_7B_SETUP.md`and`docs/operations/ModelSpec.md` for details.
+- **Model & orchestrator readiness**: Mistral‑7B is the new default vLLM model, with ModelSpec & GPU orchestrator
+  integration, conservative defaults, and monitoring for OOM/restarts. See
+  `docs/operations/VLLM_MISTRAL_7B_SETUP.md`and`docs/operations/ModelSpec.md` for details.
 
 ---
 
@@ -314,9 +324,12 @@ sudo journalctl -u justnews-mcp-bus -f
 
 This repository now includes a richer monitoring and alerting setup for operational readiness and rapid incident triage.
 
-- **Prometheus**: configured via `infrastructure/systemd/monitoring/prometheus.yml`. Alert rules for MCP Bus are in`monitoring/alerts/mcp_bus_alerts.yml` (MCPBusOverallDegraded, MCPBusAgentUnreachable, MCPBusAgentDegraded).
+- **Prometheus**: configured via `infrastructure/systemd/monitoring/prometheus.yml`. Alert rules for MCP Bus are
+  in`monitoring/alerts/mcp_bus_alerts.yml` (MCPBusOverallDegraded, MCPBusAgentUnreachable, MCPBusAgentDegraded).
 
-- **Grafana**: dashboards are provisioned under `infrastructure/systemd/monitoring/grafana/provisioning`. The System Overview dashboard includes new panels for MCP Bus overall health, degraded agent counts and a per-agent status table (see`monitoring/dashboards/generated/system_overview_dashboard.json`).
+- **Grafana**: dashboards are provisioned under `infrastructure/systemd/monitoring/grafana/provisioning`. The System
+  Overview dashboard includes new panels for MCP Bus overall health, degraded agent counts and a per-agent status table
+  (see`monitoring/dashboards/generated/system_overview_dashboard.json`).
 
 - **Alertmanager**: example config & templates are provided at `monitoring/alertmanager/alertmanager.example.yml`and`monitoring/alertmanager/mcp_bus_templates.tmpl`.
 
@@ -324,7 +337,8 @@ This repository now includes a richer monitoring and alerting setup for operatio
 
 - Makefile helpers: `make alertmanager-install`,`make alertmanager-install-unit`,`make alertmanager-enable`,`make alertmanager-test`.
 
-- **MCP Bus health**: the MCP Bus `/health`endpoint now performs per-agent probes and emits metrics that drive alerts and Grafana rendering. See`docs/operations/MCP_BUS_HEALTH.md` for details and testing guidance.
+- **MCP Bus health**: the MCP Bus `/health`endpoint now performs per-agent probes and emits metrics that drive alerts
+  and Grafana rendering. See`docs/operations/MCP_BUS_HEALTH.md` for details and testing guidance.
 
 Quick commands:
 
@@ -362,7 +376,8 @@ make alertmanager-test
 
 Operational notes:
 
-- We intentionally default `AUTO_INSTALL_ALERTMANAGER=0`in`/etc/justnews/global.env`; enable it only on controlled admin hosts if you want the MCP Bus startup to ensure Alertmanager systemd unit is installed/started automatically.
+- We intentionally default `AUTO_INSTALL_ALERTMANAGER=0`in`/etc/justnews/global.env`; enable it only on controlled admin
+  hosts if you want the MCP Bus startup to ensure Alertmanager systemd unit is installed/started automatically.
 
 - For triage guidance and runbooks, see `docs/operations/MCP_BUS_ALERTS_RUNBOOK.md`and`docs/operations/MCP_BUS_HEALTH.md`.
 

@@ -2,7 +2,9 @@
 
 Overview
 
-- Trafilatura-first extraction pipeline with layered fallbacks (readability-lxml, jusText, plain-sanitizer). The pipeline is intended to provide high-quality cleaned article text with metadata suitable for indexing and downstream consumption.
+- Trafilatura-first extraction pipeline with layered fallbacks (readability-lxml, jusText, plain-sanitizer). The
+  pipeline is intended to provide high-quality cleaned article text with metadata suitable for indexing and downstream
+  consumption.
 
 Files of interest
 

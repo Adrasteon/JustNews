@@ -46,7 +46,9 @@ clear acceptance checks and rollback guidance.
 
 - Tooling: `git`,`curl`,`jq`,`psql`,`python`,`pip`(or conda),`virtualenv`.
 
-- Content tooling: ensure packages for extraction and embeddings are available (`trafilatura`,`readability-lxml`,`jusText`,`extruct`,`langdetect`,`sentence-transformers`,`chromadb`). Pin versions in`requirements.txt` before deployment.
+- Content tooling: ensure packages for extraction and embeddings are available (`trafilatura`,`readability-
+  lxml`,`jusText`,`extruct`,`langdetect`,`sentence-transformers`,`chromadb`). Pin versions in`requirements.txt` before
+  deployment.
 
 Required: NVIDIA MPS. MPS is an essential part of the design to protect GPU stability under concurrent workloads, reduce
 memory fragmentation, and mitigate hard GPU crashes from OOM conditions and memory leaks.
@@ -55,7 +57,8 @@ memory fragmentation, and mitigate hard GPU crashes from OOM conditions and memo
 
 A0. Host cleanup (we already ran these during teardown)
 
-- If you previously installed a lightweight Kubernetes (k3s) for legacy testing or POC, remove it to avoid service conflicts with systemd. This step is only necessary if you actually installed k3s; skip if not present:
+- If you previously installed a lightweight Kubernetes (k3s) for legacy testing or POC, remove it to avoid service
+  conflicts with systemd. This step is only necessary if you actually installed k3s; skip if not present:
 
 - `/usr/local/bin/k3s-uninstall.sh`
 
@@ -147,7 +150,8 @@ A4. Install systemd artifacts
 
 A5. NVIDIA MPS (essential / required)
 
-- Why required: MPS prevents class of GPU failures stemming from memory pressure, fragmentation, and leaks by multiplexing contexts; it dramatically reduces OOM-induced device resets. Keep it enabled for all stages in this plan.
+- Why required: MPS prevents class of GPU failures stemming from memory pressure, fragmentation, and leaks by
+  multiplexing contexts; it dramatically reduces OOM-induced device resets. Keep it enabled for all stages in this plan.
 
 - Start once per boot: `sudo nvidia-cuda-mps-control -d`.
 
@@ -227,29 +231,49 @@ B0. Gating
 
 - With multiple sources ingesting cleanly, begin exercising the “Top X” workflow (clustering, fact search) using the new BBC-derived articles as seed data.
 
-- 2025-11-02 status: canonical restart applied via `infrastructure/systemd/canonical_system_startup.sh`, BBC profile rerun with`scripts/ops/run_crawl_schedule.py --testrun`ingested 60/60 articles, zero ingestion errors, dedupe zero, Stage B metrics clean; evidence captured in`logs/analytics/crawl_scheduler_state.json` and sampler snippets stored in the bring-up ticket.
+- 2025-11-02 status: canonical restart applied via `infrastructure/systemd/canonical_system_startup.sh`, BBC profile
+  rerun with`scripts/ops/run_crawl_schedule.py --testrun`ingested 60/60 articles, zero ingestion errors, dedupe zero,
+  Stage B metrics clean; evidence captured in`logs/analytics/crawl_scheduler_state.json` and sampler snippets stored in
+  the bring-up ticket.
 
 B1. Curated seed list and run scheduling
 
-- Build `config/crawl_schedule.yaml`(or similar) enumerating priority sources, sections, update cadence, and per-run article caps. **Implementation note:** The repository now ships`config/crawl_schedule.yaml` with governance metadata for the primary cohorts.
+- Build `config/crawl_schedule.yaml`(or similar) enumerating priority sources, sections, update cadence, and per-run
+  article caps. **Implementation note:** The repository now ships`config/crawl_schedule.yaml` with governance metadata
+  for the primary cohorts.
 
-- Define per-domain Crawl4AI profiles under `config/crawl_profiles/`(one YAML per domain) so operators can control depth, link filters, and JS automation without code changes. Align schedule cohorts with the matching profile slugs (e.g.,`standard_crawl4ai`,`deep_financial_sections`,`legacy_generic`).
+- Define per-domain Crawl4AI profiles under `config/crawl_profiles/`(one YAML per domain) so operators can control
+  depth, link filters, and JS automation without code changes. Align schedule cohorts with the matching profile slugs
+  (e.g.,`standard_crawl4ai`,`deep_financial_sections`,`legacy_generic`).
 
-- Implement an hourly scheduler (systemd timer or cron) that invokes the crawler agent with batched domain lists, respecting the global target of top **X** stories (default 500). **Implementation note:** Use `scripts/ops/run_crawl_schedule.py`+`infrastructure/systemd/scripts/run_crawl_schedule.sh`, driven by the`justnews-crawl-scheduler.timer` unit.
+- Implement an hourly scheduler (systemd timer or cron) that invokes the crawler agent with batched domain lists,
+  respecting the global target of top **X** stories (default 500). **Implementation note:** Use
+  `scripts/ops/run_crawl_schedule.py`+`infrastructure/systemd/scripts/run_crawl_schedule.sh`, driven by the`justnews-
+  crawl-scheduler.timer` unit.
 
-- Add health metrics: last successful run timestamp, domains crawled, articles accepted, scheduler lag. **Implemented via** Prometheus textfile output at `logs/analytics/crawl_scheduler.prom`(overridable) with gauges`justnews_crawler_scheduler_*`.
+- Add health metrics: last successful run timestamp, domains crawled, articles accepted, scheduler lag. **Implemented
+  via** Prometheus textfile output at `logs/analytics/crawl_scheduler.prom`(overridable) with
+  gauges`justnews_crawler_scheduler_*`.
 
-- Establish governance cadence: document source terms-of-use, rate limits, and review schedule (e.g., weekly curation audit). Track violations and remediation steps in an ops log (see `logs/governance/crawl_terms_audit.md`).
+- Establish governance cadence: document source terms-of-use, rate limits, and review schedule (e.g., weekly curation
+  audit). Track violations and remediation steps in an ops log (see `logs/governance/crawl_terms_audit.md`).
 
 B2. High-precision extraction pipeline
 
-- Integrate Trafilatura as the primary extractor inside the crawler agent; configure fallbacks (readability-lxml, jusText) invoked automatically when confidence is low. **Implemented via** `agents/crawler/extraction.py`, consumed by`GenericSiteCrawler`.
+- Integrate Trafilatura as the primary extractor inside the crawler agent; configure fallbacks (readability-lxml,
+  jusText) invoked automatically when confidence is low. **Implemented via** `agents/crawler/extraction.py`, consumed
+  by`GenericSiteCrawler`.
 
-- Parse structured metadata using `extruct`(JSON-LD, microdata) and enrich results with publication date, authors, canonical URL, section tags, and language detection (`langdetect` or fastText). **Output propagated** through the crawler article payload and passed to ingestion.
+- Parse structured metadata using `extruct`(JSON-LD, microdata) and enrich results with publication date, authors,
+  canonical URL, section tags, and language detection (`langdetect` or fastText). **Output propagated** through the
+  crawler article payload and passed to ingestion.
 
-- Persist raw HTML in blob storage or a dedicated column for forensic reprocessing and extractor improvements. **Raw artefacts now written** under `archive_storage/raw_html/`(override with`JUSTNEWS_RAW_HTML_DIR`).
+- Persist raw HTML in blob storage or a dedicated column for forensic reprocessing and extractor improvements. **Raw
+  artefacts now written** under `archive_storage/raw_html/`(override with`JUSTNEWS_RAW_HTML_DIR`).
 
-- Add quality heuristics (minimum word count, boilerplate ratio, HTML sanity) and emit a “needs_review” flag when thresholds fail. **Heuristics configurable** via `ARTICLE_MIN_WORDS`/`ARTICLE_MIN_TEXT_HTML_RATIO`; failures bubble to`extraction_metadata.review_reasons`.
+- Add quality heuristics (minimum word count, boilerplate ratio, HTML sanity) and emit a “needs_review” flag when
+  thresholds fail. **Heuristics configurable** via `ARTICLE_MIN_WORDS`/`ARTICLE_MIN_TEXT_HTML_RATIO`; failures bubble
+  to`extraction_metadata.review_reasons`.
 
 B3. Storage and schema updates
 
@@ -279,13 +303,17 @@ B4. Embedding generation and clustering preparation
 
 B5. Validation and monitoring
 
-- Regression tests: add fixtures with varied HTML to ensure extractor cascade behaves and metadata is captured. **Covered by** `tests/agents/crawler/test_extraction.py`and`tests/agents/crawler/test_generic_site_crawler.py`.
+- Regression tests: add fixtures with varied HTML to ensure extractor cascade behaves and metadata is captured.
+  **Covered by** `tests/agents/crawler/test_extraction.py`and`tests/agents/crawler/test_generic_site_crawler.py`.
 
 - Add integration tests covering scheduler-triggered crawl, ingestion, embedding computation, and duplicate suppression.
 
 - Extend observability (Prometheus/Grafana panels) with extraction success rate, fallback usage, duplicate count, and article throughput trendlines.
 
-- **Implemented by** `common/stage_b_metrics.StageBMetrics`counters consumed in`agents/crawler/extraction.py`and`agents/memory/tools.py`; validated via`tests/agents/crawler/test_extraction.py`and`tests/agents/memory/test_save_article.py`. Use the`docs/operations/stage_b_validation.md` playbook to coordinate dashboard updates and collect exit evidence.
+- **Implemented by** `common/stage_b_metrics.StageBMetrics`counters consumed
+  in`agents/crawler/extraction.py`and`agents/memory/tools.py`; validated
+  via`tests/agents/crawler/test_extraction.py`and`tests/agents/memory/test_save_article.py`. Use
+  the`docs/operations/stage_b_validation.md` playbook to coordinate dashboard updates and collect exit evidence.
 
 - Launch a human-in-the-loop sampling program (by language/region) with QA dashboards to surface extractor drift.
 
@@ -295,21 +323,28 @@ B5. Validation and monitoring
 
 B6. Automated crawl-profile author roadmap
 
-- Goal: deliver a cron-driven service that fingerprints each source in the `sources`table, generates or adjusts its`config/crawl_profiles/<slug>.yaml`, validates the change, and promotes the update with evidence.
+- Goal: deliver a cron-driven service that fingerprints each source in the `sources`table, generates or adjusts
+  its`config/crawl_profiles/<slug>.yaml`, validates the change, and promotes the update with evidence.
 
 - Phase 0 (prereqs): catalogue current profiles, codify schema (JSONSchema + lint), stand up isolated test runner plus HTML snapshot store.
 
 - Phase 1 (fingerprinting): Playwright-based sampler collects landing pages, link graphs, pagination hints, DOM metrics; artifacts versioned under `logs/operations/profile_author/` for diffing.
 
-- Phase 2 (synthesis engine): heuristics convert fingerprints into draft profiles—start URLs, link filters, `target_elements`, adaptive knobs—rendered via template + schema validation with provenance metadata.
+- Phase 2 (synthesis engine): heuristics convert fingerprints into draft profiles—start URLs, link filters,
+  `target_elements`, adaptive knobs—rendered via template + schema validation with provenance metadata.
 
-- Phase 3 (evaluation loop): execute short Crawl4AI runs against drafts, score recall/precision, auto-adjust selectors, and persist metrics (attempts, ingestion success, fallback usage) in a dedicated table for trend tracking.
+- Phase 3 (evaluation loop): execute short Crawl4AI runs against drafts, score recall/precision, auto-adjust selectors,
+  and persist metrics (attempts, ingestion success, fallback usage) in a dedicated table for trend tracking.
 
-- Phase 4 (drift detection): nightly job compares fresh fingerprints to baselines, triggers re-generation when DOM hashes or ingestion failure rate exceed thresholds, and stores profile versions with diff reports.
+- Phase 4 (drift detection): nightly job compares fresh fingerprints to baselines, triggers re-generation when DOM
+  hashes or ingestion failure rate exceed thresholds, and stores profile versions with diff reports.
 
-- Phase 5 (operations): integrate with systemd timer/cron, emit Prometheus counters, open change requests when automation confidence < approved threshold, and maintain manual override path. Wire dashboards to show last profile refresh, drift alerts, and pending operator reviews.
+- Phase 5 (operations): integrate with systemd timer/cron, emit Prometheus counters, open change requests when
+  automation confidence < approved threshold, and maintain manual override path. Wire dashboards to show last profile
+  refresh, drift alerts, and pending operator reviews.
 
-- Rollout gating: keep automation in shadow mode until it produces two consecutive clean runs (zero ingestion errors, recall within tolerance) for BBC baseline; expand cohort-by-cohort with ops sign-off.
+- Rollout gating: keep automation in shadow mode until it produces two consecutive clean runs (zero ingestion errors,
+  recall within tolerance) for BBC baseline; expand cohort-by-cohort with ops sign-off.
 
 Exit criteria for Stage B:
 
@@ -351,7 +386,9 @@ C3. Corroboration workflows and clustering
 
 - Implement automated web search agent(s) that craft targeted queries per fact, evaluate snippet authority, and capture confirming vs. contradicting references.
 
-- After each article receives its Grounded Truth Value, run clustering jobs on embeddings. Persist cluster metadata (member URLs, representative embedding, consensus headline) along with aggregated GTV weights for downstream synthesis.
+- After each article receives its Grounded Truth Value, run clustering jobs on embeddings. Persist cluster metadata
+  (member URLs, representative embedding, consensus headline) along with aggregated GTV weights for downstream
+  synthesis.
 
 - Add media verification pipeline: reverse image search, basic deepfake detection, and transcript validation for audiovisual references.
 

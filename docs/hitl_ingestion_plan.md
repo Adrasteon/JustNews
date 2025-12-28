@@ -57,9 +57,12 @@ decision (Not news / Messy news / Valid news) and the system optimistically inge
 
 - HITL Service (new):
 
-- registers with MCP Bus on startup, validates downstream forward targets, persists candidates, prioritises queue, serves annotator UI via REST/WebSocket, accepts labels, publishes LabelEvents, and enqueues ingest jobs through the bus.
+- registers with MCP Bus on startup, validates downstream forward targets, persists candidates, prioritises queue,
+  serves annotator UI via REST/WebSocket, accepts labels, publishes LabelEvents, and enqueues ingest jobs through the
+  bus.
 
-- exposes env knobs (`MCP_BUS_URL`,`HITL_AGENT_NAME`,`HITL_SERVICE_ADDRESS`,`HITL_FORWARD_*`,`HITL_CANDIDATE_FORWARD_*`,`HITL_TRAINING_FORWARD_*`) so staging and production endpoints can be configured without code edits.
+- exposes env knobs (`MCP_BUS_URL`,`HITL_AGENT_NAME`,`HITL_SERVICE_ADDRESS`,`HITL_FORWARD_*`,`HITL_CANDIDATE_FORWARD_*`,
+  `HITL_TRAINING_FORWARD_*`) so staging and production endpoints can be configured without code edits.
 
 - surfaces queue depth, QA backlog, and ingest dispatch metrics via Prometheus-compatible gauges and counters wrapped in `JustNewsMetrics`.
 
@@ -273,15 +276,20 @@ Tune thresholds based on observed precision/recall.
 
 - Annotator metrics: labels/hour, avg decision time (target ≤10s), per-annotator error rate via QA samples.
 
-- Pipeline metrics: queue depth (`hitl_pending_candidates`,`hitl_in_review_candidates`,`pending_total`), label→ingest latency (target ≤2s), ingest backlog size (`hitl_ingest_backlog`), % auto-ingested.
+- Pipeline metrics: queue depth (`hitl_pending_candidates`,`hitl_in_review_candidates`,`pending_total`), label→ingest
+  latency (target ≤2s), ingest backlog size (`hitl_ingest_backlog`), % auto-ingested.
 
-- MCP integrations: `hitl_mcp_candidate_events_total`,`hitl_mcp_label_events_total`, forward-target gauges (`hitl_forward_registry_available`,`hitl_forward_agent_available`,`hitl_candidate_forward_agent_available`,`hitl_training_forward_agent_available`).
+- MCP integrations: `hitl_mcp_candidate_events_total`,`hitl_mcp_label_events_total`, forward-target gauges (`hitl_forwar
+  d_registry_available`,`hitl_forward_agent_available`,`hitl_candidate_forward_agent_available`,`hitl_training_forward_a
+  gent_available`).
 
 - Ingest dispatch health: counters for attempts/success/failure (`hitl_ingest_dispatch_*`) and duration timings to profile downstream MCP calls.
 
-- QA sampling failure rate and automated triggers (throttle optimistic ingestion when it rises); dedicated gauges `hitl_qa_pending_total`,`hitl_qa_failure_rate`, and windowed review counts support alerts.
+- QA sampling failure rate and automated triggers (throttle optimistic ingestion when it rises); dedicated gauges
+  `hitl_qa_pending_total`,`hitl_qa_failure_rate`, and windowed review counts support alerts.
 
-- QA queue health exposed to dashboards and reviewer tooling via the stats endpoints and Prometheus gauges; monitor `HITL_QA_BACKLOG_ALERT_THRESHOLD`and`HITL_QA_FAILURE_RATE_ALERT_THRESHOLD` to tune notifications.
+- QA queue health exposed to dashboards and reviewer tooling via the stats endpoints and Prometheus gauges; monitor
+  `HITL_QA_BACKLOG_ALERT_THRESHOLD`and`HITL_QA_FAILURE_RATE_ALERT_THRESHOLD` to tune notifications.
 
 ## Edge cases & mitigations
 
@@ -353,7 +361,9 @@ Service integration details:
 
 - Supply `HITL_PRIORITY_SITES` (comma-separated) to boost key sources in the queueing heuristic.
 
-- Configure QA monitoring via `HITL_QA_BACKLOG_ALERT_THRESHOLD`,`HITL_QA_FAILURE_RATE_ALERT_THRESHOLD`,`HITL_QA_FAILURE_MIN_SAMPLE`, and`HITL_QA_MONITOR_INTERVAL_SECONDS` to align with reviewer capacity.
+- Configure QA monitoring via
+  `HITL_QA_BACKLOG_ALERT_THRESHOLD`,`HITL_QA_FAILURE_RATE_ALERT_THRESHOLD`,`HITL_QA_FAILURE_MIN_SAMPLE`,
+  and`HITL_QA_MONITOR_INTERVAL_SECONDS` to align with reviewer capacity.
 
 - Ensure the downstream ingest agent exposes an MCP tool that accepts the `/api/label` `ingest_payload` schema.
 

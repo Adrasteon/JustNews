@@ -34,7 +34,8 @@ Components
 
 How it works
 
-1. The GPU activity agent polls nvidia-smi every second (configurable). When it observes sustained GPU utilization above a configured threshold the agent starts the CSV collector and the Prometheus exporter.
+1. The GPU activity agent polls nvidia-smi every second (configurable). When it observes sustained GPU utilization above
+   a configured threshold the agent starts the CSV collector and the Prometheus exporter.
 
 1. When GPU utilization drops and remains below a configured threshold for a configurable period, the agent stops both services.
 
@@ -75,7 +76,8 @@ Notes & Security
 
 Next steps
 
-- Integrate the agent into your GPU node provisioning (systemd, container) and add a Prometheus scrape job for the exporter port. Optionally, add alerts (high GPU temp, sudden drop in CPU/RAPL readings) to the monitoring stack.
+- Integrate the agent into your GPU node provisioning (systemd, container) and add a Prometheus scrape job for the
+  exporter port. Optionally, add alerts (high GPU temp, sudden drop in CPU/RAPL readings) to the monitoring stack.
 
 Installation notes ------------------ We've included helper scripts to install the service and logrotate policy into the
 host system. On a target GPU host run (requires sudo):
@@ -159,9 +161,12 @@ forwarding is temporarily disabled.
 
 ### Application instrumentation
 
-- Services can opt-in to automatic tracing + OTLP export by calling `common.observability.bootstrap_observability("service-name")`during startup. The helper wires local logging and OpenTelemetry exporters (respecting the`OTEL_EXPORTER_*` env vars documented above).
+- Services can opt-in to automatic tracing + OTLP export by calling
+  `common.observability.bootstrap_observability("service-name")`during startup. The helper wires local logging and
+  OpenTelemetry exporters (respecting the`OTEL_EXPORTER_*` env vars documented above).
 
-- Our Python tracing helpers (`agents/common/tracing.py`) now forward spans to OpenTelemetry whenever the SDK is installed and initialized, so existing`@traced` decorators produce both legacy in-process summaries and OTLP spans.
+- Our Python tracing helpers (`agents/common/tracing.py`) now forward spans to OpenTelemetry whenever the SDK is
+  installed and initialized, so existing`@traced` decorators produce both legacy in-process summaries and OTLP spans.
 
 ### Prometheus integration
 

@@ -24,7 +24,9 @@ Packages / tooling required on the runner
 
 Runner caching (optional but recommended)
 
-- For faster CI runs, the workflow uses a prebuilt container cache at `/var/lib/ci_cache/justnews_test_base.tar.gz`on the runner. The repository ships`scripts/dev/setup_selfhosted_runner.sh` which can install required tooling and build a cache tarball. The workflow will reuse this cached container when present to avoid re-running debootstrap each job.
+- For faster CI runs, the workflow uses a prebuilt container cache at `/var/lib/ci_cache/justnews_test_base.tar.gz`on
+  the runner. The repository ships`scripts/dev/setup_selfhosted_runner.sh` which can install required tooling and build
+  a cache tarball. The workflow will reuse this cached container when present to avoid re-running debootstrap each job.
 
 Security & safety notes
 
@@ -36,6 +38,7 @@ Security & safety notes
 
 Maintenance notes
 
-- Keep runner images updated and with enough disk space to host the container image (debootstrap will download and install packages). Consider creating a prepared base image with a prebootstrapped container for faster runs.
+- Keep runner images updated and with enough disk space to host the container image (debootstrap will download and
+  install packages). Consider creating a prepared base image with a prebootstrapped container for faster runs.
 
 - Add a cron or cleanup job on the runner to prune old containers under /var/lib/machines if you see disk pressure.

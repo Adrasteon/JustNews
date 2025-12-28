@@ -11,7 +11,9 @@ High-level steps
 
 1. Use the helper runner to load project env vars and run pytest
 
-Note: Running `./scripts/dev/pytest.sh`with no arguments will now default to`pytest -vv`when run in an interactive terminal (TTY) so you see per-test names and progress; in CI or non-interactive sessions it defaults to`pytest -q`. Pass explicit pytest args to override this behavior.
+Note: Running `./scripts/dev/pytest.sh`with no arguments will now default to`pytest -vv`when run in an interactive
+terminal (TTY) so you see per-test names and progress; in CI or non-interactive sessions it defaults to`pytest -q`. Pass
+explicit pytest args to override this behavior.
 
 Bring up services ----------------- The repository includes a helper compose file used by CI and local engineers.
 
@@ -50,7 +52,9 @@ export OPENAI_API_KEY="<your-openai-key>"
 
 Notes -----
 
-- For Chroma, `scripts/dev/docker-compose.e2e.yml`configures Chroma to listen on port 3307 and exposes host port 3307 (the project default found in`global.env`). If you change CHROMADB_PORT in`global.env`, update the compose file accordingly.
+- For Chroma, `scripts/dev/docker-compose.e2e.yml`configures Chroma to listen on port 3307 and exposes host port 3307
+  (the project default found in`global.env`). If you change CHROMADB_PORT in`global.env`, update the compose file
+  accordingly.
 
 - If you only want to run a subset, just export the matching flags. For example `export ENABLE_CHROMADB_LIVE_TESTS=1` and run only the chroma integration tests.
 

@@ -62,7 +62,9 @@ Where to look in code
 
 Operational notes
 
-- In production, prefer running the engine on dedicated nodes where MariaDB and Redis are reliable. The engine will attempt best-effort operations when persistence isn't available; tests intentionally use best-effort fallbacks in some paths for robustness.
+- In production, prefer running the engine on dedicated nodes where MariaDB and Redis are reliable. The engine will
+  attempt best-effort operations when persistence isn't available; tests intentionally use best-effort fallbacks in some
+  paths for robustness.
 
 - Monitor `gpu_orchestrator_lease_expired_total`and`gpu_orchestrator_job_queue_depth` metrics exposed in the engine for autoscaling and safety.
 

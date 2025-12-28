@@ -148,7 +148,8 @@ AUTO_INSTALL_ALERTMANAGER environment toggle -----------------------------------
 
 - You can opt-in to the Alertmanager systemd unit installation as part of the standard agent startup by setting the environment variable `AUTO_INSTALL_ALERTMANAGER=1`in`/etc/justnews/global.env`.
 
-- This runs only when the `mcp_bus`agent starts (to avoid multiple hosts attempting to manage a single host-level unit) and executes the idempotent`scripts/install_alertmanager_unit.sh --enable` script.
+- This runs only when the `mcp_bus`agent starts (to avoid multiple hosts attempting to manage a single host-level unit)
+  and executes the idempotent`scripts/install_alertmanager_unit.sh --enable` script.
 
 - Default behavior is disabled (`AUTO_INSTALL_ALERTMANAGER=0`). Use in controlled admin environments only.
 

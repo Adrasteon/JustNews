@@ -69,7 +69,9 @@ sudo scripts/dev/run_systemd_nspawn_env.sh stop sudo scripts/dev/run_systemd_nsp
 
 ## Notes & tips
 
-- Exposing ports to host: the helper does not automatically forward ports. Use `machinectl shell <container>`to work inside the container, or configure`systemd-nspawn`with networking options or use`lxc`/LXD if you prefer bridged networking.
+- Exposing ports to host: the helper does not automatically forward ports. Use `machinectl shell <container>`to work
+  inside the container, or configure`systemd-nspawn`with networking options or use`lxc`/LXD if you prefer bridged
+  networking.
 
 - Containers created with systemd-nspawn rely on the host kernel — they are lightweight and fast to start but don't give hypervisor-level isolation.
 

@@ -24,7 +24,9 @@ All notable changes to this project will be documented in this file.
 
 - **✅** Monitoring: Added Prometheus alerts for MCP Bus overall and per-agent degraded/unreachable conditions; added Grafana panels (Overall, Degraded Count, Agent Status table).
 
-- **✅** Alertmanager: added example Alertmanager config, an Alertmanager message template, an idempotent systemd unit installer script (`scripts/install_alertmanager_unit.sh`), Makefile helpers to install/enable/test Alertmanager locally, and an opt-in startup integration (`AUTO_INSTALL_ALERTMANAGER`) for the MCP Bus startup sequence.
+- **✅** Alertmanager: added example Alertmanager config, an Alertmanager message template, an idempotent systemd unit
+  installer script (`scripts/install_alertmanager_unit.sh`), Makefile helpers to install/enable/test Alertmanager
+  locally, and an opt-in startup integration (`AUTO_INSTALL_ALERTMANAGER`) for the MCP Bus startup sequence.
 
 Status: **MISTRAL-7B + MCP BUS HEALTH READY**
 
@@ -238,15 +240,20 @@ and automated regression tests.
 
 ### 🤖 Adaptive crawling
 
-- The Crawl4AI adapter (`agents/crawler/crawl4ai_adapter.py`) now supports`AdaptiveCrawler`when profiles contain`adaptive`blocks and an`extra.query`hint. Adaptive runs produce knowledge-base slices that are converted into articles and annotated with adaptive metadata (`extraction_metadata.crawl4ai.adaptive_run`).
+- The Crawl4AI adapter (`agents/crawler/crawl4ai_adapter.py`) now supports`AdaptiveCrawler`when profiles
+  contain`adaptive`blocks and an`extra.query`hint. Adaptive runs produce knowledge-base slices that are converted into
+  articles and annotated with adaptive metadata (`extraction_metadata.crawl4ai.adaptive_run`).
 
 ### 📊 Metrics & observability
 
-- Adaptive telemetry is emitted to Stage B metrics with conservative names (`adaptive_runs_total`,`adaptive_articles_emitted`,`adaptive_confidence`,`adaptive_pages_crawled`,`adaptive_coverage_<metric>`). The metrics module is defensive and operates without optional GPU helper packages.
+- Adaptive telemetry is emitted to Stage B metrics with conservative names (`adaptive_runs_total`,`adaptive_articles_emi
+  tted`,`adaptive_confidence`,`adaptive_pages_crawled`,`adaptive_coverage_<metric>`). The metrics module is defensive
+  and operates without optional GPU helper packages.
 
 ### ✅ Tests & compatibility
 
-- Unit tests for the adapter were added (`tests/agents/crawler/test_crawl4ai_adapter.py`). The metrics helpers expose compatibility methods (`increment`,`gauge`,`timing`) so legacy test harnesses and stubs function correctly in CI.
+- Unit tests for the adapter were added (`tests/agents/crawler/test_crawl4ai_adapter.py`). The metrics helpers expose
+  compatibility methods (`increment`,`gauge`,`timing`) so legacy test harnesses and stubs function correctly in CI.
 
 **Status**: Adaptive integration implemented; follow-up: full E2E validation, scheduler/dashboard wiring for metrics,
 and batched runs for low-confidence domains.
@@ -1068,7 +1075,8 @@ implemented, layout issues fixed, and comprehensive error handling added for pro
 
 ### 🎉 **Complete Legal Compliance Suite - ENTERPRISE-GRADE PRODUCTION READY**
 
-- **✅ Data Minimization System**: Automatic data collection validation and minimization with 6 data purposes (contract fulfillment, legitimate interest, consent, marketing, profile analysis, data sharing)
+- **✅ Data Minimization System**: Automatic data collection validation and minimization with 6 data purposes (contract
+  fulfillment, legitimate interest, consent, marketing, profile analysis, data sharing)
 
 - **✅ Consent Management**: Granular consent tracking with expiration, withdrawal, and audit logging (PostgreSQL + audit trails)
 

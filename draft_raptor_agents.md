@@ -265,7 +265,9 @@ Notes on methodology:
 
 - Most major agents (crawler, memory, mcp_bus, gpu_orch, archive, hitl_service, chief_editor, analyzer, synthesizer) are production-ready and show robust implementation and integrations.
 
-- Heavy LLM-based agents (synthesizer, newsreader, some parts of analyst, critic, chief_editor) rely on GPU orchestration and quantization strategies — recommended to add per-model VRAM metadata and to use quantization by default when needed.
+- Heavy LLM-based agents (synthesizer, newsreader, some parts of analyst, critic, chief_editor) rely on GPU
+  orchestration and quantization strategies — recommended to add per-model VRAM metadata and to use quantization by
+  default when needed.
 
 - `nucleoid_repo`is not a direct Python agent — it’s a referenced external package used by`reasoning` and may be maintained separately.
 

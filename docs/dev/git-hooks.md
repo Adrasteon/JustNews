@@ -22,7 +22,8 @@ The installer copies scripts from `scripts/dev/git-hooks/`into`.git/hooks` and m
 
 Hook behavior
 
-- `pre-push`: prints a recommendation to use the pytest wrapper. If you set`GIT_STRICT_TEST_HOOK=1`in your shell, the hook will also run a quick unit smoke test (`pytest -k "not integration" --maxfail=1`) and abort the push on failure.
+- `pre-push`: prints a recommendation to use the pytest wrapper. If you set`GIT_STRICT_TEST_HOOK=1`in your shell, the
+  hook will also run a quick unit smoke test (`pytest -k "not integration" --maxfail=1`) and abort the push on failure.
 
 FAQ
 

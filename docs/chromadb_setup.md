@@ -25,9 +25,12 @@ the wrong host or port configured — update `CHROMADB_HOST`or`CHROMADB_PORT` ac
 
 3) Common issues ----------------
 
-- Wrong port: If `CHROMADB_PORT`points to`8000` or another agent such as the MCP Bus, Chroma clients may fail to connect or list collections; your logs may show root endpoints or versions for a different service.
+- Wrong port: If `CHROMADB_PORT`points to`8000` or another agent such as the MCP Bus, Chroma clients may fail to connect
+  or list collections; your logs may show root endpoints or versions for a different service.
 
-- Tenant missing: If a server requires a tenant but it doesn't exist, some Chroma endpoints may return an error like `Could not connect to tenant default_tenant`. Use the script`--autocreate` attempt to create the default tenant (if your server supports tenant creation via HTTP).
+- Tenant missing: If a server requires a tenant but it doesn't exist, some Chroma endpoints may return an error like
+  `Could not connect to tenant default_tenant`. Use the script`--autocreate` attempt to create the default tenant (if
+  your server supports tenant creation via HTTP).
 
 - API versions: Different Chroma server versions use different API versions; the client attempts `heartbeat()`, and if that fails,`list_collections()` as an alternate connectivity probe.
 

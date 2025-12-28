@@ -27,7 +27,8 @@ instanced units.
 
 - `sudo ./infrastructure/systemd/scripts/health_check.sh`
 
-Note: The Alertmanager installer invoked by the startup flow is idempotent and will back up existing unit files to `/var/backups/justnews/alertmanager/` before replacing them; enable the opt-in behaviour only on controlled admin hosts.
+Note: The Alertmanager installer invoked by the startup flow is idempotent and will back up existing unit files to
+`/var/backups/justnews/alertmanager/` before replacing them; enable the opt-in behaviour only on controlled admin hosts.
 Troubleshooting? See the Quick Reference and Comprehensive guide below.
 
 If the synthesizer service remains degraded, confirm the dashboard-hosted transparency endpoint is reachable: `curl -fsS
@@ -62,11 +63,14 @@ Incident reference:
 
 - `preflight.sh`– validation and ExecStartPre gating (with`--gate-only`)
 
-- `canonical_system_startup.sh`– verifies env + data mount + database, then runs a full reset/start with health summary (use`sudo ./infrastructure/systemd/canonical_system_startup.sh stop` for a coordinated shutdown)
+- `canonical_system_startup.sh`– verifies env + data mount + database, then runs a full reset/start with health summary
+  (use`sudo ./infrastructure/systemd/canonical_system_startup.sh stop` for a coordinated shutdown)
 
 - `install_monitoring_stack.sh` – installs Prometheus, Grafana, and node_exporter (plus dashboards) and wires up their systemd units
 
-- `install_alertmanager_unit.sh`– idempotent installer that installs an example Alertmanager systemd unit, backs up existing units to`/var/backups/justnews/alertmanager/`, and optionally enables/starts the service (use`--enable`). This is used by the MCP Bus startup sequence when`AUTO_INSTALL_ALERTMANAGER=1`.
+- `install_alertmanager_unit.sh`– idempotent installer that installs an example Alertmanager systemd unit, backs up
+  existing units to`/var/backups/justnews/alertmanager/`, and optionally enables/starts the service (use`--enable`).
+  This is used by the MCP Bus startup sequence when`AUTO_INSTALL_ALERTMANAGER=1`.
 
 - `wait_for_mcp.sh` – helper used by unit template to gate on the MCP bus
 
@@ -175,7 +179,8 @@ Grafana, and Alertmanager. Key additions:
 
 - Prometheus alert rules for MCP Bus health: `monitoring/alerts/mcp_bus_alerts.yml` (MCPBusOverallDegraded, MCPBusAgentUnreachable, MCPBusAgentDegraded).
 
-- Grafana system overview dashboard includes MCP Bus panels (overall health stat, degraded agent count, agent status table) and is provisioned from `monitoring/dashboards/generated/system_overview_dashboard.json`.
+- Grafana system overview dashboard includes MCP Bus panels (overall health stat, degraded agent count, agent status
+  table) and is provisioned from `monitoring/dashboards/generated/system_overview_dashboard.json`.
 
 - Alertmanager example config and templates: `monitoring/alertmanager/alertmanager.example.yml`and`monitoring/alertmanager/mcp_bus_templates.tmpl`.
 
@@ -308,7 +313,8 @@ This section documents the existing helpers and how to perform simple operator c
 
 - Example usage: `sudo ./infrastructure/systemd/helpers/db-check.sh`or if installed:`sudo /usr/local/bin/db-check.sh`.
 
-- If this fails, confirm `JUSTNEWS_DB_URL`(or`DATABASE_URL`) in`/etc/justnews/global.env`or use the native client:`mysql --user=... --host=... -p -e 'SELECT 1;'`or`psql "$DATABASE_URL" -c 'SELECT 1;'`.
+- If this fails, confirm `JUSTNEWS_DB_URL`(or`DATABASE_URL`) in`/etc/justnews/global.env`or use the native client:`mysql
+  --user=... --host=... -p -e 'SELECT 1;'`or`psql "$DATABASE_URL" -c 'SELECT 1;'`.
 
 #### MariaDB startup probe (new)
 

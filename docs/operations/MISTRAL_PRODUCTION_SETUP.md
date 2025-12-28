@@ -23,7 +23,9 @@ Prerequisites (host)
 
 - Run: `make vllm-install-and-start`(requires sudo). The unit executes vLLM using`conda run -n justnews-py312` so the canonical env is used.
 
-- The agent startup script attempts to auto-bootstrap the canonical `justnews-py312`conda environment (idempotent) if it is not present and`AUTO_BOOTSTRAP_CONDA`is not set to`0`in`/etc/justnews/global.env`. You can run the bootstrap manually with`make env-bootstrap`.
+- The agent startup script attempts to auto-bootstrap the canonical `justnews-py312`conda environment (idempotent) if it
+  is not present and`AUTO_BOOTSTRAP_CONDA`is not set to`0`in`/etc/justnews/global.env`. You can run the bootstrap
+  manually with`make env-bootstrap`.
 
 - Verify with `make monitor-status`and`systemctl --user status vllm-mistral-7b.service`.
 
@@ -41,7 +43,9 @@ Prerequisites (host)
 
 5) Rolling restarts & upgrades
 
-- To upgrade the model in ModelStore, stage a new snapshot under `snapshots/`and update`AGENT_MODEL_MAP.json`(change`model_store_version`and`approx_vram_mb`when needed). The orchestrator will not auto-switch running models without explicit operator action (use`/workers/pool` endpoints or update service unit).
+- To upgrade the model in ModelStore, stage a new snapshot under `snapshots/`and
+  update`AGENT_MODEL_MAP.json`(change`model_store_version`and`approx_vram_mb`when needed). The orchestrator will not
+  auto-switch running models without explicit operator action (use`/workers/pool` endpoints or update service unit).
 
 6) Safety & resource tuning
 

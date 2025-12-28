@@ -98,6 +98,8 @@ files and the global environment file may still point to the old path. To avoid 
 
 - Check systemd unit files (in `/etc/systemd/system`or`/lib/systemd/system`) that they use`$SERVICE_DIR`or`/opt/justnews` rather than hard-coded, outdated paths.
 
-- For a one-off compatibility fix, create a symlink from the old path to the new one (e.g., `sudo ln -s /home/adra/JustNews /home/adra/JustNewsAgent-Clean`) to allow services to start while you update units.
+- For a one-off compatibility fix, create a symlink from the old path to the new one (e.g., `sudo ln -s
+  /home/adra/JustNews /home/adra/JustNewsAgent-Clean`) to allow services to start while you update units.
 
-- We include a helper script `infrastructure/systemd/scripts/migrate_project_root.sh`to help automate this migration (it updates`global.env` and can optionally create a compatibility symlink and reload systemd).
+- We include a helper script `infrastructure/systemd/scripts/migrate_project_root.sh`to help automate this migration (it
+  updates`global.env` and can optionally create a compatibility symlink and reload systemd).

@@ -81,7 +81,8 @@ free -h; df -h
 
 1. If the agent depends on database or redis and those services are failing, escalate to database team and check `systemctl status mariadb redis`.
 
-1. If the problem is sustained OOM on GPU-driven agents (e.g., vLLM-related), check GPU monitoring logs: `run/gpu_monitor.log`and consider stopping heavy workloads or restarting the`vllm` systemd unit.
+1. If the problem is sustained OOM on GPU-driven agents (e.g., vLLM-related), check GPU monitoring logs:
+   `run/gpu_monitor.log`and consider stopping heavy workloads or restarting the`vllm` systemd unit.
 
 ---
 
@@ -89,7 +90,8 @@ free -h; df -h
 
 1. Add a short incident note to the operations ticket including: alert name, time, affected agents, remediation steps taken, and follow-up actions.
 
-1. If repeat occurrences happen, file a bug with logs, steps to reproduce, and a mitigation plan (e.g., increase MemoryLimit on systemd units, add more aggressive circuit breaker thresholds, or tune vLLM memory settings).
+1. If repeat occurrences happen, file a bug with logs, steps to reproduce, and a mitigation plan (e.g., increase
+   MemoryLimit on systemd units, add more aggressive circuit breaker thresholds, or tune vLLM memory settings).
 
 ---
 

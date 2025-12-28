@@ -8,7 +8,8 @@ Persistent job store ---------------------
 
 - The crawler persists job status to a MariaDB `crawler_jobs` table when available and falls back to in-memory storage when the database is unreachable.
 
-- The jobs table is created during `scripts/init_database.py`initialization. Startup recovers`running`jobs and marks them as`failed`with a restoration note to avoid orphaned`running` states on restarts.
+- The jobs table is created during `scripts/init_database.py`initialization. Startup recovers`running`jobs and marks
+  them as`failed`with a restoration note to avoid orphaned`running` states on restarts.
 
 Process cleanup & safety ------------------------
 

@@ -90,7 +90,8 @@ Notes:
 
 - Override `HITL_AGENT_NAME`/`HITL_SERVICE_ADDRESS` when deploying behind non-localhost addresses.
 
-- Use `HITL_FORWARD_AGENT`/`HITL_FORWARD_TOOL`to define the downstream agent+tool that should receive ingest jobs. The target tool must accept a JSON payload shaped like`ingest_payload`from`/api/label`.
+- Use `HITL_FORWARD_AGENT`/`HITL_FORWARD_TOOL`to define the downstream agent+tool that should receive ingest jobs. The
+  target tool must accept a JSON payload shaped like`ingest_payload`from`/api/label`.
 
 - Use `HITL_CANDIDATE_FORWARD_AGENT`/`HITL_CANDIDATE_FORWARD_TOOL` if candidates should also be echoed to another consumer immediately after creation.
 
@@ -102,4 +103,7 @@ Notes:
 
 - QA reviewers can resolve samples via `POST /api/qa/review`with a`pass`/`fail` status to drain the QA queue.
 
-- Enable training-forward dispatch by exporting `HITL_TRAINING_FORWARD_AGENT=training_system`and`HITL_TRAINING_FORWARD_TOOL=receive_hitl_label`; monitor`hitl_training_forward_success_total`together with the training system counter`justnews_training_examples_total{example_type="hitl_label"}` to confirm end-to-end flow.
+- Enable training-forward dispatch by exporting
+  `HITL_TRAINING_FORWARD_AGENT=training_system`and`HITL_TRAINING_FORWARD_TOOL=receive_hitl_label`;
+  monitor`hitl_training_forward_success_total`together with the training system
+  counter`justnews_training_examples_total{example_type="hitl_label"}` to confirm end-to-end flow.

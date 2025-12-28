@@ -8,7 +8,8 @@ Symptoms --------
 
 Root cause ----------
 
-- The Python mysql-connector driver returns an unbuffered cursor by default and will raise "Unread result found" if a new query is executed against a connection while a previous resultset has not been completely consumed.
+- The Python mysql-connector driver returns an unbuffered cursor by default and will raise "Unread result found" if a
+  new query is executed against a connection while a previous resultset has not been completely consumed.
 
 - This error is more likely when a single shared connection object is reused concurrently by multiple callers.
 
@@ -16,7 +17,8 @@ Fix applied ----------- Applied changes in this repo:
 
 - Added `MigratedDatabaseService.get_connection()` — a helper to create a fresh MariaDB connection for short-lived / per-request work.
 
-- Updated memory agent save path (agents/memory/tools.py) to use per-request connections when available and to use buffered cursors. This reduces contention and prevents unconsumed resultsets from causing the exception.
+- Updated memory agent save path (agents/memory/tools.py) to use per-request connections when available and to use
+  buffered cursors. This reduces contention and prevents unconsumed resultsets from causing the exception.
 
 - Hardened memory engine cursors to use buffered=true in a few places where unbuffered cursors could lead to the same error.
 
@@ -39,7 +41,8 @@ conda run -n justnews-py312 python scripts/ops/diagnose_ingestion_samples.py --s
 
 ```
 
-1. Inspect the memory agent logs (logs/ or systemd journal) for any remaining "Unread result found" errors. The expected result is that the number of such entries should significantly reduce or disappear.
+1. Inspect the memory agent logs (logs/ or systemd journal) for any remaining "Unread result found" errors. The expected
+   result is that the number of such entries should significantly reduce or disappear.
 
 Next steps (recommended) ------------------------
 

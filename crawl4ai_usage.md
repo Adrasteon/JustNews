@@ -2,7 +2,9 @@
 
 ## Core Python API
 
-- `AsyncWebCrawler.arun(url, config=None, session_id=None, **kwargs) -> CrawlResult`: primary async crawl call. Accepts`CrawlerRunConfig`, optional session identifier, and returns a rich`CrawlResult` (markdown, fit HTML, metadata, media, links, network logs).
+- `AsyncWebCrawler.arun(url, config=None, session_id=None, **kwargs) -> CrawlResult`: primary async crawl call.
+  Accepts`CrawlerRunConfig`, optional session identifier, and returns a rich`CrawlResult` (markdown, fit HTML, metadata,
+  media, links, network logs).
 
 - `AsyncWebCrawler.arun_many(urls, config=None, dispatcher=None, …) -> list[CrawlResult] | AsyncGenerator`: batch/streaming crawl over multiple URLs. Supports a shared config or per-URL configs and concurrency dispatchers (e.g.,`MemoryAdaptiveDispatcher`).
 
@@ -10,7 +12,8 @@
 
 - `BrowserConfig`: Playwright/browser session parameters (headless mode, device profiles, timeouts, download directories) embedded in API/CLI payloads.
 
-- `AdaptiveCrawler`+`AdaptiveConfig`: iterative crawl orchestrator with coverage scoring.`digest(start_url, query, …)`follows links while`confidence_threshold`,`max_pages`,`top_k_links`, and`min_gain_threshold` constraints hold.
+- `AdaptiveCrawler`+`AdaptiveConfig`: iterative crawl orchestrator with coverage scoring.`digest(start_url, query,
+  …)`follows links while`confidence_threshold`,`max_pages`,`top_k_links`, and`min_gain_threshold` constraints hold.
 
 - `SeedingConfig`: upfront URL discovery (sitemap source, include patterns, BM25 query scoring, score thresholds, limits) for feeding`arun_many`.
 

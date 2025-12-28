@@ -9,9 +9,13 @@ Key points:
 
 - The orchestrator manages a `ModelSpec`which includes:`id`,`dtype`,`gpu_memory_util`,`service_unit`(systemd),`memory_max`,`cpu_quota`, and`adapter_paths`.
 
-- The orchestrator will attempt to resolve the model in the ModelStore via `models.model_loader._resolve_model_store_path`. If present, adapter paths are collected from`AGENT_MODEL_MAP.json`and written into the`ModelSpec`.
+- The orchestrator will attempt to resolve the model in the ModelStore via
+  `models.model_loader._resolve_model_store_path`. If present, adapter paths are collected from`AGENT_MODEL_MAP.json`and
+  written into the`ModelSpec`.
 
-- When adapter paths are present, the orchestrator sets `VLLM_ADAPTER_PATHS` as a colon-delimited env var before starting the model process. The vLLM runtime must be configured to load PEFT/LoRA adapters from these paths when available.
+- When adapter paths are present, the orchestrator sets `VLLM_ADAPTER_PATHS` as a colon-delimited env var before
+  starting the model process. The vLLM runtime must be configured to load PEFT/LoRA adapters from these paths when
+  available.
 
 Operational behavior:
 
@@ -29,7 +33,9 @@ Telemetry & alerts:
 
 Testing & developer notes:
 
-- Unit tests for the `gpu_orchestrator`ModelSpec lifecycle live at`tests/agents/gpu_orchestrator/test_model_lifecycle.py`and cover adapter resolution,`can_start_model`checks,`start_model`/`stop_model` behaviour, OOM detection, and bounded restart logic.
+- Unit tests for the `gpu_orchestrator`ModelSpec lifecycle live
+  at`tests/agents/gpu_orchestrator/test_model_lifecycle.py`and cover adapter
+  resolution,`can_start_model`checks,`start_model`/`stop_model` behaviour, OOM detection, and bounded restart logic.
 
 - To run the orchestrator unit tests locally:
 
@@ -52,6 +58,8 @@ Rollout:
 
 - Use `make monitor-install && make monitor-enable` to enable the GPU monitor.
 
-- Install the example `vllm-mistral-7b.service`with`cp infrastructure/systemd/vllm-mistral-7b.service.example /etc/systemd/system/vllm-mistral-7b.service`and`systemctl enable --now vllm-mistral-7b` (run on host where vLLM is installed).
+- Install the example `vllm-mistral-7b.service`with`cp infrastructure/systemd/vllm-mistral-7b.service.example
+  /etc/systemd/system/vllm-mistral-7b.service`and`systemctl enable --now vllm-mistral-7b` (run on host where vLLM is
+  installed).
 
 See also `docs/operations/VLLM_MISTRAL_7B_SETUP.md` for vLLM-specific guidelines.

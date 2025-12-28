@@ -28,7 +28,9 @@ MODEL_STORE_ROOT/
 
 - All operations must occur on the same filesystem to preserve atomic rename and symlink semantics.
 
-- In legacy environments you may still encounter alias symlinks such as `news-cleaner-agent -> synthesizer`. Keep the canonical`<agent>/…` layout authoritative; if those aliases exist, treat them as read-only compatibility shims rather than the source of truth.
+- In legacy environments you may still encounter alias symlinks such as `news-cleaner-agent -> synthesizer`. Keep the
+  canonical`<agent>/…` layout authoritative; if those aliases exist, treat them as read-only compatibility shims rather
+  than the source of truth.
 
 ## Lifecycle
 

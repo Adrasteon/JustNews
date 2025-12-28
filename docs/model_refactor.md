@@ -19,7 +19,8 @@ High‑level approach ---------------------
 
 Why this change -----------------
 
-- Maximizes reuse of large model capacity across agents, lowers operational complexity, and reduces overall storage/management overhead by centralizing base weights and storing tiny adapters per agent.
+- Maximizes reuse of large model capacity across agents, lowers operational complexity, and reduces overall
+  storage/management overhead by centralizing base weights and storing tiny adapters per agent.
 
 - Adapter-first workflow allows rapid iterative training on single GPUs (RTX 3090) via QLoRA/LoRA and avoids cross‑task weight conflicts.
 
@@ -34,9 +35,13 @@ Scope & affected systems (inventory) ------------------------------------- Files
 
 - `agents/chief_editor/` — editorial rewrite/judgement.
 
-- `agents/reasoning/`,`agents/critic/`,`agents/hitl_service/`— reasoning & HITL interactions; Critic now ships with the`mistral_critic_v1` adapter for higher-accuracy editorial gating while retaining lightweight fallback tools for outage scenarios.
+- `agents/reasoning/`,`agents/critic/`,`agents/hitl_service/`— reasoning & HITL interactions; Critic now ships with
+  the`mistral_critic_v1` adapter for higher-accuracy editorial gating while retaining lightweight fallback tools for
+  outage scenarios.
 
-- `agents/fact_checker/`— accuracy-critical claim verification now uses the shared Mistral base via the`mistral_fact_checker_v1` adapter for long-form evidence synthesis; retrieval/semantic search continues to rely on mpnet-sized encoders.
+- `agents/fact_checker/`— accuracy-critical claim verification now uses the shared Mistral base via
+  the`mistral_fact_checker_v1` adapter for long-form evidence synthesis; retrieval/semantic search continues to rely on
+  mpnet-sized encoders.
 
 - `agents/analyst/` — bias/sentiment/persuasion scoring now prioritizes accuracy over latency, so add a Mistral adapter-powered tool alongside existing RoBERTa fallbacks.
 
@@ -48,7 +53,9 @@ Scope & affected systems (inventory) ------------------------------------- Files
 
 - `agents/newsreader/` — multimodal LLaVA — keep LLaVA for vision tasks.
 
-- Orchestrator & infra: `agents/gpu_orchestrator/gpu_orchestrator_engine.py`,`main.py`, systemd/service templates and startup scripts (these will be updated to: read model metadata, configure preload policy, and support Mistral workflows).
+- Orchestrator & infra: `agents/gpu_orchestrator/gpu_orchestrator_engine.py`,`main.py`, systemd/service templates and
+  startup scripts (these will be updated to: read model metadata, configure preload policy, and support Mistral
+  workflows).
 
 - ModelStore & publish helpers: `agents/common/model_store.py`,`scripts/publish_hf_to_model_store.py`,`agents/common/model_loader.py`.
 
@@ -62,13 +69,16 @@ Desired final state --------------------
 
 - Mistral‑7B base published in ModelStore and accessible from production nodes.
 
-- Per-agent adapter artifacts (LoRA/QLoRA) produced and published in ModelStore for: synthesizer, re-ranker, journalist, chief_editor, reasoning, and analyst agents (analyst retains legacy RoBERTa tooling as a fallback but defaults to the new Mistral adapter for production decisions).
+- Per-agent adapter artifacts (LoRA/QLoRA) produced and published in ModelStore for: synthesizer, re-ranker, journalist,
+  chief_editor, reasoning, and analyst agents (analyst retains legacy RoBERTa tooling as a fallback but defaults to the
+  new Mistral adapter for production decisions).
 
 - Orchestrator automatically uses model metadata (approx_vram_mb, quantized_variants, peft_support) for preloading and pool sizing, and supports adapter hot-swapping.
 
 - Agents transparently load the appropriate variant (ModelStore or HF) and prefer ModelStore snapshots when `MODEL_STORE_ROOT` is configured.
 
-- CI workflows for publishing adapters and for verifying ModelStore health, preflight checks for GPU/conda bitsandbytes availability, tests and a DRY_RUN to ensure no large artifacts are committed accidentally.
+- CI workflows for publishing adapters and for verifying ModelStore health, preflight checks for GPU/conda bitsandbytes
+  availability, tests and a DRY_RUN to ensure no large artifacts are committed accidentally.
 
 Detailed step-by-step plan ---------------------------
 
@@ -95,15 +105,21 @@ Phase 0 — Preparation & safety checks ------------------------------------- 1)
 
 2) Host readiness checklist
 
-- Confirm that GPU nodes have required CUDA + drivers and that bitsandbytes native binaries are built against target CUDA (documented in repo). Add an automated verification script for `bitsandbytes`compatibility in`infrastructure/systemd/preflight.sh` or a new preflight utility.
+- Confirm that GPU nodes have required CUDA + drivers and that bitsandbytes native binaries are built against target
+  CUDA (documented in repo). Add an automated verification script for `bitsandbytes`compatibility
+  in`infrastructure/systemd/preflight.sh` or a new preflight utility.
 
-- Export `BNB_CUDA_VERSION=122`(now tracked in`global.env`) on all hosts so the runtime loads the custom CUDA 12.2 bitsandbytes wheel until upstream publishes CUDA 12.4 builds; document overrides for environments that later upgrade toolkits. See`docs/bitsandbytes_cuda122_wheel.md` for the full build + troubleshooting guide.
+- Export `BNB_CUDA_VERSION=122`(now tracked in`global.env`) on all hosts so the runtime loads the custom CUDA 12.2
+  bitsandbytes wheel until upstream publishes CUDA 12.4 builds; document overrides for environments that later upgrade
+  toolkits. See`docs/bitsandbytes_cuda122_wheel.md` for the full build + troubleshooting guide.
 
 - Confirm `MODEL_STORE_ROOT` is available and writable on target nodes; ensure backup & snapshot cadence is documented.
 
 3) Repo & QA housekeeping
 
-- `AGENT_MODEL_MAP.json`now exists and seeds entries for`synthesizer`+`re_ranker` agents pointing at the canonical base and placeholder adapter slots. Continue extending it for journalist, chief_editor, reasoning, **and analyst** so all critical decision-makers pull from the shared base.
+- `AGENT_MODEL_MAP.json`now exists and seeds entries for`synthesizer`+`re_ranker` agents pointing at the canonical base
+  and placeholder adapter slots. Continue extending it for journalist, chief_editor, reasoning, **and analyst** so all
+  critical decision-makers pull from the shared base.
 
 - Add a `docs/mistral_adapter_rollout.md` -> already present; augment with an entry describing canonical base + adapter naming conventions.
 
@@ -269,9 +285,13 @@ after a forced power cycle.
 
 2) Health checks & tests
 
-   - ✅ Initial adapter smoke coverage now lives in `tests/agents/test_mistral_adapters.py`, which stubs `_chat_json` for journalist, chief_editor, reasoning, synthesizer, analyst, and re-ranker flows. Continue expanding with fact_checker/critic fixtures and DRY_RUN coverage.
+   - ✅ Initial adapter smoke coverage now lives in `tests/agents/test_mistral_adapters.py`, which stubs `_chat_json` for
+     journalist, chief_editor, reasoning, synthesizer, analyst, and re-ranker flows. Continue expanding with
+     fact_checker/critic fixtures and DRY_RUN coverage.
 
-   - ✅ Added `tests/common/test_model_store_dry_run.py` which sets `MODEL_STORE_DRY_RUN=1` to ensure the loader resolves ModelStore paths, manifests, and adapter locations without touching HF/downloads. Keep extending this path for future agents.
+   - ✅ Added `tests/common/test_model_store_dry_run.py` which sets `MODEL_STORE_DRY_RUN=1` to ensure the loader resolves
+     ModelStore paths, manifests, and adapter locations without touching HF/downloads. Keep extending this path for
+     future agents.
 
 3) Canary rollouts
 
@@ -281,28 +301,38 @@ after a forced power cycle.
 
    - **Canary playbook (next action):**
      1. Preload adapters via GPU orchestrator API: `python agents/gpu_orchestrator/main.py start_agent_worker_pool --agent re_ranker --variant bnb-int8 --num-workers 2 --hold-seconds 1800`.
-     1. Route 5% of production-like traffic (or synthetic replay via `scripts/perf/gpu_activity_agent.py`) through the canary pool while mirroring to the legacy model; capture p50/p95/p99 and error counts.
+     1. Route 5% of production-like traffic (or synthetic replay via `scripts/perf/gpu_activity_agent.py`) through the
+        canary pool while mirroring to the legacy model; capture p50/p95/p99 and error counts.
      1. If metrics stay within ±5% for 30 min, scale workers to 4 and expand traffic to 25%; otherwise trigger rollback by `stop_worker_pool` and re-point routing to the previous recommendation entry.
-     1. Repeat for synthesizer; once both are stable, replicate the sequence for journalist and chief_editor, then resume Phase 5 tasks (monitoring + CI). Document every canary in `docs/mistral_adapter_rollout.md`.
+     1. Repeat for synthesizer; once both are stable, replicate the sequence for journalist and chief_editor, then
+        resume Phase 5 tasks (monitoring + CI). Document every canary in `docs/mistral_adapter_rollout.md`.
 
 Phase 5 — CI, monitoring & maintenance -------------------------------------- 1)
 CI & validation
 
-   - Add a pipeline job to validate ModelStore snapshots: `scripts/check_model_store.py` that ensures `manifest.json` presence, `approx_vram_mb` within reasonable bounds and optionally checks an adapter can be loaded in DRY_RUN. Include variant_preference + quantized_variants validation so orchestrator policies stay in sync.
+   - Add a pipeline job to validate ModelStore snapshots: `scripts/check_model_store.py` that ensures `manifest.json`
+     presence, `approx_vram_mb` within reasonable bounds and optionally checks an adapter can be loaded in DRY_RUN.
+     Include variant_preference + quantized_variants validation so orchestrator policies stay in sync.
 
-   - Add pre-commit checks and CI rule to reject accidental commits of large model artifacts (binaries). Your repo already ignores `artifacts/` and added some protections; expand CI to detect tracked large files.
+   - Add pre-commit checks and CI rule to reject accidental commits of large model artifacts (binaries). Your repo
+     already ignores `artifacts/` and added some protections; expand CI to detect tracked large files.
 
 2) Observability & alerts
 
-   - Add orchestrator Prometheus metrics and alerts for OOM events, `worker_pool_evictions`, `model_preload_failures`, high p95 latency, adapter hot-swap failures, and per-variant pool depletion so we catch mismatched int8/fp16 demand. Build dashboards in `monitoring/dashboards`.
+   - Add orchestrator Prometheus metrics and alerts for OOM events, `worker_pool_evictions`, `model_preload_failures`,
+     high p95 latency, adapter hot-swap failures, and per-variant pool depletion so we catch mismatched int8/fp16
+     demand. Build dashboards in `monitoring/dashboards`.
 
 3) Operational runbook
 
-   - Add `docs/ops/mistral_rollout_runbook.md` with commands, troubleshooting steps (e.g., bitsandbytes compile troubleshooting), emergency rollback steps, and how to restore the previous model set quickly from ModelStore or HF.
+   - Add `docs/ops/mistral_rollout_runbook.md` with commands, troubleshooting steps (e.g., bitsandbytes compile
+     troubleshooting), emergency rollback steps, and how to restore the previous model set quickly from ModelStore or
+     HF.
 
 4) Backup and store management
 
-   - Add periodic backups for ModelStore (S3/remote storage) and a rotation policy. The repo already includes `models/model_store_guide.md`; add Mistral-specific notes including expected large weight sizes and backup cadence.
+   - Add periodic backups for ModelStore (S3/remote storage) and a rotation policy. The repo already includes
+     `models/model_store_guide.md`; add Mistral-specific notes including expected large weight sizes and backup cadence.
 
 Fallback / rollback plans -------------------------
 
@@ -400,7 +430,8 @@ RE_RANKER_TEST_MODE=0 RE_RANKER_MODEL=mistralai/Mistral-7B-v0.3 python scripts/p
 
 If you'd like, my immediate next actions are:
 
-- A) Publish a canonical Mistral‑7B base into ModelStore on the host (requires HF token / permission), then create adapter stubs for `synthesizer` and `re_ranker` and add AGENT_MODEL_MAP.json entries; or
+- A) Publish a canonical Mistral‑7B base into ModelStore on the host (requires HF token / permission), then create
+  adapter stubs for `synthesizer` and `re_ranker` and add AGENT_MODEL_MAP.json entries; or
 
 - B) Implement ModelStore metadata support in the Orchestrator and wiring to prefer quantized variants; or
 

@@ -23,7 +23,9 @@ Why split into multiple diagrams
 
 Styling & Improvements
 
-- Relations are color-coded by domain (Green = storage, Blue = ingestion/control, Purple = analysis) to make lines visually thicker and more color-contrasting. No direct 'weight' property is supported in the C4 mermaid syntax, so color and offset are used to increase visibility.
+- Relations are color-coded by domain (Green = storage, Blue = ingestion/control, Purple = analysis) to make lines
+  visually thicker and more color-contrasting. No direct 'weight' property is supported in the C4 mermaid syntax, so
+  color and offset are used to increase visibility.
 
 Usage
 

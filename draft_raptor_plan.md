@@ -26,7 +26,9 @@
 
 - Current: `distilgpt2`,`google/flan-t5-small`— the repo contains`flan-t5-large`variants in`model_store` (used for batch or high-quality synth).
 
-- Suitability: `flan-t5-small`is acceptable for shorter neutralization & generation tasks;`flan-t5-base`/`large`produce higher-quality content but need careful GPU orchestrator scheduling and quantization (use`bitsandbytes` 8-bit or 4-bit and PEFT for training).
+- Suitability: `flan-t5-small`is acceptable for shorter neutralization & generation tasks;`flan-t5-base`/`large`produce
+  higher-quality content but need careful GPU orchestrator scheduling and quantization (use`bitsandbytes` 8-bit or 4-bit
+  and PEFT for training).
 
 - Recommendation: Default to `flan-t5-small`unless high-quality mode is explicitly requested; ensure quantized models exist in`model_store`and choose`device_map='auto'`and`load_in_8bit=True` in prod.
 
@@ -38,7 +40,8 @@
 
 - Recommendation: prefer `distil` variants of sentiment/bias models and ensure GPU orchestrator provides proper shares.
 
-- Overall: avoid widespread `flan-t5-large`or`bart-large` defaults unless the orchestrator supports on-demand lease scheduling, and the model is quantized (bitsandbytes) and fine-tunable using PEFT/LoRA.
+- Overall: avoid widespread `flan-t5-large`or`bart-large` defaults unless the orchestrator supports on-demand lease
+  scheduling, and the model is quantized (bitsandbytes) and fine-tunable using PEFT/LoRA.
 
 ### Quantization & Fine-tuning (PEFT/LoRA) Guidance
 
@@ -86,9 +89,12 @@
 
 ## 6.1 GPU Orchestrator & Model Preload Policy Recommendation
 
-- Orchestrator `policy`should include model memory estimates for each model in`AGENT_MODEL_MAP.json`for accurate preload & allocation.`mps_allocation_config.json` should contain model-level approximate VRAM requirements.
+- Orchestrator `policy`should include model memory estimates for each model in`AGENT_MODEL_MAP.json`for accurate preload
+  & allocation.`mps_allocation_config.json` should contain model-level approximate VRAM requirements.
 
-- Orchestrator `policy`should include model memory estimates for each model in`AGENT_MODEL_MAP.json`for accurate preload & allocation.`mps_allocation_config.json`should contain model-level approximate VRAM requirements and a`model_vram`section or a`model_registry` that maps model_id -> {approx_vram_mb, quantized_variants}.
+- Orchestrator `policy`should include model memory estimates for each model in`AGENT_MODEL_MAP.json`for accurate preload
+  & allocation.`mps_allocation_config.json`should contain model-level approximate VRAM requirements and
+  a`model_vram`section or a`model_registry` that maps model_id -> {approx_vram_mb, quantized_variants}.
 
 - Add support to orchestrator to read `model_store`metadata for`approx_vram_mb`and`quantized_variants` to calculate safe allocations.
 
@@ -98,13 +104,18 @@
 
 - If `STRICT_MODEL_STORE=1`, orchestrator must fail preload if memory can't be met, otherwise fallback to CPU-only mode or smaller quantized models.
 
-- Provide `allowed_variants`per agent in`AGENT_MODEL_MAP.json`(e.g.,`flan-t5-small`default,`flan-t5-base`optional,`flan-t5-large`reserved for batch jobs) and adjust`mps_allocation_config.json` accordingly.
+- Provide `allowed_variants`per agent
+  in`AGENT_MODEL_MAP.json`(e.g.,`flan-t5-small`default,`flan-t5-base`optional,`flan-t5-large`reserved for batch jobs)
+  and adjust`mps_allocation_config.json` accordingly.
 
-- Provide `allowed_variants`per agent (see`AGENT_MODEL_RECOMMENDED.json`) and adjust`mps_allocation_config.json` accordingly; orchestrator should be able to choose the quantized or base variant based on policy & runtime load.
+- Provide `allowed_variants`per agent (see`AGENT_MODEL_RECOMMENDED.json`) and adjust`mps_allocation_config.json`
+  accordingly; orchestrator should be able to choose the quantized or base variant based on policy & runtime load.
 
 - [ ] A6: Add quantized/PEFT-ready model variants to `model_store`(e.g., 8-bit`flan-t5-small`or`base`), update`model_store`metadata with`approx_vram_mb`,`quantized_variants`, and`peft_support` flags.
 
-- [ ] A6: Add quantized/PEFT-ready model variants to `model_store`(e.g., 8-bit`flan-t5-small`or`base`), update`model_store`metadata with`approx_vram_mb`,`quantized_variants`, and`peft_support`flags, and publish an`AGENT_MODEL_RECOMMENDED.json`.
+- [ ] A6: Add quantized/PEFT-ready model variants to `model_store`(e.g., 8-bit`flan-t5-small`or`base`),
+  update`model_store`metadata with`approx_vram_mb`,`quantized_variants`, and`peft_support`flags, and publish
+  an`AGENT_MODEL_RECOMMENDED.json`.
 
 - [ ] B5: Add GPU orchestrator detection of quantized models and allow dynamic selection based on `policy`and`real-time`vs`batch` mode.
 
@@ -320,7 +331,8 @@ Goals:
 
 1. Add metrics & detection for system faults.
 
-1. Add `AGENT_MODEL_RECOMMENDED.json` to the repo (covers default & fallback models per-agent) and implement orchestrator checks to fall back to quantized variants or CPU-only when GPU resources are insufficient.
+1. Add `AGENT_MODEL_RECOMMENDED.json` to the repo (covers default & fallback models per-agent) and implement
+   orchestrator checks to fall back to quantized variants or CPU-only when GPU resources are insufficient.
 
 1. Implement model metadata additions and a `model_vram`registry in`config/gpu/mps_allocation_config.json` to assist preloading.
 

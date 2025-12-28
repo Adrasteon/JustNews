@@ -333,6 +333,21 @@ vllm-install-unit:
 	@sudo systemctl daemon-reload
 	$(call log_success,"vLLM systemd unit installed; run 'sudo systemctl enable --now vllm-mistral-7b' to start")
 
+vllm-start:
+	$(call log_info,"Start vLLM service (user)")
+	@./scripts/start_vllm.sh
+	$(call log_success,"vLLM start requested; check 'make monitor-status' for status")
+
+vllm-stop:
+	$(call log_info,"Stop vLLM service (user)")
+	@./scripts/stop_vllm.sh
+	$(call log_success,"vLLM stop requested")
+
+vllm-smoke-test:
+	$(call log_info,"Run vLLM smoke test (requires network port 7060)")
+	@./scripts/vllm_smoke_test.sh
+	$(call log_success,"vLLM smoke test finished")
+
 monitor-status:
 	$(call log_info,"GPU monitor service status")
 	@systemctl --user status gpu-monitor.service --no-pager --lines=5 || true

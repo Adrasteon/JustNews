@@ -199,6 +199,16 @@ class GPUOrchestratorEngine:
         )
 
         if self._vllm_enabled and not SAFE_MODE:
+            # Start optional metrics pusher if configured
+            try:
+                pushgw = os.environ.get("METRICS_PUSHGATEWAY_URL")
+                push_interval = int(os.environ.get("METRICS_PUSH_INTERVAL_SECONDS", "30"))
+                if pushgw:
+                    t = threading.Thread(target=self._metrics_pusher_loop, args=(pushgw, push_interval), daemon=True)
+                    t.start()
+            except Exception as e:
+                self.logger.warning(f"Failed to start metrics pusher: {e}")
+
             # If a canonical spec exists in config, prefer orchestrator-managed start
             try:
                 cfg_file = Path(__file__).resolve().parents[2] / "config" / "vllm_mistral_7b.yaml"
@@ -236,6 +246,30 @@ class GPUOrchestratorEngine:
                     self._start_vllm_server()
             except Exception as e:
                 self.logger.error(f"Failed to start VLLM server: {e}")
+
+    def get_metrics_text(self) -> str:
+        """Return collected Prometheus metrics in text format."""
+        try:
+            return self.metrics.get_metrics()
+        except Exception:
+            return ""
+
+    def _metrics_pusher_loop(self, pushgw: str, interval: int) -> None:
+        """Background loop that pushes metrics to a Prometheus Pushgateway if configured."""
+        try:
+            from prometheus_client import push_to_gateway
+        except Exception:
+            self.logger.warning("prometheus_client.push_to_gateway not available; metrics push disabled")
+            return
+
+        job = f"gpu_orchestrator_{os.uname().nodename}"
+        self.logger.info(f"Starting metrics pusher to {pushgw} (interval={interval}s)")
+        while True:
+            try:
+                push_to_gateway(pushgw, job=job, registry=self.metrics.registry)
+            except Exception as e:
+                self.logger.debug(f"Metrics push failed: {e}")
+            time.sleep(interval)
 
         # Register cleanup on exit
         import atexit

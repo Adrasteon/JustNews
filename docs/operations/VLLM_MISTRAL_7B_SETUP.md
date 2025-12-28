@@ -146,6 +146,26 @@ Notes:
 
 #### AGENT_MODEL_RECOMMENDED.json
 
+Orchestrator-managed model deployments
+--------------------------------------
+
+We recommend deploying the canonical Mistral-7B model under control of the `gpu_orchestrator` agent. The orchestrator will read `config/vllm_mistral_7b.yaml` and attempt to start the model using the `service.systemd_unit` listed in the config; fallback to the local vLLM process is supported when systemd is not available.
+
+Key operational steps:
+
+- Place the systemd unit example in `infrastructure/systemd/vllm-mistral-7b.service.example` under `/etc/systemd/system/vllm-mistral-7b.service` and enable it:
+
+```
+sudo cp infrastructure/systemd/vllm-mistral-7b.service.example /etc/systemd/system/vllm-mistral-7b.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now vllm-mistral-7b.service
+```
+
+- The `gpu_orchestrator` will collect adapters listed in `AGENT_MODEL_MAP.json` and expose `adapter_paths` on the `ModelSpec` for downstream adapter mounting (PEFT/LoRA) where supported by the runtime.
+
+- Monitoring and safety: the orchestrator will only start the model when sufficient GPU headroom exists and will monitor logs for CUDA OOM. It exports metrics `gpu_orchestrator_vllm_restarts_total`, `gpu_orchestrator_vllm_ooms_total`, and `gpu_orchestrator_vllm_status`.
+
+
 - Each agent now has:
 
   - `default`: mistralai/Mistral-7B-Instruct-v0.3 (fallback)

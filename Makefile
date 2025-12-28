@@ -327,6 +327,12 @@ monitor-install-rotate:
 	@sudo ./scripts/install_logrotate.sh
 	$(call log_success,"Logrotate policy installed")
 
+vllm-install-unit:
+	$(call log_info,"Install vLLM systemd unit example to /etc/systemd/system (requires sudo)")
+	@sudo cp infrastructure/systemd/vllm-mistral-7b.service.example /etc/systemd/system/vllm-mistral-7b.service
+	@sudo systemctl daemon-reload
+	$(call log_success,"vLLM systemd unit installed; run 'sudo systemctl enable --now vllm-mistral-7b' to start")
+
 monitor-status:
 	$(call log_info,"GPU monitor service status")
 	@systemctl --user status gpu-monitor.service --no-pager --lines=5 || true

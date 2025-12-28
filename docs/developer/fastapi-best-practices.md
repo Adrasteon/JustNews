@@ -200,9 +200,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 
 ### Admin endpoints & reload protection
 
-When registering runtime control endpoints (for example `/admin/reload` or feature toggles), prefer role-based JWTs (admin role) or a short-lived service token handled by gateway/auth.
+When registering runtime control endpoints (for example `/admin/reload` or feature toggles), prefer role-based JWTs (admin role) or a short-lived service token handled by your gateway or auth layer.
 
-Example: the helper `agents.common.reload.register_reload_endpoint(app, require_admin=True)` will enable a small `/admin/reload` endpoint that, when `require_admin=True`, accepts either a static `ADMIN_API_KEY` header for compatibility or a bearer JWT with `role=admin` via `agents/common/auth_api.verify_token`.
+For example, the helper `agents.common.reload.register_reload_endpoint(app, require_admin=True)` enables a small `/admin/reload` endpoint.
+
+When `require_admin=True`, the endpoint accepts either:
+
+- a static `ADMIN_API_KEY` header (for compatibility), or
+- a bearer JWT with `role=admin` verified via `agents/common/auth_api.verify_token`.
 
 This pattern avoids exposing sensitive runtime controls to anonymous or public traffic and centralizes auth logic for reload operations.
 
@@ -399,9 +404,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     #### Redis-backed rate limiting
 
-    For multi-replica deployments use a Redis-backed limiter. Set `REDIS_URL` in the environment and prefer a Redis `INCR` + `EXPIRE` strategy in the application. If you need token-bucket semantics, use a Lua script running in Redis or a dedicated rate-limiter proxy (Kong, Envoy). The repo implements a Redis-backed fallback in `agents/dashboard/rate_limit.py`.
+For multi-replica deployments, use a Redis-backed limiter and set `REDIS_URL` in the environment.
 
-```
+Prefer a Redis `INCR` + `EXPIRE` strategy in the application for a fixed-window limiter.
+
+If you require token-bucket semantics, consider either:
+
+- implementing a Lua script that runs in Redis, or
+- using a dedicated rate-limiter proxy (e.g., Kong or Envoy).
+
+The repository implements a Redis-backed fallback in `agents/dashboard/rate_limit.py`.
 
 ## Background Tasks
 

@@ -333,6 +333,16 @@ vllm-install-unit:
 	@sudo systemctl daemon-reload
 	$(call log_success,"vLLM systemd unit installed; run 'sudo systemctl enable --now vllm-mistral-7b' to start")
 
+vllm-install-and-start: vllm-install-unit
+	$(call log_info,"Enable and start vLLM systemd unit (requires sudo)")
+	@sudo systemctl enable --now vllm-mistral-7b.service
+	$(call log_success,"vLLM systemd unit enabled and started")
+
+modelstore-fetch-mistral:
+	$(call log_info,"Fetch the canonical Mistral model into ModelStore (requires network)")
+	@$(PYTHON) models/fetch_model_to_modelstore.py --model mistralai/Mistral-7B-Instruct-v0.3
+	$(call log_success,"Mistral model staged into ModelStore (check $(MODEL_STORE_ROOT)/base_models)")
+
 vllm-start:
 	$(call log_info,"Start vLLM service (user)")
 	@./scripts/start_vllm.sh

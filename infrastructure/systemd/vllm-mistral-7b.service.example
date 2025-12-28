@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 # Expects vllm to be available in PATH (ideally in conda env)
-ExecStart=/usr/bin/env bash -lc 'export VLLM_MODEL="mistralai/Mistral-7B-Instruct-v0.3"; export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True"; exec vllm --model $VLLM_MODEL --dtype bf16 --max-batch-size 4 --port 7060'
+ExecStart=/home/adra/JustNews/scripts/run_with_env.sh bash -lc 'conda run -n justnews-py312 vllm --model "$VLLM_MODEL" --dtype bf16 --max-batch-size 4 --port 7060'
 Restart=on-failure
 RestartSec=10
 MemoryMax=48G

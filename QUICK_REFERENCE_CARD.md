@@ -59,6 +59,8 @@ python scripts/chroma_diagnose.py --autocreate
 
 ---
 
+**User/Dev One-Page Startup Guide:** `infrastructure/systemd/USER_DEV_SYSTEM_START_GUIDE.md` — a printable, concise checklist for starting and verifying JustNews (recommended).
+
 ## Phase 2: Database Schema (5 min)
 
 ```bash

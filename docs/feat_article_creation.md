@@ -53,31 +53,47 @@ coordination beyond the basic flow.
 
 1. `Analyst` agent analyzes the fetched articles and the cluster for language, sentiment, bias, entity extraction, and other scoring metadata used to influence synthesis and for traceability.
 
-1. Per-article Fact-check (MANDATORY): For each article in the cluster, run a per-article fact-check to validate claims, collect evidence, and store a `source_fact_check` result. These results are stored in `source_fact_checks` and are used to influence further planning.
+1. Per-article Fact-check (MANDATORY): For each article in the cluster, run a per-article fact-check to validate claims,
+   collect evidence, and store a `source_fact_check` result. These results are stored in `source_fact_checks` and are
+   used to influence further planning.
 
-1. `Reasoning` agent builds a `reasoning_plan` from the `AnalysisReport` and `source_fact_checks`. The plan prioritizes sources/claims, proposes a structure and sections for inclusion, and identifies excluded or flagged content.
+1. `Reasoning` agent builds a `reasoning_plan` from the `AnalysisReport` and `source_fact_checks`. The plan prioritizes
+   sources/claims, proposes a structure and sections for inclusion, and identifies excluded or flagged content.
 
-1. `SynthesisService` synthesizes a draft article using a model/prompt template and the `reasoning_plan`, and returns a structured `DraftArticle` object containing: `title`, `body`, `summary`, `quotes`, `source_ids`, `trace`, and an `analysis_summary`.
+1. `SynthesisService` synthesizes a draft article using a model/prompt template and the `reasoning_plan`, and returns a
+   structured `DraftArticle` object containing: `title`, `body`, `summary`, `quotes`, `source_ids`, `trace`, and an
+   `analysis_summary`.
 
 1. Save draft to MariaDB (or `synthesized_articles` table); generate embedding and store in Chroma.
 
 1. Send draft to `Critic` agent for assertions and policy checks; capture `critic_result`.
 
-1. Post-synthesis Draft Fact-check (MANDATORY): Run the fact-checker against the synthesized draft to validate any newly generated claims or paraphrased claims. Capture a `draft_fact_check_status` and `draft_fact_check_trace` for the synthesized content. Draft-level `failed` blocks publishing; `needs_review` requires HITL.
+1. Post-synthesis Draft Fact-check (MANDATORY): Run the fact-checker against the synthesized draft to validate any newly
+   generated claims or paraphrased claims. Capture a `draft_fact_check_status` and `draft_fact_check_trace` for the
+   synthesized content. Draft-level `failed` blocks publishing; `needs_review` requires HITL.
 
-- Implementation note (new): The `SynthesisService` now calls `Analyst.generate_analysis_report()` on the synthesized draft immediately after synthesis. If the returned `source_fact_check.fact_check_status` is `failed`, the synthesis call returns an error `draft_fact_check_failed` and includes the `analysis_report` for auditing. If the status is `needs_review`, the call returns `draft_fact_check_needs_review` to force HITL intervention.
+- Implementation note (new): The `SynthesisService` now calls `Analyst.generate_analysis_report()` on the synthesized
+  draft immediately after synthesis. If the returned `source_fact_check.fact_check_status` is `failed`, the synthesis
+  call returns an error `draft_fact_check_failed` and includes the `analysis_report` for auditing. If the status is
+  `needs_review`, the call returns `draft_fact_check_needs_review` to force HITL intervention.
 
 ### Tests added (new)
 
-- `tests/agents/synthesizer/test_synthesizer_cluster_integration.py` now includes three tests verifying post-synthesis behavior: `test_post_synthesis_draft_fact_check_blocks_when_failed`, `test_post_synthesis_draft_fact_check_needs_review`, and `test_post_synthesis_draft_fact_check_allows_on_pass`.
+- `tests/agents/synthesizer/test_synthesizer_cluster_integration.py` now includes three tests verifying post-synthesis
+  behavior: `test_post_synthesis_draft_fact_check_blocks_when_failed`,
+  `test_post_synthesis_draft_fact_check_needs_review`, and `test_post_synthesis_draft_fact_check_allows_on_pass`.
 
 ### Next steps
 
 - Add API endpoint wiring and a GUI flag for "Require draft fact-check pass before publish"; ensure chief editor endpoints and frontend components are integrated in a subsequent PR.
 
-- The Dashboard has been updated to add a new "Publishing Settings" card which allows operators to toggle several flags at runtime and choose the configured persistence strategy for synthesized drafts.
+- The Dashboard has been updated to add a new "Publishing Settings" card which allows operators to toggle several flags
+  at runtime and choose the configured persistence strategy for synthesized drafts.
 
-- Implementation: `POST /synthesize_and_publish` in `agents/synthesizer/main.py` runs the full pipeline (synthesis→critic→draft fact-check) and then either auto-publishes or queues for `Chief Editor` review depending on config flags. The GUI exposes `Require draft fact-check pass before publish` under `Settings -> Publishing` and it defaults to `false`.
+- Implementation: `POST /synthesize_and_publish` in `agents/synthesizer/main.py` runs the full pipeline
+  (synthesis→critic→draft fact-check) and then either auto-publishes or queues for `Chief Editor` review depending on
+  config flags. The GUI exposes `Require draft fact-check pass before publish` under `Settings -> Publishing` and it
+  defaults to `false`.
 
 ### Dashboard Publishing Settings & Admin API
 
@@ -145,9 +161,15 @@ A. DB Model choices (Two options):
 
 Status: BOTH OPTIONS IMPLEMENTED
 
-- Option A (extend `articles`): `Article` model in `database/models/migrated_models.py` now contains synthesis and publishing fields such as `is_synthesized`, `input_cluster_ids`, `synth_model`, `synth_version`, `synth_prompt_id`, `synth_trace`, `critic_result`, `fact_check_status` and publishing metadata (`is_published`, `published_at`, `created_by`). A database migration `004_add_synthesis_fields.sql` adds these columns to the `articles` table (MariaDB compatible).
+- Option A (extend `articles`): `Article` model in `database/models/migrated_models.py` now contains synthesis and
+  publishing fields such as `is_synthesized`, `input_cluster_ids`, `synth_model`, `synth_version`, `synth_prompt_id`,
+  `synth_trace`, `critic_result`, `fact_check_status` and publishing metadata (`is_published`, `published_at`,
+  `created_by`). A database migration `004_add_synthesis_fields.sql` adds these columns to the `articles` table (MariaDB
+  compatible).
 
-- Option B (new table): A dedicated `synthesized_articles` table and model `SynthesizedArticle` implemented in `database/models/migrated_models.py`. Migration `005_create_synthesized_articles_table.sql` creates the `synthesized_articles` table and includes traceability and editorial fields.
+- Option B (new table): A dedicated `synthesized_articles` table and model `SynthesizedArticle` implemented in
+  `database/models/migrated_models.py`. Migration `005_create_synthesized_articles_table.sql` creates the
+  `synthesized_articles` table and includes traceability and editorial fields.
 
 Migrations (implemented):
 
@@ -217,11 +239,13 @@ Migrations (deferred):
 
 - DO NOT implement database migrations or persistent schema changes until we have finalized the agent outputs.
 
-- The schema fields listed above are provisional and illustrative. They will be finalized after the `Analyst`, `Fact-Checker`, and `Reasoning` agents are implemented and their precise output formats are defined.
+- The schema fields listed above are provisional and illustrative. They will be finalized after the `Analyst`, `Fact-
+  Checker`, and `Reasoning` agents are implemented and their precise output formats are defined.
 
 - Once agent outputs are finalized, add migration scripts under `database/core/migrations/` that are idempotent, reversible, and support safe deployment strategies.
 
-- The migrations created for this feature (see above) are included in `database/migrations/` and are ready for operator review and staging run: `004_add_synthesis_fields.sql` and `005_create_synthesized_articles_table.sql`.
+- The migrations created for this feature (see above) are included in `database/migrations/` and are ready for operator
+  review and staging run: `004_add_synthesis_fields.sql` and `005_create_synthesized_articles_table.sql`.
 
 Model Class Changes:
 
@@ -253,7 +277,8 @@ Responsibilities:
 
 - Return `DraftArticle` with trace and source IDs
 
-- `DraftArticle` must include an `analysis_summary` derived from Analyst output, showing aggregated language/sentiment/bias scores and entity counts used to bias prompt and mark sections for fact-checking.
+- `DraftArticle` must include an `analysis_summary` derived from Analyst output, showing aggregated
+  language/sentiment/bias scores and entity counts used to bias prompt and mark sections for fact-checking.
 
 - `DraftArticle` should include a `reasoning_plan_id` or `reasoning_plan` snippet indicating why certain sources were included or excluded, and summaries of prioritized claims.
 
@@ -265,7 +290,9 @@ Responsibilities:
 
 - `Analyst` now runs per-article fact checks and produces `AnalysisReport.source_fact_checks` and `cluster_fact_check_summary` (used for gating).
 
-- `SynthesisService` and `SynthesizerEngine` now accept `cluster_id` when `articles` are empty and will run the Analyst pre-flight check; synthesis is blocked when `cluster_fact_check_summary.percent_verified < SynthesizerConfig.min_fact_check_percent_for_synthesis` (default 60.0).
+- `SynthesisService` and `SynthesizerEngine` now accept `cluster_id` when `articles` are empty and will run the Analyst
+  pre-flight check; synthesis is blocked when `cluster_fact_check_summary.percent_verified <
+  SynthesizerConfig.min_fact_check_percent_for_synthesis` (default 60.0).
 
 Testing:
 
@@ -357,7 +384,9 @@ Integrations & Use:
 
 - The `SynthesisService` consumes `AnalysisReport` to select voice, adjust prompts, and flag sections for deeper fact-checking.
 
-- The `SynthesisService` consumes `AnalysisReport` to select voice, adjust prompts, and flag sections for deeper fact-checking. It must take into account the per-article `source_fact_checks` and exclude or de-prioritize articles that have `fact_check_status=failed` or have low evidence confidence.
+- The `SynthesisService` consumes `AnalysisReport` to select voice, adjust prompts, and flag sections for deeper fact-
+  checking. It must take into account the per-article `source_fact_checks` and exclude or de-prioritize articles that
+  have `fact_check_status=failed` or have low evidence confidence.
 
 - The `Critic` uses `AnalysisReport` entities and low-confidence statements to prioritize checks.
 
@@ -365,7 +394,8 @@ Integrations & Use:
 
 ### Status updates (new)
 
-- The Analyst is implemented and integrates per-article fact-checking by default; `AnalysisReport` now contains `source_fact_checks` (per-article) and `cluster_fact_check_summary` (aggregate) that `SynthesisService` uses.
+- The Analyst is implemented and integrates per-article fact-checking by default; `AnalysisReport` now contains
+  `source_fact_checks` (per-article) and `cluster_fact_check_summary` (aggregate) that `SynthesisService` uses.
 
 - A convenience tool `agents/analyst/tools.generate_analysis_report()` will fetch cluster content via `ClusterFetcher` if a `cluster_id` is provided.
 
@@ -479,7 +509,8 @@ Responsibilities:
 
 - Extract claims from the text using the Analyst's entity & claim detection metadata.
 
-- For each claim, perform verification steps including: cross-referencing trusted sources, knowledgebase queries, supporting evidence collection, timestamped provenance logging, and confidence scoring.
+- For each claim, perform verification steps including: cross-referencing trusted sources, knowledgebase queries,
+  supporting evidence collection, timestamped provenance logging, and confidence scoring.
 
 - Summarize results into an actionable `fact_check_status` for the draft: `pending`, `passed`, `failed`, `needs_review`.
 
@@ -489,21 +520,29 @@ Responsibilities:
 
 Behavior & failure modes:
 
-- The fact-checker must never be optional for publishing paths: if the system cannot perform a fact check because of environmental failures (downstream API unreachable, missing resources, etc.), the draft must default to `needs_review` and not auto-publish.
+- The fact-checker must never be optional for publishing paths: if the system cannot perform a fact check because of
+  environmental failures (downstream API unreachable, missing resources, etc.), the draft must default to `needs_review`
+  and not auto-publish.
 
 - For low-confidence checks, the fact-checker returns `needs_review` and attaches suggested remedial actions that the Chief Editor or HITL reviewer should consider.
 
-- For high-confidence failures (claims contradicted by multiple independent sources or internally contradictory statements), the fact-checker returns `failed` which should automatically block publishing until addressed.
+- For high-confidence failures (claims contradicted by multiple independent sources or internally contradictory
+  statements), the fact-checker returns `failed` which should automatically block publishing until addressed.
 
 Implementation considerations & complexity:
 
 - Claim extraction and classification is non-trivial; the Analyst agent must provide high-quality candidate claims and entity tags so the fact-checker can prioritize.
 
-- The fact-checker will likely combine multiple resources: curated internal knowledge graphs, external fact-checking APIs, newswire datasets, and trusted data sources. Establishing reliable sources and maintaining coverage across topics is a long-term effort.
+- The fact-checker will likely combine multiple resources: curated internal knowledge graphs, external fact-checking
+  APIs, newswire datasets, and trusted data sources. Establishing reliable sources and maintaining coverage across
+  topics is a long-term effort.
 
-- The fact-checker will likely combine multiple resources: curated internal knowledge graphs, external fact-checking APIs, newswire datasets, and trusted data sources. Establishing reliable sources and maintaining coverage across topics is a long-term effort.
+- The fact-checker will likely combine multiple resources: curated internal knowledge graphs, external fact-checking
+  APIs, newswire datasets, and trusted data sources. Establishing reliable sources and maintaining coverage across
+  topics is a long-term effort.
 
-- The fact-checker must evaluate and return per-source verdicts to allow full traceability for the final synthesized article: for each article in the input cluster a `source_fact_check` record must be produced and stored.
+- The fact-checker must evaluate and return per-source verdicts to allow full traceability for the final synthesized
+  article: for each article in the input cluster a `source_fact_check` record must be produced and stored.
 
 - For scalable verification, introduce caching of evidence and results (with TTL), dedup of requests, and batch verification of claims for cluster-level efficiency.
 
@@ -519,7 +558,9 @@ Testing and QA:
 
 - **✅ IMPLEMENTED**: Add integration-level tests that simulate untrusted and trusted evidence sources and confirm correct `fact_check_status` aggregation.
 
-- **✅ IMPLEMENTED**: Add integration-level tests that simulate untrusted and trusted evidence sources and confirm correct `fact_check_status` aggregation AND per-article `source_fact_checks` are produced and included in the `AnalysisReport`.
+- **✅ IMPLEMENTED**: Add integration-level tests that simulate untrusted and trusted evidence sources and confirm
+  correct `fact_check_status` aggregation AND per-article `source_fact_checks` are produced and included in the
+  `AnalysisReport`.
 
 - **12 integration tests implemented** in `tests/agents/analyst/test_fact_checker_integration.py` (all passing)
 
@@ -541,7 +582,8 @@ Acceptance criteria for Fact-checker:
 
 - `AnalysisReport.cluster_fact_check_summary` aggregates cluster-level metrics
 
-- **✅ IMPLEMENTED**: If a cluster has a high percentage of `source_fact_check` failures above a configured threshold (e.g., 50%), the SynthesisService should automatically abort synthesis and require human intervention.
+- **✅ IMPLEMENTED**: If a cluster has a high percentage of `source_fact_check` failures above a configured threshold
+  (e.g., 50%), the SynthesisService should automatically abort synthesis and require human intervention.
 
 - `cluster_fact_check_summary` includes `articles_flagged` list and `percent_verified` metric for threshold enforcement
 
@@ -551,11 +593,13 @@ Acceptance criteria for Fact-checker:
 
 - `fact_check_trace` captures complete verification details for auditability
 
-- Baseline accuracy thresholds (to be determined by the project): e.g., >80% precision on verified claims for a given category is a desirable target for MVP; but the initial rollout must use a conservative default.
+- Baseline accuracy thresholds (to be determined by the project): e.g., >80% precision on verified claims for a given
+  category is a desirable target for MVP; but the initial rollout must use a conservative default.
 
 Integration & rollout policy:
 
-- Start with a conservative MVP that runs checks against a small set of curated trusted reference sources or an external fact-check service (if available) and defaults to `needs_review` on uncertain items.
+- Start with a conservative MVP that runs checks against a small set of curated trusted reference sources or an external
+  fact-check service (if available) and defaults to `needs_review` on uncertain items.
 
 - Improve coverage iteratively by adding more sources, offline-scraped knowledge graphs, and canonicalization logic.
 

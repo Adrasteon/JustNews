@@ -1,0 +1,8 @@
+# Ignore node_modules and common transient dirs
+node_modules/
+
+# Ignore generated third-party model snapshot READMEs and snapshot data
+agents/**/models/**/snapshots/**
+
+# Optionally ignore other model vendor dirs (uncomment to enable)
+# agents/**/models/**/models--**/**/README.md

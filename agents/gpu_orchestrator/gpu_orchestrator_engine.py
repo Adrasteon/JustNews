@@ -23,7 +23,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 try:  # NVML bindings became optional once we moved to the conda-provided nvidia-ml-py package
     import pynvml  # type: ignore

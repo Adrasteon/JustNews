@@ -53,10 +53,11 @@ jobs:
           python-version: '3.12'
           auto-activate-base: false
 
-      - name: Create / update conda env (${CANONICAL_ENV})
+      - name: Create / update project environment (using mamba if available)
         run: |
+          conda install -n base -c conda-forge mamba -y || true
           conda env list
-          conda env create -f environment.yml -n ${CANONICAL_ENV} || conda env update -f environment.yml -n ${CANONICAL_ENV} || true
+          mamba env create -f environment.yml -n ${CANONICAL_ENV} || mamba env update -f environment.yml -n ${CANONICAL_ENV} || conda env create -f environment.yml -n ${CANONICAL_ENV} || conda env update -f environment.yml -n ${CANONICAL_ENV} || true
 
       - name: Install dependencies (conda)
         run: |

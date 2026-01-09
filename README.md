@@ -16,6 +16,7 @@ distributed architecture.
 - GPU with CUDA support (recommended)
 
 - Miniconda or Anaconda installed
+- **Mamba** (recommended) — install into base: `conda install -n base -c conda-forge mamba -y`
 
 ### Installation
 
@@ -31,9 +32,15 @@ cd JustNews
 
 ```bash
 
-## Create conda environment (if not already created)
+## Create project environment (use mamba when available)
 
-conda env create -f environment.yml
+# If you have `mamba` installed (recommended - faster and compatible with conda):
+
+mamba env create -f environment.yml -n ${CANONICAL_ENV:-justnews-py312} || mamba env update -f environment.yml -n ${CANONICAL_ENV:-justnews-py312}
+
+# If `mamba` is not available, fall back to conda:
+
+conda env create -f environment.yml -n ${CANONICAL_ENV:-justnews-py312} || conda env update -f environment.yml -n ${CANONICAL_ENV:-justnews-py312}
 
 ## Activate the environment
 
@@ -247,6 +254,12 @@ This ensures scripts are executed with the same environment and binary used by d
 conda deactivate
 
 ## Update environment
+
+# Prefer `mamba` when installed (faster resolver):
+
+mamba env update -f environment.yml || conda env update -f environment.yml
+
+# Fallback: use conda directly
 
 conda env update -f environment.yml
 

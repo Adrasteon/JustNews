@@ -114,8 +114,7 @@ sudo ./infrastructure/systemd/scripts/health_check.sh -v
 - To avoid GPU-driven OOMs on developer hosts, set `SAFE_MODE=true`in`/etc/justnews/global.env` (disables CUDA and
   applies conservative settings).
 
-- `AUTO_BOOTSTRAP_CONDA=1`by default will attempt to bootstrap the canonical conda env if missing — set to`0` to opt
-  out.
+- `AUTO_BOOTSTRAP_CONDA=1` by default will attempt to bootstrap the canonical project environment if missing — it will prefer `mamba` if available (install into base with `conda install -n base -c conda-forge mamba -y`); set to `0` to opt out.
 
 - Use `MARIADB_CHECK_REQUIRED=true` in production to enforce DB connectivity on startup.
 

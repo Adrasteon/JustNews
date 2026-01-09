@@ -55,6 +55,9 @@ RUN_PY := $(PYTHON)
 else
 # If the run wrapper exists prefer to load global.env before running conda-run;
 # this makes local & CI test runs consistently pick up the canonical env vars.
+# NOTE: We recommend installing `mamba` into base for faster environment solves:
+#   conda install -n base -c conda-forge mamba -y
+# `mamba run -n <env>` is a drop-in replacement for `conda run -n <env>` when available.
 RUN_WRAPPER := $(shell [ -x ./scripts/run_with_env.sh ] && printf "./scripts/run_with_env.sh" || printf "")
 ifeq ($(RUN_WRAPPER),)
 RUN_PY := conda run -n $(CONDA_ENV) $(PYTHON)

@@ -252,27 +252,10 @@ class GPUOrchestratorEngine:
         except Exception:
             self.logger.debug("Failed to start leader election loop")
 
-        # VLLM server management
+        # VLLM server management (attributes initialized earlier to support lightweight/test mode)
         self._vllm_process = None
         self._vllm_enabled = os.environ.get("VLLM_ENABLED", "false").lower() == "true"
-        # Model management: default spec (can be overridden from config)
         self._model_spec = None
-        # Metrics for managed model
-        self.vllm_restart_counter = Counter(
-            "gpu_orchestrator_vllm_restarts_total",
-            "Total number of vLLM managed restarts",
-            registry=self.metrics.registry,
-        )
-        self.vllm_oom_counter = Counter(
-            "gpu_orchestrator_vllm_ooms_total",
-            "Total number of vLLM OOM events observed",
-            registry=self.metrics.registry,
-        )
-        self.vllm_status_gauge = Gauge(
-            "gpu_orchestrator_vllm_status",
-            "Current vLLM status: 0=stopped,1=starting,2=running,3=degraded",
-            registry=self.metrics.registry,
-        )
 
         # vLLM configuration/start block moved to execute earlier so tests and lightweight modes can exercise startup logic
         # (originally here, moved to before the lightweight return to support tests that re-run __init__)

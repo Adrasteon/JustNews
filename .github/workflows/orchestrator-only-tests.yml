@@ -76,12 +76,12 @@ jobs:
 
       - name: Install pip deps in conda env (fallback)
         run: |
-          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install --upgrade pip
-          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install -r requirements.txt || true
+          ./scripts/run_with_env.sh mamba run -n ${CANONICAL_ENV} python -m pip install --upgrade pip || ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install --upgrade pip
+          ./scripts/run_with_env.sh mamba run -n ${CANONICAL_ENV} python -m pip install -r requirements.txt || ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install -r requirements.txt || true
 
       - name: Run orchestrator tests (conda)
         run: |
           # Run only the new orchestrator unit tests and a focused integration test
-          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q tests/unit/test_gpu_orchestrator_* -q
+          ./scripts/run_with_env.sh mamba run -n ${CANONICAL_ENV} pytest -q tests/unit/test_gpu_orchestrator_* -q || ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q tests/unit/test_gpu_orchestrator_* -q
           # targeted integration smoke test that exercises claim concurrency
           ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q tests/integration/test_claim_concurrency.py -q || true

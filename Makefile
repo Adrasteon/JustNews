@@ -59,10 +59,12 @@ else
 #   conda install -n base -c conda-forge mamba -y
 # `mamba run -n <env>` is a drop-in replacement for `conda run -n <env>` when available.
 RUN_WRAPPER := $(shell [ -x ./scripts/run_with_env.sh ] && printf "./scripts/run_with_env.sh" || printf "")
+# Prefer using mamba if available (faster resolver). Detect at make parse-time.
+RUNNER := $(shell command -v mamba >/dev/null 2>&1 && echo mamba || echo conda)
 ifeq ($(RUN_WRAPPER),)
-RUN_PY := conda run -n $(CONDA_ENV) $(PYTHON)
+RUN_PY := $(RUNNER) run -n $(CONDA_ENV) $(PYTHON)
 else
-RUN_PY := $(RUN_WRAPPER) conda run -n $(CONDA_ENV) $(PYTHON)
+RUN_PY := $(RUN_WRAPPER) $(RUNNER) run -n $(CONDA_ENV) $(PYTHON)
 endif
 endif
 

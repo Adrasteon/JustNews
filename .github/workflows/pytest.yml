@@ -157,7 +157,7 @@ jobs:
 
       - name: Run monitoring tests (conda)
         run: |
-          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q tests/monitoring
+          ./scripts/run_with_env.sh mamba run -n ${CANONICAL_ENV} pytest -q tests/monitoring || ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q tests/monitoring
 
   integration_smoke:
     name: "Integration smoke: synthesize -> publish -> public API (mocked)"

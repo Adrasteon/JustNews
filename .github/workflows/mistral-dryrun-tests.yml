@@ -27,7 +27,7 @@ jobs:
 
       - name: Run adapter + mistral dry-run tests (conda)
         run: |
-          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q \
+          ./scripts/run_with_env.sh mamba run -n ${CANONICAL_ENV} pytest -q || ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q \
             tests/adapters \
             tests/agents/test_mistral_adapters.py \
             tests/agents/synthesizer/test_synthesizer_mistral_integration.py \
@@ -66,4 +66,4 @@ jobs:
 
       - name: Run provider integration tests (OpenAI/HF)
         run: |
-          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q tests/adapters/test_openai_adapter_integration.py tests/adapters/test_hf_adapter_integration.py -q
+          ./scripts/run_with_env.sh mamba run -n ${CANONICAL_ENV} pytest -q tests/adapters/test_openai_adapter_integration.py tests/adapters/test_hf_adapter_integration.py -q || ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q tests/adapters/test_openai_adapter_integration.py tests/adapters/test_hf_adapter_integration.py -q

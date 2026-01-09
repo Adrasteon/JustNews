@@ -50,4 +50,13 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
+# If caller wants to use `conda run ...` but `mamba` is available, prefer `mamba` as a drop-in replacement
+# This makes CI and developer scripts faster when mamba is installed in the base env.
+if [[ "$1" == "conda" ]]; then
+    if command -v mamba >/dev/null 2>&1; then
+        # Replace the leading 'conda' with 'mamba' and keep remaining args intact
+        set -- "mamba" "${@:2}"
+    fi
+fi
+
 exec "$@"

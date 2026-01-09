@@ -282,7 +282,7 @@ are available.
 
 ## Either set `PYTHONPATH` and run pytest using the activated conda env:
 
-PYTHONPATH=$(pwd) conda run -n ${CANONICAL_ENV:-justnews-py312} pytest tests/agents/crawler -q
+PYTHONPATH=$(pwd) mamba run -n ${CANONICAL_ENV:-justnews-py312} pytest tests/agents/crawler -q || PYTHONPATH=$(pwd) conda run -n ${CANONICAL_ENV:-justnews-py312} pytest tests/agents/crawler -q
 
 Tip: To ensure you always run pytest inside the project's conda environment, use the helper:
 
@@ -440,7 +440,7 @@ Operational commands to inspect and bootstrap Chroma: run the diagnostic and boo
 
 ```bash
 # Diagnose (autocreate if needed)
-PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_diagnose.py \
+PYTHONPATH=. mamba run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_diagnose.py || PYTHONPATH=. conda run -n ${CANONICAL_ENV:-justnews-py312} python scripts/chroma_diagnose.py \
   --host <host> --port <port> --autocreate
 ```
 

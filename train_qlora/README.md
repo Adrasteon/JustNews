@@ -16,7 +16,7 @@ rollout.
 Install (conda env example):
 
 ```bash
-conda run -n ${CANONICAL_ENV:-justnews-py312} pip install -r training_system/requirements-qlora.txt
+mamba run -n ${CANONICAL_ENV:-justnews-py312} pip install -r training_system/requirements-qlora.txt || conda run -n ${CANONICAL_ENV:-justnews-py312} pip install -r training_system/requirements-qlora.txt
 
 ```bash
 

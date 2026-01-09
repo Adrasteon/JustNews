@@ -61,8 +61,8 @@ jobs:
 
       - name: Install dependencies (conda)
         run: |
-          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install --upgrade pip
-          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install -r requirements.txt || true
+          ./scripts/run_with_env.sh mamba run -n ${CANONICAL_ENV} python -m pip install --upgrade pip || ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install --upgrade pip
+          ./scripts/run_with_env.sh mamba run -n ${CANONICAL_ENV} python -m pip install -r requirements.txt || ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} python -m pip install -r requirements.txt || true
 
       - name: Install Python & deps
         run: |
@@ -72,7 +72,7 @@ jobs:
 
       - name: Run representative E2E smoke tests (conda)
         run: |
-          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q tests/e2e/test_docker_poc_representative.py -q -s
+          ./scripts/run_with_env.sh mamba run -n ${CANONICAL_ENV} pytest -q tests/e2e/test_docker_poc_representative.py -q -s || ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest -q tests/e2e/test_docker_poc_representative.py -q -s
 
       - name: Run full E2E tests (conda)
         run: |
@@ -84,7 +84,7 @@ jobs:
           export REDIS_URL=redis://127.0.0.1:16379
           export E2E_REAL=1
           export PYTEST_RUNNING=1
-          ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest tests/e2e -q -s
+          ./scripts/run_with_env.sh mamba run -n ${CANONICAL_ENV} pytest tests/e2e -q -s || ./scripts/run_with_env.sh conda run -n ${CANONICAL_ENV} pytest tests/e2e -q -s
 
       - name: Tear down
         if: always()

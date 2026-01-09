@@ -112,6 +112,29 @@ class GPUOrchestratorEngine:
         )
         self.is_leader = False
 
+        # Ensure VLLM and related attributes exist even in lightweight test mode
+        self._vllm_process = None
+        self._vllm_enabled = os.environ.get("VLLM_ENABLED", "false").lower() == "true"
+        self._model_spec = None
+        self.vllm_restart_counter = Counter(
+            "gpu_orchestrator_vllm_restarts_total",
+            "Total number of vLLM managed restarts",
+            registry=self.metrics.registry,
+        )
+        self.vllm_oom_counter = Counter(
+            "gpu_orchestrator_vllm_ooms_total",
+            "Total number of vLLM OOM events observed",
+            registry=self.metrics.registry,
+        )
+        self.vllm_status_gauge = Gauge(
+            "gpu_orchestrator_vllm_status",
+            "Current vLLM status: 0=stopped,1=starting,2=running,3=degraded",
+            registry=self.metrics.registry,
+        )
+
+        # make instance file path writable so tests can monkeypatch engine.__file__
+        self.__file__ = __file__
+
         if not self._bootstrap_external:
             self.logger.info(
                 "GPU Orchestrator running in lightweight test mode; external services will not auto-bootstrap."

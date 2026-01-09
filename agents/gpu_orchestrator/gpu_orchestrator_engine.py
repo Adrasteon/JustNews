@@ -135,6 +135,56 @@ class GPUOrchestratorEngine:
         # make instance file path writable so tests can monkeypatch engine.__file__
         self.__file__ = __file__
 
+        # If vLLM is enabled, attempt to load canonical spec and start it; run even in lightweight mode
+        if self._vllm_enabled and not SAFE_MODE:
+            # Start optional metrics pusher if configured (best-effort)
+            try:
+                pushgw = os.environ.get("METRICS_PUSHGATEWAY_URL")
+                push_interval = int(os.environ.get("METRICS_PUSH_INTERVAL_SECONDS", "30"))
+                if pushgw:
+                    t = threading.Thread(target=self._metrics_pusher_loop, args=(pushgw, push_interval), daemon=True)
+                    t.start()
+            except Exception as e:
+                self.logger.warning(f"Failed to start metrics pusher: {e}")
+
+            # If a canonical spec exists in config, prefer orchestrator-managed start
+            try:
+                cfg_file = Path(getattr(self, '__file__', __file__)).resolve().parents[2] / "config" / "vllm_mistral_7b.yaml"
+                if cfg_file.exists():
+                    try:
+                        import yaml
+
+                        cfg = yaml.safe_load(cfg_file.read_text())
+                        model_cfg = cfg.get("model", {})
+                        runtime = cfg.get("runtime", {})
+                        service = cfg.get("service", {})
+                        spec = self.ModelSpec(
+                            id=model_cfg.get("id"),
+                            dtype=model_cfg.get("dtype", "bf16"),
+                            max_length=model_cfg.get("max_length", 4096),
+                            max_batch_size=model_cfg.get("max_batch_size", 4),
+                            max_tokens_per_request=model_cfg.get("max_tokens_per_request", 1024),
+                            num_workers=model_cfg.get("num_workers", 1),
+                            gpu_memory_util=runtime.get("gpu_memory_util", 0.75),
+                            py_torch_alloc_conf=runtime.get("py_torch_alloc_conf", "expandable_segments:True"),
+                            service_unit=service.get("systemd_unit"),
+                            memory_max=service.get("memory_max"),
+                            cpu_quota=service.get("cpu_quota"),
+                        )
+                        self.logger.info("Loaded canonical model spec from config/vllm_mistral_7b.yaml")
+                        self.ensure_model_installed(spec)
+                        # Only start if it is safe to do so
+                        if self.can_start_model(spec):
+                            self.start_model(spec)
+                        else:
+                            self.logger.warning("Insufficient GPU headroom to start the canonical model; not starting automatically")
+                    except Exception as e:
+                        self.logger.warning(f"Failed to load canonical vllm spec: {e}")
+                else:
+                    self._start_vllm_server()
+            except Exception as e:
+                self.logger.error(f"Failed to start VLLM server: {e}")
+
         if not self._bootstrap_external:
             self.logger.info(
                 "GPU Orchestrator running in lightweight test mode; external services will not auto-bootstrap."
@@ -222,54 +272,10 @@ class GPUOrchestratorEngine:
             registry=self.metrics.registry,
         )
 
-        if self._vllm_enabled and not SAFE_MODE:
-            # Start optional metrics pusher if configured
-            try:
-                pushgw = os.environ.get("METRICS_PUSHGATEWAY_URL")
-                push_interval = int(os.environ.get("METRICS_PUSH_INTERVAL_SECONDS", "30"))
-                if pushgw:
-                    t = threading.Thread(target=self._metrics_pusher_loop, args=(pushgw, push_interval), daemon=True)
-                    t.start()
-            except Exception as e:
-                self.logger.warning(f"Failed to start metrics pusher: {e}")
+        # vLLM configuration/start block moved to execute earlier so tests and lightweight modes can exercise startup logic
+        # (originally here, moved to before the lightweight return to support tests that re-run __init__)
+        # NOTE: if you need to change vLLM boot behavior update the copy above the early return.
 
-            # If a canonical spec exists in config, prefer orchestrator-managed start
-            try:
-                cfg_file = Path(__file__).resolve().parents[2] / "config" / "vllm_mistral_7b.yaml"
-                if cfg_file.exists():
-                    try:
-                        import yaml
-
-                        cfg = yaml.safe_load(cfg_file.read_text())
-                        model_cfg = cfg.get("model", {})
-                        runtime = cfg.get("runtime", {})
-                        service = cfg.get("service", {})
-                        spec = self.ModelSpec(
-                            id=model_cfg.get("id"),
-                            dtype=model_cfg.get("dtype", "bf16"),
-                            max_length=model_cfg.get("max_length", 4096),
-                            max_batch_size=model_cfg.get("max_batch_size", 4),
-                            max_tokens_per_request=model_cfg.get("max_tokens_per_request", 1024),
-                            num_workers=model_cfg.get("num_workers", 1),
-                            gpu_memory_util=runtime.get("gpu_memory_util", 0.75),
-                            py_torch_alloc_conf=runtime.get("py_torch_alloc_conf", "expandable_segments:True"),
-                            service_unit=service.get("systemd_unit"),
-                            memory_max=service.get("memory_max"),
-                            cpu_quota=service.get("cpu_quota"),
-                        )
-                        self.logger.info("Loaded canonical model spec from config/vllm_mistral_7b.yaml")
-                        self.ensure_model_installed(spec)
-                        # Only start if it is safe to do so
-                        if self.can_start_model(spec):
-                            self.start_model(spec)
-                        else:
-                            self.logger.warning("Insufficient GPU headroom to start the canonical model; not starting automatically")
-                    except Exception as e:
-                        self.logger.warning(f"Failed to load canonical vllm spec: {e}")
-                else:
-                    self._start_vllm_server()
-            except Exception as e:
-                self.logger.error(f"Failed to start VLLM server: {e}")
 
     def get_metrics_text(self) -> str:
         """Return collected Prometheus metrics in text format."""

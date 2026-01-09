@@ -24,6 +24,7 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any, Optional
+from dataclasses import dataclass, field
 
 try:  # NVML bindings became optional once we moved to the conda-provided nvidia-ml-py package
     import pynvml  # type: ignore
@@ -451,9 +452,6 @@ class GPUOrchestratorEngine:
     # Model Specification & Management
     # -------------------------------
     
-    from dataclasses import dataclass, field
-    from typing import Optional
-
     @dataclass
     class ModelSpec:
         id: str

@@ -507,8 +507,9 @@ class GPUOrchestratorEngine:
                 # Collect adapters from AGENT_MODEL_MAP.json if present
                 try:
                     import json
-                    am = Path(__file__).resolve().parents[2] / "AGENT_MODEL_MAP.json"
-                    if am.exists():
+                    am_base = Path(getattr(self, '__file__', __file__)).resolve().parents[2]
+                    am = am_base / "AGENT_MODEL_MAP.json"
+                    if am.exists()
                         j = json.loads(am.read_text())
                         adapters = []
                         for agent, arr in j.get("agents", {}).items():
@@ -623,9 +624,11 @@ class GPUOrchestratorEngine:
     def monitor_model(self, spec: "GPUOrchestratorEngine.ModelSpec") -> None:
         """Monitor model logs and process state; implement OOM detection and restart/backoff."""
         restart_count = 0
-        backoff_s = 1
+        # Use shorter backoffs and polling in lightweight/test mode to make unit tests fast
+        backoff_s = 0.1 if not self._bootstrap_external else 1
         max_restarts = 5
         log_path = Path("/home/adra/JustNews/run/vllm_mistral.log")
+        poll_interval = 0.1 if not self._bootstrap_external else 5
         self.logger.info("Starting model monitor thread")
         while True:
             try:
@@ -643,10 +646,10 @@ class GPUOrchestratorEngine:
                     backoff_s = min(backoff_s * 2, 300)
                     self.vllm_restart_counter.inc()
                     self.start_model(spec)
-                time.sleep(5)
+                time.sleep(poll_interval)
             except Exception as e:
                 self.logger.error(f"Error in model monitor loop: {e}")
-                time.sleep(5)
+                time.sleep(poll_interval)
 
     def _start_vllm_server(self) -> None:
         """Start VLLM inference server for Mistral-7B with LoRA adapter support."""

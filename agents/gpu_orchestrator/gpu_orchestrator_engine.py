@@ -523,6 +523,21 @@ class GPUOrchestratorEngine:
             self.logger.info(f"Model {spec.id} not found in ModelStore; will rely on HF id or repo path")
         except Exception:
             self.logger.debug("ModelStore integration not available or failed to resolve model")
+        # Even if ModelStore resolution fails, attempt to collect adapters from AGENT_MODEL_MAP.json
+        try:
+            import json
+            am_base = Path(getattr(self, '__file__', __file__)).resolve().parents[2]
+            am = am_base / "AGENT_MODEL_MAP.json"
+            if am.exists():
+                j = json.loads(am.read_text())
+                adapters = []
+                for agent, arr in j.get("agents", {}).items():
+                    for item in arr:
+                        if item.get("base_ref") and item.get("base_ref").startswith("mistral-7b"):
+                            adapters.append(item.get("adapter_model_store_path"))
+                spec.adapter_paths = adapters
+        except Exception:
+            self.logger.debug("Failed to collect adapters from AGENT_MODEL_MAP.json")
         return None
 
     def _free_gpu_memory_mb(self, index: int = 0) -> int:

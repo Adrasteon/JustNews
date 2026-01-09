@@ -509,7 +509,7 @@ class GPUOrchestratorEngine:
                     import json
                     am_base = Path(getattr(self, '__file__', __file__)).resolve().parents[2]
                     am = am_base / "AGENT_MODEL_MAP.json"
-                    if am.exists()
+                    if am.exists():
                         j = json.loads(am.read_text())
                         adapters = []
                         for agent, arr in j.get("agents", {}).items():

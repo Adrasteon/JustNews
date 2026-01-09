@@ -114,7 +114,9 @@ class GPUOrchestratorEngine:
 
         # Ensure VLLM and related attributes exist even in lightweight test mode
         self._vllm_process = None
-        self._vllm_enabled = os.environ.get("VLLM_ENABLED", "false").lower() == "true"
+        # Allow tests to pre-set _vllm_enabled; only set from env if not already present
+        if not hasattr(self, '_vllm_enabled'):
+            self._vllm_enabled = os.environ.get("VLLM_ENABLED", "false").lower() == "true"
         self._model_spec = None
         self.vllm_restart_counter = Counter(
             "gpu_orchestrator_vllm_restarts_total",

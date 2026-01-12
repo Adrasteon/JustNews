@@ -13,7 +13,8 @@ import inspect
 from contextlib import contextmanager
 from typing import Any, Callable, Generator, TypeVar
 
-from opentelemetry import trace
+from opentelemetry import propagate, trace
+from opentelemetry.context import Context
 from opentelemetry.trace import Span, Status, StatusCode
 
 from common.otel import _STATE
@@ -31,6 +32,38 @@ def get_tracer(name: str | None = None) -> trace.Tracer:
     """
     tracer_name = name or _STATE.tracer_name
     return trace.get_tracer(tracer_name)
+
+
+def inject_trace_context(carrier: dict[str, Any]) -> None:
+    """
+    Inject the current trace context into a dictionary (e.g., for Redis/serialization).
+    
+    This handles keys as strings. If using with Redis/Kafka clients that require bytes,
+    encoding may be needed by the caller.
+    """
+    if not _STATE.enabled:
+        return
+    propagate.inject(carrier)
+
+
+def extract_trace_context(carrier: dict[str | bytes, Any]) -> Context:
+    """
+    Extract trace context from a dictionary (e.g., from Redis).
+    
+    Handles mixed string/bytes keys commonly found in Redis responses.
+    """
+    if not carrier:
+        return propagate.extract({})
+        
+    # Standardize keys to strings for OTel propagator
+    safe_carrier = {}
+    for k, v in carrier.items():
+        key_str = k.decode("utf-8") if isinstance(k, bytes) else str(k)
+        val_str = v.decode("utf-8") if isinstance(v, bytes) else str(v)
+        safe_carrier[key_str] = val_str
+        
+    return propagate.extract(safe_carrier)
+
 
 
 def traced(

@@ -41,6 +41,7 @@ from fastapi import HTTPException
 from prometheus_client import Counter, Gauge, Histogram
 
 from common.metrics import JustNewsMetrics
+from common.tracing import inject_trace_context
 from database.utils.migrated_database_utils import create_database_service
 
 # Constants
@@ -2711,6 +2712,9 @@ class GPUOrchestratorEngine:
                         "type": job_type,
                         "payload": json.dumps(payload),
                     }
+                    # Inject tracing context into the Redis message fields
+                    inject_trace_context(fields)
+
                     if timeout_seconds is not None:
                         fields["timeout_seconds"] = str(timeout_seconds)
                     self.redis_client.xadd(stream, fields)

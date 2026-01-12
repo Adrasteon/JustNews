@@ -17,6 +17,7 @@ import os
 import time
 from typing import Any
 
+from common.tracing import extract_trace_context, get_tracer, trace
 
 class Worker:
     def __init__(
@@ -163,13 +164,27 @@ class Worker:
 
         # run handler
         try:
-            start_time = time.time()
-            if handler:
-                handler(payload)
-            else:
-                # light simulation of doing the work
-                time.sleep(0.01)
-            duration = time.time() - start_time
+            # Extract trace context
+            trace_ctx = extract_trace_context(fields if isinstance(fields, dict) else {})
+            tracer = get_tracer("gpu_worker")
+
+            with tracer.start_as_current_span(
+                "worker.process_job",
+                context=trace_ctx,
+                attributes={
+                    "job_id": job_id or "unknown",
+                    "agent": self.agent_name,
+                    "group": self.group,
+                }
+            ) as span:
+                start_time = time.time()
+                if handler:
+                    handler(payload)
+                else:
+                    # light simulation of doing the work
+                    time.sleep(0.01)
+                duration = time.time() - start_time
+                span.set_attribute("duration_seconds", duration)
 
             # Record processing duration
             if hasattr(self.engine, "job_processing_duration_histogram"):

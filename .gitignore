@@ -105,3 +105,8 @@ global.env
 /scripts/legacy/
 # Ignore any legacy Qwen2 adapter artifacts in model_store
 model_store/adapters/**/qwen2_*
+backups/
+
+# Runtime logs
+run/
+*.gz

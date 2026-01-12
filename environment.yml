@@ -71,7 +71,7 @@ dependencies:
   - opentelemetry-instrumentation>=0.41b0
   - opentelemetry-instrumentation-fastapi>=0.41b0
   - opentelemetry-instrumentation-requests>=0.41b0
-  - protobuf=5.29.3
+  - protobuf=4.25.8
   - thrift>=0.22
   - wrapt>=1.14
   - psutil>=5.9

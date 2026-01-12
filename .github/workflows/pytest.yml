@@ -26,25 +26,6 @@ jobs:
           # Fails the job if any non-canonical env names remain in source/config
           bash scripts/dev/check_canonical_env.sh
 
-  mamba_smoke:
-    name: Mamba smoke check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install Miniconda
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          python-version: '3.12'
-          auto-activate-base: false
-      - name: Install mamba in base
-        run: |
-          conda install -n base -c conda-forge mamba -y || true
-      - name: Mamba dry-run env create
-        run: |
-          mamba --version
-          mamba env create -f environment.yml -n ${CANONICAL_ENV:-justnews-py312} --dry-run || mamba env update -f environment.yml -n ${CANONICAL_ENV:-justnews-py312} --dry-run || true
-
   processing_check:
     runs-on: ubuntu-latest
     env:

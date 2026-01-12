@@ -23,12 +23,18 @@ try:  # Optional dependency: we only configure OpenTelemetry when installed.
     )
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+    # Instrumentation packages
+    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+    from opentelemetry.instrumentation.requests import RequestsInstrumentor
 except ImportError:  # pragma: no cover - optional dependency
     trace = None  # type: ignore
     Resource = None  # type: ignore
     TracerProvider = None  # type: ignore
     BatchSpanProcessor = None  # type: ignore
     OTLPSpanExporter = None  # type: ignore
+    FastAPIInstrumentor = None  # type: ignore
+    RequestsInstrumentor = None  # type: ignore
 
 
 @dataclass
@@ -107,6 +113,29 @@ def init_telemetry(
         service_name,
     )
     return True
+
+
+def instrument_requests() -> None:
+    """Enable auto-instrumentation for the requests library."""
+    if not _STATE.enabled or RequestsInstrumentor is None:
+        return
+    
+    RequestsInstrumentor().instrument()
+    logger.debug("Requests library instrumented with OpenTelemetry")
+
+
+def instrument_fastapi(app: Any) -> None:
+    """
+    Enable auto-instrumentation for a FastAPI application.
+    
+    Args:
+        app: The FastAPI application instance to instrument.
+    """
+    if not _STATE.enabled or FastAPIInstrumentor is None:
+        return
+
+    FastAPIInstrumentor.instrument_app(app)
+    logger.debug("FastAPI application instrumented with OpenTelemetry")
 
 
 def is_enabled() -> bool:

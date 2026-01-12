@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 from common.metrics import JustNewsMetrics
 from common.observability import get_logger
+from common.otel import init_telemetry, instrument_fastapi
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
@@ -149,6 +150,11 @@ class MCPBusClient:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Crawler agent is starting up.")
+
+    # Initialize OpenTelemetry
+    init_telemetry("crawler-agent")
+    instrument_fastapi(app)
+
     mcp_bus_client = MCPBusClient()
     try:
         mcp_bus_client.register_agent(

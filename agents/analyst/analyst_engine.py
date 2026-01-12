@@ -30,6 +30,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from common.observability import get_logger
+from common.tracing import traced
 
 try:
     from agents.common.mistral_adapter import MistralAdapter
@@ -184,6 +185,7 @@ class AnalystEngine:
             )
         return False
 
+    @traced(name="analyst.init_models")
     def _initialize_models(self):
         """Initialize analysis models and components."""
         try:
@@ -336,6 +338,7 @@ class AnalystEngine:
         except Exception as e:
             logger.warning(f"Failed to log feedback: {e}")
 
+    @traced(name="analyst.extract_entities", record_args=True)
     def extract_entities(self, text: str) -> dict[str, Any]:
         """
         Extract named entities from text using spaCy with transformer fallback.
@@ -789,6 +792,7 @@ class AnalystEngine:
         cleaned.sort(key=lambda x: x.get("confidence", 0), reverse=True)
         return cleaned[:15]
 
+    @traced(name="analyst.analyze_stats", record_args=True)
     def analyze_text_statistics(self, text: str) -> dict[str, Any]:
         """
         Comprehensive text statistical analysis.
@@ -1219,6 +1223,7 @@ class AnalystEngine:
             "vocabulary_size": len(set(filtered_words)),
         }
 
+    @traced(name="analyst.sentiment", record_args=True)
     def analyze_sentiment(self, text: str) -> dict[str, Any]:
         """
         Analyze sentiment of text content using GPU acceleration.

@@ -32,6 +32,7 @@ from agents.crawler.enhancements import (
 )
 from common.json_utils import make_json_safe
 from common.observability import get_logger
+from common.tracing import traced
 from config import get_crawling_config
 
 from ..performance_monitoring import (
@@ -547,6 +548,7 @@ class CrawlerEngine:
         # Default to generic strategy
         return "generic"
 
+    @traced(name="crawler.mode.ultra_fast")
     async def _crawl_ultra_fast_mode(
         self, site_config: SiteConfig, max_articles: int = 50
     ) -> list[dict]:
@@ -610,6 +612,7 @@ class CrawlerEngine:
             # Always cleanup after ultra-fast mode
             await self._cleanup_orphaned_processes()
 
+    @traced(name="crawler.mode.ai_enhanced")
     async def _crawl_ai_enhanced_mode(
         self, site_config: SiteConfig, max_articles: int = 25
     ) -> list[dict]:
@@ -722,6 +725,7 @@ class CrawlerEngine:
             logger.error(f"Remote AI analysis failed: {e}")
         return article
 
+    @traced(name="crawler.crawl_site", record_args=True)
     async def crawl_site(
         self, site_config: SiteConfig, max_articles: int = 25
     ) -> list[dict]:
@@ -737,6 +741,7 @@ class CrawlerEngine:
         else:  # generic
             return await self._crawl_generic_mode(site_config, max_articles)
 
+    @traced(name="crawler.run_unified_crawl", record_args=True)
     async def run_unified_crawl(
         self,
         domains: list[str],

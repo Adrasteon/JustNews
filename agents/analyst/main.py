@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from common.metrics import JustNewsMetrics
 from common.observability import get_logger
+from common.otel import init_telemetry, instrument_fastapi
 from database.utils.migrated_database_utils import create_database_service
 
 # Compatibility: expose create_database_service for tests that patch agent modules
@@ -151,6 +152,10 @@ async def lifespan(app: FastAPI):
     )
 
     logger.info("Specialized analysis modules loaded and ready")
+
+    # Initialize OpenTelemetry
+    init_telemetry("analyst-agent")
+    instrument_fastapi(app)
 
     # Register agent with MCP Bus
     mcp_bus_client = MCPBusClient()

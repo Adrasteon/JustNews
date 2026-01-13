@@ -4,17 +4,16 @@ This directory contains the organized script ecosystem for JustNews operations, 
 
 ## Directory Structure
 
-```
-
-scripts/refactor/
+```text
+scripts/
 ├── admin/           # Administrative scripts (secrets, user management)
 ├── deploy/          # Deployment and infrastructure setup scripts
 ├── dev/             # Development environment and tooling scripts
 ├── maintenance/     # System maintenance and monitoring scripts
 ├── ops/             # Operational scripts (service management, model handling)
+├── perf/            # Performance testing and telemetry
 ├── archive/         # Archived legacy scripts (for reference only)
 └── common/          # Shared utilities and frameworks
-
 ```
 
 ## Categories
@@ -68,33 +67,24 @@ All scripts follow consistent patterns:
 ### Python Scripts
 
 ```bash
-
 ## Basic usage
-
-python scripts/refactor/category/script.py
+python scripts/ops/download_agent_models.py
 
 ## With options
-
-python scripts/refactor/category/script.py --verbose --log-level DEBUG
+python scripts/ops/download_agent_models.py --verbose --log-level DEBUG
 
 ## Dry run mode (where supported)
-
-python scripts/refactor/category/script.py --dry-run
-
-```bash
+python scripts/deploy/init_database.py --dry-run
+```
 
 ### Shell Scripts
 
 ```bash
-
 ## Basic usage
-
-./scripts/refactor/category/script.sh
+./scripts/dev/setup_dev_environment.sh
 
 ## With options (varies by script)
-
-./scripts/refactor/category/script.sh --help
-
+./scripts/ops/start_services_daemon.sh --help
 ```
 
 ## Common Options

@@ -31,7 +31,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from common.metrics import JustNewsMetrics
-from common.observability import get_logger
+from common.observability import get_logger, bootstrap_observability
 
 from .scout_engine import CrawlMode, ScoutConfig, ScoutEngine
 from .tools import (
@@ -46,13 +46,14 @@ from .tools import (
 
 # MCP Bus integration
 try:
-    from common.mcp_bus_client import MCPBusClient
-
+    from agents.common.mcp_bus_client import MCPBusClient
     MCP_AVAILABLE = True
 except ImportError:
     MCPBusClient = None
     MCP_AVAILABLE = False
 
+# Initialize Observability (Logging + Monitoring Core)
+bootstrap_observability("scout")
 logger = get_logger(__name__)
 
 # Global engine instance

@@ -732,7 +732,7 @@ main() {
   if [[ "${SKIP_PROTOBUF_CHECK:-false}" == "true" ]]; then
     log_warn "SKIP_PROTOBUF_CHECK=true — skipping protobuf version check"
   else
-    if ! run_python_script "$repo_root/scripts/check_protobuf_version.py"; then
+    if ! run_python_script "$repo_root/scripts/checks/check_protobuf_version.py"; then
       log_error "Protobuf version does not meet the recommended minimum; please upgrade your Python environment's protobuf to >=4.24.0. Aborting startup."
       exit 1
     fi

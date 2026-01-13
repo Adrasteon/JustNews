@@ -91,19 +91,40 @@ class JustNewsMetrics:
         "503": "service-unavailable",
     }
 
-    def __init__(self, agent_name: str, registry: CollectorRegistry | None = None):
+    def __init__(
+        self,
+        agent_name: str,
+        registry: CollectorRegistry | None = None,
+        enable_enhanced: bool = True,
+    ):
         """
         Initialize metrics for an agent.
 
         Args:
             agent_name: Name of the agent (e.g., 'scout', 'analyst')
             registry: Optional custom registry (useful for testing)
+            enable_enhanced: Whether to attempt initializing the enhanced metrics collector (default: True)
         """
         self.agent_name = agent_name
         self.display_name = self.AGENT_DISPLAY_NAMES.get(
             agent_name, f"{agent_name}-agent"
         )
         self.registry = registry or CollectorRegistry()
+
+        # Initialize Core Monitoring Enhanced Collector if available
+        # But skip if explicitly disabled (to avoid recursion when EnhancedMetricsCollector
+        # initializes its own JustNewsMetrics instance)
+        if enable_enhanced:
+            try:
+                from monitoring.core.metrics_collector import get_enhanced_metrics_collector
+
+                # We don't replace self yet to maintain backward compatibility,
+                # but we ensure the enhanced collector is initialized.
+                self._enhanced_collector = get_enhanced_metrics_collector(agent_name)
+            except ImportError:
+                self._enhanced_collector = None
+        else:
+            self._enhanced_collector = None
 
         self._init_standard_metrics()
         self._init_agent_specific_metrics()

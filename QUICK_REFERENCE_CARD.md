@@ -83,6 +83,14 @@ mysql -u $MARIADB_USER -p$MARIADB_PASSWORD -D $MARIADB_DB \
 
 ## Phase 3: Agent Services (20-30 min)
 
+### 3.0 Start Observability (Optional)
+
+Start the OpenTelemetry collector to capture traces locally:
+
+```bash
+./scripts/ops/run_local_otel.sh &
+```
+
 ### 3.1 MCP Bus
 
 ```bash

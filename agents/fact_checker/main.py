@@ -38,7 +38,11 @@ from pydantic import BaseModel
 
 # Import metrics library
 from common.metrics import JustNewsMetrics
-from common.observability import get_logger
+from common.observability import get_logger, bootstrap_observability
+from agents.common.mcp_bus_client import MCPBusClient
+
+bootstrap_observability("fact_checker")
+logger = get_logger(__name__)
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:

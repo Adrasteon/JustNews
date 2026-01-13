@@ -25,9 +25,11 @@ from pydantic import BaseModel
 
 # Import metrics library
 from common.metrics import JustNewsMetrics
-from common.observability import get_logger
+from common.observability import get_logger, bootstrap_observability
+from agents.common.mcp_bus_client import MCPBusClient
 
 # Configure logging
+bootstrap_observability("critic")
 logger = get_logger(__name__)
 
 # Environment variables
@@ -35,19 +37,6 @@ CRITIC_AGENT_PORT = int(os.environ.get("CRITIC_AGENT_PORT", 8006))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
 ready = False
-
-
-class MCPBusClient:
-    """MCP Bus client for inter-agent communication"""
-
-    def __init__(self, base_url: str = MCP_BUS_URL):
-        self.base_url = base_url
-
-    def register_agent(self, agent_name: str, agent_address: str, tools: list[str]):
-        """Register agent with MCP Bus"""
-        registration_data = {
-            "name": agent_name,
-            "address": agent_address,
         }
         try:
             import requests

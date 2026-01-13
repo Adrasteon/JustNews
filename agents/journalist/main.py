@@ -29,14 +29,36 @@ try:
 except Exception:
     create_database_service = None
 
+# MCP Bus Integration
+try:
+    from agents.common.mcp_bus_client import MCPBusClient
+    MCP_AVAILABLE = True
+except ImportError:
+    MCPBusClient = None
+    MCP_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 engine: JournalistEngine | None = None
+MCP_BUS_URL = "http://localhost:8000" # Default
+JOURNALIST_PORT = 8016
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global engine
+    # Register with MCP Bus
+    if MCP_AVAILABLE and MCPBusClient:
+        try:
+            mcp = MCPBusClient(base_url=MCP_BUS_URL)
+            mcp.register_agent(
+                agent_name="journalist",
+                agent_address=f"http://localhost:{JOURNALIST_PORT}",
+                tools=["crawl_url"]
+            )
+        except Exception as e:
+            logger.warning(f"MCP Bus registration failed: {e}")
+
     logger.info("Starting Journalist agent...")
     engine = JournalistEngine()
     try:

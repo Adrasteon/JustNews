@@ -12,11 +12,11 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from scripts.init_database import (
+from scripts.deploy.init_database import (
     create_initial_admin_user,
     create_knowledge_graph_tables,
 )
-from scripts.manage_secrets import SecretManagerCLI
+from scripts.admin.manage_secrets import SecretManagerCLI
 
 
 class TestDatabaseInitialization:
@@ -59,7 +59,7 @@ class TestDatabaseInitialization:
         # Function should complete without error
         assert True
 
-    @patch("scripts.init_database.execute_query")
+    @patch("scripts.deploy.init_database.execute_query")
     def test_create_knowledge_graph_tables(self, mock_execute):
         """Test knowledge graph table creation"""
         mock_execute.return_value = None
@@ -73,23 +73,6 @@ class TestDatabaseInitialization:
 
         # Verify execute_query was called (table creation attempted)
         assert mock_execute.called
-
-    @patch("subprocess.run")
-    @patch("os.path.exists")
-    def test_database_migration_script(self, mock_exists, mock_run):
-        """Test database migration script execution"""
-        mock_exists.return_value = True
-        mock_run.return_value = Mock(
-            returncode=0, stdout="Migration successful", stderr=""
-        )
-
-        # Simulate running migration script
-        result = mock_run(
-            ["python", "scripts/migration_setup.py"], capture_output=True, text=True
-        )
-
-        assert result.returncode == 0
-        assert "Migration successful" in result.stdout
 
 
 class TestSecretManagementScripts:

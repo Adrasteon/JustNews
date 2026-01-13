@@ -12,7 +12,12 @@ def run_manage_cmd(cmd_args):
         sys.executable,
         os.path.join(os.getcwd(), "agents", "publisher", "manage.py"),
     ] + cmd_args
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    env = os.environ.copy()
+    publisher_dir = os.path.join(os.getcwd(), "agents", "publisher")
+    current_pythonpath = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = f"{publisher_dir}:{current_pythonpath}" if current_pythonpath else publisher_dir
+    
+    proc = subprocess.run(cmd, capture_output=True, text=True, env=env)
     return proc.returncode, proc.stdout, proc.stderr
 
 

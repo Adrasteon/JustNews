@@ -22,8 +22,10 @@ from agents.analytics.analytics_engine import (
 )
 from agents.analytics.dashboard import create_analytics_app
 from common.metrics import JustNewsMetrics
-from common.observability import get_logger
+from common.observability import get_logger, bootstrap_observability
+from agents.common.mcp_bus_client import MCPBusClient
 
+bootstrap_observability("analytics")
 logger = get_logger(__name__)
 
 # Environment variables
@@ -31,30 +33,6 @@ ANALYTICS_AGENT_PORT = int(os.environ.get("ANALYTICS_AGENT_PORT", 8011))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
 ready = False
-
-
-class MCPBusClient:
-    """MCP Bus client for agent registration"""
-
-    def __init__(self, base_url: str = MCP_BUS_URL):
-        self.base_url = base_url
-
-    def register_agent(self, agent_name: str, agent_address: str, tools: list):
-        import requests
-
-        registration_data = {
-            "name": agent_name,
-            "address": agent_address,
-        }
-        try:
-            response = requests.post(
-                f"{self.base_url}/register", json=registration_data, timeout=(2, 5)
-            )
-            response.raise_for_status()
-            logger.info(f"Successfully registered {agent_name} with MCP Bus.")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
-            raise
 
 
 # Define the lifespan context manager
@@ -73,7 +51,7 @@ async def lifespan(app: FastAPI):
         sys.exit(1)
 
     # Register with MCP Bus
-    mcp_bus_client = MCPBusClient()
+    mcp_bus_client = MCPBusClient(base_url=MCP_BUS_URL)
     try:
         mcp_bus_client.register_agent(
             agent_name="analytics",

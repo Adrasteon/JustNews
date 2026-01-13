@@ -15,8 +15,10 @@ from pydantic import BaseModel
 
 from agents.archive.archive_engine import get_archive_engine
 from agents.archive.metrics_registry import metrics
-from common.observability import get_logger
+from common.observability import get_logger, bootstrap_observability
+from agents.common.mcp_bus_client import MCPBusClient
 
+bootstrap_observability("archive")
 logger = get_logger(__name__)
 
 # Environment variables
@@ -28,28 +30,6 @@ ready = False
 archive_engine = get_archive_engine()
 
 
-class MCPBusClient:
-    """MCP Bus client for agent registration."""
-
-    def __init__(self, base_url: str = MCP_BUS_URL):
-        self.base_url = base_url
-
-    def register_agent(self, agent_name: str, agent_address: str, tools: list[str]):
-        """Register agent with MCP Bus."""
-        registration_data = {
-            "name": agent_name,
-            "address": agent_address,
-        }
-        try:
-            response = requests.post(
-                f"{self.base_url}/register", json=registration_data, timeout=(2, 5)
-            )
-            response.raise_for_status()
-            logger.info(f"Successfully registered {agent_name} with MCP Bus.")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
-            raise
-
 
 # Lifespan context manager
 @asynccontextmanager
@@ -58,7 +38,7 @@ async def lifespan(app: FastAPI):
     logger.info("Archive agent is starting up.")
 
     # Register with MCP Bus
-    mcp_bus_client = MCPBusClient()
+    mcp_bus_client = MCPBusClient(base_url=MCP_BUS_URL)
     try:
         mcp_bus_client.register_agent(
             agent_name="archive",

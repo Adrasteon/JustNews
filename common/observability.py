@@ -99,23 +99,43 @@ def setup_logging(level: int = logging.INFO, format_string: str | None = None) -
 def bootstrap_observability(
     service_name: str, *, level: int = logging.INFO, enable_otel: bool = True
 ) -> None:
-    """Configure logging and optional OpenTelemetry exporters for a service."""
+    """Configure logging, metrics, and core monitoring components."""
+    # 1. Basic Logging Setup
     setup_logging(level=level)
-    if not enable_otel:
-        return
-    try:
-        from common import otel
 
-        initialized = otel.init_telemetry(service_name)
-        if not initialized:
-            logging.getLogger(__name__).debug(
-                "OpenTelemetry not initialized (missing SDK or disabled)"
+    # 2. Initialize Core Monitoring Stack (Async-ready)
+    try:
+        # Import core components locally to avoid circular dependencies
+        from monitoring.core.log_aggregator import LogAggregator
+        from monitoring.core.trace_processor import TraceProcessor
+
+        # Initialize global instances (idempotent)
+        # Note: These require an event loop to run fully, usually provided by the agent using them
+        _ = LogAggregator()
+        _ = TraceProcessor()
+        
+        logging.getLogger(__name__).info(f"Initialized Monitoring Core for {service_name}")
+    except ImportError:
+        logging.getLogger(__name__).debug("Monitoring Core not found, skipping initialization.")
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"Failed to initialize Monitoring Core: {e}")
+
+    # 3. OpenTelemetry (Legacy/External)
+    if enable_otel:
+        try:
+            from common import otel
+
+            initialized = otel.init_telemetry(service_name)
+            if not initialized:
+                logging.getLogger(__name__).debug(
+                    "OpenTelemetry not initialized (missing SDK or disabled)"
+                )
+        except Exception as exc:  # pragma: no cover - defensive
+            logging.getLogger(__name__).warning(
+                "Failed to initialize OpenTelemetry: %s", exc
             )
-    except Exception as exc:  # pragma: no cover - defensive
-        logging.getLogger(__name__).warning(
-            "Failed to initialize OpenTelemetry: %s", exc
-        )
-    # Initialize optional Sentry integration when configured (opt-in via SENTRY_DSN)
+
+    # 4. Sentry Integration
     try:
         from common import sentry_integration
 

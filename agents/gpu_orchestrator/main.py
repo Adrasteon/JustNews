@@ -20,6 +20,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from common.observability import bootstrap_observability
+from agents.common.mcp_bus_client import MCPBusClient
 
 from .gpu_orchestrator_engine import engine
 from .tools import (
@@ -106,49 +107,6 @@ SAFE_MODE = os.environ.get("SAFE_MODE", "false").lower() == "true"
 
 # Global state
 READINESS = False
-
-
-class MCPBusClient:
-    """Client for MCP Bus communication."""
-
-    def __init__(self, base_url: str = MCP_BUS_URL):
-        self.base_url = base_url
-
-    def register_agent(self, agent_name: str, agent_address: str, tools: list[str]):
-        """Register agent with MCP Bus."""
-        try:
-            import requests
-        except Exception:
-            engine.logger.warning(
-                "Requests library not available; skipping MCP Bus registration attempt"
-            )
-            return
-
-        registration_data = {
-            "name": agent_name,
-            "address": agent_address,
-            "tools": tools,
-        }
-
-        for attempt in range(5):  # Retry up to 5 times
-            try:
-                response = requests.post(
-                    f"{self.base_url}/register", json=registration_data, timeout=(2, 5)
-                )
-                response.raise_for_status()
-                engine.logger.info(
-                    f"Successfully registered {agent_name} with MCP Bus on attempt {attempt + 1}"
-                )
-                return
-            except requests.exceptions.RequestException as e:
-                engine.logger.warning(
-                    f"MCP Bus unavailable for registration (attempt {attempt + 1}/5): {e}"
-                )
-                time.sleep(2**attempt)  # Exponential backoff
-
-        engine.logger.error(
-            f"Failed to register {agent_name} with MCP Bus after multiple attempts."
-        )
 
 
 class PolicyUpdate(BaseModel):
@@ -246,7 +204,7 @@ async def lifespan(app: FastAPI):
         """Register the agent with the MCP Bus in a background thread."""
 
         def background_task():
-            client = MCPBusClient()
+            client = MCPBusClient(base_url=MCP_BUS_URL)
             try:
                 client.register_agent(agent_name, agent_address, tools)
             finally:

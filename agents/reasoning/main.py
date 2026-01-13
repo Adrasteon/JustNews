@@ -27,9 +27,11 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 
 from common.metrics import JustNewsMetrics
-from common.observability import get_logger
+from common.observability import get_logger, bootstrap_observability
+from agents.common.mcp_bus_client import MCPBusClient
 
 # Configure logging
+bootstrap_observability("reasoning")
 logger = get_logger(__name__)
 
 # Global engine instances

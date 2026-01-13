@@ -20,7 +20,7 @@ Date: October 22, 2025
 
 import logging  # noqa: E402
 from dataclasses import dataclass, field  # noqa: E402
-from datetime import datetime, timedelta  # noqa: E402
+from datetime import datetime, timedelta, UTC  # noqa: E402
 from typing import Any  # noqa: E402
 
 try:
@@ -53,8 +53,8 @@ except Exception:
     TraceContextTextMapPropagator = None
     _OTEL_AVAILABLE = False
 
-from ..common.config import get_config  # noqa: E402
-from ..common.metrics import JustNewsMetrics  # noqa: E402
+from config import get_config  # noqa: E402
+from common.metrics import JustNewsMetrics  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -485,7 +485,7 @@ class TraceCollector:
 
     async def cleanup_old_traces(self):
         """Cleanup old completed traces based on retention policy"""
-        cutoff_time = datetime.now() - timedelta(hours=self.trace_retention_hours)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=self.trace_retention_hours)
         to_remove = []
 
         for trace_id, trace_data in self.completed_traces.items():

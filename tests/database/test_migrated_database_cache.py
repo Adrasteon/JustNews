@@ -18,6 +18,7 @@ def test_create_database_service_caching(monkeypatch):
     with (
         patch("mysql.connector.connect", return_value=MagicMock()),
         patch("chromadb.HttpClient", return_value=MagicMock()),
+        patch("database.utils.chromadb_utils.validate_chroma_is_canonical", return_value={"ok": True}),
     ):
         # Create a service; subsequent calls should return the same cached instance
         s1 = create_database_service()

@@ -30,15 +30,21 @@ pip install vllm
 
 ## Port 7060 (outside agent range)
 
-./scripts/launch_vllm_mistral_7b.sh
+# Using direct vLLM command (replaces archived scripts)
+vllm serve mistralai/Mistral-7B-Instruct-v0.3 \
+  --port 7060 \
+  --dtype auto \
+  --gpu-memory-utilization 0.75 \
+  --max-model-len 4096 \
+  --api-key dummy
 
 ```text
 
-The script reads `global.env`for`HF_TOKEN` and launches vLLM with:
+This command launches vLLM with:
 
 - Model: `mistralai/Mistral-7B-Instruct-v0.3`
 
-- Quantization: none (fp16/bf16)
+- Quantization: none (fp16/bf16, auto-detected)
 
 - Max model length: 4096 tokens
 

@@ -77,10 +77,18 @@ class LogAggregator:
 
     def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or self._get_default_config()
-        self.aggregation_config = AggregationConfig(
-            **self.config.get("aggregation", {})
-        )
-        self.storage_config = StorageConfig(**self.config.get("storage", {}))
+
+        # Parse aggregation config
+        agg_data = self.config.get("aggregation", {}).copy()
+        if isinstance(agg_data.get("strategy"), str):
+            agg_data["strategy"] = AggregationStrategy(agg_data["strategy"])
+        self.aggregation_config = AggregationConfig(**agg_data)
+
+        # Parse storage config
+        store_data = self.config.get("storage", {}).copy()
+        if isinstance(store_data.get("backend"), str):
+            store_data["backend"] = StorageBackend(store_data["backend"])
+        self.storage_config = StorageConfig(**store_data)
 
         # Aggregation state
         self._log_buffer: list[LogEntry] = []

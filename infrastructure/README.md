@@ -46,58 +46,51 @@ We recently added several operational improvements to make local and production 
 
 ## Architecture
 
-```bash
-
-deploy/refactor/
-├── systemd/                  # Systemd service files (production)
-│   ├── services/             # Service unit files
-│   └── timers/               # Timer units
-├── systemd/                  # Systemd service files (legacy)
-│   ├── services/             # Service unit files
-    curl <http://localhost:8000/api/v2/auth/identity>
-├── scripts/                  # Deployment automation
-│   ├── deploy.sh             # Unified deployment script
-│   ├── health-check.sh       # Service health validation
-│   └── rollback.sh           # Deployment rollback
-├── config/                   # Configuration templates
-│   ├── environments/         # Environment-specific configs
-│   └── secrets/              # Secret management templates
-  ├── templates/                # Jinja2 templates
-  └── systemd-service.j2    # Systemd service templates
-
+```text
+infrastructure/
+├── systemd/                  # Systemd orchestration (production & dev)
+│   ├── services/             # Native service definitions
+│   ├── units/                # Unit files for all agents and services
+│   ├── monitoring/           # Prometheus/Grafana configs
+│   └── canonical_system_startup.sh # Entry point for system startup
+├── scripts/                  # Global infrastructure validation
+├── config/                   # Configuration templates and environments
+└── helm/                     # Kubernetes charts (deprecated/archive)
 ```
 
 ## Quick Start
 
 ### 1. Choose Deployment Target
 
-```bash
-
-## This workspace uses systemd as the runtime for all services.
-
-export DEPLOY_TARGET=systemd
-export DEPLOY_ENV=production
-
-```bash
+This workspace uses strictly **systemd** as the orchestrator.
 
 ### 2. Configure Environment
 
+Copy and customize the global environment file:
+
 ```bash
+sudo cp infrastructure/systemd/examples/justnews.env.example /etc/justnews/global.env
+sudo nano /etc/justnews/global.env
+```
 
-## Copy and customize environment configuration
+Ensure essential variables are set:
+- `MARIADB_HOST`
+- `CHROMA_HOST`
+- `CANONICAL_ENV` (e.g., `justnews-py312`)
 
-cp config/environments/production.env.example config/environments/production.env
-nano config/environments/production.env
+### 3. Deploy
 
-## Required variables:
+Use the canonical startup script:
 
-## - MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD
+```bash
+sudo infrastructure/systemd/canonical_system_startup.sh
+```
 
-## - CHROMA_HOST, CHROMA_PORT
-
-## - REDIS_HOST, REDIS_PASSWORD
-
-## - GPU_ORCHESTRATOR_HOST
+This script handles:
+- Prerequisite checks
+- Database connectivity verification
+- Service registration and startup
+- System health check
 
 ## - MCP_BUS_HOST, MCP_BUS_PORT
 

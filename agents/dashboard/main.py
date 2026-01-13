@@ -25,7 +25,10 @@ from agents.common.auth_models import get_user_by_id
 from agents.dashboard.dashboard_engine import dashboard_engine
 from agents.dashboard.transparency_router import router as transparency_router
 from common.metrics import JustNewsMetrics
-from common.observability import get_logger
+from common.observability import get_logger, bootstrap_observability
+
+bootstrap_observability("dashboard")
+logger = get_logger(__name__)
 
 
 def get_search_service():

@@ -25,5 +25,5 @@ def test_protobuf_version_meets_requirement():
             cmd = [sys.executable]
     else:
         cmd = [py]
-    res = subprocess.run(cmd + ["scripts/check_protobuf_version.py"])
+    res = subprocess.run(cmd + ["scripts/checks/check_protobuf_version.py"])
     assert res.returncode == 0, "Protobuf version is older than required (>=4.24.0)"

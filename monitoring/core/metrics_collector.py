@@ -97,7 +97,8 @@ class EnhancedMetricsCollector:
 
     def __init__(self, agent_name: str, registry: CollectorRegistry | None = None):
         self.agent_name = agent_name
-        self.base_metrics = JustNewsMetrics(agent_name, registry)
+        # Break recursion loop by disabling enhanced metrics in the base metrics that we wrap
+        self.base_metrics = JustNewsMetrics(agent_name, registry, enable_enhanced=False)
         self.registry = self.base_metrics.registry
 
         # Enhanced metrics storage

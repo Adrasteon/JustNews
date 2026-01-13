@@ -89,14 +89,14 @@ if py_cmd is None:
 if os.environ.get("SKIP_PREFLIGHT", "0") != "1":
     try:
         result = subprocess.run(
-            py_cmd + ["scripts/check_protobuf_version.py"], check=False
+            py_cmd + ["scripts/checks/check_protobuf_version.py"], check=False
         )
         if result.returncode != 0:
             raise RuntimeError(
                 "protobuf version check failed; please upgrade your environment to protobuf >= 4.24.0 and ensure regenerated wheels for any dependent compiled packages."
             )
         result = subprocess.run(
-            py_cmd + ["scripts/check_deprecation_warnings.py"], check=False
+            py_cmd + ["scripts/checks/check_deprecation_warnings.py"], check=False
         )
         if result.returncode != 0:
             # Treat deprecation warnings as warnings for test runs to avoid
@@ -116,7 +116,7 @@ if os.environ.get("SKIP_PREFLIGHT", "0") != "1":
         # In minimal developer/test environments the scripts may not be available.
         # Print a message and continue; CI should run with the script present to enforce this check.
         print(
-            "Warning: preflight check scripts missing. Ensure `scripts/check_protobuf_version.py` and `scripts/check_deprecation_warnings.py` are present in your environment."
+            "Warning: preflight check scripts missing. Ensure `scripts/checks/check_protobuf_version.py` and `scripts/checks/check_deprecation_warnings.py` are present in your environment."
         )
     else:
         print("SKIP_PREFLIGHT=1 set; skipping protobuf & deprecation preflight checks")

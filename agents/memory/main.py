@@ -27,7 +27,8 @@ from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 
 from common.metrics import JustNewsMetrics
-from common.observability import get_logger
+from common.observability import get_logger, bootstrap_observability
+from agents.common.mcp_bus_client import MCPBusClient
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
@@ -43,6 +44,7 @@ from agents.memory.vector_engine import VectorEngine
 from agents.memory.worker_engine import WorkerEngine
 
 # Configure centralized logging
+bootstrap_observability("memory")
 logger = get_logger(__name__)
 
 # Readiness flag

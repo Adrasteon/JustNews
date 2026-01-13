@@ -14,8 +14,9 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel
 
 from common.metrics import JustNewsMetrics
-from common.observability import get_logger
+from common.observability import get_logger, bootstrap_observability
 from common.otel import init_telemetry, instrument_fastapi
+from agents.common.mcp_bus_client import MCPBusClient
 from database.utils.migrated_database_utils import create_database_service
 
 # Compatibility: expose create_database_service for tests that patch agent modules
@@ -58,6 +59,8 @@ except ImportError:
 
 
 # Configure centralized logging
+# logger = get_logger(__name__)
+bootstrap_observability("analyst")
 logger = get_logger(__name__)
 
 """Analyst agent FastAPI app
@@ -104,43 +107,6 @@ class ToolCall(BaseModel):
     kwargs: dict[str, Any]
 
 
-class MCPBusClient:
-    def __init__(self, base_url: str = MCP_BUS_URL):
-        self.base_url = base_url
-
-    def register_agent(self, agent_name: str, agent_address: str, tools: list[str]):
-        registration_data = {
-            "name": agent_name,
-            "address": agent_address,
-            "tools": tools,
-        }
-
-        max_retries = 5
-        backoff_factor = 2
-
-        for attempt in range(max_retries):
-            try:
-                response = requests.post(
-                    f"{self.base_url}/register", json=registration_data, timeout=(3, 10)
-                )
-                response.raise_for_status()
-                logger.info(f"Successfully registered {agent_name} with MCP Bus.")
-                return
-            except requests.exceptions.RequestException as e:
-                logger.warning(
-                    f"Attempt {attempt + 1}/{max_retries} failed to register {agent_name} with MCP Bus: {e}"
-                )
-                if attempt < max_retries - 1:
-                    sleep_time = backoff_factor**attempt
-                    logger.info(f"Retrying in {sleep_time} seconds...")
-                    time.sleep(sleep_time)
-                else:
-                    logger.error(
-                        f"Failed to register {agent_name} with MCP Bus after {max_retries} attempts."
-                    )
-                    raise
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Handles startup and shutdown events for the FastAPI application."""
@@ -158,7 +124,7 @@ async def lifespan(app: FastAPI):
     instrument_fastapi(app)
 
     # Register agent with MCP Bus
-    mcp_bus_client = MCPBusClient()
+    mcp_bus_client = MCPBusClient(base_url=MCP_BUS_URL)
     try:
         # Build the publicly reachable URL for registration; avoid advertising 0.0.0.0
         agent_address = (
@@ -182,9 +148,9 @@ async def lifespan(app: FastAPI):
                 "analyze_sentiment_and_bias",
             ],
         )
-        logger.info("Registered tools with MCP Bus.")
     except Exception as e:
-        logger.warning(f"MCP Bus unavailable: {e}. Running in standalone mode.")
+        logger.warning(f"Registration failed: {e}")
+
     # Mark ready after successful startup tasks
     global ready
     ready = True

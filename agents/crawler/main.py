@@ -18,8 +18,9 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
 from common.metrics import JustNewsMetrics
-from common.observability import get_logger
+from common.observability import get_logger, bootstrap_observability
 from common.otel import init_telemetry, instrument_fastapi
+from agents.common.mcp_bus_client import MCPBusClient
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
@@ -42,11 +43,37 @@ from .job_store import list_jobs as jobstore_list_jobs
 from .tools import get_crawler_info
 
 # Configure logging
+# logger = get_logger(__name__) # Replaced by bootstrap
+bootstrap_observability("crawler", level=20) # INFO
 logger = get_logger(__name__)
 
 ready = False
 # In-memory storage of crawl job statuses
 crawl_jobs: dict[str, Any] = {}
+
+MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
+CRAWLER_PORT = int(os.environ.get("CRAWLER_PORT", 8014))
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Registration with MCP Bus
+    try:
+        mcp_client = MCPBusClient(base_url=MCP_BUS_URL)
+        mcp_client.register_agent(
+            agent_name="crawler",
+            agent_address=f"http://localhost:{CRAWLER_PORT}",
+            tools=["crawl_url", "get_status", "cancel_job"]
+        )
+    except Exception as e:
+        logger.warning(f"MCP Bus registration failed: {e}")
+
+    # Recover running jobs on startup
+    await recover_running_jobs()
+    global ready
+    ready = True
+    yield
+    ready = False
+
 
 # Map job_id -> asyncio.Task for running background crawl jobs so they can be cancelled
 crawl_task_map: dict[str, asyncio.Task] = {}

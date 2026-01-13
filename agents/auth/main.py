@@ -15,7 +15,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from common.observability import get_logger
+from common.observability import get_logger, bootstrap_observability
 
 # Compatibility: expose create_database_service for tests that patch agent modules
 try:
@@ -31,6 +31,7 @@ from agents.auth.auth_engine import (
 )
 from agents.common.auth_api import router as auth_router
 
+bootstrap_observability("auth")
 logger = get_logger(__name__)
 
 

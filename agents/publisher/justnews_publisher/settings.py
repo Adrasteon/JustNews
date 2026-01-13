@@ -11,7 +11,21 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
+
+# Add project root to path to allow importing common modules
+# Assuming structure: /JustNews/agents/publisher/justnews_publisher/settings.py
+# Root is at ../../../../
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+try:
+    from common.observability import bootstrap_observability
+    bootstrap_observability("publisher")
+except ImportError:
+    pass # Failed to load observability, likely running in isolation
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

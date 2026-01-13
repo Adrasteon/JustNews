@@ -4,7 +4,7 @@
 set -euo pipefail
 
 MCP_BUS_URL="${MCP_BUS_URL:-http://localhost:8000}"
-MAX_WAIT="${MAX_WAIT:-30}"
+MAX_WAIT="${MAX_WAIT:-90}"
 
 echo "Waiting for MCP Bus at $MCP_BUS_URL..."
 

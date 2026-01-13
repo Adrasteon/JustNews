@@ -31,8 +31,8 @@ A production-ready multi-agent news analysis system featuring GPU-accelerated pr
 
 2. **Set up environment:**
    ```bash
-   mamba env create -f environment.yml -n justnews-py312
-   conda activate justnews-py312
+   mamba env create -f environment.yml -n ${CANONICAL_ENV:-justnews-py312}
+   conda activate ${CANONICAL_ENV:-justnews-py312}
    ```
 
 3. **Initialize Database:**

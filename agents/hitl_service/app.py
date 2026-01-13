@@ -79,6 +79,13 @@ app = FastAPI(
 metrics = JustNewsMetrics("hitl_service")
 app.middleware("http")(metrics.request_middleware)
 
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for system probing."""
+    return {"status": "ok", "service": "hitl_service"}
+
+
 if os.path.isdir(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 else:

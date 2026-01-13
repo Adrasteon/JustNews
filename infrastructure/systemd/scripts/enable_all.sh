@@ -214,7 +214,9 @@ start_services() {
     # 3) Start remaining services
     for service in "${SERVICES[@]:2}"; do
         log_info "Starting justnews@${service}..."
-        systemctl start "justnews@${service}"
+        if ! systemctl start "justnews@${service}"; then
+            log_warning "Failed to start justnews@${service} (systemctl returned error). Continuing sequence..."
+        fi
         # After starting certain services, wait for their HTTP readiness to avoid race conditions
         case "$service" in
             "dashboard")

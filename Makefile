@@ -307,7 +307,7 @@ dev-setup: install
 	$(call log_success,"Development environment ready")
 
 env-bootstrap:
-	$(call log_info,"Bootstrap canonical conda env (justnews-py312) and install vLLM")
+	$(call log_info,"Bootstrap canonical conda env (${CANONICAL_ENV:-justnews-py312}) and install vLLM")
 	@./scripts/bootstrap_conda_env.sh || (echo "Bootstrap failed; check output"; false)
 	$(call log_success,"Conda env bootstrap completed")
 

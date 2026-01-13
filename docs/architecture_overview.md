@@ -110,6 +110,12 @@ Planned).
 
 - Status: Implemented.
 
+- NewsReader Agent — `agents/newsreader/` — Done
+
+- Intent: Vision-based content extraction using LLaVA. Capable of "reading" screenshots of complex layouts.
+
+- Status: Implemented with Lazy Loading for optimized startup performance.
+
 - HITL Service — `agents/hitl_service/` — Done/Partial
 
 - Intent: staging DB for labels, QA endpoints, forwarding to downstream agents; supports manual review and programmatic

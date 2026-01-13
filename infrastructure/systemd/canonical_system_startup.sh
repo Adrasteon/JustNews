@@ -271,6 +271,35 @@ PYTHON
   return 0
 }
 
+# Ensure local databases (MariaDB, ChromaDB) are active if installed as systemd units.
+# This ensures a "single point of entry" for cold-start scenarios.
+ensure_local_databases() {
+  local dbs=("mariadb.service" "chromadb.service")
+
+  for db in "${dbs[@]}"; do
+    if systemctl list-unit-files "$db" >/dev/null 2>&1; then
+      if ! systemctl is-active --quiet "$db"; then
+        log_warn "Local $db is not running. Attempting to start..."
+        if [[ "${DRY_RUN:-false}" == "true" ]]; then
+          log_info "[DRY-RUN] Would execute: systemctl start $db"
+        else
+          if systemctl start "$db"; then
+             log_success "Started $db"
+             # Brief pause to allow init
+             sleep 2
+          else
+             log_error "Failed to start $db"
+             # If it's ChromaDB, this is likely fatal for the system
+             if [[ "$db" == "chromadb.service" ]]; then
+                exit 1
+             fi
+          fi
+        fi
+      fi
+    fi
+  done
+}
+
 ## Utility: safe_grep_dir <dir> <pattern>
 ## Guard grep usage to avoid noisy stderr when directory contains broken symlinks
 safe_grep_dir() {
@@ -738,6 +767,10 @@ main() {
     fi
   fi
   check_data_mount
+  
+  # Ensure local databases are running before we probe them
+  ensure_local_databases
+
   # MariaDB check: skip when MARIADB_HOST unset or SKIP_MARIADB_CHECK=true
   check_mariadb_connectivity
   # Database connectivity checks are intentionally skipped here (PostgreSQL deprecated)

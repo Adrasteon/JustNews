@@ -70,6 +70,7 @@ infrastructure/kubernetes/overlays/DEPRECATED.md
 # Backup and package artifacts (tarballs, zips)
 artifacts/
 *.tar.gz
+*.gz
 *.tar
 *.tgz
 *.zip
@@ -81,6 +82,7 @@ artifacts/*.txt
 *.ipynb
 scripts/perf/results/
 scripts/perf/results/**
+*.pid
 
 # Ignore local third-party build/cache directories which may contain large binaries
 third_party/

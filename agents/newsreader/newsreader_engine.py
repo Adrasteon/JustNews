@@ -8,6 +8,7 @@ Features:
 - Playwright screenshot capture with optimizations
 - LLaVA vision-language analysis for content extraction
 - GPU acceleration with CPU fallbacks
+- Lazy loading of heavy models for fast startup
 - Comprehensive error handling and memory management
 - Production-ready with robust fallbacks
 
@@ -148,8 +149,9 @@ class NewsReaderEngine:
         }
 
         # Initialize components
-        self._initialize_models()
-        logger.info("✅ NewsReader Engine initialized with LLaVA vision processing")
+        self._initialize_screenshot_system()
+        # LLaVA model is loaded lazily on first request
+        logger.info("✅ NewsReader Engine initialized (LLaVA model will lazy-load)")
 
     def __enter__(self) -> NewsReaderEngine:
         """Context manager entry."""
@@ -207,18 +209,24 @@ class NewsReaderEngine:
             torch.backends.cudnn.allow_tf32 = True
             logger.info("✅ CUDA optimizations enabled")
 
-    def _initialize_models(self):
-        """Initialize LLaVA model and screenshot system."""
+    def _ensure_llava_model_loaded(self):
+        """Ensure LLaVA model is loaded (lazy loading)."""
+        if self.models.get("llava") is not None:
+            return
+
+        logger.info("⏳ Lazy-loading LLaVA model...")
         try:
             self._load_llava_model()
-            self._initialize_screenshot_system()
-            logger.info("✅ NewsReader models initialized successfully")
+            logger.info("✅ LLaVA model loaded successfully (lazy load)")
         except Exception as e:
-            logger.error(f"Error initializing models: {e}")
+            logger.error(f"Error lazy-loading models: {e}")
             self._initialize_fallback_systems()
 
     def _load_llava_model(self):
         """Load LLaVA model for vision-language processing."""
+        if self.models.get("llava") is not None:
+            return
+
         if not LLAVA_AVAILABLE:
             logger.warning("LLaVA not available - using fallback processing")
             self.models["llava"] = None
@@ -324,12 +332,8 @@ class NewsReaderEngine:
             logger.info(f"🧹 GPU memory after cleanup: {allocated_mb:.1f}MB allocated")
 
     def is_llava_available(self) -> bool:
-        """Check if LLaVA model is loaded and ready."""
-        return (
-            self.models.get("llava") is not None
-            and self.processors.get("llava") is not None
-            and hasattr(self.models["llava"], "generate")
-        )
+        """Check if LLaVA runtime is available (even if model is not loaded yet)."""
+        return LLAVA_AVAILABLE
 
     async def capture_webpage_screenshot(
         self, url: str, screenshot_path: str = "page.png"
@@ -410,10 +414,13 @@ class NewsReaderEngine:
         Returns:
             Analysis results with extracted content
         """
-        if not self.is_llava_available():
+        # Ensure model is strictly loaded only when requested
+        self._ensure_llava_model_loaded()
+
+        if self.models.get("llava") is None:
             return {
                 "success": False,
-                "error": "LLaVA model not available",
+                "error": "LLaVA model failed to load",
                 "screenshot_path": screenshot_path,
             }
 

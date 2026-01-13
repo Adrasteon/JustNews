@@ -1,5 +1,5 @@
 {
-    "_comment": "Set VLLM_ENABLED=true to enable vLLM mode; default model is mistralai/Mistral-7B-Instruct-v0.3. Legacy Qwen2 adapters are archived.",
+  "_comment": "Set VLLM_ENABLED=true to enable vLLM mode; default model is mistralai/Mistral-7B-Instruct-v0.3. Legacy Qwen2 adapters are archived.",
   "synthesizer": {
     "default": "mistralai/Mistral-7B-Instruct-v0.3",
     "vllm_default": "mistralai/Mistral-7B-Instruct-v0.3",

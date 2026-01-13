@@ -163,19 +163,12 @@ async def register_with_mcp_bus():
         mcp_bus_url = os.getenv("MCP_BUS_URL", "http://localhost:8000")
         client = MCPBusClient(mcp_bus_url)
 
-        agent_info = {
-            "name": "newsreader",
-            "description": "News content processing with vision-language models",
-            "version": "2.0.0",
-            "capabilities": ["url_processing", "content_extraction", "visual_analysis"],
-            "endpoints": {
-                "process_url": "/process_url",
-                "health": "/health",
-                "stats": "/stats",
-            },
-        }
-
-        await client.register_agent(agent_info)
+        # Correctly call the synchronous register_agent method
+        client.register_agent(
+            agent_name="newsreader",
+            agent_address="http://localhost:8002",
+            tools=["url_processing", "content_extraction", "visual_analysis"]
+        )
         logger.info("✅ Registered with MCP Bus")
 
     except Exception as e:

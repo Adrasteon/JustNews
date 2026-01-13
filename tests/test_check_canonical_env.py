@@ -1,7 +1,7 @@
 import subprocess
 import pytest
 
-@pytest.mark.xfail(reason="Codebase still contains hardcoded invalid env names")
+
 def test_checker_runs_successfully():
     """Run the canonical-env checker script and expect success in the cleaned repo.
 

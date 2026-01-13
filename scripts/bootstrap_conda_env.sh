@@ -7,7 +7,7 @@
 
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-ENV_NAME=${ENV_NAME:-justnews-py312}
+ENV_NAME=${ENV_NAME:-${CANONICAL_ENV:-justnews-py312}}
 ENV_YML="$ROOT_DIR/environment.yml"
 REQS="$ROOT_DIR/requirements.txt"
 FORCE=0
@@ -98,7 +98,7 @@ cat <<'EOF'
 
 Bootstrap complete.
 To use the environment interactively:
-  conda activate justnews-py312
+  conda activate ${CANONICAL_ENV:-justnews-py312}
 To run repository scripts with canonical env:
   ./scripts/run_with_env.sh <command>
 

@@ -751,6 +751,13 @@ def test_config():
 # ============================================================================
 
 
+def pytest_addoption(parser):
+    """Add custom command line options"""
+    parser.addoption(
+        "--runslow", action="store_true", default=False, help="run slow tests"
+    )
+
+
 def pytest_configure(config):
     """Configure pytest with custom markers"""
     config.addinivalue_line("markers", "gpu: marks tests that require GPU")

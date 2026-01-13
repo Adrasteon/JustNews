@@ -1,6 +1,7 @@
 # Workspace hygiene exclusions
 stored_archive/
 logs/
+infrastructure/monitoring/bin/
 archive_storage/*
 !archive_storage/transparency/
 !archive_storage/transparency/**

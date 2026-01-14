@@ -213,7 +213,7 @@ async def register_with_mcp_bus():
         client = MCPBusClient(mcp_bus_url)
 
         host = os.getenv("SCOUT_HOST", "localhost")
-        port = os.getenv("SCOUT_PORT", "8004") 
+        port = os.getenv("SCOUT_PORT", "8002") 
         agent_address = f"http://{host}:{port}"
 
         # Register synchronously (MCPBusClient.register_agent is sync)
@@ -552,7 +552,7 @@ if __name__ == "__main__":
     import uvicorn
 
     host = os.environ.get("SCOUT_HOST", "0.0.0.0")
-    port = int(os.environ.get("SCOUT_PORT", os.environ.get("PORT", "8004")))
+    port = int(os.environ.get("SCOUT_PORT", os.environ.get("PORT", "8002")))
     reload_flag = (
         os.environ.get(
             "UVICORN_RELOAD", os.environ.get("SCOUT_RELOAD", "false")

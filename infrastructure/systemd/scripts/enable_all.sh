@@ -171,6 +171,55 @@ wait_for_http() {
     return 1
 }
 
+# Enforce GPU Power Limit (300W)
+enforce_gpu_power_limit() {
+    if command -v nvidia-smi &> /dev/null; then
+        log_info "Enforcing GPU power limit of 300W..."
+        # Apply to all GPUs. '-pl 300' sets power limit to 300W.
+        # We ignore errors in case some GPUs don't support it or if it's already set.
+        if nvidia-smi -pl 300; then
+             log_success "GPU power limit set to 300W"
+        else
+             log_warning "Failed to set GPU power limit (or not supported)"
+        fi
+    else
+        log_warning "nvidia-smi not found, skipping power limit enforcement"
+    fi
+}
+
+# Check for sufficient system memory for VS Code / IDE
+check_system_memory() {
+    log_info "Checking system memory availability..."
+    
+    # Required spare memory in MB (e.g., 4GB for VS Code + OS overhead)
+    local REQUIRED_SPARE_MB=4096 
+    
+    if [[ -f /proc/meminfo ]]; then
+        # Extract MemAvailable in kB
+        local available_kb
+        available_kb=$(grep -i 'MemAvailable' /proc/meminfo | awk '{print $2}')
+        
+        if [[ -n "$available_kb" ]]; then
+            local available_mb=$((available_kb / 1024))
+            log_info "Available system memory: ${available_mb}MB (Required spare: ${REQUIRED_SPARE_MB}MB)"
+            
+            if [[ "$available_mb" -lt "$REQUIRED_SPARE_MB" ]]; then
+                log_warning "Low system memory detected! Less than ${REQUIRED_SPARE_MB}MB available."
+                log_warning "This might cause OOM instability for the IDE (VS Code)."
+                # We won't block startup, but we warn loudly.
+                echo -e "${YELLOW}WARNING: Proceeding with low memory could lead to crashes.${NC}"
+                sleep 2
+            else
+                log_success "System memory check passed"
+            fi
+        else
+             log_warning "Could not determine MemAvailable from /proc/meminfo"
+        fi
+    else
+        log_warning "/proc/meminfo not found, skipping memory check"
+    fi
+}
+
 # Enable services
 enable_services() {
     log_info "Enabling JustNews services..."
@@ -215,6 +264,10 @@ disable_services() {
 # Start services in order
 start_services() {
     log_info "Starting JustNews services in order..."
+
+    # Pre-flight checks
+    enforce_gpu_power_limit
+    check_system_memory
 
     # 0) Observability Stack
     for service in "${OBSERVABILITY_SERVICES[@]}"; do

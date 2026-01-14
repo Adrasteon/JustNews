@@ -87,11 +87,6 @@ ensure_unit_template() {
   fi
 }
 
-start_postgres_if_present() {
-  if systemctl list-unit-files | grep -q '^postgresql\.service'; then
-    systemctl is-active --quiet postgresql || { log "Starting postgresql"; systemctl start postgresql || warn "Could not start postgresql"; }
-  fi
-}
 
 wait_http() {
   local url="$1"; local timeout="${2:-120}"; local i=0
@@ -128,7 +123,6 @@ cold_start() {
 main() {
   require_root
   check_tools
-  start_postgres_if_present
   ensure_unit_template
   ensure_install_helpers
   ensure_path_wrappers

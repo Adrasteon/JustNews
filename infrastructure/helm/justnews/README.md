@@ -70,7 +70,7 @@ justnews:
     gpuRequired: true
 
   - name: crawler
-    port: 8002
+    port: 8004
     replicas: 3
     gpuRequired: false
 

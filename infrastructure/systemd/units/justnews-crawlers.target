@@ -1,7 +1,7 @@
 [Unit]
 Description=JustNews Crawlers Target
-Wants=network-online.target postgresql.service mcp_bus.service
-After=network-online.target postgresql.service mcp_bus.service
+Wants=network-online.target mcp_bus.service
+After=network-online.target mcp_bus.service
 
 [Install]
 WantedBy=multi-user.target

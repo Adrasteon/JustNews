@@ -181,9 +181,12 @@ def worker_main(model_id: str | None, adapter: str | None, run_seconds: int = 36
 def spawn_pool(
     num_workers: int, model_id: str | None, adapter: str | None, hold_time: int
 ):
+    # Use spawn context to avoid fork safety issues in threaded environments (like pytest)
+    # This prevents "DeprecationWarning: This process is multi-threaded, use of fork() may lead to deadlocks"
+    ctx = mp.get_context("spawn")
     procs = []
     for _ in range(num_workers):
-        p = mp.Process(target=worker_main, args=(model_id, adapter, hold_time))
+        p = ctx.Process(target=worker_main, args=(model_id, adapter, hold_time))
         p.start()
         procs.append(p)
         time.sleep(0.5)  # stagger loads slightly

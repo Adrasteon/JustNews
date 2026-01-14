@@ -107,7 +107,7 @@ Tip: `enable_all.sh`defaults to`status`with no args. Use`start`,`stop`,`restart`
 ## Ports and health endpoints
 
 | Service           | Port | Endpoint | |-------------------|------|----------| | mcp_bus           | 8000 | /health  |
-| chief_editor      | 8001 | /health  | | scout             | 8002 | /health  | | fact_checker      | 8003 | /health  |
+| chief_editor      | 8001 | /health  | | scout             | 8004 | /health  | | fact_checker      | 8003 | /health  |
 | analyst           | 8004 | /health  | | synthesizer       | 8005 | /health  | | critic            | 8006 | /health  |
 | memory            | 8007 | /health  | | reasoning         | 8008 | /health  | | newsreader        | 8009 | /health  |
 | analytics         | 8011 | /health  | | archive           | 8012 | /health  | | dashboard         | 8013 | /health  |

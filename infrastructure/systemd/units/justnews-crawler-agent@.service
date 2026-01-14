@@ -1,7 +1,7 @@
 [Unit]
 Description=JustNews Crawler Agent (%i)
-Wants=network-online.target postgresql.service
-After=network-online.target postgresql.service mcp_bus.service
+Wants=network-online.target
+After=network-online.target mcp_bus.service
 PartOf=justnews.target
 
 [Service]

@@ -11,24 +11,13 @@ def test_no_upb_deprecation_warnings():
     PyType_Spec deprecation warnings at import time.
     """
     py = os.environ.get("PYTHON_BIN")
-    if not py or not os.path.exists(py):
-        if shutil.which("conda") is not None:
-            cmd = [
-                "conda",
-                "run",
-                "-n",
-                os.environ.get("CANONICAL_ENV", "justnews-py312"),
-                "python",
-            ]
-        else:
-            cmd = [sys.executable]
-    else:
+    if py and os.path.exists(py):
         cmd = [py]
-    res = subprocess.run(cmd + ["scripts/check_deprecation_warnings.py"])
-    if res.returncode != 0:
-        # Do not fail the test — treat as an environment-dependent skip so local dev runs don't fail
-        import pytest
-
-        pytest.skip(
-            "Deprecation warnings detected; set CI=1 or STRICT_PROTO_NO_DEPRECATION=1 to enforce"
-        )
+    else:
+        cmd = [sys.executable]
+    res = subprocess.run(cmd + ["scripts/checks/check_deprecation_warnings.py"])
+    
+    # Assert that the script returns 0 (no warnings). 
+    # If it returns non-zero, it means warnings were found, and we want to fail the test
+    # (so we can see what they are) rather than skipping it.
+    assert res.returncode == 0, "Deprecation warnings detected during imports"

@@ -33,7 +33,7 @@ Each agent is a microservice with specific responsibilities:
 
 - **Chief Editor (Port 8001)**: Workflow orchestration and system coordination
 
-- **Scout (Port 8002)**: Content discovery and web crawling
+- **Scout (Port 8004)**: Content discovery and web crawling
 
 - **Fact Checker (Port 8003)**: Source verification and fact-checking
 

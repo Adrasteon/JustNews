@@ -125,7 +125,7 @@ This script handles:
 ### Core Services
 
 | Service | Type | Ports | Description | |---------|------|-------|-------------| | **mcp-bus** | FastAPI | 8000 |
-Central communication hub | | **scout** | FastAPI + GPU | 8002 | Content discovery and analysis | | **analyst** |
+Central communication hub | | **scout** | FastAPI + GPU | 8004 | Content discovery and analysis | | **analyst** |
 FastAPI + GPU | 8004 | Sentiment and bias analysis | | **synthesizer** | FastAPI + GPU | 8005 | Content synthesis and
 clustering | | **fact-checker** | FastAPI + GPU | 8003 | Evidence-based verification | | **memory** | FastAPI | 8007 |
 Vector storage and retrieval | | **chief-editor** | FastAPI | 8001 | Workflow orchestration | | **reasoning** | FastAPI
@@ -271,7 +271,7 @@ CHROMA_PORT=3307
 ```
 
 mcp-bus (8000) ←─┐
-                   ├── scout (8002)
+                   ├── scout (8004)
                    ├── analyst (8004)
 mariadb (3306) ←──┼── synthesizer (8005)
 chromadb (3307) ←─┼── fact-checker (8003)
@@ -303,7 +303,7 @@ nginx (80/443) ←───┼── all FastAPI services
 ## Check specific service
 
 curl <http://localhost:8000/health>
-curl <http://localhost:8002/health>
+curl <http://localhost:8004/health>
 
 ## Health checks (systemd)
 

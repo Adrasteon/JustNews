@@ -25,6 +25,12 @@ declare -A SERVICES=(
     ["gpu_orchestrator"]="8014:/health" # GPU Orchestrator service
     ["crawler"]="8015:/health"          # Unified Production Crawler instance
     ["crawler_control"]="8016:/"        # Crawler Control web interface
+    # Observability Stack
+    ["prometheus"]="9090:/-/healthy:justnews-prometheus"
+    ["grafana"]="3000:/api/health:justnews-grafana"
+    ["node_exporter"]="9100:/:justnews-node-exporter"
+    ["otel_node"]="8889:/metrics:justnews-otel-node"
+    ["otel_central"]="8890:/metrics:justnews-otel-central"
 )
 
 # Additional readiness endpoints (service:port:/ready) for stricter gating
@@ -117,16 +123,22 @@ check_service() {
     local service="$1"
     local port_endpoint="$2"
 
-    IFS=':' read -r port endpoint <<< "$port_endpoint"
+    local port endpoint service_override
+    IFS=':' read -r port endpoint service_override <<< "$port_endpoint"
+
+    local systemd_service_name="justnews@${service}"
+    if [[ -n "$service_override" ]]; then
+        systemd_service_name="$service_override"
+    fi
 
     local service_status="unknown"
     local port_status="unknown"
     local http_status="unknown"
 
     # Check systemd service status (handle errors gracefully)
-    if systemctl is-active --quiet "justnews@${service}" 2>/dev/null; then
+    if systemctl is-active --quiet "${systemd_service_name}" 2>/dev/null; then
         service_status="active"
-    elif systemctl is-failed --quiet "justnews@${service}" 2>/dev/null; then
+    elif systemctl is-failed --quiet "${systemd_service_name}" 2>/dev/null; then
         service_status="failed"
     else
         service_status="inactive"

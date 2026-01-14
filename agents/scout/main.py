@@ -212,28 +212,22 @@ async def register_with_mcp_bus():
         mcp_bus_url = os.getenv("MCP_BUS_URL", "http://localhost:8000")
         client = MCPBusClient(mcp_bus_url)
 
-        agent_info = {
-            "name": "scout",
-            "description": "Web crawling and content discovery with AI analysis",
-            "version": "2.0.0",
-            "capabilities": [
+        host = os.getenv("SCOUT_HOST", "localhost")
+        port = os.getenv("SCOUT_PORT", "8004") 
+        agent_address = f"http://{host}:{port}"
+
+        # Register synchronously (MCPBusClient.register_agent is sync)
+        client.register_agent(
+            agent_name="scout",
+            agent_address=agent_address,
+            tools=[
                 "source_discovery",
                 "web_crawling",
+                "deep_crawling", 
                 "sentiment_analysis",
-                "bias_detection",
-            ],
-            "endpoints": {
-                "discover_sources": "/discover_sources",
-                "crawl_url": "/crawl_url",
-                "deep_crawl_site": "/deep_crawl_site",
-                "analyze_sentiment": "/analyze_sentiment",
-                "detect_bias": "/detect_bias",
-                "health": "/health",
-                "stats": "/stats",
-            },
-        }
-
-        await client.register_agent(agent_info)
+                "bias_detection"
+            ]
+        )
         logger.info("✅ Registered with MCP Bus")
 
     except Exception as e:
@@ -558,7 +552,7 @@ if __name__ == "__main__":
     import uvicorn
 
     host = os.environ.get("SCOUT_HOST", "0.0.0.0")
-    port = int(os.environ.get("SCOUT_PORT", os.environ.get("PORT", "8002")))
+    port = int(os.environ.get("SCOUT_PORT", os.environ.get("PORT", "8004")))
     reload_flag = (
         os.environ.get(
             "UVICORN_RELOAD", os.environ.get("SCOUT_RELOAD", "false")

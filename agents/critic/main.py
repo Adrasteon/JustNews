@@ -37,25 +37,14 @@ CRITIC_AGENT_PORT = int(os.environ.get("CRITIC_AGENT_PORT", 8006))
 MCP_BUS_URL = os.environ.get("MCP_BUS_URL", "http://localhost:8000")
 
 ready = False
-        }
-        try:
-            import requests
 
-            response = requests.post(
-                f"{self.base_url}/register", json=registration_data, timeout=(2, 5)
-            )
-            response.raise_for_status()
-            logger.info(f"Successfully registered {agent_name} with MCP Bus.")
-        except Exception as e:
-            logger.error(f"Failed to register {agent_name} with MCP Bus: {e}")
-            raise
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     logger.info("Critic agent is starting up.")
-    mcp_bus_client = MCPBusClient()
+    mcp_bus_client = MCPBusClient(MCP_BUS_URL)
     try:
         mcp_bus_client.register_agent(
             agent_name="critic",

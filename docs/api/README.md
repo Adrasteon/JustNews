@@ -13,7 +13,7 @@ principles with JSON request/response formats.
 
 - **Chief Editor**: Port 8001 - Workflow orchestration and system coordination
 
-- **Scout**: Port 8002 - Content discovery and web crawling
+- **Scout**: Port 8004 - Content discovery and web crawling
 
 - **Fact Checker**: Port 8003 - Source verification and fact-checking
 
@@ -93,7 +93,7 @@ Central communication hub for inter-agent messaging.
 
 curl -X POST <http://localhost:8000/register> \
   -H "Content-Type: application/json" \
-  -d '{"agent": "scout", "endpoint": "http://localhost:8002"}'
+  -d '{"agent": "scout", "endpoint": "http://localhost:8004"}'
 
 ## Call an agent
 
@@ -212,7 +212,7 @@ type Article {
 
 ## Agent-Specific APIs
 
-### Scout Agent (Port 8002)
+### Scout Agent (Port 8004)
 
 Content discovery and web crawling.
 

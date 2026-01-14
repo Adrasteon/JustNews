@@ -102,6 +102,8 @@ This is a comprehensive index of all JustNews documentation, organized by topic 
 
 - [Systemd Monitoring](./operations/systemd-monitoring.md) — Service health monitoring
 
+- [Hardware Safety & Constraints](./operations/hardware_safety.md) — Power limits and memory constraints
+
 - [Monitoring Infrastructure](./operations/MONITORING_INFRASTRUCTURE.md) — Prometheus and Grafana setup
 
 - [Dashboard Quick Reference](./operations/dashboard-quick-reference.md) — Analytics dashboard

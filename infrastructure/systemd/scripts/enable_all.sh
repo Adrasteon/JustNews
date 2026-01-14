@@ -30,6 +30,18 @@ SERVICES=(
     "crawler_control" # Crawler Control web interface (port 8016)
 )
 
+# Observability services (started before agents, stopped after)
+# These run as independent units: justnews-<name>.service
+OBSERVABILITY_SERVICES=(
+    "otel-central"
+    "otel-node"
+    "prometheus"
+    "grafana"
+    "node-exporter"
+    "dcgm-exporter"
+    "sensor-logger"
+)
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -163,6 +175,16 @@ wait_for_http() {
 enable_services() {
     log_info "Enabling JustNews services..."
 
+    # Enable observability stack first
+    for service in "${OBSERVABILITY_SERVICES[@]}"; do
+        if systemctl list-unit-files | grep -q "justnews-${service}.service"; then
+           log_info "Enabling justnews-${service}..."
+           systemctl enable "justnews-${service}" 2>/dev/null || true
+        else
+           log_warning "Service justnews-${service} not found, skipping enable."
+        fi
+    done
+
     for service in "${SERVICES[@]}"; do
         log_info "Enabling justnews@${service}..."
         systemctl enable "justnews@${service}" 2>/dev/null || true
@@ -175,9 +197,16 @@ enable_services() {
 disable_services() {
     log_info "Disabling JustNews services..."
 
+    # Disable main agents
     for service in "${SERVICES[@]}"; do
         log_info "Disabling justnews@${service}..."
         systemctl disable "justnews@${service}" 2>/dev/null || true
+    done
+
+    # Disable observability stack
+    for service in "${OBSERVABILITY_SERVICES[@]}"; do
+        log_info "Disabling justnews-${service}..."
+        systemctl disable "justnews-${service}" 2>/dev/null || true
     done
 
     log_success "All services disabled"
@@ -186,6 +215,21 @@ disable_services() {
 # Start services in order
 start_services() {
     log_info "Starting JustNews services in order..."
+
+    # 0) Observability Stack
+    for service in "${OBSERVABILITY_SERVICES[@]}"; do
+        if systemctl list-unit-files | grep -q "justnews-${service}.service"; then
+            log_info "Starting justnews-${service}..."
+            systemctl start "justnews-${service}"
+            
+            # Simple health check for these singleton services
+            if ! systemctl is-active --quiet "justnews-${service}"; then
+                 log_warning "justnews-${service} failed to become active immediately."
+            fi
+        else
+            log_warning "Service justnews-${service} not found, skipping start."
+        fi
+    done
 
     # 1) GPU Orchestrator first
     log_info "Starting GPU Orchestrator (justnews@gpu_orchestrator)..."
@@ -222,22 +266,12 @@ start_services() {
             "dashboard")
                 # Wait for the dashboard /transparency/status endpoint
                 if wait_for_http "http://127.0.0.1:8013/transparency/status" 30; then
-                    log_success "dashboard transparency endpoint is responding"
+                    log_success "Dashboard is ready"
                 else
-                    log_warning "dashboard transparency endpoint not ready after 30s; synthesizer may fail gating checks"
-                fi
-                ;;
-            "crawl4ai")
-                # Wait for crawl4ai bridge /health endpoint
-                if wait_for_http "http://127.0.0.1:3308/health" 30; then
-                    log_success "crawl4ai bridge is healthy"
-                else
-                    log_warning "crawl4ai bridge not ready after 30s; crawler or crawl-related agents may degrade"
+                    log_warning "Dashboard status endpoint invalid"
                 fi
                 ;;
         esac
-        # Allow a tiny buffer for the process to settle
-        sleep 2
     done
 
     log_success "All services started"
@@ -252,6 +286,15 @@ stop_services() {
         service="${SERVICES[i]}"
         log_info "Stopping justnews@${service}..."
         systemctl stop "justnews@${service}" 2>/dev/null || true
+    done
+
+    # Stop observability stack
+    for ((i=${#OBSERVABILITY_SERVICES[@]}-1; i>=0; i--)); do
+        service="${OBSERVABILITY_SERVICES[i]}"
+        if systemctl list-unit-files | grep -q "justnews-${service}.service"; then
+            log_info "Stopping justnews-${service}..."
+            systemctl stop "justnews-${service}" 2>/dev/null || true
+        fi
     done
 
     log_success "All services stopped"
@@ -271,6 +314,23 @@ show_status() {
     log_info "JustNews Service Status:"
     echo "=========================="
 
+    echo "--- Observability ---"
+    for service in "${OBSERVABILITY_SERVICES[@]}"; do
+        if systemctl list-units --all | grep -q "justnews-${service}.service"; then
+            if systemctl is-active --quiet "justnews-${service}"; then
+                echo -e "${GREEN}●${NC} justnews-${service} - Active"
+            elif systemctl is-failed --quiet "justnews-${service}"; then
+                echo -e "${RED}●${NC} justnews-${service} - Failed"
+            else
+                echo -e "${YELLOW}●${NC} justnews-${service} - Inactive"
+            fi
+        else
+             echo -e "${YELLOW}●${NC} justnews-${service} - Not installed"
+        fi
+    done
+    echo
+
+    echo "--- Agents ---"
     for service in "${SERVICES[@]}"; do
         if systemctl is-active --quiet "justnews@${service}"; then
             echo -e "${GREEN}●${NC} justnews@${service} - Active"

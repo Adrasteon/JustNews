@@ -159,3 +159,26 @@ There is a ready-to-install systemd unit template under `scripts/perf/systemd/ju
 - `scripts/perf/install_all.sh` — convenience wrapper that runs both installers and starts the service.
 
 The service uses an EnvironmentFile `/etc/default/justnews-gpu-telemetry` so you can tune runtime defaults (user, workdir, logdir, exporter port and thresholds) without editing the unit file directly. After editing the env file, run: `sudo systemctl restart justnews-gpu-telemetry.service`.
+
+Stress Testing
+--------------
+### Context Window Stress Test (`stress_test_context_window.py`)
+
+Validates the vLLM server's ability to handle increasing context lengths until failure or a defined maximum. Useful for determining safe context limits for your specific hardware.
+
+**Usage:**
+
+```bash
+# Basic run (defaults: start=1000, max=8192, step=500)
+python scripts/perf/stress_test_context_window.py
+
+# Custom range
+python scripts/perf/stress_test_context_window.py --start 4000 --max 16000 --step 1000 --model mistralai/Mistral-7B-Instruct-v0.3
+
+# Specify vLLM URL
+python scripts/perf/stress_test_context_window.py --url http://localhost:8000/v1
+```
+
+**Output:**
+- Prints success/failure for each context length.
+- Summary table of tested lengths and results.

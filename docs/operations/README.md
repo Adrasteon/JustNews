@@ -254,10 +254,10 @@ sudo journalctl -u <unit-name> -f
 sudo cp infrastructure/systemd/units/*.service /etc/systemd/system/
 sudo systemctl daemon-reload
 
-## Start services in order (MariaDB recommended; Postgres services are deprecated)
+## Start services in order
 
 sudo systemctl start justnews-mcp-bus
-sudo systemctl start justnews-mariadb || sudo systemctl start justnews-postgres
+sudo systemctl start justnews-mariadb
 sudo systemctl start justnews-redis
 
 ## Start agents

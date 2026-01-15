@@ -145,6 +145,21 @@ os.environ.setdefault("PYTHONPATH", str(project_root))
 # Indicate pytest-run for components that check this flag in `env_loader`.
 os.environ["PYTEST_RUNNING"] = "1"
 
+# Resource limits to prevent test process explosion and RAM exhaustion
+# This prevents the 2000+ process spawn issue that exhausted 31GB RAM
+try:
+    import resource
+    # Limit max processes per user to prevent runaway spawning
+    soft_limit, hard_limit = resource.getrlimit(resource.RLIMIT_NPROC)
+    # When running with live services, allow more processes for OpenTelemetry threads,
+    # OpenBLAS, and service processes. Otherwise cap at 5000 for isolated test runs.
+    # The original 1000 limit was too restrictive when services are active.
+    safe_limit = min(10000, soft_limit) if soft_limit > 1000 else soft_limit
+    resource.setrlimit(resource.RLIMIT_NPROC, (safe_limit, hard_limit))
+except (ImportError, ValueError, OSError):
+    # Best effort - not critical if this fails on some platforms
+    pass
+
 # In test runs, disable fatal canonical Chroma validation by default unless a test
 # explicitly sets CHROMADB_REQUIRE_CANONICAL via monkeypatch. This prevents
 # unrelated unit tests from failing due to environment-level canonical settings.
@@ -161,10 +176,19 @@ os.environ.setdefault("EMBEDDING_SUPPRESS_WARNINGS", "0")
 try:
     import mysql.connector as _mysql_connector  # type: ignore
 
+    _original_connect = _mysql_connector.connect
+
     # Replace the `connect` function with a helper that raises by default
     # to ensure code paths fall back to in-memory behavior unless tests
-    # explicitly patch `mysql.connector.connect` to provide a fake client.
+    # explicitly patch `mysql.connector.connect` to provide a fake client,
+    # OR unless integration tests are explicitly enabled via environment variable.
     def _test_disabled_connect(*args, **kwargs):
+        if (
+            os.environ.get("ENABLE_DB_INTEGRATION_TESTS") == "1"
+            or os.environ.get("ENABLE_CHROMADB_LIVE_TESTS") == "1"
+        ):
+            return _original_connect(*args, **kwargs)
+
         raise _mysql_connector.Error(
             "Database access disabled in unit tests; patch `mysql.connector.connect` to simulate a connection."
         )
@@ -183,23 +207,25 @@ try:
     import types
     from unittest.mock import MagicMock as _MagicMock
 
-    _spec = importlib.util.find_spec("chromadb")
-    if _spec is not None:
-        # Create a lightweight stub module so subsequent `import chromadb`
-        # will return the stub (avoids importing real package during test
-        # collection and prevents opentelemetry/google.rpc from being loaded).
-        chroma_stub = types.ModuleType("chromadb")
-        # Provide a mocked HttpClient so code under test that constructs
-        # `chromadb.HttpClient` doesn't attempt network calls.
-        chroma_stub.HttpClient = _MagicMock(name="chromadb.HttpClient")
-        # Provide a minimal api.client.Client stub used in some code paths
-        api_mod = types.ModuleType("chromadb.api")
-        client_mod = types.ModuleType("chromadb.api.client")
-        client_mod.Client = _MagicMock(name="chromadb.api.client.Client")
-        api_mod.client = client_mod
-        chroma_stub.api = api_mod
-        # Install stub in sys.modules to short-circuit real import
-        sys.modules["chromadb"] = chroma_stub
+    # If live ChromaDB tests are enabled, DO NOT mock chromadb.
+    if os.environ.get("ENABLE_CHROMADB_LIVE_TESTS") != "1":
+        _spec = importlib.util.find_spec("chromadb")
+        if _spec is not None:
+            # Create a lightweight stub module so subsequent `import chromadb`
+            # will return the stub (avoids importing real package during test
+            # collection and prevents opentelemetry/google.rpc from being loaded).
+            chroma_stub = types.ModuleType("chromadb")
+            # Provide a mocked HttpClient so code under test that constructs
+            # `chromadb.HttpClient` doesn't attempt network calls.
+            chroma_stub.HttpClient = _MagicMock(name="chromadb.HttpClient")
+            # Provide a minimal api.client.Client stub used in some code paths
+            api_mod = types.ModuleType("chromadb.api")
+            client_mod = types.ModuleType("chromadb.api.client")
+            client_mod.Client = _MagicMock(name="chromadb.api.client.Client")
+            api_mod.client = client_mod
+            chroma_stub.api = api_mod
+            # Install stub in sys.modules to short-circuit real import
+            sys.modules["chromadb"] = chroma_stub
 except Exception:
     # Best-effort: don't fail test collection if any of these operations error
     # (for example, tests running in minimal environments).

@@ -13,15 +13,15 @@ if [[ -z "${CI:-}" ]]; then
   if [[ -x ./scripts/dev/ensure_canonical_env.sh ]]; then
     ./scripts/dev/ensure_canonical_env.sh || true
   fi
-  echo "[justnews] Notice: we recommend running tests via scripts/dev/pytest.sh inside the '${CANONICAL_ENV:-justnews-py312}' conda env for consistency."
+  echo "[justnews] Notice: we recommend running tests via scripts/run_live_tests.sh inside the '${CANONICAL_ENV:-justnews-py312}' conda env for consistency."
   echo "[justnews] To bypass this message set ALLOW_ANY_PYTEST_ENV=1 or set up the conda env."
 fi
 
 if [[ "${GIT_STRICT_TEST_HOOK:-0}" == "1" ]]; then
   echo "[justnews] Running a quick unit smoke test before push..."
   # Run a quick targeted unit test to avoid long push-time
-  if command -v ./scripts/dev/pytest.sh >/dev/null 2>&1; then
-    ./scripts/dev/pytest.sh -q -k "not integration" -q --maxfail=1
+  if command -v ./scripts/run_live_tests.sh >/dev/null 2>&1; then
+    ./scripts/run_live_tests.sh -q -k "not integration" --maxfail=1
   else
     echo "[justnews] Warning: pytest wrapper not found. Falling back to running pytest directly."
     pytest -q -k "not integration" --maxfail=1

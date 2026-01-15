@@ -15,4 +15,4 @@ echo "  TEST_GPU_COUNT=$TEST_GPU_COUNT"
 echo "  USE_REAL_ML_LIBS=$USE_REAL_ML_LIBS"
 echo "  SAFE_MODE=$SAFE_MODE"
 
-exec ./scripts/dev/pytest.sh "$@"
+exec ./scripts/run_live_tests.sh "$@"

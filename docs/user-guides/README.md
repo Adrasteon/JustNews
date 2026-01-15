@@ -89,33 +89,48 @@ If you're developing or extending JustNews:
 
 1. **Development Environment**
 
-```bash
-# Setup development environment
-make setup-dev make test  # Run test suite
-```
+   ```bash
+   # Setup uses the canonical conda environment
+   make install
 
-1. **Code Structure**
+   # Run tests using the safe resource-managed runner
+   ./scripts/run_live_tests.sh
+   ```
 
-``` agents/           # Individual agent implementations common/           #
-Shared utilities and libraries config/           # Configuration management
-docs/            # Documentation tests/           # Test suites ```
+2. **Code Structure**
 
-1. **Adding a New Agent**
+   ```text
+   agents/           # Individual agent implementations
+   common/           # Shared utilities and libraries
+   config/           # Configuration management
+   docs/             # Documentation
+   tests/            # Test suites
+   ```
 
-```python
-# Create agent structure
-mkdir agents/new_agent touch agents/new_agent/main.py touch agents/new_agent/__init__.py
-```
+3. **Adding a New Agent**
 
-1. **Testing Your Changes**
+   ```bash
+   # Create agent structure
+   mkdir agents/new_agent
+   touch agents/new_agent/main.py
+   touch agents/new_agent/__init__.py
+   ```
 
-```bash
-# Run specific tests
-pytest tests/test_new_agent.py -v
+4. **Testing Your Changes**
 
-# Run integration tests
-make test-integration
-```
+   > **Note**: Always use the provided wrapper scripts to preventing memory exhaustion.
+   > See [Canonical Test Architecture](../Canonical_Test_Architecture.md) for details.
+
+   ```bash
+   # Run all tests (Unit + Mocked Integration)
+   ./scripts/run_live_tests.sh
+
+   # Run specific tests matching a keyword
+   ./scripts/run_live_tests.sh -k "new_agent"
+
+   # Run GPU tests (requires enabled GPU)
+   ./scripts/run_live_tests.sh --gpu
+   ```
 
 ## System Administration Guide
 
@@ -475,4 +490,6 @@ enable --now my-agent
 
 ---
 
-*User Guides Version: 1.0.0* *Last Updated: October 22, 2025*
+*User Guides Version: 1.1.0*
+*Last Updated: January 14, 2026*
+*Alignment: Canonical Test Architecture v1.0*

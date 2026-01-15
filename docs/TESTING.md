@@ -1,5 +1,7 @@
 ## Running the full test-suite (including gated/integration tests)
 
+> **Architectural Note**: This document covers the **Tier 2 (Real Infrastructure)** and **Tier 3 (Provider)** testing workflows defined in the [Canonical Test Architecture](Canonical_Test_Architecture.md). For standard developer workflows and resource limits, see the [Quick Reference](test-quick-reference.md).
+
 Some tests are intentionally gated behind environment flags or require local external services (MariaDB, Redis, Chroma,
 provider credentials). This document explains how to enable them for local runs and in CI.
 
@@ -9,11 +11,9 @@ High-level steps
 
 1. Export the environment flags that gate tests
 
-1. Use the helper runner to load project env vars and run pytest
+1. Use the canonical runner which handles environment loading and resource management
 
-Note: Running `./scripts/dev/pytest.sh`with no arguments will now default to`pytest -vv`when run in an interactive
-terminal (TTY) so you see per-test names and progress; in CI or non-interactive sessions it defaults to`pytest -q`. Pass
-explicit pytest args to override this behavior.
+Note: Running `./scripts/run_live_tests.sh` handles all configuration automatically. To pass raw arguments to pytest, use the script's wrapper capability or set `PYTEST_ARGS`.
 
 Bring up services ----------------- The repository includes a helper compose file used by CI and local engineers.
 
@@ -46,7 +46,7 @@ export OPENAI_API_KEY="<your-openai-key>"
 
 ## Run tests via the helper
 
-./scripts/dev/run_e2e_with_env.sh -q
+./scripts/run_live_tests.sh
 
 ```
 

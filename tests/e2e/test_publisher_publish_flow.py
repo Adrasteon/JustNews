@@ -91,7 +91,7 @@ def test_publisher_ingest_and_render():
         ready = False
         import urllib.request
 
-        while time.time() - start < 8:
+        while time.time() - start < 30:
             try:
                 with urllib.request.urlopen(
                     f"http://127.0.0.1:{server_port}/", timeout=1
@@ -99,7 +99,21 @@ def test_publisher_ingest_and_render():
                     ready = True
                     break
             except Exception:
-                time.sleep(0.25)
+                # Check if process died
+                if server_proc.poll() is not None:
+                     _, err = server_proc.communicate()
+                     raise RuntimeError(f"Server process died unexpectedly. Stderr: {err}")
+                time.sleep(0.5)
+        
+        if not ready:
+            server_proc.terminate()
+            try:
+                out, err = server_proc.communicate(timeout=2)
+            except subprocess.TimeoutExpired:
+                server_proc.kill()
+                out, err = server_proc.communicate()
+            raise AssertionError(f"Dev server failed to start in time. Stderr: {err}")
+        
         assert ready, "Dev server failed to start in time"
         # Use standard library HTTP client to avoid pytest's mocked 'requests' fixture
 

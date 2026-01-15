@@ -102,6 +102,7 @@ dependencies:
   - pytest>=7.4
   - pytest-asyncio>=0.21
   - pytest-cov>=4.1
+  - pytest-xdist>=3.5  # For controlled parallel test execution
   - coverage
   - mypy>=1.7
   - ruff>=0.1.6

@@ -543,7 +543,7 @@ for operational tasks and Dev for local development aids.
 
 ### C — Dev-only scripts (local development & test helpers)
 
-- `scripts/dev/run_pytest_conda.sh`,`scripts/dev/run_full_pytest_safe.sh`,`scripts/dev/pytest.sh` — Run tests inside
+- `scripts/dev/run_pytest_conda.sh`,`scripts/dev/run_full_pytest_safe.sh`,`scripts/run_live_tests.sh` — Run tests inside
   canonical conda env with safe defaults.
 
 - `scripts/run_tests_with_env.sh` — Convenience wrapper to run test subsets (GPU, Chroma, vLLM, etc.).

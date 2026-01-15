@@ -93,13 +93,39 @@ def mock_chromadb_client():
     return mock_client, mock_collection
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def mock_embedding_model():
-    """Mock sentence transformer model"""
+    """Mock sentence transformer model (session-scoped to prevent per-test model loads)
+    
+    Session scope prevents the RAM exhaustion issue where each parallel test
+    loaded a new ~500MB embedding model. Now one model is shared across all tests.
+    """
     mock_model = MagicMock()
     mock_model.encode.return_value = [0.1] * 384  # Standard embedding dimensions
     mock_model.get_sentence_embedding_dimension.return_value = 384
     return mock_model
+
+
+@pytest.fixture(scope="session")
+def mock_chromadb_client_session():
+    """Session-scoped ChromaDB client to prevent per-test client spawning"""
+    mock_client = MagicMock()
+    mock_collection = MagicMock()
+    
+    # Setup collection properties
+    mock_collection.name = "test_articles"
+    mock_collection.count.return_value = 0
+    mock_collection.metadata = {"test": True}
+    
+    # Setup client methods
+    mock_client.get_collection.return_value = mock_collection
+    mock_client.list_collections.return_value = [mock_collection]
+    mock_client.create_collection.return_value = mock_collection
+    mock_client.delete_collection = MagicMock()
+    
+    yield mock_client, mock_collection
+    # Cleanup after all tests
+    mock_client.reset_mock()
 
 
 @pytest.fixture
@@ -110,7 +136,11 @@ def mock_database_service(
     mock_embedding_model,
     monkeypatch,
 ):
-    """Create a fully mocked database service"""
+    """Create a fully mocked database service (function-scoped for test isolation)
+    
+    Uses session-scoped fixtures internally to prevent resource duplication
+    while maintaining per-test isolation for test data.
+    """
     mock_conn, mock_cursor = mock_mariadb_connection
     mock_client, mock_collection = mock_chromadb_client
 

@@ -5,7 +5,7 @@ non-mandatory and opt-in.
 
 Why use them?
 
-- Encourage test consistency by recommending the `scripts/dev/pytest.sh`wrapper that runs tests inside
+- Encourage test consistency by recommending the `scripts/run_live_tests.sh`wrapper that runs tests inside
   the`${CANONICAL_ENV:-justnews-py312}` conda environment.
 
 - Optionally run a very quick unit smoke test on `pre-push` to catch obvious breakages before pushing to remote (non-

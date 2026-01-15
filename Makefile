@@ -122,7 +122,7 @@ test: test-unit test-integration
 # `${CANONICAL_ENV:-justnews-py312}` conda environment. Developers should prefer this target
 # for local runs to ensure consistent environments.
 pytest-local:
-	$(call log_info,"Running local pytest via scripts/dev/pytest.sh")
+	$(call log_info,"Running local pytest via scripts/run_live_tests.sh")
 	$(shell [ -x ./scripts/dev/run_full_pytest_safe.sh ] || chmod +x ./scripts/dev/run_full_pytest_safe.sh)
 	./scripts/dev/run_full_pytest_safe.sh
 

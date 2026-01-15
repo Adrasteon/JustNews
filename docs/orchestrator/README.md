@@ -30,7 +30,7 @@ Key implementation points
 Local quickstart
 
 1. Unit & integration tests default to in-memory sqlite and in-memory Redis emulators — these are the recommended quick
-   path during development. See `tests/integration` for samples.
+   path during development. See `tests/e2e` for Real Infrastructure E2E tests (tier 2), which require `RUN_REAL_E2E=1`.
 
 1. To spin the engine locally using the persisted DB (MariaDB) and a real Redis, set appropriate `JUSTNEWS_GLOBAL_ENV`or
    environment variables so`create_database_service()` returns a real connection.

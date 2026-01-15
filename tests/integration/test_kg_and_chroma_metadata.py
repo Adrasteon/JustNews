@@ -35,6 +35,17 @@ def test_db_backed_kg_can_store_and_retrieve():
         "SELECT id, url_hash FROM articles WHERE url_hash IS NOT NULL LIMIT 1"
     )
     row = cursor.fetchone()
+    
+    if row is None:
+        # Seed a dummy article if DB is empty
+        cursor.execute("""
+            INSERT INTO articles (title, source_url, url_hash, content, created_at, published_at)
+            VALUES ('KG Test Article', 'http://kgtest.local', 'kgtesthash', 'content', NOW(), NOW())
+        """)
+        svc.mb_conn.commit()
+        cursor.execute("SELECT id, url_hash FROM articles WHERE url_hash='kgtesthash'")
+        row = cursor.fetchone()
+
     assert row is not None, "No article available for KG test"
     article_id, url_hash = row[0], row[1]
 
@@ -70,10 +81,12 @@ def test_synthesized_draft_adds_embedding_metadata_to_chroma():
 
     from agents.synthesizer.persistence import save_synthesized_draft
     from database.utils.migrated_database_utils import create_database_service
+    import time
 
+    unique_id = f"test-story-embed-{int(time.time())}"
     emb = [0.0] * 384
     res = save_synthesized_draft(
-        "test-story-embed",
+        unique_id,
         "Test title embed",
         "body",
         "summary",

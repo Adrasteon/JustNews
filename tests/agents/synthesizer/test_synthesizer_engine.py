@@ -107,6 +107,11 @@ async def synthesizer_engine(mock_gpu_manager):
         patch("agents.synthesizer.synthesizer_engine.pipeline"),
         patch("agents.synthesizer.synthesizer_engine.TfidfVectorizer"),
         patch("agents.synthesizer.synthesizer_engine.KMeans"),
+        patch("agents.synthesizer.synthesizer_engine.logger"),
+        patch("agents.synthesizer.synthesizer_engine.torch"),
+        patch("agents.synthesizer.synthesizer_engine.release_agent_gpu"),
+        patch("agents.common.embedding.get_shared_embedding_model"),
+        patch("agents.synthesizer.synthesizer_engine.SynthesizerEngine.cleanup"),
     ):
         engine = SynthesizerEngine()
         await engine.initialize()

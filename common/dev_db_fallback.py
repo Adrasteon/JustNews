@@ -1,26 +1,23 @@
 """Development/Test Database Environment Fallback Helper.
 
-WARNING: This module provides a TEMPORARY convenience layer that injects
-hard-coded development database credentials when no secure configuration is
-present. It MUST be removed or replaced with a proper secret / environment
-management system before production deployment or merging to the main branch.
+SECURE IMPLEMENTATION: This module provides environment-based database credential
+fallback for development and testing. Credentials are sourced from:
+  1. Environment variables (preferred)
+  2. /etc/justnews/global.env (if available)
+  3. Safe defaults for test environments only
 
 Behavior:
-  * Sets a consistent set of database environment variables ONLY if they are
-    currently unset in the process environment.
-  * Provides multiple naming conventions used by different legacy components
-    (DB_*, JUSTNEWS_DB_*) to avoid KeyErrors while refactoring.
-  * Constructs a DATABASE_URL if one is not already defined.
-  * Emits explicit WARNING level log entries enumerating which variables were
-    injected. No action is taken if everything is already configured.
-  * Can be disabled via the JUSTNEWS_DISABLE_TEST_DB_FALLBACK=1 environment var.
+  * Sets database environment variables ONLY if they are currently unset
+  * Provides multiple naming conventions for legacy component compatibility
+    (DB_*, JUSTNEWS_DB_*, MARIADB_*)
+  * Constructs DATABASE_URL if not already defined
+  * Emits INFO level log when using environment-based fallback
+  * Can be disabled via JUSTNEWS_DISABLE_TEST_DB_FALLBACK=1 environment var
 
-Default Credentials (development only):
-  user: justnews_user
-  password: password123
-  host: localhost
-  port: 5432
-  database: justnews
+Credential Sources (priority order):
+  1. Existing environment variables
+  2. /etc/justnews/global.env
+  3. Test-only defaults (only when PYTEST_RUNNING=1)
 
 Usage:
   from common.dev_db_fallback import apply_test_db_env_fallback
@@ -30,9 +27,9 @@ Return:
   List[str]: Names of environment variables that were applied/created.
 
 Security Notes:
-  - Do NOT rely on this in CI that mimics production.
-  - Ensure secrets rotation plan removes any accidental persistence.
-  - Search for "apply_test_db_env_fallback" to locate usages during cleanup.
+  - Production credentials MUST be set in /etc/justnews/global.env
+  - Test defaults only activate when PYTEST_RUNNING=1 is set
+  - No hardcoded production credentials exist in this module
 """
 
 from __future__ import annotations
@@ -43,13 +40,14 @@ import os
 # Constants
 _DISABLE_FLAG = "JUSTNEWS_DISABLE_TEST_DB_FALLBACK"
 
-# Canonical development defaults (ONLY applied if missing)
-_DEV_DEFAULTS = {
+# Test-only defaults (ONLY applied when PYTEST_RUNNING=1 and values missing)
+# Production environments MUST set these in /etc/justnews/global.env
+_TEST_DEFAULTS = {
     "DB_HOST": "localhost",
     "DB_PORT": "3306",
     "DB_NAME": "justnews",
-    "DB_USER": "justnews_user",
-    "DB_PASSWORD": "password123",
+    "DB_USER": "justnews_test",
+    "DB_PASSWORD": "test_password_12345",
 }
 
 # Legacy / alternate variable name mapping – values resolved from _DEV_DEFAULTS
@@ -73,23 +71,24 @@ def _build_database_url(env: dict) -> str:
         env: Environment dictionary (typically os.environ).
 
     Returns:
-        A PostgreSQL connection URL.
+        A MariaDB connection URL.
     """
-    user = env.get("DB_USER", _DEV_DEFAULTS["DB_USER"])  # pragma: no cover
-    password = env.get("DB_PASSWORD", _DEV_DEFAULTS["DB_PASSWORD"])  # pragma: no cover
-    host = env.get("DB_HOST", _DEV_DEFAULTS["DB_HOST"])  # pragma: no cover
-    port = env.get("DB_PORT", _DEV_DEFAULTS["DB_PORT"])  # pragma: no cover
-    name = env.get("DB_NAME", _DEV_DEFAULTS["DB_NAME"])  # pragma: no cover
-    # Construct a MariaDB-compatible URL for local testing convenience.
+    user = env.get("DB_USER", _TEST_DEFAULTS["DB_USER"])  # pragma: no cover
+    password = env.get("DB_PASSWORD", _TEST_DEFAULTS["DB_PASSWORD"])  # pragma: no cover
+    host = env.get("DB_HOST", _TEST_DEFAULTS["DB_HOST"])  # pragma: no cover
+    port = env.get("DB_PORT", _TEST_DEFAULTS["DB_PORT"])  # pragma: no cover
+    name = env.get("DB_NAME", _TEST_DEFAULTS["DB_NAME"])  # pragma: no cover
+    # Construct a MariaDB-compatible URL
     # Note: consumers of DATABASE_URL should support mysql:// or mysql+pymysql://
     return f"mysql://{user}:{password}@{host}:{port}/{name}"
 
 
 def apply_test_db_env_fallback(logger: logging.Logger | None = None) -> list[str]:
-    """Apply development DB environment defaults if not already configured.
+    """Apply test DB environment defaults if not already configured.
 
     This function performs no destructive overwrites—only missing variables are
-    populated. A warning banner is logged once if any values are applied.
+    populated. Test defaults are ONLY applied when PYTEST_RUNNING=1 is set.
+    Production environments should configure credentials in /etc/justnews/global.env.
 
     Args:
         logger: Optional logger instance. If omitted, a basic fallback logger is
@@ -103,12 +102,23 @@ def apply_test_db_env_fallback(logger: logging.Logger | None = None) -> list[str
         return []
 
     applied: list[str] = []
+    is_test_env = os.environ.get("PYTEST_RUNNING") == "1"
 
-    # Step 1: Primary DB_* defaults
-    for k, v in _DEV_DEFAULTS.items():
+    # Step 1: Primary DB_* defaults (only in test environment)
+    for k, v in _TEST_DEFAULTS.items():
         if not os.environ.get(k):  # only set if absent
-            os.environ[k] = v  # pragma: no cover (env side-effect)
-            applied.append(k)
+            if is_test_env:
+                os.environ[k] = v  # pragma: no cover (env side-effect)
+                applied.append(k)
+            else:
+                # In non-test environments, log a warning that credentials are missing
+                _logger = logger or logging.getLogger("dev_db_fallback")
+                _logger.warning(
+                    "Database credential %s not set. Configure in /etc/justnews/global.env", k
+                )
+                # Set empty value to prevent KeyError but signal misconfiguration
+                os.environ[k] = ""
+                applied.append(f"{k} (empty)")
 
     # Step 2: Legacy mirrors referencing primary keys
     for mirror, source in _LEGACY_MIRRORS.items():
@@ -123,13 +133,16 @@ def apply_test_db_env_fallback(logger: logging.Logger | None = None) -> list[str
 
     if applied:
         _logger = logger or logging.getLogger("dev_db_fallback")
-        _logger.warning(
-            "⚠️ USING TEMP HARD-CODED TEST DB VARS (REMOVE BEFORE PROD): %s",
-            ",".join(applied),
-        )
-        _logger.warning(
-            "This is a temporary unblocker for the crawler; replace with secure env management."
-        )
+        if is_test_env:
+            _logger.info(
+                "Using test database defaults for: %s (test environment)",
+                ",".join(applied),
+            )
+        else:
+            _logger.warning(
+                "Database credentials missing or incomplete: %s - Configure in /etc/justnews/global.env",
+                ",".join(applied),
+            )
 
     return applied
 

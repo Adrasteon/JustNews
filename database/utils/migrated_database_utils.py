@@ -619,7 +619,23 @@ def create_database_service(
             if config and getattr(_cached_service, "config", None) == {
                 "database": config
             }:
-                return _cached_service
+                # Verify connection liveness before returning cached service
+                is_connected = False
+                try:
+                    if _cached_service.mb_conn:
+                        # Try to ping the server to ensure connection is alive
+                        _cached_service.mb_conn.ping(reconnect=True, attempts=1, delay=0)
+                        if _cached_service.mb_conn.is_connected():
+                            is_connected = True
+                except Exception as e:
+                    logger.warning(f"Cached database connection check failed: {e}")
+                    is_connected = False
+
+                if is_connected:
+                    return _cached_service
+
+                logger.info("Cached database service connection is unresponsive. Recreating service.")
+                _cached_service = None
     except Exception:
         # If comparing configs fails for any reason, ignore and recreate service
         pass
@@ -691,6 +707,7 @@ def check_database_connections(service: MigratedDatabaseService) -> bool:
         # service's `mb_conn` (test fakes often set this directly) to ensure the
         # tests' mocked cursor objects are used.
         conn = getattr(service, "mb_conn", None)
+        using_shared_conn = conn is not None
         cursor = None
         try:
             if conn is not None:
@@ -707,7 +724,7 @@ def check_database_connections(service: MigratedDatabaseService) -> bool:
             except Exception:
                 pass
             try:
-                if conn:
+                if conn and not using_shared_conn:
                     try:
                         conn.close()
                     except Exception:

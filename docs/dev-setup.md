@@ -64,11 +64,11 @@ Running tests — smoke/unit
 
 ## Run a focused smoke test suite (fast)
 
-pytest tests/smoke -q
+./scripts/run_live_tests.sh -k "smoke"
 
 ## Run full test matrix (longer)
 
-pytest -q
+./scripts/run_live_tests.sh
 
 ```
 

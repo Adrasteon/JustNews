@@ -102,7 +102,7 @@ if (
         msg = """
 Tests should be run inside the '${CANONICAL_ENV}' conda environment for consistent results.
 
-Use the helper script: scripts/dev/pytest.sh <args>
+Use the helper script: scripts/run_live_tests.sh <args>
 Or re-run with: PYTHONPATH=$(pwd) conda run -n ${CANONICAL_ENV} pytest <args>
 
 If you intentionally want to run in a different environment set ALLOW_ANY_PYTEST_ENV=1 to bypass this check.
@@ -517,6 +517,16 @@ def create_test_global_env(tmp_path_factory):
     """
     # Preserve any existing override and restore afterwards
     prev = os.environ.get("JUSTNEWS_GLOBAL_ENV")
+
+    # If integration tests are enabled and a global environment is provided,
+    # respect the user's configuration instead of forcing the test harness default.
+    if prev and (
+        os.environ.get("ENABLE_DB_INTEGRATION_TESTS") == "1"
+        or os.environ.get("ENABLE_CHROMADB_LIVE_TESTS") == "1"
+    ):
+        yield Path(prev)
+        return
+
     # Build a minimal, safe test global.env in a temp directory
     tmp_dir = tmp_path_factory.mktemp("global_env")
     path = tmp_dir / "global.env"

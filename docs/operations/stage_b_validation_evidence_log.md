@@ -37,7 +37,7 @@ Test artifacts stored | Complete | Pytest command executed 2025-10-26; results 8
 ### Follow-Up Actions
 
 - 2025-10-26T18:53:44Z — Migration 003 applied via `bash scripts/ops/apply_stage_b_migration.sh
-  postgresql://postgres@localhost/justnews --record`; transcript stored
+  <CONNECTION_STRING> --record`; transcript stored
   under`logs/operations/migrations/migration_003_20251026T185331Z.log`.
 
 - 2025-10-26T19:12:18Z — Scheduler timer run completed; see `journalctl`excerpt and state/success JSON
@@ -52,7 +52,7 @@ Test artifacts stored | Complete | Pytest command executed 2025-10-26; results 8
 - Dashboard snapshot capture deferred pending Grafana GUI export by ops (metrics validated in Prometheus textfile).
 
 - 2025-10-26T19:41:35Z — Migration 003 reapplied via `bash scripts/ops/apply_stage_b_migration.sh
-  postgresql://postgres@localhost/justnews --record`; transcript stored
+  <CONNECTION_STRING> --record`; transcript stored
   under`logs/operations/migrations/migration_003_20251026T194119Z.log`.
 
 - 2025-10-26T19:43:10Z — Duplicate suppression query executed; results archived under

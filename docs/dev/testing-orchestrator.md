@@ -20,7 +20,7 @@ Test tiers
 
 - Use the pytest helper script to ensure you run tests inside the project's conda environment:
 
-./scripts/dev/pytest.sh [pytest args]
+./scripts/run_live_tests.sh [pytest args]
 
 - The tests include helpers that map MySQL `%s`placeholders to sqlite`?` for compatibility in CI and developer runs.
 
@@ -56,7 +56,7 @@ tests in the container
     Docker) or as a managed service. See `scripts/dev/docker-
     compose.e2e.yml`,`scripts/dev/run_e2e_docker.sh`and`.github/workflows/e2e-docker.yml`.
 
-Developer ergonomics & helpers -- `scripts/dev/pytest.sh`— wrapper which runs pytest inside`${CANONICAL_ENV:-justnews-
+Developer ergonomics & helpers -- `scripts/run_live_tests.sh`— wrapper which runs pytest inside`${CANONICAL_ENV:-justnews-
 py312}`conda env and sets`PYTHONPATH` to the repo root. Use it for consistent local runs.
 
 - `scripts/dev/install_hooks.sh`— installs local git hooks (from`scripts/dev/git-hooks/`) into`.git/hooks`(opt-in).
@@ -69,15 +69,15 @@ Practical commands
 
 - Run all unit tests quickly:
 
-./scripts/dev/pytest.sh -q -k "not integration"
+./scripts/run_live_tests.sh -q -k "not integration"
 
 - Run integration tests (fast in-memory harness):
 
-./scripts/dev/pytest.sh -q tests/integration -q
+./scripts/run_live_tests.sh -q tests/integration -q
 
 - Run worker flow integration test specifically (smoke):
 
-./scripts/dev/pytest.sh -q tests/integration/test_worker_flow.py::test_worker_cl aims_lease_runs_and_updates_db -q -s
+./scripts/run_live_tests.sh -q tests/integration/test_worker_flow.py::test_worker_cl aims_lease_runs_and_updates_db -q -s
 
 Running full, real E2E tests inside a systemd-nspawn container (self-hosted runner)
 --------------------------------------------------------------------------
